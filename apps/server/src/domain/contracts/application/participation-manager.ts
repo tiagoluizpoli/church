@@ -117,6 +117,7 @@ export interface CycleBuilderRoleOption {
 }
 
 export interface CycleBuilderView {
+  affectedVolunteerCount: number;
   cycle: Cycle;
   events: CycleBuilderEventView[];
   roles: CycleBuilderRoleOption[];
@@ -128,6 +129,10 @@ export interface PublishCycleInput {
   ministryId: MinistryId;
   userId: UserId;
   confirmBelowFull?: boolean;
+}
+
+export interface SendScheduleUpdatesView {
+  notifiedCount: number;
 }
 
 export interface PublishCycleParticipationOutcome {
@@ -244,6 +249,7 @@ export interface ScheduleAskingView {
 
 /** One Ministry's part of one Sent or Past Cycle. `asking` is set only in that stage. */
 export interface ScheduleView {
+  affectedVolunteerCount: number;
   ministry: Ministry;
   cycle: Cycle;
   stage: ScheduleStage;
@@ -289,6 +295,9 @@ export interface IParticipationManager {
     input: GetParticipationCompletionInput,
   ): Promise<ParticipationCompletionView>;
   publishCycle(input: PublishCycleInput): Promise<PublishCycleView>;
+  sendScheduleUpdates(
+    input: PublishCycleInput,
+  ): Promise<SendScheduleUpdatesView>;
   listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryView[]>;

@@ -7,6 +7,7 @@ import {
   ministryMembership,
   ministryParticipation,
   participationEventTimeBlockInclusion,
+  scheduleLastTold,
   shift,
   unavailableShift,
 } from '@church/db';
@@ -34,13 +35,16 @@ import type {
   ListParticipationsByEventInput,
   ListParticipationsByIdsInput,
   ListParticipationsByMinistryInput,
+  ListScheduleLastToldInput,
   ListScheduleSummariesInput,
   ListSchedulesFactsInput,
   LockParticipationInput,
   LockScheduleParticipationsInput,
   MinistryParticipationRepository,
   RemoveInclusionInput,
+  SaveScheduleLastToldInput,
   ScheduleCheckCountRow,
+  ScheduleLastToldRow,
   ScheduleLateMarkCountRow,
   ScheduleServingStateRow,
   ScheduleSummaryRow,
@@ -69,6 +73,48 @@ export class DrizzleMinistryParticipationRepository
   }
 
   private readonly db: AnyDrizzleDb;
+
+  async listScheduleLastTold(
+    input: ListScheduleLastToldInput,
+  ): Promise<ScheduleLastToldRow[]> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const rows = await db
+      .select()
+      .from(scheduleLastTold)
+      .where(
+        and(
+          eq(scheduleLastTold.churchId, input.churchId),
+          eq(scheduleLastTold.ministryId, input.ministryId),
+          eq(scheduleLastTold.cycleId, input.cycleId),
+        ),
+      );
+    return rows.map((row) => ({
+      volunteerId: row.volunteerId as ScheduleLastToldRow['volunteerId'],
+      assignments: row.assignments as ScheduleLastToldRow['assignments'],
+    }));
+  }
+
+  async saveScheduleLastTold(input: SaveScheduleLastToldInput): Promise<void> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    await db
+      .insert(scheduleLastTold)
+      .values({
+        churchId: input.churchId,
+        ministryId: input.ministryId,
+        cycleId: input.cycleId,
+        volunteerId: input.volunteerId,
+        assignments: input.assignments,
+      })
+      .onConflictDoUpdate({
+        target: [
+          scheduleLastTold.churchId,
+          scheduleLastTold.ministryId,
+          scheduleLastTold.cycleId,
+          scheduleLastTold.volunteerId,
+        ],
+        set: { assignments: input.assignments },
+      });
+  }
 
   async getById(input: GetParticipationInput): Promise<MinistryParticipation> {
     if (!isValidUuid(input.participationId)) {

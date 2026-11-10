@@ -71,7 +71,7 @@ describe('schedule-publish E2E journey recipe', () => {
     ).toEqual([]);
   });
 
-  it('leaves two Usher seats open for a qualified persona and a qualified pool Volunteer', async () => {
+  it('leaves two Usher seats open for two qualified personas', async () => {
     const journey = await load({ anchor: ANCHOR });
 
     const [requirement] = await testDb
@@ -86,7 +86,9 @@ describe('schedule-publish E2E journey recipe', () => {
       roleId: journey.ministries.worship.roles.usher.id,
     });
     expect(journey.worship.peopleNeeded).toBe(2);
-    expect(journey.personas.volunteer.name).not.toBe(journey.pool.other.name);
+    expect(journey.personas.volunteer.name).not.toBe(
+      journey.personas.other.name,
+    );
   });
 
   it('follows the anchor past the legacy seed dates', async () => {

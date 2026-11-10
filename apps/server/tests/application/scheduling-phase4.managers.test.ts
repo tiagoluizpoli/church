@@ -1,4 +1,4 @@
-import { parseInstant, parseTimeOfDay } from '@church/time';
+import { parseCalendarDay, parseInstant, parseTimeOfDay } from '@church/time';
 import { expect, it, vi } from 'vitest';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
@@ -20,6 +20,8 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import { Assignment } from '@/domain/entities/assignment';
+import { Church } from '@/domain/entities/church';
+import { Cycle } from '@/domain/entities/cycle';
 import { Event } from '@/domain/entities/event';
 import { EventTemplate } from '@/domain/entities/event-template';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
@@ -130,7 +132,13 @@ function createParticipationHarness({
     ...repositories,
     participationRepository: repositories.ministryParticipationRepository,
     eventRepository: repositories.planningEventRepository,
-    churchRepository: {} as never,
+    churchRepository: {
+      getById: async () =>
+        new Church({
+          id: churchId,
+          props: { name: 'Church', slug: 'church', timezone: 'UTC' },
+        }),
+    } as never,
     staffingSeeder: {} as never,
     unitOfWork,
     notifications,
@@ -489,11 +497,11 @@ it('counts only active assignments towards each required place', async () => {
 });
 
 it.each([
-  { state: 'preparing' as const, published: false },
-  { state: 'assigning' as const, published: true },
-])('publishes only eligible participation with no staffing places: $state', async ({
+  { state: 'preparing' as const, code: 'ILLEGAL_STATE_TRANSITION' },
+  { state: 'assigning' as const, code: 'SCHEDULE_HAS_NO_ASSIGNMENTS' },
+])('refuses publication without eligible Assignments: $state', async ({
   state,
-  published,
+  code,
 }) => {
   const { manager, repositories, participation, block, notifications } =
     createParticipationHarness({ state });
@@ -508,46 +516,38 @@ it.each([
       end: endTime,
     },
   });
-  vi.mocked(
-    repositories.planningEventRepository.listCycleEvents,
-  ).mockResolvedValue([{ event, eventTimeBlocks: [block] }]);
-  vi.mocked(
-    repositories.ministryParticipationRepository.findByMinistryEvent,
-  ).mockResolvedValue(participation);
-  vi.mocked(
-    repositories.ministryParticipationRepository.lockById,
-  ).mockResolvedValue(participation);
-  vi.mocked(
-    repositories.shiftRepository.listRequirementsByParticipation,
-  ).mockResolvedValue([]);
-  vi.mocked(
-    repositories.assignmentRepository.listByParticipation,
-  ).mockResolvedValue([]);
-  vi.mocked(repositories.volunteerRepository.listByIds).mockResolvedValue([]);
-  const result = await manager.publishCycle({
-    churchId,
-    ministryId,
-    cycleId,
-    userId: UserId.from('user'),
-  });
-  if (published) {
-    expect(result.participations).toHaveLength(1);
-    expect(
-      repositories.ministryParticipationRepository.updateState,
-    ).toHaveBeenCalledWith({
+  repositories.cycleRepository.getById.mockResolvedValue(
+    new Cycle({
+      id: cycleId,
+      props: {
+        churchId,
+        name: 'Cycle',
+        startDate: parseCalendarDay({ value: '2099-01-01' }),
+        endDate: parseCalendarDay({ value: '2099-02-01' }),
+        state: 'sent',
+      },
+    }),
+  );
+  repositories.planningEventRepository.listCycleEvents.mockResolvedValue([
+    { event, eventTimeBlocks: [block] },
+  ]);
+  repositories.ministryParticipationRepository.lockSchedule.mockResolvedValue([
+    participation,
+  ]);
+  repositories.shiftRepository.listRequirementsByParticipation.mockResolvedValue(
+    [],
+  );
+  repositories.assignmentRepository.listByParticipation.mockResolvedValue([]);
+  await expect(
+    manager.publishCycle({
       churchId,
-      participationId,
-      state: 'published',
-      tx,
-    });
-    expect(notifications.enqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ to: [] }),
-    );
-  } else {
-    expect(result.participations).toEqual([]);
-    expect(
-      repositories.ministryParticipationRepository.updateState,
-    ).not.toHaveBeenCalled();
-    expect(notifications.enqueue).not.toHaveBeenCalled();
-  }
+      ministryId,
+      cycleId,
+      userId: UserId.from('user'),
+    }),
+  ).rejects.toMatchObject({ code });
+  expect(
+    repositories.ministryParticipationRepository.updateState,
+  ).not.toHaveBeenCalled();
+  expect(notifications.enqueue).not.toHaveBeenCalled();
 });

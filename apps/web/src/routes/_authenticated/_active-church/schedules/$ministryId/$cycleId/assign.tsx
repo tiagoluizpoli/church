@@ -25,6 +25,7 @@ function EventBuilderRoute() {
   const {
     data,
     publish,
+    sendUpdates,
     query,
     createAssignment,
     deleteAssignment,
@@ -78,6 +79,8 @@ function EventBuilderRoute() {
         cycleStartDate={query.data.cycle.startDate}
         cycleEndDate={query.data.cycle.endDate}
         isPublishing={publish.isPending}
+        isSendingUpdates={sendUpdates.isPending}
+        onSendUpdates={() => sendUpdates.mutate()}
         onPublish={(confirmBelowFull) => publish.mutate(confirmBelowFull)}
         createAssignment={createAssignment}
         deleteAssignment={deleteAssignment}

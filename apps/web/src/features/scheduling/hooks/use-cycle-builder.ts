@@ -177,6 +177,7 @@ export interface CycleBuilderEventSummary {
 }
 
 export interface CycleBuilderData {
+  affectedVolunteerCount?: number;
   events: CycleBuilderEventSummary[];
   assignments: CycleBuilderAssignment[];
   roles: CycleBuilderRoleOption[];
@@ -345,7 +346,12 @@ function mapCycleBuilderData(
     };
   });
 
-  return { events, assignments, roles: data.roles };
+  return {
+    events,
+    assignments,
+    roles: data.roles,
+    affectedVolunteerCount: data.affectedVolunteerCount,
+  };
 }
 
 export function useCycleBuilder({
@@ -372,6 +378,12 @@ export function useCycleBuilder({
       // when the cycle is below its staffing target and the leader has not
       // confirmed, so the two outcomes must read differently.
       if (result.published) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['prepare-schedules'] }),
+          queryClient.invalidateQueries({
+            queryKey: ['prepare-cycle-participation', ministryId, cycleId],
+          }),
+        ]);
         toast.success(m.builder_logic_cycle_published());
         return;
       }
@@ -384,6 +396,26 @@ export function useCycleBuilder({
     },
   });
 
+  const sendUpdates = useMutation({
+    mutationFn: () => adminApi.sendScheduleUpdates(cycleId, { ministryId }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ['prepare-schedules'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['prepare-cycle-participation', ministryId, cycleId],
+        }),
+      ]);
+      toast.success(m.schedule_updates_sent());
+    },
+    onError: (error) =>
+      toast.error(
+        builderErrorMessage({ error, fallback: m.schedule_updates_failed() }),
+      ),
+  });
+
   const queryKey = [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId];
 
   // Fire-and-forget on purpose: the cache already holds the optimistic result,
@@ -391,6 +423,7 @@ export function useCycleBuilder({
   // follows it — pending for a second round trip.
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey });
+    void queryClient.invalidateQueries({ queryKey: ['prepare-schedules'] });
   };
 
   const applyOptimistic = async ({
@@ -474,6 +507,7 @@ export function useCycleBuilder({
     query,
     data,
     publish,
+    sendUpdates,
     createAssignment,
     deleteAssignment,
     reassignAssignment,

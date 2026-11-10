@@ -20,7 +20,9 @@ import type {
   PublishCycleBody,
   PublishCycleParams,
   ReassignParticipationAssignment200,
-  ReassignParticipationAssignmentBody
+  ReassignParticipationAssignmentBody,
+  SendScheduleUpdates200,
+  SendScheduleUpdatesParams
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -70,6 +72,19 @@ const publishCycle = (
       {url: `/api/v1/assign/cycles/${cycleId}/publish`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: publishCycleBody,
+        params
+    },
+      );
+    }
+  /**
+ * @summary Send Schedule updates
+ */
+const sendScheduleUpdates = (
+    cycleId: string,
+    params: SendScheduleUpdatesParams,
+ ) => {
+      return apiClient<SendScheduleUpdates200>(
+      {url: `/api/v1/assign/cycles/${cycleId}/send-updates`, method: 'POST',
         params
     },
       );
@@ -154,10 +169,11 @@ const getParticipationCompletion = (
     },
       );
     }
-  return {getCycleBuilderData,getCycleAuditLog,publishCycle,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,moveParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
+  return {getCycleBuilderData,getCycleAuditLog,publishCycle,sendScheduleUpdates,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,moveParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
 export type GetCycleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleBuilderData']>>>
 export type GetCycleAuditLogResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleAuditLog']>>>
 export type PublishCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['publishCycle']>>>
+export type SendScheduleUpdatesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['sendScheduleUpdates']>>>
 export type ListEligibleVolunteersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['listEligibleVolunteers']>>>
 export type CreateParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['createParticipationAssignment']>>>
 export type DeleteParticipationAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['deleteParticipationAssignment']>>>

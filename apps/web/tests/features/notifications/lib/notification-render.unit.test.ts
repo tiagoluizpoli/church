@@ -18,16 +18,27 @@ const availability = {
   cycleEndDate: '2026-12-31',
 };
 const published = {
-  eventId: ID,
   cycleId: ID,
+  cycleName: 'Dezembro 2026',
   ministryId: ID,
   ministryName: 'Louvor',
-  eventTitle: 'Vigília de Natal',
-  // 02:30Z is 23:30 the day before in America/Sao_Paulo.
-  eventStart: '2026-12-25T02:30:00.000Z',
-  eventEnd: '2026-12-25T04:00:00.000Z',
   churchTimezone: 'America/Sao_Paulo',
-  shifts: [{ roleName: 'Violão', startsAt: '2026-12-25T02:30:00.000Z' }],
+  shifts: [
+    {
+      eventTitle: 'Vigília de Natal',
+      startsAt: '2026-12-25T02:30:00.000Z',
+      endsAt: '2026-12-25T04:00:00.000Z',
+      roleName: 'Violão',
+      sectorName: 'Palco',
+    },
+    {
+      eventTitle: 'Culto',
+      startsAt: '2026-12-26T12:00:00.000Z',
+      endsAt: '2026-12-26T13:00:00.000Z',
+      roleName: 'Voz',
+      sectorName: 'Coro',
+    },
+  ],
 };
 
 const opened = {
@@ -196,32 +207,82 @@ describe('retained scheduling Notifications', () => {
     );
   });
 
-  it('renders the publication detail in the frozen Church Timezone with the recipient Shifts', () => {
-    overwriteGetLocale(() => 'pt-BR');
-
+  it.each([
+    'en',
+    'pt-BR',
+  ] as const)('renders every published Shift in %s', (locale) => {
+    overwriteGetLocale(() => locale);
     const rendered = renderNotification(schedule);
-
-    expect(rendered.title).toBe('Escala de Louvor publicada');
-    expect(rendered.body).toBe(
-      'Vigília de Natal, em 24/12/2026 23:30, foi publicado para Louvor.\nSeus turnos: Violão (24/12/2026 23:30)',
+    const options = { locale };
+    expect(rendered.title).toBe(
+      m.notification_schedule_published_title(
+        { ministryName: 'Louvor' },
+        options,
+      ),
+    );
+    expect(rendered.body).toContain(
+      m.notification_schedule_published_body(
+        { cycleName: 'Dezembro 2026', ministryName: 'Louvor' },
+        options,
+      ),
+    );
+    expect(rendered.body).toContain(
+      locale === 'en' ? 'Thu 24 Dec' : 'qui 24 dez',
+    );
+    expect(rendered.body).toContain(
+      locale === 'en' ? 'Sat 26 Dec' : 'sáb 26 dez',
+    );
+    expect(rendered.body).toContain(
+      '23:30–01:00 · Vigília de Natal · Violão · Palco',
+    );
+    expect(rendered.body).toContain('09:00–10:00 · Culto · Voz · Coro');
+    expect(rendered.actionLabel).toBe(
+      m.email_schedule_published_action({}, options),
     );
   });
 
-  it('follows the current locale for the same frozen facts', () => {
-    expect(renderNotification(schedule).title).toBe(
-      'Louvor schedule published',
+  it.each([
+    'en',
+    'pt-BR',
+  ] as const)('renders personal Schedule changes in %s', (locale) => {
+    overwriteGetLocale(() => locale);
+    const [first, second] = published.shifts;
+    if (!first || !second) throw new Error('missing shifts');
+    const item: GetNotifications200ItemsItem = {
+      ...base,
+      kind: 'schedule_updated',
+      data: {
+        cycleId: ID,
+        cycleName: published.cycleName,
+        ministryId: ID,
+        ministryName: published.ministryName,
+        churchTimezone: published.churchTimezone,
+        changes: [
+          { kind: 'added', assignment: first },
+          {
+            kind: 'removed',
+            assignment: { ...second, swapRequestCovered: true },
+          },
+          { kind: 'moved', before: first, after: second },
+        ],
+      },
+    };
+    const rendered = renderNotification(item);
+    const options = { locale };
+    expect(rendered.title).toBe(
+      m.notification_schedule_updated_title(
+        { ministryName: 'Louvor' },
+        options,
+      ),
     );
-  });
-
-  it('says so when the recipient has no Shifts in the event', () => {
-    const none = {
-      ...schedule,
-      data: { ...published, shifts: [] },
-    } as GetNotifications200ItemsItem;
-
-    expect(renderNotification(none).body).toContain(
-      'You have no shifts in this event.',
+    expect(rendered.body).toContain(
+      m.notification_schedule_updated_covered({}, options),
     );
+    expect(rendered.body).toContain('23:30–01:00 · Vigília de Natal');
+    expect(rendered.body).toContain('09:00–10:00 · Culto');
+    expect(resolveNotificationDestination(item).target).toEqual({
+      to: '/my-schedule',
+    });
   });
 
   it.each([
@@ -257,16 +318,6 @@ describe('retained scheduling Notifications', () => {
     expect(renderNotification(item).actionLabel).toBe(
       m.email_availability_action(),
     );
-  });
-
-  it('links publication to the event on the dashboard assignments section', () => {
-    expect(resolveNotificationDestination(schedule)).toEqual({
-      target: {
-        to: '/dashboard',
-        search: { section: 'assignments', eventId: ID, ministryId: ID },
-      },
-      isFallback: false,
-    });
   });
 });
 

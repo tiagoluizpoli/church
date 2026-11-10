@@ -1,5 +1,6 @@
 import { appConfig } from '@church/app-config';
 import {
+  assignment,
   availabilityAsk,
   availabilityCheck,
   cycle,
@@ -7,6 +8,9 @@ import {
   ministryParticipation,
   notification,
   outboxMessage,
+  scheduleLastTold,
+  shift,
+  shiftRequirement,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
 import {
@@ -16,7 +20,7 @@ import {
   setTestClock,
 } from '@church/time';
 import { and, eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
@@ -34,8 +38,9 @@ import {
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { buildChurchMembership } from '@/seeds/builders/church';
-import { buildMinistry } from '@/seeds/builders/ministry';
+import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
 import { buildAssignment } from '@/seeds/builders/scheduling';
+import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import {
   createSchedulingManagers,
   seedRequirement,
@@ -525,9 +530,59 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     expect(inbox[0]?.data).toMatchObject({ checkId: check?.id });
   });
 
+  it('refuses to publish a Schedule with no active Assignments', async () => {
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.id, participationId));
+
+    const managers = createSchedulingManagers({ notifications });
+    await expect(
+      managers.participationManager.publishCycle({
+        churchId: ChurchId.from(ids.churchId),
+        cycleId: CycleId.from(cycleId),
+        ministryId: MinistryId.from(ids.ministryId),
+        userId: UserId.from(ids.adminUserId),
+        confirmBelowFull: true,
+      }),
+    ).rejects.toMatchObject({ code: 'SCHEDULE_HAS_NO_ASSIGNMENTS' });
+    expect(await outboxRows()).toHaveLength(0);
+    const rows = await schedulingTestDb.select().from(ministryParticipation);
+    expect(rows.find((row) => row.id === participationId)?.state).toBe(
+      'assigning',
+    );
+  });
+
   it('publication notifies assigned Volunteers only, once each, with their own Shifts in the Church Timezone', async () => {
     const assigned = await seedMember({ name: 'Ana', email: 'ana@test.com' });
-    await seedMember({ name: 'Unassigned', email: 'none@test.com' });
+    const otherAssigned = await seedMember({
+      name: 'Bruno',
+      email: 'bruno@test.com',
+    });
+    const unassigned = await seedMember({
+      name: 'Unassigned',
+      email: 'none@test.com',
+    });
+    await buildAvailabilityCheck({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      cycleId,
+      ministryMembershipId: unassigned.membership.id,
+    });
+    const sibling = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      name: 'Sibling Ministry',
+    });
+    const [siblingParticipation] = await schedulingTestDb
+      .insert(ministryParticipation)
+      .values({
+        churchId: ids.churchId,
+        ministryId: sibling.id,
+        eventId,
+        state: 'assigning',
+      })
+      .returning();
     const role = await seedRole({
       churchId: ids.churchId,
       ministryId: ids.ministryId,
@@ -564,51 +619,631 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         status: 'pending',
       });
     }
+    const otherGraph = await createSchedulingPhase3EventGraph({
+      churchId: ids.churchId,
+      cycleId,
+      ministryId: ids.ministryId,
+      title: 'Christmas Morning',
+      start: new Date('2026-12-26T10:00:00.000Z'),
+      end: new Date('2026-12-26T12:00:00.000Z'),
+      status: 'scheduled',
+    });
+    const otherShift = await seedShift({
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      eventTimeBlockId: otherGraph.eventTimeBlock.id,
+      label: 'Morning',
+      startTime: new Date('2026-12-26T10:00:00.000Z'),
+      endTime: new Date('2026-12-26T11:00:00.000Z'),
+    });
+    const otherRequirement = await seedRequirement({
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      shiftId: otherShift.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    await buildAssignment({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      shiftId: otherShift.id,
+      shiftRequirementId: otherRequirement.id,
+      volunteerId: assigned.volunteer.id,
+      roleId: role.id,
+      status: 'pending',
+    });
+    await buildAssignment({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      shiftId: otherShift.id,
+      shiftRequirementId: otherRequirement.id,
+      volunteerId: otherAssigned.volunteer.id,
+      roleId: role.id,
+      status: 'pending',
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.id, otherGraph.participation.id));
     await schedulingTestDb.execute(
       `UPDATE ministry_participation SET state = 'assigning' WHERE id = '${participationId}'`,
     );
 
     const managers = createSchedulingManagers({ notifications });
-    await managers.participationManager.publishCycle({
+    const publishInput = {
       churchId: ChurchId.from(ids.churchId),
       cycleId: CycleId.from(cycleId),
       ministryId: MinistryId.from(ids.ministryId),
       userId: UserId.from(ids.adminUserId),
       confirmBelowFull: true,
-    });
+    };
+    const concurrent = await Promise.allSettled([
+      managers.participationManager.publishCycle(publishInput),
+      managers.participationManager.publishCycle(publishInput),
+    ]);
+    expect(
+      concurrent.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(
+      concurrent.filter((result) => result.status === 'rejected'),
+    ).toMatchObject([{ reason: { code: 'SCHEDULE_ALREADY_PUBLISHED' } }]);
 
+    await expect(
+      managers.participationManager.publishCycle({
+        churchId: ChurchId.from(ids.churchId),
+        cycleId: CycleId.from(cycleId),
+        ministryId: MinistryId.from(ids.ministryId),
+        userId: UserId.from(ids.adminUserId),
+        confirmBelowFull: true,
+      }),
+    ).rejects.toMatchObject({ code: 'SCHEDULE_ALREADY_PUBLISHED' });
+    const states = await schedulingTestDb.select().from(ministryParticipation);
+    expect(states.find((row) => row.id === participationId)?.state).toBe(
+      'published',
+    );
+    expect(
+      states.find((row) => row.id === siblingParticipation?.id)?.state,
+    ).toBe('assigning');
+    expect(
+      states.find((row) => row.id === otherGraph.participation.id)?.state,
+    ).toBe('published');
     const queued = await outboxRows();
-    expect(queued).toHaveLength(1);
-    expect(queued[0]?.payload).toMatchObject({
-      kind: 'schedule_published',
-      to: { userId: assigned.volunteer.userId, churchId: ids.churchId },
-      data: { participationId },
-    });
+    expect(queued).toHaveLength(2);
+    expect(queued.map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        kind: 'schedule_published',
+        to: { userId: assigned.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          cycleId,
+          ministryId: ids.ministryId,
+          shifts: expect.arrayContaining([
+            expect.objectContaining({ eventTitle: 'Christmas Vigil' }),
+            expect.objectContaining({ eventTitle: 'Christmas Morning' }),
+          ]),
+        }),
+      }),
+    );
+    expect(queued.map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        to: { userId: otherAssigned.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          shifts: [
+            expect.objectContaining({ eventTitle: 'Christmas Morning' }),
+          ],
+        }),
+      }),
+    );
 
+    const snapshots = await schedulingTestDb.select().from(scheduleLastTold);
+    expect(snapshots).toHaveLength(2);
+    const anaSnapshot = snapshots.find(
+      (row) => row.volunteerId === assigned.volunteer.id,
+    );
+    expect(anaSnapshot).toMatchObject({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      cycleId,
+      volunteerId: assigned.volunteer.id,
+    });
+    expect(anaSnapshot?.assignments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventId,
+          eventTitle: 'Christmas Vigil',
+          roleName: 'Host',
+          sectorName: 'Geral',
+        }),
+        expect.objectContaining({
+          eventId: otherGraph.event.id,
+          eventTitle: 'Christmas Morning',
+          roleName: 'Host',
+          sectorName: 'Geral',
+        }),
+      ]),
+    );
+    expect(Array.isArray(anaSnapshot?.assignments)).toBe(true);
+    if (!Array.isArray(anaSnapshot?.assignments))
+      throw new Error('missing snapshot');
+    for (const snapshot of anaSnapshot.assignments) {
+      expect(snapshot).not.toHaveProperty('swapRequestCovered', true);
+    }
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    await schedulingTestDb
+      .update(shiftRequirement)
+      .set({ peopleNeeded: 2 })
+      .where(eq(shiftRequirement.id, otherRequirement.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    const destination = await seedShift({
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      eventTimeBlockId: otherGraph.eventTimeBlock.id,
+      label: 'Later',
+      startTime: new Date('2026-12-26T11:00:00.000Z'),
+      endTime: new Date('2026-12-26T12:00:00.000Z'),
+    });
+    const destinationRequirement = await seedRequirement({
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      shiftId: destination.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    const [original] = await schedulingTestDb
+      .select()
+      .from(assignment)
+      .where(
+        and(
+          eq(assignment.volunteerId, assigned.volunteer.id),
+          eq(assignment.participationId, participationId),
+        ),
+      );
+    if (!original) throw new Error('missing Assignment');
+    const sideSector = await buildSector({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Side',
+    });
+    const sideRequirement = await seedRequirement({
+      churchId: ids.churchId,
+      participationId,
+      shiftId: original.shiftId,
+      roleId: role.id,
+      sectorId: sideSector.id,
+      peopleNeeded: 1,
+    });
+    await schedulingTestDb
+      .update(assignment)
+      .set({ shiftRequirementId: sideRequirement.id })
+      .where(eq(assignment.id, original.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(1);
+    await schedulingTestDb
+      .update(assignment)
+      .set({ shiftRequirementId: original.shiftRequirementId })
+      .where(eq(assignment.id, original.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    await schedulingTestDb
+      .update(assignment)
+      .set({
+        participationId: otherGraph.participation.id,
+        shiftId: destination.id,
+        shiftRequirementId: destinationRequirement.id,
+      })
+      .where(eq(assignment.id, original.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(1);
+    await schedulingTestDb
+      .update(assignment)
+      .set({
+        participationId: original.participationId,
+        shiftId: original.shiftId,
+        shiftRequirementId: original.shiftRequirementId,
+      })
+      .where(eq(assignment.id, original.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    const lateAssignment = await buildAssignment({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      shiftId: otherShift.id,
+      shiftRequirementId: otherRequirement.id,
+      volunteerId: unassigned.volunteer.id,
+      roleId: role.id,
+      status: 'pending',
+    });
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(1);
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'cancelled' })
+      .where(eq(assignment.id, lateAssignment.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    await schedulingTestDb
+      .update(shift)
+      .set({ endTime: new Date('2026-12-26T11:30:00.000Z') })
+      .where(eq(shift.id, otherShift.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(2);
+    await schedulingTestDb
+      .update(shift)
+      .set({ endTime: new Date('2026-12-26T11:00:00.000Z') })
+      .where(eq(shift.id, otherShift.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    // Later Assignment changes must not alter what publish communicates.
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'cancelled' })
+      .where(eq(assignment.volunteerId, assigned.volunteer.id));
+
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(1);
+    expect(
+      (
+        await managers.participationManager.listSchedules({
+          churchId: publishInput.churchId,
+        })
+      ).find(
+        (schedule) =>
+          schedule.ministry.id === publishInput.ministryId &&
+          schedule.cycle.id === publishInput.cycleId,
+      )?.affectedVolunteerCount,
+    ).toBe(1);
+
+    setTestClock({ instant: '2026-12-27T12:00:00.000Z' as Instant });
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    setTestClock({ instant: '2026-11-02T12:00:00.000Z' as Instant });
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'pending' })
+      .where(eq(assignment.volunteerId, assigned.volunteer.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'cancelled' })
+      .where(eq(assignment.volunteerId, assigned.volunteer.id));
+
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'pending' })
+      .where(eq(assignment.id, lateAssignment.id));
+    setTestClock({ instant: '2026-12-26T09:00:00.000Z' as Instant });
+    const snapshotsBefore = await schedulingTestDb
+      .select()
+      .from(scheduleLastTold);
+    const rowsBefore = await outboxRows();
+    const failingEnqueue = vi
+      .spyOn(notifications, 'enqueue')
+      .mockRejectedValueOnce(new Error('send enqueue failed'));
+    await expect(
+      managers.participationManager.sendScheduleUpdates(publishInput),
+    ).rejects.toThrow('send enqueue failed');
+    failingEnqueue.mockRestore();
+    expect(await schedulingTestDb.select().from(scheduleLastTold)).toEqual(
+      snapshotsBefore,
+    );
+    expect(await outboxRows()).toEqual(rowsBefore);
+    const updates = await Promise.allSettled([
+      managers.participationManager.sendScheduleUpdates(publishInput),
+      managers.participationManager.sendScheduleUpdates(publishInput),
+    ]);
+    expect(
+      updates.filter((result) => result.status === 'fulfilled'),
+    ).toMatchObject([{ value: { notifiedCount: 2 } }]);
+    expect(
+      updates.filter((result) => result.status === 'rejected'),
+    ).toMatchObject([{ reason: { code: 'NO_UNSENT_CHANGES' } }]);
+    const updateRows = (await outboxRows()).filter(
+      (row) =>
+        typeof row.payload === 'object' &&
+        row.payload !== null &&
+        'kind' in row.payload &&
+        row.payload.kind === 'schedule_updated',
+    );
+    expect(updateRows).toHaveLength(2);
+    expect(updateRows.map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        to: { userId: assigned.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'removed',
+              assignment: expect.objectContaining({
+                eventTitle: 'Christmas Morning',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+    expect(updateRows.map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        to: { userId: unassigned.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'added',
+              assignment: expect.objectContaining({
+                eventTitle: 'Christmas Morning',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+    setTestClock({ instant: '2026-11-02T12:00:00.000Z' as Instant });
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+
+    setTestClock({ instant: '2026-12-26T09:00:00.000Z' as Instant });
     const emailSender = new CaptureEmailSender('Church');
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
-    expect(emailSender.sent).toHaveLength(1);
-    expect(emailSender.sent[0]).toMatchObject({
+    expect(emailSender.sent).toHaveLength(4);
+    expect(
+      emailSender.sent.find(
+        (email) =>
+          email.to === 'ana@test.com' && email.kind === 'schedule.published',
+      ),
+    ).toMatchObject({
       kind: 'schedule.published',
       to: 'ana@test.com',
-      eventTitle: 'Christmas Vigil',
       churchTimezone: 'America/Sao_Paulo',
-      shifts: [{ roleName: 'Host' }, { roleName: 'Host' }],
+      actionUrl: 'https://app.test/my-schedule',
+      shifts: [
+        expect.objectContaining({ roleName: 'Host' }),
+        expect.objectContaining({ roleName: 'Host' }),
+        expect.objectContaining({ roleName: 'Host' }),
+      ],
     });
     const inbox = await schedulingTestDb.select().from(notification);
-    expect(inbox).toHaveLength(1);
-    expect(inbox[0]).toMatchObject({
+    expect(inbox).toHaveLength(4);
+    expect(
+      inbox.find(
+        (row) =>
+          row.userId === assigned.volunteer.userId &&
+          row.kind === 'schedule_published',
+      ),
+    ).toMatchObject({
       userId: assigned.volunteer.userId,
       kind: 'schedule_published',
       data: {
-        eventId,
         cycleId,
         ministryId: ids.ministryId,
         ministryName: 'Scheduling Ministry A',
-        eventTitle: 'Christmas Vigil',
         churchTimezone: 'America/Sao_Paulo',
       },
     });
+
+    // Rebinding an Assignment to another Shift is a removal and an addition.
+    await schedulingTestDb
+      .update(assignment)
+      .set({
+        shiftId: destination.id,
+        shiftRequirementId: destinationRequirement.id,
+      })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    expect((await outboxRows()).map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        kind: 'schedule_updated',
+        to: { userId: unassigned.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'removed',
+              assignment: expect.objectContaining({
+                startsAt: '2026-12-26T10:00:00.000Z',
+              }),
+            }),
+            expect.objectContaining({
+              kind: 'added',
+              assignment: expect.objectContaining({
+                startsAt: '2026-12-26T11:00:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+
+    const destinationSide = await seedRequirement({
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      shiftId: destination.id,
+      roleId: role.id,
+      sectorId: sideSector.id,
+      peopleNeeded: 1,
+    });
+    await schedulingTestDb
+      .update(assignment)
+      .set({ shiftRequirementId: destinationSide.id })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    expect((await outboxRows()).map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        kind: 'schedule_updated',
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'moved',
+              before: expect.objectContaining({ sectorName: 'Geral' }),
+              after: expect.objectContaining({ sectorName: 'Side' }),
+            }),
+          ],
+        }),
+      }),
+    );
+
+    // A future Swap workflow records its covered outcome on the last-told fact.
+    const [lastTold] = await schedulingTestDb
+      .select()
+      .from(scheduleLastTold)
+      .where(eq(scheduleLastTold.volunteerId, unassigned.volunteer.id));
+    if (!lastTold || !Array.isArray(lastTold.assignments))
+      throw new Error('missing last-told Assignments');
+    await schedulingTestDb
+      .update(scheduleLastTold)
+      .set({
+        assignments: lastTold.assignments.map((item) => ({
+          ...item,
+          swapRequestCovered: true,
+        })),
+      })
+      .where(eq(scheduleLastTold.volunteerId, unassigned.volunteer.id));
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'cancelled' })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    expect((await outboxRows()).map((row) => row.payload)).toContainEqual(
+      expect.objectContaining({
+        kind: 'schedule_updated',
+        to: { userId: unassigned.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'removed',
+              assignment: expect.objectContaining({
+                swapRequestCovered: true,
+                sectorName: 'Side',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    'schedule_published',
+    'schedule_updated',
+  ])('skips legacy %s outbox rows rather than reconstructing mutable facts', async (kind) => {
+    const member = await seedMember({
+      name: 'Legacy',
+      email: 'legacy@test.com',
+    });
+    await schedulingTestDb.insert(outboxMessage).values({
+      churchId: ids.churchId,
+      kind: 'notification',
+      correlationId: 'legacy-n5',
+      scheduledFor: new Date('2026-01-01T00:00:00Z'),
+      payload: {
+        kind,
+        to: { churchId: ids.churchId, userId: member.volunteer.userId },
+        data: { participationId },
+      },
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const sender = new CaptureEmailSender('Church');
+    const result = await buildDrainer(sender).drainOnce({ limit: 10 });
+    expect(result).toMatchObject({ sent: 1, failed: 0 });
+    expect(sender.sent).toHaveLength(0);
+    expect(await schedulingTestDb.select().from(notification)).toHaveLength(0);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('frozen facts predate a required field'),
+    );
+    warn.mockRestore();
+  });
+
+  it('rolls back publication and snapshots when notification enqueue fails', async () => {
+    const assigned = await seedMember({
+      name: 'Ana',
+      email: 'rollback@test.com',
+    });
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    const shift = await seedShift({
+      churchId: ids.churchId,
+      participationId,
+      eventTimeBlockId,
+      label: 'Evening',
+      startTime: new Date('2026-12-25T02:30:00.000Z'),
+      endTime: new Date('2026-12-25T03:15:00.000Z'),
+    });
+    const requirement = await seedRequirement({
+      churchId: ids.churchId,
+      participationId,
+      shiftId: shift.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    await buildAssignment({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      participationId,
+      shiftId: shift.id,
+      shiftRequirementId: requirement.id,
+      volunteerId: assigned.volunteer.id,
+      roleId: role.id,
+      status: 'pending',
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.id, participationId));
+    const enqueue = vi
+      .spyOn(notifications, 'enqueue')
+      .mockRejectedValueOnce(new Error('enqueue failed'));
+    const managers = createSchedulingManagers({ notifications });
+    await expect(
+      managers.participationManager.publishCycle({
+        churchId: ChurchId.from(ids.churchId),
+        cycleId: CycleId.from(cycleId),
+        ministryId: MinistryId.from(ids.ministryId),
+        userId: UserId.from(ids.adminUserId),
+        confirmBelowFull: true,
+      }),
+    ).rejects.toThrow('enqueue failed');
+    enqueue.mockRestore();
+    expect(await schedulingTestDb.select().from(scheduleLastTold)).toHaveLength(
+      0,
+    );
+    expect(await outboxRows()).toHaveLength(0);
+    const rows = await schedulingTestDb.select().from(ministryParticipation);
+    expect(rows.find((row) => row.id === participationId)?.state).toBe(
+      'assigning',
+    );
   });
 
   it('a Volunteer without Church Membership receives nothing on either channel', async () => {

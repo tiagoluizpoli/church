@@ -262,6 +262,7 @@ export class AssignController implements FastifyController {
           body: publishCycleBodySchema,
           response: {
             200: publishCycleResponseSchema,
+            409: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
           },
@@ -294,6 +295,48 @@ export class AssignController implements FastifyController {
           confirmBelowFull: body.confirmBelowFull,
         });
         return reply.send(publishCycleMapper.toResponse(view));
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/send-updates',
+      {
+        schema: {
+          tags: ['assign'],
+          operationId: 'sendScheduleUpdates',
+          summary: 'Send Schedule updates',
+          querystring: cycleMinistryQuerySchema,
+          response: {
+            200: z.object({ notifiedCount: z.number() }),
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+        const result = await this.participationManager.sendScheduleUpdates({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        return reply.send(result);
       },
     );
 

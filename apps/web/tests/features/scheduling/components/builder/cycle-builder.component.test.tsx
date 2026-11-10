@@ -598,7 +598,9 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
       renderBuilder();
 
       expect(
-        screen.getByRole('button', { name: 'Publish cycle' }),
+        screen.getByRole('button', {
+          name: m.builder_ui_publish({}, { locale: 'en' }),
+        }),
       ).toBeVisible();
       expect(
         screen.queryByRole('button', { name: 'Audit log' }),
@@ -608,7 +610,56 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
     }
   });
 
-  it('preserves the admin board affordances across time and participation state', () => {
+  it('shows Send updates only when Volunteers have unsent changes', () => {
+    const data = boardData({ state: 'published' });
+    data.affectedVolunteerCount = 2;
+    renderBuilder({ data });
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_send_updates({ count: 2 }),
+      }),
+    ).toBeVisible();
+  });
+
+  it('hides Send updates when there are no unsent changes', () => {
+    const data = boardData({ state: 'published' });
+    data.affectedVolunteerCount = 0;
+    renderBuilder({ data });
+    expect(
+      screen.queryByRole('button', { name: /Send updates/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('summarizes empty places and affected Shifts before publishing', async () => {
+    renderBuilder({ data: boardData({}) });
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_ui_publish() }),
+    );
+    expect(
+      screen.getByText(m.builder_ui_publish_gaps({ places: 1, shifts: 1 })),
+    ).toBeVisible();
+  });
+
+  it('excludes cancelled Events from the publish confirmation', async () => {
+    const data = boardData({});
+    const event = data.events[0];
+    if (!event) throw new Error('missing Event');
+    data.events.push({
+      ...event,
+      eventId: 'cancelled-event',
+      participationId: 'cancelled-participation',
+      status: 'cancelled',
+    });
+    renderBuilder({ data });
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_ui_publish() }),
+    );
+    expect(
+      screen.getByText(m.builder_ui_publish_gaps({ places: 1, shifts: 1 })),
+    ).toBeVisible();
+  });
+
+  it('hides Publish once published while retaining board affordances', () => {
     renderBuilder({
       data: boardData({
         start: '2026-08-01T12:00:00.000Z',
@@ -616,7 +667,11 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
       }),
     });
 
-    expect(screen.getByRole('button', { name: 'Publish cycle' })).toBeVisible();
+    expect(
+      screen.queryByRole('button', {
+        name: m.builder_ui_publish({}, { locale: 'en' }),
+      }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Audit log' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
     expect(

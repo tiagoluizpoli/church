@@ -76,10 +76,9 @@ const PLAN = {
         },
       ],
     },
-  },
-  pool: {
     other: {
       name: 'Beatriz Campos',
+      churchAccessLevel: 'member',
       memberships: [
         {
           ministry: 'worship',
@@ -89,6 +88,7 @@ const PLAN = {
       ],
     },
   },
+  pool: {},
 } as const satisfies AssignChurchPlan;
 
 type SchedulePublishChurch = AssignChurch<typeof PLAN>;

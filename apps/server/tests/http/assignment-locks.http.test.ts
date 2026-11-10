@@ -1,14 +1,21 @@
 import { randomUUID } from 'node:crypto';
 import { appConfig } from '@church/app-config';
-import { session } from '@church/db';
+import {
+  ministryParticipation,
+  outboxMessage,
+  scheduleLastTold,
+  session,
+} from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { env } from '@church/env/server';
 import { parseInstant, setTestClock } from '@church/time';
 import { makeSignature } from 'better-auth/crypto';
+import { eq } from 'drizzle-orm';
 import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { AssignController } from '@/api/controllers/assign-controller';
+import { ChurchNotifications } from '@/application/church-notifications';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
@@ -18,6 +25,7 @@ import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-c
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -46,7 +54,10 @@ beforeAll(async () => {
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const unitOfWork = new DrizzleUnitOfWork({ db });
   const ministryRepository = new DrizzleMinistryRepository({ db });
-  const managers = createSchedulingManagers();
+  const notifications = new ChurchNotifications({
+    outboxRepository: new DrizzleOutboxRepository({ db }),
+  });
+  const managers = createSchedulingManagers({ notifications });
   const controller = new AssignController({
     participationManager: managers.participationManager,
     assignmentManager: managers.assignmentManager,
@@ -184,6 +195,72 @@ async function seedLockedAssignment() {
     replacementId: replacement.volunteer.id,
   };
 }
+
+it('reverting a replacement and recreating a placement leaves no unsent changes', async () => {
+  const seed = await seedLockedAssignment();
+  await db
+    .update(ministryParticipation)
+    .set({ state: 'assigning' })
+    .where(eq(ministryParticipation.id, seed.graph.participation.id));
+  const base = `/api/v1/assign/cycles/${seed.cycle.id}`;
+  const query = `?ministryId=${seed.ministryAId}`;
+  const publish = await app.inject({
+    method: 'POST',
+    url: `${base}/publish${query}`,
+    headers: seed.headers,
+    payload: { confirmBelowFull: true },
+  });
+  expect(publish.statusCode).toBe(200);
+  const beforeSnapshots = await db.select().from(scheduleLastTold);
+  const beforeOutbox = await db.select().from(outboxMessage);
+  const replace = async (id: string, volunteerId: string) =>
+    app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${id}/reassign`,
+      headers: seed.headers,
+      payload: { volunteerId },
+    });
+  const first = await replace(seed.current.id, seed.replacementId);
+  expect(first.statusCode).toBe(200);
+  const second = await replace(first.json().id, seed.current.volunteerId);
+  expect(second.statusCode).toBe(200);
+  const assertNoChanges = async () => {
+    const read = await app.inject({
+      method: 'GET',
+      url: `${base}/builder${query}`,
+      headers: seed.headers,
+    });
+    expect(read.statusCode).toBe(200);
+    expect(read.json().affectedVolunteerCount).toBe(0);
+    const send = await app.inject({
+      method: 'POST',
+      url: `${base}/send-updates${query}`,
+      headers: seed.headers,
+    });
+    expect(send.statusCode).toBe(409);
+    expect(send.json().error).toBe('NO_UNSENT_CHANGES');
+    expect(await db.select().from(scheduleLastTold)).toEqual(beforeSnapshots);
+    expect(await db.select().from(outboxMessage)).toEqual(beforeOutbox);
+  };
+  await assertNoChanges();
+  const removed = await app.inject({
+    method: 'DELETE',
+    url: `/api/v1/assign/assignments/${second.json().id}`,
+    headers: seed.headers,
+  });
+  expect(removed.statusCode).toBe(204);
+  const recreated = await app.inject({
+    method: 'POST',
+    url: `/api/v1/assign/shifts/${seed.shift.id}/assignments`,
+    headers: seed.headers,
+    payload: {
+      volunteerId: seed.current.volunteerId,
+      shiftRequirementId: seed.source.id,
+    },
+  });
+  expect(recreated.statusCode).toBe(201);
+  await assertNoChanges();
+});
 
 async function readBackendPid(client: pg.Client): Promise<number> {
   const { rows } = await client.query<{ pid: number }>(

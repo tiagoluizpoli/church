@@ -161,7 +161,9 @@ function stageLabel(row: ListSchedules200SchedulesItem): string {
     case 'assigning':
       return m.schedules_assigning();
     case 'published':
-      return m.schedules_published();
+      return row.affectedVolunteerCount > 0
+        ? m.schedules_unsent({ count: row.affectedVolunteerCount })
+        : m.schedules_published();
     case 'not_serving':
       return m.schedules_not_serving();
   }

@@ -58,6 +58,7 @@ const ANA_ASSIGNMENT: RawAssignment = {
 
 function makeCycleBuilderData(): GetCycleBuilderData200 {
   return {
+    affectedVolunteerCount: 0,
     cycle: {
       id: 'cycle-1',
       name: 'August',

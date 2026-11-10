@@ -23,6 +23,7 @@ import {
   type NotificationPayload,
   type NotificationRequestKind,
   schedulePublishedNotificationDataSchema,
+  scheduleUpdatedNotificationDataSchema,
   type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
 import { recipientLocale } from '../domain/services/recipient-locale';
@@ -169,10 +170,21 @@ export function buildChurchNotifier({
         churchName: data.churchName,
         recipientFirstName: address.firstName,
         ministryName: data.ministryName,
-        eventTitle: data.eventTitle,
-        eventStart: data.eventStart,
+        cycleName: data.cycleName,
         churchTimezone: data.churchTimezone,
         shifts: data.shifts,
+        actionUrl: data.actionUrl,
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      schedule_updated: ({ data, address }) => ({
+        kind: 'schedule.updated',
+        to: address.email,
+        churchName: data.churchName,
+        recipientFirstName: address.firstName,
+        ministryName: data.ministryName,
+        cycleName: data.cycleName,
+        churchTimezone: data.churchTimezone,
+        changes: data.changes,
         actionUrl: data.actionUrl,
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
@@ -248,6 +260,11 @@ export function buildChurchNotifier({
       schedule_published: ({ data }) => ({
         kind: 'schedule_published',
         data: schedulePublishedNotificationDataSchema.parse(data),
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      schedule_updated: ({ data }) => ({
+        kind: 'schedule_updated',
+        data: scheduleUpdatedNotificationDataSchema.parse(data),
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       cycle_ready_to_prepare: ({ data }) => ({

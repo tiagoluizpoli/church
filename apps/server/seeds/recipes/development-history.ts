@@ -1,3 +1,4 @@
+import { scheduleLastTold } from '@church/db';
 import {
   addCalendarDays,
   type CalendarDay,
@@ -97,6 +98,7 @@ interface PlannedRequirement {
   roleName: string;
   sectorName: string;
   roleId: string;
+  sectorId: string;
   required: number;
 }
 
@@ -107,6 +109,8 @@ interface PlannedShift {
   ministryName: string;
   eventId: string;
   eventTitle: string;
+  eventStart: Instant;
+  eventEnd: Instant;
   /** `${block}#${week}` for a regular gathering, the title for a dynamic one. */
   gatheringKey: string;
   day: CalendarDay;
@@ -401,6 +405,7 @@ async function materializeEvent({
           roleName: need.role,
           sectorName: need.sector,
           roleId,
+          sectorId,
           required: need.peopleNeeded,
         });
       }
@@ -412,6 +417,8 @@ async function materializeEvent({
         ministryName,
         eventId,
         eventTitle: plannedEvent.title,
+        eventStart: firstEventTimeBlock.start,
+        eventEnd: lastEventTimeBlock.end,
         gatheringKey: eventTimeBlock.gatheringKey,
         day: plannedEvent.day,
         start: eventTimeBlock.start,
@@ -1306,62 +1313,80 @@ export async function loadDevelopmentHistory({
     });
   }
 
-  // Publishing notified each Volunteer assigned on a participation at that
-  // moment, once per participation; later replacements were not notified.
-  const recipientsByParticipation = new Map<string, PublishRecipients>();
+  // Freeze the Assignments each Volunteer was told at whole-Schedule publish.
+  const recipients = new Map<string, AssignmentWrite[]>();
   for (const write of ledger.writes) {
-    if (compareInstants({ left: write.assignedAt, right: publishedAt }) > 0) {
+    if (compareInstants({ left: write.assignedAt, right: publishedAt }) > 0)
       continue;
-    }
-    const { shift } = write.target;
-    const recipients = recipientsByParticipation.get(shift.participationId) ?? {
-      shift,
-      emails: new Set<string>(),
-    };
-    recipients.emails.add(write.email);
-    recipientsByParticipation.set(shift.participationId, recipients);
+    const key = `${write.target.shift.ministryId}|${write.email}`;
+    const own = recipients.get(key) ?? [];
+    own.push(write);
+    recipients.set(key, own);
   }
-  const notifications: NotificationPlan[] = [
-    ...recipientsByParticipation.values(),
-  ].flatMap(({ shift, emails }) =>
-    [...emails].map(
-      (email): NotificationPlan => ({ email, shift, createdAt: publishedAt }),
-    ),
-  );
   const unread = new Set(history.unreadNotificationEmails);
-  for (const plan of notifications) {
-    const userId = requireKnown({ ids: userIdByEmail, key: plan.email });
-    const { shift } = plan;
+  for (const writes of recipients.values()) {
+    const [first] = writes;
+    if (!first) continue;
+    const { email } = first;
+    const { shift } = first.target;
+    const userId = requireKnown({ ids: userIdByEmail, key: email });
+    const volunteerId = requireKnown({ ids: volunteerIdByEmail, key: email });
+    const assignments = writes.map((write) => ({
+      assignmentId: assignmentIdOf(write),
+      shiftId: write.target.shift.id,
+      eventId: write.target.shift.eventId,
+      eventTitle: write.target.shift.eventTitle,
+      eventStart: write.target.shift.eventStart,
+      eventEnd: write.target.shift.eventEnd,
+      startsAt: write.target.shift.start,
+      endsAt: write.target.shift.end,
+      roleId: write.target.requirement.roleId,
+      roleName: write.target.requirement.roleName,
+      sectorId: write.target.requirement.sectorId,
+      sectorName: write.target.requirement.sectorName,
+    }));
+    await db.insert(scheduleLastTold).values({
+      churchId,
+      ministryId: shift.ministryId,
+      cycleId: cycle.id,
+      volunteerId,
+      assignments,
+    });
     await buildNotification({
       db,
       userId,
       churchId,
       id: deriveSeedId({
         kind: 'notification',
-        parentIds: ['schedule_published', shift.participationId, userId],
+        parentIds: ['schedule_published', cycle.id, shift.ministryId, userId],
       }),
       sourceOutboxId: deriveSeedId({
         kind: 'notification-outbox',
-        parentIds: ['schedule_published', shift.participationId, userId],
+        parentIds: ['schedule_published', cycle.id, shift.ministryId, userId],
       }),
       payload: {
         kind: 'schedule_published',
         data: {
-          eventId: shift.eventId,
           cycleId: cycle.id,
+          cycleName: cycleNameOf({ startDate: cycle.startDate }),
           ministryId: shift.ministryId,
           ministryName: shift.ministryName,
-          eventTitle: shift.eventTitle,
-          eventStart: shift.start,
-          eventEnd: shift.end,
           churchTimezone: timeZone,
-          shifts: [],
+          shifts: assignments.map(
+            ({ eventTitle, startsAt, endsAt, roleName, sectorName }) => ({
+              eventTitle,
+              startsAt,
+              endsAt,
+              roleName,
+              sectorName,
+            }),
+          ),
         },
       },
-      createdAt: plan.createdAt,
-      readAt: unread.has(plan.email)
+      createdAt: publishedAt,
+      readAt: unread.has(email)
         ? undefined
-        : readAfter({ instant: plan.createdAt }),
+        : readAfter({ instant: publishedAt }),
     });
   }
 
@@ -1374,18 +1399,6 @@ interface InstantInput {
 
 interface EmailInput {
   email: string;
-}
-
-interface PublishRecipients {
-  shift: PlannedShift;
-  emails: Set<string>;
-}
-
-/** A publish notification as the product's enqueue and inbox sink would leave it. */
-interface NotificationPlan {
-  email: string;
-  shift: PlannedShift;
-  createdAt: Instant;
 }
 
 interface DayTimeAtInput {

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
 import {
   type AssignBoardJourney,
@@ -138,9 +139,21 @@ test('a draft assignment persists through publish and can be reassigned', async 
   await picker.getByTestId('picker-option').first().click();
   await expect(requirement.getByTestId('assignment-chip')).toHaveCount(1);
 
-  await page.getByRole('button', { name: 'Publicar ciclo' }).first().click();
-  await page.getByRole('button', { name: 'Publicar ciclo' }).last().click();
-  await expect(page.getByText('Ciclo publicado')).toBeVisible();
+  await page
+    .getByRole('button', {
+      name: m.builder_ui_publish({}, { locale: 'pt-BR' }),
+    })
+    .first()
+    .click();
+  await page
+    .getByRole('button', {
+      name: m.builder_ui_publish({}, { locale: 'pt-BR' }),
+    })
+    .last()
+    .click();
+  await expect(
+    page.getByText(m.builder_logic_cycle_published({}, { locale: 'pt-BR' })),
+  ).toBeVisible();
 
   await requirement.getByTestId('assignment-chip').click();
   await expect(picker).toBeVisible();

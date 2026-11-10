@@ -51,24 +51,48 @@ export const availabilityNotificationDataSchema = z.object({
   deadlinePassed: z.boolean().optional(),
 });
 
-/** One of the recipient's own Shifts in the published event. */
+/** One of the recipient's Shifts, frozen when the Schedule is published. */
 export const schedulePublishedShiftSchema = z.object({
+  eventTitle: z.string(),
   roleName: z.string(),
+  sectorName: z.string(),
   startsAt: instantSchema,
+  endsAt: instantSchema,
 });
 
 export const schedulePublishedNotificationDataSchema = z.object({
-  eventId: z.uuid(),
   cycleId: z.uuid(),
+  cycleName: z.string(),
   ministryId: z.uuid(),
   ministryName: z.string(),
-  eventTitle: z.string(),
-  eventStart: instantSchema,
-  eventEnd: instantSchema,
-  /** The Church Timezone the Instants are read in. */
   churchTimezone: z.string(),
-  shifts: z.array(schedulePublishedShiftSchema),
+  shifts: z.array(schedulePublishedShiftSchema).min(1),
 });
+
+export const scheduleUpdatedChangeSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('added'),
+    assignment: schedulePublishedShiftSchema,
+  }),
+  z.object({
+    kind: z.literal('removed'),
+    assignment: schedulePublishedShiftSchema.extend({
+      swapRequestCovered: z.boolean().optional(),
+    }),
+  }),
+  z.object({
+    kind: z.literal('moved'),
+    before: schedulePublishedShiftSchema.extend({
+      swapRequestCovered: z.boolean().optional(),
+    }),
+    after: schedulePublishedShiftSchema,
+  }),
+]);
+
+export const scheduleUpdatedNotificationDataSchema =
+  schedulePublishedNotificationDataSchema.omit({ shifts: true }).extend({
+    changes: z.array(scheduleUpdatedChangeSchema).min(1),
+  });
 
 /**
  * N2: a Cycle was sent and the recipient leads these Ministries in it. The
@@ -92,6 +116,8 @@ export const notificationKindDataSchemas = {
   availability_reminder: availabilityNotificationDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   schedule_published: schedulePublishedNotificationDataSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  schedule_updated: scheduleUpdatedNotificationDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   cycle_ready_to_prepare: cycleReadyToPrepareNotificationDataSchema,
 } as const;
@@ -147,7 +173,13 @@ export const notificationRequestDataSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   availability_reminder: availabilityRequestDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
-  schedule_published: z.object({ participationId: z.uuid() }),
+  schedule_published: schedulePublishedNotificationDataSchema.extend({
+    churchName: z.string(),
+  }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  schedule_updated: scheduleUpdatedNotificationDataSchema.extend({
+    churchName: z.string(),
+  }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   cycle_ready_to_prepare: z.object({
     cycleId: z.uuid(),
@@ -201,6 +233,11 @@ export type SchedulePublishedDeliveryFacts =
     churchName: string;
     actionUrl: string;
   };
+export type ScheduleUpdatedDeliveryFacts =
+  NotificationDataOf<'schedule_updated'> & {
+    churchName: string;
+    actionUrl: string;
+  };
 export type CycleReadyToPrepareDeliveryFacts =
   NotificationDataOf<'cycle_ready_to_prepare'> & {
     churchName: string;
@@ -244,6 +281,8 @@ export interface NotificationDeliveryDataByKind {
   availability_reminder: AvailabilityDeliveryFacts;
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   schedule_published: SchedulePublishedDeliveryFacts;
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  schedule_updated: ScheduleUpdatedDeliveryFacts;
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   cycle_ready_to_prepare: CycleReadyToPrepareDeliveryFacts;
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
@@ -295,6 +334,10 @@ export const notificationDeliveryFactsSchemas = {
     .extend({ actionUrl: z.string() }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   schedule_published: schedulePublishedNotificationDataSchema
+    .extend(emailFactsSchema.shape)
+    .extend({ actionUrl: z.string() }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  schedule_updated: scheduleUpdatedNotificationDataSchema
     .extend(emailFactsSchema.shape)
     .extend({ actionUrl: z.string() }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case

@@ -219,6 +219,8 @@ function createRepos(): Repos {
   };
 
   const ministryParticipationRepo: MinistryParticipationRepository = {
+    saveScheduleLastTold: vi.fn(),
+    listScheduleLastTold: vi.fn().mockResolvedValue([]),
     getById: vi.fn(),
     lockById: vi.fn(),
     lockSchedule: vi.fn(),

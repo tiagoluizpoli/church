@@ -577,6 +577,20 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'apps/web/src/features/volunteers/components/dashboard-offline-banner.tsx',
     specPaths: ['tests/volunteer-dashboard/us5-offline.spec.ts'],
   },
+  // J8 exercises publication, changes, Send updates and recipient bell details.
+  ...[
+    'apps/server/src/application/db-participation-manager.ts',
+    'apps/server/src/domain/schedule-changes.ts',
+    'apps/server/src/domain/notification-kinds.ts',
+    'apps/server/src/application/church-notifier.ts',
+    'apps/server/src/application/db-outbox-drainer.ts',
+    'apps/web/src/features/notifications/lib/notification-render.ts',
+    'apps/web/src/features/notifications/lib/notification-navigation.ts',
+    'apps/web/src/features/scheduling/components/prepare/schedule-publish.tsx',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: ['tests/scheduling/us4-schedule-publish.spec.ts'],
+  })),
   // #216 — published-schedule visibility: the ministry-schedule dashboard
   // section is exercised directly by us4-ministry-schedule, and reused by
   // us4-schedule-publish to assert a volunteer sees a just-published shift.

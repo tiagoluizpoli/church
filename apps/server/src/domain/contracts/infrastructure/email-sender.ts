@@ -139,18 +139,44 @@ export interface AvailabilityEmail {
   deadlinePassed?: boolean;
 }
 
+export interface SchedulePublishedEmailShift {
+  eventTitle: string;
+  roleName: string;
+  sectorName: string;
+  startsAt: Instant;
+  endsAt: Instant;
+}
+
 export interface SchedulePublishedEmail {
   kind: 'schedule.published';
   to: string;
   churchName: string;
   recipientFirstName: string;
   ministryName: string;
-  eventTitle: string;
-  eventStart: Instant;
+  cycleName: string;
   /** The Church Timezone the Instants are read in. */
   churchTimezone: string;
-  shifts: { roleName: string; startsAt: Instant }[];
+  shifts: SchedulePublishedEmailShift[];
   actionUrl: string;
+}
+
+export type ScheduleUpdatedEmailChange =
+  | {
+      kind: 'added' | 'removed';
+      assignment: SchedulePublishedEmailShift & {
+        swapRequestCovered?: boolean;
+      };
+    }
+  | {
+      kind: 'moved';
+      before: SchedulePublishedEmailShift & { swapRequestCovered?: boolean };
+      after: SchedulePublishedEmailShift;
+    };
+
+export interface ScheduleUpdatedEmail
+  extends Omit<SchedulePublishedEmail, 'kind' | 'shifts'> {
+  kind: 'schedule.updated';
+  changes: ScheduleUpdatedEmailChange[];
 }
 
 /** N2: a sent Cycle the recipient's Ministries now prepare. */
@@ -171,6 +197,7 @@ export type EmailPayload =
   | AvailabilityEmail
   | CycleReadyToPrepareEmail
   | SchedulePublishedEmail
+  | ScheduleUpdatedEmail
   | ChainedInvitationEmail
   | MinistryInvitationEmail
   | VerificationCodeEmail

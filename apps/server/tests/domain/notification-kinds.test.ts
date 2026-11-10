@@ -12,6 +12,7 @@ describe('notification kinds', () => {
       'cycle_ready_to_prepare',
       'ministry_invitation',
       'schedule_published',
+      'schedule_updated',
     ]);
     for (const dropped of [
       'assignment_added',

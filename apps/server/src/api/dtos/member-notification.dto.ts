@@ -8,6 +8,7 @@ import {
   cycleReadyToPrepareNotificationDataSchema,
   ministryInvitationNotificationDataSchema,
   schedulePublishedNotificationDataSchema,
+  scheduleUpdatedNotificationDataSchema,
 } from '../../domain/notification-kinds';
 
 /** One member Notification: typed kind/data and Instants, never rendered text. */
@@ -37,6 +38,13 @@ export const memberNotificationResponseSchema = z.discriminatedUnion('kind', [
     id: z.uuid(),
     kind: z.literal('schedule_published'),
     data: schedulePublishedNotificationDataSchema,
+    createdAt: instantSchema,
+    readAt: instantSchema.optional(),
+  }),
+  z.object({
+    id: z.uuid(),
+    kind: z.literal('schedule_updated'),
+    data: scheduleUpdatedNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),

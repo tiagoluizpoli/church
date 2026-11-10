@@ -91,6 +91,35 @@ describe('DrizzleNotificationRepository', () => {
     });
   });
 
+  it('skips legacy published inbox data without breaking the rest of the page', async () => {
+    const { seed, owner } = await seedInboxes();
+    const old = await buildNotification({
+      db,
+      ...owner,
+      createdAt: parseInstant({ value: '2026-07-02T10:00:00.000Z' }),
+      payload: invitation({ ministryId: seed.ministryAId, name: 'Old' }),
+    });
+    await db
+      .update(notification)
+      .set({
+        kind: 'schedule_published',
+        data: { participationId: randomUUID() },
+      })
+      .where(eq(notification.id, old.id));
+    await buildNotification({
+      db,
+      ...owner,
+      createdAt: parseInstant({ value: '2026-07-01T10:00:00.000Z' }),
+      payload: invitation({ ministryId: seed.ministryAId, name: 'Visible' }),
+    });
+    const page = await repo.list({ ...owner, limit: 10 });
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0]?.payload.data).toMatchObject({
+      ministryName: 'Visible',
+    });
+    expect(await repo.countUnread(owner)).toBe(1);
+  });
+
   it('counts unread across the whole inbox, not only the loaded page', async () => {
     const { seed, owner } = await seedInboxes();
     for (let i = 0; i < 3; i++) {

@@ -3,7 +3,6 @@ import {
   ASSIGN_CYCLE_SCHEMA,
   ASSIGN_JOURNEY_BASE_SCHEMA,
   ASSIGN_PERSONA_SCHEMA,
-  ASSIGN_POOL_VOLUNTEER_SCHEMA,
   assignMinistrySchema,
   type LoadAssignJourneyInput,
 } from './assign-church';
@@ -28,8 +27,9 @@ export const SCHEDULE_PUBLISH_JOURNEY_SCHEMA =
     personas: z.object({
       leader: ASSIGN_PERSONA_SCHEMA,
       volunteer: ASSIGN_PERSONA_SCHEMA,
+      other: ASSIGN_PERSONA_SCHEMA,
     }),
-    pool: z.object({ other: ASSIGN_POOL_VOLUNTEER_SCHEMA }),
+    pool: z.object({}),
     cycle: ASSIGN_CYCLE_SCHEMA,
     event: z.object({
       id: z.string().min(1),

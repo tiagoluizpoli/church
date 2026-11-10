@@ -1,4 +1,10 @@
+import { m } from '@church/i18n/messages';
 import { expect, test } from '@playwright/test';
+import { z } from 'zod';
+import {
+  parseLastJsonLine,
+  runE2eServerScript,
+} from '@/tests/fixtures/e2e-target';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
 import {
   assignPreparePath,
@@ -98,16 +104,27 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   );
   await expect(requirement).toContainText(`1/${peopleNeeded}`);
 
-  await page.getByRole('button', { name: 'Publicar ciclo' }).first().click();
+  await page
+    .getByRole('button', {
+      name: m.builder_ui_publish({}, { locale: 'pt-BR' }),
+    })
+    .first()
+    .click();
   const publishDialog = page.getByRole('dialog', {
-    name: 'Publicar este ciclo?',
+    name: m.builder_ui_publish_title({}, { locale: 'pt-BR' }),
   });
   // One seat still open — the below-full publish; the confirm authorises it.
   await expect(publishDialog).toContainText(
-    '1 turno está abaixo da meta de voluntários',
+    'Vagas em aberto: 1; turnos afetados: 1',
   );
-  await publishDialog.getByRole('button', { name: 'Publicar ciclo' }).click();
-  await expect(page.getByText('Ciclo publicado')).toBeVisible();
+  await publishDialog
+    .getByRole('button', {
+      name: m.builder_ui_publish({}, { locale: 'pt-BR' }),
+    })
+    .click();
+  await expect(
+    page.getByText(m.builder_logic_cycle_published({}, { locale: 'pt-BR' })),
+  ).toBeVisible();
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(
@@ -171,5 +188,122 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
     ),
   ).toBeVisible();
 
+  // Replace, undo, then replace again: only the final net change is sent.
+  const choose = async (name: string) => {
+    await requirement.getByTestId('assignment-chip').click();
+    const picker = page.getByTestId('assignment-picker');
+    await picker.getByRole('textbox').fill(name);
+    await picker.getByTestId('picker-option').filter({ hasText: name }).click();
+    await expect(requirement.getByTestId('assignment-chip')).toContainText(
+      name,
+    );
+  };
+  await choose(journey.personas.other.name);
+  const sendLabel = m.builder_send_updates({ count: 2 }, { locale: 'pt-BR' });
+  await expect(page.getByRole('button', { name: sendLabel })).toBeVisible();
+  await choose(volunteerName);
+  await expect(page.getByRole('button', { name: sendLabel })).toHaveCount(0);
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(
+        `${SERVER_URL}/api/v1/assign/cycles/${cycleId}/builder`,
+        { params: { ministryId: worshipMinistryId } },
+      );
+      expect(response.ok()).toBeTruthy();
+      const body = await response.json();
+      return body.affectedVolunteerCount;
+    })
+    .toBe(0);
+  const onePersonLabel = m.builder_send_updates(
+    { count: 1 },
+    { locale: 'pt-BR' },
+  );
+  await expect(page.getByRole('button', { name: onePersonLabel })).toHaveCount(
+    0,
+  );
+  await choose(journey.personas.other.name);
+  await page.getByRole('button', { name: sendLabel }).click();
+  await expect(
+    page.getByText(m.schedule_updates_sent({}, { locale: 'pt-BR' })),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: sendLabel })).toHaveCount(0);
+
+  const otherContext = await newPersonaContext({
+    browser,
+    persona: journey.personas.other,
+  });
+  const otherPage = await otherContext.newPage();
+  const title = m.notification_schedule_updated_title(
+    { ministryName: journey.ministries.worship.name },
+    { locale: 'pt-BR' },
+  );
+  for (const recipient of [volunteerPage, otherPage]) {
+    await recipient.goto('/dashboard');
+    await expect
+      .poll(
+        async () => {
+          const response = await recipient.request.get(
+            `${SERVER_URL}/api/v1/notifications`,
+          );
+          if (!response.ok()) return false;
+          const body = await response.json();
+          return body.items.some(
+            (item: { kind: string }) => item.kind === 'schedule_updated',
+          );
+        },
+        { timeout: 20_000 },
+      )
+      .toBe(true);
+    await recipient.reload();
+    await recipient
+      .getByRole('button', {
+        name: m.notification_bell_label({}, { locale: 'pt-BR' }),
+      })
+      .click();
+    await recipient.getByText(title, { exact: true }).click();
+    await expect(recipient.getByRole('dialog')).toContainText(eventTitle);
+  }
+  await expect(volunteerPage.getByRole('dialog')).toContainText('Removido:');
+  await expect(otherPage.getByRole('dialog')).toContainText('Adicionado:');
+  const emailSchema = z.array(
+    z.object({
+      payload: z.object({ kind: z.string(), to: z.string() }),
+      request: z.object({ text: z.string() }),
+    }),
+  );
+  await expect
+    .poll(
+      () => {
+        const output = runE2eServerScript({
+          scriptPath: 'tests/e2e/schedule-email-inspector.ts',
+          args: [journey.church.id],
+          step: 'inspect J8 emails',
+        });
+        const emails = parseLastJsonLine({ output, schema: emailSchema });
+        const published = emails.filter(
+          (email) => email.payload.kind === 'schedule.published',
+        );
+        const updates = emails.filter(
+          (email) => email.payload.kind === 'schedule.updated',
+        );
+        if (published.length !== 1 || updates.length !== 2) return false;
+        const removed = updates.find(
+          (email) => email.payload.to === journey.personas.volunteer.email,
+        );
+        const added = updates.find(
+          (email) => email.payload.to === journey.personas.other.email,
+        );
+        return (
+          published[0]?.payload.to === journey.personas.volunteer.email &&
+          !!removed?.request.text.includes('Removido:') &&
+          !!added?.request.text.includes('Adicionado:') &&
+          removed.request.text.includes('/my-schedule') &&
+          added.request.text.includes('/my-schedule')
+        );
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true);
+  await otherContext.close();
   await volunteerContext.close();
 });

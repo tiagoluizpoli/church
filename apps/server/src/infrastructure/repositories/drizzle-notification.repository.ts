@@ -17,6 +17,7 @@ import {
   decodeNotificationCursor,
   encodeNotificationCursor,
 } from '../../domain/notification-cursor';
+import { schedulePublishedNotificationDataSchema } from '../../domain/notification-kinds';
 import { mapNotification } from '../mappers/notification.mapper';
 import { getClient } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -102,8 +103,20 @@ export class DrizzleNotificationRepository implements NotificationRepository {
       .orderBy(desc(notification.createdAt), desc(notification.id))
       .limit(limit + 1);
 
-    const items = rows.slice(0, limit).map(mapNotification);
-    const last = items.at(-1);
+    const pageRows = rows.slice(0, limit);
+    const items = pageRows.flatMap((row) => {
+      if (
+        row.kind === 'schedule_published' &&
+        !schedulePublishedNotificationDataSchema.safeParse(row.data).success
+      ) {
+        console.warn(
+          `[Notification] skipping legacy schedule_published inbox row ${row.id}: missing frozen Schedule facts`,
+        );
+        return [];
+      }
+      return [mapNotification(row)];
+    });
+    const last = pageRows.at(-1);
     return {
       items,
       nextCursor:
@@ -124,7 +137,13 @@ export class DrizzleNotificationRepository implements NotificationRepository {
     const [row] = await getClient({ db: this.db, tx })
       .select({ count: count() })
       .from(notification)
-      .where(and(ownedBy({ userId, churchId }), isNull(notification.readAt)));
+      .where(
+        and(
+          ownedBy({ userId, churchId }),
+          isNull(notification.readAt),
+          sql`(${notification.kind} <> 'schedule_published' OR ${notification.data} ? 'cycleName')`,
+        ),
+      );
     return row?.count ?? 0;
   }
 
@@ -152,7 +171,13 @@ export class DrizzleNotificationRepository implements NotificationRepository {
     const result = await getClient({ db: this.db, tx })
       .update(notification)
       .set({ readAt: nowAsDate() })
-      .where(and(ownedBy({ userId, churchId }), isNull(notification.readAt)));
+      .where(
+        and(
+          ownedBy({ userId, churchId }),
+          isNull(notification.readAt),
+          sql`(${notification.kind} <> 'schedule_published' OR ${notification.data} ? 'cycleName')`,
+        ),
+      );
     return result.rowCount ?? 0;
   }
 }

@@ -1376,17 +1376,28 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       return { saved, published };
     }
 
-    it('makes Publish see a clean opt-in it overlapped and ask for confirmation', async () => {
+    it('refuses an empty Schedule after an overlapping opt-in commits', async () => {
       const base = await seedPreparation();
       await setParticipationState(base, 'availability_requested');
-
-      const { saved, published } = await saveAheadOfPublish(
-        base,
-        wholeBlockPayload(base, { peopleNeeded: 3 }),
-      );
-
-      expect(saved.statusCode).toBe(200);
-      expect(published).toMatchObject({ published: false, belowFull: true });
+      const { paused, release } = pauseWrite('touch');
+      const saving = savePreparation({
+        ...base,
+        payload: wholeBlockPayload(base, { peopleNeeded: 3 }),
+      });
+      await paused;
+      const publishing = publish(base);
+      const result = Promise.allSettled([saving, publishing]);
+      await waitForLockWaiter();
+      release();
+      const [saved, published] = await result;
+      expect(saved).toMatchObject({
+        status: 'fulfilled',
+        value: { statusCode: 200 },
+      });
+      expect(published).toMatchObject({
+        status: 'rejected',
+        reason: { code: 'SCHEDULE_HAS_NO_ASSIGNMENTS' },
+      });
       expect(await participationState(base)).toBe('availability_requested');
     });
 
@@ -1426,6 +1437,26 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
 
     it('refuses a save that waited on a Publish, leaving the published graph alone', async () => {
       const base = await seedPreparation();
+      const { shift: staffed, requirement } = await seedBlockShift({
+        base,
+        peopleNeeded: 1,
+      });
+      const { volunteer } = await seedVolunteerMembership({
+        churchId: base.churchId,
+        ministryId: base.ministryId,
+        name: 'Assigned',
+        email: `assigned-${randomUUID()}@test.com`,
+      });
+      await buildAssignment({
+        db,
+        churchId: base.churchId,
+        participationId: base.participationId,
+        shiftId: staffed.id,
+        volunteerId: volunteer.id,
+        roleId: base.roleId,
+        shiftRequirementId: requirement.id,
+        status: 'confirmed',
+      });
       await setParticipationState(base, 'availability_requested');
       const { paused, release } = pauseWrite('updateState');
 
@@ -1442,7 +1473,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       expect(published).toMatchObject({ published: true, belowFull: false });
       expect(saved.statusCode).toBe(409);
       expect(saved.json()).toMatchObject({ error: 'ILLEGAL_STATE_TRANSITION' });
-      expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
+      expect(await blockShifts(base.eventTimeBlockId)).toHaveLength(1);
       expect(await participationState(base)).toBe('published');
     });
 
@@ -1617,6 +1648,26 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       const target = await seedAssignable({
         base,
         state: 'availability_requested',
+      });
+      await db
+        .update(shiftRequirement)
+        .set({ peopleNeeded: 2 })
+        .where(eq(shiftRequirement.id, target.requirement.id));
+      const { volunteer: existing } = await seedVolunteerMembership({
+        churchId: base.churchId,
+        ministryId: base.ministryId,
+        name: 'Already assigned',
+        email: `existing-${randomUUID()}@test.com`,
+      });
+      await buildAssignment({
+        db,
+        churchId: base.churchId,
+        participationId: base.participationId,
+        shiftId: target.shift.id,
+        volunteerId: existing.id,
+        roleId: base.roleId,
+        shiftRequirementId: target.requirement.id,
+        status: 'confirmed',
       });
       const { paused, release } = pauseWrite('updateState');
 

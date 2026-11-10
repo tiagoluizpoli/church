@@ -22,6 +22,7 @@ import { PrepareCalendar } from '@/features/scheduling/components/prepare/prepar
 import { PrepareEventTimeBlockList } from '@/features/scheduling/components/prepare/prepare-event-time-block-list';
 import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
 import { ScheduleAsk } from '@/features/scheduling/components/prepare/schedule-ask';
+import { SchedulePublish } from '@/features/scheduling/components/prepare/schedule-publish';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
@@ -131,11 +132,26 @@ function PrepareWorkspaceRoute() {
               >
                 {m.schedules_back()}
               </Link>
+              {schedule.stage === 'published' ? (
+                <Badge variant="secondary">
+                  {schedule.affectedVolunteerCount > 0
+                    ? m.schedules_unsent({
+                        count: schedule.affectedVolunteerCount,
+                      })
+                    : m.schedules_published()}
+                </Badge>
+              ) : null}
               {schedule.stage === 'asking' ? (
                 <Badge variant="secondary">{m.schedules_asking_stage()}</Badge>
               ) : null}
               {!readOnly && schedule.stage === 'to_prepare' ? (
                 <ScheduleAsk ministryId={ministryId} cycleId={cycleId} />
+              ) : null}
+              {schedule.cycle.state !== 'past' &&
+              (schedule.stage === 'asking' ||
+                schedule.stage === 'assigning' ||
+                schedule.stage === 'published') ? (
+                <SchedulePublish ministryId={ministryId} cycleId={cycleId} />
               ) : null}
               <Link
                 to="/schedules/$ministryId/$cycleId/assign"

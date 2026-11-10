@@ -24,6 +24,7 @@ import type { HasMembershipInMinistryInput } from '@/domain/contracts/infrastruc
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
@@ -96,7 +97,7 @@ function createParticipationManager(): DbParticipationManager {
     roleRepository: new DrizzleRoleRepository({ db: schedulingTestDb }),
     sectorRepository: new DrizzleSectorRepository({ db: schedulingTestDb }),
     notifications: createChurchNotificationsSpy(),
-    churchRepository: {} as never,
+    churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
     staffingSeeder: {} as never,
     unitOfWork,
   });
@@ -816,6 +817,7 @@ interface SeedPublishableInput {
   churchId: string;
   ministryId: string;
   cycleName: string;
+  volunteerId: string;
 }
 
 async function seedAssignCycleBelowFull(input: SeedPublishableInput) {
@@ -841,12 +843,22 @@ async function seedAssignCycleBelowFull(input: SeedPublishableInput) {
     startTime: EVENT_START,
     endTime: EVENT_END,
   });
-  // peopleNeeded 2, zero assignments -> below full.
-  await seedRoleRequirement({
+  // One assignment against two places leaves the Schedule below full.
+  const { roleId, shiftRequirementId } = await seedRoleRequirement({
     churchId: input.churchId,
     ministryId: input.ministryId,
     participationId: graph.participation.id,
     shiftId,
+  });
+  await buildAssignment({
+    db: schedulingTestDb,
+    churchId: input.churchId,
+    participationId: graph.participation.id,
+    shiftId,
+    shiftRequirementId,
+    volunteerId: input.volunteerId,
+    roleId,
+    status: 'pending',
   });
   // Move the participation into a publishable state.
   await schedulingTestDb
@@ -878,6 +890,7 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       cycleName: 'Below Full Cycle',
+      volunteerId: seed.adminVolunteerId,
     });
 
     const manager = createParticipationManager();
@@ -899,6 +912,7 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       cycleName: 'Confirmed Cycle',
+      volunteerId: seed.adminVolunteerId,
     });
 
     const manager = createParticipationManager();
@@ -923,6 +937,7 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
       churchId: seed.churchAId,
       ministryId: seed.ministryAId,
       cycleName: 'Isolated Publish Cycle',
+      volunteerId: seed.adminVolunteerId,
     });
 
     const manager = createParticipationManager();

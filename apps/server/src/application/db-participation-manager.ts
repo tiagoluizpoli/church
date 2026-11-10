@@ -44,6 +44,7 @@ import type {
   SaveUsualSetupBlockInput,
   ScheduleSummaryView,
   ScheduleView,
+  SendScheduleUpdatesView,
   UsualSetupBlockView,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
@@ -53,7 +54,10 @@ import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.r
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
-import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
+import type {
+  MinistryParticipationRepository,
+  ScheduleLastToldRow,
+} from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
@@ -92,7 +96,14 @@ import { HeadcountBelowAssignedError } from '../domain/errors/headcount-below-as
 import { InvalidShiftIndexError } from '../domain/errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
 import { PreparationEmptyError } from '../domain/errors/preparation-empty';
+import {
+  NoUnsentChangesError,
+  ScheduleAlreadyPublishedError,
+  ScheduleHasNoAssignmentsError,
+} from '../domain/errors/schedule-publish';
 import { ShiftHasResponsesError } from '../domain/errors/shift-has-responses';
+import { scheduleChanges } from '../domain/schedule-changes';
+import type { ScheduleAssignmentSnapshot } from '../domain/schedule-last-told';
 import {
   type ShiftSplitStrategy,
   ShiftSplitter,
@@ -103,6 +114,43 @@ import {
   wallClockUtcBounds,
 } from '../domain/services/usual-setup-planner';
 import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
+
+interface CompareScheduleAssignmentsInput {
+  events: EventWithEventTimeBlocks[];
+  baseline: ScheduleLastToldRow[];
+  current: Map<VolunteerId, ScheduleAssignmentSnapshot[]>;
+  at: Instant;
+}
+
+function compareScheduleAssignments({
+  events,
+  baseline,
+  current,
+  at,
+}: CompareScheduleAssignmentsInput) {
+  const cancelled = new Set(
+    events
+      .filter(({ event }) => event.status === 'cancelled')
+      .map(({ event }) => event.id),
+  );
+  const old = new Map(
+    baseline.map((row) => [
+      row.volunteerId,
+      row.assignments.filter((item) => !cancelled.has(item.eventId)),
+    ]),
+  );
+  const ids = new Set([...old.keys(), ...current.keys()]);
+  return [...ids]
+    .map((id) => ({
+      id,
+      changes: scheduleChanges({
+        before: old.get(id) ?? [],
+        after: current.get(id) ?? [],
+        at,
+      }),
+    }))
+    .filter(({ changes }) => changes.length > 0);
+}
 
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
   eventId: EventWithEventTimeBlocks['event']['id'];
@@ -307,9 +355,27 @@ interface PublishCandidate {
   completion: ParticipationCompletionView;
 }
 
-interface NotifyParticipationPublishedInput {
+interface ScheduleScopeInput {
   churchId: ChurchId;
-  participation: MinistryParticipation;
+  ministryId: MinistryId;
+  cycleId: GetCycleBuilderDataInput['cycleId'];
+}
+
+interface CountScheduleChangesInput extends ScheduleScopeInput {
+  tx: TransactionContext;
+}
+
+interface CollectScheduleAssignmentsInput {
+  input: ScheduleScopeInput;
+  participations: MinistryParticipation[];
+  events: EventWithEventTimeBlocks[];
+  tx: TransactionContext;
+}
+
+interface NotifySchedulePublishedInput {
+  input: PublishCycleInput;
+  candidates: PublishCandidate[];
+  events: EventWithEventTimeBlocks[];
   tx: TransactionContext;
 }
 
@@ -511,6 +577,10 @@ export class DbParticipationManager implements IParticipationManager {
       cycleId: input.cycleId,
     });
     return this.unitOfWork.run(async (tx) => {
+      const affectedVolunteerCount = await this.countScheduleChanges({
+        ...input,
+        tx,
+      });
       const eventGroups = await this.eventRepository.listCycleEvents({
         churchId: input.churchId,
         cycleId: input.cycleId,
@@ -617,7 +687,7 @@ export class DbParticipationManager implements IParticipationManager {
         name: role.name,
       }));
 
-      return { cycle, events, roles: roleOptions };
+      return { cycle, events, roles: roleOptions, affectedVolunteerCount };
     });
   }
 
@@ -1162,10 +1232,24 @@ export class DbParticipationManager implements IParticipationManager {
       churchId: input.churchId,
       id: input.ministryId,
     });
-    await this.cycleRepository.getById({
+    const cycle = await this.cycleRepository.getById({
       churchId: input.churchId,
       cycleId: input.cycleId,
     });
+
+    const church = await this.churchRepository.getById({ id: input.churchId });
+    if (
+      cycle.state !== 'sent' ||
+      compareCalendarDays({
+        left: cycle.endDate,
+        right: today({ instant: now(), timeZone: church.timezone }),
+      }) < 0
+    ) {
+      throw new IllegalStateTransitionError({
+        from: cycle.state,
+        to: 'published',
+      });
+    }
 
     return this.unitOfWork.run(async (tx) => {
       const eventGroups = await this.eventRepository.listCycleEvents({
@@ -1174,6 +1258,15 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
 
+      // Use the shared Schedule lock order used by other Schedule mutations.
+      const lockedParticipations =
+        await this.participationRepository.lockSchedule({
+          churchId: input.churchId,
+          ministryId: input.ministryId,
+          cycleId: input.cycleId,
+          tx,
+        });
+
       // Only availability-requested / assign participations are publishable;
       // prepare ones are not yet assigned and already-published ones are
       // reported unchanged.
@@ -1181,20 +1274,11 @@ export class DbParticipationManager implements IParticipationManager {
       const alreadyPublished: PublishCandidate[] = [];
 
       for (const eventGroup of eventGroups) {
-        const { id: participationId } = await this.getOrCreateParticipation({
-          churchId: input.churchId,
-          cycleId: input.cycleId,
-          ministryId: input.ministryId,
-          eventId: eventGroup.event.id,
-          tx,
-        });
-        // Locked before completion is read, in the stable Event order: a racing
-        // preparation save is seen here, or sees this publish and is refused.
-        const participation = await this.participationRepository.lockById({
-          churchId: input.churchId,
-          participationId,
-          tx,
-        });
+        if (eventGroup.event.status === 'cancelled') continue;
+        const participation = lockedParticipations.find(
+          (item) => item.eventId === eventGroup.event.id,
+        );
+        if (!participation) continue;
         const completion = await this.getCompletionInternal({
           churchId: input.churchId,
           participationId: participation.id,
@@ -1208,6 +1292,23 @@ export class DbParticipationManager implements IParticipationManager {
         ) {
           publishable.push({ participation, completion });
         }
+      }
+
+      if (publishable.length === 0 && alreadyPublished.length > 0) {
+        throw new ScheduleAlreadyPublishedError();
+      }
+      if (publishable.length === 0) {
+        throw new IllegalStateTransitionError({
+          from: 'prepare',
+          to: 'published',
+        });
+      }
+      if (
+        ![...publishable, ...alreadyPublished].some(
+          ({ completion }) => completion.assignedCount > 0,
+        )
+      ) {
+        throw new ScheduleHasNoAssignmentsError();
       }
 
       const anyBelowFull = publishable.some(
@@ -1239,12 +1340,14 @@ export class DbParticipationManager implements IParticipationManager {
           state: participation.state,
           tx,
         });
-        await this.notifyParticipationPublished({
-          churchId: input.churchId,
-          participation,
-          tx,
-        });
       }
+
+      await this.notifySchedulePublished({
+        input,
+        candidates: [...publishable, ...alreadyPublished],
+        events: eventGroups,
+        tx,
+      });
 
       return {
         published: true,
@@ -1256,38 +1359,281 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  private async notifyParticipationPublished({
-    churchId,
-    participation,
-    tx,
-  }: NotifyParticipationPublishedInput): Promise<void> {
-    const assignments = await this.assignmentRepository.listByParticipation({
-      churchId,
-      participationId: participation.id,
-      tx,
+  async sendScheduleUpdates(
+    input: PublishCycleInput,
+  ): Promise<SendScheduleUpdatesView> {
+    await this.ministryRepository.getById({
+      churchId: input.churchId,
+      id: input.ministryId,
     });
-    const volunteerIds = [
-      ...new Set(
-        assignments
-          .filter((assignment) => isActiveAssignmentStatus(assignment.status))
-          .map((assignment) => assignment.volunteerId),
-      ),
-    ];
-    const volunteers = await this.volunteerRepository.listByIds({
-      churchId,
-      ids: volunteerIds,
-      tx,
+    await this.cycleRepository.getById({
+      churchId: input.churchId,
+      cycleId: input.cycleId,
     });
+    return this.unitOfWork.run(async (tx) => {
+      const participations = await this.participationRepository.lockSchedule({
+        ...input,
+        tx,
+      });
+      if (participations.length === 0)
+        throw new NotFoundError('Schedule not found');
+      const events = await this.eventRepository.listCycleEvents({
+        churchId: input.churchId,
+        cycleId: input.cycleId,
+        tx,
+      });
+      const published = participations.filter(
+        (item) =>
+          item.state === 'published' &&
+          events.some(
+            ({ event }) =>
+              event.id === item.eventId && event.status !== 'cancelled',
+          ),
+      );
+      const current = await this.collectScheduleAssignments({
+        input,
+        participations: published,
+        events,
+        tx,
+      });
+      const baseline = await this.participationRepository.listScheduleLastTold({
+        ...input,
+        tx,
+      });
+      const changed = compareScheduleAssignments({
+        events,
+        baseline,
+        current,
+        at: now(),
+      });
+      if (changed.length === 0) throw new NoUnsentChangesError();
+      const [church, ministry, cycle, volunteers] = await Promise.all([
+        this.churchRepository.getById({ id: input.churchId }),
+        this.ministryRepository.getById({
+          churchId: input.churchId,
+          id: input.ministryId,
+          tx,
+        }),
+        this.cycleRepository.getById({
+          churchId: input.churchId,
+          cycleId: input.cycleId,
+          tx,
+        }),
+        this.volunteerRepository.listByIds({
+          churchId: input.churchId,
+          ids: changed.map(({ id }) => id),
+          tx,
+        }),
+      ]);
+      if (volunteers.length !== changed.length)
+        throw new NotFoundError('An assigned Volunteer could not be found');
+      const ids = new Set([
+        ...baseline.map(({ volunteerId }) => volunteerId),
+        ...current.keys(),
+      ]);
+      for (const id of ids) {
+        await this.participationRepository.saveScheduleLastTold({
+          churchId: input.churchId,
+          ministryId: input.ministryId,
+          cycleId: input.cycleId,
+          volunteerId: id,
+          assignments: current.get(id) ?? [],
+          tx,
+        });
+      }
+      for (const volunteer of volunteers) {
+        const changes = changed.find(({ id }) => id === volunteer.id)?.changes;
+        if (!changes) throw new NotFoundError('Volunteer changes not found');
+        await this.notifications.enqueue({
+          tx,
+          kind: 'schedule_updated',
+          to: [{ userId: volunteer.userId, churchId: input.churchId }],
+          data: {
+            cycleId: cycle.id,
+            cycleName: cycle.name,
+            ministryId: ministry.id,
+            ministryName: ministry.name,
+            churchName: church.name,
+            churchTimezone: church.timezone,
+            changes,
+          },
+        });
+      }
+      return { notifiedCount: changed.length };
+    });
+  }
 
-    await this.notifications.enqueue({
+  private async notifySchedulePublished({
+    input,
+    candidates,
+    events,
+    tx,
+  }: NotifySchedulePublishedInput): Promise<void> {
+    const [church, ministry, cycle] = await Promise.all([
+      this.churchRepository.getById({ id: input.churchId }),
+      this.ministryRepository.getById({
+        churchId: input.churchId,
+        id: input.ministryId,
+        tx,
+      }),
+      this.cycleRepository.getById({
+        churchId: input.churchId,
+        cycleId: input.cycleId,
+        tx,
+      }),
+    ]);
+    const byVolunteer = await this.collectScheduleAssignments({
+      input,
+      participations: candidates.map(({ participation }) => participation),
+      events,
       tx,
-      kind: 'schedule_published',
-      to: volunteers.map((volunteer) => ({
-        userId: volunteer.userId,
-        churchId,
-      })),
-      data: { participationId: participation.id as string },
     });
+    const volunteers = await this.volunteerRepository.listByIds({
+      churchId: input.churchId,
+      ids: [...byVolunteer.keys()],
+      tx,
+    });
+    if (volunteers.length !== byVolunteer.size) {
+      throw new NotFoundError('An assigned Volunteer could not be found');
+    }
+    for (const volunteer of volunteers) {
+      const assignments = byVolunteer.get(volunteer.id);
+      if (!assignments) continue;
+      await this.participationRepository.saveScheduleLastTold({
+        churchId: input.churchId,
+        ministryId: input.ministryId,
+        cycleId: input.cycleId,
+        volunteerId: volunteer.id,
+        assignments,
+        tx,
+      });
+      await this.notifications.enqueue({
+        tx,
+        kind: 'schedule_published',
+        to: [{ userId: volunteer.userId, churchId: input.churchId }],
+        data: {
+          cycleId: cycle.id,
+          cycleName: cycle.name,
+          ministryId: ministry.id,
+          ministryName: ministry.name,
+          churchName: church.name,
+          churchTimezone: church.timezone,
+          shifts: assignments.map(
+            ({ eventTitle, startsAt, endsAt, roleName, sectorName }) => ({
+              eventTitle,
+              startsAt,
+              endsAt,
+              roleName,
+              sectorName,
+            }),
+          ),
+        },
+      });
+    }
+  }
+
+  private async collectScheduleAssignments({
+    input,
+    participations,
+    events,
+    tx,
+  }: CollectScheduleAssignmentsInput): Promise<
+    Map<VolunteerId, ScheduleAssignmentSnapshot[]>
+  > {
+    const byVolunteer = new Map<VolunteerId, ScheduleAssignmentSnapshot[]>();
+    for (const participation of participations) {
+      const event = events.find(
+        (group) => group.event.id === participation.eventId,
+      )?.event;
+      if (!event) throw new NotFoundError('Schedule Event not found');
+      const [assignments, shifts, requirements] = await Promise.all([
+        this.assignmentRepository.listByParticipation({
+          churchId: input.churchId,
+          participationId: participation.id,
+          tx,
+        }),
+        this.shiftRepository.listByParticipation({
+          churchId: input.churchId,
+          participationId: participation.id,
+          tx,
+        }),
+        this.shiftRepository.listRequirementsByParticipation({
+          churchId: input.churchId,
+          participationId: participation.id,
+          tx,
+        }),
+      ]);
+      for (const assignment of assignments.filter((item) =>
+        isActiveAssignmentStatus(item.status),
+      )) {
+        const shift = shifts.find((item) => item.id === assignment.shiftId);
+        const requirement = requirements.find(
+          (item) => item.id === assignment.shiftRequirementId,
+        );
+        if (!shift || !requirement)
+          throw new NotFoundError('Assignment Shift or requirement not found');
+        const role = await this.roleRepository.getById({
+          churchId: input.churchId,
+          id: assignment.roleId,
+          tx,
+        });
+        const facts: ScheduleAssignmentSnapshot = {
+          assignmentId: assignment.id,
+          shiftId: shift.id,
+          eventId: event.id,
+          eventTitle: event.title,
+          eventStart: event.start,
+          eventEnd: event.end,
+          startsAt: shift.startTime,
+          endsAt: shift.endTime,
+          roleId: role.id,
+          roleName: role.name,
+          sectorId: requirement.sectorId,
+          sectorName: requirement.sectorName,
+        };
+        const own = byVolunteer.get(assignment.volunteerId) ?? [];
+        own.push(facts);
+        byVolunteer.set(assignment.volunteerId, own);
+      }
+    }
+    return byVolunteer;
+  }
+
+  private async countScheduleChanges(
+    input: CountScheduleChangesInput,
+  ): Promise<number> {
+    const { tx } = input;
+    {
+      const events = await this.eventRepository.listCycleEvents({
+        churchId: input.churchId,
+        cycleId: input.cycleId,
+        tx,
+      });
+      const participations: MinistryParticipation[] = [];
+      for (const { event } of events) {
+        if (event.status === 'cancelled') continue;
+        const participation =
+          await this.participationRepository.findByMinistryEvent({
+            churchId: input.churchId,
+            ministryId: input.ministryId,
+            eventId: event.id,
+            tx,
+          });
+        if (participation?.state !== 'published') continue;
+        participations.push(participation);
+      }
+      if (participations.length === 0) return 0;
+      const [current, baseline] = await Promise.all([
+        this.collectScheduleAssignments({ input, participations, events, tx }),
+        this.participationRepository.listScheduleLastTold({ ...input, tx }),
+      ]);
+      return compareScheduleAssignments({
+        events,
+        baseline,
+        current,
+        at: now(),
+      }).length;
+    }
   }
 
   async listScheduleSummaries(
@@ -1350,28 +1696,45 @@ export class DbParticipationManager implements IParticipationManager {
       checkCounts.map((row) => [scheduleKey(row), row]),
     );
 
-    return sentCycles.flatMap((cycle) =>
-      ministries.map((ministry) => {
-        const key = scheduleKey({
-          ministryId: ministry.id,
-          cycleId: cycle.id,
-        });
-        const rows = statesBySchedule.get(key) ?? [];
-        const stage = deriveScheduleStage({
-          servingStates: rows.map((row) => row.state),
-        });
-        const lateMarkCount = lateMarksBySchedule.get(key) ?? 0;
-        if (stage !== 'asking')
-          return { ministry, cycle, stage, lateMarkCount };
-        const { confirmed = 0, asked = 0 } = countsBySchedule.get(key) ?? {};
-        return {
-          ministry,
-          cycle,
-          stage,
-          lateMarkCount,
-          asking: { confirmed, asked },
-        };
-      }),
+    return Promise.all(
+      sentCycles.flatMap((cycle) =>
+        ministries.map(async (ministry) => {
+          const key = scheduleKey({
+            ministryId: ministry.id,
+            cycleId: cycle.id,
+          });
+          const rows = statesBySchedule.get(key) ?? [];
+          const stage = deriveScheduleStage({
+            servingStates: rows.map((row) => row.state),
+          });
+          const lateMarkCount = lateMarksBySchedule.get(key) ?? 0;
+          const affectedVolunteerCount = await this.unitOfWork.run((tx) =>
+            this.countScheduleChanges({
+              churchId,
+              ministryId: ministry.id,
+              cycleId: cycle.id,
+              tx,
+            }),
+          );
+          if (stage !== 'asking')
+            return {
+              ministry,
+              cycle,
+              stage,
+              lateMarkCount,
+              affectedVolunteerCount,
+            };
+          const { confirmed = 0, asked = 0 } = countsBySchedule.get(key) ?? {};
+          return {
+            ministry,
+            cycle,
+            stage,
+            lateMarkCount,
+            affectedVolunteerCount,
+            asking: { confirmed, asked },
+          };
+        }),
+      ),
     );
   }
 

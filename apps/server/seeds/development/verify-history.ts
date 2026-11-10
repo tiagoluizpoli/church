@@ -12,6 +12,7 @@ import {
   notification,
   participationEventTimeBlockInclusion,
   role,
+  scheduleLastTold,
   sector,
   shift,
   shiftRequirement,
@@ -609,7 +610,7 @@ interface NotificationProblemsInput {
 
 /**
  * What publishing wrote: one `schedule_published` per
- * Volunteer assigned on a participation when it was published, in the
+ * Volunteer assigned in a Schedule when it was published, in the
  * product's shape, read unless the blueprint says otherwise.
  */
 async function notificationProblems({
@@ -628,34 +629,36 @@ async function notificationProblems({
       actual: await countOf({
         db,
         query: sql`select count(*) as value from (
-            select distinct a.participation_id, a.volunteer_id from ${assignment} a
+            select distinct e.cycle_id, p.ministry_id, a.volunteer_id from ${assignment} a
+            join ${ministryParticipation} p on p.id = a.participation_id
+            join ${event} e on e.id = p.event_id
             where a.assigned_at <= ${published}) as assigned
           where not exists (select 1 from ${notification} n
-            join ${ministryParticipation} p on p.event_id::text = n.data->>'eventId' and p.ministry_id::text = n.data->>'ministryId'
             join ${volunteer} v on v.user_id = n.user_id
-            where p.id = assigned.participation_id and v.id = assigned.volunteer_id
-              and n.kind = 'schedule_published')`,
+            where n.data->>'cycleId' = assigned.cycle_id::text
+              and n.data->>'ministryId' = assigned.ministry_id::text
+              and v.id = assigned.volunteer_id and n.kind = 'schedule_published')`,
       }),
       expected: 0,
     },
-    'publish notifications beyond the assigned Volunteers': {
+    'snapshots without their publish notification': {
       actual: await countOf({
         db,
-        query: sql`select (select count(*) from ${notification} where kind = 'schedule_published')
-          - (select count(*) from (select distinct a.participation_id, a.volunteer_id
-              from ${assignment} a where a.assigned_at <= ${published}) as assigned) as value`,
+        query: sql`select count(*) as value from ${scheduleLastTold} s
+          join ${volunteer} v on v.id = s.volunteer_id
+          where not exists (select 1 from ${notification} n where n.kind = 'schedule_published'
+            and n.user_id = v.user_id and n.church_id = s.church_id
+            and n.data->>'cycleId' = s.cycle_id::text and n.data->>'ministryId' = s.ministry_id::text)`,
       }),
-      // A reassignment deleted an assigned row its publish notification outlived.
-      expected: history.resolvedOverlaps.length,
+      expected: 0,
     },
     'publish notifications not in the shape publishing writes': {
       actual: await countOf({
         db,
         query: sql`select count(*) as value from ${notification} n
-          join ${event} e on e.id::text = n.data->>'eventId'
           where n.kind = 'schedule_published'
-            and (n.data->>'eventTitle' <> e.title
-              or n.data->>'cycleId' <> e.cycle_id::text)`,
+            and (not (n.data ? 'cycleName') or not (n.data ? 'churchTimezone')
+              or jsonb_array_length(n.data->'shifts') = 0)`,
       }),
       expected: 0,
     },

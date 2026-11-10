@@ -35,6 +35,7 @@ const participationManager = {
   getCompletion: vi.fn(),
   getCycleBuilderData: vi.fn(),
   publishCycle: vi.fn(),
+  sendScheduleUpdates: vi.fn(),
 };
 
 const assignmentManager = {
@@ -148,6 +149,11 @@ const scopedAssignRoutes: ScopedAssignRoute[] = [
     url: `/api/v1/assign/cycles/${ASSIGN_CYCLE}/publish?ministryId=${ASSIGN_MINISTRY}`,
     decision: 'decideManageMinistry',
     payload: {},
+  },
+  {
+    method: 'POST',
+    url: `/api/v1/assign/cycles/${ASSIGN_CYCLE}/send-updates?ministryId=${ASSIGN_MINISTRY}`,
+    decision: 'decideManageMinistry',
   },
   {
     method: 'GET',
@@ -601,6 +607,7 @@ describe('Assign routes', () => {
 
   it('GET /api/v1/assign/cycles/:id/builder allows a Ministry leader and denies a non-leader', async () => {
     participationManager.getCycleBuilderData.mockResolvedValue({
+      affectedVolunteerCount: 0,
       cycle: {
         id: 'cycle-1',
         name: 'August',

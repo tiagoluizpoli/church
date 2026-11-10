@@ -1,5 +1,5 @@
 import { appConfig } from '@church/app-config';
-import { parseInstant, setTestClock } from '@church/time';
+import { parseCalendarDay, parseInstant, setTestClock } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
@@ -22,6 +22,8 @@ import {
 } from '@/domain/branded-ids';
 import { Assignment } from '@/domain/entities/assignment';
 import { AvailabilityCheck } from '@/domain/entities/availability-check';
+import { Church } from '@/domain/entities/church';
+import { Cycle } from '@/domain/entities/cycle';
 import { Event } from '@/domain/entities/event';
 import { Ministry } from '@/domain/entities/ministry';
 import { MinistryParticipation } from '@/domain/entities/ministry-participation';
@@ -35,6 +37,7 @@ import {
   createAssignmentAuditRepositoryFake,
   createAssignmentRepositoryFake,
   createAvailabilityCheckRepositoryFake,
+  createChurchRepositoryFake,
   createCycleRepositoryFake,
   createEventRepositoryFake,
   createEventTemplateRepositoryFake,
@@ -73,6 +76,7 @@ function createHarness() {
   const volunteerRepository = createVolunteerRepositoryFake();
   const unavailableShiftRepository = createUnavailableShiftRepositoryFake();
   const cycleRepository = createCycleRepositoryFake();
+  const churchRepository = createChurchRepositoryFake();
   const planningEventRepository = createPlanningEventRepositoryFake();
   const eventTimeBlockRepository = createEventTimeBlockRepositoryFake();
   const ministryRepository = createMinistryRepositoryFake();
@@ -144,6 +148,31 @@ function createHarness() {
     id: ministryId,
     props: { churchId, name: 'Welcome' },
   });
+  churchRepository.getById.mockResolvedValue(
+    new Church({
+      id: churchId,
+      props: { name: 'Church', slug: 'church', timezone: 'UTC' },
+    }),
+  );
+  cycleRepository.getById.mockResolvedValue(
+    new Cycle({
+      id: cycleId,
+      props: {
+        churchId,
+        name: 'Cycle',
+        startDate: parseCalendarDay({ value: '2026-08-01' }),
+        endDate: parseCalendarDay({ value: '2026-08-31' }),
+        state: 'sent',
+      },
+    }),
+  );
+  roleRepository.getById.mockResolvedValue(
+    new Role({
+      id: RoleId.from('role'),
+      props: { churchId, ministryId, name: 'Greeter' },
+    }),
+  );
+  shiftRepository.listByParticipation.mockResolvedValue([shift]);
   shiftRepository.getById.mockResolvedValue(shift);
   shiftRepository.getRequirementForShift.mockResolvedValue(requirement);
   shiftRepository.listRequirementsByParticipation.mockResolvedValue([
@@ -151,6 +180,9 @@ function createHarness() {
   ]);
   ministryParticipationRepository.getById.mockResolvedValue(participation);
   ministryParticipationRepository.lockById.mockResolvedValue(participation);
+  ministryParticipationRepository.lockSchedule.mockResolvedValue([
+    participation,
+  ]);
   ministryParticipationRepository.findByMinistryEvent.mockResolvedValue(
     participation,
   );
@@ -188,7 +220,7 @@ function createHarness() {
     roleRepository,
     sectorRepository,
     notifications,
-    churchRepository: {} as never,
+    churchRepository,
     staffingSeeder: {} as never,
     unitOfWork,
   });
@@ -380,7 +412,21 @@ describe('Assignment and publication managers', () => {
 
   it('requires confirmation before publishing an incomplete participation and notifies its assigned volunteers', async () => {
     const f = createHarness();
-    f.assignmentRepository.listByParticipation.mockResolvedValue([]);
+    f.shiftRepository.listRequirementsByParticipation.mockResolvedValue([
+      new ShiftRequirement({
+        id: shiftRequirementId,
+        props: {
+          churchId,
+          participationId,
+          eventTimeBlockId: EventTimeBlockId.from('block'),
+          shiftId,
+          roleId: RoleId.from('role'),
+          sectorId: SectorId.from('sector'),
+          sectorName: 'Alpha',
+          peopleNeeded: 2,
+        },
+      }),
+    ]);
     const input = { churchId, cycleId, ministryId, userId: actorId };
     await expect(
       f.participationManager.publishCycle(input),

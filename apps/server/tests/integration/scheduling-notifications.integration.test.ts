@@ -1,6 +1,7 @@
 import { appConfig } from '@church/app-config';
 import {
   assignment,
+  assignmentAudit,
   availabilityAsk,
   availabilityCheck,
   cycle,
@@ -1368,6 +1369,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     expect(moved.withdrawn.map(({ assignmentId }) => assignmentId)).toEqual([
       withdrawn.id,
     ]);
+    // The withdrawal's audit outlives the hard-deleted Assignment.
+    expect(
+      await schedulingTestDb
+        .select()
+        .from(assignmentAudit)
+        .where(eq(assignmentAudit.assignmentId, withdrawn.id)),
+    ).toMatchObject([{ action: 'deleted', actorId: ids.adminUserId }]);
     // The move keeps the last-told snapshots and queues only the leader's N10.
     expect(await schedulingTestDb.select().from(scheduleLastTold)).toEqual(
       snapshotsBefore,

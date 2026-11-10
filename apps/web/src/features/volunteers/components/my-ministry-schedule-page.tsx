@@ -3,10 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useOnlineState } from '../hooks/use-online-state';
 import { cachedReadOptions, fetchAndCache } from '../lib/my-schedule-cache';
+import { cachedMinistryScheduleSchema } from '../lib/my-schedule-schemas';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GetMinistrySchedule200 } from '@/infrastructure/api/churchAPI.schemas';
+import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { volunteerApi } from '@/utils/api-instances';
@@ -28,12 +30,12 @@ export const myMinistryScheduleKey = ({
 function groupByShift(rows: ScheduleRow[]) {
   const shifts = new Map<string, { label: string; rows: ScheduleRow[] }>();
   for (const row of rows) {
-    const shift = shifts.get(row.eventTimeBlockId) ?? {
-      label: row.eventTimeBlockLabel,
+    const shift = shifts.get(row.shiftId) ?? {
+      label: row.shiftLabel,
       rows: [],
     };
     shift.rows.push(row);
-    shifts.set(row.eventTimeBlockId, shift);
+    shifts.set(row.shiftId, shift);
   }
   return [...shifts.entries()];
 }
@@ -45,15 +47,24 @@ export function MyMinistrySchedulePage({
   const { churchTimezone } = useTimezone();
   const isOnline = useOnlineState();
   const cacheKey = `ministry-schedule:${ministryId}:${cycleId}`;
+  const callerScope = useCallerCapabilitiesScope();
+  const { churchId = null, userId = null } = callerScope ?? {};
+  const cacheScope = churchId && userId ? { userId, churchId } : null;
   const query = useQuery({
     queryKey: myMinistryScheduleKey({ ministryId, cycleId }),
     queryFn: () =>
       fetchAndCache({
+        scope: cacheScope,
         key: cacheKey,
         fetch: () => volunteerApi.getMinistrySchedule(ministryId, { cycleId }),
       }),
     retry: false,
-    ...cachedReadOptions<GetMinistrySchedule200>({ key: cacheKey, isOnline }),
+    ...cachedReadOptions({
+      scope: cacheScope,
+      key: cacheKey,
+      isOnline,
+      schema: cachedMinistryScheduleSchema,
+    }),
   });
 
   if (query.isPending) {
@@ -65,7 +76,8 @@ export function MyMinistrySchedulePage({
       />
     );
   }
-  if (query.isError) {
+  // Retained data stays on screen when a refetch fails; the full error is for no data.
+  if (query.isError && !query.data) {
     // 404 is the concealed-scope refusal (another Ministry or unknown Cycle).
     const notAvailable =
       isAxiosError(query.error) && query.error.response?.status === 404;
@@ -93,6 +105,11 @@ export function MyMinistrySchedulePage({
 
   return (
     <div className="space-y-4">
+      {query.isRefetchError ? (
+        <Alert>
+          <AlertDescription>{m.my_schedule_refresh_failed()}</AlertDescription>
+        </Alert>
+      ) : null}
       <h1 className="font-semibold text-xl">
         {schedule.ministryName} · {schedule.cycleName}
       </h1>

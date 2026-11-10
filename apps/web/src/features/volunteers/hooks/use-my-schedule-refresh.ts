@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useOnlineState } from './use-online-state';
 
+const BACKGROUND_UPDATE_NOTICE_MS = 6000;
+
 export interface MyScheduleRefreshVisibleData {
   assignments: unknown;
   schedules: unknown;
@@ -67,7 +69,7 @@ export function useMyScheduleRefresh({
 
     const timeoutId = window.setTimeout(() => {
       setHasBackgroundUpdate(false);
-    }, 6000);
+    }, BACKGROUND_UPDATE_NOTICE_MS);
 
     return () => window.clearTimeout(timeoutId);
   }, [hasBackgroundUpdate]);

@@ -7,6 +7,7 @@ import { useMyScheduleRefresh } from '../hooks/use-my-schedule-refresh';
 import { useOnlineState } from '../hooks/use-online-state';
 import { assignmentDayLabel } from '../lib/assignment-day-label';
 import { cachedReadOptions, fetchAndCache } from '../lib/my-schedule-cache';
+import { cachedMyScheduleSchema } from '../lib/my-schedule-schemas';
 import { BackgroundRefreshIndicator } from './background-refresh-indicator';
 import { MyScheduleOfflineBanner } from './my-schedule-offline-banner';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +17,7 @@ import type {
   GetPublishedVolunteerSchedule200,
   GetPublishedVolunteerSchedule200AssignmentsItem as ScheduleAssignment,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatTimeOf } from '@/shared/utils/church-time';
 import { volunteerApi } from '@/utils/api-instances';
@@ -55,6 +57,7 @@ interface MyScheduleProps {
   data: GetPublishedVolunteerSchedule200;
   lastUpdatedAt: string;
   isCached: boolean;
+  isRefreshError: boolean;
   onRefresh: () => Promise<void>;
 }
 
@@ -62,6 +65,7 @@ function MySchedule({
   data,
   lastUpdatedAt,
   isCached,
+  isRefreshError,
   onRefresh,
 }: MyScheduleProps) {
   const { churchTimezone: timeZone } = useTimezone();
@@ -70,6 +74,11 @@ function MySchedule({
     visibleData: { assignments: data.assignments, schedules: data.schedules },
   });
   const current = now();
+  // A failed background refetch keeps the retained schedule and says so in the banner.
+  const refreshState =
+    refresh.refreshState === 'idle' && isRefreshError
+      ? 'error'
+      : refresh.refreshState;
   const groups = groupByDay({ assignments: data.assignments, timeZone });
   return (
     <div className="space-y-8">
@@ -83,7 +92,7 @@ function MySchedule({
         isUsingCachedData={refresh.isUsingCachedData || isCached}
         lastUpdatedAt={lastUpdatedAt}
         onRefresh={refresh.refresh}
-        refreshState={refresh.refreshState}
+        refreshState={refreshState}
       />
       <section aria-labelledby="my-assignments" className="space-y-4">
         <h2 id="my-assignments" className="font-semibold">
@@ -95,15 +104,11 @@ function MySchedule({
             <h3 className="text-muted-foreground text-sm">{group.label}</h3>
             <ul className="space-y-2">
               {group.assignments.map((a) => {
+                const start = parseInstant({ value: a.startTime });
+                const end = parseInstant({ value: a.endTime });
                 const inProgress =
-                  compareInstants({
-                    left: parseInstant({ value: a.startTime }),
-                    right: current,
-                  }) <= 0 &&
-                  compareInstants({
-                    left: current,
-                    right: parseInstant({ value: a.endTime }),
-                  }) < 0;
+                  compareInstants({ left: start, right: current }) <= 0 &&
+                  compareInstants({ left: current, right: end }) < 0;
                 return (
                   <li key={a.assignmentId}>
                     <Link
@@ -156,21 +161,28 @@ function MySchedule({
 
 export function MySchedulePage() {
   const isOnline = useOnlineState();
+  const callerScope = useCallerCapabilitiesScope();
+  const { churchId = null, userId = null } = callerScope ?? {};
+  const cacheScope = churchId && userId ? { userId, churchId } : null;
   const query = useQuery({
-    queryKey: ['my-schedule'],
+    queryKey: ['my-schedule', userId, churchId],
     // The read time rides with the data so a cached copy reports when it was fetched.
     queryFn: () =>
       fetchAndCache({
+        scope: cacheScope,
         key: 'schedule',
-        fetch: async () => ({
-          ...(await volunteerApi.getPublishedVolunteerSchedule()),
-          fetchedAt: now(),
-        }),
+        fetch: async () => {
+          const schedule = await volunteerApi.getPublishedVolunteerSchedule();
+          return { ...schedule, fetchedAt: now() };
+        },
       }),
     retry: false,
-    ...cachedReadOptions<
-      GetPublishedVolunteerSchedule200 & { fetchedAt: string }
-    >({ key: 'schedule', isOnline }),
+    ...cachedReadOptions({
+      scope: cacheScope,
+      key: 'schedule',
+      isOnline,
+      schema: cachedMyScheduleSchema,
+    }),
   });
   if (query.isLoading)
     return (
@@ -178,7 +190,8 @@ export function MySchedulePage() {
         <Skeleton className="h-64 w-full" />
       </div>
     );
-  if (query.isError) {
+  // Retained data stays on screen when a refetch fails; the full error is for no data.
+  if (query.isError && !query.data) {
     // The server's membership refusal mirrors the gate's not-serving state.
     if (isAxiosError(query.error) && query.error.response?.status === 403)
       return <p role="status">{m.shell_not_serving()}</p>;
@@ -196,6 +209,7 @@ export function MySchedulePage() {
       data={query.data}
       lastUpdatedAt={query.data.fetchedAt}
       isCached={query.isPlaceholderData || !isOnline}
+      isRefreshError={query.isRefetchError}
       onRefresh={async () => {
         await query.refetch({ throwOnError: true });
       }}

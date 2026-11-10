@@ -25,15 +25,19 @@ const SCHEDULE: GetMinistrySchedule200 = {
       assignmentCount: 1,
       rows: [
         {
-          eventTimeBlockId: 'block',
-          eventTimeBlockLabel: 'Morning',
+          shiftId: 'shift-1',
+          shiftStart: '2026-10-11T12:00:00.000Z',
+          shiftEnd: '2026-10-11T13:00:00.000Z',
+          shiftLabel: 'Morning',
           sectorName: 'Babies Room',
           roleName: 'Teacher',
           volunteerDisplayName: 'Alice T.',
         },
         {
-          eventTimeBlockId: 'block',
-          eventTimeBlockLabel: 'Morning',
+          shiftId: 'shift-1',
+          shiftStart: '2026-10-11T12:00:00.000Z',
+          shiftEnd: '2026-10-11T13:00:00.000Z',
+          shiftLabel: 'Morning',
           sectorName: 'Kids Room',
           roleName: 'Teacher',
         },
@@ -79,6 +83,24 @@ describe.each([
     expect(api.getMinistrySchedule).toHaveBeenCalledWith('kids', {
       cycleId: 'october',
     });
+  });
+
+  it('groups rows per Shift, not per Event time block', async () => {
+    const [first] = SCHEDULE.events;
+    const [row] = first?.rows ?? [];
+    if (!first || !row) throw new Error('fixture');
+    api.getMinistrySchedule.mockResolvedValue({
+      ...SCHEDULE,
+      events: [
+        {
+          ...first,
+          rows: [row, { ...row, shiftId: 'shift-2', shiftLabel: 'Late' }],
+        },
+      ],
+    });
+    renderPage();
+    expect(await screen.findByText('Morning')).toBeTruthy();
+    expect(screen.getByText('Late')).toBeTruthy();
   });
 
   it('says the schedule is not published yet', async () => {

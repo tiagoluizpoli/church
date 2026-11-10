@@ -12,8 +12,7 @@ export function assignmentDayLabel({
   startTime,
   timeZone,
 }: AssignmentDayLabelInput): string {
-  return formatDayLabel({
-    day: dayOf({ value: startTime, timeZone }),
-    locale: getLocale(),
-  });
+  const day = dayOf({ value: startTime, timeZone });
+  const locale = getLocale();
+  return formatDayLabel({ day, locale });
 }

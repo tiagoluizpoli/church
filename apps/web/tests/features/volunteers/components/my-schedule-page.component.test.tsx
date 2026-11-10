@@ -1,9 +1,12 @@
+import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
-import { cleanup, screen } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
+import { act, cleanup, screen } from '@testing-library/react';
 import { AxiosError, AxiosHeaders } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MySchedulePage } from '@/features/volunteers/components/my-schedule-page';
 import type { GetPublishedVolunteerSchedule200 } from '@/infrastructure/api/churchAPI.schemas';
+import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const api = vi.hoisted(() => ({ getPublishedVolunteerSchedule: vi.fn() }));
@@ -69,10 +72,16 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
-const renderPage = () =>
-  renderWithProviders(<MySchedulePage />, {
-    churchTimezone: 'America/Sao_Paulo',
-  });
+const CACHE_KEY = 'my-schedule:user-1:church-1:schedule';
+const CACHED = { ...DATA, fetchedAt: '2026-10-12T12:00:00.000Z' };
+
+const renderPage = (userId = 'user-1') =>
+  renderWithProviders(
+    <CallerCapabilitiesScopeProvider churchId="church-1" userId={userId}>
+      <MySchedulePage />
+    </CallerCapabilitiesScopeProvider>,
+    { churchTimezone: 'America/Sao_Paulo' },
+  );
 
 describe('MySchedulePage', () => {
   it('groups cards by day, marks only the running Shift, links to detail and cycle', async () => {
@@ -108,10 +117,7 @@ describe('MySchedulePage', () => {
   });
 
   it('shows the cached schedule after a reload while offline, flagged as cached', async () => {
-    window.localStorage.setItem(
-      'my-schedule:schedule',
-      JSON.stringify({ ...DATA, fetchedAt: '2026-10-12T12:00:00.000Z' }),
-    );
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(CACHED));
     Object.defineProperty(window.navigator, 'onLine', {
       configurable: true,
       value: false,
@@ -127,6 +133,47 @@ describe('MySchedulePage', () => {
       configurable: true,
       value: true,
     });
+  });
+
+  it("never shows another account's cached schedule as placeholder or offline data", async () => {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(CACHED));
+    api.getPublishedVolunteerSchedule.mockReturnValue(new Promise(() => {}));
+    renderPage('user-2');
+    expect(await screen.findByRole('status')).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Mon 12 Oct' })).toBeNull();
+  });
+
+  it('ignores a stored copy that fails validation', async () => {
+    window.localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ assignments: 'x' }),
+    );
+    api.getPublishedVolunteerSchedule.mockReturnValue(new Promise(() => {}));
+    renderPage();
+    expect(await screen.findByRole('status')).toBeVisible();
+    expect(window.localStorage.getItem(CACHE_KEY)).toBeNull();
+  });
+
+  it('keeps the retained schedule and flags the banner when a refetch fails', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    api.getPublishedVolunteerSchedule.mockResolvedValueOnce(DATA);
+    renderWithProviders(
+      <CallerCapabilitiesScopeProvider churchId="church-1" userId="user-1">
+        <MySchedulePage />
+      </CallerCapabilitiesScopeProvider>,
+      { churchTimezone: 'America/Sao_Paulo', queryClient },
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Mon 12 Oct' }),
+    ).toBeVisible();
+    api.getPublishedVolunteerSchedule.mockRejectedValue(new Error('boom'));
+    await act(() => queryClient.refetchQueries({ queryKey: ['my-schedule'] }));
+    expect(screen.getByRole('heading', { name: 'Mon 12 Oct' })).toBeVisible();
+    expect(
+      await screen.findByText(m.my_schedule_refresh_failed()),
+    ).toBeVisible();
   });
 
   it('shows the empty state in pt-BR', async () => {

@@ -177,6 +177,12 @@ export function renderNotification(
         kindLabel: m.notification_kind_cycle_ready_to_prepare(),
         actionLabel: m.notification_cycle_ready_to_prepare_action(),
       };
+    case 'event_changed':
+      return {
+        ...eventChangedWords(item.data),
+        kindLabel: m.notification_kind_event_changed(),
+        actionLabel: m.notification_event_changed_action(),
+      };
     case 'swap_request_answered': {
       const { data } = item;
       return {
@@ -341,6 +347,47 @@ function cycleReadyToPrepareWords(data: CycleReadyToPrepareData) {
           m.notification_cycle_ready_to_prepare_ministries_one(ministryList),
         other: () =>
           m.notification_cycle_ready_to_prepare_ministries_other(ministryList),
+      }),
+    ].join('\n'),
+  };
+}
+
+type EventChangedData = Extract<
+  GetNotifications200ItemsItem,
+  { kind: 'event_changed' }
+>['data'];
+
+/** N10: the Event, who changed it and the recipient's affected Ministries. */
+function eventChangedWords(data: EventChangedData) {
+  const { cycleName, eventTitle, ministries, change, churchTimezone } = data;
+  const locale = getLocale();
+  const start = parseInstant({ value: change.start });
+  const end = parseInstant({ value: change.end });
+  const day = formatDayLabel({
+    day: today({ instant: start, timeZone: churchTimezone }),
+    locale,
+  });
+  const from = formatTimeOfDay({
+    time: toTimeOfDay({ instant: start, timeZone: churchTimezone }),
+  });
+  const to = formatTimeOfDay({
+    time: toTimeOfDay({ instant: end, timeZone: churchTimezone }),
+  });
+  const ministryList = {
+    ministryNames: ministries.map((ministry) => ministry.name).join(', '),
+  };
+  return {
+    title: m.notification_event_changed_add_title({ cycleName, eventTitle }),
+    body: [
+      m.notification_event_changed_add_body({
+        adminName: data.adminName,
+        when: `${day} · ${from}–${to}`,
+      }),
+      pluralMessage({
+        count: ministries.length,
+        one: () => m.notification_event_changed_ministries_one(ministryList),
+        other: () =>
+          m.notification_event_changed_ministries_other(ministryList),
       }),
     ].join('\n'),
   };

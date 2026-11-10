@@ -19,6 +19,7 @@ import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
 import { buildAssignment } from '@/seeds/builders/scheduling';
 import {
   createSchedulingManagers,
@@ -265,5 +266,37 @@ describe('Volunteer Assignment detail', () => {
       .set({ state: 'preparing' })
       .where(eq(ministryParticipation.id, graph.participation.id));
     expect((await get(mine.id)).statusCode).toBe(404);
+  });
+
+  it('is 401 without a session', async () => {
+    const { mine } = await seedGraph();
+    getSession.mockResolvedValue(null);
+    const response = await app.inject({
+      method: 'GET',
+      url: `${ROOT}/${mine.id}`,
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('is 403 for a Church Member who does not serve in a Ministry', async () => {
+    const { mine, churchId, signIn } = await seedGraph();
+    const outsider = await buildUser({
+      db,
+      id: 'outsider-user',
+      name: 'Outsider',
+      email: 'outsider@test.com',
+    });
+    await buildChurchMembership({
+      db,
+      churchId,
+      userId: outsider.id,
+      accessLevel: 'member',
+    });
+    signIn(outsider.id);
+    const response = await app.inject({
+      method: 'GET',
+      url: `${ROOT}/${mine.id}`,
+    });
+    expect(response.statusCode).toBe(403);
   });
 });

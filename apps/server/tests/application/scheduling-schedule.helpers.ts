@@ -3,11 +3,14 @@ import { ministryParticipation, sector } from '@church/db';
 import { fromDate } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
+import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
@@ -39,7 +42,6 @@ import {
 } from '@/seeds/builders/volunteer';
 import { schedulingTestDb } from '@/tests/scheduling-reshape/setup';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
-import { createAuthorityManagerFake } from '@/tests/test-support/repository-contract-fakes';
 
 /**
  * The managers and seed steps the assign (phase 6) and live-change
@@ -158,7 +160,17 @@ export function createSchedulingManagers({
       availabilityCheckRepo,
       cycleRepo: new DrizzleCycleRepository({ db: schedulingTestDb }),
       churchRepo: new DrizzleChurchRepository({ db: schedulingTestDb }),
-      authorityManager: createAuthorityManagerFake(),
+      authorityManager: new DbAuthorityManager({
+        actorRepository: new DrizzleAuthorityActorResolver({
+          db: schedulingTestDb,
+        }),
+        scopeRepository: new DrizzleSchedulingScopeResolver({
+          db: schedulingTestDb,
+        }),
+        eventRepository: plainEventRepo,
+        eventTimeBlockRepository: eventTimeBlockRepo,
+        ministryRepository: ministryRepo,
+      }),
       unitOfWork,
       config: { ...appConfig, assignment: { cancelLeadTimeDays } },
     }),

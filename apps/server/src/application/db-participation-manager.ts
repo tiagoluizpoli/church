@@ -54,7 +54,10 @@ import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.r
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
-import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
+import type {
+  MinistryParticipationRepository,
+  ScheduleLastToldRow,
+} from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
@@ -111,6 +114,43 @@ import {
   wallClockUtcBounds,
 } from '../domain/services/usual-setup-planner';
 import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
+
+interface CompareScheduleAssignmentsInput {
+  events: EventWithEventTimeBlocks[];
+  baseline: ScheduleLastToldRow[];
+  current: Map<VolunteerId, ScheduleAssignmentSnapshot[]>;
+  at: Instant;
+}
+
+function compareScheduleAssignments({
+  events,
+  baseline,
+  current,
+  at,
+}: CompareScheduleAssignmentsInput) {
+  const cancelled = new Set(
+    events
+      .filter(({ event }) => event.status === 'cancelled')
+      .map(({ event }) => event.id),
+  );
+  const old = new Map(
+    baseline.map((row) => [
+      row.volunteerId,
+      row.assignments.filter((item) => !cancelled.has(item.eventId)),
+    ]),
+  );
+  const ids = new Set([...old.keys(), ...current.keys()]);
+  return [...ids]
+    .map((id) => ({
+      id,
+      changes: scheduleChanges({
+        before: old.get(id) ?? [],
+        after: current.get(id) ?? [],
+        at,
+      }),
+    }))
+    .filter(({ changes }) => changes.length > 0);
+}
 
 interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
   eventId: EventWithEventTimeBlocks['event']['id'];
@@ -1360,29 +1400,12 @@ export class DbParticipationManager implements IParticipationManager {
         ...input,
         tx,
       });
-      const cancelled = new Set(
-        events
-          .filter(({ event }) => event.status === 'cancelled')
-          .map(({ event }) => event.id),
-      );
-      const old = new Map(
-        baseline.map((row) => [
-          row.volunteerId,
-          row.assignments.filter((item) => !cancelled.has(item.eventId)),
-        ]),
-      );
-      const ids = [...new Set([...old.keys(), ...current.keys()])];
-      const at = now();
-      const changed = ids
-        .map((id) => ({
-          id,
-          changes: scheduleChanges({
-            before: old.get(id) ?? [],
-            after: current.get(id) ?? [],
-            at,
-          }),
-        }))
-        .filter(({ changes }) => changes.length > 0);
+      const changed = compareScheduleAssignments({
+        events,
+        baseline,
+        current,
+        at: now(),
+      });
       if (changed.length === 0) throw new NoUnsentChangesError();
       const [church, ministry, cycle, volunteers] = await Promise.all([
         this.churchRepository.getById({ id: input.churchId }),
@@ -1404,6 +1427,10 @@ export class DbParticipationManager implements IParticipationManager {
       ]);
       if (volunteers.length !== changed.length)
         throw new NotFoundError('An assigned Volunteer could not be found');
+      const ids = new Set([
+        ...baseline.map(({ volunteerId }) => volunteerId),
+        ...current.keys(),
+      ]);
       for (const id of ids) {
         await this.participationRepository.saveScheduleLastTold({
           churchId: input.churchId,
@@ -1600,27 +1627,12 @@ export class DbParticipationManager implements IParticipationManager {
         this.collectScheduleAssignments({ input, participations, events, tx }),
         this.participationRepository.listScheduleLastTold({ ...input, tx }),
       ]);
-      const cancelledEvents = new Set(
-        events
-          .filter(({ event }) => event.status === 'cancelled')
-          .map(({ event }) => event.id),
-      );
-      const old = new Map(
-        baseline.map((row) => [
-          row.volunteerId,
-          row.assignments.filter((item) => !cancelledEvents.has(item.eventId)),
-        ]),
-      );
-      const volunteers = new Set([...old.keys(), ...current.keys()]);
-      const at = now();
-      return [...volunteers].filter(
-        (id) =>
-          scheduleChanges({
-            before: old.get(id) ?? [],
-            after: current.get(id) ?? [],
-            at,
-          }).length > 0,
-      ).length;
+      return compareScheduleAssignments({
+        events,
+        baseline,
+        current,
+        at: now(),
+      }).length;
     }
   }
 

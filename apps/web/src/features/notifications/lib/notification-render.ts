@@ -22,6 +22,34 @@ import {
 } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
 
+interface FormatShiftLineInput {
+  shift: ScheduleUpdateShift;
+  timeZone: string;
+  locale: ReturnType<typeof getLocale>;
+}
+
+function formatShiftLine({ shift, timeZone, locale }: FormatShiftLineInput) {
+  const startsAt = parseInstant({ value: shift.startsAt });
+  const endsAt = parseInstant({ value: shift.endsAt });
+  const day = formatDayLabel({
+    day: today({ instant: startsAt, timeZone }),
+    locale,
+  });
+  const start = formatTimeOfDay({
+    time: toTimeOfDay({ instant: startsAt, timeZone }),
+  });
+  const end = formatTimeOfDay({
+    time: toTimeOfDay({ instant: endsAt, timeZone }),
+  });
+  return [
+    day,
+    `${start}–${end}`,
+    shift.eventTitle,
+    shift.roleName,
+    shift.sectorName,
+  ].join(' · ');
+}
+
 export interface RenderedNotification {
   title: string;
   body: string;
@@ -62,27 +90,8 @@ export function renderNotification(
     case 'schedule_updated': {
       const { data } = item;
       const timeZone = data.churchTimezone;
-      const format = (shift: ScheduleUpdateShift) => {
-        const startsAt = parseInstant({ value: shift.startsAt });
-        const endsAt = parseInstant({ value: shift.endsAt });
-        const day = formatDayLabel({
-          day: today({ instant: startsAt, timeZone }),
-          locale: getLocale(),
-        });
-        const start = formatTimeOfDay({
-          time: toTimeOfDay({ instant: startsAt, timeZone }),
-        });
-        const end = formatTimeOfDay({
-          time: toTimeOfDay({ instant: endsAt, timeZone }),
-        });
-        return [
-          day,
-          `${start}–${end}`,
-          shift.eventTitle,
-          shift.roleName,
-          shift.sectorName,
-        ].join(' · ');
-      };
+      const format = (shift: ScheduleUpdateShift) =>
+        formatShiftLine({ shift, timeZone, locale: getLocale() });
       const lines = data.changes.map((change) => {
         if (change.kind === 'moved') {
           const before =
@@ -122,27 +131,9 @@ export function renderNotification(
     case 'schedule_published': {
       const { data } = item;
       const timeZone = data.churchTimezone;
-      const shifts = data.shifts.map((shift) => {
-        const startsAt = parseInstant({ value: shift.startsAt });
-        const endsAt = parseInstant({ value: shift.endsAt });
-        const day = formatDayLabel({
-          day: today({ instant: startsAt, timeZone }),
-          locale: getLocale(),
-        });
-        const start = formatTimeOfDay({
-          time: toTimeOfDay({ instant: startsAt, timeZone }),
-        });
-        const end = formatTimeOfDay({
-          time: toTimeOfDay({ instant: endsAt, timeZone }),
-        });
-        return [
-          day,
-          `${start}–${end}`,
-          shift.eventTitle,
-          shift.roleName,
-          shift.sectorName,
-        ].join(' · ');
-      });
+      const shifts = data.shifts.map((shift) =>
+        formatShiftLine({ shift, timeZone, locale: getLocale() }),
+      );
       return {
         title: m.notification_schedule_published_title({
           ministryName: data.ministryName,

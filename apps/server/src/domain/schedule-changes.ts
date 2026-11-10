@@ -22,6 +22,30 @@ export function scheduleChanges({
   after,
   at,
 }: ScheduleChangesInput): ScheduleChange[] {
+  // Cancel identical placements one-to-one before comparing remaining IDs.
+  // A replacement or remove/recreate allocates a new ID without changing what
+  // this Volunteer was told. Matching per Volunteer also preserves duplicates.
+  const reconciledBefore = new Set<ScheduleAssignmentSnapshot>();
+  const reconciledAfter = new Set<ScheduleAssignmentSnapshot>();
+  for (const previous of before) {
+    const equivalent = after.find(
+      (current) =>
+        !reconciledAfter.has(current) &&
+        previous.shiftId === current.shiftId &&
+        previous.roleId === current.roleId &&
+        previous.sectorId === current.sectorId &&
+        previous.startsAt === current.startsAt &&
+        previous.endsAt === current.endsAt &&
+        previous.eventStart === current.eventStart &&
+        previous.eventEnd === current.eventEnd,
+    );
+    if (equivalent) {
+      reconciledBefore.add(previous);
+      reconciledAfter.add(equivalent);
+    }
+  }
+  before = before.filter((item) => !reconciledBefore.has(item));
+  after = after.filter((item) => !reconciledAfter.has(item));
   const changes: ScheduleChange[] = [];
   const upcoming = (assignment: ScheduleAssignmentSnapshot) =>
     compareInstants({ left: assignment.startsAt, right: at }) > 0;

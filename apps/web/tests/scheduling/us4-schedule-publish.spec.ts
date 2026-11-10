@@ -104,16 +104,27 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   );
   await expect(requirement).toContainText(`1/${peopleNeeded}`);
 
-  await page.getByRole('button', { name: 'Publicar ciclo' }).first().click();
+  await page
+    .getByRole('button', {
+      name: m.builder_ui_publish({}, { locale: 'pt-BR' }),
+    })
+    .first()
+    .click();
   const publishDialog = page.getByRole('dialog', {
-    name: 'Publicar este ciclo?',
+    name: m.builder_ui_publish_title({}, { locale: 'pt-BR' }),
   });
   // One seat still open — the below-full publish; the confirm authorises it.
   await expect(publishDialog).toContainText(
     'Vagas em aberto: 1; turnos afetados: 1',
   );
-  await publishDialog.getByRole('button', { name: 'Publicar ciclo' }).click();
-  await expect(page.getByText('Ciclo publicado')).toBeVisible();
+  await publishDialog
+    .getByRole('button', {
+      name: m.builder_ui_publish({}, { locale: 'pt-BR' }),
+    })
+    .click();
+  await expect(
+    page.getByText(m.builder_logic_cycle_published({}, { locale: 'pt-BR' })),
+  ).toBeVisible();
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(
@@ -192,6 +203,24 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   await expect(page.getByRole('button', { name: sendLabel })).toBeVisible();
   await choose(volunteerName);
   await expect(page.getByRole('button', { name: sendLabel })).toHaveCount(0);
+  await expect
+    .poll(async () => {
+      const response = await page.request.get(
+        `${SERVER_URL}/api/v1/assign/cycles/${cycleId}/builder`,
+        { params: { ministryId: worshipMinistryId } },
+      );
+      expect(response.ok()).toBeTruthy();
+      const body = await response.json();
+      return body.affectedVolunteerCount;
+    })
+    .toBe(0);
+  const onePersonLabel = m.builder_send_updates(
+    { count: 1 },
+    { locale: 'pt-BR' },
+  );
+  await expect(page.getByRole('button', { name: onePersonLabel })).toHaveCount(
+    0,
+  );
   await choose(journey.personas.other.name);
   await page.getByRole('button', { name: sendLabel }).click();
   await expect(

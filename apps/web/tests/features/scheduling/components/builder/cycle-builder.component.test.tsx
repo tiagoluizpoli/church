@@ -598,7 +598,9 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
       renderBuilder();
 
       expect(
-        screen.getByRole('button', { name: 'Publish cycle' }),
+        screen.getByRole('button', {
+          name: m.builder_ui_publish({}, { locale: 'en' }),
+        }),
       ).toBeVisible();
       expect(
         screen.queryByRole('button', { name: 'Audit log' }),
@@ -666,7 +668,9 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
     });
 
     expect(
-      screen.queryByRole('button', { name: 'Publish cycle' }),
+      screen.queryByRole('button', {
+        name: m.builder_ui_publish({}, { locale: 'en' }),
+      }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Audit log' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();

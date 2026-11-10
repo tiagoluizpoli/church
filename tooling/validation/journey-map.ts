@@ -166,7 +166,6 @@ const PREPARE_SPEC_PATHS = [
 ];
 
 const BUILDER_SPEC_PATHS = [
-  ...SWAP_REQUEST_SPEC_PATHS,
   'tests/scheduling/a11y-builder.spec.ts',
   'tests/scheduling/builder-event-time-block-focus.spec.ts',
   'tests/scheduling/planning-role-guard-matrix.spec.ts',
@@ -664,6 +663,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // J9 (#812) — the Volunteer swap-request surfaces and N7/N8 notification
   // rendering/navigation it drives.
   ...[
+    'apps/web/src/features/scheduling/components/builder/swap-request/',
     'apps/web/src/features/volunteers/components/swap-request-sheet.tsx',
     'apps/web/src/features/volunteers/components/swap-withdraw-button.tsx',
     'apps/web/src/features/volunteers/components/assignment-detail-page.tsx',

@@ -262,6 +262,7 @@ export class AssignController implements FastifyController {
           body: publishCycleBodySchema,
           response: {
             200: publishCycleResponseSchema,
+            409: errorResponseSchema,
             403: errorResponseSchema,
             404: errorResponseSchema,
           },

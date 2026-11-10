@@ -611,38 +611,70 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
     });
   });
 
-  it('renders publication times and Shifts in the Church Timezone', () => {
+  it.each([
+    'en',
+    'pt-BR',
+  ] as const)('renders every published Shift in %s with escaped HTML and a full text link', (locale) => {
+    const actionUrl = 'https://app.church.test/dashboard?section=assignments';
     const email = prepareEmail({
       payload: {
         kind: 'schedule.published',
         ...member,
         ministryName: 'Louvor',
-        eventTitle: 'Vigília <Natal>',
-        // 02:30 UTC is 23:30 the day before in São Paulo.
-        eventStart: '2026-12-25T02:30:00.000Z' as Instant,
+        cycleName: 'Dezembro 2026',
         churchTimezone: 'America/Sao_Paulo',
         shifts: [
           {
-            roleName: 'Violão',
+            eventTitle: 'Vigília <Natal>',
             startsAt: '2026-12-25T02:30:00.000Z' as Instant,
+            endsAt: '2026-12-25T04:00:00.000Z' as Instant,
+            roleName: 'Violão & Voz',
+            sectorName: '<Palco>',
+          },
+          {
+            eventTitle: 'Culto',
+            startsAt: '2026-12-26T12:00:00.000Z' as Instant,
+            endsAt: '2026-12-26T13:00:00.000Z' as Instant,
+            roleName: 'Voz',
+            sectorName: 'Coro',
           },
         ],
-        actionUrl: 'https://app.church.test/dashboard?section=assignments',
+        actionUrl,
       },
-      from: 'church@example.com',
-      locale: 'pt-BR',
+      from,
+      locale,
       appName,
     });
-
+    const options = { locale };
     expect(email.request.subject).toBe(
-      m.notification_schedule_published_title({ ministryName: 'Louvor' }, ptBR),
+      m.notification_schedule_published_title(
+        { ministryName: 'Louvor' },
+        options,
+      ),
     );
-    expect(email.request.html).toContain('Vigília &lt;Natal&gt;');
-    expect(email.request.text).toContain('Vigília <Natal>');
-    expect(email.request.text).toContain('24/12/2026 23:30');
-    expect(email.request.text).toContain('- Violão — 24/12/2026 23:30');
+    expect(email.request.text).toContain(
+      m.notification_schedule_published_body(
+        { cycleName: 'Dezembro 2026', ministryName: 'Louvor' },
+        options,
+      ),
+    );
+    expect(email.request.text).toContain(
+      'Vigília <Natal> · Violão & Voz · <Palco>',
+    );
+    expect(email.request.text).toContain('Culto · Voz · Coro');
+    expect(email.request.text).toContain('23:30–01:00');
+    expect(email.request.text).toContain('09:00–10:00');
     expect(email.request.html).toContain(
-      m.email_schedule_published_action({}, ptBR),
+      'Vigília &lt;Natal&gt; · Violão &amp; Voz · &lt;Palco&gt;',
+    );
+    expect(email.request.html).toContain(`href="${actionUrl}"`);
+    expect(email.request.text).toContain(actionUrl);
+    expect(email.request.text).toContain(
+      m.email_schedule_published_action({}, options),
+    );
+    expect(email.request.from).toBe('"Igreja & <Graça>" <church@example.com>');
+    expect(email.request.text).toContain(
+      m.email_footer_membership({ churchName: member.churchName }, options),
     );
   });
 });

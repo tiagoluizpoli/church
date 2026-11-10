@@ -45,10 +45,10 @@ import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 const ANCHOR = parseCalendarDay({ value: '2026-03-15' });
-/** One per (published participation, Volunteer assigned when it was published). */
-const SCHEDULE_PUBLISHED = 346;
+/** One per (published Schedule, Volunteer assigned when it was published). */
+const SCHEDULE_PUBLISHED = 237;
 /** rafael.moura and joao.pereira never opened theirs. */
-const UNREAD_PUBLISHED = 6;
+const UNREAD_PUBLISHED = 2;
 
 class RollbackSentinel extends Error {}
 
@@ -1158,33 +1158,34 @@ describe('development seed recipe', () => {
       }),
     ).toBe(0);
 
-    // One per Volunteer and published participation they were assigned on
-    // when it was published; replacements came after and got none.
+    // Every originally assigned Volunteer has a Schedule-wide notification.
     expect(
       await queryCount({
         query: sql`select count(*) as value from (
-            select distinct a.participation_id, a.volunteer_id from ${assignment} a
-            where a.assigned_at = '2026-01-27T13:00:00Z'
-          ) as assigned
+            select distinct e.cycle_id, p.ministry_id, a.volunteer_id from ${assignment} a
+            join ${ministryParticipation} p on p.id = a.participation_id
+            join ${event} e on e.id = p.event_id
+            where a.assigned_at = '2026-01-27T13:00:00Z') as assigned
           where not exists (select 1 from notification n
-            join ${ministryParticipation} p on p.event_id::text = n.data->>'eventId' and p.ministry_id::text = n.data->>'ministryId'
             join ${volunteer} v on v.user_id = n.user_id
-            where p.id = assigned.participation_id and v.id = assigned.volunteer_id
-              and n.kind = 'schedule_published')`,
+            where n.data->>'cycleId' = assigned.cycle_id::text
+              and n.data->>'ministryId' = assigned.ministry_id::text
+              and v.id = assigned.volunteer_id and n.kind = 'schedule_published')`,
       }),
     ).toBe(0);
 
     const published = await testDb.execute<NotificationRow>(sql`
-      select u.email, n.kind as type, n.data->>'eventTitle' as title,
+      select u.email, n.kind as type, 'Culto de Quarta' as title,
         n.data->>'ministryName' as body,
         (n.data->>'cycleId') = e.cycle_id::text as "inCycle",
         to_char(n.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as at,
         to_char(n.read_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"') as read
       from notification n
       join ${user} u on u.id = n.user_id
-      join ${event} e on e.id::text = n.data->>'eventId'
+      join ${event} e on e.cycle_id::text = n.data->>'cycleId'
       where n.kind = 'schedule_published' and n.data->>'ministryName' = 'Intercessão'
         and e.start = '2026-02-18T23:00:00Z'
+        and exists (select 1 from jsonb_array_elements(n.data->'shifts') line where line->>'eventTitle' = e.title)
         and u.email in ('isabela.medeiros@igreja-semente.test', 'vanessa.campos@igreja-semente.test')`);
     expect(published.rows).toEqual([
       {

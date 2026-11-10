@@ -70,7 +70,16 @@ export function CycleBuilder({
   const [pendingRemovalId, setPendingRemovalId] = useState<string | null>(null);
   const staffing = summarizeCycleStaffing({ data });
   const counts = summarizeCycleCounts({ data, assignedCount: staffing.filled });
-  const belowFullCount = staffing.shiftsBelowTarget;
+  const publishableEvents = data.events.filter(
+    (event) =>
+      event.status !== 'cancelled' &&
+      (event.state === 'assigning' || event.state === 'availability_requested'),
+  );
+  const publishStaffing = summarizeCycleStaffing({
+    data: { ...data, events: publishableEvents },
+  });
+  const belowFullCount = publishStaffing.shiftsBelowTarget;
+  const emptyPlaces = publishStaffing.required - publishStaffing.coveredPlaces;
   const actions = useCycleBuilderActions({
     data,
     createAssignment,
@@ -101,14 +110,16 @@ export function CycleBuilder({
           {m.builder_ui_audit()}
         </Button>
       ) : null}
-      <Button
-        type="button"
-        size={isMobile ? 'touch' : 'sm'}
-        disabled={isPublishing || actions.isSaving}
-        onClick={() => setPublishDialogOpen(true)}
-      >
-        {isPublishing ? m.builder_ui_publishing() : m.builder_ui_publish()}
-      </Button>
+      {publishableEvents.length > 0 ? (
+        <Button
+          type="button"
+          size={isMobile ? 'touch' : 'sm'}
+          disabled={isPublishing || actions.isSaving}
+          onClick={() => setPublishDialogOpen(true)}
+        >
+          {isPublishing ? m.builder_ui_publishing() : m.builder_ui_publish()}
+        </Button>
+      ) : null}
     </>
   );
 
@@ -209,9 +220,10 @@ export function CycleBuilder({
             <DialogTitle>{m.builder_ui_publish_title()}</DialogTitle>
             <DialogDescription>
               {belowFullCount > 0
-                ? belowFullCount === 1
-                  ? m.builder_ui_publish_below_one()
-                  : m.builder_ui_publish_below_many({ count: belowFullCount })
+                ? m.builder_ui_publish_gaps({
+                    places: emptyPlaces,
+                    shifts: belowFullCount,
+                  })
                 : m.builder_ui_publish_full()}
             </DialogDescription>
           </DialogHeader>

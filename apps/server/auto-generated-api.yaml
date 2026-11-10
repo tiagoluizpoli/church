@@ -7460,6 +7460,21 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/shifts/{shiftId}/eligible-volunteers:
     get:
       operationId: listEligibleVolunteers
@@ -8358,55 +8373,52 @@ paths:
                             data:
                               type: object
                               properties:
-                                eventId:
-                                  type: string
-                                  format: uuid
-                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 cycleId:
                                   type: string
                                   format: uuid
                                   pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                cycleName:
+                                  type: string
                                 ministryId:
                                   type: string
                                   format: uuid
                                   pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 ministryName:
                                   type: string
-                                eventTitle:
-                                  type: string
-                                eventStart:
-                                  type: string
-                                  format: date-time
-                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                                eventEnd:
-                                  type: string
-                                  format: date-time
-                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                                 churchTimezone:
                                   type: string
                                 shifts:
+                                  minItems: 1
                                   type: array
                                   items:
                                     type: object
                                     properties:
+                                      eventTitle:
+                                        type: string
                                       roleName:
+                                        type: string
+                                      sectorName:
                                         type: string
                                       startsAt:
                                         type: string
                                         format: date-time
                                         pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                      endsAt:
+                                        type: string
+                                        format: date-time
+                                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                                     required:
+                                      - eventTitle
                                       - roleName
+                                      - sectorName
                                       - startsAt
+                                      - endsAt
                                     additionalProperties: false
                               required:
-                                - eventId
                                 - cycleId
+                                - cycleName
                                 - ministryId
                                 - ministryName
-                                - eventTitle
-                                - eventStart
-                                - eventEnd
                                 - churchTimezone
                                 - shifts
                               additionalProperties: false
@@ -11829,55 +11841,52 @@ paths:
                             data:
                               type: object
                               properties:
-                                eventId:
-                                  type: string
-                                  format: uuid
-                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 cycleId:
                                   type: string
                                   format: uuid
                                   pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                cycleName:
+                                  type: string
                                 ministryId:
                                   type: string
                                   format: uuid
                                   pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 ministryName:
                                   type: string
-                                eventTitle:
-                                  type: string
-                                eventStart:
-                                  type: string
-                                  format: date-time
-                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                                eventEnd:
-                                  type: string
-                                  format: date-time
-                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                                 churchTimezone:
                                   type: string
                                 shifts:
+                                  minItems: 1
                                   type: array
                                   items:
                                     type: object
                                     properties:
+                                      eventTitle:
+                                        type: string
                                       roleName:
+                                        type: string
+                                      sectorName:
                                         type: string
                                       startsAt:
                                         type: string
                                         format: date-time
                                         pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                      endsAt:
+                                        type: string
+                                        format: date-time
+                                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                                     required:
+                                      - eventTitle
                                       - roleName
+                                      - sectorName
                                       - startsAt
+                                      - endsAt
                                     additionalProperties: false
                               required:
-                                - eventId
                                 - cycleId
+                                - cycleName
                                 - ministryId
                                 - ministryName
-                                - eventTitle
-                                - eventStart
-                                - eventEnd
                                 - churchTimezone
                                 - shifts
                               additionalProperties: false

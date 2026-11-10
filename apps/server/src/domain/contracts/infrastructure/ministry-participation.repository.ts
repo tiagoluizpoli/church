@@ -5,12 +5,14 @@ import type {
   EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
+  VolunteerId,
 } from '../../branded-ids';
 import type {
   MinistryParticipation,
   ParticipationState,
 } from '../../entities/ministry-participation';
 import type { ParticipationEventTimeBlockInclusion } from '../../entities/participation-event-time-block-inclusion';
+import type { ScheduleAssignmentSnapshot } from '../../schedule-last-told';
 import type { TransactionContext } from './transaction-context';
 
 export interface GetParticipationInput {
@@ -161,7 +163,17 @@ export interface ScheduleLateMarkCountRow {
   count: number;
 }
 
+export interface SaveScheduleLastToldInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  cycleId: CycleId;
+  volunteerId: VolunteerId;
+  assignments: ScheduleAssignmentSnapshot[];
+  tx: TransactionContext;
+}
+
 export interface MinistryParticipationRepository {
+  saveScheduleLastTold(input: SaveScheduleLastToldInput): Promise<void>;
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;
   /** Holds the row until `tx` ends, so its state cannot change under the caller. */
   lockById(input: LockParticipationInput): Promise<MinistryParticipation>;

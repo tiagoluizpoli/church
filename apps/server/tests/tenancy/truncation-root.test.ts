@@ -24,6 +24,7 @@ import {
   outboxMessage,
   participationEventTimeBlockInclusion,
   role,
+  scheduleLastTold,
   sector,
   securityLog,
   session,
@@ -350,6 +351,14 @@ async function seedEveryTenantedTable(): Promise<void> {
     shiftRequirementId: requirement.id,
     status: 'confirmed',
     assignedBy: IDS.user,
+  });
+
+  await testDb.insert(scheduleLastTold).values({
+    churchId: IDS.church,
+    ministryId: IDS.ministry,
+    cycleId: IDS.cycle,
+    volunteerId: IDS.volunteer,
+    assignments: [{ assignmentId: IDS.assignment, shiftId: IDS.shift }],
   });
 
   await testDb.insert(assignmentAudit).values({

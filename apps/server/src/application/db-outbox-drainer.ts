@@ -341,11 +341,13 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           data: request.data,
         });
       case 'schedule_published':
-        return this.schedulingFacts.schedulePublished({
-          churchId,
-          userId: to.userId,
-          data: request.data,
-        });
+        return {
+          ...request.data,
+          actionUrl: webLink({
+            baseUrl: this.webBaseUrl,
+            path: '/my-schedule',
+          }),
+        };
       case 'transfer_ministry_digest':
       case 'transfer_leaderless_ministry':
         return this.loadTransferDigestFacts({ churchId, to, request });
@@ -394,6 +396,13 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   }: ProcessNotificationMessageInput): Promise<'sent' | 'failed'> {
     const { to, kind, data } = message.payload;
     const request = notificationRequestDataSchemas[kind]?.safeParse(data);
+    if (!request?.success && kind === 'schedule_published') {
+      await this.skipDelivery({
+        message,
+        why: 'its frozen facts predate a required field',
+      });
+      return 'sent';
+    }
     if (!request?.success) {
       await this.failTerminally({
         message,

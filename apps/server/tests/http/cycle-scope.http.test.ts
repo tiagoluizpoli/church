@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { appConfig, withAllParkedOn } from '@church/app-config';
 import { ministryParticipation } from '@church/db';
 import { m } from '@church/i18n/messages';
+import { eq } from 'drizzle-orm';
 import {
   afterAll,
   beforeAll,
@@ -25,6 +26,7 @@ import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { createSchedulingManagers } from '@/tests/application/scheduling-schedule.helpers';
 import {
   createSchedulingPhase3Cycle,
+  createSchedulingPhase3EventGraph,
   resetSchedulingPhase3Db,
   schedulingTestDb,
   seedSchedulingPhase3Base,
@@ -41,7 +43,10 @@ const mockGetSession = vi.mocked(
 );
 
 const activeChurchResolver = { resolve: vi.fn() };
-const authorityGuard = { decideManageMinistry: vi.fn() };
+const authorityGuard = {
+  decideManageMinistry: vi.fn(),
+  decideManageAnyMinistry: vi.fn(),
+};
 
 let app: FastifyTypedInstance;
 
@@ -118,7 +123,11 @@ async function seedCycleScope() {
     startDate: new Date('2026-09-01T00:00:00.000Z'),
     endDate: new Date('2026-10-01T00:00:00.000Z'),
   });
-  return { ministryId: seed.ministryAId, foreignCycleId: foreignCycle.id };
+  return {
+    churchId: seed.churchAId,
+    ministryId: seed.ministryAId,
+    foreignCycleId: foreignCycle.id,
+  };
 }
 
 const routes = [
@@ -128,6 +137,78 @@ const routes = [
   ['GET', 'assign', 'audit'],
   ['POST', 'assign', 'publish'],
 ] as const;
+
+describe('Schedule publish authorization and refusals', () => {
+  it('returns 401 without a session and 403 without Ministry authority', async () => {
+    const seed = await seedCycleScope();
+    const url = `/api/v1/assign/cycles/${randomUUID()}/publish?ministryId=${seed.ministryId}`;
+    mockGetSession.mockResolvedValueOnce(null);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url,
+          payload: { confirmBelowFull: true },
+        })
+      ).statusCode,
+    ).toBe(401);
+    authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: false });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+    });
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url,
+          payload: { confirmBelowFull: true },
+        })
+      ).statusCode,
+    ).toBe(403);
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({ allowed: true });
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url,
+          payload: { confirmBelowFull: true },
+        })
+      ).statusCode,
+    ).toBe(404);
+  });
+
+  it('returns the empty-Schedule 409 over the publish endpoint', async () => {
+    const seed = await seedCycleScope();
+    const scope = await createSchedulingPhase3Cycle({
+      churchId: seed.churchId,
+      name: 'Future',
+      startDate: new Date('2035-01-01T00:00:00Z'),
+      endDate: new Date('2035-02-01T00:00:00Z'),
+      state: 'sent',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchId,
+      cycleId: scope.id,
+      ministryId: seed.ministryId,
+      title: 'Future Event',
+      start: new Date('2035-01-10T10:00:00Z'),
+      end: new Date('2035-01-10T12:00:00Z'),
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.id, graph.participation.id));
+    const result = await app.inject({
+      method: 'POST',
+      url: `/api/v1/assign/cycles/${scope.id}/publish?ministryId=${seed.ministryId}`,
+      payload: { confirmBelowFull: true },
+    });
+    expect(result.statusCode).toBe(409);
+    expect(result.json()).toMatchObject({
+      error: 'SCHEDULE_HAS_NO_ASSIGNMENTS',
+    });
+  });
+});
 
 describe('Cycle-scoped Prepare/Assign routes', () => {
   it.each(

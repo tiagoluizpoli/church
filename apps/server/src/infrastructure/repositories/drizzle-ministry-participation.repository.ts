@@ -7,6 +7,7 @@ import {
   ministryMembership,
   ministryParticipation,
   participationEventTimeBlockInclusion,
+  scheduleLastTold,
   shift,
   unavailableShift,
 } from '@church/db';
@@ -40,6 +41,7 @@ import type {
   LockScheduleParticipationsInput,
   MinistryParticipationRepository,
   RemoveInclusionInput,
+  SaveScheduleLastToldInput,
   ScheduleCheckCountRow,
   ScheduleLateMarkCountRow,
   ScheduleServingStateRow,
@@ -69,6 +71,28 @@ export class DrizzleMinistryParticipationRepository
   }
 
   private readonly db: AnyDrizzleDb;
+
+  async saveScheduleLastTold(input: SaveScheduleLastToldInput): Promise<void> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    await db
+      .insert(scheduleLastTold)
+      .values({
+        churchId: input.churchId,
+        ministryId: input.ministryId,
+        cycleId: input.cycleId,
+        volunteerId: input.volunteerId,
+        assignments: input.assignments,
+      })
+      .onConflictDoUpdate({
+        target: [
+          scheduleLastTold.churchId,
+          scheduleLastTold.ministryId,
+          scheduleLastTold.cycleId,
+          scheduleLastTold.volunteerId,
+        ],
+        set: { assignments: input.assignments },
+      });
+  }
 
   async getById(input: GetParticipationInput): Promise<MinistryParticipation> {
     if (!isValidUuid(input.participationId)) {

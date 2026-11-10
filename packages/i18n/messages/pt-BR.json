@@ -189,7 +189,7 @@
   "notification_availability_mark_only": "Marque só os turnos em que não pode servir e confirme.",
   "notification_kind_schedule_published": "Escala publicada",
   "notification_schedule_published_title": "Escala de {ministryName} publicada",
-  "notification_schedule_published_body": "{eventTitle}, em {startsAt}, foi publicado para {ministryName}.",
+  "notification_schedule_published_body": "A escala de {cycleName} foi publicada para {ministryName}.",
   "notification_schedule_published_shifts": "Seus turnos: {shifts}",
   "notification_schedule_published_no_shifts": "Você não tem turnos neste evento.",
   "notification_kind_cycle_ready_to_prepare": "Ciclo pronto para preparar",
@@ -1214,5 +1214,8 @@
   "builder_ui_drag_assignment": "Arrastar {name} para outro setor",
   "builder_ui_moved": "{name} foi movido",
   "builder_late_mark_tooltip": "Indisponível após a escala: {shift}",
-  "schedule_late_mark_count": "{count} indisponibilidades após a escala"
+  "schedule_late_mark_count": "{count} indisponibilidades após a escala",
+  "builder_ui_publish_gaps": "Vagas em aberto: {places}; turnos afetados: {shifts}. Você pode publicar mesmo assim.",
+  "error_schedule_has_no_assignments": "Escale pelo menos uma pessoa voluntária antes de publicar.",
+  "error_schedule_already_published": "Esta escala já foi publicada."
 }

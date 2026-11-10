@@ -104,7 +104,7 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   });
   // One seat still open — the below-full publish; the confirm authorises it.
   await expect(publishDialog).toContainText(
-    '1 turno está abaixo da meta de voluntários',
+    'Vagas em aberto: 1; turnos afetados: 1',
   );
   await publishDialog.getByRole('button', { name: 'Publicar ciclo' }).click();
   await expect(page.getByText('Ciclo publicado')).toBeVisible();

@@ -4,6 +4,7 @@ import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAP
 
 export type NotificationNavigationTarget =
   | { to: '/notifications' }
+  | { to: '/my-schedule' }
   | { to: '/availability' }
   | { to: '/availability/$checkId'; params: { checkId: string } }
   | {
@@ -64,17 +65,7 @@ export function resolveNotificationDestination(
       };
     }
     case 'schedule_published':
-      return {
-        target: {
-          to: '/dashboard',
-          search: {
-            section: 'assignments',
-            eventId: item.data.eventId,
-            ministryId: item.data.ministryId,
-          },
-        },
-        isFallback: false,
-      };
+      return { target: { to: '/my-schedule' }, isFallback: false };
     case 'cycle_ready_to_prepare': {
       const { cycleId, ministries } = item.data;
       const [only, ...others] = ministries;

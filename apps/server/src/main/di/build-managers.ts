@@ -225,13 +225,8 @@ export function buildManagers({
         churchRepository,
         ministryRepository,
         cycleRepository,
-        participationRepository: ministryParticipationRepository,
         eventRepository: planningEventRepository,
-        eventTimeBlockRepository,
-        assignmentRepository,
         availabilityCheckRepository,
-        roleRepository,
-        volunteerRepository,
         webBaseUrl: env.CORS_ORIGIN,
       }),
       notifier: buildChurchNotifier({

@@ -215,16 +215,19 @@ describe('useNotificationInbox', () => {
           id: 'published-1',
           kind: 'schedule_published',
           data: {
-            eventId: MINISTRY_ID,
             cycleId: MINISTRY_ID,
+            cycleName: 'Dezembro 2026',
             ministryId: MINISTRY_ID,
             ministryName: 'Louvor',
-            eventTitle: 'Vigília de Natal',
-            eventStart: '2026-12-25T02:30:00.000Z',
-            eventEnd: '2026-12-25T04:00:00.000Z',
             churchTimezone: 'America/Sao_Paulo',
             shifts: [
-              { roleName: 'Violão', startsAt: '2026-12-25T02:30:00.000Z' },
+              {
+                eventTitle: 'Vigília de Natal',
+                roleName: 'Violão',
+                sectorName: 'Palco',
+                startsAt: '2026-12-25T02:30:00.000Z',
+                endsAt: '2026-12-25T04:00:00.000Z',
+              },
             ],
           },
           createdAt: '2026-12-20T12:00:00.000Z',
@@ -241,10 +244,10 @@ describe('useNotificationInbox', () => {
       'Escala de Louvor publicada',
     );
     expect(result.current.selectedNotification?.body).toContain(
-      'Vigília de Natal, em 24/12/2026 23:30',
+      'A escala de Dezembro 2026 foi publicada para Louvor.',
     );
     expect(result.current.selectedNotification?.body).toContain(
-      'Violão (24/12/2026 23:30)',
+      '23:30–01:00 · Vigília de Natal · Violão · Palco',
     );
   });
 

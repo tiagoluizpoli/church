@@ -372,6 +372,12 @@ export function useCycleBuilder({
       // when the cycle is below its staffing target and the leader has not
       // confirmed, so the two outcomes must read differently.
       if (result.published) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['prepare-schedules'] }),
+          queryClient.invalidateQueries({
+            queryKey: ['prepare-cycle-participation', ministryId, cycleId],
+          }),
+        ]);
         toast.success(m.builder_logic_cycle_published());
         return;
       }

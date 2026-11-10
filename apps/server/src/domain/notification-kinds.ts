@@ -51,23 +51,22 @@ export const availabilityNotificationDataSchema = z.object({
   deadlinePassed: z.boolean().optional(),
 });
 
-/** One of the recipient's own Shifts in the published event. */
+/** One of the recipient's Shifts, frozen when the Schedule is published. */
 export const schedulePublishedShiftSchema = z.object({
+  eventTitle: z.string(),
   roleName: z.string(),
+  sectorName: z.string(),
   startsAt: instantSchema,
+  endsAt: instantSchema,
 });
 
 export const schedulePublishedNotificationDataSchema = z.object({
-  eventId: z.uuid(),
   cycleId: z.uuid(),
+  cycleName: z.string(),
   ministryId: z.uuid(),
   ministryName: z.string(),
-  eventTitle: z.string(),
-  eventStart: instantSchema,
-  eventEnd: instantSchema,
-  /** The Church Timezone the Instants are read in. */
   churchTimezone: z.string(),
-  shifts: z.array(schedulePublishedShiftSchema),
+  shifts: z.array(schedulePublishedShiftSchema).min(1),
 });
 
 /**
@@ -147,7 +146,9 @@ export const notificationRequestDataSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   availability_reminder: availabilityRequestDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
-  schedule_published: z.object({ participationId: z.uuid() }),
+  schedule_published: schedulePublishedNotificationDataSchema.extend({
+    churchName: z.string(),
+  }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   cycle_ready_to_prepare: z.object({
     cycleId: z.uuid(),

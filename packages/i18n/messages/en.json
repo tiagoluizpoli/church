@@ -189,7 +189,7 @@
   "notification_availability_mark_only": "Mark only the shifts you can't serve, then confirm.",
   "notification_kind_schedule_published": "Schedule published",
   "notification_schedule_published_title": "{ministryName} schedule published",
-  "notification_schedule_published_body": "{eventTitle} on {startsAt} is published for {ministryName}.",
+  "notification_schedule_published_body": "The {cycleName} schedule is published for {ministryName}.",
   "notification_schedule_published_shifts": "Your shifts: {shifts}",
   "notification_schedule_published_no_shifts": "You have no shifts in this event.",
   "notification_kind_cycle_ready_to_prepare": "Cycle ready to prepare",
@@ -1214,5 +1214,8 @@
   "builder_ui_drag_assignment": "Drag {name} to another sector",
   "builder_ui_moved": "Moved {name}",
   "builder_late_mark_tooltip": "Unavailable after assignment: {shift}",
-  "schedule_late_mark_count": "{count} late availability marks"
+  "schedule_late_mark_count": "{count} late availability marks",
+  "builder_ui_publish_gaps": "Empty places: {places}; affected shifts: {shifts}. You can publish anyway.",
+  "error_schedule_has_no_assignments": "Assign at least one volunteer before publishing.",
+  "error_schedule_already_published": "This schedule has already been published."
 }

@@ -1,4 +1,12 @@
 import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
+import {
+  formatDayLabel,
+  formatTimeOfDay,
+  parseInstant,
+  today,
+  toTimeOfDay,
+} from '@church/time';
 import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
 import {
   formatCalendarDateOnly,
@@ -45,26 +53,41 @@ export function renderNotification(
       };
     case 'schedule_published': {
       const { data } = item;
-      const at = (value: string) =>
-        formatInstantOf({ value, timeZone: data.churchTimezone });
-      const shifts =
-        data.shifts.length > 0
-          ? m.notification_schedule_published_shifts({
-              shifts: data.shifts
-                .map((shift) => `${shift.roleName} (${at(shift.startsAt)})`)
-                .join(', '),
-            })
-          : m.notification_schedule_published_no_shifts();
+      const timeZone = data.churchTimezone;
+      const shifts = data.shifts.map((shift) => {
+        const startsAt = parseInstant({ value: shift.startsAt });
+        const endsAt = parseInstant({ value: shift.endsAt });
+        const day = formatDayLabel({
+          day: today({ instant: startsAt, timeZone }),
+          locale: getLocale(),
+        });
+        const start = formatTimeOfDay({
+          time: toTimeOfDay({ instant: startsAt, timeZone }),
+        });
+        const end = formatTimeOfDay({
+          time: toTimeOfDay({ instant: endsAt, timeZone }),
+        });
+        return [
+          day,
+          `${start}–${end}`,
+          shift.eventTitle,
+          shift.roleName,
+          shift.sectorName,
+        ].join(' · ');
+      });
       return {
         title: m.notification_schedule_published_title({
           ministryName: data.ministryName,
         }),
-        body: `${m.notification_schedule_published_body({
-          eventTitle: data.eventTitle,
-          startsAt: at(data.eventStart),
-          ministryName: data.ministryName,
-        })}\n${shifts}`,
+        body: [
+          m.notification_schedule_published_body({
+            cycleName: data.cycleName,
+            ministryName: data.ministryName,
+          }),
+          ...shifts,
+        ].join('\n'),
         kindLabel: m.notification_kind_schedule_published(),
+        actionLabel: m.email_schedule_published_action(),
       };
     }
     case 'cycle_ready_to_prepare':

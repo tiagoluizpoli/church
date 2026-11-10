@@ -188,6 +188,8 @@ export function createMinistryRepositoryFake() {
 
 export function createMinistryParticipationRepositoryFake() {
   return {
+    saveScheduleLastTold:
+      vi.fn<MinistryParticipationRepository['saveScheduleLastTold']>(),
     getById: vi.fn<MinistryParticipationRepository['getById']>(),
     lockById: vi.fn<MinistryParticipationRepository['lockById']>(),
     lockSchedule: vi.fn<MinistryParticipationRepository['lockSchedule']>(),

@@ -12,14 +12,12 @@ import type { NotificationRepository } from '@/domain/contracts/infrastructure/n
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import {
-  DrizzleAssignmentRepository,
   DrizzleAvailabilityCheckRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
   DrizzleEventRepository,
   DrizzleEventTimeBlockRepository,
   DrizzleMinistryInvitationRepository,
-  DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
   DrizzleNotificationRepository,
   DrizzleOutboxRepository,
@@ -79,13 +77,8 @@ export function createMinistryInvitationTestHarness({
     churchRepository,
     ministryRepository,
     cycleRepository: new DrizzleCycleRepository({ db }),
-    participationRepository: new DrizzleMinistryParticipationRepository({ db }),
     eventRepository: new DrizzlePlanningEventRepository({ db }),
-    eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
-    assignmentRepository: new DrizzleAssignmentRepository({ db }),
     availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({ db }),
-    roleRepository,
-    volunteerRepository,
     webBaseUrl: 'https://app.test',
   });
   const manager = new DbMinistryInvitationManager({

@@ -219,6 +219,7 @@ function createRepos(): Repos {
   };
 
   const ministryParticipationRepo: MinistryParticipationRepository = {
+    saveScheduleLastTold: vi.fn(),
     getById: vi.fn(),
     lockById: vi.fn(),
     lockSchedule: vi.fn(),

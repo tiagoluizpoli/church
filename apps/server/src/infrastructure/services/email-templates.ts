@@ -175,33 +175,25 @@ function memberNotificationContent({
     footer: m.email_footer_membership({ churchName }, options),
   };
   if (payload.kind === 'schedule.published') {
-    const at = (instant: SchedulePublishedEmail['eventStart']) =>
-      formatInstant({ instant, timeZone: payload.churchTimezone });
     const title = m.notification_schedule_published_title(
       { ministryName },
       options,
     );
     const body = m.notification_schedule_published_body(
-      {
-        eventTitle: payload.eventTitle,
-        startsAt: at(payload.eventStart),
-        ministryName,
-      },
+      { cycleName: payload.cycleName, ministryName },
       options,
     );
     return {
       ...base,
       subject: title,
       heading: title,
-      facts:
-        payload.shifts.length > 0
-          ? [body, m.email_schedule_published_shifts({}, options)]
-          : [body],
+      facts: [body, m.email_schedule_published_shifts({}, options)],
       list: payload.shifts.map((shift) =>
-        m.email_schedule_published_shift(
-          { roleName: shift.roleName, startsAt: at(shift.startsAt) },
-          options,
-        ),
+        formatShiftLine({
+          ...shift,
+          churchTimezone: payload.churchTimezone,
+          locale,
+        }),
       ),
       action: {
         label: m.email_schedule_published_action({}, options),

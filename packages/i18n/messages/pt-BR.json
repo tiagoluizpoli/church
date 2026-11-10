@@ -217,10 +217,11 @@
   "notification_cycle_ready_to_prepare_ministries_other": "Seus ministérios: {ministryNames}",
   "notification_cycle_ready_to_prepare_action": "Preparar",
   "notification_kind_swap_request_answered": "Pedido de troca respondido",
-  "notification_swap_request_answered_title": "Seu líder respondeu ao seu pedido de troca",
-  "notification_swap_request_answered_body": "{ministryName} manteve você em {shift}.",
+  "notification_swap_request_answered_title": "Seu pedido de troca foi respondido",
+  "notification_swap_request_answered_body": "{leaderName} manteve você em:",
+  "notification_swap_request_answered_ask_again": "Você pode pedir de novo pelo turno.",
   "notification_swap_request_answered_reply": "Resposta: {reply}",
-  "notification_swap_request_answered_action": "Ver escala",
+  "notification_swap_request_answered_action": "Ver detalhes",
   "email_invitation_admin_title": "Você foi convidado para ajudar a administrar {churchName}",
   "email_invitation_admin_body": "{churchName} convidou você para ajudar a administrar a igreja como administrador.",
   "email_invitation_lead_title": "Você foi convidado para liderar {ministryName}",
@@ -1320,5 +1321,9 @@
   "swap_board_status_expired": "Sem resposta",
   "swap_board_expired_hint": "O turno já começou, então este pedido não pode mais ser respondido.",
   "swap_board_unavailable": "Este pedido de troca não está mais aberto ou não foi encontrado.",
-  "swap_board_close": "Fechar"
+  "swap_board_close": "Fechar",
+  "swap_board_keep": "Manter na escala",
+  "swap_board_reply_label": "Resposta (opcional)",
+  "swap_board_cover_hint": "Para atender o pedido, mova, troque ou remova a Escala no quadro.",
+  "swap_board_keep_error": "Não foi possível salvar sua resposta. Tente de novo."
 }

@@ -307,6 +307,7 @@ export function CycleBuilder({
 
         {selectedSwapRequest ? (
           <SwapRequestSheet
+            ministryId={ministryId}
             request={selectedSwapRequest}
             onOpenChange={(open) => !open && onSelectSwapRequest?.(undefined)}
           />

@@ -52,6 +52,7 @@ beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new SwapRequestListController({
+    swapRequestManager: {} as never,
     swapRequestListManager: new DbSwapRequestListManager({
       swapRequestRepo: new DrizzleSwapRequestRepository({ db }),
     }),

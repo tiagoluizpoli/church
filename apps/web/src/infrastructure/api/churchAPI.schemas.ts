@@ -3686,6 +3686,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;
   ministryName: string;
+  leaderName: string;
   churchTimezone: string;
   shift: {
   eventTitle: string;
@@ -5205,6 +5206,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;
   ministryName: string;
+  leaderName: string;
   churchTimezone: string;
   shift: {
   eventTitle: string;
@@ -5685,6 +5687,29 @@ export type ListMinistrySwapRequests200 = {
 };
 
 export type ListMinistrySwapRequests404 = {
+  error: string;
+  message: string;
+};
+
+export type KeepSwapRequestBody = {
+  reply?: string;
+};
+
+/**
+ * @nullable
+ */
+export type KeepSwapRequest204 = typeof KeepSwapRequest204[keyof typeof KeepSwapRequest204] | null;
+
+
+export const KeepSwapRequest204 = {
+} as const;
+
+export type KeepSwapRequest404 = {
+  error: string;
+  message: string;
+};
+
+export type KeepSwapRequest409 = {
   error: string;
   message: string;
 };

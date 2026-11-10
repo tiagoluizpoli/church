@@ -19,6 +19,7 @@ import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-bui
 import type { LeaderSwapRequest } from '@/features/scheduling/components/builder/swap-request/swap-request-sheet';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
+import { adminApi } from '@/utils/api-instances';
 
 beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
@@ -765,5 +766,93 @@ describe('Swap requests on the board', () => {
     expect(
       screen.getAllByRole('button').map((button) => button.textContent),
     ).not.toContain(expect.stringMatching(/keep|cover/i));
+  });
+
+  describe('Keep them on', () => {
+    const keepWith = (implementation: () => Promise<unknown>) =>
+      vi
+        .spyOn(adminApi, 'keepSwapRequest')
+        .mockImplementation(implementation as never);
+
+    it('sends the trimmed reply, then closes the sheet', async () => {
+      const keep = keepWith(() => Promise.resolve(null));
+      const onSelectSwapRequest = vi.fn();
+      renderBuilder({
+        data,
+        swapRequests: [request],
+        selectedSwapRequestId: 'request-1',
+        onSelectSwapRequest,
+      });
+
+      await userEvent.type(
+        screen.getByLabelText(m.swap_board_reply_label()),
+        '  Stay with us  ',
+      );
+      await userEvent.click(
+        screen.getByRole('button', { name: m.swap_board_keep() }),
+      );
+
+      await waitFor(() =>
+        expect(onSelectSwapRequest).toHaveBeenCalledWith(undefined),
+      );
+      expect(keep).toHaveBeenCalledWith('ministry-1', 'request-1', {
+        reply: 'Stay with us',
+      });
+    });
+
+    it('sends no reply when it is blank', async () => {
+      const keep = keepWith(() => Promise.resolve(null));
+      renderBuilder({
+        data,
+        swapRequests: [request],
+        selectedSwapRequestId: 'request-1',
+      });
+
+      await userEvent.type(
+        screen.getByLabelText(m.swap_board_reply_label()),
+        '   ',
+      );
+      await userEvent.click(
+        screen.getByRole('button', { name: m.swap_board_keep() }),
+      );
+
+      await waitFor(() =>
+        expect(keep).toHaveBeenCalledWith('ministry-1', 'request-1', {
+          reply: undefined,
+        }),
+      );
+    });
+
+    it('recovers from a conflict by closing the sheet on the current state', async () => {
+      keepWith(() =>
+        Promise.reject(
+          new AxiosError('conflict', '409', undefined, undefined, {
+            status: 409,
+            data: {},
+            statusText: 'Conflict',
+            headers: {},
+            config: { headers: new AxiosHeaders() },
+          }),
+        ),
+      );
+      const onSelectSwapRequest = vi.fn();
+      renderBuilder({
+        data,
+        swapRequests: [request],
+        selectedSwapRequestId: 'request-1',
+        onSelectSwapRequest,
+      });
+
+      await userEvent.click(
+        screen.getByRole('button', { name: m.swap_board_keep() }),
+      );
+
+      await waitFor(() =>
+        expect(onSelectSwapRequest).toHaveBeenCalledWith(undefined),
+      );
+      expect(
+        screen.queryByText(m.swap_board_keep_error()),
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -217,10 +217,11 @@
   "notification_cycle_ready_to_prepare_ministries_other": "Your Ministries: {ministryNames}",
   "notification_cycle_ready_to_prepare_action": "Prepare",
   "notification_kind_swap_request_answered": "Swap request answered",
-  "notification_swap_request_answered_title": "Your leader answered your swap request",
-  "notification_swap_request_answered_body": "{ministryName} kept you on {shift}.",
+  "notification_swap_request_answered_title": "Your swap request was answered",
+  "notification_swap_request_answered_body": "{leaderName} kept you on:",
+  "notification_swap_request_answered_ask_again": "You can ask again from the shift.",
   "notification_swap_request_answered_reply": "Reply: {reply}",
-  "notification_swap_request_answered_action": "View Assignment",
+  "notification_swap_request_answered_action": "See details",
   "email_invitation_admin_title": "You're invited to help run {churchName}",
   "email_invitation_admin_body": "{churchName} invited you to help run the Church as an administrator.",
   "email_invitation_lead_title": "You're invited to lead {ministryName}",
@@ -1320,5 +1321,9 @@
   "swap_board_status_expired": "Unanswered",
   "swap_board_expired_hint": "The Shift has started, so this request can no longer be answered.",
   "swap_board_unavailable": "This swap request is no longer open or could not be found.",
-  "swap_board_close": "Close"
+  "swap_board_close": "Close",
+  "swap_board_keep": "Keep them on",
+  "swap_board_reply_label": "Reply (optional)",
+  "swap_board_cover_hint": "To cover it instead, move, reassign or remove the Assignment on the board.",
+  "swap_board_keep_error": "Could not save your answer. Try again."
 }

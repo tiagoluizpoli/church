@@ -5,6 +5,8 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  KeepSwapRequest204,
+  KeepSwapRequestBody,
   ListMinistrySwapRequests200,
   ListMinistrySwapRequestsParams
 } from './churchAPI.schemas';
@@ -29,5 +31,22 @@ const listMinistrySwapRequests = (
     },
       );
     }
-  return {listMinistrySwapRequests}};
+  /**
+ * Close an open, not-started Swap request as kept, with an optional reply, and tell the Volunteer once. The Assignment is not changed. Only the Ministry’s leaders and ChurchAdmins may; anyone else, or an unknown request, gets 404. 409 when the request is already closed or its Shift has started.
+ * @summary Keep the Volunteer on the Assignment and answer the request
+ */
+const keepSwapRequest = (
+    ministryId: string,
+    swapRequestId: string,
+    keepSwapRequestBody: KeepSwapRequestBody,
+ ) => {
+      return apiClient<KeepSwapRequest204>(
+      {url: `/api/v1/ministries/${ministryId}/swap-requests/${swapRequestId}/keep`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: keepSwapRequestBody
+    },
+      );
+    }
+  return {listMinistrySwapRequests,keepSwapRequest}};
 export type ListMinistrySwapRequestsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSwapRequests>['listMinistrySwapRequests']>>>
+export type KeepSwapRequestResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getSwapRequests>['keepSwapRequest']>>>

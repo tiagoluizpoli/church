@@ -222,6 +222,7 @@ export function buildChurchNotifier({
         churchName: data.churchName,
         recipientFirstName: address.firstName,
         ministryName: data.ministryName,
+        leaderName: data.leaderName,
         churchTimezone: data.churchTimezone,
         shift: data.shift,
         reply: data.reply,

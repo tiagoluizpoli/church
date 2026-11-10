@@ -214,6 +214,7 @@ export interface SwapRequestAnsweredEmail {
   churchName: string;
   recipientFirstName: string;
   ministryName: string;
+  leaderName: string;
   churchTimezone: string;
   shift: SchedulePublishedEmailShift;
   reply?: string;

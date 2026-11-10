@@ -312,6 +312,10 @@ export function createSwapRequestRepositoryFake() {
       .mockResolvedValue([]),
     closeOpenByAssignment:
       vi.fn<SwapRequestRepository['closeOpenByAssignment']>(),
+    findById: vi
+      .fn<SwapRequestRepository['findById']>()
+      .mockResolvedValue(null),
+    closeOpenById: vi.fn<SwapRequestRepository['closeOpenById']>(),
   } satisfies SwapRequestRepository;
 }
 

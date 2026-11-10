@@ -1,4 +1,5 @@
 import type { AppConfig } from '@church/app-config';
+import { NotFoundError } from '@church/core';
 import { compareInstants, now as nowInstant } from '@church/time';
 import type { ChurchId, UserId, VolunteerId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
@@ -6,6 +7,7 @@ import type { IChurchNotifications } from '../domain/contracts/application/churc
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
   ISwapRequestManager,
+  KeepSwapRequestCommand,
   RaisedSwapRequest,
   RaiseSwapRequestCommand,
   WithdrawSwapRequestCommand,
@@ -230,6 +232,102 @@ export class DbSwapRequestManager implements ISwapRequestManager {
       note: swapRequest.note,
       raisedAt: swapRequest.raisedAt,
     };
+  }
+
+  async keep({
+    churchId,
+    userId,
+    ministryId,
+    swapRequestId,
+    reply,
+  }: KeepSwapRequestCommand): Promise<void> {
+    const trimmed = reply?.trim() || undefined;
+    await this.unitOfWork.run(async (tx) => {
+      const request = await this.swapRequestRepo.findById({
+        churchId,
+        swapRequestId,
+        tx,
+      });
+      if (!request) throw new NotFoundError('Swap request not found');
+      const assignment = await this.assignmentRepo.getById({
+        churchId,
+        assignmentId: request.assignmentId,
+        tx,
+      });
+      const { shiftId, participationId } = assignment;
+      if (!shiftId || !participationId) {
+        throw new NotFoundError('Swap request not found');
+      }
+      const participation = await this.participationRepo.getById({
+        churchId,
+        participationId,
+      });
+      // Concealed: another Ministry's request reads as missing.
+      if (participation.ministryId !== ministryId) {
+        throw new NotFoundError('Swap request not found');
+      }
+      const shift = await this.shiftRepo.getById({ churchId, shiftId });
+      // Derived expiry: a request still `open` once its Shift has started is not answerable.
+      if (
+        request.status !== 'open' ||
+        isSwapRequestExpired({
+          status: request.status,
+          shiftStart: shift.startTime,
+          at: nowInstant(),
+        })
+      ) {
+        throw new SwapRequestNotOpenError();
+      }
+      // Conditional on `open`: a concurrent keep or covered close that won is a refusal.
+      const closed = await this.swapRequestRepo.closeOpenById({
+        churchId,
+        swapRequestId,
+        status: 'kept',
+        closedBy: userId,
+        reply: trimmed,
+        tx,
+      });
+      if (!closed) throw new SwapRequestNotOpenError();
+      const { eventId } = participation;
+      const [event, ministry, church, leaderName, roles, requirements] =
+        await Promise.all([
+          this.eventRepo.getById({ churchId, eventId }),
+          this.ministryRepo.getById({ churchId, id: ministryId }),
+          this.churchRepo.getById({ id: churchId }),
+          this.churchRepo.findUserName({ userId }),
+          this.roleRepo.listByMinistry({ churchId, ministryId }),
+          this.shiftRepo.listRequirementsByParticipation({
+            churchId,
+            participationId,
+          }),
+        ]);
+      await this.notifications.enqueue({
+        tx,
+        kind: 'swap_request_answered',
+        to: [{ userId: request.raisedBy, churchId }],
+        data: {
+          assignmentId: request.assignmentId,
+          ministryId,
+          ministryName: ministry.name,
+          churchName: church.name,
+          churchTimezone: church.timezone,
+          leaderName: leaderName ?? '',
+          shift: {
+            eventTitle: event.title,
+            roleName:
+              roles.find((role) => role.id === assignment.roleId)?.name ?? '',
+            sectorName:
+              requirements.find(
+                (requirement) =>
+                  requirement.id === assignment.shiftRequirementId,
+              )?.sectorName ?? '',
+            startsAt: shift.startTime,
+            endsAt: shift.endTime,
+          },
+          reply: trimmed,
+        },
+      });
+    });
   }
 
   async withdraw({

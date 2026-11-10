@@ -18,9 +18,11 @@ import type {
   SwapRequestId,
 } from '../../domain/branded-ids';
 import type {
+  CloseOpenSwapRequestByIdInput,
   CloseOpenSwapRequestInput,
   CreateSwapRequestInput,
   FindOpenSwapRequestInput,
+  FindSwapRequestByIdInput,
   LeaderSwapRequestRow,
   ListLeaderSwapRequestsInput,
   ListOpenAssignmentIdsInput,
@@ -142,6 +144,50 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
         ),
       );
     return row ? mapSwapRequest({ row }) : null;
+  }
+
+  async findById({
+    churchId,
+    swapRequestId,
+    tx,
+  }: FindSwapRequestByIdInput): Promise<SwapRequest | null> {
+    const [row] = await getClient({ db: this.db, tx })
+      .select()
+      .from(swapRequest)
+      .where(
+        and(
+          withChurchIsolation({ table: swapRequest, churchId }),
+          eq(swapRequest.id, swapRequestId),
+        ),
+      );
+    return row ? mapSwapRequest({ row }) : null;
+  }
+
+  async closeOpenById({
+    churchId,
+    swapRequestId,
+    status,
+    closedBy,
+    reply,
+    tx,
+  }: CloseOpenSwapRequestByIdInput): Promise<boolean> {
+    const closed = await getClient({ db: this.db, tx })
+      .update(swapRequest)
+      .set({
+        status,
+        closedBy,
+        reply: reply ?? null,
+        closedAt: toDate({ instant: now() }),
+      })
+      .where(
+        and(
+          withChurchIsolation({ table: swapRequest, churchId }),
+          eq(swapRequest.id, swapRequestId),
+          eq(swapRequest.status, 'open'),
+        ),
+      )
+      .returning({ id: swapRequest.id });
+    return closed.length > 0;
   }
 
   async findLatestByAssignment({

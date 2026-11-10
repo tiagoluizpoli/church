@@ -115,6 +115,8 @@ export const swapRequestAnsweredNotificationDataSchema = z.object({
   assignmentId: z.uuid(),
   ministryId: z.uuid(),
   ministryName: z.string(),
+  /** The answering leader, frozen from their User name. */
+  leaderName: z.string(),
   churchTimezone: z.string(),
   shift: schedulePublishedShiftSchema,
   reply: z.string().optional(),

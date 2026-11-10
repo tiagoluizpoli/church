@@ -1304,6 +1304,7 @@ describe('N8 swap_request_answered through the outbox', () => {
           assignmentId,
           ministryId: ids.ministryId,
           ministryName: 'Scheduling Ministry A',
+          leaderName: 'Lídia Líder',
           churchTimezone: 'America/Sao_Paulo',
           shift,
           reply,
@@ -1328,13 +1329,15 @@ describe('N8 swap_request_answered through the outbox', () => {
     );
     expect(text).toContain(
       m.notification_swap_request_answered_body(
-        {
-          ministryName: 'Scheduling Ministry A',
-          shift:
-            'dom 13 dez · 10:30–12:00 · Sunday Service · Usher · Main Door',
-        },
+        { leaderName: 'Lídia Líder' },
         pt,
       ),
+    );
+    expect(text).toContain(
+      'dom 13 dez · 10:30–12:00 · Sunday Service · Usher · Main Door',
+    );
+    expect(text).toContain(
+      m.notification_swap_request_answered_ask_again({}, pt),
     );
     expect(text).toContain(
       m.notification_swap_request_answered_reply(
@@ -1353,6 +1356,7 @@ describe('N8 swap_request_answered through the outbox', () => {
       data: {
         assignmentId,
         ministryName: 'Scheduling Ministry A',
+        leaderName: 'Lídia Líder',
         reply: 'Fica com a gente <b>domingo</b>',
         shift,
       },

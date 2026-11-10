@@ -23,7 +23,7 @@ export function EventCreatePage({ cycleId }: EventCreatePageProps) {
       description={m.event_editor_create_description()}
     >
       {({ cycle }) =>
-        cycle.state === 'draft' ? (
+        cycle.state !== 'past' ? (
           <EventCreateForm cycleId={cycleId} cycle={cycle} />
         ) : (
           <div

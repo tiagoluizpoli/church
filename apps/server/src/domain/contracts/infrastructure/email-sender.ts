@@ -1,6 +1,9 @@
 import type { CalendarDay, Instant } from '@church/time';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
-import type { TransferDigestDeliveryFacts } from '../../notification-kinds';
+import type {
+  NotificationDataOf,
+  TransferDigestDeliveryFacts,
+} from '../../notification-kinds';
 
 /**
  * Typed per-kind email payloads for invitation delivery (issue #56) and
@@ -193,6 +196,21 @@ export interface CycleReadyToPrepareEmail {
   actionUrl: string;
 }
 
+/** N10: an admin changed an Event of a Sent Cycle. */
+export interface EventChangedEmail {
+  kind: 'event.changed';
+  to: string;
+  churchName: string;
+  recipientFirstName: string;
+  cycleName: string;
+  eventTitle: string;
+  adminName: string;
+  churchTimezone: string;
+  ministryNames: string[];
+  change: NotificationDataOf<'event_changed'>['change'];
+  actionUrl: string;
+}
+
 /** N7: a Volunteer raised a Swap request; the note is leader-facing. */
 export interface SwapRequestEmail {
   kind: 'swap.request';
@@ -222,6 +240,7 @@ export interface SwapRequestAnsweredEmail {
 }
 
 export type EmailPayload =
+  | EventChangedEmail
   | SwapRequestAnsweredEmail
   | SwapRequestEmail
   | AvailabilityEmail

@@ -26,6 +26,7 @@ import {
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
@@ -128,6 +129,13 @@ beforeAll(async () => {
       assignmentRepository: new DrizzleAssignmentRepository({ db }),
       auditRepository: new DrizzleAssignmentAuditRepository({ db }),
       swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db }),
+      }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,

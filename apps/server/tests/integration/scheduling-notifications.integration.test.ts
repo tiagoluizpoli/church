@@ -17,12 +17,14 @@ import { m } from '@church/i18n/messages';
 import {
   type Instant,
   parseCalendarDay,
+  parseInstant,
   resetClock,
   setTestClock,
 } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
@@ -50,6 +52,7 @@ import {
   DrizzlePlanningEventRepository,
   DrizzleSwapRequestRepository,
   DrizzleUnitOfWork,
+  DrizzleVolunteerRepository,
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { buildChurchMembership } from '@/seeds/builders/church';
@@ -1301,6 +1304,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       swapRequestRepository: new DrizzleSwapRequestRepository({
         db: schedulingTestDb,
       }),
+      recipients: new ChurchRecipients({
+        churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
+        volunteerRepository: new DrizzleVolunteerRepository({
+          db: schedulingTestDb,
+        }),
+      }),
+      notifications,
     });
 
     const moved = await planning.confirmMove({
@@ -1589,6 +1599,92 @@ describe('N8 swap_request_answered through the outbox', () => {
         .notification_swap_request_answered_reply({ reply: '' }, pt)
         .split(':')[0],
     );
+  });
+});
+
+describe('N10 event_changed (add) through the outbox', () => {
+  const pt = { locale: 'pt-BR' } as const;
+  const eventId = '55555555-5555-4555-8555-555555555555';
+
+  function enqueueAdded({ eventTitle }: { eventTitle: string }) {
+    return unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'event_changed',
+        to: [
+          {
+            userId: UserId.from(ids.adminUserId),
+            churchId: ChurchId.from(ids.churchId),
+          },
+        ],
+        data: {
+          cycleId,
+          cycleName: 'December 2026',
+          eventId,
+          eventTitle,
+          adminName: 'Ana',
+          churchName: 'Scheduling Church A',
+          churchTimezone: 'America/Sao_Paulo',
+          ministries: [{ id: ids.ministryId, name: 'Scheduling Ministry A' }],
+          change: {
+            kind: 'add',
+            start: parseInstant({ value: '2026-12-13T22:00:00.000Z' }),
+            end: parseInstant({ value: '2026-12-14T00:00:00.000Z' }),
+          },
+        },
+      }),
+    );
+  }
+
+  it('renders the pt-BR email with an escaped title, Church-Timezone time and an absolute link, and stores the bell row', async () => {
+    await enqueueAdded({ eventTitle: 'Vigília <b>especial</b>' });
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    const [email] = emailSender.delivered;
+    const text = email?.request.text ?? '';
+    expect(email?.request.subject).toBe(
+      m.notification_event_changed_add_title(
+        { cycleName: 'December 2026', eventTitle: 'Vigília <b>especial</b>' },
+        pt,
+      ),
+    );
+    expect(text).toContain('Ana adicionou em dom 13 dez · 19:00–21:00');
+    expect(text).toContain(m.notification_event_changed_action({}, pt));
+    expect(text).toContain(
+      `https://app.test/schedules/${ids.ministryId}/${cycleId}`,
+    );
+    expect(email?.request.html).not.toContain('<b>especial');
+    const inbox = await schedulingTestDb.select().from(notification);
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({
+      kind: 'event_changed',
+      data: { eventId, adminName: 'Ana', change: { kind: 'add' } },
+    });
+  });
+
+  it('skips and logs a row whose frozen facts predate the typed change instead of rendering undefined', async () => {
+    await enqueueAdded({ eventTitle: 'Vigília' });
+    for (const row of await outboxRows()) {
+      await schedulingTestDb
+        .update(outboxMessage)
+        .set({
+          payload: {
+            ...(row.payload as object),
+            facts: { cycleName: 'December 2026', churchName: 'X' },
+          },
+        })
+        .where(eq(outboxMessage.id, row.id));
+    }
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    expect(emailSender.delivered).toHaveLength(0);
+    expect(await schedulingTestDb.select().from(notification)).toHaveLength(0);
   });
 });
 

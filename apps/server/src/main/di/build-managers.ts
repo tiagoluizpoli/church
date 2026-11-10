@@ -278,6 +278,11 @@ export function buildManagers({
       assignmentRepository,
       auditRepository: assignmentAuditRepository,
       swapRequestRepository,
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository,
+      }),
+      notifications,
     });
   const volunteerManager =
     overrides.volunteerManager ??

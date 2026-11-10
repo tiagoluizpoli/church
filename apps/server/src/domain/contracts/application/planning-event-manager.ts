@@ -35,6 +35,8 @@ export interface PlanningEventTimeBlockDraft {
 /** A Draft Event with every one of its Time blocks, saved together. */
 export interface CreatePlanningEventManagerInput {
   churchId: ChurchId;
+  /** The acting ChurchAdmin, named in the N10 add Notification. */
+  actingUserId: UserId;
   cycleId: CycleId;
   title: string;
   location?: string;

@@ -738,6 +738,7 @@ describe('POST /ministries/:ministryId/archive', () => {
     const seeding = unitOfWork.run(async (tx) => {
       await planning.seedParticipations({
         churchId: CHURCH_A as never,
+        cycleId: eventRow.cycleId as never,
         eventId: eventRow.id as never,
         tx,
       });
@@ -803,6 +804,7 @@ describe('POST /ministries/:ministryId/archive', () => {
     await archivedSignal;
     const seeding = planning.seedParticipations({
       churchId: CHURCH_A as never,
+      cycleId: eventRow.cycleId as never,
       eventId: eventRow.id as never,
     });
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -841,6 +843,7 @@ describe('POST /ministries/:ministryId/archive', () => {
 
     await new DrizzlePlanningEventRepository({ db }).seedParticipations({
       churchId: CHURCH_A as never,
+      cycleId: eventRow.cycleId as never,
       eventId: eventRow.id as never,
     });
 

@@ -20,6 +20,7 @@ import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { AssignController } from '@/api/controllers/assign-controller';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
@@ -38,6 +39,7 @@ import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-o
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildSector } from '@/seeds/builders/ministry';
@@ -99,6 +101,11 @@ beforeAll(async () => {
       assignmentRepository: new DrizzleAssignmentRepository({ db }),
       auditRepository: new DrizzleAssignmentAuditRepository({ db }),
       swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      recipients: new ChurchRecipients({
+        churchRepository: new DrizzleChurchRepository({ db }),
+        volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      }),
+      notifications,
     }),
     activeChurchResolver,
     authorityGuard,

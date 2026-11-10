@@ -1512,13 +1512,16 @@ paths:
   /api/v1/admin/cycles/{cycleId}/events:
     post:
       operationId: createPlanningEvent
-      summary: Create a Draft Event with its Time blocks
+      summary: Create an Event with its Time blocks
       tags:
         - planning
-      description: Create a one-off or multi-day Draft Event and every one of its
+      description: Create a one-off or multi-day Event and every one of its
         EventTimeBlocks together, with its participation scaffold and no
-        staffing. Its Church-local start day must fall within the inclusive
-        Cycle; its end may spill past it.
+        staffing. A Draft Cycle saves a Draft Event; a Sent Cycle saves a
+        scheduled Event, every active Ministry starts Not served at its Schedule
+        stage, and affected leaders get an N10 Notification. Its Church-local
+        start day must fall within the inclusive Cycle; its end may spill past
+        it.
       requestBody:
         required: true
         content:
@@ -9454,6 +9457,96 @@ paths:
                             kind:
                               type: string
                               enum:
+                                - event_changed
+                            data:
+                              type: object
+                              properties:
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                cycleName:
+                                  type: string
+                                eventId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                eventTitle:
+                                  type: string
+                                adminName:
+                                  type: string
+                                churchTimezone:
+                                  type: string
+                                ministries:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      id:
+                                        type: string
+                                        format: uuid
+                                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                      name:
+                                        type: string
+                                    required:
+                                      - id
+                                      - name
+                                    additionalProperties: false
+                                change:
+                                  oneOf:
+                                    - type: object
+                                      properties:
+                                        kind:
+                                          type: string
+                                          enum:
+                                            - add
+                                        start:
+                                          type: string
+                                          format: date-time
+                                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                        end:
+                                          type: string
+                                          format: date-time
+                                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                      required:
+                                        - kind
+                                        - start
+                                        - end
+                                      additionalProperties: false
+                              required:
+                                - cycleId
+                                - cycleName
+                                - eventId
+                                - eventTitle
+                                - adminName
+                                - churchTimezone
+                                - ministries
+                                - change
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
                                 - swap_request
                             data:
                               type: object
@@ -13238,6 +13331,96 @@ paths:
                                 - cycleEndDate
                                 - eventCount
                                 - ministries
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - event_changed
+                            data:
+                              type: object
+                              properties:
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                cycleName:
+                                  type: string
+                                eventId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                eventTitle:
+                                  type: string
+                                adminName:
+                                  type: string
+                                churchTimezone:
+                                  type: string
+                                ministries:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      id:
+                                        type: string
+                                        format: uuid
+                                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                      name:
+                                        type: string
+                                    required:
+                                      - id
+                                      - name
+                                    additionalProperties: false
+                                change:
+                                  oneOf:
+                                    - type: object
+                                      properties:
+                                        kind:
+                                          type: string
+                                          enum:
+                                            - add
+                                        start:
+                                          type: string
+                                          format: date-time
+                                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                        end:
+                                          type: string
+                                          format: date-time
+                                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                      required:
+                                        - kind
+                                        - start
+                                        - end
+                                      additionalProperties: false
+                              required:
+                                - cycleId
+                                - cycleName
+                                - eventId
+                                - eventTitle
+                                - adminName
+                                - churchTimezone
+                                - ministries
+                                - change
                               additionalProperties: false
                             createdAt:
                               type: string

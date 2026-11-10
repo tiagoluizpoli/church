@@ -245,8 +245,8 @@ const applyPlanningTemplates = (
       );
     }
   /**
- * Create a one-off or multi-day Draft Event and every one of its EventTimeBlocks together, with its participation scaffold and no staffing. Its Church-local start day must fall within the inclusive Cycle; its end may spill past it.
- * @summary Create a Draft Event with its Time blocks
+ * Create a one-off or multi-day Event and every one of its EventTimeBlocks together, with its participation scaffold and no staffing. A Draft Cycle saves a Draft Event; a Sent Cycle saves a scheduled Event, every active Ministry starts Not served at its Schedule stage, and affected leaders get an N10 Notification. Its Church-local start day must fall within the inclusive Cycle; its end may spill past it.
+ * @summary Create an Event with its Time blocks
  */
 const createPlanningEvent = (
     cycleId: string,

@@ -3,9 +3,10 @@ import { compareInstants, now, parseInstant } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { useMemo } from 'react';
 import { useMyScheduleRefresh } from '../hooks/use-my-schedule-refresh';
+import { useOnlineState } from '../hooks/use-online-state';
 import { assignmentDayLabel } from '../lib/assignment-day-label';
+import { cachedReadOptions, fetchAndCache } from '../lib/my-schedule-cache';
 import { BackgroundRefreshIndicator } from './background-refresh-indicator';
 import { MyScheduleOfflineBanner } from './my-schedule-offline-banner';
 import { Badge } from '@/components/ui/badge';
@@ -52,19 +53,22 @@ function groupByDay({ assignments, timeZone }: GroupByDayInput): DayGroup[] {
 
 interface MyScheduleProps {
   data: GetPublishedVolunteerSchedule200;
-  dataUpdatedAt: number;
+  lastUpdatedAt: string;
+  isCached: boolean;
   onRefresh: () => Promise<void>;
 }
 
-function MySchedule({ data, dataUpdatedAt, onRefresh }: MyScheduleProps) {
-  // Stamp the read time as an Instant whenever a fetch lands (dataUpdatedAt changes).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: dataUpdatedAt is the refetch trigger
-  const lastUpdatedAt = useMemo(() => now(), [dataUpdatedAt]);
+function MySchedule({
+  data,
+  lastUpdatedAt,
+  isCached,
+  onRefresh,
+}: MyScheduleProps) {
+  const { churchTimezone: timeZone } = useTimezone();
   const refresh = useMyScheduleRefresh({
     onRefresh,
     visibleData: { assignments: data.assignments, schedules: data.schedules },
   });
-  const { churchTimezone: timeZone } = useTimezone();
   const current = now();
   const groups = groupByDay({ assignments: data.assignments, timeZone });
   return (
@@ -76,7 +80,7 @@ function MySchedule({ data, dataUpdatedAt, onRefresh }: MyScheduleProps) {
       />
       <MyScheduleOfflineBanner
         isOffline={!refresh.isOnline}
-        isUsingCachedData={refresh.isUsingCachedData}
+        isUsingCachedData={refresh.isUsingCachedData || isCached}
         lastUpdatedAt={lastUpdatedAt}
         onRefresh={refresh.refresh}
         refreshState={refresh.refreshState}
@@ -151,10 +155,22 @@ function MySchedule({ data, dataUpdatedAt, onRefresh }: MyScheduleProps) {
 }
 
 export function MySchedulePage() {
+  const isOnline = useOnlineState();
   const query = useQuery({
     queryKey: ['my-schedule'],
-    queryFn: () => volunteerApi.getPublishedVolunteerSchedule(),
+    // The read time rides with the data so a cached copy reports when it was fetched.
+    queryFn: () =>
+      fetchAndCache({
+        key: 'schedule',
+        fetch: async () => ({
+          ...(await volunteerApi.getPublishedVolunteerSchedule()),
+          fetchedAt: now(),
+        }),
+      }),
     retry: false,
+    ...cachedReadOptions<
+      GetPublishedVolunteerSchedule200 & { fetchedAt: string }
+    >({ key: 'schedule', isOnline }),
   });
   if (query.isLoading)
     return (
@@ -178,7 +194,8 @@ export function MySchedulePage() {
   return query.data ? (
     <MySchedule
       data={query.data}
-      dataUpdatedAt={query.dataUpdatedAt}
+      lastUpdatedAt={query.data.fetchedAt}
+      isCached={query.isPlaceholderData || !isOnline}
       onRefresh={async () => {
         await query.refetch({ throwOnError: true });
       }}

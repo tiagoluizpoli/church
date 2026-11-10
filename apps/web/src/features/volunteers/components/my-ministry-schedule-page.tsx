@@ -1,6 +1,8 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
+import { useOnlineState } from '../hooks/use-online-state';
+import { cachedReadOptions, fetchAndCache } from '../lib/my-schedule-cache';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,10 +43,17 @@ export function MyMinistrySchedulePage({
   cycleId,
 }: MyMinistrySchedulePageProps) {
   const { churchTimezone } = useTimezone();
+  const isOnline = useOnlineState();
+  const cacheKey = `ministry-schedule:${ministryId}:${cycleId}`;
   const query = useQuery({
     queryKey: myMinistryScheduleKey({ ministryId, cycleId }),
-    queryFn: () => volunteerApi.getMinistrySchedule(ministryId, { cycleId }),
+    queryFn: () =>
+      fetchAndCache({
+        key: cacheKey,
+        fetch: () => volunteerApi.getMinistrySchedule(ministryId, { cycleId }),
+      }),
     retry: false,
+    ...cachedReadOptions<GetMinistrySchedule200>({ key: cacheKey, isOnline }),
   });
 
   if (query.isPending) {

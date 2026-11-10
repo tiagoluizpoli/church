@@ -1267,5 +1267,7 @@
   "my_schedule_refresh_failed": "Falha ao atualizar. Sua última escala conhecida continua visível.",
   "my_schedule_refresh": "Atualizar escala",
   "my_schedule_refreshing": "Atualizando escala…",
-  "my_schedule_refresh_offline": "Falha ao atualizar offline. Sua última escala conhecida continua disponível."
+  "my_schedule_refresh_offline": "Falha ao atualizar offline. Sua última escala conhecida continua disponível.",
+  "my_schedule_updated_in_background": "Atualizado em segundo plano",
+  "my_schedule_dismiss": "Dispensar"
 }

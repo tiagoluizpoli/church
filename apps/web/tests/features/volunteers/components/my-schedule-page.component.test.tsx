@@ -63,6 +63,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  window.localStorage.clear();
   cleanup();
   vi.useRealTimers();
   vi.resetAllMocks();
@@ -100,6 +101,28 @@ describe('MySchedulePage', () => {
     api.getPublishedVolunteerSchedule.mockResolvedValue(DATA);
     renderPage();
     expect(await screen.findByText('Offline mode')).toBeVisible();
+    Object.defineProperty(window.navigator, 'onLine', {
+      configurable: true,
+      value: true,
+    });
+  });
+
+  it('shows the cached schedule after a reload while offline, flagged as cached', async () => {
+    window.localStorage.setItem(
+      'my-schedule:schedule',
+      JSON.stringify({ ...DATA, fetchedAt: '2026-10-12T12:00:00.000Z' }),
+    );
+    Object.defineProperty(window.navigator, 'onLine', {
+      configurable: true,
+      value: false,
+    });
+    api.getPublishedVolunteerSchedule.mockRejectedValue(new Error('offline'));
+    renderPage();
+    expect(
+      await screen.findByRole('heading', { name: 'Mon 12 Oct' }),
+    ).toBeVisible();
+    expect(screen.getByText('Offline mode')).toBeVisible();
+    expect(screen.getByText('Last updated: 12/10/2026 09:00')).toBeVisible();
     Object.defineProperty(window.navigator, 'onLine', {
       configurable: true,
       value: true,

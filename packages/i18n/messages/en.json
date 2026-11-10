@@ -1267,5 +1267,7 @@
   "my_schedule_refresh_failed": "Refresh failed. Your last-known schedule stayed visible.",
   "my_schedule_refresh": "Refresh schedule",
   "my_schedule_refreshing": "Refreshing schedule…",
-  "my_schedule_refresh_offline": "Refresh failed while offline. Your last-known schedule is still available."
+  "my_schedule_refresh_offline": "Refresh failed while offline. Your last-known schedule is still available.",
+  "my_schedule_updated_in_background": "Updated in background",
+  "my_schedule_dismiss": "Dismiss"
 }

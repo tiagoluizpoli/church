@@ -1193,3 +1193,430 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
     expect(response.statusCode).toBe(403);
   });
 });
+
+interface BlockMoveInput extends PreviewInput {
+  eventTimeBlockId: string;
+}
+
+function blockMove(path: 'move' | 'move/preview') {
+  return ({ cycleId, eventId, eventTimeBlockId, start }: BlockMoveInput) =>
+    app.inject({
+      method: 'POST',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${eventTimeBlockId}/${path}`,
+      payload: { start } as never,
+    });
+}
+const previewBlock = blockMove('move/preview');
+const confirmBlock = blockMove('move');
+
+/**
+ * Sunday 09–12 (Welcome 09–10, Service 10–12) with a Ministry A Participation
+ * and two booked blocks: Moving 10–11 (Ana, with an UnavailableShift and open
+ * SwapRequest) and Staying 11–12 (Bruno).
+ */
+async function seedBlockBoard() {
+  const seed = await signIn();
+  const churchId = seed.churchAId;
+  const cycle = await seedCycle({ churchId, state: 'sent' });
+  const sunday = await seedScheduledEvent({ churchId, cycleId: cycle.id });
+  const role = await buildRole({
+    db,
+    churchId,
+    ministryId: seed.ministryAId,
+    name: 'Usher',
+  });
+  const participation = await buildMinistryParticipation({
+    db,
+    churchId,
+    ministryId: seed.ministryAId,
+    eventId: sunday.event.id,
+    state: 'preparing',
+    eventTimeBlockIds: [],
+  });
+  const ana = await seedVolunteer({ churchId, name: 'ana' });
+  const bruno = await seedVolunteer({ churchId, name: 'bruno' });
+  const bookFor = (volunteerId: string, start: string, end: string) =>
+    book({
+      churchId,
+      eventId: sunday.event.id,
+      participationId: participation.id,
+      roleId: role.id,
+      volunteerId,
+      status: 'confirmed',
+      start: at(start),
+      end: at(end),
+    });
+  const moving = await bookFor(ana.id, '10:00', '11:00');
+  const staying = await bookFor(bruno.id, '11:00', '12:00');
+  return {
+    seed,
+    churchId,
+    cycle,
+    sunday,
+    role,
+    participation,
+    ana,
+    bruno,
+    moving,
+    staying,
+  };
+}
+
+describe('POST /admin/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId/move/preview', () => {
+  it('moves only the block, stretches the Event both ways, never shrinks it, and writes nothing', async () => {
+    const board = await seedBlockBoard();
+    const { cycle, sunday, moving, staying } = board;
+    const before = await writeSnapshot();
+    const ask = (blockId: string, start: string) =>
+      previewBlock({
+        cycleId: cycle.id,
+        eventId: sunday.event.id,
+        eventTimeBlockId: blockId,
+        start,
+      });
+
+    const later = await ask(moving.eventTimeBlock.id, at('13:00'));
+    const earlier = await ask(moving.eventTimeBlock.id, at('08:00'));
+    // The Event's last block moves earlier: the end stays, nothing shrinks.
+    const inward = await ask(staying.eventTimeBlock.id, at('09:30'));
+
+    expect(later.statusCode).toBe(200);
+    expect(later.json().event).toEqual({
+      previous: { start: at('09:00'), end: at('12:00') },
+      proposed: { start: at('09:00'), end: at('14:00') },
+    });
+    const movedFlags = Object.fromEntries(
+      later
+        .json()
+        .eventTimeBlocks.map((b: { id: string; moved: boolean }) => [
+          b.id,
+          b.moved,
+        ]),
+    );
+    expect(movedFlags).toEqual({
+      [sunday.welcome.id]: false,
+      [sunday.service.id]: false,
+      [moving.eventTimeBlock.id]: true,
+      [staying.eventTimeBlock.id]: false,
+    });
+    expect(later.json().eventTimeBlocks).toContainEqual(
+      expect.objectContaining({
+        id: moving.eventTimeBlock.id,
+        proposed: { start: at('13:00'), end: at('14:00') },
+      }),
+    );
+    expect(earlier.json().event.proposed).toEqual({
+      start: at('08:00'),
+      end: at('12:00'),
+    });
+    expect(inward.json().event.proposed).toEqual({
+      start: at('09:00'),
+      end: at('12:00'),
+    });
+    expect(await writeSnapshot()).toEqual(before);
+  });
+
+  it('answers 404 to an unknown block and to a block of another Event', async () => {
+    const board = await seedBlockBoard();
+    const { churchId, cycle, sunday } = board;
+    const other = await seedScheduledEvent({
+      churchId,
+      cycleId: cycle.id,
+      title: 'Other',
+      start: local({ day: '2026-10-20', time: '08:00' }),
+      end: local({ day: '2026-10-20', time: '10:00' }),
+    });
+    const input = {
+      cycleId: cycle.id,
+      eventId: sunday.event.id,
+      start: at('13:00'),
+    };
+
+    const unknown = await previewBlock({
+      ...input,
+      eventTimeBlockId: crypto.randomUUID(),
+    });
+    const foreign = await confirmBlock({
+      ...input,
+      eventTimeBlockId: other.welcome.id,
+    });
+
+    expect(unknown.statusCode).toBe(404);
+    expect(foreign.statusCode).toBe(404);
+  });
+
+  it('refuses a block whose stretched Event start leaves the Cycle in the Church Timezone', async () => {
+    const board = await seedBlockBoard();
+    // 11 Oct 23:30 São Paulo is 12 Oct 02:30 UTC: inside the Cycle in UTC only.
+    const response = await previewBlock({
+      cycleId: board.cycle.id,
+      eventId: board.sunday.event.id,
+      eventTimeBlockId: board.moving.eventTimeBlock.id,
+      start: local({ day: '2026-10-11', time: '23:30' }),
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: 'EVENT_OUTSIDE_CYCLE' });
+  });
+});
+
+describe('POST /admin/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId/move', () => {
+  it('moves only the block and its Shifts, keeping the other blocks and Assignments, withdrawing only the block clash', async () => {
+    const board = await seedBlockBoard();
+    const { churchId, cycle, sunday, moving, staying, ana, bruno } = board;
+    const membership = await buildMinistryMembership({
+      db,
+      churchId,
+      volunteerId: ana.id,
+      ministryId: board.seed.ministryAId,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [board.role.id],
+    });
+    const check = await buildConfirmedAvailabilityCheck({
+      db,
+      churchId,
+      cycleId: cycle.id,
+      ministryMembershipId: membership.id,
+      id: crypto.randomUUID(),
+      confirmedAt: inst(CHURCH_OCTOBER_1_NOON),
+    });
+    await buildUnavailableShift({
+      db,
+      churchId,
+      availabilityCheckId: check.id,
+      shiftId: moving.shift.id,
+    });
+    await db.insert(swapRequest).values({
+      churchId,
+      assignmentId: moving.assignment.id,
+      status: 'open',
+      raisedBy: 'user-ana',
+    });
+    // Bruno clashes with the moved block at 13:30; Ana does not.
+    const other = await seedScheduledEvent({
+      churchId,
+      cycleId: cycle.id,
+      title: 'Other',
+      start: at('13:00'),
+      end: at('16:00'),
+    });
+    const otherParticipation = await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: board.seed.ministryAId,
+      eventId: other.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [],
+    });
+    await book({
+      churchId,
+      eventId: other.event.id,
+      participationId: otherParticipation.id,
+      roleId: board.role.id,
+      volunteerId: bruno.id,
+      status: 'confirmed',
+      start: at('13:30'),
+      end: at('14:30'),
+    });
+    // Bruno's own Staying block now also sits 13:00–14:00 only if it moved: it must not.
+    const unavailableBefore = await db.select().from(unavailableShift);
+    const snapshotsBefore = await db.select().from(scheduleLastTold);
+
+    const response = await confirmBlock({
+      cycleId: cycle.id,
+      eventId: sunday.event.id,
+      eventTimeBlockId: moving.eventTimeBlock.id,
+      start: at('13:00'),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.event).toMatchObject({ start: at('09:00'), end: at('14:00') });
+    const bounds = Object.fromEntries(
+      body.eventTimeBlocks.map(
+        (b: { id: string; startTime: string; endTime: string }) => [
+          b.id,
+          [b.startTime, b.endTime],
+        ],
+      ),
+    );
+    expect(bounds).toEqual({
+      [sunday.welcome.id]: [at('09:00'), at('10:00')],
+      [sunday.service.id]: [at('10:00'), at('12:00')],
+      [moving.eventTimeBlock.id]: [at('13:00'), at('14:00')],
+      [staying.eventTimeBlock.id]: [at('11:00'), at('12:00')],
+    });
+    expect(body.withdrawn).toEqual([]);
+    const shifts = await db.select().from(shift);
+    const shiftBounds = Object.fromEntries(
+      shifts.map((s) => [
+        s.id,
+        [s.startTime.toISOString(), s.endTime.toISOString()],
+      ]),
+    );
+    expect(shiftBounds[moving.shift.id]).toEqual([at('13:00'), at('14:00')]);
+    expect(shiftBounds[staying.shift.id]).toEqual([at('11:00'), at('12:00')]);
+    const kept = await db
+      .select()
+      .from(assignment)
+      .where(eq(assignment.id, moving.assignment.id));
+    expect(kept).toHaveLength(1);
+    expect(await db.select().from(unavailableShift)).toEqual(unavailableBefore);
+    const [swap] = await db.select().from(swapRequest);
+    expect(swap?.status).toBe('open');
+    expect(await db.select().from(scheduleLastTold)).toEqual(snapshotsBefore);
+    // Bruno's Staying Assignment is untouched.
+    expect(
+      await db
+        .select({ id: assignment.id })
+        .from(assignment)
+        .where(eq(assignment.id, staying.assignment.id)),
+    ).toHaveLength(1);
+  });
+
+  it('withdraws only the clashing Assignment of the moved block', async () => {
+    const board = await seedBlockBoard();
+    const { churchId, cycle, sunday, moving, staying, ana } = board;
+    const other = await seedScheduledEvent({
+      churchId,
+      cycleId: cycle.id,
+      title: 'Other',
+      start: at('13:00'),
+      end: at('16:00'),
+    });
+    const otherParticipation = await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: board.seed.ministryAId,
+      eventId: other.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [],
+    });
+    // Ana serves the Other Event 13:30–14:30, overlapping the moved 13–14.
+    await book({
+      churchId,
+      eventId: other.event.id,
+      participationId: otherParticipation.id,
+      roleId: board.role.id,
+      volunteerId: ana.id,
+      status: 'confirmed',
+      start: at('13:30'),
+      end: at('14:30'),
+    });
+    await db.insert(swapRequest).values({
+      churchId,
+      assignmentId: moving.assignment.id,
+      status: 'open',
+      raisedBy: 'user-ana',
+    });
+
+    const response = await confirmBlock({
+      cycleId: cycle.id,
+      eventId: sunday.event.id,
+      eventTimeBlockId: moving.eventTimeBlock.id,
+      start: at('13:00'),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response
+        .json()
+        .withdrawn.map(
+          (row: { volunteer: { name: string } }) => row.volunteer.name,
+        ),
+    ).toEqual(['ana']);
+    expect(
+      await db
+        .select({ id: assignment.id })
+        .from(assignment)
+        .where(eq(assignment.id, moving.assignment.id)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ id: assignment.id })
+        .from(assignment)
+        .where(eq(assignment.id, staying.assignment.id)),
+    ).toHaveLength(1);
+    const [swap] = await db.select().from(swapRequest);
+    expect(swap).toMatchObject({ status: 'covered' });
+  });
+
+  it('tells only the leaders of Ministries opted into the moved block through N10 with the block bounds', async () => {
+    const seed = await signIn();
+    const churchId = seed.churchAId;
+    const cycle = await seedCycle({ churchId, state: 'sent' });
+    const sunday = await seedScheduledEvent({ churchId, cycleId: cycle.id });
+    const opted = await buildMinistry({ db, churchId, name: 'Opted' });
+    await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: opted.id,
+      eventId: sunday.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [sunday.service.id],
+    });
+    const welcomeOnly = await buildMinistry({
+      db,
+      churchId,
+      name: 'Welcomers',
+    });
+    await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: welcomeOnly.id,
+      eventId: sunday.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [sunday.welcome.id],
+    });
+    await buildUser({ db, id: 'other-admin', name: 'Other', email: 'o@t.com' });
+    await buildChurchMembership({
+      db,
+      churchId,
+      userId: 'other-admin',
+      accessLevel: 'admin',
+    });
+
+    const response = await confirmBlock({
+      cycleId: cycle.id,
+      eventId: sunday.event.id,
+      eventTimeBlockId: sunday.service.id,
+      start: at('13:00'),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const rows = await db.select().from(outboxMessage);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.payload).toMatchObject({
+      kind: 'event_changed',
+      to: expect.objectContaining({ userId: 'other-admin' }),
+      data: {
+        ministries: [{ id: opted.id, name: 'Opted' }],
+        change: {
+          kind: 'move',
+          previousStart: at('10:00'),
+          previousEnd: at('12:00'),
+          start: at('13:00'),
+          end: at('15:00'),
+          volunteerCount: 0,
+          impacts: [expect.objectContaining({ ministryId: opted.id })],
+        },
+      },
+    });
+  });
+
+  it('refuses a stretched start outside the Cycle and writes nothing', async () => {
+    const board = await seedBlockBoard();
+    const before = await writeSnapshot();
+
+    const response = await confirmBlock({
+      cycleId: board.cycle.id,
+      eventId: board.sunday.event.id,
+      eventTimeBlockId: board.moving.eventTimeBlock.id,
+      start: local({ day: '2026-10-11', time: '23:30' }),
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: 'EVENT_OUTSIDE_CYCLE' });
+    expect(await writeSnapshot()).toEqual(before);
+  });
+});

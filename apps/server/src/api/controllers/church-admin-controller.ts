@@ -780,6 +780,89 @@ export class ChurchAdminController implements FastifyController {
       },
     );
 
+    app.post(
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId/move/preview',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'previewPlanningEventTimeBlockMove',
+          summary: 'Preview moving an EventTimeBlock',
+          description:
+            'Preview moving one EventTimeBlock of a scheduled Event in a Sent Cycle to a new start, writing and sending nothing. Only that block and its Shifts move (duration preserved); the Event bounds stretch to contain it, never shrink. Returns the proposed bounds and a typed clash row for each active Assignment of the block that would strictly overlap another active Assignment of the Church. Advisory only: a later confirm recalculates. Refuses as the Event move does; an unknown or foreign block is 404.',
+          body: movePlanningEventBodySchema,
+          response: {
+            200: eventMovePreviewResponseSchema,
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId, eventTimeBlockId } =
+          request.params as PlanningEventTimeBlockRouteParams;
+        const body = request.body as MovePlanningEventBody;
+        const preview = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.planningEventManager.previewMove({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              scope: {
+                kind: 'eventTimeBlock',
+                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+              },
+              start: dateFromInstantString({ value: body.start }),
+            }),
+        });
+        if (!preview) return;
+        return reply.send(eventMovePreviewMapper.toResponse(preview));
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId/move',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'movePlanningEventTimeBlock',
+          summary: 'Move an EventTimeBlock',
+          description:
+            'Move one EventTimeBlock of a scheduled Event in a Sent Cycle to a new start under the same Church lock and recalculation as an Event move. Only that block and its Shifts move; the Event bounds stretch, never shrink. Withdraws only the active Assignments of the block that would strictly overlap another active Assignment, with established removal behavior. Returns the moved graph and the actual withdrawals.',
+          body: movePlanningEventBodySchema,
+          response: {
+            200: eventMoveResponseSchema,
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId, eventTimeBlockId } =
+          request.params as PlanningEventTimeBlockRouteParams;
+        const body = request.body as MovePlanningEventBody;
+        const result = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.planningEventManager.confirmMove({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              scope: {
+                kind: 'eventTimeBlock',
+                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+              },
+              start: dateFromInstantString({ value: body.start }),
+              actingUserId: UserId.from(request.userId),
+            }),
+        });
+        if (!result) return;
+        return reply.send(eventMoveMapper.toResponse(result));
+      },
+    );
+
     app.patch(
       '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId',
       {

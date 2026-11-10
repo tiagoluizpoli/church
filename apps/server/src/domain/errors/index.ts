@@ -31,6 +31,7 @@ export * from './ministry-invitation-not-found';
 export * from './ministry-membership-inactive';
 export * from './ministry-name-in-use';
 export * from './ministry-role-required';
+export * from './move-window-closed';
 export * from './overlapping-cycle';
 export * from './pending-church-invitation-exists';
 export * from './pending-ministry-invitation-exists';

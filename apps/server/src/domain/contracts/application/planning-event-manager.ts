@@ -7,6 +7,11 @@ import type {
 } from '../../branded-ids';
 import type { Event } from '../../entities/event';
 import type { EventTimeBlock } from '../../entities/event-time-block';
+import type {
+  MoveClash,
+  MoveProposal,
+  MoveScope,
+} from '../../services/event-move';
 
 export interface GeneratePlanningTemplatesInput {
   churchId: ChurchId;
@@ -98,6 +103,27 @@ export interface DeletePlanningEventTimeBlockManagerInput {
   eventTimeBlockId: EventTimeBlockId;
 }
 
+/**
+ * A move request for one scope: the whole Event or one EventTimeBlock.
+ * Preview now, confirm later and the block endpoints all take this shape.
+ */
+export interface PlanningMoveManagerInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  eventId: EventId;
+  scope: MoveScope;
+  /** The requested new start of the scope. */
+  start: Date;
+}
+
+export type PreviewPlanningMoveManagerInput = PlanningMoveManagerInput;
+
+/** The proposed bounds and the Assignments that would clash; nothing is written. */
+export interface PlanningMovePreview {
+  proposal: MoveProposal;
+  clashes: MoveClash[];
+}
+
 export interface IPlanningEventManager {
   generateFromTemplates(
     input: GeneratePlanningTemplatesInput,
@@ -119,4 +145,8 @@ export interface IPlanningEventManager {
   deleteEventTimeBlock(
     input: DeletePlanningEventTimeBlockManagerInput,
   ): Promise<void>;
+  /** Advisory and write-free: confirm recalculates and never trusts it. */
+  previewMove(
+    input: PreviewPlanningMoveManagerInput,
+  ): Promise<PlanningMovePreview>;
 }

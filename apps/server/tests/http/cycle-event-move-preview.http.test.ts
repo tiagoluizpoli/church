@@ -61,8 +61,9 @@ import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizz
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
-import { buildRole } from '@/seeds/builders/ministry';
+import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
 import {
   buildAssignedShift,
   buildCycle,
@@ -847,6 +848,7 @@ async function seedClashBoard({ bookedBeforePreview }: ClashBoardInput) {
     cycle,
     moving,
     moved,
+    volunteers,
     bookLater: async () => {
       for (const name of names) {
         if (!bookedBeforePreview.includes(name)) await bookElsewhere(name);
@@ -969,9 +971,15 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
     expect(await db.select().from(unavailableShift)).toEqual(unavailableBefore);
     const [swap] = await db.select().from(swapRequest);
     expect(swap?.status).toBe('open');
-    // Send updates tells Volunteers later: no snapshot and no immediate message.
+    // Send updates tells Volunteers later: no snapshot and only leaders' N10.
     expect(await db.select().from(scheduleLastTold)).toEqual(snapshotsBefore);
-    expect(await db.select().from(outboxMessage)).toEqual([]);
+    const queued = await db.select().from(outboxMessage);
+    expect(queued.map(({ payload }) => payload)).toEqual([
+      expect.objectContaining({
+        kind: 'event_changed',
+        to: expect.objectContaining({ userId: seed.adminUserId }),
+      }),
+    ]);
   });
 
   it('recalculates over a stale preview and withdraws only the actual active clashes, closing their open SwapRequests as covered', async () => {
@@ -1016,6 +1024,124 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
     expect(swap).toMatchObject({
       status: 'covered',
       closedBy: board.seed.adminUserId,
+    });
+  });
+
+  it('enqueues one N10 move row per affected leader, counting withdrawn Volunteers, with fallback that skips the acting admin', async () => {
+    const board = await seedClashBoard({
+      bookedBeforePreview: ['draft', 'pending', 'confirmed', 'touching'],
+    });
+    const { seed, cycle, moving } = board;
+    const churchId = seed.churchAId;
+    // Ministry A answered for the old time; a leaderless Ministry opted in.
+    const membership = await buildMinistryMembership({
+      db,
+      churchId,
+      volunteerId: board.volunteers.draft as string,
+      ministryId: seed.ministryAId,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [],
+    });
+    await buildConfirmedAvailabilityCheck({
+      db,
+      churchId,
+      cycleId: cycle.id,
+      ministryMembershipId: membership.id,
+      id: crypto.randomUUID(),
+      confirmedAt: inst(CHURCH_OCTOBER_1_NOON),
+    });
+    const leaderless = await buildMinistry({
+      db,
+      churchId,
+      name: 'Leaderless',
+    });
+    await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: leaderless.id,
+      eventId: moving.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [moving.welcome.id],
+    });
+    // Opted out of the moved Event: told nothing.
+    const absent = await buildMinistry({ db, churchId, name: 'Absent' });
+    await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: absent.id,
+      eventId: moving.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [],
+    });
+    await buildUser({ db, id: 'other-admin', name: 'Other', email: 'o@t.com' });
+    await buildChurchMembership({
+      db,
+      churchId,
+      userId: 'other-admin',
+      accessLevel: 'admin',
+    });
+
+    const response = await confirm({
+      cycleId: cycle.id,
+      eventId: moving.event.id,
+      start: local({ day: '2026-10-20', time: '14:00' }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const rows = await db.select().from(outboxMessage);
+    const byUser = Object.fromEntries(
+      rows.map(({ payload }) => {
+        const { to, data } = payload as {
+          to: { userId: string };
+          data: unknown;
+        };
+        return [to.userId, data];
+      }),
+    );
+    expect(Object.keys(byUser).sort()).toEqual(
+      [seed.adminUserId, 'other-admin'].sort(),
+    );
+    const change = {
+      kind: 'move',
+      previousStart: at('09:00'),
+      previousEnd: at('12:00'),
+      start: local({ day: '2026-10-20', time: '14:00' }),
+      end: local({ day: '2026-10-20', time: '17:00' }),
+    };
+    expect(byUser[seed.adminUserId]).toMatchObject({
+      cycleId: cycle.id,
+      eventId: moving.event.id,
+      eventTitle: 'Sunday',
+      adminName: 'Scheduling Admin',
+      ministries: [{ id: seed.ministryAId, name: 'Scheduling Ministry A' }],
+      change: {
+        ...change,
+        // Five served the moved Event; three were withdrawn for clashes.
+        volunteerCount: 5,
+        impacts: [
+          {
+            ministryId: seed.ministryAId,
+            ministryName: 'Scheduling Ministry A',
+            volunteerCount: 5,
+            answersGiven: true,
+          },
+        ],
+      },
+    });
+    expect(byUser['other-admin']).toMatchObject({
+      ministries: [{ id: leaderless.id, name: 'Leaderless' }],
+      change: {
+        ...change,
+        volunteerCount: 0,
+        impacts: [
+          {
+            ministryId: leaderless.id,
+            ministryName: 'Leaderless',
+            volunteerCount: 0,
+            answersGiven: false,
+          },
+        ],
+      },
     });
   });
 

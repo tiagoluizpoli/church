@@ -1665,6 +1665,93 @@ describe('N10 event_changed (add) through the outbox', () => {
     });
   });
 
+  it('renders a pt-BR move with old and new times, one line per Ministry with the old-answer note, and the Ministry picker link', async () => {
+    const sibling = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      name: 'Louvor',
+    });
+    await unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'event_changed',
+        to: [
+          {
+            userId: UserId.from(ids.adminUserId),
+            churchId: ChurchId.from(ids.churchId),
+          },
+        ],
+        data: {
+          cycleId,
+          cycleName: 'December 2026',
+          eventId,
+          eventTitle: 'Vigília <b>especial</b>',
+          adminName: 'Ana',
+          churchName: 'Scheduling Church A',
+          churchTimezone: 'America/Sao_Paulo',
+          ministries: [
+            { id: ids.ministryId, name: 'Scheduling Ministry A' },
+            { id: sibling.id, name: 'Louvor' },
+          ],
+          change: {
+            kind: 'move',
+            previousStart: parseInstant({ value: '2026-12-13T22:00:00.000Z' }),
+            previousEnd: parseInstant({ value: '2026-12-14T00:00:00.000Z' }),
+            start: parseInstant({ value: '2026-12-20T22:00:00.000Z' }),
+            end: parseInstant({ value: '2026-12-21T00:00:00.000Z' }),
+            volunteerCount: 3,
+            impacts: [
+              {
+                ministryId: ids.ministryId,
+                ministryName: 'Scheduling Ministry A',
+                volunteerCount: 2,
+                answersGiven: true,
+              },
+              {
+                ministryId: sibling.id,
+                ministryName: 'Louvor',
+                volunteerCount: 1,
+                answersGiven: false,
+              },
+            ],
+          },
+        },
+      }),
+    );
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    const [email] = emailSender.delivered;
+    const text = email?.request.text ?? '';
+    expect(email?.request.subject).toBe(
+      'Alterado: Vigília <b>especial</b> → dom 20 dez · 19:00–21:00',
+    );
+    expect(text).toContain(
+      m.notification_event_changed_move_body_other(
+        { adminName: 'Ana', previous: 'dom 13 dez · 19:00–21:00', count: 3 },
+        pt,
+      ),
+    );
+    expect(text).toContain(
+      `Scheduling Ministry A: 2 voluntários afetados · ${m.prepare_answers_coverage_note({}, pt)}`,
+    );
+    expect(text).toContain('Louvor: 1 voluntário afetado');
+    expect(text).not.toContain(
+      `Louvor: 1 voluntário afetado · ${m.prepare_answers_coverage_note({}, pt)}`,
+    );
+    expect(text).toContain(
+      `https://app.test/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
+    );
+    expect(email?.request.html).not.toContain('<b>especial');
+    const inbox = await schedulingTestDb.select().from(notification);
+    expect(inbox[0]).toMatchObject({
+      kind: 'event_changed',
+      data: { change: { kind: 'move', volunteerCount: 3 } },
+    });
+  });
+
   it('skips and logs a row whose frozen facts predate the typed change instead of rendering undefined', async () => {
     await enqueueAdded({ eventTitle: 'Vigília' });
     for (const row of await outboxRows()) {

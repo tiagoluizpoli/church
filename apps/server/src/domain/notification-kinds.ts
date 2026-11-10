@@ -148,6 +148,28 @@ export const eventChangedChangeSchema = z.discriminatedUnion('kind', [
     start: instantSchema,
     end: instantSchema,
   }),
+  z.object({
+    kind: z.literal('move'),
+    /** The moved scope's bounds before and after: read-only facts once moved. */
+    previousStart: instantSchema,
+    previousEnd: instantSchema,
+    start: instantSchema,
+    end: instantSchema,
+    /** Distinct Volunteers of the recipient's Ministries on the moved scope, withdrawn ones included. */
+    volunteerCount: z.number().int().nonnegative(),
+    /** One line per recipient Ministry, in `ministries` order. */
+    impacts: z
+      .array(
+        z.object({
+          ministryId: z.uuid(),
+          ministryName: z.string(),
+          volunteerCount: z.number().int().nonnegative(),
+          /** Availability answers in the Cycle were given for the old time. */
+          answersGiven: z.boolean(),
+        }),
+      )
+      .min(1),
+  }),
 ]);
 
 /**

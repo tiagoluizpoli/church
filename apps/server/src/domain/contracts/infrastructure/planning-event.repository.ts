@@ -111,6 +111,22 @@ export interface LockEventParticipationsInput {
   tx: TransactionContext;
 }
 
+export interface ListMoveAffectedMinistriesInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  eventId: EventId;
+  /** The moved blocks; a Ministry is affected when it opted into or staffs one. */
+  eventTimeBlockIds: EventTimeBlockId[];
+  tx: TransactionContext;
+}
+
+export interface MoveAffectedMinistry {
+  id: MinistryId;
+  name: string;
+  /** A confirmed availability answer of the Ministry exists in the Cycle. */
+  answersGiven: boolean;
+}
+
 export interface MoveEventTimeBlocksInput {
   churchId: ChurchId;
   eventTimeBlockIds: EventTimeBlockId[];
@@ -158,6 +174,10 @@ export interface PlanningEventRepository {
    * saves take; needs `tx`.
    */
   lockParticipations(input: LockEventParticipationsInput): Promise<void>;
+  /** Active Ministries opted into (or staffing) the moved blocks, by name. */
+  listMoveAffectedMinistries(
+    input: ListMoveAffectedMinistriesInput,
+  ): Promise<MoveAffectedMinistry[]>;
   /** Shifts the blocks and all of their Shifts by one delta. */
   moveEventTimeBlocks(input: MoveEventTimeBlocksInput): Promise<void>;
 }

@@ -161,31 +161,12 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   });
   const volunteerPage = await volunteerContext.newPage();
 
-  // Name the Worship Ministry explicitly: the dashboard otherwise defaults to
-  // the Volunteer's earliest upcoming assignment's Ministry.
-  await volunteerPage.goto(
-    `/dashboard?section=ministry_schedule&ministryId=${worshipMinistryId}`,
-  );
+  await volunteerPage.goto(`/my-schedule/${worshipMinistryId}/${cycleId}`);
+  await expect(volunteerPage.getByText(eventTitle)).toBeVisible();
   await expect(
-    volunteerPage.getByRole('tab', { name: 'Ministry Schedule' }),
-  ).toHaveAttribute('aria-selected', 'true');
-  const scheduleToggle = volunteerPage.getByRole('button', {
-    name: `Show schedule for ${eventTitle}`,
-  });
-  await expect(scheduleToggle).toBeVisible();
-  await scheduleToggle.click();
-  await expect(
-    volunteerPage.getByRole('button', {
-      name: `Hide schedule for ${eventTitle}`,
+    volunteerPage.getByText(shortVolunteerName({ name: volunteerName }), {
+      exact: true,
     }),
-  ).toBeVisible();
-  await expect(
-    volunteerPage.getByText(
-      `Volunteer: ${shortVolunteerName({ name: volunteerName })}`,
-      {
-        exact: true,
-      },
-    ),
   ).toBeVisible();
 
   // Replace, undo, then replace again: only the final net change is sent.

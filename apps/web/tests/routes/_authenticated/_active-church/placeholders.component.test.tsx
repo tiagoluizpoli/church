@@ -64,17 +64,6 @@ describe('coming-soon placeholder routes', () => {
     expect(screen.queryByText(m.shell_coming_soon())).not.toBeInTheDocument();
   });
 
-  it('shows /my-schedule as coming soon to a Volunteer', async () => {
-    signInAs(callerCapabilitiesFixture({ hasVolunteerMembership: true }));
-
-    renderRoute({ initialPath: '/my-schedule', churchTimezone: 'UTC' });
-
-    expect(
-      await screen.findByRole('heading', { name: m.nav_my_schedule() }),
-    ).toBeVisible();
-    expect(screen.getByText(m.shell_coming_soon())).toBeVisible();
-  });
-
   it('shows neither refusal while the capabilities load', async () => {
     getCallerCapabilities.mockReturnValue(new Promise(() => {}));
 

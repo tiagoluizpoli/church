@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useDashboardRefresh } from '@/features/volunteers/hooks/use-dashboard-refresh';
+import { useMyScheduleRefresh } from '@/features/volunteers/hooks/use-my-schedule-refresh';
 
 function setNavigatorOnlineState(value: boolean) {
   Object.defineProperty(window.navigator, 'onLine', {
@@ -10,20 +10,20 @@ function setNavigatorOnlineState(value: boolean) {
 }
 
 const visibleDataFixture = {
-  assignmentGroups: [{ eventId: 'event-1' }],
-  ministrySchedule: [{ eventId: 'event-3' }],
+  assignments: [{ eventId: 'event-1' }],
+  schedules: [{ eventId: 'event-3' }],
 };
 
-describe('useDashboardRefresh', () => {
+describe('useMyScheduleRefresh', () => {
   afterEach(() => {
     setNavigatorOnlineState(true);
   });
 
-  it('stays silent when visible dashboard data does not change', () => {
+  it('stays silent when visible schedule data does not change', () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined);
     const { result, rerender } = renderHook(
       ({ visibleData }) =>
-        useDashboardRefresh({
+        useMyScheduleRefresh({
           onRefresh,
           visibleData,
         }),
@@ -43,11 +43,11 @@ describe('useDashboardRefresh', () => {
     expect(result.current.hasBackgroundUpdate).toBe(false);
   });
 
-  it('shows background update indicator when visible dashboard data changes', () => {
+  it('shows background update indicator when visible schedule data changes', () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined);
     const { result, rerender } = renderHook(
       ({ visibleData }) =>
-        useDashboardRefresh({
+        useMyScheduleRefresh({
           onRefresh,
           visibleData,
         }),
@@ -61,7 +61,7 @@ describe('useDashboardRefresh', () => {
     rerender({
       visibleData: {
         ...visibleDataFixture,
-        assignmentGroups: [{ eventId: 'event-1' }, { eventId: 'event-4' }],
+        assignments: [{ eventId: 'event-1' }, { eventId: 'event-4' }],
       },
     });
 
@@ -78,7 +78,7 @@ describe('useDashboardRefresh', () => {
     setNavigatorOnlineState(false);
     const onRefresh = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useDashboardRefresh({
+      useMyScheduleRefresh({
         onRefresh,
         visibleData: visibleDataFixture,
       }),

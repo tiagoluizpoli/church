@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/tests/setup/children-props';
@@ -33,10 +34,6 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-vi.mock('@/features/volunteers/components/volunteer-dashboard', () => ({
-  VolunteerDashboard: () => <div>Volunteer dashboard stub</div>,
-}));
-
 describe('/scheduling retired', () => {
   it('shows not-found with no redirect', async () => {
     renderRoute({ initialPath: '/scheduling', churchTimezone: 'UTC' });
@@ -53,6 +50,6 @@ describe('/scheduling retired', () => {
 
     renderRoute({ initialPath: '/cycles', churchTimezone: 'UTC' });
 
-    expect(await screen.findByText('Volunteer dashboard stub')).toBeVisible();
+    expect(await screen.findByText(m.dashboard_entry_title())).toBeVisible();
   });
 });

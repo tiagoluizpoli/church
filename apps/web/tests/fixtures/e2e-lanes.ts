@@ -44,7 +44,6 @@ export const ISOLATED_SPECS = [
   'scheduling/us4-schedule-publish.spec.ts',
   'scheduling/us5-leader-reassign.spec.ts',
   'volunteer-dashboard/us-notification-bell.spec.ts',
-  'volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'volunteer-dashboard/us5-offline.spec.ts',
 ] as const;
 

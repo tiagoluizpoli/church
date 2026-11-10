@@ -4,10 +4,7 @@ import type { IVolunteerManager } from '../../domain/contracts/application/volun
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
-import {
-  assignmentListResponseSchema,
-  volunteerMapper,
-} from '../dtos/volunteer.dto';
+import { volunteerScheduleResponseSchema } from '../dtos/volunteer.dto';
 
 interface VolunteerScheduleControllerDependencies {
   volunteerManager: IVolunteerManager;
@@ -49,17 +46,17 @@ export class VolunteerScheduleController implements FastifyController {
           operationId: 'getPublishedVolunteerSchedule',
           summary: "Get the caller's published schedule",
           description:
-            "List the current Volunteer's Assignments from published MinistryParticipations.",
-          response: { 200: assignmentListResponseSchema },
+            "List the current Volunteer's upcoming and in-progress Assignments from published MinistryParticipations, with the published Schedules of every Ministry they serve in.",
+          response: { 200: volunteerScheduleResponseSchema },
         },
       },
       async (request, reply) => {
-        const assignments = await this.volunteerManager.getPublishedSchedule({
+        const schedule = await this.volunteerManager.getPublishedSchedule({
           // Non-null: this controller's preValidation requires a Volunteer profile.
           volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
         });
-        return reply.send(volunteerMapper.assignmentsToResponse(assignments));
+        return reply.send(schedule);
       },
     );
   }

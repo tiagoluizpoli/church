@@ -12445,13 +12445,21 @@ paths:
                   - notificationPreview
                   - ministryOptions
                 additionalProperties: false
-  /api/v1/volunteer/assignments:
+  /api/v1/volunteer/assignments/{assignmentId}:
     get:
-      operationId: getMyAssignments
-      summary: Get the caller's upcoming Assignments
+      operationId: getAssignmentDetail
+      summary: Get one of the caller's Assignments
       tags:
         - volunteer
-      description: List the current Volunteer's upcoming Assignments.
+      description: Get one of the current Volunteer's own published Assignments with
+        its Shift roster. Anyone else's, or one no longer on the schedule, is
+        404.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
       responses:
         "200":
           description: Default Response
@@ -12460,55 +12468,185 @@ paths:
               schema:
                 type: object
                 properties:
-                  assignments:
+                  assignmentId:
+                    type: string
+                  eventId:
+                    type: string
+                  eventTitle:
+                    type: string
+                  startTime:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  endTime:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  cycleId:
+                    type: string
+                  ministryId:
+                    type: string
+                  ministryName:
+                    type: string
+                  sectorName:
+                    type: string
+                  roleName:
+                    type: string
+                  leaderName:
+                    nullable: true
+                    type: string
+                  roster:
                     type: array
                     items:
                       type: object
                       properties:
-                        id:
+                        sectorName:
                           type: string
-                        churchId:
+                        roleName:
                           type: string
-                        eventTimeBlockId:
-                          type: string
-                        participationId:
-                          type: string
-                        shiftId:
-                          type: string
-                        volunteerId:
-                          type: string
-                        roleId:
-                          type: string
-                        shiftRequirementId:
-                          type: string
-                        status:
-                          type: string
-                          enum:
-                            - draft
-                            - pending
-                            - confirmed
-                            - declined
-                            - cancelled
-                        reason:
-                          type: string
-                        assignedAt:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        assignedBy:
-                          type: string
+                        people:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                              isYou:
+                                type: boolean
+                            required:
+                              - name
+                              - isYou
+                            additionalProperties: false
+                        openCount:
+                          type: number
                       required:
-                        - id
-                        - churchId
-                        - eventTimeBlockId
-                        - volunteerId
-                        - roleId
-                        - shiftRequirementId
-                        - status
-                        - assignedAt
+                        - sectorName
+                        - roleName
+                        - people
+                        - openCount
                       additionalProperties: false
                 required:
-                  - assignments
+                  - assignmentId
+                  - eventId
+                  - eventTitle
+                  - startTime
+                  - endTime
+                  - cycleId
+                  - ministryId
+                  - ministryName
+                  - sectorName
+                  - roleName
+                  - leaderName
+                  - roster
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    patch:
+      operationId: respondToAssignment
+      summary: Respond to an Assignment
+      tags:
+        - volunteer
+      description: Record the current Volunteer's accept/decline response to one of
+        their own Assignments.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                response:
+                  type: string
+                  enum:
+                    - accepted
+                    - declined
+                reason:
+                  type: string
+              required:
+                - response
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: assignmentId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  churchId:
+                    type: string
+                  eventTimeBlockId:
+                    type: string
+                  participationId:
+                    type: string
+                  shiftId:
+                    type: string
+                  volunteerId:
+                    type: string
+                  roleId:
+                    type: string
+                  shiftRequirementId:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - draft
+                      - pending
+                      - confirmed
+                      - declined
+                      - cancelled
+                  reason:
+                    type: string
+                  assignedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  assignedBy:
+                    type: string
+                required:
+                  - id
+                  - churchId
+                  - eventTimeBlockId
+                  - volunteerId
+                  - roleId
+                  - shiftRequirementId
+                  - status
+                  - assignedAt
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/volunteer/ministries/{ministryId}/schedule:
     get:
@@ -12518,6 +12656,13 @@ paths:
         - volunteer
       description: Get the current Volunteer's published schedule within one Ministry.
       parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: query
+          name: cycleId
+          required: true
         - schema:
             type: string
           in: path
@@ -12535,6 +12680,12 @@ paths:
                     type: string
                   ministryName:
                     type: string
+                  cycleId:
+                    type: string
+                  cycleName:
+                    type: string
+                  published:
+                    type: boolean
                   events:
                     type: array
                     items:
@@ -12559,29 +12710,31 @@ paths:
                           items:
                             type: object
                             properties:
-                              eventTimeBlockId:
+                              shiftId:
                                 type: string
-                              eventTimeBlockLabel:
+                              shiftLabel:
                                 type: string
+                              shiftStart:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              shiftEnd:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                               sectorName:
                                 type: string
                               roleName:
                                 type: string
                               volunteerDisplayName:
                                 type: string
-                              confirmationState:
-                                type: string
-                                enum:
-                                  - pending
-                                  - confirmed
-                                  - declined
-                                  - open
                             required:
-                              - eventTimeBlockId
-                              - eventTimeBlockLabel
+                              - shiftId
+                              - shiftLabel
+                              - shiftStart
+                              - shiftEnd
                               - sectorName
                               - roleName
-                              - confirmationState
                             additionalProperties: false
                       required:
                         - eventId
@@ -12594,6 +12747,9 @@ paths:
                 required:
                   - ministryId
                   - ministryName
+                  - cycleId
+                  - cycleName
+                  - published
                   - events
                 additionalProperties: false
         "404":
@@ -12933,101 +13089,6 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/volunteer/assignments/{assignmentId}:
-    patch:
-      operationId: respondToAssignment
-      summary: Respond to an Assignment
-      tags:
-        - volunteer
-      description: Record the current Volunteer's accept/decline response to one of
-        their own Assignments.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                response:
-                  type: string
-                  enum:
-                    - accepted
-                    - declined
-                reason:
-                  type: string
-              required:
-                - response
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: assignmentId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  eventTimeBlockId:
-                    type: string
-                  participationId:
-                    type: string
-                  shiftId:
-                    type: string
-                  volunteerId:
-                    type: string
-                  roleId:
-                    type: string
-                  shiftRequirementId:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - pending
-                      - confirmed
-                      - declined
-                      - cancelled
-                  reason:
-                    type: string
-                  assignedAt:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                  assignedBy:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - eventTimeBlockId
-                  - volunteerId
-                  - roleId
-                  - shiftRequirementId
-                  - status
-                  - assignedAt
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
   /api/v1/volunteer/assignments/{assignmentId}/cancel:
     post:
       operationId: cancelOwnAssignment
@@ -13072,8 +13133,9 @@ paths:
       summary: Get the caller's published schedule
       tags:
         - volunteer
-      description: List the current Volunteer's Assignments from published
-        MinistryParticipations.
+      description: List the current Volunteer's upcoming and in-progress Assignments
+        from published MinistryParticipations, with the published Schedules of
+        every Ministry they serve in.
       responses:
         "200":
           description: Default Response
@@ -13087,50 +13149,74 @@ paths:
                     items:
                       type: object
                       properties:
-                        id:
+                        assignmentId:
                           type: string
-                        churchId:
+                        eventId:
                           type: string
-                        eventTimeBlockId:
-                          type: string
-                        participationId:
+                        eventTitle:
                           type: string
                         shiftId:
                           type: string
-                        volunteerId:
+                        startTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        endTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        ministryId:
+                          type: string
+                        ministryName:
+                          type: string
+                        sectorName:
                           type: string
                         roleId:
                           type: string
-                        shiftRequirementId:
+                        roleName:
                           type: string
                         status:
                           type: string
                           enum:
-                            - draft
                             - pending
                             - confirmed
                             - declined
-                            - cancelled
-                        reason:
+                      required:
+                        - assignmentId
+                        - eventId
+                        - eventTitle
+                        - shiftId
+                        - startTime
+                        - endTime
+                        - ministryId
+                        - ministryName
+                        - sectorName
+                        - roleId
+                        - roleName
+                        - status
+                      additionalProperties: false
+                  schedules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ministryId:
                           type: string
-                        assignedAt:
+                        ministryName:
                           type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        assignedBy:
+                        cycleId:
+                          type: string
+                        cycleName:
                           type: string
                       required:
-                        - id
-                        - churchId
-                        - eventTimeBlockId
-                        - volunteerId
-                        - roleId
-                        - shiftRequirementId
-                        - status
-                        - assignedAt
+                        - ministryId
+                        - ministryName
+                        - cycleId
+                        - cycleName
                       additionalProperties: false
                 required:
                   - assignments
+                  - schedules
                 additionalProperties: false
 tags:
   - name: events

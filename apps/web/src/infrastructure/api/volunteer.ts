@@ -8,9 +8,10 @@ import type {
   AnswerAvailabilityCheck200,
   AnswerAvailabilityCheckBody,
   CancelOwnAssignment204,
+  GetAssignmentDetail200,
   GetAvailabilityCheck200,
   GetMinistrySchedule200,
-  GetMyAssignments200,
+  GetMinistryScheduleParams,
   GetPublishedVolunteerSchedule200,
   GetVolunteerDashboard200,
   ListAvailabilityChecks200,
@@ -37,14 +38,29 @@ const getVolunteerDashboard = (
       );
     }
   /**
- * List the current Volunteer's upcoming Assignments.
- * @summary Get the caller's upcoming Assignments
+ * Get one of the current Volunteer's own published Assignments with its Shift roster. Anyone else's, or one no longer on the schedule, is 404.
+ * @summary Get one of the caller's Assignments
  */
-const getMyAssignments = (
-
+const getAssignmentDetail = (
+    assignmentId: string,
  ) => {
-      return apiClient<GetMyAssignments200>(
-      {url: `/api/v1/volunteer/assignments`, method: 'GET'
+      return apiClient<GetAssignmentDetail200>(
+      {url: `/api/v1/volunteer/assignments/${assignmentId}`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Record the current Volunteer's accept/decline response to one of their own Assignments.
+ * @summary Respond to an Assignment
+ */
+const respondToAssignment = (
+    assignmentId: string,
+    respondToAssignmentBody: RespondToAssignmentBody,
+ ) => {
+      return apiClient<RespondToAssignment200>(
+      {url: `/api/v1/volunteer/assignments/${assignmentId}`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: respondToAssignmentBody
     },
       );
     }
@@ -54,9 +70,11 @@ const getMyAssignments = (
  */
 const getMinistrySchedule = (
     ministryId: string,
+    params: GetMinistryScheduleParams,
  ) => {
       return apiClient<GetMinistrySchedule200>(
-      {url: `/api/v1/volunteer/ministries/${ministryId}/schedule`, method: 'GET'
+      {url: `/api/v1/volunteer/ministries/${ministryId}/schedule`, method: 'GET',
+        params
     },
       );
     }
@@ -100,21 +118,6 @@ const answerAvailabilityCheck = (
       );
     }
   /**
- * Record the current Volunteer's accept/decline response to one of their own Assignments.
- * @summary Respond to an Assignment
- */
-const respondToAssignment = (
-    assignmentId: string,
-    respondToAssignmentBody: RespondToAssignmentBody,
- ) => {
-      return apiClient<RespondToAssignment200>(
-      {url: `/api/v1/volunteer/assignments/${assignmentId}`, method: 'PATCH',
-      headers: {'Content-Type': 'application/json', },
-      data: respondToAssignmentBody
-    },
-      );
-    }
-  /**
  * Cancel one of the current Volunteer's own Assignments.
  * @summary Cancel one of the caller's Assignments
  */
@@ -127,7 +130,7 @@ const cancelOwnAssignment = (
       );
     }
   /**
- * List the current Volunteer's Assignments from published MinistryParticipations.
+ * List the current Volunteer's upcoming and in-progress Assignments from published MinistryParticipations, with the published Schedules of every Ministry they serve in.
  * @summary Get the caller's published schedule
  */
 const getPublishedVolunteerSchedule = (
@@ -138,13 +141,13 @@ const getPublishedVolunteerSchedule = (
     },
       );
     }
-  return {getVolunteerDashboard,getMyAssignments,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,respondToAssignment,cancelOwnAssignment,getPublishedVolunteerSchedule}};
+  return {getVolunteerDashboard,getAssignmentDetail,respondToAssignment,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,cancelOwnAssignment,getPublishedVolunteerSchedule}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
-export type GetMyAssignmentsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMyAssignments']>>>
+export type GetAssignmentDetailResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAssignmentDetail']>>>
+export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
 export type ListAvailabilityChecksResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['listAvailabilityChecks']>>>
 export type GetAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAvailabilityCheck']>>>
 export type AnswerAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['answerAvailabilityCheck']>>>
-export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
 export type CancelOwnAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['cancelOwnAssignment']>>>
 export type GetPublishedVolunteerScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getPublishedVolunteerSchedule']>>>

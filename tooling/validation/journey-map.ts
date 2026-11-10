@@ -59,11 +59,10 @@ const VOLUNTEER_TRANSFER_SPEC_PATHS = [
 // #216 — the dashboard shell and its shared hooks/lib feed all three of the
 // Availability, Assignment, and Ministry Schedule sections at once, so a
 // change there is verified by all three specs together. #218 — the same
-// shell and hooks (use-online-state, use-dashboard-refresh,
+// shell and hooks (use-online-state, use-my-schedule-refresh,
 // dashboard-query-options' cached-snapshot reads) also drive the offline
 // experience proven by us5-offline, so it joins this shared group.
 const VOLUNTEER_DASHBOARD_SPEC_PATHS = [
-  'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'tests/volunteer-dashboard/us5-offline.spec.ts',
 ];
 
@@ -124,7 +123,6 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/us4-schedule-publish.spec.ts',
   'tests/scheduling/us5-leader-reassign.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-  'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
   'tests/volunteer-dashboard/us5-offline.spec.ts',
 ];
 
@@ -531,37 +529,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/volunteer-dashboard.tsx',
-    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/hooks/use-volunteer-dashboard.ts',
-    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/hooks/use-dashboard-refresh.ts',
-    specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
-  },
-  {
-    // #218 — also owns the cached notification-inbox reads/writes that back
-    // use-notification-inbox's offline fallback.
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/lib/dashboard-query-options.ts',
-    specPaths: [
-      ...VOLUNTEER_DASHBOARD_SPEC_PATHS,
-      ...NOTIFICATION_BELL_SPEC_PATHS,
-    ],
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/lib/dashboard-mappers.ts',
+      'apps/web/src/features/volunteers/hooks/use-my-schedule-refresh.ts',
     specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
   },
   {
     // #218 — shared by every dashboard hook (use-volunteer-dashboard,
-    // use-dashboard-refresh) and by use-notification-inbox, so a change here
+    // use-my-schedule-refresh) and by use-notification-inbox, so a change here
     // is verified by both the offline and notification-bell journeys.
     sourcePathPrefix:
       'apps/web/src/features/volunteers/hooks/use-online-state.ts',
@@ -574,7 +547,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // #218 — the offline/last-known-data alert rendered only from the
     // dashboard shell.
     sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/dashboard-offline-banner.tsx',
+      'apps/web/src/features/volunteers/components/my-schedule-offline-banner.tsx',
     specPaths: ['tests/volunteer-dashboard/us5-offline.spec.ts'],
   },
   // J8 exercises publication, changes, Send updates and recipient bell details.
@@ -596,11 +569,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // us4-schedule-publish to assert a volunteer sees a just-published shift.
   {
     sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/ministry-schedule-section.tsx',
-    specPaths: [
-      'tests/scheduling/us4-schedule-publish.spec.ts',
-      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
-    ],
+      'apps/web/src/features/volunteers/components/my-ministry-schedule-page.tsx',
+    specPaths: ['tests/scheduling/us4-schedule-publish.spec.ts'],
   },
   // #216 — the volunteer-facing generated API client backs the dashboard
   // (Availability/Assignment/ministry-schedule), the availability-check

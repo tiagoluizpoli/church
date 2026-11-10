@@ -1,21 +1,20 @@
-import { m } from '@church/i18n/messages';
 import { createFileRoute } from '@tanstack/react-router';
+import { MySchedulePage } from '@/features/volunteers/components/my-schedule-page';
 import { CapabilityGate } from '@/shared/components/capability-gate';
-import { ComingSoonPage } from '@/shared/components/coming-soon-page';
 
 export const Route = createFileRoute(
   '/_authenticated/_active-church/my-schedule/',
 )({
-  component: MySchedulePage,
+  component: MyScheduleRoute,
 });
 
-function MySchedulePage() {
+function MyScheduleRoute() {
   return (
     <CapabilityGate
       allow={({ hasVolunteerMembership }) => hasVolunteerMembership}
       refusal="not-serving"
     >
-      <ComingSoonPage title={m.nav_my_schedule()} />
+      <MySchedulePage />
     </CapabilityGate>
   );
 }

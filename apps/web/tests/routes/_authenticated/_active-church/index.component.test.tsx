@@ -45,10 +45,6 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-vi.mock('@/features/volunteers/components/volunteer-dashboard', () => ({
-  VolunteerDashboard: () => <div>Volunteer dashboard stub</div>,
-}));
-
 describe('_active-church index route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,7 +56,7 @@ describe('_active-church index route', () => {
   it('renders Home at "/" without cycling through /dashboard', async () => {
     const { router } = renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
 
-    expect(await screen.findByText('Volunteer dashboard stub')).toBeVisible();
+    expect(await screen.findByText(m.dashboard_entry_title())).toBeVisible();
     expect(router.state.location.pathname).toBe('/');
     expect(screen.getByText(m.dashboard_entry_title())).toBeVisible();
     expect(

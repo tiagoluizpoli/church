@@ -32,7 +32,6 @@ const mockGetSession = vi.mocked(
 
 const volunteerManager = {
   getDashboard: vi.fn(),
-  getUpcomingAssignments: vi.fn(),
   getPublishedSchedule: vi.fn(),
   getMinistrySchedule: vi.fn(),
   listAvailabilityChecks: vi.fn(),
@@ -50,6 +49,7 @@ let app: FastifyTypedInstance;
 const CHURCH_ID = '11111111-1111-4111-8111-111111111111';
 const VOLUNTEER_ID = '55555555-5555-4555-8555-555555555551';
 const MINISTRY_ID = '66666666-6666-4666-8666-666666666661';
+const CYCLE_ID = '99999999-9999-4999-8999-999999999999';
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
@@ -93,11 +93,18 @@ const GENERIC_NOT_FOUND = { error: 'NOT_FOUND', message: m.error_not_found() };
 
 const servingCollections = [
   { method: 'GET' as const, url: '/api/v1/volunteer/dashboard' },
-  { method: 'GET' as const, url: '/api/v1/volunteer/assignments' },
   { method: 'GET' as const, url: '/api/v1/volunteer/availability-checks' },
 ];
 
 describe('Volunteer route access', () => {
+  it('retired GET /volunteer/assignments returns 404', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/volunteer/assignments',
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
   it.each([
     { method: 'PUT' as const, suffix: 'unavailable-shifts' },
     { method: 'POST' as const, suffix: 'confirm' },
@@ -205,7 +212,7 @@ describe('Volunteer route access', () => {
   });
 
   it('returns the same 404 for a missing and a non-member Ministry schedule', async () => {
-    const url = `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule`;
+    const url = `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule?cycleId=${CYCLE_ID}`;
     volunteerManager.getMinistrySchedule.mockRejectedValueOnce(
       new NotFoundError(`Ministry not found: ${MINISTRY_ID}`),
     );
@@ -223,10 +230,22 @@ describe('Volunteer route access', () => {
 });
 
 describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
+  it('rejects a read without a cycleId', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule`,
+    });
+
+    expect(response.statusCode).toBe(422);
+  });
+
   it('returns the Sector for occupied and open requirement rows', async () => {
     volunteerManager.getMinistrySchedule.mockResolvedValue({
       ministryId: MINISTRY_ID,
       ministryName: 'Kids',
+      cycleId: CYCLE_ID,
+      cycleName: 'Outubro 2026',
+      published: true,
       events: [
         {
           eventId: 'event-1',
@@ -236,19 +255,21 @@ describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
           assignmentCount: 1,
           rows: [
             {
-              eventTimeBlockId: 'time-block-1',
-              eventTimeBlockLabel: 'Morning',
+              shiftId: 'shift-1',
+              shiftLabel: 'Morning',
+              shiftStart: '2026-07-06T09:00:00.000Z',
+              shiftEnd: '2026-07-06T10:00:00.000Z',
               sectorName: 'Babies Room',
               roleName: 'Teacher',
               volunteerDisplayName: 'Alice T.',
-              confirmationState: 'confirmed',
             },
             {
-              eventTimeBlockId: 'time-block-1',
-              eventTimeBlockLabel: 'Morning',
+              shiftId: 'shift-1',
+              shiftLabel: 'Morning',
+              shiftStart: '2026-07-06T09:00:00.000Z',
+              shiftEnd: '2026-07-06T10:00:00.000Z',
               sectorName: 'Kids Room',
               roleName: 'Teacher',
-              confirmationState: 'open',
             },
           ],
         },
@@ -257,7 +278,7 @@ describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule`,
+      url: `/api/v1/volunteer/ministries/${MINISTRY_ID}/schedule?cycleId=${CYCLE_ID}`,
     });
 
     expect(response.statusCode).toBe(200);
@@ -270,9 +291,14 @@ describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
         expect.objectContaining({
           sectorName: 'Kids Room',
           roleName: 'Teacher',
-          confirmationState: 'open',
         }),
       ]),
+    );
+    for (const row of response.json().events[0].rows) {
+      expect(row).not.toHaveProperty('confirmationState');
+    }
+    expect(volunteerManager.getMinistrySchedule).toHaveBeenCalledWith(
+      expect.objectContaining({ cycleId: CYCLE_ID }),
     );
   });
 });

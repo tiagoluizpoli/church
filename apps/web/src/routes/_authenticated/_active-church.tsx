@@ -11,7 +11,9 @@ import {
   usePreparationBlockBreadcrumbs,
 } from '@/features/scheduling/hooks/use-preparation-block-breadcrumbs';
 import { useTemplateBreadcrumb } from '@/features/scheduling/hooks/use-template-breadcrumb';
+import { useAssignmentBreadcrumb } from '@/features/volunteers/hooks/use-assignment-breadcrumb';
 import { useAvailabilityCheckBreadcrumb } from '@/features/volunteers/hooks/use-availability-check-breadcrumb';
+import { useMyMinistryScheduleBreadcrumb } from '@/features/volunteers/hooks/use-my-ministry-schedule-breadcrumb';
 import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
@@ -189,12 +191,19 @@ function ActiveChurchContents({
   const preparationBreadcrumbs = usePreparationBlockBreadcrumbs();
   const checkBreadcrumb = useAvailabilityCheckBreadcrumb();
   const checkBreadcrumbs = checkBreadcrumb ? [checkBreadcrumb] : [];
+  const myScheduleBreadcrumbs = useMyMinistryScheduleBreadcrumb();
+  const assignmentBreadcrumb = useAssignmentBreadcrumb();
+  const assignmentBreadcrumbs = assignmentBreadcrumb
+    ? [assignmentBreadcrumb]
+    : [];
   return (
     <AppShell
       breadcrumbOverrides={[
         ...breadcrumbOverrides,
         ...preparationBreadcrumbs,
         ...checkBreadcrumbs,
+        ...myScheduleBreadcrumbs,
+        ...assignmentBreadcrumbs,
       ]}
       notificationBell={<NotificationBell />}
     >

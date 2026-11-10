@@ -3,6 +3,7 @@ import type {
   AssignmentId,
   AvailabilityCheckId,
   ChurchId,
+  CycleId,
   MinistryId,
   ShiftId,
   UserId,
@@ -51,13 +52,43 @@ export interface VolunteerDashboard {
   ministryOptions: DashboardMinistryOption[];
 }
 
+export interface VolunteerScheduleAssignment {
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  shiftId: string;
+  startTime: Instant;
+  endTime: Instant;
+  ministryId: string;
+  ministryName: string;
+  sectorName: string;
+  roleId: string;
+  roleName: string;
+  status: 'pending' | 'confirmed' | 'declined';
+}
+
+/** One Ministry's part of one sent Cycle, published. */
+export interface VolunteerPublishedScheduleSummary {
+  ministryId: string;
+  ministryName: string;
+  cycleId: string;
+  cycleName: string;
+}
+
+export interface VolunteerPublishedSchedule {
+  assignments: VolunteerScheduleAssignment[];
+  schedules: VolunteerPublishedScheduleSummary[];
+}
+
 export interface MinistryScheduleRow {
-  eventTimeBlockId: string;
-  eventTimeBlockLabel: string;
+  shiftId: string;
+  shiftLabel: string;
+  shiftStart: string;
+  shiftEnd: string;
   sectorName: string;
   roleName: string;
+  /** Absent for an unfilled place ('Open'). */
   volunteerDisplayName?: string;
-  confirmationState: 'pending' | 'confirmed' | 'declined' | 'open';
 }
 
 export interface MinistryScheduleEvent {
@@ -72,7 +103,39 @@ export interface MinistryScheduleEvent {
 export interface MinistrySchedule {
   ministryId: string;
   ministryName: string;
+  cycleId: string;
+  cycleName: string;
+  published: boolean;
   events: MinistryScheduleEvent[];
+}
+
+export interface AssignmentRosterGroup {
+  sectorName: string;
+  roleName: string;
+  people: { name: string; isYou: boolean }[];
+  openCount: number;
+}
+
+export interface AssignmentDetail {
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  startTime: Instant;
+  endTime: Instant;
+  cycleId: string;
+  ministryId: string;
+  ministryName: string;
+  sectorName: string;
+  roleName: string;
+  leaderName: string | null;
+  roster: AssignmentRosterGroup[];
+}
+
+export interface GetAssignmentDetailInput {
+  assignmentId: AssignmentId;
+  userId: UserId;
+  volunteerId: VolunteerId;
+  churchId: ChurchId;
 }
 
 export interface VolunteerAvailabilityCheckSummary {
@@ -152,11 +215,6 @@ export interface GetDashboardInput {
   churchId: ChurchId;
 }
 
-export interface GetUpcomingAssignmentsInput {
-  volunteerId: VolunteerId;
-  churchId: ChurchId;
-}
-
 export interface GetPublishedScheduleInput {
   volunteerId: VolunteerId;
   churchId: ChurchId;
@@ -164,19 +222,22 @@ export interface GetPublishedScheduleInput {
 
 export interface GetMinistryScheduleInput {
   ministryId: MinistryId;
+  cycleId: CycleId;
   volunteerId: VolunteerId;
   churchId: ChurchId;
 }
 
 export interface IVolunteerManager {
   getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard>;
-  getUpcomingAssignments(
-    input: GetUpcomingAssignmentsInput,
-  ): Promise<Assignment[]>;
-  getPublishedSchedule(input: GetPublishedScheduleInput): Promise<Assignment[]>;
+  getPublishedSchedule(
+    input: GetPublishedScheduleInput,
+  ): Promise<VolunteerPublishedSchedule>;
   getMinistrySchedule(
     input: GetMinistryScheduleInput,
   ): Promise<MinistrySchedule>;
+  getAssignmentDetail(
+    input: GetAssignmentDetailInput,
+  ): Promise<AssignmentDetail>;
   listAvailabilityChecks(
     input: ListAvailabilityChecksInput,
   ): Promise<VolunteerAvailabilityCheckSummary[]>;

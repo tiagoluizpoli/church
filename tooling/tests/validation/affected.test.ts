@@ -405,13 +405,10 @@ describe('classifyChanges', () => {
   it('selects the volunteer-dashboard journeys for the dashboard route and shell component', () => {
     for (const changedPath of [
       'apps/web/src/routes/_authenticated/_active-church/dashboard.tsx',
-      'apps/web/src/features/volunteers/components/volunteer-dashboard.tsx',
-      'apps/web/src/features/volunteers/hooks/use-volunteer-dashboard.ts',
     ]) {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 
       expect(plan.e2eSpecPaths).toEqual([
-        'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
         'tests/volunteer-dashboard/us5-offline.spec.ts',
       ]);
       expect(plan.missingJourneyMappings).toEqual([]);
@@ -431,7 +428,7 @@ describe('classifyChanges', () => {
 
   it('selects only the offline journey for the offline-specific dashboard files', () => {
     for (const changedPath of [
-      'apps/web/src/features/volunteers/components/dashboard-offline-banner.tsx',
+      'apps/web/src/features/volunteers/components/my-schedule-offline-banner.tsx',
     ]) {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 
@@ -451,7 +448,6 @@ describe('classifyChanges', () => {
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
@@ -474,31 +470,15 @@ describe('classifyChanges', () => {
     }
   });
 
-  it('selects the dashboard and notification-bell journeys for dashboard-query-options', () => {
+  it('selects the published-schedule journeys for the Ministry schedule page', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/features/volunteers/lib/dashboard-query-options.ts',
-      ],
-    });
-
-    expect(plan.e2eSpecPaths).toEqual([
-      'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
-      'tests/volunteer-dashboard/us5-offline.spec.ts',
-    ]);
-    expect(plan.missingJourneyMappings).toEqual([]);
-  });
-
-  it('selects the published-schedule journeys for the ministry-schedule section', () => {
-    const plan = classifyChanges({
-      changedPaths: [
-        'apps/web/src/features/volunteers/components/ministry-schedule-section.tsx',
+        'apps/web/src/features/volunteers/components/my-ministry-schedule-page.tsx',
       ],
     });
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/us4-schedule-publish.spec.ts',
-      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });
@@ -512,7 +492,6 @@ describe('classifyChanges', () => {
       'tests/scheduling/us3-volunteer-availability.spec.ts',
       'tests/scheduling/us4-schedule-publish.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
@@ -712,7 +691,6 @@ describe('classifyChanges', () => {
       'tests/scheduling/us4-schedule-publish.spec.ts',
       'tests/scheduling/us5-leader-reassign.spec.ts',
       'tests/volunteer-dashboard/us-notification-bell.spec.ts',
-      'tests/volunteer-dashboard/us4-ministry-schedule.spec.ts',
       'tests/volunteer-dashboard/us5-offline.spec.ts',
     ]);
     expect(journeyRecipePlan.missingJourneyMappings).toEqual([]);

@@ -36,6 +36,7 @@ import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifi
 import {
   createAssignmentAuditRepositoryFake,
   createAssignmentRepositoryFake,
+  createAuthorityManagerFake,
   createAvailabilityCheckRepositoryFake,
   createChurchRepositoryFake,
   createCycleRepositoryFake,
@@ -239,12 +240,15 @@ function createHarness() {
     assignmentRepo: assignmentRepository,
     unavailableShiftRepo: unavailableShiftRepository,
     notificationRepo: notificationRepository,
+    cycleRepo: cycleRepository,
     eventRepo: eventRepository,
     shiftRepo: shiftRepository,
     ministryRepo: ministryRepository,
     participationRepo: ministryParticipationRepository,
     roleRepo: roleRepository,
     availabilityCheckRepo: availabilityCheckRepository,
+    churchRepo: churchRepository,
+    authorityManager: createAuthorityManagerFake(),
     unitOfWork,
     config: appConfig,
   });
@@ -263,6 +267,7 @@ function createHarness() {
     shiftRepository,
     ministryParticipationRepository,
     volunteerRepository,
+    ministryRepository,
     assignmentRepository,
     unavailableShiftRepository,
     planningEventRepository,
@@ -515,9 +520,29 @@ describe('Assignment and publication managers', () => {
       published,
       f.participation,
     ]);
-    await expect(
-      f.volunteerManager.getPublishedSchedule({ churchId, volunteerId }),
-    ).resolves.toEqual([visible]);
+    f.volunteerRepository.listMemberMinistryIds.mockResolvedValue([]);
+    f.ministryRepository.listByChurch.mockResolvedValue([]);
+    f.eventRepository.getById.mockResolvedValue(f.event);
+    f.shiftRepository.getById.mockResolvedValue(
+      new Shift({
+        id: shiftId,
+        props: {
+          churchId,
+          participationId: MinistryParticipationId.from('published'),
+          eventTimeBlockId: EventTimeBlockId.from('block'),
+          startTime: start,
+          endTime: end,
+        },
+      }),
+    );
+    f.shiftRepository.listRequirementsByParticipation.mockResolvedValue([]);
+    const schedule = await f.volunteerManager.getPublishedSchedule({
+      churchId,
+      volunteerId,
+    });
+    expect(schedule.assignments.map((a) => a.assignmentId)).toEqual([
+      'visible',
+    ]);
   });
 
   it('ranks available volunteers by earlier service and marks unavailable volunteers last', async () => {
@@ -696,27 +721,30 @@ describe('Assignment and publication managers', () => {
     const schedule = await f.volunteerManager.getMinistrySchedule({
       churchId,
       ministryId,
+      cycleId,
       volunteerId,
     });
+    expect(schedule).toMatchObject({ cycleName: 'Cycle', published: true });
+    // A declined place reads as Open; rows carry no confirmation state.
     expect(schedule.events[0]?.rows).toEqual([
       expect.objectContaining({
         roleName: 'Host',
         sectorName: 'Alpha',
         volunteerDisplayName: 'Alice A.',
-        confirmationState: 'pending',
       }),
-      expect.objectContaining({
-        roleName: 'Host',
-        sectorName: 'Beta',
-        volunteerDisplayName: 'Alice A.',
-        confirmationState: 'declined',
-      }),
-      expect.objectContaining({
-        roleName: 'Host',
-        sectorName: 'Beta',
-        confirmationState: 'open',
-      }),
+      expect.objectContaining({ roleName: 'Host', sectorName: 'Beta' }),
     ]);
+    expect(schedule.events[0]?.rows[0]).not.toHaveProperty('confirmationState');
+    expect(schedule.events[0]?.rows[1]).not.toHaveProperty(
+      'volunteerDisplayName',
+    );
+    const otherCycle = await f.volunteerManager.getMinistrySchedule({
+      churchId,
+      ministryId,
+      cycleId: CycleId.from('other-cycle'),
+      volunteerId,
+    });
+    expect(otherCycle).toMatchObject({ published: false, events: [] });
     expect(
       f.ministryParticipationRepository.listByMinistry,
     ).toHaveBeenCalledWith({ churchId, ministryId, state: 'published' });

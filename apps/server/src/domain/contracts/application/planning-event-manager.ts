@@ -64,6 +64,15 @@ export interface UpdatePlanningEventManagerInput {
   eventTimeBlocks: PlanningEventTimeBlockEdit[];
 }
 
+/** Title and location of a Sent Event; nothing else in the graph changes. */
+export interface UpdatePlanningEventDetailsManagerInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  eventId: EventId;
+  title: string;
+  location?: string;
+}
+
 export interface CancelPlanningEventManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
@@ -107,6 +116,9 @@ export interface IPlanningEventManager {
   ): Promise<PlanningEventGraph>;
   updateEvent(
     input: UpdatePlanningEventManagerInput,
+  ): Promise<PlanningEventGraph>;
+  updateEventDetails(
+    input: UpdatePlanningEventDetailsManagerInput,
   ): Promise<PlanningEventGraph>;
   deleteEvent(input: DeletePlanningEventManagerInput): Promise<void>;
   cancelEvent(input: CancelPlanningEventManagerInput): Promise<void>;

@@ -255,15 +255,19 @@ describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
           assignmentCount: 1,
           rows: [
             {
-              eventTimeBlockId: 'time-block-1',
-              eventTimeBlockLabel: 'Morning',
+              shiftId: 'shift-1',
+              shiftLabel: 'Morning',
+              shiftStart: '2026-07-06T09:00:00.000Z',
+              shiftEnd: '2026-07-06T10:00:00.000Z',
               sectorName: 'Babies Room',
               roleName: 'Teacher',
               volunteerDisplayName: 'Alice T.',
             },
             {
-              eventTimeBlockId: 'time-block-1',
-              eventTimeBlockLabel: 'Morning',
+              shiftId: 'shift-1',
+              shiftLabel: 'Morning',
+              shiftStart: '2026-07-06T09:00:00.000Z',
+              shiftEnd: '2026-07-06T10:00:00.000Z',
               sectorName: 'Kids Room',
               roleName: 'Teacher',
             },

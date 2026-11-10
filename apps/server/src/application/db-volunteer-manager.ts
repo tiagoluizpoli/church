@@ -2,15 +2,18 @@ import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
+  compareCalendarDays,
   compareInstants,
   formatTimeOfDay,
   type Instant,
   now as nowInstant,
   parseCalendarDay,
   toDate,
+  today,
   toTimeOfDay,
 } from '@church/time';
-import type { MinistryId, ShiftId } from '../domain/branded-ids';
+import { CycleId, type MinistryId, type ShiftId } from '../domain/branded-ids';
+import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
   AnswerAvailabilityCheckInput,
   AssignmentDetail,
@@ -40,6 +43,7 @@ import type {
   CheckContext,
   CheckShiftRow,
 } from '../domain/contracts/infrastructure/availability-check.repository';
+import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
@@ -55,6 +59,7 @@ import type {
   Assignment,
   AssignmentStatus,
 } from '../domain/entities/assignment';
+import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
@@ -95,6 +100,25 @@ function countsTowardRequirementCoverage({
   status,
 }: RequirementCoverageStatusInput): boolean {
   return status === 'draft' || status === 'pending' || status === 'confirmed';
+}
+
+interface RequirementCoverageInput {
+  requirement: ShiftRequirement;
+  assignments: Assignment[];
+}
+
+/** The Assignments bound to one requirement, and how many places stay open. */
+function projectRequirementCoverage({
+  requirement,
+  assignments,
+}: RequirementCoverageInput) {
+  const bound = assignments.filter(
+    (assignment) => assignment.shiftRequirementId === requirement.id,
+  );
+  const filled = bound.filter((assignment) =>
+    countsTowardRequirementCoverage({ status: assignment.status }),
+  ).length;
+  return { bound, openCount: Math.max(0, requirement.peopleNeeded - filled) };
 }
 
 function aggregateState(
@@ -153,6 +177,8 @@ interface DbVolunteerManagerDependencies {
   participationRepo: MinistryParticipationRepository;
   roleRepo: RoleRepository;
   availabilityCheckRepo: AvailabilityCheckRepository;
+  churchRepo: ChurchRepository;
+  authorityManager: Pick<IAuthorityManager, 'decideAuthority'>;
   unitOfWork: UnitOfWork;
   config: AppConfig;
 }
@@ -169,6 +195,8 @@ export class DbVolunteerManager implements IVolunteerManager {
   private readonly participationRepo: MinistryParticipationRepository;
   private readonly roleRepo: RoleRepository;
   private readonly availabilityCheckRepo: AvailabilityCheckRepository;
+  private readonly churchRepo: ChurchRepository;
+  private readonly authorityManager: Pick<IAuthorityManager, 'decideAuthority'>;
   private readonly unitOfWork: UnitOfWork;
 
   private readonly cancelLeadTimeDays: number;
@@ -185,6 +213,8 @@ export class DbVolunteerManager implements IVolunteerManager {
     participationRepo,
     roleRepo,
     availabilityCheckRepo,
+    churchRepo,
+    authorityManager,
     unitOfWork,
     config,
   }: DbVolunteerManagerDependencies) {
@@ -198,6 +228,8 @@ export class DbVolunteerManager implements IVolunteerManager {
     this.ministryRepo = ministryRepo;
     this.participationRepo = participationRepo;
     this.roleRepo = roleRepo;
+    this.churchRepo = churchRepo;
+    this.authorityManager = authorityManager;
     this.availabilityCheckRepo = availabilityCheckRepo;
     this.unitOfWork = unitOfWork;
     const { assignment } = config;
@@ -393,53 +425,49 @@ export class DbVolunteerManager implements IVolunteerManager {
       churchId,
       volunteerId,
     });
-    const [allMinistries, assignments, publishedByMinistry] = await Promise.all(
-      [
+    const publishedLists = memberMinistryIds.map((ministryId) =>
+      this.participationRepo.listByMinistry({
+        churchId,
+        ministryId,
+        state: 'published',
+      }),
+    );
+    const [allMinistries, assignments, publishedByMinistry, church] =
+      await Promise.all([
         this.ministryRepo.listByChurch({ churchId }),
         this.listPublishedAssignmentsForVolunteer(input),
-        Promise.all(
-          memberMinistryIds.map((ministryId) =>
-            this.participationRepo.listByMinistry({
-              churchId,
-              ministryId,
-              state: 'published',
-            }),
-          ),
-        ),
-      ],
-    );
+        Promise.all(publishedLists),
+        this.churchRepo.getById({ id: churchId }),
+      ]);
+    const { timezone: timeZone } = church;
     const ministryNames = new Map(
       allMinistries.map((ministry) => [ministry.id as string, ministry.name]),
     );
     const assignmentParticipationIds = [
-      ...new Set(assignments.map((a) => a.participationId as string)),
-    ];
+      ...new Set(assignments.map((a) => a.participationId)),
+    ].filter((id): id is NonNullable<typeof id> => id != null);
     const assignmentParticipations =
       assignmentParticipationIds.length === 0
         ? []
         : await this.participationRepo.listByIds({
             churchId,
-            participationIds: assignmentParticipationIds as never,
+            participationIds: assignmentParticipationIds,
           });
+    const allParticipations = [
+      ...publishedByMinistry.flat(),
+      ...assignmentParticipations,
+    ];
     const participationsById = new Map(
-      [...publishedByMinistry.flat(), ...assignmentParticipations].map((p) => [
-        p.id as string,
-        p,
-      ]),
+      allParticipations.map((p) => [p.id as string, p]),
     );
-    const eventsById = new Map(
-      await Promise.all(
-        [
-          ...new Set([...participationsById.values()].map((p) => p.eventId)),
-        ].map(
-          async (eventId) =>
-            [
-              eventId as string,
-              await this.eventRepo.getById({ churchId, eventId }),
-            ] as const,
-        ),
-      ),
+    const eventIds = [...new Set(allParticipations.map((p) => p.eventId))];
+    const eventEntries = await Promise.all(
+      eventIds.map(async (eventId) => {
+        const event = await this.eventRepo.getById({ churchId, eventId });
+        return [eventId as string, event] as const;
+      }),
     );
+    const eventsById = new Map(eventEntries);
 
     const schedules = new Map<string, VolunteerPublishedScheduleSummary>();
     for (const participation of publishedByMinistry.flat()) {
@@ -457,21 +485,29 @@ export class DbVolunteerManager implements IVolunteerManager {
         cycleName: '',
       });
     }
-    const cycles = new Map(
-      await Promise.all(
-        [...new Set([...schedules.values()].map((s) => s.cycleId))].map(
-          async (cycleId) =>
-            [
-              cycleId,
-              await this.cycleRepo.getById({
-                churchId,
-                cycleId: cycleId as never,
-              }),
-            ] as const,
-        ),
-      ),
+    const cycleIds = [
+      ...new Set([...schedules.values()].map((s) => s.cycleId)),
+    ];
+    const cycleEntries = await Promise.all(
+      cycleIds.map(async (cycleId) => {
+        const cycle = await this.cycleRepo.getById({
+          churchId,
+          cycleId: CycleId.from(cycleId),
+        });
+        return [cycleId, cycle] as const;
+      }),
     );
-    const scheduleList = [...schedules.values()]
+    const cycles = new Map(cycleEntries);
+    const churchToday = today({ instant: now, timeZone });
+    // A Cycle that ended before today in the Church Timezone is a past one (ADR-0003).
+    const currentSchedules = [...schedules.values()].filter((schedule) => {
+      const cycle = cycles.get(schedule.cycleId);
+      return (
+        !cycle ||
+        compareCalendarDays({ left: cycle.endDate, right: churchToday }) >= 0
+      );
+    });
+    const scheduleList = currentSchedules
       .map((s) => ({ ...s, cycleName: cycles.get(s.cycleId)?.name ?? '' }))
       .sort(
         (a, b) =>
@@ -484,30 +520,31 @@ export class DbVolunteerManager implements IVolunteerManager {
         const participation = participationsById.get(
           assignment.participationId as string,
         );
+        const { shiftId, roleId } = assignment;
+        const requirementsRead = participation
+          ? this.shiftRepo.listRequirementsByParticipation({
+              churchId,
+              participationId: participation.id,
+            })
+          : [];
         const [shift, role, requirements] = await Promise.all([
           this.shiftRepo.getById({
             churchId,
-            shiftId: assignment.shiftId as NonNullable<Assignment['shiftId']>,
+            shiftId: shiftId as NonNullable<Assignment['shiftId']>,
           }),
-          this.roleRepo.getById({ churchId, id: assignment.roleId }),
-          participation
-            ? this.shiftRepo.listRequirementsByParticipation({
-                churchId,
-                participationId: participation.id,
-              })
-            : [],
+          this.roleRepo.getById({ churchId, id: roleId }),
+          requirementsRead,
         ]);
         const event = participation
           ? eventsById.get(participation.eventId as string)
           : undefined;
+        const shiftOver =
+          compareInstants({ left: shift.endTime, right: now }) <= 0;
         // In progress counts: only Shifts already over drop out.
-        if (
-          !participation ||
-          !event ||
-          compareInstants({ left: shift.endTime, right: now }) <= 0
-        ) {
-          return undefined;
-        }
+        if (!participation || !event || shiftOver) return undefined;
+        const ownRequirement = requirements.find(
+          (r) => r.id === assignment.shiftRequirementId,
+        );
         const item: VolunteerScheduleAssignment = {
           assignmentId: assignment.id as string,
           eventId: event.id as string,
@@ -518,10 +555,8 @@ export class DbVolunteerManager implements IVolunteerManager {
           ministryId: participation.ministryId as string,
           ministryName:
             ministryNames.get(participation.ministryId as string) ?? '',
-          sectorName:
-            requirements.find((r) => r.id === assignment.shiftRequirementId)
-              ?.sectorName ?? '',
-          roleId: assignment.roleId as string,
+          sectorName: ownRequirement?.sectorName ?? '',
+          roleId: roleId as string,
           roleName: role.name,
           status: assignment.status as VolunteerScheduleAssignment['status'],
         };
@@ -554,7 +589,7 @@ export class DbVolunteerManager implements IVolunteerManager {
 
     const [ministry, cycle, participations, roles] = await Promise.all([
       this.ministryRepo.getById({ churchId, id: ministryId }),
-      cycleId ? this.cycleRepo.getById({ churchId, cycleId }) : undefined,
+      this.cycleRepo.getById({ churchId, cycleId }),
       this.participationRepo.listByMinistry({
         churchId,
         ministryId,
@@ -563,28 +598,26 @@ export class DbVolunteerManager implements IVolunteerManager {
       this.roleRepo.listByMinistry({ churchId, ministryId }),
     ]);
     const allEventData = await Promise.all(
-      participations.map(async (participation) => ({
-        event: await this.eventRepo.getById({
-          churchId,
-          eventId: participation.eventId,
-        }),
-        shifts: await this.shiftRepo.listByParticipation({
-          churchId,
-          participationId: participation.id,
-        }),
-        requirements: await this.shiftRepo.listRequirementsByParticipation({
-          churchId,
-          participationId: participation.id,
-        }),
-        assignments: await this.assignmentRepo.listByParticipation({
-          churchId,
-          participationId: participation.id,
-        }),
-      })),
+      participations.map(async (participation) => {
+        const { id: participationId, eventId } = participation;
+        const [event, shifts, requirements, assignments] = await Promise.all([
+          this.eventRepo.getById({ churchId, eventId }),
+          this.shiftRepo.listByParticipation({ churchId, participationId }),
+          this.shiftRepo.listRequirementsByParticipation({
+            churchId,
+            participationId,
+          }),
+          this.assignmentRepo.listByParticipation({
+            churchId,
+            participationId,
+          }),
+        ]);
+        return { event, shifts, requirements, assignments };
+      }),
     );
-    const eventData = cycleId
-      ? allEventData.filter((item) => item.event.cycleId === cycleId)
-      : allEventData;
+    const eventData = allEventData.filter(
+      (item) => item.event.cycleId === cycleId,
+    );
     const assignments = eventData
       .flatMap((item) => item.assignments)
       .filter((assignment) => isPublishedStatus(assignment.status));
@@ -602,83 +635,91 @@ export class DbVolunteerManager implements IVolunteerManager {
       volunteers.map((volunteer) => [volunteer.id as string, volunteer.name]),
     );
 
+    const events = eventData.map(
+      ({ event, shifts, requirements, assignments: eventAssignments }) => {
+        const activeAssignments = eventAssignments.filter((assignment) =>
+          countsTowardRequirementCoverage({ status: assignment.status }),
+        );
+        const rows = shifts.flatMap((shift) => {
+          const shiftAssignments = activeAssignments.filter(
+            (assignment) => assignment.shiftId === shift.id,
+          );
+          const shiftRequirements = requirements.filter(
+            (requirement) => requirement.shiftId === shift.id,
+          );
+          const shiftIdentity = {
+            shiftId: shift.id as string,
+            shiftLabel: scheduleShiftLabel(shift),
+            shiftStart: shift.startTime,
+            shiftEnd: shift.endTime,
+          };
+          return shiftRequirements.flatMap((requirement) => {
+            const { bound, openCount } = projectRequirementCoverage({
+              requirement,
+              assignments: shiftAssignments,
+            });
+            const roleName =
+              roleNames.get(requirement.roleId as string) ?? 'Unknown role';
+            const place = {
+              ...shiftIdentity,
+              sectorName: requirement.sectorName,
+              roleName,
+            };
+            const assignmentRows = bound.map((assignment) => ({
+              ...place,
+              volunteerDisplayName: scheduleVolunteerName(
+                volunteerNames.get(assignment.volunteerId as string),
+              ),
+            }));
+            const openRows = Array.from({ length: openCount }, () => ({
+              ...place,
+            }));
+            return [...assignmentRows, ...openRows];
+          });
+        });
+        return {
+          eventId: event.id as string,
+          title: event.title,
+          start: event.start,
+          end: event.end,
+          assignmentCount: activeAssignments.length,
+          rows,
+        };
+      },
+    );
+
     return {
       ministryId: ministry.id as string,
       ministryName: ministry.name,
-      cycleId: cycle ? (cycle.id as string) : undefined,
-      cycleName: cycle?.name,
+      cycleId: cycle.id as string,
+      cycleName: cycle.name,
       // No published MinistryParticipation in the Cycle yet: "not published".
       published: eventData.length > 0,
-      events: eventData.map(
-        ({ event, shifts, requirements, assignments: eventAssignments }) => {
-          const activeAssignments = eventAssignments.filter((assignment) =>
-            countsTowardRequirementCoverage({ status: assignment.status }),
-          );
-          const rows = shifts.flatMap((shift) => {
-            const shiftAssignments = activeAssignments.filter(
-              (assignment) => assignment.shiftId === shift.id,
-            );
-            const shiftRequirements = requirements.filter(
-              (requirement) => requirement.shiftId === shift.id,
-            );
-            return shiftRequirements.flatMap((requirement) => {
-              const boundAssignments = shiftAssignments.filter(
-                (assignment) =>
-                  assignment.shiftRequirementId === requirement.id,
-              );
-              const assignmentRows = boundAssignments.map((assignment) => {
-                const volunteerName = volunteerNames.get(
-                  assignment.volunteerId as string,
-                );
-                const volunteerDisplayName =
-                  scheduleVolunteerName(volunteerName);
-                return {
-                  eventTimeBlockId: shift.eventTimeBlockId as string,
-                  eventTimeBlockLabel: scheduleShiftLabel(shift),
-                  sectorName: requirement.sectorName,
-                  roleName:
-                    roleNames.get(requirement.roleId as string) ??
-                    'Unknown role',
-                  volunteerDisplayName,
-                };
-              });
-              const filledCount = boundAssignments.length;
-              const openRows = Array.from(
-                { length: Math.max(0, requirement.peopleNeeded - filledCount) },
-                () => ({
-                  eventTimeBlockId: shift.eventTimeBlockId as string,
-                  eventTimeBlockLabel: scheduleShiftLabel(shift),
-                  sectorName: requirement.sectorName,
-                  roleName:
-                    roleNames.get(requirement.roleId as string) ??
-                    'Unknown role',
-                }),
-              );
-              return [...assignmentRows, ...openRows];
-            });
-          });
-          return {
-            eventId: event.id as string,
-            title: event.title,
-            start: event.start,
-            end: event.end,
-            assignmentCount: activeAssignments.length,
-            rows,
-          };
-        },
-      ),
+      events,
     };
   }
 
   async getAssignmentDetail(
     input: GetAssignmentDetailInput,
   ): Promise<AssignmentDetail> {
-    const { churchId, assignmentId, volunteerId } = input;
+    const { churchId, assignmentId, volunteerId, userId } = input;
     const assignment = await this.assignmentRepo.getById({
       churchId,
       assignmentId,
     });
-    if (assignment.volunteerId !== volunteerId) {
+    // Self-service only (ADR-0009): the caller must be the Assignment's own Volunteer.
+    const decision = await this.authorityManager.decideAuthority({
+      churchId,
+      userId,
+      action: 'participate',
+      resource: {
+        type: 'church',
+        churchId,
+        ownerVolunteerId: assignment.volunteerId,
+      },
+      scope: 'object',
+    });
+    if (!decision.allowed) {
       throw new AssignmentAccessDeniedError();
     }
     const { shiftId, participationId } = assignment;
@@ -692,19 +733,14 @@ export class DbVolunteerManager implements IVolunteerManager {
     if (participation.state !== 'published') {
       throw new NotFoundError(`Assignment not found: ${assignmentId}`);
     }
+    const { ministryId, eventId } = participation;
 
     const [shift, event, ministry, roles, requirements, shiftAssignments] =
       await Promise.all([
         this.shiftRepo.getById({ churchId, shiftId }),
-        this.eventRepo.getById({ churchId, eventId: participation.eventId }),
-        this.ministryRepo.getById({
-          churchId,
-          id: participation.ministryId,
-        }),
-        this.roleRepo.listByMinistry({
-          churchId,
-          ministryId: participation.ministryId,
-        }),
+        this.eventRepo.getById({ churchId, eventId }),
+        this.ministryRepo.getById({ churchId, id: ministryId }),
+        this.roleRepo.listByMinistry({ churchId, ministryId }),
         this.shiftRepo.listRequirementsByParticipation({
           churchId,
           participationId,
@@ -713,7 +749,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       ]);
     const memberships = await this.volunteerRepo.listMinistryMemberships({
       churchId,
-      ministryId: participation.ministryId,
+      ministryId,
     });
     const leaderIds = memberships
       .filter((member) => member.ministryAccessLevel === 'leader')
@@ -721,9 +757,12 @@ export class DbVolunteerManager implements IVolunteerManager {
     const published = shiftAssignments.filter((item) =>
       isPublishedStatus(item.status),
     );
+    const personIds = [
+      ...new Set([...leaderIds, ...published.map((i) => i.volunteerId)]),
+    ];
     const people = await this.volunteerRepo.listByIds({
       churchId,
-      ids: [...new Set([...leaderIds, ...published.map((i) => i.volunteerId)])],
+      ids: personIds,
     });
     const namesById = new Map(
       people.map((person) => [person.id as string, person.name]),
@@ -737,12 +776,10 @@ export class DbVolunteerManager implements IVolunteerManager {
     const roster = requirements
       .filter((requirement) => requirement.shiftId === shiftId)
       .map((requirement) => {
-        const bound = published.filter(
-          (item) => item.shiftRequirementId === requirement.id,
-        );
-        const filled = bound.filter((item) =>
-          countsTowardRequirementCoverage({ status: item.status }),
-        ).length;
+        const { bound, openCount } = projectRequirementCoverage({
+          requirement,
+          assignments: published,
+        });
         return {
           sectorName: requirement.sectorName,
           roleName: roleNameOf(requirement.roleId as string),
@@ -753,7 +790,7 @@ export class DbVolunteerManager implements IVolunteerManager {
               ) ?? '',
             isYou: item.volunteerId === volunteerId,
           })),
-          openCount: Math.max(0, requirement.peopleNeeded - filled),
+          openCount,
         };
       })
       .sort(

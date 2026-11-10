@@ -39,6 +39,7 @@ import {
 } from '@/seeds/builders/volunteer';
 import { schedulingTestDb } from '@/tests/scheduling-reshape/setup';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
+import { createAuthorityManagerFake } from '@/tests/test-support/repository-contract-fakes';
 
 /**
  * The managers and seed steps the assign (phase 6) and live-change
@@ -156,6 +157,8 @@ export function createSchedulingManagers({
       roleRepo: new DrizzleRoleRepository({ db: schedulingTestDb }),
       availabilityCheckRepo,
       cycleRepo: new DrizzleCycleRepository({ db: schedulingTestDb }),
+      churchRepo: new DrizzleChurchRepository({ db: schedulingTestDb }),
+      authorityManager: createAuthorityManagerFake(),
       unitOfWork,
       config: { ...appConfig, assignment: { cancelLeadTimeDays } },
     }),

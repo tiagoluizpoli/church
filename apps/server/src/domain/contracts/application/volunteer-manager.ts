@@ -81,8 +81,10 @@ export interface VolunteerPublishedSchedule {
 }
 
 export interface MinistryScheduleRow {
-  eventTimeBlockId: string;
-  eventTimeBlockLabel: string;
+  shiftId: string;
+  shiftLabel: string;
+  shiftStart: string;
+  shiftEnd: string;
   sectorName: string;
   roleName: string;
   /** Absent for an unfilled place ('Open'). */
@@ -101,9 +103,8 @@ export interface MinistryScheduleEvent {
 export interface MinistrySchedule {
   ministryId: string;
   ministryName: string;
-  /** Set only when the read was scoped to one Cycle. */
-  cycleId?: string;
-  cycleName?: string;
+  cycleId: string;
+  cycleName: string;
   published: boolean;
   events: MinistryScheduleEvent[];
 }
@@ -132,6 +133,7 @@ export interface AssignmentDetail {
 
 export interface GetAssignmentDetailInput {
   assignmentId: AssignmentId;
+  userId: UserId;
   volunteerId: VolunteerId;
   churchId: ChurchId;
 }
@@ -220,7 +222,7 @@ export interface GetPublishedScheduleInput {
 
 export interface GetMinistryScheduleInput {
   ministryId: MinistryId;
-  cycleId?: CycleId;
+  cycleId: CycleId;
   volunteerId: VolunteerId;
   churchId: ChurchId;
 }

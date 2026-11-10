@@ -165,8 +165,10 @@ const ministryScheduleEventResponseSchema = z.object({
   assignmentCount: z.number(),
   rows: z.array(
     z.object({
-      eventTimeBlockId: z.string(),
-      eventTimeBlockLabel: z.string(),
+      shiftId: z.string(),
+      shiftLabel: z.string(),
+      shiftStart: instantSchema,
+      shiftEnd: instantSchema,
       sectorName: z.string(),
       roleName: z.string(),
       volunteerDisplayName: z.string().optional(),
@@ -180,8 +182,8 @@ type MinistryScheduleEventResponse = z.infer<
 export const ministryScheduleResponseSchema = z.object({
   ministryId: z.string(),
   ministryName: z.string(),
-  cycleId: z.string().optional(),
-  cycleName: z.string().optional(),
+  cycleId: z.string(),
+  cycleName: z.string(),
   published: z.boolean(),
   events: z.array(ministryScheduleEventResponseSchema),
 });
@@ -320,7 +322,11 @@ function ministryScheduleEventToResponse(
     start: parseInstant({ value: event.start }),
     end: parseInstant({ value: event.end }),
     assignmentCount: event.assignmentCount,
-    rows: event.rows,
+    rows: event.rows.map((row) => ({
+      ...row,
+      shiftStart: parseInstant({ value: row.shiftStart }),
+      shiftEnd: parseInstant({ value: row.shiftEnd }),
+    })),
   };
 }
 

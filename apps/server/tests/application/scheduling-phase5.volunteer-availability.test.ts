@@ -37,7 +37,9 @@ import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import {
   createAssignmentRepositoryFake,
+  createAuthorityManagerFake,
   createAvailabilityCheckRepositoryFake,
+  createChurchRepositoryFake,
   createCycleRepositoryFake,
   createEventRepositoryFake,
   createMinistryParticipationRepositoryFake,
@@ -129,6 +131,8 @@ function createHarness() {
     participationRepo,
     roleRepo,
     availabilityCheckRepo,
+    churchRepo: createChurchRepositoryFake(),
+    authorityManager: createAuthorityManagerFake(),
     unitOfWork,
     config: appConfig,
   });
@@ -169,7 +173,12 @@ describe('volunteer availability', () => {
   it('denies a ministry schedule to a non-member', async () => {
     const { manager } = createHarness();
     await expect(
-      manager.getMinistrySchedule({ churchId, volunteerId, ministryId }),
+      manager.getMinistrySchedule({
+        churchId,
+        volunteerId,
+        ministryId,
+        cycleId,
+      }),
     ).rejects.toBeInstanceOf(IsolationBreachError);
   });
 });

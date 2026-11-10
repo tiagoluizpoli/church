@@ -12710,10 +12710,18 @@ paths:
                           items:
                             type: object
                             properties:
-                              eventTimeBlockId:
+                              shiftId:
                                 type: string
-                              eventTimeBlockLabel:
+                              shiftLabel:
                                 type: string
+                              shiftStart:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              shiftEnd:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                               sectorName:
                                 type: string
                               roleName:
@@ -12721,8 +12729,10 @@ paths:
                               volunteerDisplayName:
                                 type: string
                             required:
-                              - eventTimeBlockId
-                              - eventTimeBlockLabel
+                              - shiftId
+                              - shiftLabel
+                              - shiftStart
+                              - shiftEnd
                               - sectorName
                               - roleName
                             additionalProperties: false
@@ -12737,6 +12747,8 @@ paths:
                 required:
                   - ministryId
                   - ministryName
+                  - cycleId
+                  - cycleName
                   - published
                   - events
                 additionalProperties: false

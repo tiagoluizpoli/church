@@ -36,6 +36,7 @@ import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifi
 import {
   createAssignmentAuditRepositoryFake,
   createAssignmentRepositoryFake,
+  createAuthorityManagerFake,
   createAvailabilityCheckRepositoryFake,
   createChurchRepositoryFake,
   createCycleRepositoryFake,
@@ -246,6 +247,8 @@ function createHarness() {
     participationRepo: ministryParticipationRepository,
     roleRepo: roleRepository,
     availabilityCheckRepo: availabilityCheckRepository,
+    churchRepo: churchRepository,
+    authorityManager: createAuthorityManagerFake(),
     unitOfWork,
     config: appConfig,
   });

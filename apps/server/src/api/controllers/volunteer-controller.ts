@@ -151,6 +151,7 @@ export class VolunteerController implements FastifyController {
           operation: () =>
             this.volunteerManager.getAssignmentDetail({
               assignmentId: AssignmentId.from(assignmentId),
+              userId: UserId.from(request.userId),
               volunteerId: VolunteerId.from(request.volunteerId as string),
               churchId: ChurchId.from(request.churchId),
             }),

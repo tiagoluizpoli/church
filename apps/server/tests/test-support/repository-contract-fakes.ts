@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import type { IAuthorityManager } from '@/domain/contracts/application/authority-manager';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
 import type { AvailabilityCheckRepository } from '@/domain/contracts/infrastructure/availability-check.repository';
@@ -339,4 +340,12 @@ export function createVolunteerRepositoryFake() {
     listActiveMinistryLeaderships:
       vi.fn<VolunteerRepository['listActiveMinistryLeaderships']>(),
   } satisfies VolunteerRepository;
+}
+
+export function createAuthorityManagerFake() {
+  return {
+    decideAuthority: vi.fn<IAuthorityManager['decideAuthority']>(async () => ({
+      allowed: true,
+    })),
+  };
 }

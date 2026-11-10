@@ -125,6 +125,8 @@ describe('volunteerMapper', () => {
       const schedule = {
         ministryId: 'm1',
         ministryName: 'Worship',
+        cycleId: 'c1',
+        cycleName: 'October',
         published: true,
         events: [],
       };
@@ -138,6 +140,8 @@ describe('volunteerMapper', () => {
       const schedule = {
         ministryId: 'm1',
         ministryName: 'Worship',
+        cycleId: 'c1',
+        cycleName: 'October',
         published: true,
         events: [
           {
@@ -148,8 +152,10 @@ describe('volunteerMapper', () => {
             assignmentCount: 1,
             rows: [
               {
-                eventTimeBlockId: 'event-time-block-1',
-                eventTimeBlockLabel: 'Worship Set',
+                shiftId: 'shift-1',
+                shiftLabel: 'Worship Set',
+                shiftStart: '2026-05-15T09:00:00.000Z',
+                shiftEnd: '2026-05-15T10:00:00.000Z',
                 sectorName: 'Sanctuary',
                 roleName: 'Vocalist',
               },

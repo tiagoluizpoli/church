@@ -11,9 +11,10 @@ import {
   volunteer,
 } from '@church/db';
 import { fromDate, now, nowAsDate, toDate } from '@church/time';
-import { and, asc, desc, eq, gt, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, type SQL } from 'drizzle-orm';
 import type {
   AssignmentId,
+  ChurchId,
   CycleId,
   SwapRequestId,
 } from '../../domain/branded-ids';
@@ -28,6 +29,7 @@ import type {
   ListOpenAssignmentIdsInput,
   SwapRequestRepository,
 } from '../../domain/contracts/infrastructure/swap-request.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { SwapRequest } from '../../domain/entities/swap-request';
 import { SwapRequestAlreadyOpenError } from '../../domain/errors/swap-request';
 import { mapSwapRequest } from '../mappers/swap-request.mapper';
@@ -36,6 +38,16 @@ import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
 const OPEN_INDEX = 'swap_request_open_assignment_idx';
+
+interface CloseOpenWhereInput {
+  churchId: ChurchId;
+  match: SQL;
+  values: Pick<
+    typeof swapRequest.$inferInsert,
+    'status' | 'closedBy' | 'reply'
+  >;
+  tx?: TransactionContext;
+}
 
 interface DrizzleSwapRequestRepositoryInput {
   db: AnyDrizzleDb;
@@ -171,23 +183,12 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
     reply,
     tx,
   }: CloseOpenSwapRequestByIdInput): Promise<boolean> {
-    const closed = await getClient({ db: this.db, tx })
-      .update(swapRequest)
-      .set({
-        status,
-        closedBy,
-        reply: reply ?? null,
-        closedAt: toDate({ instant: now() }),
-      })
-      .where(
-        and(
-          withChurchIsolation({ table: swapRequest, churchId }),
-          eq(swapRequest.id, swapRequestId),
-          eq(swapRequest.status, 'open'),
-        ),
-      )
-      .returning({ id: swapRequest.id });
-    return closed.length > 0;
+    return this.closeOpenWhere({
+      churchId,
+      match: eq(swapRequest.id, swapRequestId),
+      values: { status, closedBy, reply: reply ?? null },
+      tx,
+    });
   }
 
   async findLatestByAssignment({
@@ -234,17 +235,28 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
     closedBy,
     tx,
   }: CloseOpenSwapRequestInput): Promise<boolean> {
+    return this.closeOpenWhere({
+      churchId,
+      match: eq(swapRequest.assignmentId, assignmentId),
+      values: { status, closedBy: closedBy ?? null },
+      tx,
+    });
+  }
+
+  /** The one conditional close: only a still-`open` match transitions, so a concurrent close wins once. */
+  private async closeOpenWhere({
+    churchId,
+    match,
+    values,
+    tx,
+  }: CloseOpenWhereInput): Promise<boolean> {
     const closed = await getClient({ db: this.db, tx })
       .update(swapRequest)
-      .set({
-        status,
-        closedBy: closedBy ?? null,
-        closedAt: toDate({ instant: now() }),
-      })
+      .set({ ...values, closedAt: toDate({ instant: now() }) })
       .where(
         and(
           withChurchIsolation({ table: swapRequest, churchId }),
-          eq(swapRequest.assignmentId, assignmentId),
+          match,
           eq(swapRequest.status, 'open'),
         ),
       )

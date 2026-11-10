@@ -1,0 +1,1 @@
+ALTER TABLE "schedule_last_told" ADD COLUMN "told_at" timestamp with time zone DEFAULT now() NOT NULL;

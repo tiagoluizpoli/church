@@ -1119,6 +1119,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       assignmentId: lateAssignment.id,
       status: 'covered',
       raisedBy: unassigned.volunteer.userId,
+      closedAt: new Date('2026-12-26T09:00:01.000Z'),
     });
     await schedulingTestDb
       .update(assignment)
@@ -1141,6 +1142,25 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
           ],
         }),
       }),
+    );
+
+    // Covered before an earlier send: a later unrelated change is not tagged again.
+    setTestClock({ instant: '2026-12-26T09:00:02.000Z' as Instant });
+    const sentBefore = new Set((await outboxRows()).map((row) => row.id));
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'confirmed' })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await schedulingTestDb
+      .update(assignment)
+      .set({ shiftRequirementId: destinationRequirement.id })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    const later = (await outboxRows()).filter((row) => !sentBefore.has(row.id));
+    expect(later.length).toBeGreaterThan(0);
+    expect(JSON.stringify(later.map((row) => row.payload))).not.toContain(
+      'swapRequestCovered',
     );
   });
 

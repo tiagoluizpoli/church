@@ -12,7 +12,7 @@ import {
   swapRequest,
   unavailableShift,
 } from '@church/db';
-import { nowAsDate } from '@church/time';
+import { fromDate, nowAsDate } from '@church/time';
 import {
   and,
   asc,
@@ -45,8 +45,8 @@ import type {
   RemoveInclusionInput,
   SaveScheduleLastToldInput,
   ScheduleCheckCountRow,
+  ScheduleCountRow,
   ScheduleLastToldRow,
-  ScheduleLateMarkCountRow,
   ScheduleServingStateRow,
   ScheduleSummaryRow,
   TouchParticipationInput,
@@ -92,6 +92,7 @@ export class DrizzleMinistryParticipationRepository
     return rows.map((row) => ({
       volunteerId: row.volunteerId as ScheduleLastToldRow['volunteerId'],
       assignments: row.assignments as ScheduleLastToldRow['assignments'],
+      toldAt: fromDate({ date: row.toldAt }),
     }));
   }
 
@@ -113,7 +114,7 @@ export class DrizzleMinistryParticipationRepository
           scheduleLastTold.cycleId,
           scheduleLastTold.volunteerId,
         ],
-        set: { assignments: input.assignments },
+        set: { assignments: input.assignments, toldAt: nowAsDate() },
       });
   }
 
@@ -687,7 +688,7 @@ export class DrizzleMinistryParticipationRepository
     ministryIds,
     cycleIds,
     tx,
-  }: ListSchedulesFactsInput): Promise<ScheduleLateMarkCountRow[]> {
+  }: ListSchedulesFactsInput): Promise<ScheduleCountRow[]> {
     return getClient({ db: this.db, tx })
       .select({
         ministryId: ministryParticipation.ministryId,
@@ -734,7 +735,7 @@ export class DrizzleMinistryParticipationRepository
     ministryIds,
     cycleIds,
     tx,
-  }: ListSchedulesFactsInput): Promise<ScheduleLateMarkCountRow[]> {
+  }: ListSchedulesFactsInput): Promise<ScheduleCountRow[]> {
     return getClient({ db: this.db, tx })
       .select({
         ministryId: ministryParticipation.ministryId,

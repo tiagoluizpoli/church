@@ -81,6 +81,10 @@ export const scheduleLastTold = pgTable(
       .notNull()
       .references(() => volunteer.id, { onDelete: 'cascade' }),
     assignments: jsonb('assignments').notNull(),
+    // When this baseline was last saved: a cover closed after it is news to the next send.
+    toldAt: timestamp('told_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
     uniqueIndex('schedule_last_told_scope_idx').on(

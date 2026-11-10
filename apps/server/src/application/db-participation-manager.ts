@@ -56,6 +56,7 @@ import type { EventTimeBlockRepository } from '../domain/contracts/infrastructur
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type {
   MinistryParticipationRepository,
+  ScheduleCountRow,
   ScheduleLastToldRow,
 } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
@@ -1407,11 +1408,12 @@ export class DbParticipationManager implements IParticipationManager {
         events,
         tx,
       });
+      const lastTold = await this.participationRepository.listScheduleLastTold({
+        ...input,
+        tx,
+      });
       const baseline = await this.tagCoveredSwapRequests({
-        baseline: await this.participationRepository.listScheduleLastTold({
-          ...input,
-          tx,
-        }),
+        baseline: lastTold,
         churchId: input.churchId,
         tx,
       });
@@ -1478,29 +1480,29 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
-  /** A told Assignment whose latest request was covered is being changed by that cover. */
+  /** A told Assignment whose latest request was covered after the last send is being changed by that cover. */
   private async tagCoveredSwapRequests({
     baseline,
     churchId,
     tx,
   }: TagCoveredSwapRequestsInput): Promise<ScheduleLastToldRow[]> {
-    return Promise.all(
-      baseline.map(async (row) => ({
-        ...row,
-        assignments: await Promise.all(
-          row.assignments.map(async (item) => {
-            const latest = await this.swapRequestRepo.findLatestByAssignment({
-              churchId,
-              assignmentId: item.assignmentId,
-              tx,
-            });
-            return latest?.status === 'covered'
-              ? { ...item, swapRequestCovered: true }
-              : item;
-          }),
-        ),
-      })),
-    );
+    const tagRow = async (row: ScheduleLastToldRow) => {
+      const tagItem = async (item: ScheduleAssignmentSnapshot) => {
+        const latest = await this.swapRequestRepo.findLatestByAssignment({
+          churchId,
+          assignmentId: item.assignmentId,
+          tx,
+        });
+        const coveredSinceTold =
+          latest?.status === 'covered' &&
+          latest.closedAt !== undefined &&
+          compareInstants({ left: latest.closedAt, right: row.toldAt }) > 0;
+        return coveredSinceTold ? { ...item, swapRequestCovered: true } : item;
+      };
+      const assignments = await Promise.all(row.assignments.map(tagItem));
+      return { ...row, assignments };
+    };
+    return Promise.all(baseline.map(tagRow));
   }
 
   private async notifySchedulePublished({
@@ -1729,13 +1731,12 @@ export class DbParticipationManager implements IParticipationManager {
         this.participationRepository.countScheduleLateMarks(scope),
         this.participationRepository.countScheduleOpenSwapRequests(scope),
       ]);
-    const swapCountBySchedule = new Map(
-      swapCounts.map((row) => [scheduleKey(row), row.count]),
-    );
-
-    const lateMarksBySchedule = new Map(
-      lateMarkCounts.map((row) => [scheduleKey(row), row.count]),
-    );
+    const countEntry = (row: ScheduleCountRow): [string, number] => [
+      scheduleKey(row),
+      row.count,
+    ];
+    const swapCountBySchedule = new Map(swapCounts.map(countEntry));
+    const lateMarksBySchedule = new Map(lateMarkCounts.map(countEntry));
     const statesBySchedule = Map.groupBy(servingStates, scheduleKey);
     const countsBySchedule = new Map(
       checkCounts.map((row) => [scheduleKey(row), row]),

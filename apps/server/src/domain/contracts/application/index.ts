@@ -21,5 +21,7 @@ export * from './people-list-manager';
 export * from './planning-event-manager';
 export * from './redemption-manager';
 export * from './sector-manager';
+export * from './swap-request-list-manager';
+export * from './swap-request-manager';
 export * from './volunteer-manager';
 export * from './volunteer-transfer-manager';

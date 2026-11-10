@@ -153,10 +153,11 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     churchId,
     assignmentId,
     tx,
+    forUpdate,
   }: GetAssignmentInput): Promise<Assignment> {
     if (!isValidUuid(assignmentId))
       throw new NotFoundError(`Assignment not found: ${assignmentId}`);
-    const [result] = await getClient({ db: this.db, tx })
+    const query = getClient({ db: this.db, tx })
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
@@ -166,6 +167,9 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
           withChurchIsolation({ table: assignment, churchId }),
         ),
       );
+    const [result] = await (forUpdate
+      ? query.for('update', { of: assignment })
+      : query);
     if (!result)
       throw new NotFoundError(`Assignment not found: ${assignmentId}`);
     return mapAssignment({

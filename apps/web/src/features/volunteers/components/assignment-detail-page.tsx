@@ -1,8 +1,12 @@
 import { m } from '@church/i18n/messages';
+import { compareInstants, now, parseInstant } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
+import { useState } from 'react';
 import { assignmentDayLabel } from '../lib/assignment-day-label';
+import { SwapRequestSheet } from './swap-request-sheet';
+import { SwapWithdrawButton } from './swap-withdraw-button';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,6 +33,14 @@ function Fact({ label, value }: FactProps) {
   );
 }
 
+const swapStatusLine = {
+  open: () => m.swap_requested_waiting(),
+  withdrawn: () => '',
+  covered: () => m.swap_covered(),
+  kept: () => m.swap_kept(),
+  expired: () => m.swap_expired(),
+};
+
 interface AssignmentFactsProps {
   detail: GetAssignmentDetail200;
 }
@@ -46,7 +58,9 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
     ministryId,
     cycleId,
     roster,
+    swapRequest,
   } = detail;
+  const [swapOpen, setSwapOpen] = useState(false);
   const day = assignmentDayLabel({ startTime, timeZone: churchTimezone });
   const when = formatInstantRangeOf({
     start: startTime,
@@ -108,6 +122,29 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
           </div>
         ))}
       </section>
+      {swapRequest && swapRequest.status !== 'withdrawn' ? (
+        <section
+          aria-labelledby="swap-requested"
+          className="space-y-1 rounded-md border p-3"
+        >
+          <p id="swap-requested" className="font-medium">
+            {swapStatusLine[swapRequest.status]()}
+          </p>
+          {swapRequest.status === 'open' && swapRequest.note ? (
+            <p className="text-muted-foreground text-sm">
+              {m.swap_requested_note({ note: swapRequest.note })}
+            </p>
+          ) : null}
+          {swapRequest.status === 'kept' && swapRequest.reply ? (
+            <p className="text-muted-foreground text-sm">
+              {m.swap_kept_reply({ reply: swapRequest.reply })}
+            </p>
+          ) : null}
+          {swapRequest.status === 'open' ? (
+            <SwapWithdrawButton assignmentId={detail.assignmentId} />
+          ) : null}
+        </section>
+      ) : null}
       <div className="flex flex-wrap items-center gap-3">
         <Link
           to="/my-schedule/$ministryId/$cycleId"
@@ -116,21 +153,25 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
         >
           {m.assignment_full_schedule()}
         </Link>
-        <Button
-          variant="outline"
-          size="touch"
-          disabled
-          aria-describedby="assignment-need-help-soon"
-        >
-          {m.assignment_need_help()}
-        </Button>
-        <span
-          id="assignment-need-help-soon"
-          className="text-muted-foreground text-sm"
-        >
-          {m.assignment_need_help_soon()}
-        </span>
+        {swapRequest?.status === 'open' ||
+        compareInstants({
+          left: parseInstant({ value: startTime }),
+          right: now(),
+        }) <= 0 ? null : (
+          <Button
+            variant="outline"
+            size="touch"
+            onClick={() => setSwapOpen(true)}
+          >
+            {m.swap_ask()}
+          </Button>
+        )}
       </div>
+      <SwapRequestSheet
+        assignmentId={detail.assignmentId}
+        open={swapOpen}
+        onOpenChange={setSwapOpen}
+      />
     </div>
   );
 }

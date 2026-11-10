@@ -1,5 +1,5 @@
 import { appConfig } from '@church/app-config';
-import { ministryParticipation } from '@church/db';
+import { ministryParticipation, swapRequest } from '@church/db';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -245,6 +245,76 @@ describe('GET /volunteer/schedule (database-backed)', () => {
     expect(
       assignments.map((a: { assignmentId: string }) => a.assignmentId),
     ).toEqual([runningAssignment.id, upcomingAssignment.id]);
+  });
+
+  it('flags only an open request on a Shift that has not started', async () => {
+    const { churchId, ministryId, me, assignMe } = await seedWorld();
+    const cycle = await seedCycle({
+      churchId,
+      name: 'Current',
+      startOffsetMs: -5 * DAY_MS,
+      endOffsetMs: 25 * DAY_MS,
+    });
+    const common = { churchId, ministryId, cycleId: cycle.id };
+    const [running, requested, plain, withdrawn] = [
+      await seedShiftGraph({
+        ...common,
+        title: 'Running',
+        startOffsetMs: -HOUR_MS,
+        endOffsetMs: HOUR_MS,
+      }),
+      await seedShiftGraph({
+        ...common,
+        title: 'Requested',
+        startOffsetMs: 2 * DAY_MS,
+        endOffsetMs: 2 * DAY_MS + HOUR_MS,
+      }),
+      await seedShiftGraph({
+        ...common,
+        title: 'Plain',
+        startOffsetMs: 3 * DAY_MS,
+        endOffsetMs: 3 * DAY_MS + HOUR_MS,
+      }),
+      await seedShiftGraph({
+        ...common,
+        title: 'Withdrawn',
+        startOffsetMs: 4 * DAY_MS,
+        endOffsetMs: 4 * DAY_MS + HOUR_MS,
+      }),
+    ];
+    const rows = [
+      [await assignMe(running), 'open'],
+      [await assignMe(requested), 'open'],
+      [await assignMe(plain), null],
+      [await assignMe(withdrawn), 'withdrawn'],
+    ] as const;
+    for (const [assignment, status] of rows) {
+      if (!status) continue;
+      await db.insert(swapRequest).values({
+        churchId,
+        assignmentId: assignment.id,
+        status,
+        raisedBy: me.volunteer.userId,
+      });
+    }
+
+    const response = await app.inject({ method: 'GET', url: SCHEDULE_URL });
+
+    expect(
+      response
+        .json()
+        .assignments.map(
+          (a: { eventTitle: string; swapRequested: boolean }) => [
+            a.eventTitle,
+            a.swapRequested,
+          ],
+        ),
+    ).toEqual([
+      ['Running', false],
+      ['Requested', true],
+      ['Plain', false],
+      ['Withdrawn', false],
+    ]);
   });
 
   it('lists a published Schedule the caller has no Assignment in, and drops a past Cycle', async () => {

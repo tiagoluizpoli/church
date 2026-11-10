@@ -60,10 +60,10 @@ describe('composition root', () => {
     }
   });
 
-  it('builds sixteen controllers', () => {
+  it('builds eighteen controllers', () => {
     const { controllers } = createCompositionRoot();
-    expect(controllers).toHaveLength(16);
-    expect(new Set(controllers.map((c) => c.constructor)).size).toBe(16);
+    expect(controllers).toHaveLength(18);
+    expect(new Set(controllers.map((c) => c.constructor)).size).toBe(18);
   });
 
   it('reads the debug code back from an overridden capture email sender', async () => {

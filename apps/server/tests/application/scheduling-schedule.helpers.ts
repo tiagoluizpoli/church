@@ -26,6 +26,7 @@ import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/dr
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
@@ -115,6 +116,9 @@ export function createSchedulingManagers({
       volunteerRepository: volunteerRepo,
       unavailableShiftRepository: unavailableShiftRepo,
       cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+      swapRequestRepo: new DrizzleSwapRequestRepository({
+        db: schedulingTestDb,
+      }),
       unitOfWork,
     }),
     participationManager: new DbParticipationManager({
@@ -146,6 +150,9 @@ export function createSchedulingManagers({
       unitOfWork,
     }),
     volunteerManager: new DbVolunteerManager({
+      swapRequestRepo: new DrizzleSwapRequestRepository({
+        db: schedulingTestDb,
+      }),
       volunteerRepo,
       assignmentRepo,
       unavailableShiftRepo,

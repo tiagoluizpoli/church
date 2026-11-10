@@ -15,6 +15,7 @@ import type { PlanningEventRepository } from '@/domain/contracts/infrastructure/
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
 import type { SectorRepository } from '@/domain/contracts/infrastructure/sector.repository';
 import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';
+import type { SwapRequestRepository } from '@/domain/contracts/infrastructure/swap-request.repository';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
@@ -292,6 +293,26 @@ export function createShiftRepositoryFake() {
       vi.fn<ShiftRepository['listRequirementsByParticipation']>(),
     getRequirementForShift: vi.fn<ShiftRepository['getRequirementForShift']>(),
   } satisfies ShiftRepository;
+}
+
+export function createSwapRequestRepositoryFake() {
+  return {
+    create: vi.fn<SwapRequestRepository['create']>(),
+    listForLeader: vi
+      .fn<SwapRequestRepository['listForLeader']>()
+      .mockResolvedValue([]),
+    findOpenByAssignment: vi
+      .fn<SwapRequestRepository['findOpenByAssignment']>()
+      .mockResolvedValue(null),
+    findLatestByAssignment: vi
+      .fn<SwapRequestRepository['findLatestByAssignment']>()
+      .mockResolvedValue(null),
+    listOpenAssignmentIds: vi
+      .fn<SwapRequestRepository['listOpenAssignmentIds']>()
+      .mockResolvedValue([]),
+    closeOpenByAssignment:
+      vi.fn<SwapRequestRepository['closeOpenByAssignment']>(),
+  } satisfies SwapRequestRepository;
 }
 
 export function createUnavailableShiftRepositoryFake() {

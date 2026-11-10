@@ -74,6 +74,11 @@ export type MappedDomainCode =
   | 'SCHEDULE_ALREADY_PUBLISHED'
   | 'NO_UNSENT_CHANGES'
   | 'SHIFT_STARTED'
+  | 'SWAP_REQUEST_UNPUBLISHED'
+  | 'SWAP_REQUEST_SHIFT_STARTED'
+  | 'SWAP_REQUEST_ALREADY_OPEN'
+  | 'SWAP_REQUEST_NOT_OPEN'
+  | 'SWAP_REQUEST_NOTE_TOO_LONG'
   | 'SHIFT_PUBLISHED'
   | 'SHIFT_HAS_RESPONSES'
   | 'ASK_BLOCKED_FLAGGED_SHIFTS'
@@ -215,6 +220,27 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   },
   NO_UNSENT_CHANGES: { status: 409, message: m.error_no_unsent_changes },
   SHIFT_STARTED: { status: 409, message: m.error_shift_started },
+  SWAP_REQUEST_UNPUBLISHED: {
+    status: 409,
+    message: m.error_swap_request_unpublished,
+  },
+  SWAP_REQUEST_SHIFT_STARTED: {
+    status: 409,
+    message: m.error_swap_request_shift_started,
+  },
+  SWAP_REQUEST_ALREADY_OPEN: {
+    status: 409,
+    message: m.error_swap_request_already_open,
+  },
+  SWAP_REQUEST_NOT_OPEN: {
+    status: 409,
+    message: m.error_swap_request_not_open,
+  },
+  // Takes `{ max }`, so domainErrorMessage renders it; the table entry only gives the status.
+  SWAP_REQUEST_NOTE_TOO_LONG: {
+    status: 400,
+    message: m.error_swap_request_note_too_long_generic,
+  },
   SHIFT_PUBLISHED: { status: 409, message: m.error_shift_published },
   SHIFT_HAS_RESPONSES: {
     status: 409,

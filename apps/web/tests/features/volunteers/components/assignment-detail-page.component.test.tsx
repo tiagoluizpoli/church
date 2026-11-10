@@ -1,13 +1,20 @@
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { cleanup, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders } from 'axios';
+import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssignmentDetailPage } from '@/features/volunteers/components/assignment-detail-page';
 import type { GetAssignmentDetail200 } from '@/infrastructure/api/churchAPI.schemas';
 import { renderWithProviders } from '@/tests/setup/render';
 
-const api = vi.hoisted(() => ({ getAssignmentDetail: vi.fn() }));
+const api = vi.hoisted(() => ({
+  getAssignmentDetail: vi.fn(),
+  raiseSwapRequest: vi.fn(),
+  withdrawSwapRequest: vi.fn(),
+}));
 vi.mock('@/utils/api-instances', () => ({ volunteerApi: api }));
+vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,
@@ -48,13 +55,17 @@ const DETAIL: GetAssignmentDetail200 = {
       openCount: 1,
     },
   ],
+  swapRequest: null,
 };
 
 beforeEach(() => {
   overwriteGetLocale(() => 'en');
+  // Only Date is faked, so async queries and user events keep running.
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-01T10:00:00Z') });
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   overwriteGetLocale(() => 'en');
   vi.resetAllMocks();
@@ -84,14 +95,226 @@ describe('AssignmentDetailPage', () => {
     );
   });
 
-  it('links to the full Schedule and keeps need-help inert', async () => {
+  it('links to the full Schedule', async () => {
     api.getAssignmentDetail.mockResolvedValue(DETAIL);
     renderPage();
     const link = await screen.findByRole('link', { name: 'Full schedule' });
     expect(link).toHaveAttribute('href', '/my-schedule/kids/cycle-1');
+  });
+
+  it('opens the swap sheet with hint, prompt, limit and the stays-line, then sends', async () => {
+    api.getAssignmentDetail.mockResolvedValue(DETAIL);
+    api.raiseSwapRequest.mockResolvedValue({});
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    );
     expect(
-      screen.getByRole('button', { name: 'I need help with this' }),
-    ).toBeDisabled();
+      screen.getByText(
+        'Find someone to take your place first, then tell your leader who.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Who will take your place?')).toBeVisible();
+    expect(screen.getByText('Optional · 0 / 500 characters')).toBeVisible();
+    expect(
+      screen.getByText('Your Assignment stays until your leader changes it.'),
+    ).toBeVisible();
+    await user.type(screen.getByLabelText('Who will take your place?'), 'Joao');
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    await waitFor(() =>
+      expect(api.raiseSwapRequest).toHaveBeenCalledWith('a-1', {
+        note: 'Joao',
+      }),
+    );
+  });
+
+  it('hides the entry once the Shift has started', async () => {
+    api.getAssignmentDetail.mockResolvedValue(DETAIL);
+    vi.setSystemTime(new Date('2026-10-12T13:00:00Z'));
+    renderPage();
+    await screen.findByRole('link', { name: 'Full schedule' });
+    expect(
+      screen.queryByRole('button', { name: 'Ask to swap' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the waiting state with the note and hides the entry while a request is open', async () => {
+    api.getAssignmentDetail.mockResolvedValue({
+      ...DETAIL,
+      swapRequest: {
+        id: 's-1',
+        status: 'open',
+        note: 'Joao will cover',
+        reply: null,
+        raisedAt: '2026-10-01T10:00:00.000Z',
+      },
+    });
+    renderPage();
+    expect(
+      await screen.findByText('Swap requested · waiting for your leader'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Your note: Joao will cover')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Ask to swap' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['covered', null, 'Swap request covered · your leader made the change'],
+    ['kept', 'Please stay', 'Swap request kept · your leader kept you on'],
+    ['expired', null, 'Swap request expired · the Shift has started'],
+  ] as const)('shows the %s state, with no note and no waiting line', async (status, reply, line) => {
+    api.getAssignmentDetail.mockResolvedValue({
+      ...DETAIL,
+      swapRequest: {
+        id: 's-1',
+        status,
+        note: 'Joao will cover',
+        reply,
+        raisedAt: '2026-10-01T10:00:00.000Z',
+      },
+    });
+    renderPage();
+    expect(await screen.findByText(line)).toBeInTheDocument();
+    expect(screen.queryByText(/waiting for your leader/)).toBeNull();
+    expect(screen.queryByText(/Your note/)).toBeNull();
+    if (reply)
+      expect(
+        screen.getByText(`Reply from your leader: ${reply}`),
+      ).toBeInTheDocument();
+  });
+
+  it('offers Ask to swap again after a withdrawn request', async () => {
+    api.getAssignmentDetail.mockResolvedValue({
+      ...DETAIL,
+      swapRequest: {
+        id: 's-1',
+        status: 'withdrawn',
+        note: null,
+        reply: null,
+        raisedAt: '2026-10-01T10:00:00.000Z',
+      },
+    });
+    renderPage();
+    expect(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Swap request/)).toBeNull();
+  });
+
+  const OPEN = {
+    id: 's-1',
+    status: 'open',
+    note: 'Joao will cover',
+    reply: null,
+    raisedAt: '2026-10-01T10:00:00.000Z',
+  } as const;
+
+  it('withdraws after one confirm and returns to the no-request state', async () => {
+    api.getAssignmentDetail
+      .mockResolvedValueOnce({ ...DETAIL, swapRequest: OPEN })
+      .mockResolvedValue(DETAIL);
+    api.withdrawSwapRequest.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Withdraw request' }),
+    );
+    expect(api.withdrawSwapRequest).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await waitFor(() =>
+      expect(api.withdrawSwapRequest).toHaveBeenCalledWith('a-1'),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Swap requested · waiting for your leader'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('refetches the current state when the request was already closed', async () => {
+    api.getAssignmentDetail
+      .mockResolvedValueOnce({ ...DETAIL, swapRequest: OPEN })
+      .mockResolvedValue({
+        ...DETAIL,
+        swapRequest: { ...OPEN, status: 'covered' },
+      });
+    api.withdrawSwapRequest.mockRejectedValue(
+      new AxiosError('conflict', '409', undefined, undefined, {
+        status: 409,
+        data: { error: 'SWAP_REQUEST_NOT_OPEN', message: 'closed' },
+        statusText: '',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Withdraw request' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await waitFor(() =>
+      expect(api.getAssignmentDetail).toHaveBeenCalledTimes(2),
+    );
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows the server message and refetches when the request is refused', async () => {
+    api.getAssignmentDetail.mockResolvedValue(DETAIL);
+    api.raiseSwapRequest.mockRejectedValue(
+      new AxiosError('conflict', '409', undefined, undefined, {
+        status: 409,
+        data: {
+          error: 'SWAP_REQUEST_SHIFT_STARTED',
+          message: 'This Shift has already started.',
+        },
+        statusText: '',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'This Shift has already started.',
+      ),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(api.getAssignmentDetail).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it('closes the sheet and refetches when the Assignment is gone (404)', async () => {
+    api.getAssignmentDetail.mockResolvedValue(DETAIL);
+    api.raiseSwapRequest.mockRejectedValue(
+      new AxiosError('nf', '404', undefined, undefined, {
+        status: 404,
+        data: {},
+        statusText: '',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(api.getAssignmentDetail).toHaveBeenCalledTimes(2),
+    );
   });
 
   it('shows the stale-link message with a way back on 404', async () => {

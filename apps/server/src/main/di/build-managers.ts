@@ -20,12 +20,15 @@ import {
   DbPlanningEventManager,
   DbRedemptionManager,
   DbSectorManager,
+  DbSwapRequestListManager,
+  DbSwapRequestManager,
   DbVolunteerManager,
   DbVolunteerTransferManager,
   InvitationVerificationCodeManager,
 } from '../../application';
 import { ChurchNotifications } from '../../application/church-notifications';
 import { buildChurchNotifier } from '../../application/church-notifier';
+import { ChurchRecipients } from '../../application/church-recipients';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
@@ -50,6 +53,8 @@ export type Managers = Pick<
   | 'cycleManager'
   | 'planningEventManager'
   | 'volunteerManager'
+  | 'swapRequestManager'
+  | 'swapRequestListManager'
   | 'participationManager'
   | 'availabilityCheckManager'
   | 'activeChurchSelectionManager'
@@ -78,6 +83,7 @@ export function buildManagers({
     planningEventRepository,
     volunteerRepository,
     assignmentRepository,
+    swapRequestRepository,
     assignmentAuditRepository,
     unavailableShiftRepository,
     availabilityCheckRepository,
@@ -119,6 +125,7 @@ export function buildManagers({
       volunteerRepository,
       unavailableShiftRepository,
       cycleRepository,
+      swapRequestRepo: swapRequestRepository,
       unitOfWork,
     });
   const eventManager =
@@ -274,6 +281,7 @@ export function buildManagers({
     new DbVolunteerManager({
       volunteerRepo: volunteerRepository,
       assignmentRepo: assignmentRepository,
+      swapRequestRepo: swapRequestRepository,
       unavailableShiftRepo: unavailableShiftRepository,
       notificationRepo: notificationRepository,
       cycleRepo: cycleRepository,
@@ -284,6 +292,30 @@ export function buildManagers({
       roleRepo: roleRepository,
       availabilityCheckRepo: availabilityCheckRepository,
       churchRepo: churchRepository,
+      authorityManager,
+      unitOfWork,
+      config,
+    });
+  const swapRequestListManager =
+    overrides.swapRequestListManager ??
+    new DbSwapRequestListManager({ swapRequestRepo: swapRequestRepository });
+  const swapRequestManager =
+    overrides.swapRequestManager ??
+    new DbSwapRequestManager({
+      swapRequestRepo: swapRequestRepository,
+      assignmentRepo: assignmentRepository,
+      participationRepo: ministryParticipationRepository,
+      shiftRepo: shiftRepository,
+      eventRepo: eventRepository,
+      ministryRepo: ministryRepository,
+      roleRepo: roleRepository,
+      churchRepo: churchRepository,
+      volunteerRepo: volunteerRepository,
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository,
+      }),
+      notifications,
       authorityManager,
       unitOfWork,
       config,
@@ -387,6 +419,8 @@ export function buildManagers({
     cycleManager,
     planningEventManager,
     volunteerManager,
+    swapRequestManager,
+    swapRequestListManager,
     participationManager,
     availabilityCheckManager,
     activeChurchSelectionManager,

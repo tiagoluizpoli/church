@@ -125,6 +125,11 @@ function MySchedule({
                       {inProgress ? (
                         <Badge>{m.my_schedule_in_progress()}</Badge>
                       ) : null}
+                      {a.swapRequested ? (
+                        <Badge variant="outline">
+                          {m.my_schedule_swap_requested()}
+                        </Badge>
+                      ) : null}
                     </Link>
                   </li>
                 );

@@ -30,6 +30,7 @@ import {
   session,
   shift,
   shiftRequirement,
+  swapRequest,
   team,
   templateTimeBlock,
   todo,
@@ -366,6 +367,13 @@ async function seedEveryTenantedTable(): Promise<void> {
     assignmentId: IDS.assignment,
     actorId: IDS.user,
     action: 'created',
+  });
+
+  await testDb.insert(swapRequest).values({
+    churchId: IDS.church,
+    assignmentId: IDS.assignment,
+    status: 'open',
+    raisedBy: IDS.user,
   });
 
   await testDb.insert(availabilityCheck).values({

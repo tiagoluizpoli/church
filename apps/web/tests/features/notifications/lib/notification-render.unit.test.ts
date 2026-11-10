@@ -487,3 +487,105 @@ describe('Ministry invitation Notification (N1)', () => {
     expect(renderNotification(offer).actionLabel).toBe('See invitation');
   });
 });
+
+describe('Swap request Notification (N7)', () => {
+  const swap = {
+    ...base,
+    kind: 'swap_request',
+    data: {
+      swapRequestId: ID,
+      cycleId: ID,
+      ministryId: ID,
+      ministryName: 'Recepção',
+      churchTimezone: 'America/Sao_Paulo',
+      volunteerName: 'Maria Souza',
+      shift: {
+        eventTitle: 'Culto',
+        roleName: 'Recepcionista',
+        sectorName: 'Portaria',
+        startsAt: '2030-10-13T13:00:00.000Z',
+        endsAt: '2030-10-13T15:00:00.000Z',
+      },
+      note: 'João cobre',
+    },
+  } as GetNotifications200ItemsItem;
+
+  it('renders the Volunteer, Ministry, Shift line and note in pt-BR and opens the board', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const pt = { locale: 'pt-BR' } as const;
+
+    const words = renderNotification(swap);
+
+    expect(words.title).toBe(
+      m.notification_swap_request_title({ volunteerName: 'Maria Souza' }, pt),
+    );
+    expect(words.body).toContain(
+      m.notification_swap_request_body(
+        {
+          ministryName: 'Recepção',
+          shift: 'dom 13 out · 10:00–12:00 · Culto · Recepcionista · Portaria',
+        },
+        pt,
+      ),
+    );
+    expect(words.body).toContain(
+      m.notification_swap_request_note({ note: 'João cobre' }, pt),
+    );
+    expect(words.kindLabel).toBe(m.notification_kind_swap_request({}, pt));
+    expect(resolveNotificationDestination(swap)).toEqual({
+      target: {
+        to: '/schedules/$ministryId/$cycleId',
+        params: { ministryId: ID, cycleId: ID },
+        // The same deep link the email carries.
+        search: { swapRequest: ID },
+      },
+      isFallback: false,
+    });
+  });
+});
+
+describe('Swap request answered Notification (N8)', () => {
+  const answered = (reply?: string) =>
+    ({
+      ...base,
+      kind: 'swap_request_answered',
+      data: {
+        assignmentId: ID,
+        ministryId: ID,
+        ministryName: 'Louvor',
+        churchTimezone: 'America/Sao_Paulo',
+        shift: {
+          eventTitle: 'Culto',
+          roleName: 'Violão',
+          sectorName: 'Palco',
+          startsAt: '2026-12-13T13:30:00.000Z',
+          endsAt: '2026-12-13T15:00:00.000Z',
+        },
+        reply,
+      },
+    }) as GetNotifications200ItemsItem;
+
+  it('renders the kept Shift and the reply in pt-BR, and opens the Assignment page', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const item = answered('Fica com a gente');
+
+    expect(renderNotification(item)).toEqual({
+      title: 'Seu líder respondeu ao seu pedido de troca',
+      body: 'Louvor manteve você em dom 13 dez · 10:30–12:00 · Culto · Violão · Palco.\nResposta: Fica com a gente',
+      kindLabel: 'Pedido de troca respondido',
+      actionLabel: 'Ver escala',
+    });
+    expect(resolveNotificationDestination(item)).toEqual({
+      target: {
+        to: '/my-schedule/$assignmentId',
+        params: { assignmentId: ID },
+      },
+      isFallback: false,
+    });
+  });
+
+  it('omits the reply line when there is none', () => {
+    overwriteGetLocale(() => 'en');
+    expect(renderNotification(answered()).body).not.toContain('\n');
+  });
+});

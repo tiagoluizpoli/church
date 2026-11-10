@@ -48,6 +48,7 @@ import {
   createNotificationRepositoryFake,
   createRoleRepositoryFake,
   createShiftRepositoryFake,
+  createSwapRequestRepositoryFake,
   createTransactionContextFake,
   createUnavailableShiftRepositoryFake,
   createUnitOfWorkFake,
@@ -131,6 +132,7 @@ function createHarness() {
     }),
   );
   const manager = new DbVolunteerManager({
+    swapRequestRepo: createSwapRequestRepositoryFake(),
     volunteerRepo,
     assignmentRepo,
     unavailableShiftRepo,

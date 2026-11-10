@@ -316,6 +316,20 @@
       "when": 1794268195879,
       "tag": "0044_fast_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794318191680,
+      "tag": "0045_boring_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794319642115,
+      "tag": "0046_narrow_black_crow",
+      "breakpoints": true
     }
   ]
 }

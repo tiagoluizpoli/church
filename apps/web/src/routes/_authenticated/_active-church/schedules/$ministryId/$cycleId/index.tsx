@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link, useLocation } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
+import { z } from 'zod';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -27,9 +28,15 @@ import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
+/** The id an N7 swap request alert (bell or email) deep-links with. */
+const prepareSearchSchema = z.object({ swapRequest: z.string().optional() });
+
 export const Route = createFileRoute(
   '/_authenticated/_active-church/schedules/$ministryId/$cycleId/',
-)({ component: PrepareWorkspaceRoute });
+)({
+  validateSearch: prepareSearchSchema,
+  component: PrepareWorkspaceRoute,
+});
 
 function PrepareWorkspaceRoute() {
   const { ministryId, cycleId } = Route.useParams();

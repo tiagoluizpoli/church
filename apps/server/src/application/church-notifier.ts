@@ -24,6 +24,8 @@ import {
   type NotificationRequestKind,
   schedulePublishedNotificationDataSchema,
   scheduleUpdatedNotificationDataSchema,
+  swapRequestAnsweredNotificationDataSchema,
+  swapRequestNotificationDataSchema,
   type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
 import { recipientLocale } from '../domain/services/recipient-locale';
@@ -201,6 +203,31 @@ export function buildChurchNotifier({
         actionUrl: data.actionUrl,
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      swap_request: ({ data, address }) => ({
+        kind: 'swap.request',
+        to: address.email,
+        churchName: data.churchName,
+        recipientFirstName: address.firstName,
+        ministryName: data.ministryName,
+        churchTimezone: data.churchTimezone,
+        volunteerName: data.volunteerName,
+        shift: data.shift,
+        note: data.note,
+        actionUrl: data.actionUrl,
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      swap_request_answered: ({ data, address }) => ({
+        kind: 'swap-request.answered',
+        to: address.email,
+        churchName: data.churchName,
+        recipientFirstName: address.firstName,
+        ministryName: data.ministryName,
+        churchTimezone: data.churchTimezone,
+        shift: data.shift,
+        reply: data.reply,
+        actionUrl: data.actionUrl,
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
       transfer_ministry_digest: ({ data, address }) =>
         transferDigestEmail({
           kind: 'transfer.ministry-digest',
@@ -270,6 +297,16 @@ export function buildChurchNotifier({
       cycle_ready_to_prepare: ({ data }) => ({
         kind: 'cycle_ready_to_prepare',
         data: cycleReadyToPrepareNotificationDataSchema.parse(data),
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      swap_request: ({ data }) => ({
+        kind: 'swap_request',
+        data: swapRequestNotificationDataSchema.parse(data),
+      }),
+      // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+      swap_request_answered: ({ data }) => ({
+        kind: 'swap_request_answered',
+        data: swapRequestAnsweredNotificationDataSchema.parse(data),
       }),
     }),
     sink: new InboxNotificationSink({ notificationRepository }),

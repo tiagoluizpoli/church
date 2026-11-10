@@ -27,6 +27,7 @@ export * from './scheduling-scope.repository';
 export * from './sector.repository';
 export * from './security-log.repository';
 export * from './shift.repository';
+export * from './swap-request.repository';
 export * from './transaction-context';
 export * from './unavailable-shift.repository';
 export * from './unit-of-work';

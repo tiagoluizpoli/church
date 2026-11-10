@@ -13,6 +13,8 @@ import type {
   PreparedEmail,
   SchedulePublishedEmail,
   ScheduleUpdatedEmail,
+  SwapRequestAnsweredEmail,
+  SwapRequestEmail,
   TransferDigestEmail,
   VerificationCodeEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
@@ -73,6 +75,7 @@ export function prepareEmail({
     case 'availability.reminder':
     case 'schedule.published':
     case 'schedule.updated':
+    case 'swap.request':
       return prepareLayoutEmail({
         payload,
         locale,
@@ -85,6 +88,13 @@ export function prepareEmail({
         locale,
         from: sender(payload.churchName),
         content: cycleReadyToPrepareContent({ payload, locale }),
+      });
+    case 'swap-request.answered':
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(payload.churchName),
+        content: swapRequestAnsweredContent({ payload, locale }),
       });
     case 'transfer.ministry-digest':
     case 'transfer.leaderless-ministry':
@@ -156,7 +166,8 @@ type MemberNotificationEmail =
   | MinistryInvitationEmail
   | AvailabilityEmail
   | SchedulePublishedEmail
-  | ScheduleUpdatedEmail;
+  | ScheduleUpdatedEmail
+  | SwapRequestEmail;
 
 interface MemberNotificationContentInput {
   payload: MemberNotificationEmail;
@@ -177,6 +188,32 @@ function memberNotificationContent({
       : m.email_greeting_transactional({}, options),
     footer: m.email_footer_membership({ churchName }, options),
   };
+  if (payload.kind === 'swap.request') {
+    const title = m.notification_swap_request_title(
+      { volunteerName: payload.volunteerName },
+      options,
+    );
+    const shift = formatShiftLine({
+      ...payload.shift,
+      churchTimezone: payload.churchTimezone,
+      locale,
+    });
+    return {
+      ...base,
+      subject: title,
+      heading: title,
+      facts: payload.note
+        ? [
+            m.notification_swap_request_body({ ministryName, shift }, options),
+            m.notification_swap_request_note({ note: payload.note }, options),
+          ]
+        : [m.notification_swap_request_body({ ministryName, shift }, options)],
+      action: {
+        label: m.notification_swap_request_action({}, options),
+        url: payload.actionUrl,
+      },
+    };
+  }
   if (payload.kind === 'schedule.updated') {
     const title = m.notification_schedule_updated_title(
       { ministryName },
@@ -389,6 +426,52 @@ function cycleReadyToPrepareContent({
       url: payload.actionUrl,
     },
     footer: m.email_footer_membership({ churchName }, options),
+  };
+}
+
+interface SwapRequestAnsweredContentInput {
+  payload: SwapRequestAnsweredEmail;
+  locale: EmailLocale;
+}
+
+/** N8 on the bell's catalog keys: the Shift kept, the reply, the Assignment page. */
+function swapRequestAnsweredContent({
+  payload,
+  locale,
+}: SwapRequestAnsweredContentInput): EmailContent {
+  const options = { locale };
+  const firstName = payload.recipientFirstName.trim();
+  const title = m.notification_swap_request_answered_title({}, options);
+  const body = m.notification_swap_request_answered_body(
+    {
+      ministryName: payload.ministryName,
+      shift: formatShiftLine({
+        ...payload.shift,
+        churchTimezone: payload.churchTimezone,
+        locale,
+      }),
+    },
+    options,
+  );
+  const replyLine = m.notification_swap_request_answered_reply(
+    { reply: payload.reply ?? '' },
+    options,
+  );
+  return {
+    subject: title,
+    greeting: firstName
+      ? m.email_greeting_notification({ firstName }, options)
+      : m.email_greeting_transactional({}, options),
+    heading: title,
+    facts: payload.reply ? [body, replyLine] : [body],
+    action: {
+      label: m.notification_swap_request_answered_action({}, options),
+      url: payload.actionUrl,
+    },
+    footer: m.email_footer_membership(
+      { churchName: payload.churchName },
+      options,
+    ),
   };
 }
 

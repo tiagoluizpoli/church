@@ -193,7 +193,36 @@ export interface CycleReadyToPrepareEmail {
   actionUrl: string;
 }
 
+/** N7: a Volunteer raised a Swap request; the note is leader-facing. */
+export interface SwapRequestEmail {
+  kind: 'swap.request';
+  to: string;
+  churchName: string;
+  recipientFirstName: string;
+  ministryName: string;
+  churchTimezone: string;
+  volunteerName: string;
+  shift: SchedulePublishedEmailShift;
+  note?: string;
+  actionUrl: string;
+}
+
+/** N8: the leader kept the Volunteer on an Assignment and answered. */
+export interface SwapRequestAnsweredEmail {
+  kind: 'swap-request.answered';
+  to: string;
+  churchName: string;
+  recipientFirstName: string;
+  ministryName: string;
+  churchTimezone: string;
+  shift: SchedulePublishedEmailShift;
+  reply?: string;
+  actionUrl: string;
+}
+
 export type EmailPayload =
+  | SwapRequestAnsweredEmail
+  | SwapRequestEmail
   | AvailabilityEmail
   | CycleReadyToPrepareEmail
   | SchedulePublishedEmail

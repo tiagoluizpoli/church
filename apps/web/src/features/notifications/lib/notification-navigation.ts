@@ -5,6 +5,7 @@ import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAP
 export type NotificationNavigationTarget =
   | { to: '/notifications' }
   | { to: '/my-schedule' }
+  | { to: '/my-schedule/$assignmentId'; params: { assignmentId: string } }
   | { to: '/availability' }
   | { to: '/availability/$checkId'; params: { checkId: string } }
   | {
@@ -14,6 +15,7 @@ export type NotificationNavigationTarget =
   | {
       to: '/schedules/$ministryId/$cycleId';
       params: { ministryId: string; cycleId: string };
+      search?: { swapRequest: string };
     }
   | {
       to: '/schedules';
@@ -67,6 +69,18 @@ export function resolveNotificationDestination(
     case 'schedule_published':
     case 'schedule_updated':
       return { target: { to: '/my-schedule' }, isFallback: false };
+    case 'swap_request': {
+      const { ministryId, cycleId, swapRequestId } = item.data;
+      return {
+        target: {
+          to: '/schedules/$ministryId/$cycleId',
+          params: { ministryId, cycleId },
+          // The same deep link the email carries.
+          search: { swapRequest: swapRequestId },
+        },
+        isFallback: false,
+      };
+    }
     case 'cycle_ready_to_prepare': {
       const { cycleId, ministries } = item.data;
       const [only, ...others] = ministries;
@@ -88,6 +102,14 @@ export function resolveNotificationDestination(
         isFallback: false,
       };
     }
+    case 'swap_request_answered':
+      return {
+        target: {
+          to: '/my-schedule/$assignmentId',
+          params: { assignmentId: item.data.assignmentId },
+        },
+        isFallback: false,
+      };
     default:
       return { target: { to: '/notifications' }, isFallback: true };
   }

@@ -22,6 +22,7 @@ export { DrizzleRoleRepository } from './drizzle-role.repository';
 export { DrizzleSectorRepository } from './drizzle-sector.repository';
 export { DrizzleSecurityLogRepository } from './drizzle-security-log.repository';
 export { DrizzleShiftRepository } from './drizzle-shift.repository';
+export { DrizzleSwapRequestRepository } from './drizzle-swap-request.repository';
 export { DrizzleTransactionContext } from './drizzle-transaction-context';
 export { DrizzleUnavailableShiftRepository } from './drizzle-unavailable-shift.repository';
 export { DrizzleUnitOfWork } from './drizzle-unit-of-work';

@@ -34,6 +34,7 @@ import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/dr
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleTransactionContext } from '@/infrastructure/repositories/drizzle-transaction-context';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
@@ -121,6 +122,7 @@ function createAssignmentManager(input?: {
       db: schedulingTestDb,
     }),
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+    swapRequestRepo: new DrizzleSwapRequestRepository({ db: schedulingTestDb }),
     unitOfWork,
   });
 }

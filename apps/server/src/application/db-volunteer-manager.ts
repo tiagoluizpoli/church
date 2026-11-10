@@ -51,6 +51,7 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { NotificationRepository } from '../domain/contracts/infrastructure/notification.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
+import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -60,6 +61,7 @@ import type {
   AssignmentStatus,
 } from '../domain/entities/assignment';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
+import { isSwapRequestExpired } from '../domain/entities/swap-request';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
@@ -168,6 +170,7 @@ interface ResolveCheckDetailInput {
 interface DbVolunteerManagerDependencies {
   volunteerRepo: VolunteerRepository;
   assignmentRepo: AssignmentRepository;
+  swapRequestRepo: SwapRequestRepository;
   unavailableShiftRepo: UnavailableShiftRepository;
   notificationRepo: NotificationRepository;
   cycleRepo: CycleRepository;
@@ -186,6 +189,7 @@ interface DbVolunteerManagerDependencies {
 export class DbVolunteerManager implements IVolunteerManager {
   private readonly volunteerRepo: VolunteerRepository;
   private readonly assignmentRepo: AssignmentRepository;
+  private readonly swapRequestRepo: SwapRequestRepository;
   private readonly unavailableShiftRepo: UnavailableShiftRepository;
   private readonly notificationRepo: NotificationRepository;
   private readonly cycleRepo: CycleRepository;
@@ -204,6 +208,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   constructor({
     volunteerRepo,
     assignmentRepo,
+    swapRequestRepo,
     unavailableShiftRepo,
     notificationRepo,
     cycleRepo,
@@ -220,6 +225,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   }: DbVolunteerManagerDependencies) {
     this.volunteerRepo = volunteerRepo;
     this.assignmentRepo = assignmentRepo;
+    this.swapRequestRepo = swapRequestRepo;
     this.unavailableShiftRepo = unavailableShiftRepo;
     this.notificationRepo = notificationRepo;
     this.cycleRepo = cycleRepo;
@@ -515,6 +521,12 @@ export class DbVolunteerManager implements IVolunteerManager {
           a.cycleName.localeCompare(b.cycleName),
       );
 
+    const openSwapIds = new Set<string>(
+      await this.swapRequestRepo.listOpenAssignmentIds({
+        churchId,
+        assignmentIds: assignments.map((a) => a.id),
+      }),
+    );
     const items = await Promise.all(
       assignments.map(async (assignment) => {
         const participation = participationsById.get(
@@ -559,6 +571,14 @@ export class DbVolunteerManager implements IVolunteerManager {
           roleId: roleId as string,
           roleName: role.name,
           status: assignment.status as VolunteerScheduleAssignment['status'],
+          // Same rule as the detail read: open past the Shift's start is expired.
+          swapRequested:
+            openSwapIds.has(assignment.id as string) &&
+            !isSwapRequestExpired({
+              status: 'open',
+              shiftStart: shift.startTime,
+              at: now,
+            }),
         };
         return item;
       }),
@@ -806,6 +826,14 @@ export class DbVolunteerManager implements IVolunteerManager {
       .filter((name): name is string => !!name)
       .sort();
 
+    // Only the raiser's own detail read reaches here, so the note is theirs to see.
+    const latestSwapRequest = await this.swapRequestRepo.findLatestByAssignment(
+      {
+        churchId,
+        assignmentId,
+      },
+    );
+
     return {
       assignmentId: assignment.id as string,
       eventId: event.id as string,
@@ -819,6 +847,21 @@ export class DbVolunteerManager implements IVolunteerManager {
       roleName: roleNameOf(assignment.roleId as string),
       leaderName: leaderName ?? null,
       roster,
+      swapRequest: latestSwapRequest
+        ? {
+            id: latestSwapRequest.id,
+            status: isSwapRequestExpired({
+              status: latestSwapRequest.status,
+              shiftStart: shift.startTime,
+              at: nowInstant(),
+            })
+              ? 'expired'
+              : latestSwapRequest.status,
+            note: latestSwapRequest.note ?? null,
+            reply: latestSwapRequest.reply ?? null,
+            raisedAt: latestSwapRequest.raisedAt,
+          }
+        : null,
     };
   }
 

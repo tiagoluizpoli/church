@@ -11,6 +11,8 @@ export { PeopleController } from './people-controller';
 export { PrepareController } from './prepare-controller';
 export { RedemptionController } from './redemption-controller';
 export { SectorController } from './sector-controller';
+export { SwapRequestController } from './swap-request-controller';
+export { SwapRequestListController } from './swap-request-list-controller';
 export { UsualSetupController } from './usual-setup-controller';
 export { VolunteerController } from './volunteer-controller';
 export { VolunteerScheduleController } from './volunteer-schedule-controller';

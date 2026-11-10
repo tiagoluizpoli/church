@@ -15,6 +15,7 @@ export * from './role-id';
 export * from './sector-id';
 export * from './shift-id';
 export * from './shift-requirement-id';
+export * from './swap-request-id';
 export * from './team-id';
 export * from './template-time-block-id';
 export * from './unavailable-shift-id';

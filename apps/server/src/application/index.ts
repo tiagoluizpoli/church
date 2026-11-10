@@ -19,6 +19,8 @@ export { DbPeopleListManager } from './db-people-list-manager';
 export { DbPlanningEventManager } from './db-planning-event-manager';
 export { DbRedemptionManager } from './db-redemption-manager';
 export { DbSectorManager } from './db-sector-manager';
+export { DbSwapRequestListManager } from './db-swap-request-list-manager';
+export { DbSwapRequestManager } from './db-swap-request-manager';
 export { DbVolunteerManager } from './db-volunteer-manager';
 export { DbVolunteerTransferManager } from './db-volunteer-transfer-manager';
 export { InvitationVerificationCodeManager } from './invitation-verification-code-manager';

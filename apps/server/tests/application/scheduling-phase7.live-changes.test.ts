@@ -45,6 +45,7 @@ import {
   createRoleRepositoryFake,
   createSectorRepositoryFake,
   createShiftRepositoryFake,
+  createSwapRequestRepositoryFake,
   createTransactionContextFake,
   createUnavailableShiftRepositoryFake,
   createUnitOfWorkFake,
@@ -170,6 +171,7 @@ function createHarness() {
     volunteerRepository,
     unavailableShiftRepository,
     cycleRepository,
+    swapRequestRepo: createSwapRequestRepositoryFake(),
     unitOfWork,
   });
   const notifications = createChurchNotificationsSpy();
@@ -194,6 +196,7 @@ function createHarness() {
     unitOfWork,
   });
   const volunteerManager = new DbVolunteerManager({
+    swapRequestRepo: createSwapRequestRepositoryFake(),
     volunteerRepo: volunteerRepository,
     assignmentRepo,
     shiftRepo: shiftRepository,

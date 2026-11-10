@@ -30,9 +30,11 @@ export function SwapWithdrawButton({ assignmentId }: SwapWithdrawButtonProps) {
       if (!error || isConflict(error)) {
         setOpen(false);
       }
-      return queryClient.invalidateQueries({
-        queryKey: ['assignment-detail', assignmentId],
-      });
+      return Promise.all(
+        [['assignment-detail', assignmentId], ['ministry-swap-requests']].map(
+          (queryKey) => queryClient.invalidateQueries({ queryKey }),
+        ),
+      );
     },
   });
   const failed = mutation.isError && !isConflict(mutation.error);

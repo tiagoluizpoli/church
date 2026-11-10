@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-builder';
 import {
   isConflict,
-  isStaleRaise,
+  isStaleRequest,
 } from '@/features/volunteers/lib/http-status';
 import type { ListMinistrySwapRequests200SchedulesItemRequestsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -59,8 +60,13 @@ export function SwapRequestSheet({
         reply: reply.trim() || undefined,
       }),
     onSuccess: () => onOpenChange(false),
-    // A stale sheet (409/404) lands on the current state: the refetch drops or relabels the request.
-    onSettled: (_data, error) =>
+    // A stale sheet (409/404): say so, close, and refetch so the list shows the current state.
+    onError: (error) => {
+      if (!isStaleRequest(error)) return;
+      toast.error(m.swap_board_keep_stale());
+      onOpenChange(false);
+    },
+    onSettled: () =>
       Promise.all(
         [
           ['ministry-swap-requests'],
@@ -68,9 +74,7 @@ export function SwapRequestSheet({
           ['prepare-schedules'],
           ['assignment-detail'],
         ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      ).then(() => {
-        if (error && isStaleRaise(error)) onOpenChange(false);
-      }),
+      ),
   });
   const { startsAt, endsAt, raisedAt, status, note } = request;
   const isExpired = status === 'expired';
@@ -144,7 +148,7 @@ export function SwapRequestSheet({
           </p>
           {keep.isError &&
           !isConflict(keep.error) &&
-          !isStaleRaise(keep.error) ? (
+          !isStaleRequest(keep.error) ? (
             <p role="alert" className="text-destructive text-sm">
               {m.swap_board_keep_error()}
             </p>

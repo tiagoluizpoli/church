@@ -12,7 +12,7 @@ export function isConflict(error: unknown): boolean {
   return statusOf(error) === HTTP_CONFLICT;
 }
 
-/** The raise is stale when refused (409) or when the Assignment is gone (404). */
-export function isStaleRaise(error: unknown): boolean {
+/** A swap request action is stale when refused (409) or when its target is gone (404). */
+export function isStaleRequest(error: unknown): boolean {
   return isConflict(error) || statusOf(error) === HTTP_NOT_FOUND;
 }

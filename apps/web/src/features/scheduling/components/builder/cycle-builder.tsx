@@ -112,11 +112,11 @@ export function CycleBuilder({
     removedAssignment?.volunteerName ?? m.builder_ui_the_volunteer();
 
   const [coverAssignmentId, setCoverAssignmentId] = useState<string>();
-  const openRequestByAssignment = new Map(
-    swapRequests
-      .filter(({ status }) => status === 'open')
-      .map(({ assignmentId, id }) => [assignmentId, id]),
+  const openRequests = swapRequests.filter(({ status }) => status === 'open');
+  const openRequestEntries = openRequests.map(
+    ({ assignmentId, id }): [string, string] => [assignmentId, id],
   );
+  const openRequestByAssignment = new Map(openRequestEntries);
   const selectedSwapRequest = swapRequests.find(
     ({ id }) => id === selectedSwapRequestId,
   );

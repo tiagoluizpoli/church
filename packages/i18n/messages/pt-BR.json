@@ -1329,5 +1329,6 @@
   "swap_board_cover": "Atender",
   "swap_board_reply_label": "Resposta (opcional)",
   "swap_board_cover_hint": "Para atender o pedido, mova, troque ou remova a Escala no quadro.",
-  "swap_board_keep_error": "Não foi possível salvar sua resposta. Tente de novo."
+  "swap_board_keep_error": "Não foi possível salvar sua resposta. Tente de novo.",
+  "swap_board_keep_stale": "Este pedido não está mais aberto. A lista agora mostra o estado atual."
 }

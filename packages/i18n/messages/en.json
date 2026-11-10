@@ -1329,5 +1329,6 @@
   "swap_board_cover": "Cover",
   "swap_board_reply_label": "Reply (optional)",
   "swap_board_cover_hint": "To cover it instead, move, reassign or remove the Assignment on the board.",
-  "swap_board_keep_error": "Could not save your answer. Try again."
+  "swap_board_keep_error": "Could not save your answer. Try again.",
+  "swap_board_keep_stale": "This request is no longer open. The list now shows its current state."
 }

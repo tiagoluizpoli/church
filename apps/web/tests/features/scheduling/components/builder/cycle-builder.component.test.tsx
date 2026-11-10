@@ -6,6 +6,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders } from 'axios';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   afterEach,
   beforeEach,
@@ -842,7 +843,7 @@ describe('Swap requests on the board', () => {
       );
     });
 
-    it('recovers from a conflict by closing the sheet on the current state', async () => {
+    it('recovers from a conflict with a no-longer-open message and closes the sheet', async () => {
       keepWith(() =>
         Promise.reject(
           new AxiosError('conflict', '409', undefined, undefined, {
@@ -869,6 +870,7 @@ describe('Swap requests on the board', () => {
       await waitFor(() =>
         expect(onSelectSwapRequest).toHaveBeenCalledWith(undefined),
       );
+      expect(toast.error).toHaveBeenCalledWith(m.swap_board_keep_stale());
       expect(
         screen.queryByText(m.swap_board_keep_error()),
       ).not.toBeInTheDocument();

@@ -146,17 +146,18 @@ export function AssignmentButton({
         </button>
       ) : null}
       {openSwapRequestId ? (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           aria-label={m.swap_board_warning_label({
             name: assignment.volunteerName ?? assignment.volunteerId,
           })}
-          className="rounded px-1 focus-visible:ring-2 focus-visible:ring-ring"
           data-testid="swap-request-warning"
           onClick={() => onOpenSwapRequest(openSwapRequestId)}
         >
           ⚠
-        </button>
+        </Button>
       ) : null}
       {assignment.lateMark ? (
         <Tooltip>

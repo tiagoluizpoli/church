@@ -22,10 +22,12 @@ interface DayGroup {
 }
 
 // The read is already ordered by start; consecutive same-day items share a group.
-function groupByDay(
-  assignments: ScheduleAssignment[],
-  timeZone: string,
-): DayGroup[] {
+interface GroupByDayInput {
+  assignments: ScheduleAssignment[];
+  timeZone: string;
+}
+
+function groupByDay({ assignments, timeZone }: GroupByDayInput): DayGroup[] {
   const groups: DayGroup[] = [];
   for (const assignment of assignments) {
     const day = dayOf({ value: assignment.startTime, timeZone });
@@ -44,10 +46,14 @@ function groupByDay(
   return groups;
 }
 
-function MySchedule({ data }: { data: GetPublishedVolunteerSchedule200 }) {
+interface MyScheduleProps {
+  data: GetPublishedVolunteerSchedule200;
+}
+
+function MySchedule({ data }: MyScheduleProps) {
   const { churchTimezone: timeZone } = useTimezone();
   const current = now();
-  const groups = groupByDay(data.assignments, timeZone);
+  const groups = groupByDay({ assignments: data.assignments, timeZone });
   return (
     <div className="space-y-8">
       <h1 className="font-semibold text-xl">{m.nav_my_schedule()}</h1>

@@ -6,6 +6,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders } from 'axios';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   afterEach,
   beforeEach,
@@ -16,8 +17,10 @@ import {
   vi,
 } from 'vitest';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
+import type { LeaderSwapRequest } from '@/features/scheduling/components/builder/swap-request/swap-request-sheet';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
+import { adminApi } from '@/utils/api-instances';
 
 beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
@@ -183,12 +186,18 @@ interface RenderBuilderInput {
   createAssignment?: () => Promise<unknown>;
   moveAssignment?: () => Promise<unknown>;
   data?: CycleBuilderData;
+  swapRequests?: LeaderSwapRequest[];
+  selectedSwapRequestId?: string;
+  onSelectSwapRequest?: (id: string | undefined) => void;
 }
 
 function renderBuilder({
   createAssignment,
   moveAssignment,
   data = builderData,
+  swapRequests,
+  selectedSwapRequestId,
+  onSelectSwapRequest,
 }: RenderBuilderInput = {}) {
   const mutateAsync = vi.fn(createAssignment ?? (() => Promise.resolve({})));
   const move = vi.fn(moveAssignment ?? (() => Promise.resolve({})));
@@ -206,6 +215,9 @@ function renderBuilder({
       deleteAssignment={{ isPending: false, mutateAsync: vi.fn() }}
       reassignAssignment={{ isPending: false, mutateAsync: vi.fn() }}
       moveAssignment={{ isPending: false, mutateAsync: move }}
+      swapRequests={swapRequests}
+      selectedSwapRequestId={selectedSwapRequestId}
+      onSelectSwapRequest={onSelectSwapRequest}
     />,
   );
   return { mutateAsync, move };
@@ -685,5 +697,183 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
     for (const grip of screen.getAllByTestId('volunteer-card-grip')) {
       expect(grip).not.toBeDisabled();
     }
+  });
+});
+
+describe('Swap requests on the board', () => {
+  const request: LeaderSwapRequest = {
+    id: 'request-1',
+    assignmentId: 'assignment-1',
+    volunteerName: 'Grace Hopper',
+    eventTitle: 'Sunday Gathering',
+    roleName: 'Greeter',
+    sectorName: 'Main',
+    startsAt: '2026-08-02T09:00:00.000Z',
+    endsAt: '2026-08-02T11:00:00.000Z',
+    note: 'Ada covers',
+    raisedAt: '2026-08-01T10:00:00.000Z',
+    status: 'open',
+  };
+  const data = boardData({ state: 'published' });
+
+  it('warns on an open request and opens its sheet from the warning', async () => {
+    const onSelectSwapRequest = vi.fn();
+    renderBuilder({ data, swapRequests: [request], onSelectSwapRequest });
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.swap_board_warning_label({ name: 'Grace Hopper' }),
+      }),
+    );
+
+    expect(onSelectSwapRequest).toHaveBeenCalledWith('request-1');
+  });
+
+  it('shows no warning for an expired request', () => {
+    renderBuilder({
+      data,
+      swapRequests: [{ ...request, status: 'expired' }],
+    });
+
+    expect(
+      screen.queryByTestId('swap-request-warning'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the request facts in the sheet', () => {
+    renderBuilder({
+      data,
+      swapRequests: [request],
+      selectedSwapRequestId: 'request-1',
+    });
+
+    const sheet = screen.getByTestId('swap-request-sheet');
+    expect(within(sheet).getByText('Grace Hopper')).toBeVisible();
+    expect(within(sheet).getByText(/Sunday Gathering/)).toBeVisible();
+    expect(within(sheet).getByText('Main × Greeter')).toBeVisible();
+    expect(within(sheet).getByText('Ada covers')).toBeVisible();
+    expect(within(sheet).getByText(m.swap_board_status_open())).toBeVisible();
+  });
+
+  it('presents an expired request as Unanswered without any action', () => {
+    renderBuilder({
+      data,
+      swapRequests: [{ ...request, status: 'expired' }],
+      selectedSwapRequestId: 'request-1',
+    });
+
+    expect(screen.getByText(m.swap_board_status_expired())).toBeVisible();
+    expect(screen.getByText(m.swap_board_expired_hint())).toBeVisible();
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent),
+    ).not.toContain(expect.stringMatching(/keep|cover/i));
+  });
+
+  it('Cover closes the sheet and opens the Assignment actions without answering the request', async () => {
+    const keep = vi.spyOn(adminApi, 'keepSwapRequest');
+    const onSelectSwapRequest = vi.fn();
+    renderBuilder({
+      data,
+      swapRequests: [request],
+      selectedSwapRequestId: 'request-1',
+      onSelectSwapRequest,
+    });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.swap_board_cover() }),
+    );
+
+    expect(onSelectSwapRequest).toHaveBeenCalledWith(undefined);
+    expect(await screen.findByTestId('assignment-picker')).toBeInTheDocument();
+    expect(keep).not.toHaveBeenCalled();
+  });
+
+  describe('Keep them on', () => {
+    const keepWith = (implementation: () => Promise<unknown>) =>
+      vi
+        .spyOn(adminApi, 'keepSwapRequest')
+        .mockImplementation(implementation as never);
+
+    it('sends the trimmed reply, then closes the sheet', async () => {
+      const keep = keepWith(() => Promise.resolve(null));
+      const onSelectSwapRequest = vi.fn();
+      renderBuilder({
+        data,
+        swapRequests: [request],
+        selectedSwapRequestId: 'request-1',
+        onSelectSwapRequest,
+      });
+
+      await userEvent.type(
+        screen.getByLabelText(m.swap_board_reply_label()),
+        '  Stay with us  ',
+      );
+      await userEvent.click(
+        screen.getByRole('button', { name: m.swap_board_keep() }),
+      );
+
+      await waitFor(() =>
+        expect(onSelectSwapRequest).toHaveBeenCalledWith(undefined),
+      );
+      expect(keep).toHaveBeenCalledWith('ministry-1', 'request-1', {
+        reply: 'Stay with us',
+      });
+    });
+
+    it('sends no reply when it is blank', async () => {
+      const keep = keepWith(() => Promise.resolve(null));
+      renderBuilder({
+        data,
+        swapRequests: [request],
+        selectedSwapRequestId: 'request-1',
+      });
+
+      await userEvent.type(
+        screen.getByLabelText(m.swap_board_reply_label()),
+        '   ',
+      );
+      await userEvent.click(
+        screen.getByRole('button', { name: m.swap_board_keep() }),
+      );
+
+      await waitFor(() =>
+        expect(keep).toHaveBeenCalledWith('ministry-1', 'request-1', {
+          reply: undefined,
+        }),
+      );
+    });
+
+    it('recovers from a conflict with a no-longer-open message and closes the sheet', async () => {
+      keepWith(() =>
+        Promise.reject(
+          new AxiosError('conflict', '409', undefined, undefined, {
+            status: 409,
+            data: {},
+            statusText: 'Conflict',
+            headers: {},
+            config: { headers: new AxiosHeaders() },
+          }),
+        ),
+      );
+      const onSelectSwapRequest = vi.fn();
+      renderBuilder({
+        data,
+        swapRequests: [request],
+        selectedSwapRequestId: 'request-1',
+        onSelectSwapRequest,
+      });
+
+      await userEvent.click(
+        screen.getByRole('button', { name: m.swap_board_keep() }),
+      );
+
+      await waitFor(() =>
+        expect(onSelectSwapRequest).toHaveBeenCalledWith(undefined),
+      );
+      expect(toast.error).toHaveBeenCalledWith(m.swap_board_keep_stale());
+      expect(
+        screen.queryByText(m.swap_board_keep_error()),
+      ).not.toBeInTheDocument();
+    });
   });
 });

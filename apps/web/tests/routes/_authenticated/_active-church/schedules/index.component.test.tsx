@@ -92,6 +92,7 @@ function schedule(
     },
     stage: 'to_prepare',
     lateMarkCount: 0,
+    openSwapRequestCount: 0,
     ...overrides,
   };
 }
@@ -146,6 +147,20 @@ describe('Schedules list', () => {
     expect(
       within(row).getByLabelText(m.schedule_late_mark_count({ count: 2 })),
     ).toBeVisible();
+  });
+
+  it.each([
+    { count: 1, label: m.schedules_swap_request_one() },
+    { count: 3, label: m.schedules_swap_requests_other({ count: 3 }) },
+  ])('adds "$label" beside the Published state', async ({ count, label }) => {
+    listSchedules.mockResolvedValue({
+      schedules: [
+        schedule({ stage: 'published', openSwapRequestCount: count }),
+      ],
+    });
+    renderPrepareIndex();
+    const row = await screen.findByRole('link', { name: /Kids · Outubro/ });
+    expect(row).toHaveTextContent(`${m.schedules_published()} · ${label}`);
   });
 
   it('opens the selected Schedule directly on row activation', async () => {

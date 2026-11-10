@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { isStaleRaise } from '../lib/http-status';
+import { isStaleRequest } from '../lib/http-status';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -43,15 +43,17 @@ export function SwapRequestSheet({
     onSuccess: () => onOpenChange(false),
     onError: (error) => {
       // The page is stale: say why, then close; the refetch below shows the real state.
-      if (!isStaleRaise(error)) return;
+      if (!isStaleRequest(error)) return;
       toast.error(refusalMessage(error));
       onOpenChange(false);
     },
     // A refusal means the page is stale (Shift started, Assignment gone, already open).
     onSettled: () =>
-      queryClient.invalidateQueries({
-        queryKey: ['assignment-detail', assignmentId],
-      }),
+      Promise.all(
+        [['assignment-detail', assignmentId], ['ministry-swap-requests']].map(
+          (queryKey) => queryClient.invalidateQueries({ queryKey }),
+        ),
+      ),
   });
   return (
     <ResponsiveFormSurface
@@ -91,7 +93,7 @@ export function SwapRequestSheet({
           {m.swap_note_limit({ count: note.length, max })}
         </p>
         <p className="text-sm">{m.swap_stays_line()}</p>
-        {mutation.isError && !isStaleRaise(mutation.error) ? (
+        {mutation.isError && !isStaleRequest(mutation.error) ? (
           <p role="alert" className="text-destructive text-sm">
             {refusalMessage(mutation.error)}
           </p>

@@ -15,7 +15,11 @@ export type NotificationNavigationTarget =
   | {
       to: '/schedules/$ministryId/$cycleId';
       params: { ministryId: string; cycleId: string };
-      search?: { swapRequest: string };
+    }
+  | {
+      to: '/schedules/$ministryId/$cycleId/assign';
+      params: { ministryId: string; cycleId: string };
+      search: { swapRequest: string };
     }
   | {
       to: '/schedules';
@@ -73,7 +77,7 @@ export function resolveNotificationDestination(
       const { ministryId, cycleId, swapRequestId } = item.data;
       return {
         target: {
-          to: '/schedules/$ministryId/$cycleId',
+          to: '/schedules/$ministryId/$cycleId/assign',
           params: { ministryId, cycleId },
           // The same deep link the email carries.
           search: { swapRequest: swapRequestId },

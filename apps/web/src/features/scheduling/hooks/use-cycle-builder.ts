@@ -424,6 +424,10 @@ export function useCycleBuilder({
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey });
     void queryClient.invalidateQueries({ queryKey: ['prepare-schedules'] });
+    // A cover closes the Assignment's request: the ⚠ and sheet read from this list.
+    void queryClient.invalidateQueries({
+      queryKey: ['ministry-swap-requests'],
+    });
   };
 
   const applyOptimistic = async ({

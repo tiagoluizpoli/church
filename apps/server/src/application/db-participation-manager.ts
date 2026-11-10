@@ -56,12 +56,14 @@ import type { EventTimeBlockRepository } from '../domain/contracts/infrastructur
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type {
   MinistryParticipationRepository,
+  ScheduleCountRow,
   ScheduleLastToldRow,
 } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
+import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -114,6 +116,12 @@ import {
   wallClockUtcBounds,
 } from '../domain/services/usual-setup-planner';
 import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
+
+interface TagCoveredSwapRequestsInput {
+  baseline: ScheduleLastToldRow[];
+  churchId: ChurchId;
+  tx: TransactionContext;
+}
 
 interface CompareScheduleAssignmentsInput {
   events: EventWithEventTimeBlocks[];
@@ -404,6 +412,7 @@ interface DbParticipationManagerDependencies {
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
   churchRepository: ChurchRepository;
+  swapRequestRepo: SwapRequestRepository;
   staffingSeeder: UsualSetupStaffingSeeder;
   notifications: IChurchNotifications;
   unitOfWork: UnitOfWork;
@@ -439,6 +448,7 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly roleRepository: RoleRepository;
   private readonly sectorRepository: SectorRepository;
   private readonly churchRepository: ChurchRepository;
+  private readonly swapRequestRepo: SwapRequestRepository;
   private readonly staffingSeeder: UsualSetupStaffingSeeder;
   private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
@@ -459,11 +469,13 @@ export class DbParticipationManager implements IParticipationManager {
     roleRepository,
     sectorRepository,
     churchRepository,
+    swapRequestRepo,
     staffingSeeder,
     notifications,
     unitOfWork,
   }: DbParticipationManagerDependencies) {
     this.availabilityCheckRepository = availabilityCheckRepository;
+    this.swapRequestRepo = swapRequestRepo;
     this.participationRepository = participationRepository;
     this.shiftRepository = shiftRepository;
     this.eventRepository = eventRepository;
@@ -1396,8 +1408,13 @@ export class DbParticipationManager implements IParticipationManager {
         events,
         tx,
       });
-      const baseline = await this.participationRepository.listScheduleLastTold({
+      const lastTold = await this.participationRepository.listScheduleLastTold({
         ...input,
+        tx,
+      });
+      const baseline = await this.tagCoveredSwapRequests({
+        baseline: lastTold,
+        churchId: input.churchId,
         tx,
       });
       const changed = compareScheduleAssignments({
@@ -1461,6 +1478,31 @@ export class DbParticipationManager implements IParticipationManager {
       }
       return { notifiedCount: changed.length };
     });
+  }
+
+  /** A told Assignment whose latest request was covered after the last send is being changed by that cover. */
+  private async tagCoveredSwapRequests({
+    baseline,
+    churchId,
+    tx,
+  }: TagCoveredSwapRequestsInput): Promise<ScheduleLastToldRow[]> {
+    const tagRow = async (row: ScheduleLastToldRow) => {
+      const tagItem = async (item: ScheduleAssignmentSnapshot) => {
+        const latest = await this.swapRequestRepo.findLatestByAssignment({
+          churchId,
+          assignmentId: item.assignmentId,
+          tx,
+        });
+        const coveredSinceTold =
+          latest?.status === 'covered' &&
+          latest.closedAt !== undefined &&
+          compareInstants({ left: latest.closedAt, right: row.toldAt }) > 0;
+        return coveredSinceTold ? { ...item, swapRequestCovered: true } : item;
+      };
+      const assignments = await Promise.all(row.assignments.map(tagItem));
+      return { ...row, assignments };
+    };
+    return Promise.all(baseline.map(tagRow));
   }
 
   private async notifySchedulePublished({
@@ -1682,15 +1724,19 @@ export class DbParticipationManager implements IParticipationManager {
       ministryIds: ministries.map((ministry) => ministry.id),
       cycleIds: sentCycles.map((cycle) => cycle.id),
     };
-    const [servingStates, checkCounts, lateMarkCounts] = await Promise.all([
-      this.participationRepository.listScheduleServingStates(scope),
-      this.participationRepository.countScheduleChecks(scope),
-      this.participationRepository.countScheduleLateMarks(scope),
-    ]);
-
-    const lateMarksBySchedule = new Map(
-      lateMarkCounts.map((row) => [scheduleKey(row), row.count]),
-    );
+    const [servingStates, checkCounts, lateMarkCounts, swapCounts] =
+      await Promise.all([
+        this.participationRepository.listScheduleServingStates(scope),
+        this.participationRepository.countScheduleChecks(scope),
+        this.participationRepository.countScheduleLateMarks(scope),
+        this.participationRepository.countScheduleOpenSwapRequests(scope),
+      ]);
+    const countEntry = (row: ScheduleCountRow): [string, number] => [
+      scheduleKey(row),
+      row.count,
+    ];
+    const swapCountBySchedule = new Map(swapCounts.map(countEntry));
+    const lateMarksBySchedule = new Map(lateMarkCounts.map(countEntry));
     const statesBySchedule = Map.groupBy(servingStates, scheduleKey);
     const countsBySchedule = new Map(
       checkCounts.map((row) => [scheduleKey(row), row]),
@@ -1708,6 +1754,7 @@ export class DbParticipationManager implements IParticipationManager {
             servingStates: rows.map((row) => row.state),
           });
           const lateMarkCount = lateMarksBySchedule.get(key) ?? 0;
+          const openSwapRequestCount = swapCountBySchedule.get(key) ?? 0;
           const affectedVolunteerCount = await this.unitOfWork.run((tx) =>
             this.countScheduleChanges({
               churchId,
@@ -1722,6 +1769,7 @@ export class DbParticipationManager implements IParticipationManager {
               cycle,
               stage,
               lateMarkCount,
+              openSwapRequestCount,
               affectedVolunteerCount,
             };
           const { confirmed = 0, asked = 0 } = countsBySchedule.get(key) ?? {};
@@ -1730,6 +1778,7 @@ export class DbParticipationManager implements IParticipationManager {
             cycle,
             stage,
             lateMarkCount,
+            openSwapRequestCount,
             affectedVolunteerCount,
             asking: { confirmed, asked },
           };

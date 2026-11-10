@@ -220,6 +220,8 @@ export function createMinistryParticipationRepositoryFake() {
       vi.fn<MinistryParticipationRepository['listScheduleServingStates']>(),
     countScheduleLateMarks:
       vi.fn<MinistryParticipationRepository['countScheduleLateMarks']>(),
+    countScheduleOpenSwapRequests:
+      vi.fn<MinistryParticipationRepository['countScheduleOpenSwapRequests']>(),
     countScheduleChecks:
       vi.fn<MinistryParticipationRepository['countScheduleChecks']>(),
   } satisfies MinistryParticipationRepository;
@@ -312,6 +314,10 @@ export function createSwapRequestRepositoryFake() {
       .mockResolvedValue([]),
     closeOpenByAssignment:
       vi.fn<SwapRequestRepository['closeOpenByAssignment']>(),
+    findById: vi
+      .fn<SwapRequestRepository['findById']>()
+      .mockResolvedValue(null),
+    closeOpenById: vi.fn<SwapRequestRepository['closeOpenById']>(),
   } satisfies SwapRequestRepository;
 }
 

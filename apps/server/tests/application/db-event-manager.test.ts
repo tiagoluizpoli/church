@@ -239,6 +239,7 @@ function createRepos(): Repos {
     listScheduleSummaries: vi.fn(),
     listScheduleServingStates: vi.fn(),
     countScheduleLateMarks: vi.fn(),
+    countScheduleOpenSwapRequests: vi.fn(),
     countScheduleChecks: vi.fn(),
   };
 

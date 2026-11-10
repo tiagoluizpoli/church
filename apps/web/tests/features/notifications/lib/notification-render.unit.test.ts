@@ -534,7 +534,7 @@ describe('Swap request Notification (N7)', () => {
     expect(words.kindLabel).toBe(m.notification_kind_swap_request({}, pt));
     expect(resolveNotificationDestination(swap)).toEqual({
       target: {
-        to: '/schedules/$ministryId/$cycleId',
+        to: '/schedules/$ministryId/$cycleId/assign',
         params: { ministryId: ID, cycleId: ID },
         // The same deep link the email carries.
         search: { swapRequest: ID },
@@ -553,6 +553,7 @@ describe('Swap request answered Notification (N8)', () => {
         assignmentId: ID,
         ministryId: ID,
         ministryName: 'Louvor',
+        leaderName: 'Lídia',
         churchTimezone: 'America/Sao_Paulo',
         shift: {
           eventTitle: 'Culto',
@@ -570,10 +571,10 @@ describe('Swap request answered Notification (N8)', () => {
     const item = answered('Fica com a gente');
 
     expect(renderNotification(item)).toEqual({
-      title: 'Seu líder respondeu ao seu pedido de troca',
-      body: 'Louvor manteve você em dom 13 dez · 10:30–12:00 · Culto · Violão · Palco.\nResposta: Fica com a gente',
+      title: 'Seu pedido de troca foi respondido',
+      body: 'Lídia manteve você em:\ndom 13 dez · 10:30–12:00 · Culto · Violão · Palco\nResposta: Fica com a gente\nVocê pode pedir de novo pelo turno.',
       kindLabel: 'Pedido de troca respondido',
-      actionLabel: 'Ver escala',
+      actionLabel: 'Ver detalhes',
     });
     expect(resolveNotificationDestination(item)).toEqual({
       target: {
@@ -586,6 +587,6 @@ describe('Swap request answered Notification (N8)', () => {
 
   it('omits the reply line when there is none', () => {
     overwriteGetLocale(() => 'en');
-    expect(renderNotification(answered()).body).not.toContain('\n');
+    expect(renderNotification(answered()).body).not.toContain('Reply:');
   });
 });

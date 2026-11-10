@@ -13,6 +13,7 @@ import { deriveSeedId } from '../builders/derived-id';
 export const E2E_JOURNEY_RECIPE_NAMES = {
   volunteerAssignments: 'volunteer-assignments',
   schedulePublish: 'schedule-publish',
+  swapRequest: 'swap-request',
   volunteerDashboard: 'volunteer-dashboard',
   leaderPrepare: 'leader-prepare',
   volunteerAvailability: 'volunteer-availability',

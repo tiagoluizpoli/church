@@ -133,6 +133,9 @@ export function createSchedulingManagers({
       ministryRepository: ministryRepo,
       usualSetupRepository,
       churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
+      swapRequestRepo: new DrizzleSwapRequestRepository({
+        db: schedulingTestDb,
+      }),
       staffingSeeder: new UsualSetupStaffingSeeder({
         participationRepository: participationRepo,
         shiftRepository: shiftRepo,

@@ -442,15 +442,17 @@ function swapRequestAnsweredContent({
   const options = { locale };
   const firstName = payload.recipientFirstName.trim();
   const title = m.notification_swap_request_answered_title({}, options);
-  const body = m.notification_swap_request_answered_body(
-    {
-      ministryName: payload.ministryName,
-      shift: formatShiftLine({
-        ...payload.shift,
-        churchTimezone: payload.churchTimezone,
-        locale,
-      }),
-    },
+  const keptLine = m.notification_swap_request_answered_body(
+    { leaderName: payload.leaderName },
+    options,
+  );
+  const shiftLine = formatShiftLine({
+    ...payload.shift,
+    churchTimezone: payload.churchTimezone,
+    locale,
+  });
+  const askAgainLine = m.notification_swap_request_answered_ask_again(
+    {},
     options,
   );
   const replyLine = m.notification_swap_request_answered_reply(
@@ -463,7 +465,9 @@ function swapRequestAnsweredContent({
       ? m.email_greeting_notification({ firstName }, options)
       : m.email_greeting_transactional({}, options),
     heading: title,
-    facts: payload.reply ? [body, replyLine] : [body],
+    facts: payload.reply
+      ? [keptLine, shiftLine, replyLine, askAgainLine]
+      : [keptLine, shiftLine, askAgainLine],
     action: {
       label: m.notification_swap_request_answered_action({}, options),
       url: payload.actionUrl,

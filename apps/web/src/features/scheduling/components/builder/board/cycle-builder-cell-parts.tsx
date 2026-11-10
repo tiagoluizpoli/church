@@ -6,13 +6,14 @@ import {
   RotateCcwIcon,
   XIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CycleBuilderAssignment } from '../../../hooks/use-cycle-builder';
 import { isOptimisticAssignmentId } from '../../../hooks/use-cycle-builder.optimistic';
 import type { PickerVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
 import { draggedAssignment } from '../../../utils/builder/cycle-builder-dnd.utils';
 import { AssignmentChip } from '../assignment/assignment-chip';
 import { AssignmentPicker } from '../assignment/assignment-picker';
+import { useSwapRequestBoard } from '../swap-request/swap-request-context';
 import { Button } from '@/components/ui/button';
 import { useFormControlSize } from '@/components/ui/form-control-size';
 import {
@@ -66,6 +67,24 @@ export function AssignmentButton({
   const isPending = isOptimisticAssignmentId({ assignmentId: assignment.id });
   const { active } = useDndContext();
   const moving = draggedAssignment({ active });
+  const {
+    openRequestByAssignment,
+    onOpenSwapRequest,
+    coverAssignmentId,
+    onCoverHandled,
+  } = useSwapRequestBoard();
+  const openSwapRequestId = openRequestByAssignment.get(assignment.id);
+  const coverRequested = coverAssignmentId === assignment.id;
+  useEffect(() => {
+    if (!coverRequested) return;
+    // Wait a tick so the closing sheet's focus restore does not dismiss the picker.
+    const timer = setTimeout(() => {
+      setOpen(true);
+      onFocus();
+      onCoverHandled();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [coverRequested, onFocus, onCoverHandled]);
   const drag = useDraggable({
     id: `move-assignment:${assignment.id}`,
     data: {
@@ -125,6 +144,20 @@ export function AssignmentButton({
         >
           <GripVerticalIcon className="size-4" />
         </button>
+      ) : null}
+      {openSwapRequestId ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label={m.swap_board_warning_label({
+            name: assignment.volunteerName ?? assignment.volunteerId,
+          })}
+          data-testid="swap-request-warning"
+          onClick={() => onOpenSwapRequest(openSwapRequestId)}
+        >
+          ⚠
+        </Button>
       ) : null}
       {assignment.lateMark ? (
         <Tooltip>

@@ -185,6 +185,23 @@ describe('AssignmentDetailPage', () => {
       ).toBeInTheDocument();
   });
 
+  it('offers Ask to swap again straight after a kept request', async () => {
+    api.getAssignmentDetail.mockResolvedValue({
+      ...DETAIL,
+      swapRequest: {
+        id: 's-1',
+        status: 'kept',
+        note: null,
+        reply: 'Please stay',
+        raisedAt: '2026-10-01T10:00:00.000Z',
+      },
+    });
+    renderPage();
+    expect(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    ).toBeInTheDocument();
+  });
+
   it('offers Ask to swap again after a withdrawn request', async () => {
     api.getAssignmentDetail.mockResolvedValue({
       ...DETAIL,

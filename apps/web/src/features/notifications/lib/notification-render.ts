@@ -183,12 +183,12 @@ export function renderNotification(
         title: m.notification_swap_request_answered_title(),
         body: [
           m.notification_swap_request_answered_body({
-            ministryName: data.ministryName,
-            shift: formatShiftLine({
-              shift: data.shift,
-              timeZone: data.churchTimezone,
-              locale: getLocale(),
-            }),
+            leaderName: data.leaderName,
+          }),
+          formatShiftLine({
+            shift: data.shift,
+            timeZone: data.churchTimezone,
+            locale: getLocale(),
           }),
           ...(data.reply
             ? [
@@ -197,6 +197,7 @@ export function renderNotification(
                 }),
               ]
             : []),
+          m.notification_swap_request_answered_ask_again(),
         ].join('\n'),
         kindLabel: m.notification_kind_swap_request_answered(),
         actionLabel: m.notification_swap_request_answered_action(),

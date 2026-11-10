@@ -142,6 +142,7 @@ export function buildControllers({
     new SwapRequestController({ swapRequestManager, activeChurchResolver }),
     new SwapRequestListController({
       swapRequestListManager,
+      swapRequestManager,
       activeChurchResolver,
       authorityGuard,
     }),

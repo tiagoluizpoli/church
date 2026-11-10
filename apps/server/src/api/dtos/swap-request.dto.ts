@@ -7,6 +7,11 @@ export const raiseSwapRequestBodySchema = z.object({
   note: z.string().optional(),
 });
 
+// No length limit: none was decided; whitespace-only is trimmed to absent by the use case.
+export const keepSwapRequestBodySchema = z.object({
+  reply: z.string().optional(),
+});
+
 export const swapRequestResponseSchema = z.object({
   id: z.string(),
   assignmentId: z.string(),

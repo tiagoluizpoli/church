@@ -339,6 +339,7 @@ export function buildManagers({
       sectorRepository,
       notifications,
       churchRepository,
+      swapRequestRepo: swapRequestRepository,
       staffingSeeder,
       unitOfWork,
     });

@@ -7,11 +7,15 @@ import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const getCycleBuilderData = vi.fn();
+const listMinistrySwapRequests = vi.fn();
+const toastError = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     getCycleBuilderData: (...args: unknown[]) => getCycleBuilderData(...args),
+    listMinistrySwapRequests: (...args: unknown[]) =>
+      listMinistrySwapRequests(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -32,12 +36,30 @@ vi.mock('@/components/theme-provider', () => ({
   ThemeProvider: ({ children }: ChildrenProps) => children,
 }));
 
+vi.mock('sonner', () => ({
+  toast: { error: (...args: unknown[]) => toastError(...args) },
+}));
+
 vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
+const swapRequest = {
+  id: 'request-1',
+  assignmentId: 'assignment-1',
+  volunteerName: 'Grace Hopper',
+  eventTitle: 'Sunday Gathering',
+  roleName: 'Greeter',
+  sectorName: 'Main',
+  startsAt: '2030-08-02T09:00:00.000Z',
+  endsAt: '2030-08-02T11:00:00.000Z',
+  raisedAt: '2030-08-01T10:00:00.000Z',
+  status: 'open',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
+  listMinistrySwapRequests.mockResolvedValue({ schedules: [] });
   getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
   getCycleBuilderData.mockResolvedValue({
     cycle: {
@@ -100,6 +122,68 @@ describe('Assign board route', () => {
       });
     });
     focusManager.setFocused(undefined);
+  });
+
+  it('opens the linked swap request sheet only after the leader list arrives', async () => {
+    let resolveList: ((value: unknown) => void) | undefined;
+    listMinistrySwapRequests.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveList = resolve;
+        }),
+    );
+    const { router } = renderRoute({
+      initialPath: '/schedules/ministry-1/cycle-1/assign?swapRequest=request-1',
+      churchTimezone: 'UTC',
+    });
+
+    await screen.findByTestId('event-builder-route');
+    expect(screen.queryByTestId('swap-request-sheet')).not.toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+    await act(async () => {
+      resolveList?.({
+        schedules: [
+          { cycleId: 'cycle-1', openCount: 1, requests: [swapRequest] },
+        ],
+      });
+    });
+
+    expect(await screen.findByTestId('swap-request-sheet')).toBeVisible();
+    expect(screen.getByText('Grace Hopper')).toBeVisible();
+    expect(listMinistrySwapRequests).toHaveBeenCalledWith('ministry-1', {
+      cycleId: 'cycle-1',
+    });
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+  });
+
+  it('keeps the board and says so for an unknown or closed swap request id', async () => {
+    renderRoute({
+      initialPath: '/schedules/ministry-1/cycle-1/assign?swapRequest=gone',
+      churchTimezone: 'UTC',
+    });
+
+    await screen.findByTestId('event-builder-route');
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(m.swap_board_unavailable()),
+    );
+    expect(screen.queryByTestId('swap-request-sheet')).not.toBeInTheDocument();
+  });
+
+  it('keeps the board and says so when the leader list cannot be read', async () => {
+    listMinistrySwapRequests.mockRejectedValue(
+      new AxiosError('Not found', undefined, undefined, undefined, {
+        status: 404,
+      } as AxiosResponse),
+    );
+    renderRoute({
+      initialPath: '/schedules/ministry-1/cycle-1/assign?swapRequest=request-1',
+      churchTimezone: 'UTC',
+    });
+
+    expect(await screen.findByTestId('event-builder-route')).toBeVisible();
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(m.swap_board_unavailable()),
+    );
   });
 
   it.each([

@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   ChurchId,
   CycleId,
@@ -157,7 +158,7 @@ export interface ScheduleCheckCountRow {
   asked: number;
 }
 
-export interface ScheduleLateMarkCountRow {
+export interface ScheduleCountRow {
   ministryId: string;
   cycleId: string;
   count: number;
@@ -182,6 +183,7 @@ export interface ListScheduleLastToldInput {
 export interface ScheduleLastToldRow {
   volunteerId: VolunteerId;
   assignments: ScheduleAssignmentSnapshot[];
+  toldAt: Instant;
 }
 
 export interface MinistryParticipationRepository {
@@ -236,7 +238,11 @@ export interface MinistryParticipationRepository {
   ): Promise<ScheduleServingStateRow[]>;
   countScheduleLateMarks(
     input: ListSchedulesFactsInput,
-  ): Promise<ScheduleLateMarkCountRow[]>;
+  ): Promise<ScheduleCountRow[]>;
+  /** Persisted-open requests whose Shift has not started, per Schedule. */
+  countScheduleOpenSwapRequests(
+    input: ListSchedulesFactsInput,
+  ): Promise<ScheduleCountRow[]>;
   countScheduleChecks(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleCheckCountRow[]>;

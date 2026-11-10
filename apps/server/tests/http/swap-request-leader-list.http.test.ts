@@ -14,11 +14,13 @@ import { SwapRequestListController } from '@/api/controllers/swap-request-list-c
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbSwapRequestListManager } from '@/application/db-swap-request-list-manager';
+import type { ChurchId, CycleId, MinistryId } from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
@@ -52,6 +54,7 @@ beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new SwapRequestListController({
+    swapRequestManager: {} as never,
     swapRequestListManager: new DbSwapRequestListManager({
       swapRequestRepo: new DrizzleSwapRequestRepository({ db }),
     }),
@@ -289,5 +292,44 @@ describe('Leader swap request read', () => {
     expect(JSON.stringify(denied.json())).not.toContain('Joao');
     signInAs({ userId: null, churchId });
     expect((await list({ ministryId })).statusCode).toBe(401);
+  });
+});
+
+describe('Schedule open swap request count', () => {
+  it('counts only persisted-open, not-started requests and agrees with the leader list', async () => {
+    const { churchId, ministryId, cycle, maria, joao, ana, requestOn } =
+      await seedGraph();
+    const count = async () => {
+      const rows = await new DrizzleMinistryParticipationRepository({
+        db,
+      }).countScheduleOpenSwapRequests({
+        churchId: churchId as ChurchId,
+        ministryIds: [ministryId as MinistryId],
+        cycleIds: [cycle.id as CycleId],
+      });
+      return rows[0]?.count ?? 0;
+    };
+    expect(await count()).toBe(0);
+
+    await requestOn({ volunteerId: maria.volunteer.id, startOffsetHours: 24 });
+    expect(await count()).toBe(1);
+
+    await requestOn({ volunteerId: joao.volunteer.id, startOffsetHours: 30 });
+    // Derived-expired (Shift started) and closed requests never contribute.
+    await requestOn({ volunteerId: joao.volunteer.id, startOffsetHours: -1 });
+    await requestOn({
+      volunteerId: maria.volunteer.id,
+      startOffsetHours: 48,
+    }).then((row) =>
+      db
+        .update(swapRequest)
+        .set({ status: 'kept' })
+        .where(eq(swapRequest.id, row.id)),
+    );
+
+    signInAs({ userId: ana.volunteer.userId, churchId });
+    const [schedule] = (await list({ ministryId })).json().schedules;
+    expect(await count()).toBe(2);
+    expect(schedule.openCount).toBe(2);
   });
 });

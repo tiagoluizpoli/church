@@ -9,9 +9,10 @@ import {
   participationEventTimeBlockInclusion,
   scheduleLastTold,
   shift,
+  swapRequest,
   unavailableShift,
 } from '@church/db';
-import { nowAsDate } from '@church/time';
+import { fromDate, nowAsDate } from '@church/time';
 import {
   and,
   asc,
@@ -44,8 +45,8 @@ import type {
   RemoveInclusionInput,
   SaveScheduleLastToldInput,
   ScheduleCheckCountRow,
+  ScheduleCountRow,
   ScheduleLastToldRow,
-  ScheduleLateMarkCountRow,
   ScheduleServingStateRow,
   ScheduleSummaryRow,
   TouchParticipationInput,
@@ -91,6 +92,7 @@ export class DrizzleMinistryParticipationRepository
     return rows.map((row) => ({
       volunteerId: row.volunteerId as ScheduleLastToldRow['volunteerId'],
       assignments: row.assignments as ScheduleLastToldRow['assignments'],
+      toldAt: fromDate({ date: row.toldAt }),
     }));
   }
 
@@ -112,7 +114,7 @@ export class DrizzleMinistryParticipationRepository
           scheduleLastTold.cycleId,
           scheduleLastTold.volunteerId,
         ],
-        set: { assignments: input.assignments },
+        set: { assignments: input.assignments, toldAt: nowAsDate() },
       });
   }
 
@@ -686,7 +688,7 @@ export class DrizzleMinistryParticipationRepository
     ministryIds,
     cycleIds,
     tx,
-  }: ListSchedulesFactsInput): Promise<ScheduleLateMarkCountRow[]> {
+  }: ListSchedulesFactsInput): Promise<ScheduleCountRow[]> {
     return getClient({ db: this.db, tx })
       .select({
         ministryId: ministryParticipation.ministryId,
@@ -721,6 +723,39 @@ export class DrizzleMinistryParticipationRepository
           eq(ministryMembership.status, 'active'),
           gt(unavailableShift.createdAt, assignment.assignedAt),
           inArray(assignment.status, ['draft', 'pending', 'confirmed']),
+          inArray(ministryParticipation.ministryId, ministryIds),
+          inArray(event.cycleId, cycleIds),
+        ),
+      )
+      .groupBy(ministryParticipation.ministryId, event.cycleId);
+  }
+
+  async countScheduleOpenSwapRequests({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: ListSchedulesFactsInput): Promise<ScheduleCountRow[]> {
+    return getClient({ db: this.db, tx })
+      .select({
+        ministryId: ministryParticipation.ministryId,
+        cycleId: event.cycleId,
+        count: count(),
+      })
+      .from(swapRequest)
+      .innerJoin(assignment, eq(assignment.id, swapRequest.assignmentId))
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, assignment.participationId),
+      )
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(shift, eq(shift.id, assignment.shiftId))
+      .where(
+        and(
+          withChurchIsolation({ table: swapRequest, churchId }),
+          // Same predicate as the leader list's open count (not derived-expired).
+          eq(swapRequest.status, 'open'),
+          gt(shift.startTime, nowAsDate()),
           inArray(ministryParticipation.ministryId, ministryIds),
           inArray(event.cycleId, cycleIds),
         ),

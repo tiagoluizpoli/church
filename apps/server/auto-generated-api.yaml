@@ -5232,6 +5232,8 @@ paths:
                             - not_serving
                         lateMarkCount:
                           type: number
+                        openSwapRequestCount:
+                          type: number
                         asking:
                           type: object
                           properties:
@@ -5249,6 +5251,7 @@ paths:
                         - cycle
                         - stage
                         - lateMarkCount
+                        - openSwapRequestCount
                       additionalProperties: false
                 required:
                   - schedules
@@ -8874,6 +8877,8 @@ paths:
                                   pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 ministryName:
                                   type: string
+                                leaderName:
+                                  type: string
                                 churchTimezone:
                                   type: string
                                 shift:
@@ -8906,6 +8911,7 @@ paths:
                                 - assignmentId
                                 - ministryId
                                 - ministryName
+                                - leaderName
                                 - churchTimezone
                                 - shift
                               additionalProperties: false
@@ -12679,6 +12685,8 @@ paths:
                                   pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                                 ministryName:
                                   type: string
+                                leaderName:
+                                  type: string
                                 churchTimezone:
                                   type: string
                                 shift:
@@ -12711,6 +12719,7 @@ paths:
                                 - assignmentId
                                 - ministryId
                                 - ministryName
+                                - leaderName
                                 - churchTimezone
                                 - shift
                               additionalProperties: false
@@ -13814,6 +13823,81 @@ paths:
                   - schedules
                 additionalProperties: false
         "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/swap-requests/{swapRequestId}/keep:
+    post:
+      operationId: keepSwapRequest
+      summary: Keep the Volunteer on the Assignment and answer the request
+      tags:
+        - swap-requests
+      description: Close an open, not-started Swap request as kept, with an optional
+        reply, and tell the Volunteer once. The Assignment is not changed. Only
+        the Ministry’s leaders and ChurchAdmins may; anyone else, or an unknown
+        request, gets 404. 409 when the request is already closed or its Shift
+        has started.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reply:
+                  type: string
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: swapRequestId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
           description: Default Response
           content:
             application/json:

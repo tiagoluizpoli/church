@@ -11,6 +11,7 @@ import {
   scheduleLastTold,
   shift,
   shiftRequirement,
+  swapRequest,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
 import {
@@ -1112,22 +1113,14 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       }),
     );
 
-    // A future Swap workflow records its covered outcome on the last-told fact.
-    const [lastTold] = await schedulingTestDb
-      .select()
-      .from(scheduleLastTold)
-      .where(eq(scheduleLastTold.volunteerId, unassigned.volunteer.id));
-    if (!lastTold || !Array.isArray(lastTold.assignments))
-      throw new Error('missing last-told Assignments');
-    await schedulingTestDb
-      .update(scheduleLastTold)
-      .set({
-        assignments: lastTold.assignments.map((item) => ({
-          ...item,
-          swapRequestCovered: true,
-        })),
-      })
-      .where(eq(scheduleLastTold.volunteerId, unassigned.volunteer.id));
+    // A covered Swap request on the told Assignment tags the removal.
+    await schedulingTestDb.insert(swapRequest).values({
+      churchId: ids.churchId,
+      assignmentId: lateAssignment.id,
+      status: 'covered',
+      raisedBy: unassigned.volunteer.userId,
+      closedAt: new Date('2026-12-26T09:00:01.000Z'),
+    });
     await schedulingTestDb
       .update(assignment)
       .set({ status: 'cancelled' })
@@ -1149,6 +1142,25 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
           ],
         }),
       }),
+    );
+
+    // Covered before an earlier send: a later unrelated change is not tagged again.
+    setTestClock({ instant: '2026-12-26T09:00:02.000Z' as Instant });
+    const sentBefore = new Set((await outboxRows()).map((row) => row.id));
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'confirmed' })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await schedulingTestDb
+      .update(assignment)
+      .set({ shiftRequirementId: destinationRequirement.id })
+      .where(eq(assignment.id, lateAssignment.id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    const later = (await outboxRows()).filter((row) => !sentBefore.has(row.id));
+    expect(later.length).toBeGreaterThan(0);
+    expect(JSON.stringify(later.map((row) => row.payload))).not.toContain(
+      'swapRequestCovered',
     );
   });
 
@@ -1304,6 +1316,7 @@ describe('N8 swap_request_answered through the outbox', () => {
           assignmentId,
           ministryId: ids.ministryId,
           ministryName: 'Scheduling Ministry A',
+          leaderName: 'Lídia Líder',
           churchTimezone: 'America/Sao_Paulo',
           shift,
           reply,
@@ -1328,13 +1341,15 @@ describe('N8 swap_request_answered through the outbox', () => {
     );
     expect(text).toContain(
       m.notification_swap_request_answered_body(
-        {
-          ministryName: 'Scheduling Ministry A',
-          shift:
-            'dom 13 dez · 10:30–12:00 · Sunday Service · Usher · Main Door',
-        },
+        { leaderName: 'Lídia Líder' },
         pt,
       ),
+    );
+    expect(text).toContain(
+      'dom 13 dez · 10:30–12:00 · Sunday Service · Usher · Main Door',
+    );
+    expect(text).toContain(
+      m.notification_swap_request_answered_ask_again({}, pt),
     );
     expect(text).toContain(
       m.notification_swap_request_answered_reply(
@@ -1353,6 +1368,7 @@ describe('N8 swap_request_answered through the outbox', () => {
       data: {
         assignmentId,
         ministryName: 'Scheduling Ministry A',
+        leaderName: 'Lídia Líder',
         reply: 'Fica com a gente <b>domingo</b>',
         shift,
       },
@@ -1905,7 +1921,7 @@ describe('N7 swap_request through the outbox', () => {
       m.notification_swap_request_note({ note: 'João cobre' }, pt),
     );
     expect(text).toContain(
-      `https://app.test/schedules/${ids.ministryId}/${cycleId}?swapRequest=${swapRequestId}`,
+      `https://app.test/schedules/${ids.ministryId}/${cycleId}/assign?swapRequest=${swapRequestId}`,
     );
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox).toHaveLength(1);

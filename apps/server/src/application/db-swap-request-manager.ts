@@ -1,11 +1,19 @@
 import type { AppConfig } from '@church/app-config';
+import { NotFoundError } from '@church/core';
 import { compareInstants, now as nowInstant } from '@church/time';
-import type { ChurchId, UserId, VolunteerId } from '../domain/branded-ids';
+import type {
+  ChurchId,
+  MinistryId,
+  SwapRequestId,
+  UserId,
+  VolunteerId,
+} from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
   ISwapRequestManager,
+  KeepSwapRequestCommand,
   RaisedSwapRequest,
   RaiseSwapRequestCommand,
   WithdrawSwapRequestCommand,
@@ -18,6 +26,7 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
+import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import {
@@ -36,6 +45,14 @@ interface AssertOwnAssignmentInput {
   churchId: ChurchId;
   userId: UserId;
   ownerVolunteerId: VolunteerId;
+}
+
+interface AssertClosedInMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  swapRequestId: SwapRequestId;
+  raisedBy: UserId;
+  tx: TransactionContext;
 }
 
 interface DbSwapRequestManagerDependencies {
@@ -230,6 +247,151 @@ export class DbSwapRequestManager implements ISwapRequestManager {
       note: swapRequest.note,
       raisedAt: swapRequest.raisedAt,
     };
+  }
+
+  /**
+   * The Assignment is gone, so Ministry ownership is proven by the raiser's membership;
+   * unprovable or still-open reads as missing (concealment), a closed one as not open.
+   */
+  private async assertClosedInMinistry({
+    churchId,
+    ministryId,
+    swapRequestId,
+    raisedBy,
+    tx,
+  }: AssertClosedInMinistryInput): Promise<never> {
+    const raiser = await this.volunteerRepo.findByUserId({
+      churchId,
+      userId: raisedBy,
+      tx,
+    });
+    const member =
+      raiser &&
+      (await this.volunteerRepo.hasMembershipInMinistry({
+        churchId,
+        volunteerId: raiser.id,
+        ministryId,
+        tx,
+      }));
+    // Re-read: the Assignment vanished with a committed cover close.
+    const current = await this.swapRequestRepo.findById({
+      churchId,
+      swapRequestId,
+      tx,
+    });
+    if (member && current && current.status !== 'open') {
+      throw new SwapRequestNotOpenError();
+    }
+    throw new NotFoundError('Swap request not found');
+  }
+
+  async keep({
+    churchId,
+    userId,
+    ministryId,
+    swapRequestId,
+    reply,
+  }: KeepSwapRequestCommand): Promise<void> {
+    const trimmed = reply?.trim() || undefined;
+    await this.unitOfWork.run(async (tx) => {
+      const request = await this.swapRequestRepo.findById({
+        churchId,
+        swapRequestId,
+        tx,
+      });
+      if (!request) throw new NotFoundError('Swap request not found');
+      const assignment = await this.assignmentRepo
+        .getById({ churchId, assignmentId: request.assignmentId, tx })
+        .catch((error: unknown) => {
+          if (error instanceof NotFoundError) return null;
+          throw error;
+        });
+      // A cover removes the Assignment; its closed request still answers 409 to the Ministry's leader.
+      if (!assignment) {
+        await this.assertClosedInMinistry({
+          churchId,
+          ministryId,
+          swapRequestId,
+          raisedBy: request.raisedBy,
+          tx,
+        });
+        return;
+      }
+      const { shiftId, participationId } = assignment;
+      if (!shiftId || !participationId) {
+        throw new NotFoundError('Swap request not found');
+      }
+      const participation = await this.participationRepo.getById({
+        churchId,
+        participationId,
+      });
+      // Concealed: another Ministry's request reads as missing.
+      if (participation.ministryId !== ministryId) {
+        throw new NotFoundError('Swap request not found');
+      }
+      const shift = await this.shiftRepo.getById({ churchId, shiftId });
+      // Derived expiry: a request still `open` once its Shift has started is not answerable.
+      const at = nowInstant();
+      if (
+        request.status !== 'open' ||
+        isSwapRequestExpired({
+          status: request.status,
+          shiftStart: shift.startTime,
+          at,
+        })
+      ) {
+        throw new SwapRequestNotOpenError();
+      }
+      // Conditional on `open`: a concurrent keep or covered close that won is a refusal.
+      const closed = await this.swapRequestRepo.closeOpenById({
+        churchId,
+        swapRequestId,
+        status: 'kept',
+        closedBy: userId,
+        reply: trimmed,
+        tx,
+      });
+      if (!closed) throw new SwapRequestNotOpenError();
+      const { eventId } = participation;
+      const [event, ministry, church, leaderName, roles, requirements] =
+        await Promise.all([
+          this.eventRepo.getById({ churchId, eventId }),
+          this.ministryRepo.getById({ churchId, id: ministryId }),
+          this.churchRepo.getById({ id: churchId }),
+          this.churchRepo.findUserName({ userId }),
+          this.roleRepo.listByMinistry({ churchId, ministryId }),
+          this.shiftRepo.listRequirementsByParticipation({
+            churchId,
+            participationId,
+          }),
+        ]);
+      await this.notifications.enqueue({
+        tx,
+        kind: 'swap_request_answered',
+        to: [{ userId: request.raisedBy, churchId }],
+        data: {
+          assignmentId: request.assignmentId,
+          ministryId,
+          ministryName: ministry.name,
+          churchName: church.name,
+          churchTimezone: church.timezone,
+          leaderName: leaderName ?? '',
+          shift: {
+            eventTitle: event.title,
+            roleName:
+              roles.find((role) => role.id === assignment.roleId)?.name ?? '',
+            sectorName:
+              requirements.find(
+                (requirement) =>
+                  requirement.id === assignment.shiftRequirementId,
+              )?.sectorName ?? '',
+            startsAt: shift.startTime,
+            endsAt: shift.endTime,
+          },
+          reply: trimmed,
+        },
+      });
+    });
   }
 
   async withdraw({

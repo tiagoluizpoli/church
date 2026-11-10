@@ -92,6 +92,9 @@ const VOLUNTEER_AVAILABILITY_SPEC_PATHS = [
 
 // Specs whose starting graph comes from a server E2E recipe (#327): their
 // own journey recipe, or the shared personas global setup loads (#330).
+// J9 (#812): swap request raise, keep, re-raise and cover.
+const SWAP_REQUEST_SPEC_PATHS = ['tests/scheduling/j9-swap-request.spec.ts'];
+
 const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/active-church-switching.spec.ts',
   'tests/identity/cross-tenant-invitation-isolation.spec.ts',
@@ -120,6 +123,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/us2-leader-prepare.spec.ts',
   ...LEADER_AVAILABILITY_SPEC_PATHS,
   ...VOLUNTEER_AVAILABILITY_SPEC_PATHS,
+  ...SWAP_REQUEST_SPEC_PATHS,
   'tests/scheduling/us4-schedule-publish.spec.ts',
   'tests/scheduling/us5-leader-reassign.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
@@ -656,6 +660,18 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix: 'apps/web/src/features/scheduling/components/builder/',
     specPaths: BUILDER_SPEC_PATHS,
   },
+  // J9 (#812) — the Volunteer swap-request surfaces and N7/N8 notification
+  // rendering/navigation it drives.
+  ...[
+    'apps/web/src/features/scheduling/components/builder/swap-request/',
+    'apps/web/src/features/volunteers/components/swap-request-sheet.tsx',
+    'apps/web/src/features/volunteers/components/swap-withdraw-button.tsx',
+    'apps/web/src/features/volunteers/components/assignment-detail-page.tsx',
+    'apps/web/src/infrastructure/api/swap-requests.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: SWAP_REQUEST_SPEC_PATHS,
+  })),
   // #217 — the church-admin-controller owns every cycle and event
   // endpoint these specs drive: list/detail isolation and the lock edge
   // cases (cross-cutting, DL4-X1/X2/X3), the $cycleId isolation route

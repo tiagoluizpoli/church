@@ -34,6 +34,19 @@ export interface CloseOpenSwapRequestInput extends FindOpenSwapRequestInput {
   closedBy?: UserId;
 }
 
+export interface FindSwapRequestByIdInput {
+  churchId: ChurchId;
+  swapRequestId: SwapRequestId;
+  tx?: TransactionContext;
+}
+
+export interface CloseOpenSwapRequestByIdInput
+  extends FindSwapRequestByIdInput {
+  status: ClosedSwapRequestStatus;
+  closedBy: UserId;
+  reply?: string;
+}
+
 export interface ListLeaderSwapRequestsInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -75,6 +88,9 @@ export interface SwapRequestRepository {
   listOpenAssignmentIds(
     input: ListOpenAssignmentIdsInput,
   ): Promise<AssignmentId[]>;
+  findById(input: FindSwapRequestByIdInput): Promise<SwapRequest | null>;
+  /** Closes this request only while it is still open; false when a concurrent close won. Never deletes. */
+  closeOpenById(input: CloseOpenSwapRequestByIdInput): Promise<boolean>;
   /** Closes the Assignment's open request only while it is still open; false when none was (already closed or none raised). Never deletes. */
   closeOpenByAssignment(input: CloseOpenSwapRequestInput): Promise<boolean>;
 }

@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { CycleCalendarTableRow } from '@/features/scheduling/components/planning-admin/planning-admin.types';
 import { PlanningEventCard } from '@/features/scheduling/components/planning-admin/planning-event-card';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
+import { renderWithProviders } from '@/tests/setup/render';
 
 interface MockLinkProps {
   children: ReactNode;
@@ -395,28 +396,25 @@ describe('PlanningEventCard review content', () => {
 });
 
 describe('PlanningEventCard move preview', () => {
-  it('offers the move preview only when the Event can move', () => {
-    const { rerender } = render(
-      <PlanningEventCard
-        row={rowWithTwoEventTimeBlocks()}
-        isReadOnly
-        canPreviewMove
-        {...baseProps()}
-      />,
-    );
-    const name = m.event_move_preview_action_label({ title: 'Sunday Service' });
-
-    expect(screen.getByRole('button', { name })).toBeInTheDocument();
-
-    rerender(
+  it.each([
+    [true, 1],
+    [false, 0],
+  ])('with canPreviewMove=%s renders %s move preview button', (canPreviewMove, count) => {
+    renderWithProviders(
       <TimezoneProvider churchTimezone="UTC">
         <PlanningEventCard
           row={rowWithTwoEventTimeBlocks()}
           isReadOnly
+          canPreviewMove={canPreviewMove}
           {...baseProps()}
         />
       </TimezoneProvider>,
     );
-    expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+
+    expect(
+      screen.queryAllByRole('button', {
+        name: m.event_move_preview_action_label({ title: 'Sunday Service' }),
+      }),
+    ).toHaveLength(count);
   });
 });

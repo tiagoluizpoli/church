@@ -5181,6 +5181,8 @@ paths:
                     items:
                       type: object
                       properties:
+                        affectedVolunteerCount:
+                          type: number
                         ministry:
                           type: object
                           properties:
@@ -5242,6 +5244,7 @@ paths:
                             - asked
                           additionalProperties: false
                       required:
+                        - affectedVolunteerCount
                         - ministry
                         - cycle
                         - stage
@@ -6866,6 +6869,8 @@ paths:
               schema:
                 type: object
                 properties:
+                  affectedVolunteerCount:
+                    type: number
                   cycle:
                     type: object
                     properties:
@@ -7235,6 +7240,7 @@ paths:
                         - name
                       additionalProperties: false
                 required:
+                  - affectedVolunteerCount
                   - cycle
                   - events
                   - roles

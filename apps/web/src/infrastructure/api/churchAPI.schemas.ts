@@ -2174,6 +2174,7 @@ export type ListSchedules200SchedulesItemAsking = {
 };
 
 export type ListSchedules200SchedulesItem = {
+  affectedVolunteerCount: number;
   ministry: ListSchedules200SchedulesItemMinistry;
   cycle: ListSchedules200SchedulesItemCycle;
   stage: ListSchedules200SchedulesItemStage;
@@ -3052,6 +3053,7 @@ export type GetCycleBuilderData200RolesItem = {
 };
 
 export type GetCycleBuilderData200 = {
+  affectedVolunteerCount: number;
   cycle: GetCycleBuilderData200Cycle;
   events: GetCycleBuilderData200EventsItem[];
   roles: GetCycleBuilderData200RolesItem[];

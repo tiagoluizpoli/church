@@ -177,6 +177,7 @@ export interface CycleBuilderEventSummary {
 }
 
 export interface CycleBuilderData {
+  affectedVolunteerCount?: number;
   events: CycleBuilderEventSummary[];
   assignments: CycleBuilderAssignment[];
   roles: CycleBuilderRoleOption[];
@@ -345,7 +346,12 @@ function mapCycleBuilderData(
     };
   });
 
-  return { events, assignments, roles: data.roles };
+  return {
+    events,
+    assignments,
+    roles: data.roles,
+    affectedVolunteerCount: data.affectedVolunteerCount,
+  };
 }
 
 export function useCycleBuilder({
@@ -397,6 +403,7 @@ export function useCycleBuilder({
   // follows it — pending for a second round trip.
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey });
+    void queryClient.invalidateQueries({ queryKey: ['prepare-schedules'] });
   };
 
   const applyOptimistic = async ({

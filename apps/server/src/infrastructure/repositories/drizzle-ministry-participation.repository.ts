@@ -35,6 +35,7 @@ import type {
   ListParticipationsByEventInput,
   ListParticipationsByIdsInput,
   ListParticipationsByMinistryInput,
+  ListScheduleLastToldInput,
   ListScheduleSummariesInput,
   ListSchedulesFactsInput,
   LockParticipationInput,
@@ -43,6 +44,7 @@ import type {
   RemoveInclusionInput,
   SaveScheduleLastToldInput,
   ScheduleCheckCountRow,
+  ScheduleLastToldRow,
   ScheduleLateMarkCountRow,
   ScheduleServingStateRow,
   ScheduleSummaryRow,
@@ -71,6 +73,26 @@ export class DrizzleMinistryParticipationRepository
   }
 
   private readonly db: AnyDrizzleDb;
+
+  async listScheduleLastTold(
+    input: ListScheduleLastToldInput,
+  ): Promise<ScheduleLastToldRow[]> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const rows = await db
+      .select()
+      .from(scheduleLastTold)
+      .where(
+        and(
+          eq(scheduleLastTold.churchId, input.churchId),
+          eq(scheduleLastTold.ministryId, input.ministryId),
+          eq(scheduleLastTold.cycleId, input.cycleId),
+        ),
+      );
+    return rows.map((row) => ({
+      volunteerId: row.volunteerId as ScheduleLastToldRow['volunteerId'],
+      assignments: row.assignments as ScheduleLastToldRow['assignments'],
+    }));
+  }
 
   async saveScheduleLastTold(input: SaveScheduleLastToldInput): Promise<void> {
     const db = getClient({ db: this.db, tx: input.tx });

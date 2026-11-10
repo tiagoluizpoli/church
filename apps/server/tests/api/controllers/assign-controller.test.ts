@@ -601,6 +601,7 @@ describe('Assign routes', () => {
 
   it('GET /api/v1/assign/cycles/:id/builder allows a Ministry leader and denies a non-leader', async () => {
     participationManager.getCycleBuilderData.mockResolvedValue({
+      affectedVolunteerCount: 0,
       cycle: {
         id: 'cycle-1',
         name: 'August',

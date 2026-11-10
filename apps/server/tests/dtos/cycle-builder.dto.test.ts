@@ -4,6 +4,7 @@ import { cycleBuilderResponseSchema } from '@/api/dtos/cycle-builder.dto';
 describe('cycleBuilderResponseSchema', () => {
   it('accepts a requirement without any mutation capability flag', () => {
     const response = {
+      affectedVolunteerCount: 0,
       cycle: {
         id: 'cycle-1',
         name: 'January',

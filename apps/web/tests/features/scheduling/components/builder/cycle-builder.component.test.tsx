@@ -608,6 +608,26 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
     }
   });
 
+  it('shows Send updates only when Volunteers have unsent changes', () => {
+    const data = boardData({ state: 'published' });
+    data.affectedVolunteerCount = 2;
+    renderBuilder({ data });
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_send_updates({ count: 2 }),
+      }),
+    ).toBeVisible();
+  });
+
+  it('hides Send updates when there are no unsent changes', () => {
+    const data = boardData({ state: 'published' });
+    data.affectedVolunteerCount = 0;
+    renderBuilder({ data });
+    expect(
+      screen.queryByRole('button', { name: /Send updates/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it('summarizes empty places and affected Shifts before publishing', async () => {
     renderBuilder({ data: boardData({}) });
     await userEvent.click(

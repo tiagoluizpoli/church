@@ -81,6 +81,7 @@ function schedule(
   overrides: Partial<ListSchedules200SchedulesItem> = {},
 ): ListSchedules200SchedulesItem {
   return {
+    affectedVolunteerCount: 0,
     ministry: { id: 'ministry-1', name: 'Kids' },
     cycle: {
       id: 'cycle-1',

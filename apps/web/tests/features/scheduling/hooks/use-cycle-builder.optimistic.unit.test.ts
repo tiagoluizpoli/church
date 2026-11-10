@@ -32,6 +32,7 @@ const EXISTING_ASSIGNMENT: RawAssignment = {
 
 function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
   return {
+    affectedVolunteerCount: 0,
     cycle: {
       id: 'cycle-1',
       name: 'August',

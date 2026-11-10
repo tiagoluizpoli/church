@@ -51,6 +51,7 @@ export type CycleBuilderEventViewResponse = z.infer<
 >;
 
 export const cycleBuilderResponseSchema = z.object({
+  affectedVolunteerCount: z.number(),
   cycle: z.object({
     id: z.string(),
     name: z.string(),
@@ -114,6 +115,7 @@ export const publishCycleMapper = {
 export const cycleBuilderMapper = {
   toResponse(view: CycleBuilderView): CycleBuilderResponse {
     return {
+      affectedVolunteerCount: view.affectedVolunteerCount,
       cycle: {
         id: view.cycle.id as string,
         name: view.cycle.name,

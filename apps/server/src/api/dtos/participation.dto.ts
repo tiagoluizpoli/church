@@ -254,6 +254,7 @@ export type ScheduleSummaryListResponse = z.infer<
 >;
 
 export const scheduleResponseSchema = z.object({
+  affectedVolunteerCount: z.number(),
   ministry: z.object({ id: z.string(), name: z.string() }),
   cycle: z.object({
     id: z.string(),
@@ -389,6 +390,7 @@ function toScheduleSummaryResponse(
 }
 
 function toScheduleResponse({
+  affectedVolunteerCount,
   ministry,
   cycle,
   stage,
@@ -406,6 +408,7 @@ function toScheduleResponse({
     },
     stage,
     lateMarkCount,
+    affectedVolunteerCount,
     asking,
   };
 }

@@ -188,6 +188,9 @@ export function createMinistryRepositoryFake() {
 
 export function createMinistryParticipationRepositoryFake() {
   return {
+    listScheduleLastTold: vi
+      .fn<MinistryParticipationRepository['listScheduleLastTold']>()
+      .mockResolvedValue([]),
     saveScheduleLastTold:
       vi.fn<MinistryParticipationRepository['saveScheduleLastTold']>(),
     getById: vi.fn<MinistryParticipationRepository['getById']>(),

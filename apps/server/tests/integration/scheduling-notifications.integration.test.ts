@@ -9,6 +9,7 @@ import {
   notification,
   outboxMessage,
   scheduleLastTold,
+  shift,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
 import {
@@ -761,7 +762,133 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         }),
       ]),
     );
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    const destination = await seedShift({
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      eventTimeBlockId: otherGraph.eventTimeBlock.id,
+      label: 'Later',
+      startTime: new Date('2026-12-26T11:00:00.000Z'),
+      endTime: new Date('2026-12-26T12:00:00.000Z'),
+    });
+    const destinationRequirement = await seedRequirement({
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      shiftId: destination.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    const [original] = await schedulingTestDb
+      .select()
+      .from(assignment)
+      .where(
+        and(
+          eq(assignment.volunteerId, assigned.volunteer.id),
+          eq(assignment.participationId, participationId),
+        ),
+      );
+    if (!original) throw new Error('missing Assignment');
+    await schedulingTestDb
+      .update(assignment)
+      .set({
+        participationId: otherGraph.participation.id,
+        shiftId: destination.id,
+        shiftRequirementId: destinationRequirement.id,
+      })
+      .where(eq(assignment.id, original.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(1);
+    await schedulingTestDb
+      .update(assignment)
+      .set({
+        participationId: original.participationId,
+        shiftId: original.shiftId,
+        shiftRequirementId: original.shiftRequirementId,
+      })
+      .where(eq(assignment.id, original.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    const lateAssignment = await buildAssignment({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      participationId: otherGraph.participation.id,
+      shiftId: otherShift.id,
+      shiftRequirementId: otherRequirement.id,
+      volunteerId: unassigned.volunteer.id,
+      roleId: role.id,
+      status: 'pending',
+    });
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(1);
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'cancelled' })
+      .where(eq(assignment.id, lateAssignment.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    await schedulingTestDb
+      .update(shift)
+      .set({ endTime: new Date('2026-12-26T11:30:00.000Z') })
+      .where(eq(shift.id, otherShift.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(2);
+    await schedulingTestDb
+      .update(shift)
+      .set({ endTime: new Date('2026-12-26T11:00:00.000Z') })
+      .where(eq(shift.id, otherShift.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
     // Later Assignment changes must not alter what publish communicates.
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'cancelled' })
+      .where(eq(assignment.volunteerId, assigned.volunteer.id));
+
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(1);
+    expect(
+      (
+        await managers.participationManager.listSchedules({
+          churchId: publishInput.churchId,
+        })
+      ).find(
+        (schedule) =>
+          schedule.ministry.id === publishInput.ministryId &&
+          schedule.cycle.id === publishInput.cycleId,
+      )?.affectedVolunteerCount,
+    ).toBe(1);
+
+    setTestClock({ instant: '2026-12-27T12:00:00.000Z' as Instant });
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
+    setTestClock({ instant: '2026-11-02T12:00:00.000Z' as Instant });
+    await schedulingTestDb
+      .update(assignment)
+      .set({ status: 'pending' })
+      .where(eq(assignment.volunteerId, assigned.volunteer.id));
+    expect(
+      (await managers.participationManager.getCycleBuilderData(publishInput))
+        .affectedVolunteerCount,
+    ).toBe(0);
     await schedulingTestDb
       .update(assignment)
       .set({ status: 'cancelled' })

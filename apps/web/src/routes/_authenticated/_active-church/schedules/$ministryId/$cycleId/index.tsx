@@ -132,6 +132,15 @@ function PrepareWorkspaceRoute() {
               >
                 {m.schedules_back()}
               </Link>
+              {schedule.stage === 'published' ? (
+                <Badge variant="secondary">
+                  {schedule.affectedVolunteerCount > 0
+                    ? m.schedules_unsent({
+                        count: schedule.affectedVolunteerCount,
+                      })
+                    : m.schedules_published()}
+                </Badge>
+              ) : null}
               {schedule.stage === 'asking' ? (
                 <Badge variant="secondary">{m.schedules_asking_stage()}</Badge>
               ) : null}

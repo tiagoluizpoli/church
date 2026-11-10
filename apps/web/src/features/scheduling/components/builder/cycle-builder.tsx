@@ -29,6 +29,7 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 interface CycleBuilderProps {
   data: CycleBuilderData;
   onPublish: (confirmBelowFull: boolean) => void;
+  onSendUpdates?: () => void;
   isPublishing: boolean;
   cycleId: string;
   ministryId: string;
@@ -46,6 +47,7 @@ interface CycleBuilderProps {
 export function CycleBuilder({
   data,
   onPublish,
+  onSendUpdates,
   isPublishing,
   cycleId,
   ministryId,
@@ -108,6 +110,16 @@ export function CycleBuilder({
           onClick={() => setAuditOpen(true)}
         >
           {m.builder_ui_audit()}
+        </Button>
+      ) : null}
+      {(data.affectedVolunteerCount ?? 0) > 0 ? (
+        <Button
+          type="button"
+          size={isMobile ? 'touch' : 'sm'}
+          disabled={!onSendUpdates}
+          onClick={onSendUpdates}
+        >
+          {m.builder_send_updates({ count: data.affectedVolunteerCount ?? 0 })}
         </Button>
       ) : null}
       {publishableEvents.length > 0 ? (

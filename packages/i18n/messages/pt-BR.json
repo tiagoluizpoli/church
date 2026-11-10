@@ -931,6 +931,8 @@
   "schedules_to_prepare": "A preparar",
   "schedules_asking": "Consultando ({confirmed}/{asked} confirmados)",
   "schedules_assigning": "Escalando",
+  "schedules_unsent": "Publicada · {count} alterações não enviadas",
+  "builder_send_updates": "Enviar atualizações ({count} pessoas)",
   "schedules_published": "Publicada",
   "schedules_not_serving": "Não serve neste Ciclo",
   "schedules_back": "Todas as Escalas dos ministérios",

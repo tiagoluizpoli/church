@@ -172,7 +172,22 @@ export interface SaveScheduleLastToldInput {
   tx: TransactionContext;
 }
 
+export interface ListScheduleLastToldInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  cycleId: CycleId;
+  tx?: TransactionContext;
+}
+
+export interface ScheduleLastToldRow {
+  volunteerId: VolunteerId;
+  assignments: ScheduleAssignmentSnapshot[];
+}
+
 export interface MinistryParticipationRepository {
+  listScheduleLastTold(
+    input: ListScheduleLastToldInput,
+  ): Promise<ScheduleLastToldRow[]>;
   saveScheduleLastTold(input: SaveScheduleLastToldInput): Promise<void>;
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;
   /** Holds the row until `tx` ends, so its state cannot change under the caller. */

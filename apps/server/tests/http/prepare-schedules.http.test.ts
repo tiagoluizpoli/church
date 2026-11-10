@@ -457,6 +457,7 @@ describe('GET /prepare/schedules scoping', () => {
       },
       stage: 'not_serving',
       lateMarkCount: 0,
+      affectedVolunteerCount: 0,
     });
     expect(schedules[4].cycle).toEqual({
       id: seed.past.id,
@@ -535,6 +536,7 @@ describe('GET /prepare/schedules scoping', () => {
         },
         stage: 'published',
         lateMarkCount: 0,
+        affectedVolunteerCount: 0,
       },
     ]);
   });

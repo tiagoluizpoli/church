@@ -17,6 +17,7 @@ export const SECTORS = [
 ];
 export const ROLES = [{ id: 'role-singer', name: 'Singer' }];
 export const SCHEDULE: ListSchedules200SchedulesItem = {
+  affectedVolunteerCount: 0,
   ministry: { id: MINISTRY_ID, name: 'Worship' },
   cycle: {
     id: CYCLE_ID,

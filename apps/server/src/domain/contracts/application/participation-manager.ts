@@ -117,6 +117,7 @@ export interface CycleBuilderRoleOption {
 }
 
 export interface CycleBuilderView {
+  affectedVolunteerCount: number;
   cycle: Cycle;
   events: CycleBuilderEventView[];
   roles: CycleBuilderRoleOption[];
@@ -244,6 +245,7 @@ export interface ScheduleAskingView {
 
 /** One Ministry's part of one Sent or Past Cycle. `asking` is set only in that stage. */
 export interface ScheduleView {
+  affectedVolunteerCount: number;
   ministry: Ministry;
   cycle: Cycle;
   stage: ScheduleStage;

@@ -931,6 +931,8 @@
   "schedules_to_prepare": "To prepare",
   "schedules_asking": "Asking ({confirmed}/{asked} confirmed)",
   "schedules_assigning": "Assigning",
+  "schedules_unsent": "Published · {count} unsent changes",
+  "builder_send_updates": "Send updates ({count} people)",
   "schedules_published": "Published",
   "schedules_not_serving": "Not serving this cycle",
   "schedules_back": "All Schedules",

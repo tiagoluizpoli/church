@@ -1,5 +1,10 @@
 import { scheduleLastTold } from '@church/db';
-import { addCalendarDays, type CalendarDay } from '@church/time';
+import {
+  addCalendarDays,
+  type CalendarDay,
+  parseInstant,
+  toDate,
+} from '@church/time';
 import { buildAssignment, buildCycle } from '../../builders/scheduling';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
@@ -132,6 +137,10 @@ export function createSwapRequestRecipe({
       ministryId: worship.id,
       cycleId: cycle.id,
       volunteerId: base.personas.volunteer.volunteerId,
+      // Fixed, long before any cover the journey makes, so reloads stay identical.
+      toldAt: toDate({
+        instant: parseInstant({ value: '2000-01-01T00:00:00.000Z' }),
+      }),
       assignments: [
         {
           assignmentId: assignment.id,

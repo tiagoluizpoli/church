@@ -5,7 +5,9 @@ import {
   compareInstants,
   enumerateCalendarDays,
   type Instant,
+  parseInstant,
   parseTimeOfDay,
+  toDate,
   today,
   toInstant,
   weekdayIndex,
@@ -1351,6 +1353,9 @@ export async function loadDevelopmentHistory({
       cycleId: cycle.id,
       volunteerId,
       assignments,
+      toldAt: toDate({
+        instant: parseInstant({ value: `${cycle.startDate}T00:00:00.000Z` }),
+      }),
     });
     await buildNotification({
       db,

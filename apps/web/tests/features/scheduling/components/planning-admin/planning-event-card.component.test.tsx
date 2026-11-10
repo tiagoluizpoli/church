@@ -393,3 +393,30 @@ describe('PlanningEventCard review content', () => {
     expect(within(card).queryByRole('button')).not.toBeInTheDocument();
   });
 });
+
+describe('PlanningEventCard move preview', () => {
+  it('offers the move preview only when the Event can move', () => {
+    const { rerender } = render(
+      <PlanningEventCard
+        row={rowWithTwoEventTimeBlocks()}
+        isReadOnly
+        canPreviewMove
+        {...baseProps()}
+      />,
+    );
+    const name = m.event_move_preview_action_label({ title: 'Sunday Service' });
+
+    expect(screen.getByRole('button', { name })).toBeInTheDocument();
+
+    rerender(
+      <TimezoneProvider churchTimezone="UTC">
+        <PlanningEventCard
+          row={rowWithTwoEventTimeBlocks()}
+          isReadOnly
+          {...baseProps()}
+        />
+      </TimezoneProvider>,
+    );
+    expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+  });
+});

@@ -42,7 +42,7 @@ export function churchTimeOfDay({
 }
 
 /** `14:30` */
-function formatTimeOf({ value, timeZone }: ChurchInstantInput): string {
+export function formatTimeOf({ value, timeZone }: ChurchInstantInput): string {
   return formatTimeOfDay({ time: churchTimeOfDay({ value, timeZone }) });
 }
 

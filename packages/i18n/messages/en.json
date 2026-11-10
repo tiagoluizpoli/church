@@ -1251,5 +1251,12 @@
   "assignment_roster_open": "Open",
   "assignment_full_schedule": "Full schedule",
   "assignment_need_help": "I need help with this",
-  "assignment_need_help_soon": "Coming soon"
+  "assignment_need_help_soon": "Coming soon",
+  "my_schedule_assignments_heading": "My assignments",
+  "my_schedule_ministries_heading": "Ministry schedules",
+  "my_schedule_empty": "You're not on a schedule yet. You'll get a notice when your leader publishes one.",
+  "my_schedule_in_progress": "In progress",
+  "my_schedule_no_schedules": "No published schedules yet.",
+  "my_schedule_loading": "Loading your schedule…",
+  "my_schedule_load_error": "Could not load your schedule. Try again."
 }

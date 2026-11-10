@@ -337,6 +337,13 @@
       "when": 1794333607556,
       "tag": "0047_schedule_last_told_told_at",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794346788189,
+      "tag": "0048_assignment_audit_outlives_assignment",
+      "breakpoints": true
     }
   ]
 }

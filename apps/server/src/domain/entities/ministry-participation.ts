@@ -145,6 +145,16 @@ export function deriveScheduleStage({
   return furthestBehind ? furthestBehind[1] : 'not_serving';
 }
 
+/** A new Event joins the Schedule at its stage: the furthest-behind serving state, else `preparing`. */
+export function deriveScheduleParticipationState({
+  servingStates,
+}: DeriveScheduleStageInput): ParticipationState {
+  const furthestBehind = SCHEDULE_STAGES_FURTHEST_BEHIND_FIRST.find(([state]) =>
+    servingStates.includes(state),
+  );
+  return furthestBehind ? furthestBehind[0] : 'preparing';
+}
+
 export class MinistryParticipation extends Entity<
   MinistryParticipationProps,
   MinistryParticipationId

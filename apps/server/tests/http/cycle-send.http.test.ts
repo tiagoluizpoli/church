@@ -29,12 +29,15 @@ import {
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import { ChurchId, MinistryId, UserId } from '@/domain/branded-ids';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -44,6 +47,7 @@ import { DrizzleMinistryParticipationRepository } from '@/infrastructure/reposit
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -126,6 +130,16 @@ beforeAll(async () => {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      assignmentRepository: new DrizzleAssignmentRepository({ db }),
+      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
+      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db }),
+      }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
@@ -335,6 +349,10 @@ interface QueuedNotification {
 async function queuedNotifications(): Promise<QueuedNotification[]> {
   const rows = await db.select().from(outboxMessage);
   return rows
+    .filter(
+      (row) =>
+        (row.payload as { kind: string }).kind === 'cycle_ready_to_prepare',
+    )
     .map((row) => {
       const payload = row.payload as {
         to: { userId: string };
@@ -815,7 +833,7 @@ describe('POST /admin/cycles/:cycleId/send', () => {
     expect(await queuedNotifications()).toHaveLength(1);
   });
 
-  it('orders a racing Event write with Send: either the Event is sent with the Cycle or it is refused afterwards', async () => {
+  it('orders a racing Event write with Send: the Event is sent with the Cycle or added to it as scheduled afterwards', async () => {
     const seed = await signIn();
     const target = await seedCycle({ churchId: seed.churchAId });
     expect((await postEvening({ cycleId: target.id })).statusCode).toBe(201);
@@ -826,15 +844,16 @@ describe('POST /admin/cycles/:cycleId/send', () => {
     ]);
 
     expect(sent.statusCode).toBe(204);
-    expect([201, 409]).toContain(created.statusCode);
+    expect(created.statusCode).toBe(201);
     const events = await db
       .select({ status: event.status })
       .from(event)
       .where(eq(event.cycleId, target.id));
-    expect(events).toHaveLength(created.statusCode === 201 ? 2 : 1);
+    expect(events).toHaveLength(2);
     expect(new Set(events.map(({ status }) => status))).toEqual(
       new Set(['scheduled']),
     );
+    // N10 add rows (if the Event landed after Send) are not N2 rows.
     expect(await queuedNotifications()).toHaveLength(1);
   });
 });

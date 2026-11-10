@@ -177,6 +177,12 @@ export function renderNotification(
         kindLabel: m.notification_kind_cycle_ready_to_prepare(),
         actionLabel: m.notification_cycle_ready_to_prepare_action(),
       };
+    case 'event_changed':
+      return {
+        ...eventChangedWords(item.data),
+        kindLabel: m.notification_kind_event_changed(),
+        actionLabel: m.notification_event_changed_action(),
+      };
     case 'swap_request_answered': {
       const { data } = item;
       return {
@@ -344,4 +350,96 @@ function cycleReadyToPrepareWords(data: CycleReadyToPrepareData) {
       }),
     ].join('\n'),
   };
+}
+
+type EventChangedData = Extract<
+  GetNotifications200ItemsItem,
+  { kind: 'event_changed' }
+>['data'];
+
+/** N10: the Event, who changed it and the recipient's affected Ministries. */
+function eventChangedWords(data: EventChangedData) {
+  const { cycleName, eventTitle, ministries, change, churchTimezone } = data;
+  const { adminName } = data;
+  const when = eventWhen({ ...change, timeZone: churchTimezone });
+  if (change.kind === 'move') {
+    const previous = eventWhen({
+      start: change.previousStart,
+      end: change.previousEnd,
+      timeZone: churchTimezone,
+    });
+    const { volunteerCount: count } = change;
+    return {
+      title: m.notification_event_changed_move_title({ eventTitle, when }),
+      body: [
+        pluralMessage({
+          count,
+          one: () =>
+            m.notification_event_changed_move_body_one({ adminName, previous }),
+          other: () =>
+            m.notification_event_changed_move_body_other({
+              adminName,
+              previous,
+              count,
+            }),
+        }),
+        ...change.impacts.map(eventMoveImpactLine),
+      ].join('\n'),
+    };
+  }
+  const ministryList = {
+    ministryNames: ministries.map((ministry) => ministry.name).join(', '),
+  };
+  return {
+    title: m.notification_event_changed_add_title({ cycleName, eventTitle }),
+    body: [
+      m.notification_event_changed_add_body({ adminName, when }),
+      pluralMessage({
+        count: ministries.length,
+        one: () => m.notification_event_changed_ministries_one(ministryList),
+        other: () =>
+          m.notification_event_changed_ministries_other(ministryList),
+      }),
+    ].join('\n'),
+  };
+}
+
+type EventMoveImpact = Extract<
+  EventChangedData['change'],
+  { kind: 'move' }
+>['impacts'][number];
+
+/** One Ministry's affected count, noting answers given for the old time. */
+function eventMoveImpactLine({
+  ministryName,
+  volunteerCount: count,
+  answersGiven,
+}: EventMoveImpact): string {
+  const line = pluralMessage({
+    count,
+    one: () => m.notification_event_changed_move_ministry_one({ ministryName }),
+    other: () =>
+      m.notification_event_changed_move_ministry_other({ ministryName, count }),
+  });
+  return answersGiven ? `${line} · ${m.prepare_answers_coverage_note()}` : line;
+}
+
+interface EventWhenInput {
+  start: string;
+  end: string;
+  timeZone: string;
+}
+
+/** The Church-Timezone day and time range of an Event. */
+function eventWhen({ start, end, timeZone }: EventWhenInput): string {
+  const startInstant = parseInstant({ value: start });
+  const endInstant = parseInstant({ value: end });
+  const startDay = today({ instant: startInstant, timeZone });
+  const startTime = toTimeOfDay({ instant: startInstant, timeZone });
+  const endTime = toTimeOfDay({ instant: endInstant, timeZone });
+  const locale = getLocale();
+  const day = formatDayLabel({ day: startDay, locale });
+  const from = formatTimeOfDay({ time: startTime });
+  const to = formatTimeOfDay({ time: endTime });
+  return `${day} · ${from}–${to}`;
 }

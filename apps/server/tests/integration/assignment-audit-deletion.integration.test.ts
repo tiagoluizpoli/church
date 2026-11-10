@@ -38,7 +38,7 @@ describe('assignment audit deletion persistence', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
   });
-  it('deleteAssignment succeeds without an FK violation and removes the assignment row (audit write happens before delete, in the same transaction)', async () => {
+  it('deleteAssignment removes the assignment row and keeps its deleted audit', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({
       churchId: seed.churchAId,
@@ -106,14 +106,13 @@ describe('assignment audit deletion persistence', () => {
       }),
     ).rejects.toBeInstanceOf(NotFoundError);
 
-    // The `assignment_audit.assignment_id` FK is ON DELETE CASCADE, so the
-    // audit row written just before the delete is itself removed once the
-    // parent assignment is gone: audit history does not outlive its
-    // assignment.
+    // The audit row outlives the hard-deleted Assignment it names.
     const audit = await schedulingTestDb
       .select()
       .from(assignmentAudit)
       .where(eq(assignmentAudit.assignmentId, assignmentWithActor.id));
-    expect(audit).toEqual([]);
+    expect(audit).toMatchObject([
+      { action: 'deleted', actorId: seed.adminUserId },
+    ]);
   });
 });

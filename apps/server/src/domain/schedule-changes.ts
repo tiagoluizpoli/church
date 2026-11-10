@@ -35,9 +35,7 @@ export function scheduleChanges({
         previous.roleId === current.roleId &&
         previous.sectorId === current.sectorId &&
         previous.startsAt === current.startsAt &&
-        previous.endsAt === current.endsAt &&
-        previous.eventStart === current.eventStart &&
-        previous.eventEnd === current.eventEnd,
+        previous.endsAt === current.endsAt,
     );
     if (equivalent) {
       reconciledBefore.add(previous);
@@ -59,10 +57,9 @@ export function scheduleChanges({
     } else if (
       upcoming(previous) &&
       upcoming(current) &&
+      // The Assignment's own placement only: a stretched Event moves nobody.
       (previous.startsAt !== current.startsAt ||
         previous.endsAt !== current.endsAt ||
-        previous.eventStart !== current.eventStart ||
-        previous.eventEnd !== current.eventEnd ||
         previous.sectorId !== current.sectorId ||
         previous.roleId !== current.roleId)
     ) {

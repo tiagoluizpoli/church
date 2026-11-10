@@ -399,6 +399,132 @@ describe('Cycle ready to prepare Notification (N2)', () => {
   });
 });
 
+describe('Event changed Notification (N10 add)', () => {
+  const MINISTRY_A = '33333333-3333-4333-8333-333333333331';
+  const MINISTRY_B = '33333333-3333-4333-8333-333333333332';
+  const added = (ministries: { id: string; name: string }[]) =>
+    ({
+      ...base,
+      kind: 'event_changed',
+      data: {
+        cycleId: ID,
+        cycleName: 'Outubro',
+        eventId: ID,
+        eventTitle: 'Vigília',
+        adminName: 'Ana',
+        churchTimezone: 'America/Sao_Paulo',
+        ministries,
+        // 22:00Z is 19:00 in America/Sao_Paulo.
+        change: {
+          kind: 'add',
+          start: '2026-10-14T22:00:00.000Z',
+          end: '2026-10-15T00:00:00.000Z',
+        },
+      },
+    }) as GetNotifications200ItemsItem;
+
+  it('renders the pt-BR title, admin, Church-Timezone time and Ministries', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const { title, body, kindLabel, actionLabel } = renderNotification(
+      added([{ id: MINISTRY_A, name: 'Louvor' }]),
+    );
+
+    expect(title).toBe('Novo evento em Outubro: Vigília');
+    expect(body).toContain('Ana adicionou em');
+    expect(body).toContain('19:00–21:00');
+    expect(body).toContain('Seu ministério: Louvor');
+    expect(kindLabel).toBe('Evento alterado');
+    expect(actionLabel).toBe('Abrir escala');
+  });
+
+  it('renders the English anchor title', () => {
+    overwriteGetLocale(() => 'en');
+
+    expect(
+      renderNotification(added([{ id: MINISTRY_A, name: 'A' }])).title,
+    ).toBe('New event in Outubro: Vigília');
+  });
+
+  it('opens one Ministry Schedule, or the Cycle-preserving picker for several', () => {
+    expect(
+      resolveNotificationDestination(added([{ id: MINISTRY_A, name: 'A' }])),
+    ).toEqual({
+      target: {
+        to: '/schedules/$ministryId/$cycleId',
+        params: { ministryId: MINISTRY_A, cycleId: ID },
+      },
+      isFallback: false,
+    });
+    expect(
+      resolveNotificationDestination(
+        added([
+          { id: MINISTRY_A, name: 'A' },
+          { id: MINISTRY_B, name: 'B' },
+        ]),
+      ),
+    ).toEqual({
+      target: {
+        to: '/schedules',
+        search: { cycleId: ID, ministryIds: `${MINISTRY_A},${MINISTRY_B}` },
+      },
+      isFallback: false,
+    });
+  });
+
+  it('renders a pt-BR move: new time in the title, old time and count in the body, one line per Ministry', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const moved = {
+      ...base,
+      kind: 'event_changed',
+      data: {
+        cycleId: ID,
+        cycleName: 'Outubro',
+        eventId: ID,
+        eventTitle: 'Vigília',
+        adminName: 'Ana',
+        churchTimezone: 'America/Sao_Paulo',
+        ministries: [
+          { id: MINISTRY_A, name: 'Louvor' },
+          { id: MINISTRY_B, name: 'Recepção' },
+        ],
+        change: {
+          kind: 'move',
+          previousStart: '2026-10-14T22:00:00.000Z',
+          previousEnd: '2026-10-15T00:00:00.000Z',
+          start: '2026-10-21T22:00:00.000Z',
+          end: '2026-10-22T00:00:00.000Z',
+          volunteerCount: 1,
+          impacts: [
+            {
+              ministryId: MINISTRY_A,
+              ministryName: 'Louvor',
+              volunteerCount: 1,
+              answersGiven: true,
+            },
+            {
+              ministryId: MINISTRY_B,
+              ministryName: 'Recepção',
+              volunteerCount: 0,
+              answersGiven: false,
+            },
+          ],
+        },
+      },
+    } as GetNotifications200ItemsItem;
+
+    const { title, body } = renderNotification(moved);
+
+    expect(title).toMatch(/^Alterado: Vigília → .*19:00–21:00$/);
+    expect(body).toContain('Ana alterou o horário, que era');
+    expect(body).toContain('1 dos seus voluntários foi afetado');
+    expect(body).toContain(
+      `Louvor: 1 voluntário afetado · ${m.prepare_answers_coverage_note({}, { locale: 'pt-BR' })}`,
+    );
+    expect(body).toContain('Recepção: 0 voluntários afetados');
+    expect(body).not.toContain('Recepção: 0 voluntários afetados ·');
+  });
+});
+
 describe('Ministry invitation Notification (N1)', () => {
   const pt = { locale: 'pt-BR' } as const;
   const legacy = {

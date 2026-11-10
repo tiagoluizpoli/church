@@ -8,6 +8,7 @@ import type {
   CycleReadyToPrepareEmail,
   EmailLocale,
   EmailPayload,
+  EventChangedEmail,
   MinistryInvitationEmail,
   PasswordResetEmail,
   PreparedEmail,
@@ -24,7 +25,7 @@ import {
   formatEmailDuration,
   renderEmailLayout,
 } from './email-layout';
-import { formatShiftLine } from './email-shift-line';
+import { formatEventWhen, formatShiftLine } from './email-shift-line';
 
 export interface PrepareEmailFromInput {
   payload: EmailPayload;
@@ -88,6 +89,13 @@ export function prepareEmail({
         locale,
         from: sender(payload.churchName),
         content: cycleReadyToPrepareContent({ payload, locale }),
+      });
+    case 'event.changed':
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(payload.churchName),
+        content: eventChangedContent({ payload, locale }),
       });
     case 'swap-request.answered':
       return prepareLayoutEmail({
@@ -427,6 +435,115 @@ function cycleReadyToPrepareContent({
     },
     footer: m.email_footer_membership({ churchName }, options),
   };
+}
+
+interface EventChangedContentInput {
+  payload: EventChangedEmail;
+  locale: EmailLocale;
+}
+
+/** N10 on the bell's catalog keys; `change.kind` picks the wording. */
+function eventChangedContent({
+  payload,
+  locale,
+}: EventChangedContentInput): EmailContent {
+  const options = { locale };
+  const { change, cycleName, eventTitle, ministryNames, churchName } = payload;
+  const { adminName, churchTimezone } = payload;
+  const firstName = payload.recipientFirstName.trim();
+  const when = formatEventWhen({
+    start: change.start,
+    end: change.end,
+    churchTimezone,
+    locale,
+  });
+  const ministryList = { ministryNames: ministryNames.join(', ') };
+  let title: string;
+  let facts: EmailContent['facts'];
+  let list: string[] = [];
+  if (change.kind === 'move') {
+    const previous = formatEventWhen({
+      start: change.previousStart,
+      end: change.previousEnd,
+      churchTimezone,
+      locale,
+    });
+    const { volunteerCount: count } = change;
+    title = m.notification_event_changed_move_title(
+      { eventTitle, when },
+      options,
+    );
+    facts = [
+      count === 1
+        ? m.notification_event_changed_move_body_one(
+            { adminName, previous },
+            options,
+          )
+        : m.notification_event_changed_move_body_other(
+            { adminName, previous, count },
+            options,
+          ),
+    ];
+    list = change.impacts.map((impact) =>
+      eventMoveImpactLine({ impact, locale }),
+    );
+  } else {
+    title = m.notification_event_changed_add_title(
+      { cycleName, eventTitle },
+      options,
+    );
+    facts = [
+      m.notification_event_changed_add_body({ adminName, when }, options),
+      ministryNames.length === 1
+        ? m.notification_event_changed_ministries_one(ministryList, options)
+        : m.notification_event_changed_ministries_other(ministryList, options),
+    ];
+  }
+  return {
+    subject: title,
+    greeting: firstName
+      ? m.email_greeting_notification({ firstName }, options)
+      : m.email_greeting_transactional({}, options),
+    heading: title,
+    facts,
+    list,
+    action: {
+      label: m.notification_event_changed_action({}, options),
+      url: payload.actionUrl,
+    },
+    footer: m.email_footer_membership({ churchName }, options),
+  };
+}
+
+type EventMoveImpact = Extract<
+  EventChangedEmail['change'],
+  { kind: 'move' }
+>['impacts'][number];
+
+interface EventMoveImpactLineInput {
+  impact: EventMoveImpact;
+  locale: EmailLocale;
+}
+
+/** One Ministry's affected count, noting answers given for the old time. */
+function eventMoveImpactLine({
+  impact: { ministryName, volunteerCount: count, answersGiven },
+  locale,
+}: EventMoveImpactLineInput): string {
+  const options = { locale };
+  const line =
+    count === 1
+      ? m.notification_event_changed_move_ministry_one(
+          { ministryName },
+          options,
+        )
+      : m.notification_event_changed_move_ministry_other(
+          { ministryName, count },
+          options,
+        );
+  return answersGiven
+    ? `${line} · ${m.prepare_answers_coverage_note({}, options)}`
+    : line;
 }
 
 interface SwapRequestAnsweredContentInput {

@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { EventDeleteButton } from './event-delete-button';
+import { EventDetailsForm } from './event-details-form';
 import type { EventEditorCycleRange } from './event-editor.utils';
 import { EventEditorForm } from './event-editor-form';
 import {
@@ -8,7 +9,10 @@ import {
   EventEditorPage,
 } from './event-editor-page';
 import { useEditEvent } from './use-edit-event';
-import type { GetCycle200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetCycle200Cycle,
+  GetCycle200EventsItem,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
 export interface EventEditPageProps {
@@ -17,7 +21,7 @@ export interface EventEditPageProps {
 }
 
 /**
- * Edits one Draft Event, selected by route id from its Cycle's detail, so a
+ * Edits one Draft Event (or a Sent Event's details), selected by route id from its Cycle's detail, so a
  * direct visit or refresh works; an Event outside this Cycle is not found.
  */
 export function EventEditPage({ cycleId, eventId }: EventEditPageProps) {
@@ -26,10 +30,15 @@ export function EventEditPage({ cycleId, eventId }: EventEditPageProps) {
       cycleId={cycleId}
       testId="event-edit"
       title={m.event_editor_edit_title()}
-      description={m.event_editor_edit_description()}
+      // The Draft copy invites time and block changes a Sent Event refuses.
+      description={({ cycle, events }) =>
+        editsSentDetails({ cycle, graph: findGraph({ events, eventId }) })
+          ? null
+          : m.event_editor_edit_description()
+      }
     >
       {({ cycle, events }) => {
-        const graph = events.find(({ event }) => event.id === eventId);
+        const graph = findGraph({ events, eventId });
         if (!graph) {
           return (
             <div
@@ -42,6 +51,9 @@ export function EventEditPage({ cycleId, eventId }: EventEditPageProps) {
               <BackToCycle cycleId={cycleId} />
             </div>
           );
+        }
+        if (editsSentDetails({ cycle, graph })) {
+          return <EventDetailsForm cycleId={cycleId} graph={graph} />;
         }
         if (cycle.state !== 'draft' || graph.event.status !== 'draft') {
           return (
@@ -92,4 +104,23 @@ function EventEditForm({ cycleId, cycle, graph }: EventEditFormProps) {
       }
     />
   );
+}
+
+interface FindGraphInput {
+  events: GetCycle200EventsItem[];
+  eventId: string;
+}
+
+function findGraph({ events, eventId }: FindGraphInput) {
+  return events.find(({ event }) => event.id === eventId);
+}
+
+interface EditsSentDetailsInput {
+  cycle: GetCycle200Cycle;
+  graph: GetCycle200EventsItem | undefined;
+}
+
+/** A Sent Cycle's scheduled Event edits its details only. */
+function editsSentDetails({ cycle, graph }: EditsSentDetailsInput) {
+  return cycle.state === 'sent' && graph?.event.status === 'scheduled';
 }

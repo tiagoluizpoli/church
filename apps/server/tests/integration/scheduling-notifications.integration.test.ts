@@ -1,6 +1,7 @@
 import { appConfig } from '@church/app-config';
 import {
   assignment,
+  assignmentAudit,
   availabilityAsk,
   availabilityCheck,
   cycle,
@@ -17,33 +18,62 @@ import { m } from '@church/i18n/messages';
 import {
   type Instant,
   parseCalendarDay,
+  parseInstant,
   resetClock,
   setTestClock,
 } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
-import { ChurchId, CycleId, MinistryId, UserId } from '@/domain/branded-ids';
+import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import {
+  ChurchId,
+  CycleId,
+  EventId,
+  EventTimeBlockId,
+  MinistryId,
+  MinistryParticipationId,
+  RoleId,
+  SectorId,
+  ShiftId,
+  ShiftRequirementId,
+  UserId,
+  VolunteerId,
+} from '@/domain/branded-ids';
 import type { AvailabilityEmail } from '@/domain/contracts/infrastructure/email-sender';
 import type { CreateNotificationInput } from '@/domain/contracts/infrastructure/notification.repository';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 import {
+  DrizzleAssignmentAuditRepository,
+  DrizzleAssignmentRepository,
   DrizzleAvailabilityCheckRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
+  DrizzleEventTemplateRepository,
+  DrizzleEventTimeBlockRepository,
   DrizzleMinistryParticipationRepository,
   DrizzleMinistryRepository,
   DrizzleNotificationRepository,
+  DrizzlePlanningEventRepository,
+  DrizzleSwapRequestRepository,
+  DrizzleUnitOfWork,
+  DrizzleVolunteerRepository,
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
-import { buildAssignment } from '@/seeds/builders/scheduling';
+import {
+  buildAssignment,
+  buildEventTimeBlock,
+} from '@/seeds/builders/scheduling';
 import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
+import { buildMinistryMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingManagers,
+  seedInclusion,
   seedRequirement,
   seedRole,
   seedRoleQualification,
@@ -235,11 +265,50 @@ const scheduleKey = () => ({
   cycleId: CycleId.from(cycleId),
 });
 
+interface EventChangedRow {
+  to: { userId: string };
+  data: { ministries: { id: string }[] };
+}
+
 async function outboxRows() {
   return schedulingTestDb
     .select()
     .from(outboxMessage)
     .where(eq(outboxMessage.churchId, ids.churchId));
+}
+
+/** The planning manager wired to the real repositories and the outbox. */
+function buildPlanningManager() {
+  return new DbPlanningEventManager({
+    cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+    eventRepository: new DrizzlePlanningEventRepository({
+      db: schedulingTestDb,
+    }),
+    templateRepository: new DrizzleEventTemplateRepository({
+      db: schedulingTestDb,
+    }),
+    churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
+    unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
+    eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({
+      db: schedulingTestDb,
+    }),
+    assignmentRepository: new DrizzleAssignmentRepository({
+      db: schedulingTestDb,
+    }),
+    auditRepository: new DrizzleAssignmentAuditRepository({
+      db: schedulingTestDb,
+    }),
+    swapRequestRepository: new DrizzleSwapRequestRepository({
+      db: schedulingTestDb,
+    }),
+    recipients: new ChurchRecipients({
+      churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
+      volunteerRepository: new DrizzleVolunteerRepository({
+        db: schedulingTestDb,
+      }),
+    }),
+    notifications,
+  });
 }
 
 describe('scheduling Notifications through enqueue and the drainer', () => {
@@ -1165,6 +1234,391 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
   });
 
   it.each([
+    'event',
+    'eventTimeBlock',
+  ] as const)('a %s move tells Volunteers nothing until Send updates, which lists the kept Assignment as moved, the clash-withdrawn one as removed, and leaves unmoved Shifts out', async (scopeKind) => {
+    const kept = await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    const clashing = await seedMember({
+      name: 'Bruno',
+      email: 'bruno@test.com',
+    });
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    interface SeedBookingInput {
+      participation: string;
+      eventTimeBlock: string;
+      volunteerId: string;
+      startTime: string;
+      endTime: string;
+    }
+    const seedBooking = async ({
+      participation,
+      eventTimeBlock,
+      volunteerId,
+      startTime,
+      endTime,
+    }: SeedBookingInput) => {
+      const booked = await seedShift({
+        churchId: ids.churchId,
+        participationId: participation,
+        eventTimeBlockId: eventTimeBlock,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        label: 'Shift',
+      });
+      const requirement = await seedRequirement({
+        churchId: ids.churchId,
+        participationId: participation,
+        shiftId: booked.id,
+        roleId: role.id,
+        peopleNeeded: 1,
+      });
+      return buildAssignment({
+        db: schedulingTestDb,
+        churchId: ids.churchId,
+        participationId: participation,
+        shiftId: booked.id,
+        shiftRequirementId: requirement.id,
+        volunteerId,
+        roleId: role.id,
+        status: 'confirmed',
+      });
+    };
+    // A block move leaves this other block's Shift alone (same times).
+    const stayingBlock = await buildEventTimeBlock({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      eventId,
+      start: parseInstant({ value: '2026-12-25T03:00:00.000Z' }),
+      end: parseInstant({ value: '2026-12-25T03:30:00.000Z' }),
+    });
+    const staying = await seedMember({
+      name: 'Carla',
+      email: 'carla@test.com',
+    });
+    await seedBooking({
+      participation: participationId,
+      eventTimeBlock: stayingBlock.id,
+      volunteerId: staying.volunteer.id,
+      startTime: '2026-12-25T03:00:00.000Z',
+      endTime: '2026-12-25T03:30:00.000Z',
+    });
+    // The Vigil (25 Dec 02:30–04:00 UTC) moves by +31h to 26 Dec 09:30–11:00.
+    await seedBooking({
+      participation: participationId,
+      eventTimeBlock: eventTimeBlockId,
+      volunteerId: kept.volunteer.id,
+      startTime: '2026-12-25T02:30:00.000Z',
+      endTime: '2026-12-25T03:15:00.000Z',
+    });
+    const withdrawn = await seedBooking({
+      participation: participationId,
+      eventTimeBlock: eventTimeBlockId,
+      volunteerId: clashing.volunteer.id,
+      startTime: '2026-12-25T03:15:00.000Z',
+      endTime: '2026-12-25T04:00:00.000Z',
+    });
+    // Bruno also serves Christmas Morning 10:00–11:00, overlapping 10:15–11:00.
+    const morning = await createSchedulingPhase3EventGraph({
+      churchId: ids.churchId,
+      cycleId,
+      ministryId: ids.ministryId,
+      title: 'Christmas Morning',
+      start: new Date('2026-12-26T10:00:00.000Z'),
+      end: new Date('2026-12-26T11:00:00.000Z'),
+      status: 'scheduled',
+    });
+    await seedBooking({
+      participation: morning.participation.id,
+      eventTimeBlock: morning.eventTimeBlock.id,
+      volunteerId: clashing.volunteer.id,
+      startTime: '2026-12-26T10:00:00.000Z',
+      endTime: '2026-12-26T11:00:00.000Z',
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.ministryId, ids.ministryId));
+    const managers = createSchedulingManagers({ notifications });
+    const publishInput = {
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      ministryId: MinistryId.from(ids.ministryId),
+      userId: UserId.from(ids.adminUserId),
+      confirmBelowFull: true,
+    };
+    await managers.participationManager.publishCycle(publishInput);
+    const snapshotsBefore = await schedulingTestDb
+      .select()
+      .from(scheduleLastTold);
+    const rowsBefore = await outboxRows();
+    const planning = buildPlanningManager();
+
+    const moved = await planning.confirmMove({
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      eventId: EventId.from(eventId),
+      scope:
+        scopeKind === 'event'
+          ? { kind: 'event' }
+          : {
+              kind: 'eventTimeBlock',
+              eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+            },
+      start: new Date('2026-12-26T09:30:00.000Z'),
+      actingUserId: UserId.from(ids.adminUserId),
+    });
+
+    expect(moved.withdrawn.map(({ assignmentId }) => assignmentId)).toEqual([
+      withdrawn.id,
+    ]);
+    // The withdrawal's audit outlives the hard-deleted Assignment.
+    expect(
+      await schedulingTestDb
+        .select()
+        .from(assignmentAudit)
+        .where(eq(assignmentAudit.assignmentId, withdrawn.id)),
+    ).toMatchObject([{ action: 'deleted', actorId: ids.adminUserId }]);
+    // The move keeps the last-told snapshots and queues only the leader's N10.
+    expect(await schedulingTestDb.select().from(scheduleLastTold)).toEqual(
+      snapshotsBefore,
+    );
+    const beforeIds = new Set(rowsBefore.map(({ id }) => id));
+    const queuedByMove = (await outboxRows()).filter(
+      ({ id }) => !beforeIds.has(id),
+    );
+    expect(queuedByMove.map(({ payload }) => payload)).toEqual([
+      expect.objectContaining({
+        kind: 'event_changed',
+        to: expect.objectContaining({ userId: ids.adminUserId }),
+      }),
+    ]);
+
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    const updates = (await outboxRows())
+      .map((row) => row.payload)
+      .filter(
+        (payload) =>
+          typeof payload === 'object' &&
+          payload !== null &&
+          'kind' in payload &&
+          payload.kind === 'schedule_updated',
+      );
+    // A block move stretches the Event, yet Carla's own Shift in the staying
+    // block is unchanged, so only the whole-Event move tells her.
+    const toCarla = {
+      userId: staying.volunteer.userId,
+      churchId: ids.churchId,
+    };
+    if (scopeKind === 'event') {
+      expect(updates).toHaveLength(3);
+      expect(updates).toContainEqual(
+        expect.objectContaining({
+          to: toCarla,
+          data: expect.objectContaining({
+            changes: [
+              expect.objectContaining({
+                kind: 'moved',
+                before: expect.objectContaining({
+                  startsAt: '2026-12-25T03:00:00.000Z',
+                }),
+                after: expect.objectContaining({
+                  startsAt: '2026-12-26T10:00:00.000Z',
+                }),
+              }),
+            ],
+          }),
+        }),
+      );
+    } else {
+      expect(updates).toHaveLength(2);
+      expect(updates).not.toContainEqual(
+        expect.objectContaining({ to: toCarla }),
+      );
+    }
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        to: { userId: kept.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'moved',
+              before: expect.objectContaining({
+                startsAt: '2026-12-25T02:30:00.000Z',
+              }),
+              after: expect.objectContaining({
+                startsAt: '2026-12-26T09:30:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        to: { userId: clashing.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'removed',
+              assignment: expect.objectContaining({
+                startsAt: '2026-12-25T03:15:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
+  it('a published Schedule prepares and assigns an Event added to its Sent Cycle, and Send updates tells the new Volunteer', async () => {
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    const told = await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    await seedInclusion({
+      churchId: ids.churchId,
+      participationId,
+      eventTimeBlockId,
+    });
+    const vigilShift = await seedShift({
+      churchId: ids.churchId,
+      participationId,
+      eventTimeBlockId,
+      startTime: new Date('2026-12-25T02:30:00.000Z'),
+      endTime: new Date('2026-12-25T04:00:00.000Z'),
+      label: 'Vigil',
+    });
+    const vigilRequirement = await seedRequirement({
+      churchId: ids.churchId,
+      participationId,
+      shiftId: vigilShift.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    await buildAssignment({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      participationId,
+      shiftId: vigilShift.id,
+      shiftRequirementId: vigilRequirement.id,
+      volunteerId: told.volunteer.id,
+      roleId: role.id,
+      status: 'confirmed',
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.id, participationId));
+    const managers = createSchedulingManagers({ notifications });
+    const publishInput = {
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      ministryId: MinistryId.from(ids.ministryId),
+      userId: UserId.from(ids.adminUserId),
+      confirmBelowFull: true,
+    };
+    await managers.participationManager.publishCycle(publishInput);
+
+    const added = await buildPlanningManager().createEvent({
+      churchId: ChurchId.from(ids.churchId),
+      actingUserId: UserId.from(ids.adminUserId),
+      cycleId: CycleId.from(cycleId),
+      title: 'Christmas Morning',
+      start: new Date('2026-12-26T10:00:00.000Z'),
+      end: new Date('2026-12-26T11:00:00.000Z'),
+      eventTimeBlocks: [
+        {
+          label: 'Morning',
+          startTime: new Date('2026-12-26T10:00:00.000Z'),
+          endTime: new Date('2026-12-26T11:00:00.000Z'),
+        },
+      ],
+    });
+    const [addedBlock] = added.eventTimeBlocks;
+    const [scaffold] = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.eventId, added.event.id));
+    const sector = await buildSector({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Hall',
+    });
+    await managers.participationManager.savePreparation({
+      churchId: ChurchId.from(ids.churchId),
+      participationId: MinistryParticipationId.from(scaffold?.id ?? ''),
+      eventTimeBlockId: EventTimeBlockId.from(addedBlock?.id ?? ''),
+      serves: true,
+      shiftSplit: { kind: 'equal-n', n: 1 },
+      headcounts: [
+        {
+          shiftIndex: 0,
+          sectorId: SectorId.from(sector.id),
+          roleId: RoleId.from(role.id),
+          peopleNeeded: 1,
+        },
+      ],
+    });
+    const [addedRequirement] = await schedulingTestDb
+      .select()
+      .from(shiftRequirement)
+      .where(eq(shiftRequirement.participationId, scaffold?.id ?? ''));
+    const newcomer = await seedMember({
+      name: 'Bruno',
+      email: 'bruno@test.com',
+    });
+    await seedRoleQualification({
+      churchId: ids.churchId,
+      membershipId: newcomer.membership.id,
+      roleId: role.id,
+    });
+    await managers.assignmentManager.createParticipationAssignment({
+      churchId: ChurchId.from(ids.churchId),
+      shiftId: ShiftId.from(addedRequirement?.shiftId ?? ''),
+      volunteerId: VolunteerId.from(newcomer.volunteer.id),
+      actorId: UserId.from(ids.adminUserId),
+      shiftRequirementId: ShiftRequirementId.from({
+        raw: addedRequirement?.id ?? '',
+      }),
+    });
+
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+
+    const updates = (await outboxRows())
+      .map((row) => row.payload)
+      .filter(
+        (payload) =>
+          typeof payload === 'object' &&
+          payload !== null &&
+          'kind' in payload &&
+          payload.kind === 'schedule_updated',
+      );
+    expect(updates).toEqual([
+      expect.objectContaining({
+        to: { userId: newcomer.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'added',
+              assignment: expect.objectContaining({
+                eventTitle: 'Christmas Morning',
+                startsAt: '2026-12-26T10:00:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    ]);
+  });
+
+  it.each([
     'schedule_published',
     'schedule_updated',
   ])('skips legacy %s outbox rows rather than reconstructing mutable facts', async (kind) => {
@@ -1386,6 +1840,249 @@ describe('N8 swap_request_answered through the outbox', () => {
         .notification_swap_request_answered_reply({ reply: '' }, pt)
         .split(':')[0],
     );
+  });
+});
+
+describe('N10 event_changed (add) through the outbox', () => {
+  const pt = { locale: 'pt-BR' } as const;
+  const eventId = '55555555-5555-4555-8555-555555555555';
+
+  function enqueueAdded({ eventTitle }: { eventTitle: string }) {
+    return unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'event_changed',
+        to: [
+          {
+            userId: UserId.from(ids.adminUserId),
+            churchId: ChurchId.from(ids.churchId),
+          },
+        ],
+        data: {
+          cycleId,
+          cycleName: 'December 2026',
+          eventId,
+          eventTitle,
+          adminName: 'Ana',
+          churchName: 'Scheduling Church A',
+          churchTimezone: 'America/Sao_Paulo',
+          ministries: [{ id: ids.ministryId, name: 'Scheduling Ministry A' }],
+          change: {
+            kind: 'add',
+            start: parseInstant({ value: '2026-12-13T22:00:00.000Z' }),
+            end: parseInstant({ value: '2026-12-14T00:00:00.000Z' }),
+          },
+        },
+      }),
+    );
+  }
+
+  it('a real Sent-add sends one row per User, merging leader and fallback lines, and keeps the acting admin a leader recipient', async () => {
+    const sibling = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      name: 'Sibling Ministry',
+    });
+    const leaderless = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      name: 'Leaderless Ministry',
+    });
+    // Leads Ministry A and Sibling, and as a ChurchAdmin is Leaderless's fallback.
+    const lead = await seedVolunteerMembership({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Lia',
+      email: 'lia@test.com',
+      ministryAccessLevel: 'leader',
+    });
+    await buildMinistryMembership({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      ministryId: sibling.id,
+      volunteerId: lead.volunteer.id,
+      ministryAccessLevel: 'leader',
+      roleIds: [],
+    });
+    await buildChurchMembership({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      userId: lead.volunteer.userId,
+      accessLevel: 'admin',
+    });
+
+    await buildPlanningManager().createEvent({
+      churchId: ChurchId.from(ids.churchId),
+      actingUserId: UserId.from(ids.adminUserId),
+      cycleId: CycleId.from(cycleId),
+      title: 'Christmas Morning',
+      start: new Date('2026-12-26T10:00:00.000Z'),
+      end: new Date('2026-12-26T11:00:00.000Z'),
+      eventTimeBlocks: [
+        {
+          label: 'Morning',
+          startTime: new Date('2026-12-26T10:00:00.000Z'),
+          endTime: new Date('2026-12-26T11:00:00.000Z'),
+        },
+      ],
+    });
+
+    const ministryIdsByUser = new Map(
+      (await outboxRows()).map(({ payload }) => {
+        const { to, data } = payload as EventChangedRow;
+        const ministryIds = data.ministries.map(({ id }) => id).sort();
+        return [to.userId, ministryIds];
+      }),
+    );
+    expect(ministryIdsByUser).toEqual(
+      new Map([
+        // The acting admin keeps its leader line but is nobody's fallback.
+        [ids.adminUserId, [ids.ministryId]],
+        [
+          lead.volunteer.userId,
+          [ids.ministryId, sibling.id, leaderless.id].sort(),
+        ],
+      ]),
+    );
+    expect(await outboxRows()).toHaveLength(2);
+  });
+
+  it('renders the pt-BR email with an escaped title, Church-Timezone time and an absolute link, and stores the bell row', async () => {
+    await enqueueAdded({ eventTitle: 'Vigília <b>especial</b>' });
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    const [email] = emailSender.delivered;
+    const text = email?.request.text ?? '';
+    expect(email?.request.subject).toBe(
+      m.notification_event_changed_add_title(
+        { cycleName: 'December 2026', eventTitle: 'Vigília <b>especial</b>' },
+        pt,
+      ),
+    );
+    expect(text).toContain('Ana adicionou em dom 13 dez · 19:00–21:00');
+    expect(text).toContain(m.notification_event_changed_action({}, pt));
+    expect(text).toContain(
+      `https://app.test/schedules/${ids.ministryId}/${cycleId}`,
+    );
+    expect(email?.request.html).not.toContain('<b>especial');
+    const inbox = await schedulingTestDb.select().from(notification);
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({
+      kind: 'event_changed',
+      data: { eventId, adminName: 'Ana', change: { kind: 'add' } },
+    });
+  });
+
+  it('renders a pt-BR move with old and new times, one line per Ministry with the old-answer note, and the Ministry picker link', async () => {
+    const sibling = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      name: 'Louvor',
+    });
+    await unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'event_changed',
+        to: [
+          {
+            userId: UserId.from(ids.adminUserId),
+            churchId: ChurchId.from(ids.churchId),
+          },
+        ],
+        data: {
+          cycleId,
+          cycleName: 'December 2026',
+          eventId,
+          eventTitle: 'Vigília <b>especial</b>',
+          adminName: 'Ana',
+          churchName: 'Scheduling Church A',
+          churchTimezone: 'America/Sao_Paulo',
+          ministries: [
+            { id: ids.ministryId, name: 'Scheduling Ministry A' },
+            { id: sibling.id, name: 'Louvor' },
+          ],
+          change: {
+            kind: 'move',
+            previousStart: parseInstant({ value: '2026-12-13T22:00:00.000Z' }),
+            previousEnd: parseInstant({ value: '2026-12-14T00:00:00.000Z' }),
+            start: parseInstant({ value: '2026-12-20T22:00:00.000Z' }),
+            end: parseInstant({ value: '2026-12-21T00:00:00.000Z' }),
+            volunteerCount: 3,
+            impacts: [
+              {
+                ministryId: ids.ministryId,
+                ministryName: 'Scheduling Ministry A',
+                volunteerCount: 2,
+                answersGiven: true,
+              },
+              {
+                ministryId: sibling.id,
+                ministryName: 'Louvor',
+                volunteerCount: 1,
+                answersGiven: false,
+              },
+            ],
+          },
+        },
+      }),
+    );
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    const [email] = emailSender.delivered;
+    const text = email?.request.text ?? '';
+    expect(email?.request.subject).toBe(
+      'Alterado: Vigília <b>especial</b> → dom 20 dez · 19:00–21:00',
+    );
+    expect(text).toContain(
+      m.notification_event_changed_move_body_other(
+        { adminName: 'Ana', previous: 'dom 13 dez · 19:00–21:00', count: 3 },
+        pt,
+      ),
+    );
+    expect(text).toContain(
+      `Scheduling Ministry A: 2 voluntários afetados · ${m.prepare_answers_coverage_note({}, pt)}`,
+    );
+    expect(text).toContain('Louvor: 1 voluntário afetado');
+    expect(text).not.toContain(
+      `Louvor: 1 voluntário afetado · ${m.prepare_answers_coverage_note({}, pt)}`,
+    );
+    expect(text).toContain(
+      `https://app.test/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
+    );
+    expect(email?.request.html).not.toContain('<b>especial');
+    const inbox = await schedulingTestDb.select().from(notification);
+    expect(inbox[0]).toMatchObject({
+      kind: 'event_changed',
+      data: { change: { kind: 'move', volunteerCount: 3 } },
+    });
+  });
+
+  it('skips and logs a row whose frozen facts predate the typed change instead of rendering undefined', async () => {
+    await enqueueAdded({ eventTitle: 'Vigília' });
+    for (const row of await outboxRows()) {
+      await schedulingTestDb
+        .update(outboxMessage)
+        .set({
+          payload: {
+            ...(row.payload as object),
+            facts: { cycleName: 'December 2026', churchName: 'X' },
+          },
+        })
+        .where(eq(outboxMessage.id, row.id));
+    }
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    expect(emailSender.delivered).toHaveLength(0);
+    expect(await schedulingTestDb.select().from(notification)).toHaveLength(0);
   });
 });
 

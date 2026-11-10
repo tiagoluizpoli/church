@@ -1034,6 +1034,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
     it.each([
       'availability_requested',
       'assigning',
+      'published',
     ] as const)('accepts edits in %s', async (state) => {
       const base = await seedPreparation();
       await setParticipationState(base, state);
@@ -1045,27 +1046,6 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
 
       expect(response.statusCode).toBe(200);
       expect(await blockShifts(base.eventTimeBlockId)).toHaveLength(1);
-    });
-
-    it('refuses every edit once published', async () => {
-      const base = await seedPreparation();
-      const { shift: kept } = await seedBlockShift({ base });
-      await setParticipationState(base, 'published');
-
-      for (const payload of [
-        { serves: false },
-        wholeBlockPayload(base, { peopleNeeded: 9 }),
-      ]) {
-        const response = await savePreparation({ ...base, payload });
-
-        expect(response.statusCode).toBe(409);
-        expect(response.json()).toMatchObject({
-          error: 'ILLEGAL_STATE_TRANSITION',
-        });
-      }
-      expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
-        { id: kept.id },
-      ]);
     });
 
     it('refuses a Past Cycle, stored or elapsed', async () => {
@@ -1435,7 +1415,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       expect(await participationState(base)).toBe('assigning');
     });
 
-    it('refuses a save that waited on a Publish, leaving the published graph alone', async () => {
+    it('serializes a save behind a Publish and applies it to the published graph, keeping the staffed Shift', async () => {
       const base = await seedPreparation();
       const { shift: staffed, requirement } = await seedBlockShift({
         base,
@@ -1471,9 +1451,10 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       const [published, saved] = await Promise.all([publishing, saving]);
 
       expect(published).toMatchObject({ published: true, belowFull: false });
-      expect(saved.statusCode).toBe(409);
-      expect(saved.json()).toMatchObject({ error: 'ILLEGAL_STATE_TRANSITION' });
-      expect(await blockShifts(base.eventTimeBlockId)).toHaveLength(1);
+      expect(saved.statusCode).toBe(200);
+      expect(await blockShifts(base.eventTimeBlockId)).toMatchObject([
+        { id: staffed.id },
+      ]);
       expect(await participationState(base)).toBe('published');
     });
 

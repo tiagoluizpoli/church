@@ -10,6 +10,7 @@ import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
 const getCycle = vi.fn();
 const updatePlanningEvent = vi.fn();
+const updatePlanningEventDetails = vi.fn();
 const deletePlanningEvent = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
@@ -18,6 +19,8 @@ vi.mock('@/utils/api-instances', () => ({
   adminApi: {
     getCycle: (...args: unknown[]) => getCycle(...args),
     updatePlanningEvent: (...args: unknown[]) => updatePlanningEvent(...args),
+    updatePlanningEventDetails: (...args: unknown[]) =>
+      updatePlanningEventDetails(...args),
     deletePlanningEvent: (...args: unknown[]) => deletePlanningEvent(...args),
   },
 }));
@@ -296,7 +299,7 @@ describe('EventEditPage', () => {
     renderPage();
     await screen.findByTestId('event-editor-form');
     getCycle.mockResolvedValue(
-      cycleResponse({ state: 'sent', eventStatus: 'scheduled' }),
+      cycleResponse({ state: 'past', eventStatus: 'scheduled' }),
     );
 
     await user.click(saveButton());
@@ -458,7 +461,7 @@ describe('Delete a Draft Event', () => {
     renderPage();
     await openDialog(user);
     getCycle.mockResolvedValue(
-      cycleResponse({ state: 'sent', eventStatus: 'scheduled' }),
+      cycleResponse({ state: 'past', eventStatus: 'scheduled' }),
     );
 
     await user.click(screen.getByTestId('event-delete-confirm'));
@@ -468,5 +471,100 @@ describe('Delete a Draft Event', () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId('event-delete-open')).not.toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('Edit Sent Event details', () => {
+  beforeEach(() => {
+    getCycle.mockResolvedValue(
+      cycleResponse({ state: 'sent', eventStatus: 'scheduled' }),
+    );
+  });
+
+  it('keeps the Draft times-and-blocks instructions out of the header', async () => {
+    renderPage();
+    await screen.findByTestId('event-details-form');
+    expect(
+      screen.queryByText(m.event_editor_edit_description()),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(m.event_details_description())).toBeVisible();
+  });
+
+  it('saves only title and location, then returns to the review revealing the Event', async () => {
+    updatePlanningEventDetails.mockResolvedValue(SAVED_GRAPH);
+    const user = userEvent.setup();
+    renderPage();
+    const form = await screen.findByTestId('event-details-form');
+    expect(screen.queryByTestId('event-editor-form')).not.toBeInTheDocument();
+    expect(
+      within(form).getByLabelText(m.event_editor_title_label()),
+    ).toHaveValue('Sunday');
+
+    const title = within(form).getByLabelText(m.event_editor_title_label());
+    await user.clear(title);
+    await user.type(title, 'Worship');
+    await user.clear(
+      within(form).getByLabelText(m.event_editor_location_label()),
+    );
+    await user.click(
+      within(form).getByRole('button', { name: m.event_details_submit() }),
+    );
+
+    await waitFor(() =>
+      expect(updatePlanningEventDetails).toHaveBeenCalledWith(
+        'cycle-1',
+        'event-1',
+        { title: 'Worship', location: '' },
+      ),
+    );
+    expect(updatePlanningEvent).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(
+        m.event_details_updated_toast(),
+      ),
+    );
+    expect(navigate).toHaveBeenCalledWith({
+      to: '/cycles/$cycleId',
+      params: { cycleId: 'cycle-1' },
+      search: { eventId: 'event-1' },
+    });
+  });
+
+  it('keeps the input and shows the localized error on a refusal', async () => {
+    updatePlanningEventDetails.mockRejectedValue(
+      refusal({
+        status: 409,
+        data: {
+          error: 'ILLEGAL_STATE_TRANSITION',
+          message: m.error_illegal_state_transition(),
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByTestId('event-details-form');
+
+    await user.type(titleInput(), '!');
+    await user.click(
+      screen.getByRole('button', { name: m.event_details_submit() }),
+    );
+
+    expect(await screen.findByTestId('event-form-error')).toHaveTextContent(
+      m.error_illegal_state_transition(),
+    );
+    expect(titleInput()).toHaveValue('Sunday!');
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it('is read-only in a Past Cycle', async () => {
+    getCycle.mockResolvedValue(
+      cycleResponse({ state: 'past', eventStatus: 'scheduled' }),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByTestId('event-edit-not-draft'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('event-details-form')).not.toBeInTheDocument();
   });
 });

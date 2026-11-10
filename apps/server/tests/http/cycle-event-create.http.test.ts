@@ -29,6 +29,7 @@ import {
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
@@ -40,6 +41,8 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -49,12 +52,21 @@ import { DrizzleMinistryParticipationRepository } from '@/infrastructure/reposit
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
-import { buildCycle } from '@/seeds/builders/scheduling';
+import { buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
+import { buildMinistry } from '@/seeds/builders/ministry';
+import {
+  buildCycle,
+  buildEvent,
+  buildEventTimeBlock,
+  buildMinistryParticipation,
+} from '@/seeds/builders/scheduling';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
@@ -119,6 +131,16 @@ beforeAll(async () => {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      assignmentRepository: new DrizzleAssignmentRepository({ db }),
+      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
+      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db }),
+      }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
@@ -622,12 +644,9 @@ describe('POST /admin/cycles/:cycleId/events', () => {
     expect(await graphCounts()).toEqual(EMPTY_GRAPH);
   });
 
-  it.each([
-    'sent',
-    'past',
-  ] as const)('refuses a %s Cycle with ILLEGAL_STATE_TRANSITION', async (state) => {
+  it('refuses a past Cycle with ILLEGAL_STATE_TRANSITION', async () => {
     const seed = await signIn();
-    const target = await seedCycle({ churchId: seed.churchAId, state });
+    const target = await seedCycle({ churchId: seed.churchAId, state: 'past' });
 
     const response = await postEvent({
       cycleId: target.id,
@@ -637,6 +656,216 @@ describe('POST /admin/cycles/:cycleId/events', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
     expect(await graphCounts()).toEqual(EMPTY_GRAPH);
+  });
+});
+
+describe('POST /admin/cycles/:cycleId/events on a Sent Cycle', () => {
+  it('saves a scheduled Event and a Not served scaffold for every active Ministry', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    await buildMinistry({
+      db,
+      churchId: seed.churchAId,
+      name: 'Second Ministry',
+    });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: eveningEvent(),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().event.status).toBe('scheduled');
+    const participations = await db.select().from(ministryParticipation);
+    expect(participations).toHaveLength(2);
+    expect(participations.map((row) => row.state)).toEqual([
+      'preparing',
+      'preparing',
+    ]);
+    expect(await db.select().from(shift)).toHaveLength(0);
+  });
+
+  it('starts a participation at the Schedule stage its serving, non-cancelled Events reached', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    interface SeedScheduleEventInput {
+      title: string;
+      day: string;
+      status: 'scheduled' | 'cancelled';
+      state: 'preparing' | 'assigning';
+      serves: boolean;
+    }
+    const seedScheduleEvent = async ({
+      title,
+      day,
+      status,
+      state,
+      serves,
+    }: SeedScheduleEventInput) => {
+      const start = parseInstant({ value: `${day}T15:00:00.000Z` });
+      const end = parseInstant({ value: `${day}T17:00:00.000Z` });
+      const seeded = await buildEvent({
+        db,
+        churchId: seed.churchAId,
+        cycleId: target.id,
+        title,
+        start,
+        end,
+        status,
+      });
+      const block = await buildEventTimeBlock({
+        db,
+        churchId: seed.churchAId,
+        eventId: seeded.id,
+        start,
+        end,
+      });
+      await buildMinistryParticipation({
+        db,
+        churchId: seed.churchAId,
+        ministryId: seed.ministryAId,
+        eventId: seeded.id,
+        state,
+        eventTimeBlockIds: serves ? [block.id] : [],
+      });
+    };
+    await seedScheduleEvent({
+      title: 'Served',
+      day: '2026-10-13',
+      status: 'scheduled',
+      state: 'assigning',
+      serves: true,
+    });
+    // Neither a Not served Event nor a cancelled one holds the Schedule back.
+    await seedScheduleEvent({
+      title: 'Not served',
+      day: '2026-10-20',
+      status: 'scheduled',
+      state: 'preparing',
+      serves: false,
+    });
+    await seedScheduleEvent({
+      title: 'Cancelled',
+      day: '2026-10-27',
+      status: 'cancelled',
+      state: 'preparing',
+      serves: true,
+    });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: eveningEvent(),
+    });
+
+    expect(response.statusCode).toBe(201);
+    const created = await db
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.eventId, response.json().event.id));
+    expect(created.map((row) => row.state)).toEqual(['assigning']);
+  });
+
+  it('still validates the complete graph', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: {
+        ...eveningEvent(),
+        start: local({ day: '2026-11-02', time: '19:00' }),
+        end: local({ day: '2026-11-02', time: '21:00' }),
+        eventTimeBlocks: [
+          {
+            label: 'Evening',
+            startTime: local({ day: '2026-11-02', time: '19:00' }),
+            endTime: local({ day: '2026-11-02', time: '21:00' }),
+          },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('EVENT_OUTSIDE_CYCLE');
+    expect(await graphCounts()).toEqual(EMPTY_GRAPH);
+  });
+
+  it('enqueues one N10 add row per leader with the acting admin and Event facts', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: eveningEvent(),
+    });
+
+    expect(response.statusCode).toBe(201);
+    const rows = await db.select().from(outboxMessage);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.payload).toMatchObject({
+      kind: 'event_changed',
+      to: { userId: seed.adminUserId },
+      data: {
+        cycleId: target.id,
+        cycleName: 'October',
+        eventId: response.json().event.id,
+        eventTitle: 'Evening service',
+        adminName: 'Scheduling Admin',
+        churchName: 'Scheduling Church A',
+        churchTimezone: CHURCH_TIME_ZONE,
+        ministries: [{ id: seed.ministryAId, name: 'Scheduling Ministry A' }],
+        change: {
+          kind: 'add',
+          start: '2026-10-14T22:00:00.000Z',
+          end: '2026-10-15T00:00:00.000Z',
+        },
+      },
+    });
+  });
+
+  it('falls back to the other ChurchAdmins for a leaderless Ministry and merges its lines per User', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    const leaderless = await buildMinistry({
+      db,
+      churchId: seed.churchAId,
+      name: 'Leaderless',
+    });
+    await buildUser({ db, id: 'other-admin', name: 'Other', email: 'o@t.com' });
+    await buildChurchMembership({
+      db,
+      churchId: seed.churchAId,
+      userId: 'other-admin',
+      accessLevel: 'admin',
+    });
+
+    await postEvent({ cycleId: target.id, payload: eveningEvent() });
+
+    const rows = await db.select().from(outboxMessage);
+    const byUser = new Map(
+      rows.map((row) => [
+        (row.payload as { to: { userId: string } }).to.userId,
+        (
+          row.payload as {
+            data: { ministries: { id: string }[] };
+          }
+        ).data.ministries.map(({ id }) => id),
+      ]),
+    );
+    // The acting admin leads Ministry A, so it is not dropped there, yet is
+    // excluded from the fallback line.
+    expect(byUser.get(seed.adminUserId)).toEqual([seed.ministryAId]);
+    expect(byUser.get('other-admin')).toEqual([leaderless.id]);
+    expect(rows).toHaveLength(2);
+  });
+
+  it('does not enqueue anything for a Draft Cycle Event', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId });
+
+    await postEvent({ cycleId: target.id, payload: eveningEvent() });
+
+    expect(await db.select().from(outboxMessage)).toHaveLength(0);
   });
 });
 

@@ -29,6 +29,7 @@ import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { UsualSetupController } from '@/api/controllers/usual-setup-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
@@ -36,6 +37,8 @@ import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -45,6 +48,7 @@ import { DrizzleMinistryParticipationRepository } from '@/infrastructure/reposit
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -126,6 +130,16 @@ function createManagers() {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      assignmentRepository: new DrizzleAssignmentRepository({ db }),
+      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
+      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db }),
+      }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,

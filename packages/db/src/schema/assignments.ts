@@ -95,9 +95,8 @@ export const assignmentAudit = pgTable('assignment_audit', {
   churchId: uuid('church_id')
     .notNull()
     .references(() => church.id, { onDelete: 'cascade' }),
-  assignmentId: uuid('assignment_id')
-    .notNull()
-    .references(() => assignment.id, { onDelete: 'cascade' }),
+  /** No foreign key: the audit outlives a hard-deleted Assignment it names. */
+  assignmentId: uuid('assignment_id').notNull(),
   actorId: text('actor_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),

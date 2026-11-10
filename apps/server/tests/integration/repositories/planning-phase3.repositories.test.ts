@@ -214,6 +214,7 @@ describe('Phase 3 planning repositories', () => {
 
     await repository.seedParticipations({
       churchId: ChurchId.from(seed.churchAId),
+      cycleId: createdEvent.cycleId,
       eventId: createdEvent.id,
     });
 

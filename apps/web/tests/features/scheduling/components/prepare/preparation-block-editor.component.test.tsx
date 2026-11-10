@@ -486,28 +486,30 @@ it('warns before leaving an unsaved form, keeps edits when staying, and cancels 
   expect(api.saveEventTimeBlockPreparation).not.toHaveBeenCalled();
 });
 
-it.each([
-  'published',
-  'past',
-] as const)('renders %s preparation read-only', async (state) => {
+it('keeps a published participation editable for an Event added to the Sent Cycle', async () => {
   api.getCycleParticipation.mockResolvedValue({
     events: [
       {
         ...EVENT,
-        participation: {
-          ...EVENT.participation,
-          state: state === 'published' ? 'published' : 'preparing',
-        },
+        participation: { ...EVENT.participation, state: 'published' },
       },
     ],
   });
+  renderRoute({
+    initialPath: EDITOR_PATH,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const toggle = await screen.findByRole('checkbox');
+  expect(toggle).not.toHaveAttribute('aria-disabled', 'true');
+  expect(screen.queryByText(m.prepare_block_read_only())).toBeNull();
+  expect(
+    screen.getByRole('button', { name: m.usual_setup_save() }),
+  ).toBeVisible();
+});
+
+it('renders past preparation read-only', async () => {
   api.listSchedules.mockResolvedValue({
-    schedules: [
-      {
-        ...SCHEDULE,
-        cycle: { ...SCHEDULE.cycle, state: state === 'past' ? 'past' : 'sent' },
-      },
-    ],
+    schedules: [{ ...SCHEDULE, cycle: { ...SCHEDULE.cycle, state: 'past' } }],
   });
   renderRoute({
     initialPath: EDITOR_PATH,
@@ -788,7 +790,7 @@ it('still confirms persisted staffing before opting out of an invalid split draf
   );
 });
 
-it('refreshes publication state after a concurrent transition refuses the save and keeps the draft read-only', async () => {
+it('refreshes the Cycle state after a concurrent transition refuses the save and keeps the draft read-only', async () => {
   api.saveEventTimeBlockPreparation.mockRejectedValueOnce(
     refusal(409, {
       error: 'ILLEGAL_STATE_TRANSITION',
@@ -806,13 +808,8 @@ it('refreshes publication state after a concurrent transition refuses the save a
   });
   await user.clear(stage);
   await user.type(stage, '4');
-  api.getCycleParticipation.mockResolvedValue({
-    events: [
-      {
-        ...EVENT,
-        participation: { ...EVENT.participation, state: 'published' },
-      },
-    ],
+  api.listSchedules.mockResolvedValue({
+    schedules: [{ ...SCHEDULE, cycle: { ...SCHEDULE.cycle, state: 'past' } }],
   });
   await user.click(screen.getByRole('button', { name: m.usual_setup_save() }));
   expect(await screen.findByText(m.prepare_block_read_only())).toBeVisible();

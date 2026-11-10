@@ -1,6 +1,8 @@
 import { m } from '@church/i18n/messages';
+import type { Instant } from '@church/time';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { EventMovePreview } from './event-move-preview';
 import type {
   CycleCalendarTableRow,
   CycleCalendarWeek,
@@ -219,6 +221,7 @@ export interface RenderCalendarCellInput {
   cycleId: string;
   isExpanded: boolean;
   isReadOnly: boolean;
+  canPreviewMove?: boolean;
   isConfirmingDeleteEventTimeBlock: boolean;
   deleteEventTimeBlockPending: boolean;
   timeZone: string;
@@ -241,6 +244,7 @@ export function renderCalendarCell({
   cycleId,
   isExpanded,
   isReadOnly,
+  canPreviewMove = false,
   isConfirmingDeleteEventTimeBlock,
   deleteEventTimeBlockPending,
   timeZone,
@@ -261,6 +265,7 @@ export function renderCalendarCell({
       cycleId={cycleId}
       isExpanded={isExpanded}
       isReadOnly={isReadOnly}
+      canPreviewMove={canPreviewMove}
       timeZone={timeZone}
       onToggleExpand={onToggleExpand}
     />
@@ -268,6 +273,8 @@ export function renderCalendarCell({
     <EventTimeBlockRowCell
       column={column}
       visibleRow={item}
+      cycleId={cycleId}
+      canPreviewMove={canPreviewMove}
       isReadOnly={isReadOnly}
       isConfirmingDelete={isConfirmingDeleteEventTimeBlock}
       deletePending={deleteEventTimeBlockPending}
@@ -284,6 +291,7 @@ interface ParentRowCellProps {
   cycleId: string;
   isExpanded: boolean;
   isReadOnly: boolean;
+  canPreviewMove: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
 }
@@ -294,6 +302,7 @@ function ParentRowCell({
   cycleId,
   isExpanded,
   isReadOnly,
+  canPreviewMove,
   timeZone,
   onToggleExpand,
 }: ParentRowCellProps) {
@@ -347,6 +356,15 @@ function ParentRowCell({
           </Link>
         </span>
       ) : null}
+      {column.id === 'actions' && canPreviewMove ? (
+        <EventMovePreview
+          cycleId={cycleId}
+          eventId={row.eventId}
+          title={row.title}
+          start={row.start as Instant}
+          size="icon-xs"
+        />
+      ) : null}
     </>
   );
 }
@@ -354,6 +372,8 @@ function ParentRowCell({
 interface EventTimeBlockRowCellProps {
   column: DataTableColumn;
   visibleRow: Extract<CalendarVisibleRow, { kind: 'event-time-block' }>;
+  cycleId: string;
+  canPreviewMove: boolean;
   isReadOnly: boolean;
   isConfirmingDelete: boolean;
   deletePending: boolean;
@@ -367,6 +387,8 @@ interface EventTimeBlockRowCellProps {
 function EventTimeBlockRowCell({
   column,
   visibleRow,
+  cycleId,
+  canPreviewMove,
   isReadOnly,
   isConfirmingDelete,
   deletePending,
@@ -387,6 +409,16 @@ function EventTimeBlockRowCell({
             timeZone,
           })}
         </span>
+      ) : null}
+      {column.id === 'actions' && canPreviewMove ? (
+        <EventMovePreview
+          cycleId={cycleId}
+          eventId={visibleRow.parentId}
+          eventTimeBlockId={visibleRow.eventTimeBlockId}
+          title={visibleRow.label}
+          start={visibleRow.startTime as Instant}
+          size="icon-xs"
+        />
       ) : null}
       {column.id === 'actions' && !isReadOnly ? (
         <span className="flex items-center gap-1">

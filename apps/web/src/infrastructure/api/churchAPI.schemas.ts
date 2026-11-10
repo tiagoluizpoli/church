@@ -876,6 +876,344 @@ export type DeletePlanningEvent204 = typeof DeletePlanningEvent204[keyof typeof 
 export const DeletePlanningEvent204 = {
 } as const;
 
+export type UpdatePlanningEventDetailsBody = {
+  /** @minLength 1 */
+  title: string;
+  location?: string;
+};
+
+export type UpdatePlanningEventDetails200EventStatus = typeof UpdatePlanningEventDetails200EventStatus[keyof typeof UpdatePlanningEventDetails200EventStatus];
+
+
+export const UpdatePlanningEventDetails200EventStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type UpdatePlanningEventDetails200Event = {
+  id: string;
+  churchId: string;
+  cycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  status: UpdatePlanningEventDetails200EventStatus;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type UpdatePlanningEventDetails200EventTimeBlocksItemStatus = typeof UpdatePlanningEventDetails200EventTimeBlocksItemStatus[keyof typeof UpdatePlanningEventDetails200EventTimeBlocksItemStatus];
+
+
+export const UpdatePlanningEventDetails200EventTimeBlocksItemStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type UpdatePlanningEventDetails200EventTimeBlocksItemRequirementsItem = {
+  id: string;
+  eventTimeBlockId: string;
+  roleId: string;
+  sectorId: string;
+  peopleNeeded: number;
+  notes?: string;
+};
+
+export type UpdatePlanningEventDetails200EventTimeBlocksItem = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  status: UpdatePlanningEventDetails200EventTimeBlocksItemStatus;
+  requirements: UpdatePlanningEventDetails200EventTimeBlocksItemRequirementsItem[];
+};
+
+export type UpdatePlanningEventDetails200 = {
+  event: UpdatePlanningEventDetails200Event;
+  eventTimeBlocks: UpdatePlanningEventDetails200EventTimeBlocksItem[];
+};
+
+export type UpdatePlanningEventDetails422Error = typeof UpdatePlanningEventDetails422Error[keyof typeof UpdatePlanningEventDetails422Error];
+
+
+export const UpdatePlanningEventDetails422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type UpdatePlanningEventDetails422Reason = typeof UpdatePlanningEventDetails422Reason[keyof typeof UpdatePlanningEventDetails422Reason];
+
+
+export const UpdatePlanningEventDetails422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type UpdatePlanningEventDetails422 = {
+  error: UpdatePlanningEventDetails422Error;
+  message: string;
+  reason?: UpdatePlanningEventDetails422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type PreviewPlanningEventMoveBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+};
+
+export type PreviewPlanningEventMove200EventPrevious = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventMove200EventProposed = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventMove200Event = {
+  previous: PreviewPlanningEventMove200EventPrevious;
+  proposed: PreviewPlanningEventMove200EventProposed;
+};
+
+export type PreviewPlanningEventMove200EventTimeBlocksItemPrevious = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventMove200EventTimeBlocksItemProposed = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventMove200EventTimeBlocksItem = {
+  id: string;
+  label?: string;
+  moved: boolean;
+  previous: PreviewPlanningEventMove200EventTimeBlocksItemPrevious;
+  proposed: PreviewPlanningEventMove200EventTimeBlocksItemProposed;
+};
+
+export type PreviewPlanningEventMove200ClashesItemVolunteer = {
+  id: string;
+  name: string;
+};
+
+export type PreviewPlanningEventMove200ClashesItemMinistry = {
+  id: string;
+  name: string;
+};
+
+export type PreviewPlanningEventMove200ClashesItem = {
+  assignmentId: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  volunteer: PreviewPlanningEventMove200ClashesItemVolunteer;
+  ministry: PreviewPlanningEventMove200ClashesItemMinistry;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedEnd: string;
+};
+
+export type PreviewPlanningEventMove200 = {
+  event: PreviewPlanningEventMove200Event;
+  eventTimeBlocks: PreviewPlanningEventMove200EventTimeBlocksItem[];
+  clashes: PreviewPlanningEventMove200ClashesItem[];
+};
+
+export type PreviewPlanningEventMove422Error = typeof PreviewPlanningEventMove422Error[keyof typeof PreviewPlanningEventMove422Error];
+
+
+export const PreviewPlanningEventMove422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type PreviewPlanningEventMove422Reason = typeof PreviewPlanningEventMove422Reason[keyof typeof PreviewPlanningEventMove422Reason];
+
+
+export const PreviewPlanningEventMove422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type PreviewPlanningEventMove422 = {
+  error: PreviewPlanningEventMove422Error;
+  message: string;
+  reason?: PreviewPlanningEventMove422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type MovePlanningEventBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+};
+
+export type MovePlanningEvent200EventStatus = typeof MovePlanningEvent200EventStatus[keyof typeof MovePlanningEvent200EventStatus];
+
+
+export const MovePlanningEvent200EventStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type MovePlanningEvent200Event = {
+  id: string;
+  churchId: string;
+  cycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  status: MovePlanningEvent200EventStatus;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type MovePlanningEvent200EventTimeBlocksItemStatus = typeof MovePlanningEvent200EventTimeBlocksItemStatus[keyof typeof MovePlanningEvent200EventTimeBlocksItemStatus];
+
+
+export const MovePlanningEvent200EventTimeBlocksItemStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type MovePlanningEvent200EventTimeBlocksItemRequirementsItem = {
+  id: string;
+  eventTimeBlockId: string;
+  roleId: string;
+  sectorId: string;
+  peopleNeeded: number;
+  notes?: string;
+};
+
+export type MovePlanningEvent200EventTimeBlocksItem = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  status: MovePlanningEvent200EventTimeBlocksItemStatus;
+  requirements: MovePlanningEvent200EventTimeBlocksItemRequirementsItem[];
+};
+
+export type MovePlanningEvent200WithdrawnItemVolunteer = {
+  id: string;
+  name: string;
+};
+
+export type MovePlanningEvent200WithdrawnItemMinistry = {
+  id: string;
+  name: string;
+};
+
+export type MovePlanningEvent200WithdrawnItem = {
+  assignmentId: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  volunteer: MovePlanningEvent200WithdrawnItemVolunteer;
+  ministry: MovePlanningEvent200WithdrawnItemMinistry;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedEnd: string;
+};
+
+export type MovePlanningEvent200 = {
+  event: MovePlanningEvent200Event;
+  eventTimeBlocks: MovePlanningEvent200EventTimeBlocksItem[];
+  withdrawn: MovePlanningEvent200WithdrawnItem[];
+};
+
+export type MovePlanningEvent422Error = typeof MovePlanningEvent422Error[keyof typeof MovePlanningEvent422Error];
+
+
+export const MovePlanningEvent422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type MovePlanningEvent422Reason = typeof MovePlanningEvent422Reason[keyof typeof MovePlanningEvent422Reason];
+
+
+export const MovePlanningEvent422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type MovePlanningEvent422 = {
+  error: MovePlanningEvent422Error;
+  message: string;
+  reason?: MovePlanningEvent422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
 export type CreatePlanningEventTimeBlockBody = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime: string;
@@ -917,6 +1255,250 @@ export type CreatePlanningEventTimeBlock201 = {
 export type CreatePlanningEventTimeBlock404 = {
   error: string;
   message: string;
+};
+
+export type PreviewPlanningEventTimeBlockMoveBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove200EventPrevious = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove200EventProposed = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove200Event = {
+  previous: PreviewPlanningEventTimeBlockMove200EventPrevious;
+  proposed: PreviewPlanningEventTimeBlockMove200EventProposed;
+};
+
+export type PreviewPlanningEventTimeBlockMove200EventTimeBlocksItemPrevious = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove200EventTimeBlocksItemProposed = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove200EventTimeBlocksItem = {
+  id: string;
+  label?: string;
+  moved: boolean;
+  previous: PreviewPlanningEventTimeBlockMove200EventTimeBlocksItemPrevious;
+  proposed: PreviewPlanningEventTimeBlockMove200EventTimeBlocksItemProposed;
+};
+
+export type PreviewPlanningEventTimeBlockMove200ClashesItemVolunteer = {
+  id: string;
+  name: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove200ClashesItemMinistry = {
+  id: string;
+  name: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove200ClashesItem = {
+  assignmentId: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  volunteer: PreviewPlanningEventTimeBlockMove200ClashesItemVolunteer;
+  ministry: PreviewPlanningEventTimeBlockMove200ClashesItemMinistry;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedEnd: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove200 = {
+  event: PreviewPlanningEventTimeBlockMove200Event;
+  eventTimeBlocks: PreviewPlanningEventTimeBlockMove200EventTimeBlocksItem[];
+  clashes: PreviewPlanningEventTimeBlockMove200ClashesItem[];
+};
+
+export type PreviewPlanningEventTimeBlockMove404 = {
+  error: string;
+  message: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove422Error = typeof PreviewPlanningEventTimeBlockMove422Error[keyof typeof PreviewPlanningEventTimeBlockMove422Error];
+
+
+export const PreviewPlanningEventTimeBlockMove422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type PreviewPlanningEventTimeBlockMove422Reason = typeof PreviewPlanningEventTimeBlockMove422Reason[keyof typeof PreviewPlanningEventTimeBlockMove422Reason];
+
+
+export const PreviewPlanningEventTimeBlockMove422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type PreviewPlanningEventTimeBlockMove422 = {
+  error: PreviewPlanningEventTimeBlockMove422Error;
+  message: string;
+  reason?: PreviewPlanningEventTimeBlockMove422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type MovePlanningEventTimeBlockBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+};
+
+export type MovePlanningEventTimeBlock200EventStatus = typeof MovePlanningEventTimeBlock200EventStatus[keyof typeof MovePlanningEventTimeBlock200EventStatus];
+
+
+export const MovePlanningEventTimeBlock200EventStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type MovePlanningEventTimeBlock200Event = {
+  id: string;
+  churchId: string;
+  cycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  status: MovePlanningEventTimeBlock200EventStatus;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type MovePlanningEventTimeBlock200EventTimeBlocksItemStatus = typeof MovePlanningEventTimeBlock200EventTimeBlocksItemStatus[keyof typeof MovePlanningEventTimeBlock200EventTimeBlocksItemStatus];
+
+
+export const MovePlanningEventTimeBlock200EventTimeBlocksItemStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type MovePlanningEventTimeBlock200EventTimeBlocksItemRequirementsItem = {
+  id: string;
+  eventTimeBlockId: string;
+  roleId: string;
+  sectorId: string;
+  peopleNeeded: number;
+  notes?: string;
+};
+
+export type MovePlanningEventTimeBlock200EventTimeBlocksItem = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  status: MovePlanningEventTimeBlock200EventTimeBlocksItemStatus;
+  requirements: MovePlanningEventTimeBlock200EventTimeBlocksItemRequirementsItem[];
+};
+
+export type MovePlanningEventTimeBlock200WithdrawnItemVolunteer = {
+  id: string;
+  name: string;
+};
+
+export type MovePlanningEventTimeBlock200WithdrawnItemMinistry = {
+  id: string;
+  name: string;
+};
+
+export type MovePlanningEventTimeBlock200WithdrawnItem = {
+  assignmentId: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  volunteer: MovePlanningEventTimeBlock200WithdrawnItemVolunteer;
+  ministry: MovePlanningEventTimeBlock200WithdrawnItemMinistry;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedEnd: string;
+};
+
+export type MovePlanningEventTimeBlock200 = {
+  event: MovePlanningEventTimeBlock200Event;
+  eventTimeBlocks: MovePlanningEventTimeBlock200EventTimeBlocksItem[];
+  withdrawn: MovePlanningEventTimeBlock200WithdrawnItem[];
+};
+
+export type MovePlanningEventTimeBlock404 = {
+  error: string;
+  message: string;
+};
+
+export type MovePlanningEventTimeBlock422Error = typeof MovePlanningEventTimeBlock422Error[keyof typeof MovePlanningEventTimeBlock422Error];
+
+
+export const MovePlanningEventTimeBlock422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type MovePlanningEventTimeBlock422Reason = typeof MovePlanningEventTimeBlock422Reason[keyof typeof MovePlanningEventTimeBlock422Reason];
+
+
+export const MovePlanningEventTimeBlock422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type MovePlanningEventTimeBlock422 = {
+  error: MovePlanningEventTimeBlock422Error;
+  message: string;
+  reason?: MovePlanningEventTimeBlock422Reason;
+  field?: string;
+  issues?: unknown[];
 };
 
 export type UpdatePlanningEventTimeBlockBody = {
@@ -3651,6 +4233,64 @@ export type GetNotifications200ItemsItem = {
 } | {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id: string;
+  kind: 'event_changed';
+  data: {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  cycleId: string;
+  cycleName: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  eventId: string;
+  eventTitle: string;
+  adminName: string;
+  churchTimezone: string;
+  /** @minItems 1 */
+  ministries: ({
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id: string;
+  name: string;
+})[];
+  change: {
+  kind: 'add';
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+} | {
+  kind: 'move';
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  previousStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  previousEnd: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /** @minItems 1 */
+  impacts: ({
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  answersGiven: boolean;
+})[];
+};
+};
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  readAt?: string;
+} | {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id: string;
   kind: 'swap_request';
   data: {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
@@ -5163,6 +5803,64 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   id: string;
   name: string;
 })[];
+};
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  readAt?: string;
+} | {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id: string;
+  kind: 'event_changed';
+  data: {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  cycleId: string;
+  cycleName: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  eventId: string;
+  eventTitle: string;
+  adminName: string;
+  churchTimezone: string;
+  /** @minItems 1 */
+  ministries: ({
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id: string;
+  name: string;
+})[];
+  change: {
+  kind: 'add';
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+} | {
+  kind: 'move';
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  previousStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  previousEnd: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /** @minItems 1 */
+  impacts: ({
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  answersGiven: boolean;
+})[];
+};
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;

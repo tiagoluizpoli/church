@@ -253,7 +253,7 @@ describe('Assignments and Audit Schema', () => {
     expect(auditEntry.reason).toBe('Manually assigned');
   });
 
-  it('should cascade delete audit logs when assignment is deleted', async () => {
+  it('keeps audit logs when their assignment is deleted', async () => {
     // Create another user
     await testDb.insert(user).values({
       id: 'user_3',
@@ -297,6 +297,6 @@ describe('Assignments and Audit Schema', () => {
       .from(assignmentAudit)
       .where(eq(assignmentAudit.assignmentId, newAssignment.id));
 
-    expect(auditEntries.length).toBe(0);
+    expect(auditEntries).toMatchObject([{ action: 'created' }]);
   });
 });

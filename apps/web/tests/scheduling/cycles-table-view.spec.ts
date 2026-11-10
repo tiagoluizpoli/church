@@ -230,11 +230,12 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
       name: m.cycle_review_title({}, { locale: 'pt-BR' }),
     });
     await expect(calendarTable).toBeVisible();
+    // A Sent Cycle still takes a new Event through the complete editor.
     await expect(
       page.getByRole('link', {
         name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
       }),
-    ).not.toBeAttached();
+    ).toBeAttached();
     await expect(page.getByTestId('send-cycle-button')).not.toBeAttached();
   });
 });
@@ -508,11 +509,12 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
     await expect(page.getByTestId('selected-cycle-state')).toHaveText(
       m.cycle_state_sent({}, { locale: 'pt-BR' }),
     );
+    // A Sent Cycle still takes a new Event through the complete editor.
     await expect(
       page.getByRole('link', {
         name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
       }),
-    ).not.toBeAttached();
+    ).toBeAttached();
     await expect(
       mobileList.getByRole('link', { name: /^Editar dia/ }),
     ).toHaveCount(0);
@@ -565,8 +567,9 @@ test.describe('Cycles mobile add/edit/delete (US1, 021)', () => {
       })
       .click();
 
-    // The refusal reloads the authoritative Sent Cycle: no draft form remains.
-    await expect(page.getByTestId('event-edit-not-draft')).toBeVisible();
+    // The refusal reloads the authoritative Sent Cycle: no complete-graph form remains.
+    await expect(page.getByTestId('event-details-form')).toBeVisible();
+    await expect(page.getByTestId('event-editor-form')).toHaveCount(0);
     await page.goto(cycleUrl);
     await expect(page.getByText('Raced edit')).toHaveCount(0);
     // Every week the Sunday template generated shares this exact title, so

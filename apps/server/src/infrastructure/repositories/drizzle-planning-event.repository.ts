@@ -1,23 +1,55 @@
 import { NotFoundError } from '@church/core';
 import {
+  assignment,
+  availabilityCheck,
   event,
   eventTimeBlock,
   ministry,
+  ministryMembership,
   ministryParticipation,
+  participationEventTimeBlockInclusion,
   sector,
   shift,
   shiftRequirement,
+  user,
+  volunteer,
 } from '@church/db';
-import { nowAsDate } from '@church/time';
-import { and, asc, eq, isNull } from 'drizzle-orm';
-import type { EventTimeBlockId } from '../../domain/branded-ids';
+import { fromDate, nowAsDate } from '@church/time';
+import {
+  and,
+  asc,
+  eq,
+  exists,
+  gt,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  notInArray,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
+import {
+  AssignmentId,
+  EventTimeBlockId,
+  MinistryId,
+  ShiftId,
+  VolunteerId,
+} from '../../domain/branded-ids';
 import type {
   CreatePlanningEventInput,
   CreatePlanningEventTimeBlockInput,
   DeletePlanningEventInput,
   GetPlanningEventInput,
   ListCycleEventsInput,
+  ListMoveAffectedMinistriesInput,
+  ListMoveClashCandidatesInput,
+  ListMoveScopeAssignmentsInput,
+  LockEventParticipationsInput,
+  MoveAffectedMinistry,
+  MoveEventTimeBlocksInput,
   PlanningEventRepository,
+  SeededMinistry,
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
 } from '../../domain/contracts/infrastructure/planning-event.repository';
@@ -25,11 +57,18 @@ import type {
   Event,
   EventWithEventTimeBlocks,
 } from '../../domain/entities/event';
+import { deriveScheduleParticipationState } from '../../domain/entities/ministry-participation';
+import type {
+  MoveClashCandidate,
+  MoveScopeAssignment,
+} from '../../domain/services/event-move';
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
+
+const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
 
 interface DrizzlePlanningEventRepositoryInput {
   db: AnyDrizzleDb;
@@ -240,10 +279,10 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
 
   async seedParticipations(
     input: SeedPlanningParticipationsInput,
-  ): Promise<void> {
+  ): Promise<SeededMinistry[]> {
     const db = getClient({ db: this.db, tx: input.tx });
     const ministries = await db
-      .select({ id: ministry.id })
+      .select({ id: ministry.id, name: ministry.name })
       .from(ministry)
       .where(
         and(
@@ -255,15 +294,267 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       .for('share');
 
     if (ministries.length === 0) {
-      return;
+      return [];
     }
+
+    // The Schedule stage counts serving, non-cancelled Events only, as the
+    // Schedules list derives it.
+    const serving = await db
+      .selectDistinct({
+        ministryId: ministryParticipation.ministryId,
+        state: ministryParticipation.state,
+      })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(
+        participationEventTimeBlockInclusion,
+        eq(
+          participationEventTimeBlockInclusion.participationId,
+          ministryParticipation.id,
+        ),
+      )
+      .where(
+        and(
+          withChurchIsolation({
+            table: ministryParticipation,
+            churchId: input.churchId,
+          }),
+          eq(event.cycleId, input.cycleId),
+          ne(event.status, 'cancelled'),
+        ),
+      );
 
     await db.insert(ministryParticipation).values(
       ministries.map((ministryRow) => ({
         churchId: input.churchId,
         ministryId: ministryRow.id,
         eventId: input.eventId,
+        state: deriveScheduleParticipationState({
+          servingStates: serving
+            .filter((row) => row.ministryId === ministryRow.id)
+            .map((row) => row.state),
+        }),
       })),
     );
+    return ministries.map((row) => ({
+      id: row.id as MinistryId,
+      name: row.name,
+    }));
+  }
+
+  async listMoveScopeAssignments({
+    churchId,
+    eventId,
+    eventTimeBlockId,
+    tx,
+  }: ListMoveScopeAssignmentsInput): Promise<MoveScopeAssignment[]> {
+    const conditions: SQL[] = [
+      withChurchIsolation({ table: assignment, churchId }),
+      eq(eventTimeBlock.eventId, eventId),
+      inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+    ];
+    if (eventTimeBlockId) {
+      conditions.push(eq(eventTimeBlock.id, eventTimeBlockId));
+    }
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        assignmentId: assignment.id,
+        eventTimeBlockId: shift.eventTimeBlockId,
+        shiftId: shift.id,
+        volunteerId: assignment.volunteerId,
+        volunteerName: user.name,
+        ministryId: ministry.id,
+        ministryName: ministry.name,
+        shiftStart: shift.startTime,
+        shiftEnd: shift.endTime,
+      })
+      .from(assignment)
+      .innerJoin(shift, eq(shift.id, assignment.shiftId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(volunteer, eq(volunteer.id, assignment.volunteerId))
+      .innerJoin(user, eq(user.id, volunteer.userId))
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, assignment.participationId),
+      )
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
+      .where(and(...conditions))
+      .orderBy(asc(shift.startTime), asc(assignment.id));
+
+    return rows.map((row) => ({
+      assignmentId: AssignmentId.from(row.assignmentId),
+      eventTimeBlockId: EventTimeBlockId.from(row.eventTimeBlockId),
+      shiftId: ShiftId.from(row.shiftId),
+      volunteerId: VolunteerId.from(row.volunteerId),
+      volunteerName: row.volunteerName,
+      ministryId: MinistryId.from(row.ministryId),
+      ministryName: row.ministryName,
+      shiftStart: fromDate({ date: row.shiftStart }),
+      shiftEnd: fromDate({ date: row.shiftEnd }),
+    }));
+  }
+
+  async listMoveClashCandidates({
+    churchId,
+    volunteerIds,
+    excludedEventTimeBlockIds,
+    startTime,
+    endTime,
+    tx,
+  }: ListMoveClashCandidatesInput): Promise<MoveClashCandidate[]> {
+    if (volunteerIds.length === 0) return [];
+    const conditions: SQL[] = [
+      withChurchIsolation({ table: assignment, churchId }),
+      inArray(assignment.volunteerId, volunteerIds),
+      inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+      // Strict overlap: back-to-back Shifts are compatible.
+      lt(shift.startTime, endTime),
+      gt(shift.endTime, startTime),
+    ];
+    if (excludedEventTimeBlockIds.length > 0) {
+      conditions.push(
+        notInArray(shift.eventTimeBlockId, excludedEventTimeBlockIds),
+      );
+    }
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        volunteerId: assignment.volunteerId,
+        shiftStart: shift.startTime,
+        shiftEnd: shift.endTime,
+      })
+      .from(assignment)
+      .innerJoin(shift, eq(shift.id, assignment.shiftId))
+      .where(and(...conditions));
+
+    return rows.map((row) => ({
+      volunteerId: VolunteerId.from(row.volunteerId),
+      shiftStart: fromDate({ date: row.shiftStart }),
+      shiftEnd: fromDate({ date: row.shiftEnd }),
+    }));
+  }
+
+  async lockParticipations({
+    churchId,
+    eventId,
+    tx,
+  }: LockEventParticipationsInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .select({ id: ministryParticipation.id })
+      .from(ministryParticipation)
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          eq(ministryParticipation.eventId, eventId),
+        ),
+      )
+      .orderBy(asc(ministryParticipation.id))
+      .for('no key update');
+  }
+
+  async listMoveAffectedMinistries({
+    churchId,
+    cycleId,
+    eventId,
+    eventTimeBlockIds,
+    tx,
+  }: ListMoveAffectedMinistriesInput): Promise<MoveAffectedMinistry[]> {
+    if (eventTimeBlockIds.length === 0) return [];
+    const client = getClient({ db: this.db, tx });
+    const optedIn = client
+      .select({ id: participationEventTimeBlockInclusion.id })
+      .from(participationEventTimeBlockInclusion)
+      .where(
+        and(
+          eq(
+            participationEventTimeBlockInclusion.participationId,
+            ministryParticipation.id,
+          ),
+          inArray(
+            participationEventTimeBlockInclusion.eventTimeBlockId,
+            eventTimeBlockIds,
+          ),
+        ),
+      );
+    const staffing = client
+      .select({ id: shift.id })
+      .from(shift)
+      .where(
+        and(
+          eq(shift.participationId, ministryParticipation.id),
+          inArray(shift.eventTimeBlockId, eventTimeBlockIds),
+        ),
+      );
+    const answered = client
+      .select({ id: availabilityCheck.id })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .where(
+        and(
+          eq(availabilityCheck.cycleId, cycleId),
+          eq(availabilityCheck.state, 'confirmed'),
+          eq(ministryMembership.ministryId, ministry.id),
+        ),
+      );
+    const rows = await client
+      .select({
+        id: ministry.id,
+        name: ministry.name,
+        answersGiven: sql<boolean>`${exists(answered)}`,
+      })
+      .from(ministryParticipation)
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          eq(ministryParticipation.eventId, eventId),
+          isNull(ministry.deletedAt),
+          sql`(${exists(optedIn)} or ${exists(staffing)})`,
+        ),
+      )
+      .orderBy(asc(ministry.name), asc(ministry.id));
+
+    return rows.map((row) => ({
+      id: MinistryId.from(row.id),
+      name: row.name,
+      answersGiven: row.answersGiven,
+    }));
+  }
+
+  async moveEventTimeBlocks({
+    churchId,
+    eventTimeBlockIds,
+    deltaMs,
+    tx,
+  }: MoveEventTimeBlocksInput): Promise<void> {
+    if (eventTimeBlockIds.length === 0) return;
+    const client = getClient({ db: this.db, tx });
+    const delta = sql`(${deltaMs} * interval '1 millisecond')`;
+    await client
+      .update(eventTimeBlock)
+      .set({
+        startTime: sql`${eventTimeBlock.startTime} + ${delta}`,
+        endTime: sql`${eventTimeBlock.endTime} + ${delta}`,
+      })
+      .where(
+        and(
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
+          inArray(eventTimeBlock.id, eventTimeBlockIds),
+        ),
+      );
+    await client
+      .update(shift)
+      .set({
+        startTime: sql`${shift.startTime} + ${delta}`,
+        endTime: sql`${shift.endTime} + ${delta}`,
+      })
+      .where(
+        and(
+          withChurchIsolation({ table: shift, churchId }),
+          inArray(shift.eventTimeBlockId, eventTimeBlockIds),
+        ),
+      );
   }
 }

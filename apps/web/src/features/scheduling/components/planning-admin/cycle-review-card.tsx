@@ -27,6 +27,10 @@ import { RetryAlert } from './retry-alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
+import type {
+  GetCycle200CycleState,
+  GetCycle200EventsItemEventStatus,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
 interface CycleReviewCardProps {
@@ -35,6 +39,19 @@ interface CycleReviewCardProps {
   cycleId?: string;
   /** A just-saved Event to expand and scroll into view once loaded. */
   revealEventId?: string;
+}
+
+interface CanPreviewEventMoveInput {
+  cycleState: GetCycle200CycleState;
+  eventStatus: GetCycle200EventsItemEventStatus;
+}
+
+/** Only a scheduled Event of a Sent Cycle can be moved. */
+function canPreviewEventMove({
+  cycleState,
+  eventStatus,
+}: CanPreviewEventMoveInput): boolean {
+  return cycleState === 'sent' && eventStatus === 'scheduled';
 }
 
 type DialogState =
@@ -281,6 +298,12 @@ export function CycleReviewCard({
                         calendarRowEventId({ visibleRow: item }),
                       ),
                       isReadOnly,
+                      canPreviewMove:
+                        item.kind === 'parent' &&
+                        canPreviewEventMove({
+                          cycleState: reviewedCycle.state,
+                          eventStatus: item.row.status,
+                        }),
                       isConfirmingDeleteEventTimeBlock:
                         item.kind === 'event-time-block' &&
                         isConfirmingDeleteEventTimeBlock({
@@ -322,6 +345,10 @@ export function CycleReviewCard({
                         row={item.row}
                         cycleId={reviewedCycle.id}
                         isReadOnly={isReadOnly}
+                        canPreviewMove={canPreviewEventMove({
+                          cycleState: reviewedCycle.state,
+                          eventStatus: item.row.status,
+                        })}
                         deleteEventTimeBlockPending={
                           deleteEventTimeBlockPending
                         }

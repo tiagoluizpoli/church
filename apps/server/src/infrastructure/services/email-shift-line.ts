@@ -47,3 +47,26 @@ export function formatShiftLine({
     sectorName,
   ].join(' · ');
 }
+
+export interface EventWhenInput {
+  start: Instant;
+  end: Instant;
+  churchTimezone: string;
+  locale: EmailLocale;
+}
+
+/** `dom 12 out · 10:30–12:00`: an Event's day and span in the Church Timezone. */
+export function formatEventWhen({
+  start,
+  end,
+  churchTimezone: timeZone,
+  locale,
+}: EventWhenInput): string {
+  const startDay = today({ instant: start, timeZone });
+  const startTime = toTimeOfDay({ instant: start, timeZone });
+  const endTime = toTimeOfDay({ instant: end, timeZone });
+  const day = formatDayLabel({ day: startDay, locale });
+  const from = formatTimeOfDay({ time: startTime });
+  const to = formatTimeOfDay({ time: endTime });
+  return `${day} · ${from}–${to}`;
+}

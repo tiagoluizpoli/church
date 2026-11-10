@@ -357,6 +357,18 @@ export class DbOutboxDrainer implements IOutboxDrainer {
             path: `/schedules/${request.data.ministryId}/${request.data.cycleId}/assign?swapRequest=${request.data.swapRequestId}`,
           }),
         };
+      case 'event_changed': {
+        const { cycleId, ministries } = request.data;
+        const [only, ...others] = ministries;
+        const path =
+          only && others.length === 0
+            ? `/schedules/${only.id}/${cycleId}`
+            : `/schedules?cycleId=${cycleId}&ministryIds=${ministries.map(({ id }) => id).join(',')}`;
+        return {
+          ...request.data,
+          actionUrl: webLink({ baseUrl: this.webBaseUrl, path }),
+        };
+      }
       case 'swap_request_answered':
         return {
           ...request.data,

@@ -166,7 +166,6 @@ interface GetOrCreateParticipationInput extends GetCycleParticipationInput {
 }
 
 interface EnsurePreparationEditableInput {
-  participation: MinistryParticipation;
   cycle: Cycle;
   timeZone: string;
 }
@@ -784,7 +783,7 @@ export class DbParticipationManager implements IParticipationManager {
         cycleId: event.cycleId,
         tx,
       });
-      ensurePreparationEditable({ participation, cycle, timeZone });
+      ensurePreparationEditable({ cycle, timeZone });
 
       const target = { churchId, participation, eventTimeBlock, tx };
       // Locked so a racing answer or Assignment is counted below, never cascaded away.
@@ -2325,16 +2324,16 @@ function sortEligibleVolunteers({
   });
 }
 
-/** Preparing through assigning accept edits; published and elapsed or unsent Cycles refuse. */
+/**
+ * Every stage accepts edits, so a published Schedule can prepare an Event added
+ * to its Sent Cycle; answered Shifts stay guarded and Send updates tells the rest.
+ * Elapsed or unsent Cycles refuse.
+ */
 function ensurePreparationEditable({
-  participation,
   cycle,
   timeZone,
 }: EnsurePreparationEditableInput): void {
   const to = 'save_preparation';
-  if (participation.state === 'published') {
-    throw new IllegalStateTransitionError({ from: participation.state, to });
-  }
   const currentInstant = now();
   const churchToday = today({ instant: currentInstant, timeZone });
   // endDate is the Cycle's last day: edits stay open through it.

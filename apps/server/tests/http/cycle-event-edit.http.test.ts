@@ -1,4 +1,4 @@
-import { event, eventTimeBlock } from '@church/db';
+import { event, eventTimeBlock, outboxMessage } from '@church/db';
 import {
   parseCalendarDay,
   parseInstant,
@@ -21,6 +21,7 @@ import {
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
+import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
@@ -32,6 +33,8 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -41,6 +44,7 @@ import { DrizzleMinistryParticipationRepository } from '@/infrastructure/reposit
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -116,6 +120,16 @@ beforeAll(async () => {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      assignmentRepository: new DrizzleAssignmentRepository({ db }),
+      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
+      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      recipients: new ChurchRecipients({
+        churchRepository,
+        volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      }),
+      notifications: new ChurchNotifications({
+        outboxRepository: new DrizzleOutboxRepository({ db }),
+      }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
@@ -794,5 +808,117 @@ describe('Edit Event access', () => {
     expect(wrongCycle.statusCode).toBe(404);
     expect(otherChurch.statusCode).toBe(404);
     expect(await storedGraph()).toEqual(before);
+  });
+});
+
+describe('Edit Sent Event details', () => {
+  function patchDetails({ cycleId, eventId, payload }: PatchEventInput) {
+    return app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/details`,
+      payload: payload as never,
+    });
+  }
+
+  async function seedEventIn(state: 'draft' | 'sent' | 'past') {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state });
+    const fixture = await seedGeneratedEvent({
+      churchId: seed.churchAId,
+      cycleId: target.id,
+    });
+    await db
+      .update(event)
+      .set({ status: 'scheduled' })
+      .where(eq(event.id, fixture.eventId));
+    return { cycleId: target.id, fixture };
+  }
+
+  it('changes only title and location, silently', async () => {
+    const { cycleId, fixture } = await seedEventIn('sent');
+    const before = await storedGraph();
+
+    const response = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: { title: ' Renamed ', location: 'Annex' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const after = await storedGraph();
+    expect(after.blocks).toEqual(before.blocks);
+    expect(after.events[0]).toMatchObject({
+      title: 'Renamed',
+      location: 'Annex',
+      start: before.events[0]?.start,
+      end: before.events[0]?.end,
+      status: 'scheduled',
+      description: 'Stored description',
+    });
+    expect(await db.select().from(outboxMessage)).toEqual([]);
+  });
+
+  it('clears the location when omitted, even once the Event has started', async () => {
+    const { cycleId, fixture } = await seedEventIn('sent');
+    setTestClock({ instant: parseInstant({ value: at('10:30') }) });
+
+    const response = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: { title: 'Sunday' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().event.location).toBeUndefined();
+  });
+
+  it('rejects a blank title', async () => {
+    const { cycleId, fixture } = await seedEventIn('sent');
+
+    const response = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: { title: '  ' },
+    });
+
+    expect(response.statusCode).toBe(422);
+  });
+
+  it.each([
+    'past',
+    'draft',
+  ] as const)('refuses a %s Cycle with ILLEGAL_STATE_TRANSITION', async (state) => {
+    const { cycleId, fixture } = await seedEventIn(state);
+    const before = await storedGraph();
+
+    const response = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: { title: 'Renamed' },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    expect(await storedGraph()).toEqual(before);
+  });
+
+  it('404s an Event of another Church', async () => {
+    const seed = await signIn();
+    const foreignCycle = await seedCycle({
+      churchId: seed.churchBId,
+      state: 'sent',
+    });
+    const foreign = await seedGeneratedEvent({
+      churchId: seed.churchBId,
+      cycleId: foreignCycle.id,
+    });
+
+    const response = await patchDetails({
+      cycleId: foreignCycle.id,
+      eventId: foreign.eventId,
+      payload: { title: 'Renamed' },
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 });

@@ -100,8 +100,9 @@ function PrepareWorkspaceRoute() {
     filter: timeWindowFilter,
     timeZone: churchTimezone,
   });
-  const readOnly =
-    schedule?.cycle.state === 'past' || schedule?.stage === 'published';
+  const pastCycle = schedule?.cycle.state === 'past';
+  // A published Schedule asks no more, yet still prepares an added Event.
+  const readOnly = pastCycle || schedule?.stage === 'published';
   const ready = !notFound && !forbidden && !failed && !loading && schedule;
   const rowsReady = Boolean(ready);
   useEffect(() => {
@@ -232,7 +233,7 @@ function PrepareWorkspaceRoute() {
               readOnly={readOnly}
             />
           ) : null}
-          {readOnly ? (
+          {pastCycle ? (
             <Alert>
               <AlertDescription>{m.prepare_block_read_only()}</AlertDescription>
             </Alert>

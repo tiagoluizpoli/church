@@ -33,6 +33,8 @@ import type {
   UpdateEventTemplateBody,
   UpdatePlanningEvent200,
   UpdatePlanningEventBody,
+  UpdatePlanningEventDetails200,
+  UpdatePlanningEventDetailsBody,
   UpdatePlanningEventTimeBlock200,
   UpdatePlanningEventTimeBlockBody
 } from './churchAPI.schemas';
@@ -283,6 +285,22 @@ const deletePlanningEvent = (
       );
     }
   /**
+ * Change only the title and location of an Event in a Sent Cycle; omitting the location clears it. EventTimeBlocks, Shifts and Assignments are untouched and no Notification is created. Past Cycles are read-only.
+ * @summary Edit the details of a Sent Event
+ */
+const updatePlanningEventDetails = (
+    cycleId: string,
+    eventId: string,
+    updatePlanningEventDetailsBody: UpdatePlanningEventDetailsBody,
+ ) => {
+      return apiClient<UpdatePlanningEventDetails200>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/details`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updatePlanningEventDetailsBody
+    },
+      );
+    }
+  /**
  * Cancel an Event within its Cycle.
  * @summary Cancel an Event
  */
@@ -357,7 +375,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
@@ -376,6 +394,7 @@ export type ApplyPlanningTemplatesResult = NonNullable<Awaited<ReturnType<Return
 export type CreatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEvent']>>>
 export type UpdatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEvent']>>>
 export type DeletePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deletePlanningEvent']>>>
+export type UpdatePlanningEventDetailsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventDetails']>>>
 export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['cancelPlanningEvent']>>>
 export type CreatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEventTimeBlock']>>>
 export type UpdatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventTimeBlock']>>>

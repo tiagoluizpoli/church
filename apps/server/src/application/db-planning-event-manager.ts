@@ -22,6 +22,7 @@ import type {
   GeneratePlanningTemplatesInput,
   IPlanningEventManager,
   PlanningEventGraph,
+  UpdatePlanningEventDetailsManagerInput,
   UpdatePlanningEventManagerInput,
   UpdatePlanningEventTimeBlockManagerInput,
 } from '../domain/contracts/application/planning-event-manager';
@@ -77,6 +78,7 @@ interface GetCycleEventInput {
   input:
     | EnsureWritableEventInput['input']
     | UpdatePlanningEventManagerInput
+    | UpdatePlanningEventDetailsManagerInput
     | CancelPlanningEventManagerInput
     | DeletePlanningEventManagerInput;
   tx: TransactionContext;
@@ -451,6 +453,44 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         churchId,
         eventId,
         blockIds,
+        tx,
+      });
+      return { event, eventTimeBlocks };
+    });
+  }
+
+  async updateEventDetails(
+    input: UpdatePlanningEventDetailsManagerInput,
+  ): Promise<PlanningEventGraph> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+    const { churchId, eventId } = input;
+
+    return this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({ churchId, tx });
+
+      const cycle = await this.ensureCycleWritable({
+        cycle: await this.cycleRepository.getById({ ...input, tx }),
+        churchTimeZone: church.timezone,
+      });
+      await this.getCycleEvent({ input, tx });
+      // Draft Cycles keep the complete-graph edit; this is the Sent alternative.
+      if (cycle.state !== 'sent') {
+        throw new IllegalStateTransitionError({
+          from: cycle.state,
+          to: 'update-details',
+        });
+      }
+
+      const event = await this.eventRepository.updateEvent({
+        churchId,
+        eventId,
+        title: input.title,
+        location: input.location ?? null,
+        tx,
+      });
+      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+        churchId,
+        eventId,
         tx,
       });
       return { event, eventTimeBlocks };

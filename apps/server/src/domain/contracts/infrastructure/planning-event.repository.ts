@@ -105,6 +105,36 @@ export interface ListMoveClashCandidatesInput {
   tx?: TransactionContext;
 }
 
+export interface LockEventParticipationsInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  tx: TransactionContext;
+}
+
+export interface ListMoveAffectedMinistriesInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  eventId: EventId;
+  /** The moved blocks; a Ministry is affected when it opted into or staffs one. */
+  eventTimeBlockIds: EventTimeBlockId[];
+  tx: TransactionContext;
+}
+
+export interface MoveAffectedMinistry {
+  id: MinistryId;
+  name: string;
+  /** A confirmed availability answer of the Ministry exists in the Cycle. */
+  answersGiven: boolean;
+}
+
+export interface MoveEventTimeBlocksInput {
+  churchId: ChurchId;
+  eventTimeBlockIds: EventTimeBlockId[];
+  /** Added to each block's and each of its Shifts' start and end. */
+  deltaMs: number;
+  tx: TransactionContext;
+}
+
 export interface PlanningEventRepository {
   createEvent(input: CreatePlanningEventInput): Promise<Event>;
   updateEvent(input: UpdatePlanningEventInput): Promise<Event>;
@@ -138,4 +168,16 @@ export interface PlanningEventRepository {
   listMoveClashCandidates(
     input: ListMoveClashCandidatesInput,
   ): Promise<MoveClashCandidate[]>;
+  /**
+   * Row-locks (`FOR NO KEY UPDATE`, ascending id) the Event's
+   * MinistryParticipations, the lock Assignment removal and preparation
+   * saves take; needs `tx`.
+   */
+  lockParticipations(input: LockEventParticipationsInput): Promise<void>;
+  /** Active Ministries opted into (or staffing) the moved blocks, by name. */
+  listMoveAffectedMinistries(
+    input: ListMoveAffectedMinistriesInput,
+  ): Promise<MoveAffectedMinistry[]>;
+  /** Shifts the blocks and all of their Shifts by one delta. */
+  moveEventTimeBlocks(input: MoveEventTimeBlocksInput): Promise<void>;
 }

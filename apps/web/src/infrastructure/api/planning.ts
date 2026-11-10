@@ -24,6 +24,8 @@ import type {
   ListCycles200,
   ListCyclesParams,
   ListEventTemplates200,
+  MovePlanningEvent200,
+  MovePlanningEventBody,
   PreviewPlanningEventMove200,
   PreviewPlanningEventMoveBody,
   SendCycle204,
@@ -332,6 +334,22 @@ const previewPlanningEventMove = (
       );
     }
   /**
+ * Move a scheduled Event of a Sent Cycle to a new start. Recalculates the clashes under the Church lock shared with Assignment creation (never trusting a preview), applies one delta to the Event, its active EventTimeBlocks and their Shifts, and withdraws only the active Assignments that would strictly overlap another active Assignment of the Church: each is audited, its open SwapRequest closes as covered, and it is deleted. Kept Assignments keep their identity, UnavailableShifts and open SwapRequests; last-told snapshots are untouched, so Send updates tells Volunteers. Returns the moved graph and the actual withdrawals. Refuses as preview does.
+ * @summary Move an Event
+ */
+const movePlanningEvent = (
+    cycleId: string,
+    eventId: string,
+    movePlanningEventBody: MovePlanningEventBody,
+ ) => {
+      return apiClient<MovePlanningEvent200>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/move`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: movePlanningEventBody
+    },
+      );
+    }
+  /**
  * Create a church-level EventTimeBlock within an Event.
  * @summary Create a EventTimeBlock on an Event
  */
@@ -393,7 +411,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,cancelPlanningEvent,previewPlanningEventMove,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
@@ -415,6 +433,7 @@ export type DeletePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnTyp
 export type UpdatePlanningEventDetailsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventDetails']>>>
 export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['cancelPlanningEvent']>>>
 export type PreviewPlanningEventMoveResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['previewPlanningEventMove']>>>
+export type MovePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['movePlanningEvent']>>>
 export type CreatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEventTimeBlock']>>>
 export type UpdatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventTimeBlock']>>>
 export type DeletePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deletePlanningEventTimeBlock']>>>

@@ -3,7 +3,9 @@ import { z } from 'zod';
 import type {
   PlanningEventGraph,
   PlanningMovePreview,
+  PlanningMoveResult,
 } from '../../domain/contracts/application/planning-event-manager';
+import type { MoveClash } from '../../domain/services/event-move';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,
@@ -86,6 +88,31 @@ const instantBoundsResponseSchema = z.object({
   end: instantSchema,
 });
 
+/** A moved active Assignment that overlaps another active Assignment of its Volunteer. */
+const moveClashResponseSchema = z.object({
+  assignmentId: z.string(),
+  eventTimeBlockId: z.string(),
+  shiftId: z.string(),
+  volunteer: z.object({ id: z.string(), name: z.string() }),
+  ministry: z.object({ id: z.string(), name: z.string() }),
+  proposedStart: instantSchema,
+  proposedEnd: instantSchema,
+});
+
+function toMoveClashResponse({
+  volunteerId,
+  volunteerName,
+  ministryId,
+  ministryName,
+  ...clash
+}: MoveClash) {
+  return {
+    ...clash,
+    volunteer: { id: volunteerId, name: volunteerName },
+    ministry: { id: ministryId, name: ministryName },
+  };
+}
+
 /** Proposed bounds and typed clash rows; nothing was written. */
 export const eventMovePreviewResponseSchema = z.object({
   event: z.object({
@@ -101,17 +128,7 @@ export const eventMovePreviewResponseSchema = z.object({
       proposed: instantBoundsResponseSchema,
     }),
   ),
-  clashes: z.array(
-    z.object({
-      assignmentId: z.string(),
-      eventTimeBlockId: z.string(),
-      shiftId: z.string(),
-      volunteer: z.object({ id: z.string(), name: z.string() }),
-      ministry: z.object({ id: z.string(), name: z.string() }),
-      proposedStart: instantSchema,
-      proposedEnd: instantSchema,
-    }),
-  ),
+  clashes: z.array(moveClashResponseSchema),
 });
 
 export const eventMovePreviewMapper = {
@@ -130,19 +147,21 @@ export const eventMovePreviewMapper = {
           proposed,
         }),
       ),
-      clashes: clashes.map(
-        ({
-          volunteerId,
-          volunteerName,
-          ministryId,
-          ministryName,
-          ...clash
-        }) => ({
-          ...clash,
-          volunteer: { id: volunteerId, name: volunteerName },
-          ministry: { id: ministryId, name: ministryName },
-        }),
-      ),
+      clashes: clashes.map(toMoveClashResponse),
+    };
+  },
+};
+
+/** The moved Event graph and the Assignments confirm actually withdrew. */
+export const eventMoveResponseSchema = eventGraphResponseSchema.extend({
+  withdrawn: z.array(moveClashResponseSchema),
+});
+
+export const eventMoveMapper = {
+  toResponse({ graph, withdrawn }: PlanningMoveResult) {
+    return {
+      ...eventGraphMapper.toResponse(graph),
+      withdrawn: withdrawn.map(toMoveClashResponse),
     };
   },
 };

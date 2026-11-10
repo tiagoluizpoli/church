@@ -1088,6 +1088,132 @@ export type PreviewPlanningEventMove422 = {
   issues?: unknown[];
 };
 
+export type MovePlanningEventBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+};
+
+export type MovePlanningEvent200EventStatus = typeof MovePlanningEvent200EventStatus[keyof typeof MovePlanningEvent200EventStatus];
+
+
+export const MovePlanningEvent200EventStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type MovePlanningEvent200Event = {
+  id: string;
+  churchId: string;
+  cycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  status: MovePlanningEvent200EventStatus;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type MovePlanningEvent200EventTimeBlocksItemStatus = typeof MovePlanningEvent200EventTimeBlocksItemStatus[keyof typeof MovePlanningEvent200EventTimeBlocksItemStatus];
+
+
+export const MovePlanningEvent200EventTimeBlocksItemStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type MovePlanningEvent200EventTimeBlocksItemRequirementsItem = {
+  id: string;
+  eventTimeBlockId: string;
+  roleId: string;
+  sectorId: string;
+  peopleNeeded: number;
+  notes?: string;
+};
+
+export type MovePlanningEvent200EventTimeBlocksItem = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  status: MovePlanningEvent200EventTimeBlocksItemStatus;
+  requirements: MovePlanningEvent200EventTimeBlocksItemRequirementsItem[];
+};
+
+export type MovePlanningEvent200WithdrawnItemVolunteer = {
+  id: string;
+  name: string;
+};
+
+export type MovePlanningEvent200WithdrawnItemMinistry = {
+  id: string;
+  name: string;
+};
+
+export type MovePlanningEvent200WithdrawnItem = {
+  assignmentId: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  volunteer: MovePlanningEvent200WithdrawnItemVolunteer;
+  ministry: MovePlanningEvent200WithdrawnItemMinistry;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedEnd: string;
+};
+
+export type MovePlanningEvent200 = {
+  event: MovePlanningEvent200Event;
+  eventTimeBlocks: MovePlanningEvent200EventTimeBlocksItem[];
+  withdrawn: MovePlanningEvent200WithdrawnItem[];
+};
+
+export type MovePlanningEvent422Error = typeof MovePlanningEvent422Error[keyof typeof MovePlanningEvent422Error];
+
+
+export const MovePlanningEvent422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type MovePlanningEvent422Reason = typeof MovePlanningEvent422Reason[keyof typeof MovePlanningEvent422Reason];
+
+
+export const MovePlanningEvent422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+} as const;
+
+export type MovePlanningEvent422 = {
+  error: MovePlanningEvent422Error;
+  message: string;
+  reason?: MovePlanningEvent422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
 export type CreatePlanningEventTimeBlockBody = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime: string;
@@ -3885,6 +4011,33 @@ export type GetNotifications200ItemsItem = {
   start: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   end: string;
+} | {
+  kind: 'move';
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  previousStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  previousEnd: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /** @minItems 1 */
+  impacts: ({
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  answersGiven: boolean;
+})[];
 };
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -5436,6 +5589,33 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   start: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   end: string;
+} | {
+  kind: 'move';
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  previousStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  previousEnd: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /** @minItems 1 */
+  impacts: ({
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  answersGiven: boolean;
+})[];
 };
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */

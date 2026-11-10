@@ -4,8 +4,10 @@ import {
   event,
   eventTimeBlock,
   outboxMessage,
+  scheduleLastTold,
   shift,
   swapRequest,
+  unavailableShift,
 } from '@church/db';
 import { m } from '@church/i18n/messages';
 import {
@@ -16,6 +18,7 @@ import {
   setTestClock,
   toInstant,
 } from '@church/time';
+import { eq, inArray } from 'drizzle-orm';
 import {
   afterAll,
   afterEach,
@@ -41,6 +44,8 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -50,13 +55,15 @@ import { DrizzleMinistryParticipationRepository } from '@/infrastructure/reposit
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
-import { buildRole } from '@/seeds/builders/ministry';
+import { buildMinistry, buildRole } from '@/seeds/builders/ministry';
 import {
   buildAssignedShift,
   buildCycle,
@@ -64,7 +71,14 @@ import {
   buildEventTimeBlock,
   buildMinistryParticipation,
 } from '@/seeds/builders/scheduling';
-import { buildVolunteer } from '@/seeds/builders/volunteer';
+import {
+  buildConfirmedAvailabilityCheck,
+  buildUnavailableShift,
+} from '@/seeds/builders/unavailable-shift';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '@/seeds/builders/volunteer';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
@@ -129,6 +143,9 @@ beforeAll(async () => {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      assignmentRepository: new DrizzleAssignmentRepository({ db }),
+      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
+      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
       recipients: new ChurchRecipients({
         churchRepository,
         volunteerRepository: new DrizzleVolunteerRepository({ db }),
@@ -267,6 +284,15 @@ function preview({ cycleId, eventId, start, locale }: PreviewInput) {
   return app.inject({
     method: 'POST',
     url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/move/preview`,
+    payload: { start } as never,
+    cookies: locale ? { [testLocale.localeCookieName]: locale } : {},
+  });
+}
+
+function confirm({ cycleId, eventId, start, locale }: PreviewInput) {
+  return app.inject({
+    method: 'POST',
+    url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/move`,
     payload: { start } as never,
     cookies: locale ? { [testLocale.localeCookieName]: locale } : {},
   });
@@ -730,6 +756,435 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
     });
 
     const response = await preview({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: local({ day: '2026-10-20', time: '14:00' }),
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+});
+
+interface ClashBoardInput {
+  /** The elsewhere statuses booked before the preview; the rest come after. */
+  bookedBeforePreview: string[];
+}
+
+/**
+ * The moving Sunday (09–10 per Volunteer, → 14–15 on 20 October) and an
+ * Other Event that day where active statuses overlap 14:30–15:30.
+ */
+async function seedClashBoard({ bookedBeforePreview }: ClashBoardInput) {
+  const seed = await signIn();
+  const churchId = seed.churchAId;
+  const cycle = await seedCycle({ churchId, state: 'sent' });
+  const moving = await seedScheduledEvent({ churchId, cycleId: cycle.id });
+  const other = await seedScheduledEvent({
+    churchId,
+    cycleId: cycle.id,
+    title: 'Other',
+    start: local({ day: '2026-10-20', time: '08:00' }),
+    end: local({ day: '2026-10-20', time: '20:00' }),
+  });
+  const role = await buildRole({
+    db,
+    churchId,
+    ministryId: seed.ministryAId,
+    name: 'Usher',
+  });
+  const participation = await buildMinistryParticipation({
+    db,
+    churchId,
+    ministryId: seed.ministryAId,
+    eventId: moving.event.id,
+    state: 'preparing',
+    eventTimeBlockIds: [],
+  });
+  const otherParticipation = await buildMinistryParticipation({
+    db,
+    churchId,
+    ministryId: seed.ministryAId,
+    eventId: other.event.id,
+    state: 'preparing',
+    eventTimeBlockIds: [],
+  });
+  const day20 = (time: string) => local({ day: '2026-10-20', time });
+  const names = ['draft', 'pending', 'confirmed', 'declined', 'touching'];
+  const moved: Record<string, string> = {};
+  const volunteers: Record<string, string> = {};
+  for (const name of names) {
+    const { id } = await seedVolunteer({ churchId, name });
+    volunteers[name] = id;
+    const booked = await book({
+      churchId,
+      eventId: moving.event.id,
+      participationId: participation.id,
+      roleId: role.id,
+      volunteerId: id,
+      status: 'confirmed',
+      start: at('09:00'),
+      end: at('10:00'),
+    });
+    moved[name] = booked.assignment.id;
+  }
+  const bookElsewhere = async (name: string) => {
+    const volunteerId = volunteers[name] as string;
+    const touching = name === 'touching';
+    await book({
+      churchId,
+      eventId: other.event.id,
+      participationId: otherParticipation.id,
+      roleId: role.id,
+      volunteerId,
+      // Touching ends exactly when the moved Shift starts (14:00).
+      status: touching ? 'confirmed' : (name as BookInput['status']),
+      start: touching ? day20('13:00') : day20('14:30'),
+      end: touching ? day20('14:00') : day20('15:30'),
+    });
+  };
+  for (const name of bookedBeforePreview) await bookElsewhere(name);
+  return {
+    seed,
+    cycle,
+    moving,
+    moved,
+    volunteers,
+    bookLater: async () => {
+      for (const name of names) {
+        if (!bookedBeforePreview.includes(name)) await bookElsewhere(name);
+      }
+    },
+  };
+}
+
+describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
+  it('moves the Event, its blocks and Shifts by one delta, keeping Assignments with their UnavailableShifts and open SwapRequests', async () => {
+    const seed = await signIn();
+    const churchId = seed.churchAId;
+    const cycle = await seedCycle({ churchId, state: 'sent' });
+    const {
+      event: sunday,
+      welcome,
+      service,
+    } = await seedScheduledEvent({
+      churchId,
+      cycleId: cycle.id,
+    });
+    const role = await buildRole({
+      db,
+      churchId,
+      ministryId: seed.ministryAId,
+      name: 'Usher',
+    });
+    const participation = await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: seed.ministryAId,
+      eventId: sunday.id,
+      state: 'preparing',
+      eventTimeBlockIds: [],
+    });
+    const volunteer = await seedVolunteer({ churchId, name: 'kept' });
+    const booked = await book({
+      churchId,
+      eventId: sunday.id,
+      participationId: participation.id,
+      roleId: role.id,
+      volunteerId: volunteer.id,
+      status: 'confirmed',
+      start: at('10:00'),
+      end: at('11:00'),
+    });
+    const membership = await buildMinistryMembership({
+      db,
+      churchId,
+      volunteerId: volunteer.id,
+      ministryId: seed.ministryAId,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [role.id],
+    });
+    const check = await buildConfirmedAvailabilityCheck({
+      db,
+      churchId,
+      cycleId: cycle.id,
+      ministryMembershipId: membership.id,
+      id: crypto.randomUUID(),
+      confirmedAt: inst(CHURCH_OCTOBER_1_NOON),
+    });
+    await buildUnavailableShift({
+      db,
+      churchId,
+      availabilityCheckId: check.id,
+      shiftId: booked.shift.id,
+    });
+    await db.insert(swapRequest).values({
+      churchId,
+      assignmentId: booked.assignment.id,
+      status: 'open',
+      raisedBy: 'user-kept',
+    });
+    const snapshotsBefore = await db.select().from(scheduleLastTold);
+    const unavailableBefore = await db.select().from(unavailableShift);
+
+    const response = await confirm({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: local({ day: '2026-10-20', time: '14:00' }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const toDay = (time: string) => local({ day: '2026-10-20', time });
+    const body = response.json();
+    expect(body.event).toMatchObject({
+      id: sunday.id,
+      start: toDay('14:00'),
+      end: toDay('17:00'),
+    });
+    const blockBounds = Object.fromEntries(
+      body.eventTimeBlocks.map(
+        (block: { id: string; startTime: string; endTime: string }) => [
+          block.id,
+          [block.startTime, block.endTime],
+        ],
+      ),
+    );
+    expect(blockBounds).toEqual({
+      [welcome.id]: [toDay('14:00'), toDay('15:00')],
+      [service.id]: [toDay('15:00'), toDay('17:00')],
+      [booked.eventTimeBlock.id]: [toDay('15:00'), toDay('16:00')],
+    });
+    expect(body.withdrawn).toEqual([]);
+    const [movedShift] = await db
+      .select()
+      .from(shift)
+      .where(eq(shift.id, booked.shift.id));
+    expect(movedShift?.startTime.toISOString()).toBe(toDay('15:00'));
+    expect(movedShift?.endTime.toISOString()).toBe(toDay('16:00'));
+    const [kept] = await db
+      .select()
+      .from(assignment)
+      .where(eq(assignment.id, booked.assignment.id));
+    expect(kept).toMatchObject({
+      shiftId: booked.shift.id,
+      status: 'confirmed',
+    });
+    expect(await db.select().from(unavailableShift)).toEqual(unavailableBefore);
+    const [swap] = await db.select().from(swapRequest);
+    expect(swap?.status).toBe('open');
+    // Send updates tells Volunteers later: no snapshot and only leaders' N10.
+    expect(await db.select().from(scheduleLastTold)).toEqual(snapshotsBefore);
+    const queued = await db.select().from(outboxMessage);
+    expect(queued.map(({ payload }) => payload)).toEqual([
+      expect.objectContaining({
+        kind: 'event_changed',
+        to: expect.objectContaining({ userId: seed.adminUserId }),
+      }),
+    ]);
+  });
+
+  it('recalculates over a stale preview and withdraws only the actual active clashes, closing their open SwapRequests as covered', async () => {
+    const board = await seedClashBoard({ bookedBeforePreview: ['confirmed'] });
+    const target = local({ day: '2026-10-20', time: '14:00' });
+    const stale = await preview({
+      cycleId: board.cycle.id,
+      eventId: board.moving.event.id,
+      start: target,
+    });
+    await board.bookLater();
+    await db.insert(swapRequest).values({
+      churchId: board.seed.churchAId,
+      assignmentId: board.moved.pending as string,
+      status: 'open',
+      raisedBy: 'user-pending',
+    });
+
+    const response = await confirm({
+      cycleId: board.cycle.id,
+      eventId: board.moving.event.id,
+      start: target,
+    });
+
+    const names = (rows: { volunteer: { name: string } }[]) =>
+      rows.map((row) => row.volunteer.name).sort();
+    expect(names(stale.json().clashes)).toEqual(['confirmed']);
+    expect(response.statusCode).toBe(200);
+    expect(names(response.json().withdrawn)).toEqual([
+      'confirmed',
+      'draft',
+      'pending',
+    ]);
+    const remaining = await db
+      .select({ id: assignment.id })
+      .from(assignment)
+      .where(inArray(assignment.id, Object.values(board.moved) as string[]));
+    expect(remaining.map(({ id }) => id).sort()).toEqual(
+      [board.moved.declined, board.moved.touching].sort(),
+    );
+    const [swap] = await db.select().from(swapRequest);
+    expect(swap).toMatchObject({
+      status: 'covered',
+      closedBy: board.seed.adminUserId,
+    });
+  });
+
+  it('enqueues one N10 move row per affected leader, counting withdrawn Volunteers, with fallback that skips the acting admin', async () => {
+    const board = await seedClashBoard({
+      bookedBeforePreview: ['draft', 'pending', 'confirmed', 'touching'],
+    });
+    const { seed, cycle, moving } = board;
+    const churchId = seed.churchAId;
+    // Ministry A answered for the old time; a leaderless Ministry opted in.
+    const membership = await buildMinistryMembership({
+      db,
+      churchId,
+      volunteerId: board.volunteers.draft as string,
+      ministryId: seed.ministryAId,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [],
+    });
+    await buildConfirmedAvailabilityCheck({
+      db,
+      churchId,
+      cycleId: cycle.id,
+      ministryMembershipId: membership.id,
+      id: crypto.randomUUID(),
+      confirmedAt: inst(CHURCH_OCTOBER_1_NOON),
+    });
+    const leaderless = await buildMinistry({
+      db,
+      churchId,
+      name: 'Leaderless',
+    });
+    await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: leaderless.id,
+      eventId: moving.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [moving.welcome.id],
+    });
+    // Opted out of the moved Event: told nothing.
+    const absent = await buildMinistry({ db, churchId, name: 'Absent' });
+    await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: absent.id,
+      eventId: moving.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [],
+    });
+    await buildUser({ db, id: 'other-admin', name: 'Other', email: 'o@t.com' });
+    await buildChurchMembership({
+      db,
+      churchId,
+      userId: 'other-admin',
+      accessLevel: 'admin',
+    });
+
+    const response = await confirm({
+      cycleId: cycle.id,
+      eventId: moving.event.id,
+      start: local({ day: '2026-10-20', time: '14:00' }),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const rows = await db.select().from(outboxMessage);
+    const byUser = Object.fromEntries(
+      rows.map(({ payload }) => {
+        const { to, data } = payload as {
+          to: { userId: string };
+          data: unknown;
+        };
+        return [to.userId, data];
+      }),
+    );
+    expect(Object.keys(byUser).sort()).toEqual(
+      [seed.adminUserId, 'other-admin'].sort(),
+    );
+    const change = {
+      kind: 'move',
+      previousStart: at('09:00'),
+      previousEnd: at('12:00'),
+      start: local({ day: '2026-10-20', time: '14:00' }),
+      end: local({ day: '2026-10-20', time: '17:00' }),
+    };
+    expect(byUser[seed.adminUserId]).toMatchObject({
+      cycleId: cycle.id,
+      eventId: moving.event.id,
+      eventTitle: 'Sunday',
+      adminName: 'Scheduling Admin',
+      ministries: [{ id: seed.ministryAId, name: 'Scheduling Ministry A' }],
+      change: {
+        ...change,
+        // Five served the moved Event; three were withdrawn for clashes.
+        volunteerCount: 5,
+        impacts: [
+          {
+            ministryId: seed.ministryAId,
+            ministryName: 'Scheduling Ministry A',
+            volunteerCount: 5,
+            answersGiven: true,
+          },
+        ],
+      },
+    });
+    expect(byUser['other-admin']).toMatchObject({
+      ministries: [{ id: leaderless.id, name: 'Leaderless' }],
+      change: {
+        ...change,
+        volunteerCount: 0,
+        impacts: [
+          {
+            ministryId: leaderless.id,
+            ministryName: 'Leaderless',
+            volunteerCount: 0,
+            answersGiven: false,
+          },
+        ],
+      },
+    });
+  });
+
+  it('refuses as preview does and writes nothing', async () => {
+    const seed = await signIn();
+    const cycle = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    const { event: sunday } = await seedScheduledEvent({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+    });
+    const before = await writeSnapshot();
+
+    const past = await confirm({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: local({ day: '2026-09-30', time: '10:00' }),
+      locale: 'pt-BR',
+    });
+    const outside = await confirm({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: local({ day: '2026-10-26', time: '00:30' }),
+    });
+
+    expect(past.statusCode).toBe(409);
+    expect(past.json()).toEqual({
+      error: 'MOVE_WINDOW_CLOSED',
+      message: m.error_move_window_closed({}, { locale: 'pt-BR' }),
+    });
+    expect(outside.statusCode).toBe(409);
+    expect(outside.json()).toMatchObject({ error: 'EVENT_OUTSIDE_CYCLE' });
+    expect(await writeSnapshot()).toEqual(before);
+  });
+
+  it('answers 403 to a non-admin', async () => {
+    const seed = await signIn({ persona: 'member' });
+    const cycle = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    const { event: sunday } = await seedScheduledEvent({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+    });
+
+    const response = await confirm({
       cycleId: cycle.id,
       eventId: sunday.id,
       start: local({ day: '2026-10-20', time: '14:00' }),

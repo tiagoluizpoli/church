@@ -17,6 +17,7 @@ import type { IChurchNotifications } from '../domain/contracts/application/churc
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
   CancelPlanningEventManagerInput,
+  ConfirmPlanningMoveManagerInput,
   CreatePlanningEventManagerInput,
   CreatePlanningEventTimeBlockManagerInput,
   DeletePlanningEventManagerInput,
@@ -27,11 +28,14 @@ import type {
   PlanningEventGraph,
   PlanningMoveManagerInput,
   PlanningMovePreview,
+  PlanningMoveResult,
   PreviewPlanningMoveManagerInput,
   UpdatePlanningEventDetailsManagerInput,
   UpdatePlanningEventManagerInput,
   UpdatePlanningEventTimeBlockManagerInput,
 } from '../domain/contracts/application/planning-event-manager';
+import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
+import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
@@ -40,6 +44,7 @@ import type {
   PlanningEventRepository,
   SeededMinistry,
 } from '../domain/contracts/infrastructure/planning-event.repository';
+import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { Church } from '../domain/entities/church';
@@ -59,11 +64,31 @@ import {
   assertEventGraph,
   type EventGraph,
 } from '../domain/services/event-graph';
-import { findMoveClashes, proposeMove } from '../domain/services/event-move';
+import {
+  findMoveClashes,
+  type MoveScopeAssignment,
+  proposeMove,
+} from '../domain/services/event-move';
+import { removeAssignment } from './remove-assignment';
 
 interface ComputeMoveInput {
   input: PlanningMoveManagerInput;
   church: Church;
+  tx: TransactionContext;
+}
+
+/** The move computation with the facts confirm and N10 also need. */
+interface ComputedMove extends PlanningMovePreview {
+  cycle: Cycle;
+  event: Event;
+  scopeAssignments: MoveScopeAssignment[];
+}
+
+interface EnqueueEventMovedInput {
+  actingUserId: UserId;
+  church: Church;
+  computed: ComputedMove;
+  movedBlockIds: EventTimeBlockId[];
   tx: TransactionContext;
 }
 
@@ -126,6 +151,9 @@ interface DbPlanningEventManagerDependencies {
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
   eventTimeBlockRepository: EventTimeBlockRepository;
+  assignmentRepository: AssignmentRepository;
+  auditRepository: AssignmentAuditRepository;
+  swapRequestRepository: SwapRequestRepository;
   recipients: IChurchRecipients;
   notifications: IChurchNotifications;
 }
@@ -144,6 +172,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly churchRepository: ChurchRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
+  private readonly assignmentRepository: AssignmentRepository;
+  private readonly auditRepository: AssignmentAuditRepository;
+  private readonly swapRequestRepository: SwapRequestRepository;
   private readonly recipients: IChurchRecipients;
   private readonly notifications: IChurchNotifications;
 
@@ -154,6 +185,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     churchRepository,
     unitOfWork,
     eventTimeBlockRepository,
+    assignmentRepository,
+    auditRepository,
+    swapRequestRepository,
     recipients,
     notifications,
   }: DbPlanningEventManagerDependencies) {
@@ -163,6 +197,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
+    this.assignmentRepository = assignmentRepository;
+    this.auditRepository = auditRepository;
+    this.swapRequestRepository = swapRequestRepository;
     this.recipients = recipients;
     this.notifications = notifications;
   }
@@ -818,7 +855,148 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     // No Church lock and no write: the preview is advisory.
-    return this.unitOfWork.run((tx) => this.computeMove({ input, church, tx }));
+    const { proposal, clashes } = await this.unitOfWork.run((tx) =>
+      this.computeMove({ input, church, tx }),
+    );
+    return { proposal, clashes };
+  }
+
+  async confirmMove(
+    input: ConfirmPlanningMoveManagerInput,
+  ): Promise<PlanningMoveResult> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+    const { churchId, eventId, actingUserId } = input;
+
+    return this.unitOfWork.run(async (tx) => {
+      // Assignment creation takes this lock too, so no Assignment is created
+      // against the bounds being rewritten, and the recalculated clashes
+      // below see every committed Assignment.
+      await this.cycleRepository.acquireChurchLock({ churchId, tx });
+      // The removal lock: a racing leader removal or preparation save of
+      // this Event commits before the recalculation reads.
+      await this.eventRepository.lockParticipations({ churchId, eventId, tx });
+      const computed = await this.computeMove({ input, church, tx });
+      const { proposal, clashes } = computed;
+
+      // Kept Assignments stay on their Shifts, so their identity,
+      // UnavailableShifts and open SwapRequests move with them.
+      for (const { assignmentId } of clashes) {
+        await removeAssignment({
+          churchId,
+          assignmentId,
+          actorId: actingUserId,
+          tx,
+          assignmentRepository: this.assignmentRepository,
+          auditRepository: this.auditRepository,
+          swapRequestRepository: this.swapRequestRepository,
+        });
+      }
+      const { start, end } = proposal.proposedEvent;
+      const event = await this.eventRepository.updateEvent({
+        churchId,
+        eventId,
+        start: toDate({ instant: start }),
+        end: toDate({ instant: end }),
+        tx,
+      });
+      const movedBlockIds = proposal.eventTimeBlocks.flatMap(
+        ({ eventTimeBlockId, moved }) => (moved ? [eventTimeBlockId] : []),
+      );
+      await this.eventRepository.moveEventTimeBlocks({
+        churchId,
+        eventTimeBlockIds: movedBlockIds,
+        deltaMs: proposal.deltaMs,
+        tx,
+      });
+      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+        churchId,
+        eventId,
+        tx,
+      });
+      await this.enqueueEventMoved({
+        actingUserId,
+        church,
+        computed,
+        movedBlockIds,
+        tx,
+      });
+      return { graph: { event, eventTimeBlocks }, withdrawn: clashes };
+    });
+  }
+
+  /**
+   * N10 move: one outbox row per leader of the affected Ministries (or
+   * fallback admin), in the move transaction. The old bounds and the
+   * pre-withdrawal Volunteers are facts only this transaction still knows.
+   */
+  private async enqueueEventMoved({
+    actingUserId,
+    church,
+    computed: { cycle, event, proposal, scopeAssignments },
+    movedBlockIds,
+    tx,
+  }: EnqueueEventMovedInput): Promise<void> {
+    const churchId = church.id;
+    const ministries = await this.eventRepository.listMoveAffectedMinistries({
+      churchId,
+      cycleId: cycle.id,
+      eventId: event.id,
+      eventTimeBlockIds: movedBlockIds,
+      tx,
+    });
+    if (ministries.length === 0) return;
+    const adminName =
+      (await this.churchRepository.findUserName({ userId: actingUserId })) ??
+      '';
+    const recipients = await this.recipients.eventChangedRecipients({
+      tx,
+      churchId,
+      ministryIds: ministries.map(({ id }) => id),
+      actingUserId,
+    });
+    const [movedBlock] = proposal.eventTimeBlocks.filter(({ moved }) => moved);
+    const { previous, proposed } =
+      proposal.scope.kind === 'event' || !movedBlock
+        ? { previous: proposal.previousEvent, proposed: proposal.proposedEvent }
+        : movedBlock;
+    const volunteersOf = (ministryIds: string[]) =>
+      new Set(
+        scopeAssignments
+          .filter(({ ministryId }) => ministryIds.includes(ministryId))
+          .map(({ volunteerId }) => volunteerId),
+      ).size;
+    for (const { ministryIds, ...recipient } of recipients) {
+      const told = ministries.filter(({ id }) => ministryIds.includes(id));
+      await this.notifications.enqueue({
+        tx,
+        kind: 'event_changed',
+        to: [recipient],
+        data: {
+          cycleId: cycle.id,
+          cycleName: cycle.name,
+          eventId: event.id,
+          eventTitle: event.title,
+          adminName,
+          churchName: church.name,
+          churchTimezone: church.timezone,
+          ministries: told.map(({ id, name }) => ({ id, name })),
+          change: {
+            kind: 'move',
+            previousStart: previous.start,
+            previousEnd: previous.end,
+            start: proposed.start,
+            end: proposed.end,
+            volunteerCount: volunteersOf(ministryIds),
+            impacts: told.map(({ id, name, answersGiven }) => ({
+              ministryId: id,
+              ministryName: name,
+              volunteerCount: volunteersOf([id]),
+              answersGiven,
+            })),
+          },
+        },
+      });
+    }
   }
 
   /**
@@ -831,7 +1009,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     input,
     church,
     tx,
-  }: ComputeMoveInput): Promise<PlanningMovePreview> {
+  }: ComputeMoveInput): Promise<ComputedMove> {
     const { churchId, eventId, scope, start } = input;
     const cycle = await this.ensureCycleWritable({
       cycle: await this.cycleRepository.getById({ ...input, tx }),
@@ -894,6 +1072,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     });
 
     return {
+      cycle,
+      event,
+      scopeAssignments,
       proposal,
       clashes: findMoveClashes({
         deltaMs: proposal.deltaMs,

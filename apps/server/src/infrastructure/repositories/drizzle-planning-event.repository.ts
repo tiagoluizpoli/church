@@ -1,10 +1,13 @@
 import { NotFoundError } from '@church/core';
 import {
   assignment,
+  availabilityCheck,
   event,
   eventTimeBlock,
   ministry,
+  ministryMembership,
   ministryParticipation,
+  participationEventTimeBlockInclusion,
   sector,
   shift,
   shiftRequirement,
@@ -16,12 +19,14 @@ import {
   and,
   asc,
   eq,
+  exists,
   gt,
   inArray,
   isNull,
   lt,
   notInArray,
   type SQL,
+  sql,
 } from 'drizzle-orm';
 import {
   AssignmentId,
@@ -36,8 +41,12 @@ import type {
   DeletePlanningEventInput,
   GetPlanningEventInput,
   ListCycleEventsInput,
+  ListMoveAffectedMinistriesInput,
   ListMoveClashCandidatesInput,
   ListMoveScopeAssignmentsInput,
+  LockEventParticipationsInput,
+  MoveAffectedMinistry,
+  MoveEventTimeBlocksInput,
   PlanningEventRepository,
   SeededMinistry,
   SeedPlanningParticipationsInput,
@@ -412,6 +421,131 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       shiftStart: fromDate({ date: row.shiftStart }),
       shiftEnd: fromDate({ date: row.shiftEnd }),
     }));
+  }
+
+  async lockParticipations({
+    churchId,
+    eventId,
+    tx,
+  }: LockEventParticipationsInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .select({ id: ministryParticipation.id })
+      .from(ministryParticipation)
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          eq(ministryParticipation.eventId, eventId),
+        ),
+      )
+      .orderBy(asc(ministryParticipation.id))
+      .for('no key update');
+  }
+
+  async listMoveAffectedMinistries({
+    churchId,
+    cycleId,
+    eventId,
+    eventTimeBlockIds,
+    tx,
+  }: ListMoveAffectedMinistriesInput): Promise<MoveAffectedMinistry[]> {
+    if (eventTimeBlockIds.length === 0) return [];
+    const client = getClient({ db: this.db, tx });
+    const optedIn = client
+      .select({ id: participationEventTimeBlockInclusion.id })
+      .from(participationEventTimeBlockInclusion)
+      .where(
+        and(
+          eq(
+            participationEventTimeBlockInclusion.participationId,
+            ministryParticipation.id,
+          ),
+          inArray(
+            participationEventTimeBlockInclusion.eventTimeBlockId,
+            eventTimeBlockIds,
+          ),
+        ),
+      );
+    const staffing = client
+      .select({ id: shift.id })
+      .from(shift)
+      .where(
+        and(
+          eq(shift.participationId, ministryParticipation.id),
+          inArray(shift.eventTimeBlockId, eventTimeBlockIds),
+        ),
+      );
+    const answered = client
+      .select({ id: availabilityCheck.id })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .where(
+        and(
+          eq(availabilityCheck.cycleId, cycleId),
+          eq(availabilityCheck.state, 'confirmed'),
+          eq(ministryMembership.ministryId, ministry.id),
+        ),
+      );
+    const rows = await client
+      .select({
+        id: ministry.id,
+        name: ministry.name,
+        answersGiven: sql<boolean>`${exists(answered)}`,
+      })
+      .from(ministryParticipation)
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          eq(ministryParticipation.eventId, eventId),
+          isNull(ministry.deletedAt),
+          sql`(${exists(optedIn)} or ${exists(staffing)})`,
+        ),
+      )
+      .orderBy(asc(ministry.name), asc(ministry.id));
+
+    return rows.map((row) => ({
+      id: MinistryId.from(row.id),
+      name: row.name,
+      answersGiven: row.answersGiven,
+    }));
+  }
+
+  async moveEventTimeBlocks({
+    churchId,
+    eventTimeBlockIds,
+    deltaMs,
+    tx,
+  }: MoveEventTimeBlocksInput): Promise<void> {
+    if (eventTimeBlockIds.length === 0) return;
+    const client = getClient({ db: this.db, tx });
+    const delta = sql`(${deltaMs} * interval '1 millisecond')`;
+    await client
+      .update(eventTimeBlock)
+      .set({
+        startTime: sql`${eventTimeBlock.startTime} + ${delta}`,
+        endTime: sql`${eventTimeBlock.endTime} + ${delta}`,
+      })
+      .where(
+        and(
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
+          inArray(eventTimeBlock.id, eventTimeBlockIds),
+        ),
+      );
+    await client
+      .update(shift)
+      .set({
+        startTime: sql`${shift.startTime} + ${delta}`,
+        endTime: sql`${shift.endTime} + ${delta}`,
+      })
+      .where(
+        and(
+          withChurchIsolation({ table: shift, churchId }),
+          inArray(shift.eventTimeBlockId, eventTimeBlockIds),
+        ),
+      );
   }
 }
 

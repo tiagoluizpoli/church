@@ -360,29 +360,40 @@ type EventChangedData = Extract<
 /** N10: the Event, who changed it and the recipient's affected Ministries. */
 function eventChangedWords(data: EventChangedData) {
   const { cycleName, eventTitle, ministries, change, churchTimezone } = data;
-  const locale = getLocale();
-  const start = parseInstant({ value: change.start });
-  const end = parseInstant({ value: change.end });
-  const day = formatDayLabel({
-    day: today({ instant: start, timeZone: churchTimezone }),
-    locale,
-  });
-  const from = formatTimeOfDay({
-    time: toTimeOfDay({ instant: start, timeZone: churchTimezone }),
-  });
-  const to = formatTimeOfDay({
-    time: toTimeOfDay({ instant: end, timeZone: churchTimezone }),
-  });
+  const { adminName } = data;
+  const when = eventWhen({ ...change, timeZone: churchTimezone });
+  if (change.kind === 'move') {
+    const previous = eventWhen({
+      start: change.previousStart,
+      end: change.previousEnd,
+      timeZone: churchTimezone,
+    });
+    const { volunteerCount: count } = change;
+    return {
+      title: m.notification_event_changed_move_title({ eventTitle, when }),
+      body: [
+        pluralMessage({
+          count,
+          one: () =>
+            m.notification_event_changed_move_body_one({ adminName, previous }),
+          other: () =>
+            m.notification_event_changed_move_body_other({
+              adminName,
+              previous,
+              count,
+            }),
+        }),
+        ...change.impacts.map(eventMoveImpactLine),
+      ].join('\n'),
+    };
+  }
   const ministryList = {
     ministryNames: ministries.map((ministry) => ministry.name).join(', '),
   };
   return {
     title: m.notification_event_changed_add_title({ cycleName, eventTitle }),
     body: [
-      m.notification_event_changed_add_body({
-        adminName: data.adminName,
-        when: `${day} · ${from}–${to}`,
-      }),
+      m.notification_event_changed_add_body({ adminName, when }),
       pluralMessage({
         count: ministries.length,
         one: () => m.notification_event_changed_ministries_one(ministryList),
@@ -391,4 +402,47 @@ function eventChangedWords(data: EventChangedData) {
       }),
     ].join('\n'),
   };
+}
+
+type EventMoveImpact = Extract<
+  EventChangedData['change'],
+  { kind: 'move' }
+>['impacts'][number];
+
+/** One Ministry's affected count, noting answers given for the old time. */
+function eventMoveImpactLine({
+  ministryName,
+  volunteerCount: count,
+  answersGiven,
+}: EventMoveImpact): string {
+  const line = pluralMessage({
+    count,
+    one: () => m.notification_event_changed_move_ministry_one({ ministryName }),
+    other: () =>
+      m.notification_event_changed_move_ministry_other({ ministryName, count }),
+  });
+  return answersGiven ? `${line} · ${m.prepare_answers_coverage_note()}` : line;
+}
+
+interface EventWhenInput {
+  start: string;
+  end: string;
+  timeZone: string;
+}
+
+/** The Church-Timezone day and time range of an Event. */
+function eventWhen({ start, end, timeZone }: EventWhenInput): string {
+  const startInstant = parseInstant({ value: start });
+  const endInstant = parseInstant({ value: end });
+  const day = formatDayLabel({
+    day: today({ instant: startInstant, timeZone }),
+    locale: getLocale(),
+  });
+  const from = formatTimeOfDay({
+    time: toTimeOfDay({ instant: startInstant, timeZone }),
+  });
+  const to = formatTimeOfDay({
+    time: toTimeOfDay({ instant: endInstant, timeZone }),
+  });
+  return `${day} · ${from}–${to}`;
 }

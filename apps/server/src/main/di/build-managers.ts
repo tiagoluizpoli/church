@@ -275,6 +275,9 @@ export function buildManagers({
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository,
+      assignmentRepository,
+      auditRepository: assignmentAuditRepository,
+      swapRequestRepository,
       recipients: new ChurchRecipients({
         churchRepository,
         volunteerRepository,

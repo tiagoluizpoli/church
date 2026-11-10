@@ -1,6 +1,6 @@
 import { m } from '@church/i18n/messages';
 import type { Instant } from '@church/time';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock } from 'lucide-react';
 import { useState } from 'react';
 import { getErrorMessage } from './planning-admin.utils';
@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-builder';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
@@ -35,10 +36,19 @@ export interface EventMovePreviewProps {
   size?: 'touch' | 'icon-xs';
 }
 
+interface MoveClashRow {
+  assignmentId: string;
+  volunteer: { name: string };
+  ministry: { name: string };
+  proposedStart: string;
+  proposedEnd: string;
+}
+
 /**
  * Previews moving a scheduled Event of a Sent Cycle: asks for the new start,
  * then shows the proposed bounds and the typed Volunteer/Ministry clashes.
- * Advisory and write-free; confirming the move is a separate action.
+ * The preview is write-free; an explicit confirm of the previewed start moves
+ * the Event and shows the Assignments the server actually withdrew.
  */
 export function EventMovePreview({
   cycleId,
@@ -50,11 +60,40 @@ export function EventMovePreview({
   const { churchTimezone } = useTimezone();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<Instant>(start);
+  const queryClient = useQueryClient();
   const preview = useMutation({
-    mutationFn: () =>
-      adminApi.previewPlanningEventMove(cycleId, eventId, { start: target }),
+    mutationFn: (value: Instant) =>
+      adminApi.previewPlanningEventMove(cycleId, eventId, { start: value }),
+  });
+  const move = useMutation({
+    mutationFn: (value: Instant) =>
+      adminApi.movePlanningEvent(cycleId, eventId, { start: value }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
+        queryClient.invalidateQueries({ queryKey: ['cycles'] }),
+        queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY }),
+        // Every Ministry's Schedule reads the moved Shifts.
+        queryClient.invalidateQueries({
+          predicate: ({ queryKey: [key] }) =>
+            typeof key === 'string' && key.startsWith('prepare-'),
+        }),
+      ]),
   });
   const result = preview.data;
+  const moved = move.data;
+  // Only the start just previewed is confirmable; a changed field needs a new preview.
+  const canConfirm =
+    result !== undefined && preview.variables === target && !moved;
+  const error = move.error ?? preview.error;
+
+  const changeOpen = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      preview.reset();
+      move.reset();
+    }
+  };
 
   const range = (value: BoundsRange) =>
     formatInstantRangeOf({ ...value, timeZone: churchTimezone });
@@ -71,7 +110,7 @@ export function EventMovePreview({
         <CalendarClock className="size-3.5" />
         {size === 'touch' ? m.event_move_preview_action() : null}
       </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={changeOpen}>
         <DialogContent data-testid="event-move-preview">
           <DialogHeader>
             <DialogTitle>{m.event_move_preview_title({ title })}</DialogTitle>
@@ -91,12 +130,35 @@ export function EventMovePreview({
               onChange={setTarget}
             />
           </div>
-          {preview.isError ? (
+          {error ? (
             <p role="alert" className="text-destructive text-sm">
-              {getErrorMessage({ error: preview.error })}
+              {getErrorMessage({ error })}
             </p>
           ) : null}
-          {result ? (
+          {moved ? (
+            <div className="space-y-2 text-sm" data-testid="move-result">
+              <p className="font-medium">
+                {m.event_move_done({ range: range(moved.event) })}
+              </p>
+              {moved.withdrawn.length === 0 ? (
+                <p>{m.event_move_withdrawn_none()}</p>
+              ) : (
+                <div>
+                  <h4 className="font-medium text-destructive">
+                    {pluralMessage({
+                      count: moved.withdrawn.length,
+                      one: () => m.event_move_withdrawn_title_one(),
+                      other: () =>
+                        m.event_move_withdrawn_title_other({
+                          count: moved.withdrawn.length,
+                        }),
+                    })}
+                  </h4>
+                  <ClashList clashes={moved.withdrawn} range={range} />
+                </div>
+              )}
+            </div>
+          ) : result ? (
             <div
               className="space-y-3 text-sm"
               data-testid="move-preview-result"
@@ -142,40 +204,73 @@ export function EventMovePreview({
                         }),
                     })}
                   </h4>
-                  <ul className="text-xs">
-                    {result.clashes.map((clash) => (
-                      <li key={clash.assignmentId}>
-                        {m.event_move_preview_clash({
-                          volunteer: clash.volunteer.name,
-                          ministry: clash.ministry.name,
-                          range: range({
-                            start: clash.proposedStart,
-                            end: clash.proposedEnd,
-                          }),
-                        })}
-                      </li>
-                    ))}
-                  </ul>
+                  <ClashList clashes={result.clashes} range={range} />
                 </div>
               )}
+              {canConfirm ? (
+                <p className="text-muted-foreground text-xs">
+                  {m.event_move_confirm_hint()}
+                </p>
+              ) : null}
             </div>
           ) : null}
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
               {m.event_move_preview_close()}
             </DialogClose>
-            <Button
-              type="button"
-              disabled={preview.isPending}
-              onClick={() => preview.mutate()}
-            >
-              {preview.isPending
-                ? m.event_move_preview_running()
-                : m.event_move_preview_run()}
-            </Button>
+            {moved ? null : (
+              <Button
+                type="button"
+                variant={canConfirm ? 'outline' : 'default'}
+                disabled={preview.isPending || move.isPending}
+                onClick={() => {
+                  move.reset();
+                  preview.mutate(target);
+                }}
+              >
+                {preview.isPending
+                  ? m.event_move_preview_running()
+                  : m.event_move_preview_run()}
+              </Button>
+            )}
+            {canConfirm ? (
+              <Button
+                type="button"
+                disabled={move.isPending}
+                onClick={() => move.mutate(target)}
+              >
+                {move.isPending
+                  ? m.event_move_confirming()
+                  : m.event_move_confirm()}
+              </Button>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+interface ClashListProps {
+  clashes: MoveClashRow[];
+  range: (value: BoundsRange) => string;
+}
+
+function ClashList({ clashes, range }: ClashListProps) {
+  return (
+    <ul className="text-xs">
+      {clashes.map((clash) => (
+        <li key={clash.assignmentId}>
+          {m.event_move_preview_clash({
+            volunteer: clash.volunteer.name,
+            ministry: clash.ministry.name,
+            range: range({
+              start: clash.proposedStart,
+              end: clash.proposedEnd,
+            }),
+          })}
+        </li>
+      ))}
+    </ul>
   );
 }

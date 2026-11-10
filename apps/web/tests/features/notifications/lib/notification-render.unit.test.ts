@@ -470,6 +470,59 @@ describe('Event changed Notification (N10 add)', () => {
       isFallback: false,
     });
   });
+
+  it('renders a pt-BR move: new time in the title, old time and count in the body, one line per Ministry', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const moved = {
+      ...base,
+      kind: 'event_changed',
+      data: {
+        cycleId: ID,
+        cycleName: 'Outubro',
+        eventId: ID,
+        eventTitle: 'Vigília',
+        adminName: 'Ana',
+        churchTimezone: 'America/Sao_Paulo',
+        ministries: [
+          { id: MINISTRY_A, name: 'Louvor' },
+          { id: MINISTRY_B, name: 'Recepção' },
+        ],
+        change: {
+          kind: 'move',
+          previousStart: '2026-10-14T22:00:00.000Z',
+          previousEnd: '2026-10-15T00:00:00.000Z',
+          start: '2026-10-21T22:00:00.000Z',
+          end: '2026-10-22T00:00:00.000Z',
+          volunteerCount: 1,
+          impacts: [
+            {
+              ministryId: MINISTRY_A,
+              ministryName: 'Louvor',
+              volunteerCount: 1,
+              answersGiven: true,
+            },
+            {
+              ministryId: MINISTRY_B,
+              ministryName: 'Recepção',
+              volunteerCount: 0,
+              answersGiven: false,
+            },
+          ],
+        },
+      },
+    } as GetNotifications200ItemsItem;
+
+    const { title, body } = renderNotification(moved);
+
+    expect(title).toMatch(/^Alterado: Vigília → .*19:00–21:00$/);
+    expect(body).toContain('Ana alterou o horário, que era');
+    expect(body).toContain('1 dos seus voluntários foi afetado');
+    expect(body).toContain(
+      `Louvor: 1 voluntário afetado · ${m.prepare_answers_coverage_note({}, { locale: 'pt-BR' })}`,
+    );
+    expect(body).toContain('Recepção: 0 voluntários afetados');
+    expect(body).not.toContain('Recepção: 0 voluntários afetados ·');
+  });
 });
 
 describe('Ministry invitation Notification (N1)', () => {

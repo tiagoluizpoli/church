@@ -24,6 +24,8 @@ import type {
   ListCycles200,
   ListCyclesParams,
   ListEventTemplates200,
+  PreviewPlanningEventMove200,
+  PreviewPlanningEventMoveBody,
   SendCycle204,
   SetMinistryDefaultDirection200,
   SetMinistryDefaultDirectionBody,
@@ -33,6 +35,8 @@ import type {
   UpdateEventTemplateBody,
   UpdatePlanningEvent200,
   UpdatePlanningEventBody,
+  UpdatePlanningEventDetails200,
+  UpdatePlanningEventDetailsBody,
   UpdatePlanningEventTimeBlock200,
   UpdatePlanningEventTimeBlockBody
 } from './churchAPI.schemas';
@@ -283,6 +287,22 @@ const deletePlanningEvent = (
       );
     }
   /**
+ * Change only the title and location of an Event in a Sent Cycle; omitting the location clears it. EventTimeBlocks, Shifts and Assignments are untouched and no Notification is created. Past Cycles are read-only.
+ * @summary Edit the details of a Sent Event
+ */
+const updatePlanningEventDetails = (
+    cycleId: string,
+    eventId: string,
+    updatePlanningEventDetailsBody: UpdatePlanningEventDetailsBody,
+ ) => {
+      return apiClient<UpdatePlanningEventDetails200>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/details`, method: 'PATCH',
+      headers: {'Content-Type': 'application/json', },
+      data: updatePlanningEventDetailsBody
+    },
+      );
+    }
+  /**
  * Cancel an Event within its Cycle.
  * @summary Cancel an Event
  */
@@ -292,6 +312,22 @@ const cancelPlanningEvent = (
  ) => {
       return apiClient<void>(
       {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/cancel`, method: 'POST'
+    },
+      );
+    }
+  /**
+ * Preview moving a scheduled Event of a Sent Cycle to a new start, writing and sending nothing. Returns the proposed Event and EventTimeBlock bounds (duration preserved, one delta for the Event, its EventTimeBlocks and Shifts) and a typed clash row, with Volunteer and Ministry identities, for each active Assignment that would strictly overlap another active Assignment of the Church (touching ends are compatible). Advisory only: a later confirm recalculates. Refuses a Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION), an Event that has started or a target start that is not in the future (MOVE_WINDOW_CLOSED) and a final start day outside the inclusive Cycle (EVENT_OUTSIDE_CYCLE); the end may spill.
+ * @summary Preview moving an Event
+ */
+const previewPlanningEventMove = (
+    cycleId: string,
+    eventId: string,
+    previewPlanningEventMoveBody: PreviewPlanningEventMoveBody,
+ ) => {
+      return apiClient<PreviewPlanningEventMove200>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/move/preview`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: previewPlanningEventMoveBody
     },
       );
     }
@@ -357,7 +393,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,cancelPlanningEvent,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,cancelPlanningEvent,previewPlanningEventMove,createPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
@@ -376,7 +412,9 @@ export type ApplyPlanningTemplatesResult = NonNullable<Awaited<ReturnType<Return
 export type CreatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEvent']>>>
 export type UpdatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEvent']>>>
 export type DeletePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deletePlanningEvent']>>>
+export type UpdatePlanningEventDetailsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventDetails']>>>
 export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['cancelPlanningEvent']>>>
+export type PreviewPlanningEventMoveResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['previewPlanningEventMove']>>>
 export type CreatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEventTimeBlock']>>>
 export type UpdatePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventTimeBlock']>>>
 export type DeletePlanningEventTimeBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deletePlanningEventTimeBlock']>>>

@@ -54,8 +54,14 @@ import {
   createPlanningEventBodySchema,
   eventGraphMapper,
   eventGraphResponseSchema,
+  eventMovePreviewMapper,
+  eventMovePreviewResponseSchema,
+  type MovePlanningEventBody,
+  movePlanningEventBodySchema,
   type UpdatePlanningEventBody,
+  type UpdatePlanningEventDetailsBody,
   updatePlanningEventBodySchema,
+  updatePlanningEventDetailsBodySchema,
 } from '../dtos/planning-event.dto';
 import {
   type SetDefaultDirectionBody,
@@ -596,6 +602,37 @@ export class ChurchAdminController implements FastifyController {
       },
     );
 
+    app.patch(
+      '/cycles/:cycleId/events/:eventId/details',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'updatePlanningEventDetails',
+          summary: 'Edit the details of a Sent Event',
+          description:
+            'Change only the title and location of an Event in a Sent Cycle; omitting the location clears it. EventTimeBlocks, Shifts and Assignments are untouched and no Notification is created. Past Cycles are read-only.',
+          body: updatePlanningEventDetailsBodySchema,
+          response: {
+            200: eventGraphResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const body = request.body as UpdatePlanningEventDetailsBody;
+        const location = body.location?.trim();
+        const graph = await this.planningEventManager.updateEventDetails({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          title: body.title,
+          location: location ? location : undefined,
+        });
+        return reply.send(eventGraphMapper.toResponse(graph));
+      },
+    );
+
     app.delete(
       '/cycles/:cycleId/events/:eventId',
       {
@@ -637,6 +674,36 @@ export class ChurchAdminController implements FastifyController {
           eventId: EventId.from(eventId),
         });
         return reply.status(204).send();
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/events/:eventId/move/preview',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'previewPlanningEventMove',
+          summary: 'Preview moving an Event',
+          description:
+            'Preview moving a scheduled Event of a Sent Cycle to a new start, writing and sending nothing. Returns the proposed Event and EventTimeBlock bounds (duration preserved, one delta for the Event, its EventTimeBlocks and Shifts) and a typed clash row, with Volunteer and Ministry identities, for each active Assignment that would strictly overlap another active Assignment of the Church (touching ends are compatible). Advisory only: a later confirm recalculates. Refuses a Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION), an Event that has started or a target start that is not in the future (MOVE_WINDOW_CLOSED) and a final start day outside the inclusive Cycle (EVENT_OUTSIDE_CYCLE); the end may spill.',
+          body: movePlanningEventBodySchema,
+          response: {
+            200: eventMovePreviewResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const body = request.body as MovePlanningEventBody;
+        const preview = await this.planningEventManager.previewMove({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: { kind: 'event' },
+          start: dateFromInstantString({ value: body.start }),
+        });
+        return reply.send(eventMovePreviewMapper.toResponse(preview));
       },
     );
 

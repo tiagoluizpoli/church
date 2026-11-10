@@ -37,6 +37,19 @@ interface CycleReviewCardProps {
   revealEventId?: string;
 }
 
+interface CanPreviewEventMoveInput {
+  cycleState: string;
+  eventStatus: string;
+}
+
+/** Only a scheduled Event of a Sent Cycle can be moved. */
+function canPreviewEventMove({
+  cycleState,
+  eventStatus,
+}: CanPreviewEventMoveInput): boolean {
+  return cycleState === 'sent' && eventStatus === 'scheduled';
+}
+
 type DialogState =
   | { kind: 'none' }
   | { kind: 'confirm-delete-event-time-block'; eventTimeBlockId: string };
@@ -281,6 +294,12 @@ export function CycleReviewCard({
                         calendarRowEventId({ visibleRow: item }),
                       ),
                       isReadOnly,
+                      canPreviewMove:
+                        item.kind === 'parent' &&
+                        canPreviewEventMove({
+                          cycleState: reviewedCycle.state,
+                          eventStatus: item.row.status,
+                        }),
                       isConfirmingDeleteEventTimeBlock:
                         item.kind === 'event-time-block' &&
                         isConfirmingDeleteEventTimeBlock({
@@ -322,6 +341,10 @@ export function CycleReviewCard({
                         row={item.row}
                         cycleId={reviewedCycle.id}
                         isReadOnly={isReadOnly}
+                        canPreviewMove={canPreviewEventMove({
+                          cycleState: reviewedCycle.state,
+                          eventStatus: item.row.status,
+                        })}
                         deleteEventTimeBlockPending={
                           deleteEventTimeBlockPending
                         }

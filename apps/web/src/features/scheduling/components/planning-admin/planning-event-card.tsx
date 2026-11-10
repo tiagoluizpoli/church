@@ -1,8 +1,10 @@
 import { m } from '@church/i18n/messages';
+import type { Instant } from '@church/time';
 import { Link } from '@tanstack/react-router';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ConfirmDeleteEventTimeBlockInput } from './calendar-row';
+import { EventMovePreview } from './event-move-preview';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
   eventStatusBadgeVariant,
@@ -30,6 +32,8 @@ export interface PlanningEventCardProps {
   /** The reviewed Cycle, for the nested Edit Event link. */
   cycleId: string;
   isReadOnly: boolean;
+  /** A scheduled Event of a Sent Cycle can be previewed for a move. */
+  canPreviewMove?: boolean;
   deleteEventTimeBlockPending: boolean;
   onDeleteEventTimeBlockConfirm: (
     input: ConfirmDeleteEventTimeBlockInput,
@@ -48,6 +52,7 @@ export function PlanningEventCard({
   row,
   cycleId,
   isReadOnly,
+  canPreviewMove = false,
   deleteEventTimeBlockPending,
   onDeleteEventTimeBlockConfirm,
 }: PlanningEventCardProps) {
@@ -114,6 +119,17 @@ export function PlanningEventCard({
           >
             <Pencil className="size-3.5" /> {m.cycle_review_edit()}
           </Link>
+        </div>
+      ) : null}
+
+      {canPreviewMove ? (
+        <div className="mt-3 flex items-center gap-1">
+          <EventMovePreview
+            cycleId={cycleId}
+            eventId={row.eventId}
+            title={row.title}
+            start={row.start as Instant}
+          />
         </div>
       ) : null}
 

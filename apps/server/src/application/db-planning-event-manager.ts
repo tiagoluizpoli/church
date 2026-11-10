@@ -25,6 +25,10 @@ import type {
   GeneratePlanningTemplatesInput,
   IPlanningEventManager,
   PlanningEventGraph,
+  PlanningMoveManagerInput,
+  PlanningMovePreview,
+  PreviewPlanningMoveManagerInput,
+  UpdatePlanningEventDetailsManagerInput,
   UpdatePlanningEventManagerInput,
   UpdatePlanningEventTimeBlockManagerInput,
 } from '../domain/contracts/application/planning-event-manager';
@@ -55,6 +59,13 @@ import {
   assertEventGraph,
   type EventGraph,
 } from '../domain/services/event-graph';
+import { findMoveClashes, proposeMove } from '../domain/services/event-move';
+
+interface ComputeMoveInput {
+  input: PlanningMoveManagerInput;
+  church: Church;
+  tx: TransactionContext;
+}
 
 interface EnsureCycleWritableInput {
   cycle: Cycle;
@@ -83,6 +94,7 @@ interface GetCycleEventInput {
   input:
     | EnsureWritableEventInput['input']
     | UpdatePlanningEventManagerInput
+    | UpdatePlanningEventDetailsManagerInput
     | CancelPlanningEventManagerInput
     | DeletePlanningEventManagerInput;
   tx: TransactionContext;
@@ -494,6 +506,44 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     });
   }
 
+  async updateEventDetails(
+    input: UpdatePlanningEventDetailsManagerInput,
+  ): Promise<PlanningEventGraph> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+    const { churchId, eventId } = input;
+
+    return this.unitOfWork.run(async (tx) => {
+      await this.cycleRepository.acquireChurchLock({ churchId, tx });
+
+      const cycle = await this.ensureCycleWritable({
+        cycle: await this.cycleRepository.getById({ ...input, tx }),
+        churchTimeZone: church.timezone,
+      });
+      await this.getCycleEvent({ input, tx });
+      // Draft Cycles keep the complete-graph edit; this is the Sent alternative.
+      if (cycle.state !== 'sent') {
+        throw new IllegalStateTransitionError({
+          from: cycle.state,
+          to: 'update-details',
+        });
+      }
+
+      const event = await this.eventRepository.updateEvent({
+        churchId,
+        eventId,
+        title: input.title,
+        location: input.location ?? null,
+        tx,
+      });
+      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+        churchId,
+        eventId,
+        tx,
+      });
+      return { event, eventTimeBlocks };
+    });
+  }
+
   /** The Event's blocks in submitted order; every id was written in `tx`. */
   private async listInOrder({
     churchId,
@@ -760,6 +810,97 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         },
       });
     }
+  }
+
+  async previewMove(
+    input: PreviewPlanningMoveManagerInput,
+  ): Promise<PlanningMovePreview> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+
+    // No Church lock and no write: the preview is advisory.
+    return this.unitOfWork.run((tx) => this.computeMove({ input, church, tx }));
+  }
+
+  /**
+   * The shared move computation for one scope: lifecycle and window refusals,
+   * the proposed bounds and the active-Assignment clashes against the rest of
+   * the Church. Reads only; the confirm path calls it again in its own
+   * transaction, after taking the Church lock, to get the fresh result.
+   */
+  private async computeMove({
+    input,
+    church,
+    tx,
+  }: ComputeMoveInput): Promise<PlanningMovePreview> {
+    const { churchId, eventId, scope, start } = input;
+    const cycle = await this.ensureCycleWritable({
+      cycle: await this.cycleRepository.getById({ ...input, tx }),
+      churchTimeZone: church.timezone,
+    });
+    const event = await this.getCycleEvent({ input, tx });
+    // Only a scheduled Event of a Sent Cycle moves; Draft has its own editor.
+    if (cycle.state !== 'sent' || event.status !== 'scheduled') {
+      throw new IllegalStateTransitionError({
+        from: cycle.state === 'sent' ? event.status : cycle.state,
+        to: 'move',
+      });
+    }
+
+    const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+      churchId,
+      eventId,
+      tx,
+    });
+    if (
+      scope.kind === 'eventTimeBlock' &&
+      !eventTimeBlocks.some(({ id }) => id === scope.eventTimeBlockId)
+    ) {
+      throw new NotFoundError(
+        `EventTimeBlock not found: ${scope.eventTimeBlockId}`,
+      );
+    }
+
+    const proposal = proposeMove({
+      scope,
+      event,
+      eventTimeBlocks,
+      start: fromDate({ date: start }),
+      now: now(),
+      cycle,
+      timeZone: church.timezone,
+    });
+
+    const scopeAssignments =
+      await this.eventRepository.listMoveScopeAssignments({
+        churchId,
+        eventId,
+        eventTimeBlockId:
+          scope.kind === 'eventTimeBlock' ? scope.eventTimeBlockId : undefined,
+        tx,
+      });
+    const movedBlocks = proposal.eventTimeBlocks.filter(({ moved }) => moved);
+    const candidates = await this.eventRepository.listMoveClashCandidates({
+      churchId,
+      volunteerIds: [
+        ...new Set(scopeAssignments.map(({ volunteerId }) => volunteerId)),
+      ],
+      excludedEventTimeBlockIds: movedBlocks.map(
+        ({ eventTimeBlockId }) => eventTimeBlockId,
+      ),
+      // Every moved Shift lies inside the proposed Event bounds.
+      startTime: toDate({ instant: proposal.proposedEvent.start }),
+      endTime: toDate({ instant: proposal.proposedEvent.end }),
+      tx,
+    });
+
+    return {
+      proposal,
+      clashes: findMoveClashes({
+        deltaMs: proposal.deltaMs,
+        scopeAssignments,
+        candidates,
+      }),
+    };
   }
 
   private async ensureCycleWritable({

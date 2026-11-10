@@ -1,5 +1,9 @@
+import { instantSchema } from '@church/time';
 import { z } from 'zod';
-import type { PlanningEventGraph } from '../../domain/contracts/application/planning-event-manager';
+import type {
+  PlanningEventGraph,
+  PlanningMovePreview,
+} from '../../domain/contracts/application/planning-event-manager';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,
@@ -43,6 +47,16 @@ export type UpdatePlanningEventBody = z.infer<
   typeof updatePlanningEventBodySchema
 >;
 
+/** A Sent Event's details correction: title and optional location only. */
+export const updatePlanningEventDetailsBodySchema = z.object({
+  title: z.string().trim().min(1),
+  location: z.string().optional(),
+});
+
+export type UpdatePlanningEventDetailsBody = z.infer<
+  typeof updatePlanningEventDetailsBodySchema
+>;
+
 /** An Event with its EventTimeBlocks, as Cycle detail, create and edit return it. */
 export const eventGraphResponseSchema = z.object({
   event: eventResponseSchema,
@@ -55,6 +69,79 @@ export const eventGraphMapper = {
       event: eventMapper.toResponse(graph.event),
       eventTimeBlocks: graph.eventTimeBlocks.map(
         eventTimeBlockMapper.toResponse,
+      ),
+    };
+  },
+};
+
+/** The new start of the moved scope. */
+export const movePlanningEventBodySchema = z.object({
+  start: z.string().datetime(),
+});
+
+export type MovePlanningEventBody = z.infer<typeof movePlanningEventBodySchema>;
+
+const instantBoundsResponseSchema = z.object({
+  start: instantSchema,
+  end: instantSchema,
+});
+
+/** Proposed bounds and typed clash rows; nothing was written. */
+export const eventMovePreviewResponseSchema = z.object({
+  event: z.object({
+    previous: instantBoundsResponseSchema,
+    proposed: instantBoundsResponseSchema,
+  }),
+  eventTimeBlocks: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string().optional(),
+      moved: z.boolean(),
+      previous: instantBoundsResponseSchema,
+      proposed: instantBoundsResponseSchema,
+    }),
+  ),
+  clashes: z.array(
+    z.object({
+      assignmentId: z.string(),
+      eventTimeBlockId: z.string(),
+      shiftId: z.string(),
+      volunteer: z.object({ id: z.string(), name: z.string() }),
+      ministry: z.object({ id: z.string(), name: z.string() }),
+      proposedStart: instantSchema,
+      proposedEnd: instantSchema,
+    }),
+  ),
+});
+
+export const eventMovePreviewMapper = {
+  toResponse({ proposal, clashes }: PlanningMovePreview) {
+    return {
+      event: {
+        previous: proposal.previousEvent,
+        proposed: proposal.proposedEvent,
+      },
+      eventTimeBlocks: proposal.eventTimeBlocks.map(
+        ({ eventTimeBlockId, label, moved, previous, proposed }) => ({
+          id: eventTimeBlockId,
+          label,
+          moved,
+          previous,
+          proposed,
+        }),
+      ),
+      clashes: clashes.map(
+        ({
+          volunteerId,
+          volunteerName,
+          ministryId,
+          ministryName,
+          ...clash
+        }) => ({
+          ...clash,
+          volunteer: { id: volunteerId, name: volunteerName },
+          ministry: { id: ministryId, name: ministryName },
+        }),
       ),
     };
   },

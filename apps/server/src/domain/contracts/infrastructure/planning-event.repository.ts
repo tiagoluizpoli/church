@@ -6,12 +6,17 @@ import type {
   EventTimeBlockId,
   MinistryId,
   TemplateTimeBlockId,
+  VolunteerId,
 } from '../../branded-ids';
 import type {
   Event,
   EventStatus,
   EventWithEventTimeBlocks,
 } from '../../entities/event';
+import type {
+  MoveClashCandidate,
+  MoveScopeAssignment,
+} from '../../services/event-move';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreatePlanningEventInput {
@@ -81,6 +86,25 @@ export interface SeedPlanningParticipationsInput {
   tx?: TransactionContext;
 }
 
+export interface ListMoveScopeAssignmentsInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  /** Only this EventTimeBlock's Assignments; absent for the whole Event. */
+  eventTimeBlockId?: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
+export interface ListMoveClashCandidatesInput {
+  churchId: ChurchId;
+  volunteerIds: VolunteerId[];
+  /** The whole moved scope: its Assignments are never their own candidates. */
+  excludedEventTimeBlockIds: EventTimeBlockId[];
+  /** Only Shifts strictly overlapping `[startTime, endTime)` are returned. */
+  startTime: Date;
+  endTime: Date;
+  tx?: TransactionContext;
+}
+
 export interface PlanningEventRepository {
   createEvent(input: CreatePlanningEventInput): Promise<Event>;
   updateEvent(input: UpdatePlanningEventInput): Promise<Event>;
@@ -106,4 +130,12 @@ export interface PlanningEventRepository {
   seedParticipations(
     input: SeedPlanningParticipationsInput,
   ): Promise<SeededMinistry[]>;
+  /** The active Assignments (draft, pending, confirmed) on the move scope. */
+  listMoveScopeAssignments(
+    input: ListMoveScopeAssignmentsInput,
+  ): Promise<MoveScopeAssignment[]>;
+  /** Active Church Assignments of `volunteerIds` outside the scope, overlapping the window. */
+  listMoveClashCandidates(
+    input: ListMoveClashCandidatesInput,
+  ): Promise<MoveClashCandidate[]>;
 }

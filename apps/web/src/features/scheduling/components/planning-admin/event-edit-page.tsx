@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { EventDeleteButton } from './event-delete-button';
+import { EventDetailsForm } from './event-details-form';
 import type { EventEditorCycleRange } from './event-editor.utils';
 import { EventEditorForm } from './event-editor-form';
 import {
@@ -17,7 +18,7 @@ export interface EventEditPageProps {
 }
 
 /**
- * Edits one Draft Event, selected by route id from its Cycle's detail, so a
+ * Edits one Draft Event (or a Sent Event's details), selected by route id from its Cycle's detail, so a
  * direct visit or refresh works; an Event outside this Cycle is not found.
  */
 export function EventEditPage({ cycleId, eventId }: EventEditPageProps) {
@@ -42,6 +43,9 @@ export function EventEditPage({ cycleId, eventId }: EventEditPageProps) {
               <BackToCycle cycleId={cycleId} />
             </div>
           );
+        }
+        if (cycle.state === 'sent' && graph.event.status === 'scheduled') {
+          return <EventDetailsForm cycleId={cycleId} graph={graph} />;
         }
         if (cycle.state !== 'draft' || graph.event.status !== 'draft') {
           return (

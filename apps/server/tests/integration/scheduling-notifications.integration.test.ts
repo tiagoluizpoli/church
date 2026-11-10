@@ -1244,8 +1244,8 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       db: schedulingTestDb,
       churchId: ids.churchId,
       eventId,
-      start: new Date('2026-12-25T03:00:00.000Z'),
-      end: new Date('2026-12-25T03:30:00.000Z'),
+      start: parseInstant({ value: '2026-12-25T03:00:00.000Z' }),
+      end: parseInstant({ value: '2026-12-25T03:30:00.000Z' }),
     });
     const staying = await seedMember({
       name: 'Carla',

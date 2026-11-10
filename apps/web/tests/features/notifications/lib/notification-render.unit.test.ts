@@ -487,3 +487,49 @@ describe('Ministry invitation Notification (N1)', () => {
     expect(renderNotification(offer).actionLabel).toBe('See invitation');
   });
 });
+
+describe('Swap request answered Notification (N8)', () => {
+  const answered = (reply?: string) =>
+    ({
+      ...base,
+      kind: 'swap_request_answered',
+      data: {
+        assignmentId: ID,
+        ministryId: ID,
+        ministryName: 'Louvor',
+        churchTimezone: 'America/Sao_Paulo',
+        shift: {
+          eventTitle: 'Culto',
+          roleName: 'Violão',
+          sectorName: 'Palco',
+          startsAt: '2026-12-13T13:30:00.000Z',
+          endsAt: '2026-12-13T15:00:00.000Z',
+        },
+        reply,
+      },
+    }) as GetNotifications200ItemsItem;
+
+  it('renders the kept Shift and the reply in pt-BR, and opens the Assignment page', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const item = answered('Fica com a gente');
+
+    expect(renderNotification(item)).toEqual({
+      title: 'Seu líder respondeu ao seu pedido de troca',
+      body: 'Louvor manteve você em dom 13 dez · 10:30–12:00 · Culto · Violão · Palco.\nResposta: Fica com a gente',
+      kindLabel: 'Pedido de troca respondido',
+      actionLabel: 'Ver escala',
+    });
+    expect(resolveNotificationDestination(item)).toEqual({
+      target: {
+        to: '/my-schedule/$assignmentId',
+        params: { assignmentId: ID },
+      },
+      isFallback: false,
+    });
+  });
+
+  it('omits the reply line when there is none', () => {
+    overwriteGetLocale(() => 'en');
+    expect(renderNotification(answered()).body).not.toContain('\n');
+  });
+});

@@ -107,6 +107,19 @@ export const cycleReadyToPrepareNotificationDataSchema = z.object({
   ministries: z.array(z.object({ id: z.uuid(), name: z.string() })).min(1),
 });
 
+/**
+ * N8: the leader kept the Volunteer on an Assignment and answered the Swap
+ * request. Everything shown is frozen here; Spec 28's keep action supplies it.
+ */
+export const swapRequestAnsweredNotificationDataSchema = z.object({
+  assignmentId: z.uuid(),
+  ministryId: z.uuid(),
+  ministryName: z.string(),
+  churchTimezone: z.string(),
+  shift: schedulePublishedShiftSchema,
+  reply: z.string().optional(),
+});
+
 export const notificationKindDataSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   ministry_invitation: ministryInvitationNotificationDataSchema,
@@ -120,6 +133,8 @@ export const notificationKindDataSchemas = {
   schedule_updated: scheduleUpdatedNotificationDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   cycle_ready_to_prepare: cycleReadyToPrepareNotificationDataSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  swap_request_answered: swapRequestAnsweredNotificationDataSchema,
 } as const;
 
 export const NOTIFICATION_KIND_OPTIONS = Object.keys(
@@ -187,6 +202,10 @@ export const notificationRequestDataSchemas = {
     ministryIds: z.array(z.uuid()).min(1),
   }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  swap_request_answered: swapRequestAnsweredNotificationDataSchema.extend({
+    churchName: z.string(),
+  }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   transfer_ministry_digest: transferDigestRequestDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   transfer_leaderless_ministry: transferDigestRequestDataSchema,
@@ -238,6 +257,12 @@ export type ScheduleUpdatedDeliveryFacts =
     churchName: string;
     actionUrl: string;
   };
+export type SwapRequestAnsweredDeliveryFacts =
+  NotificationDataOf<'swap_request_answered'> & {
+    churchName: string;
+    /** The Assignment page. */
+    actionUrl: string;
+  };
 export type CycleReadyToPrepareDeliveryFacts =
   NotificationDataOf<'cycle_ready_to_prepare'> & {
     churchName: string;
@@ -285,6 +310,8 @@ export interface NotificationDeliveryDataByKind {
   schedule_updated: ScheduleUpdatedDeliveryFacts;
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   cycle_ready_to_prepare: CycleReadyToPrepareDeliveryFacts;
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  swap_request_answered: SwapRequestAnsweredDeliveryFacts;
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   transfer_ministry_digest: TransferDigestDeliveryFacts;
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
@@ -344,6 +371,10 @@ export const notificationDeliveryFactsSchemas = {
   cycle_ready_to_prepare: cycleReadyToPrepareNotificationDataSchema
     .extend(emailFactsSchema.shape)
     .extend({ churchTimezone: z.string(), actionUrl: z.string() }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  swap_request_answered: swapRequestAnsweredNotificationDataSchema
+    .extend(emailFactsSchema.shape)
+    .extend({ actionUrl: z.string() }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   transfer_ministry_digest: transferDigestDeliveryFactsSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case

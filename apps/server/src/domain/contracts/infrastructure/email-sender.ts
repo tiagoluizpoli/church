@@ -193,7 +193,21 @@ export interface CycleReadyToPrepareEmail {
   actionUrl: string;
 }
 
+/** N8: the leader kept the Volunteer on an Assignment and answered. */
+export interface SwapRequestAnsweredEmail {
+  kind: 'swap-request.answered';
+  to: string;
+  churchName: string;
+  recipientFirstName: string;
+  ministryName: string;
+  churchTimezone: string;
+  shift: SchedulePublishedEmailShift;
+  reply?: string;
+  actionUrl: string;
+}
+
 export type EmailPayload =
+  | SwapRequestAnsweredEmail
   | AvailabilityEmail
   | CycleReadyToPrepareEmail
   | SchedulePublishedEmail

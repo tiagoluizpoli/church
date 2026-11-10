@@ -1278,6 +1278,101 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
   });
 });
 
+describe('N8 swap_request_answered through the outbox', () => {
+  const pt = { locale: 'pt-BR' } as const;
+  const assignmentId = '33333333-3333-4333-8333-333333333333';
+  const shift = {
+    eventTitle: 'Sunday Service',
+    roleName: 'Usher',
+    sectorName: 'Main Door',
+    startsAt: '2026-12-13T13:30:00.000Z',
+    endsAt: '2026-12-13T15:00:00.000Z',
+  };
+
+  function enqueueAnswered({ reply }: { reply?: string }) {
+    return unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'swap_request_answered',
+        to: [
+          {
+            userId: UserId.from(ids.adminUserId),
+            churchId: ChurchId.from(ids.churchId),
+          },
+        ],
+        data: {
+          assignmentId,
+          ministryId: ids.ministryId,
+          ministryName: 'Scheduling Ministry A',
+          churchTimezone: 'America/Sao_Paulo',
+          shift,
+          reply,
+          churchName: 'Scheduling Church A',
+        },
+      }),
+    );
+  }
+
+  it('renders the pt-BR email and bell row with the reply and the Assignment-page link, freezing the facts', async () => {
+    await enqueueAnswered({ reply: 'Fica com a gente <b>domingo</b>' });
+    const emailSender = new CaptureEmailSender('Church');
+
+    const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(result.failed).toBe(0);
+    const [email] = emailSender.delivered;
+    const text = email?.request.text ?? '';
+    const link = `https://app.test/my-schedule/${assignmentId}`;
+    expect(email?.request.subject).toBe(
+      m.notification_swap_request_answered_title({}, pt),
+    );
+    expect(text).toContain(
+      m.notification_swap_request_answered_body(
+        {
+          ministryName: 'Scheduling Ministry A',
+          shift:
+            'dom 13 dez · 10:30–12:00 · Sunday Service · Usher · Main Door',
+        },
+        pt,
+      ),
+    );
+    expect(text).toContain(
+      m.notification_swap_request_answered_reply(
+        { reply: 'Fica com a gente <b>domingo</b>' },
+        pt,
+      ),
+    );
+    expect(text).toContain(m.notification_swap_request_answered_action({}, pt));
+    expect(text).toContain(link);
+    expect(email?.request.html).not.toContain('<b>domingo');
+    const inbox = await schedulingTestDb.select().from(notification);
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({
+      userId: ids.adminUserId,
+      kind: 'swap_request_answered',
+      data: {
+        assignmentId,
+        ministryName: 'Scheduling Ministry A',
+        reply: 'Fica com a gente <b>domingo</b>',
+        shift,
+      },
+    });
+  });
+
+  it('omits the reply line when the leader left none', async () => {
+    await enqueueAnswered({});
+    const emailSender = new CaptureEmailSender('Church');
+
+    await buildDrainer(emailSender).drainOnce({ limit: 10 });
+
+    expect(emailSender.delivered[0]?.request.text).not.toContain(
+      m
+        .notification_swap_request_answered_reply({ reply: '' }, pt)
+        .split(':')[0],
+    );
+  });
+});
+
 describe('N2 cycle_ready_to_prepare through the outbox', () => {
   const pt = { locale: 'pt-BR' } as const;
 

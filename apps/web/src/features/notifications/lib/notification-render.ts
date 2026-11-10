@@ -155,6 +155,31 @@ export function renderNotification(
         kindLabel: m.notification_kind_cycle_ready_to_prepare(),
         actionLabel: m.notification_cycle_ready_to_prepare_action(),
       };
+    case 'swap_request_answered': {
+      const { data } = item;
+      return {
+        title: m.notification_swap_request_answered_title(),
+        body: [
+          m.notification_swap_request_answered_body({
+            ministryName: data.ministryName,
+            shift: formatShiftLine({
+              shift: data.shift,
+              timeZone: data.churchTimezone,
+              locale: getLocale(),
+            }),
+          }),
+          ...(data.reply
+            ? [
+                m.notification_swap_request_answered_reply({
+                  reply: data.reply,
+                }),
+              ]
+            : []),
+        ].join('\n'),
+        kindLabel: m.notification_kind_swap_request_answered(),
+        actionLabel: m.notification_swap_request_answered_action(),
+      };
+    }
     default:
       return {
         title: m.notification_unknown_title(),

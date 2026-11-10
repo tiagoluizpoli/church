@@ -9,6 +9,7 @@ import {
   ministryInvitationNotificationDataSchema,
   schedulePublishedNotificationDataSchema,
   scheduleUpdatedNotificationDataSchema,
+  swapRequestAnsweredNotificationDataSchema,
 } from '../../domain/notification-kinds';
 
 /** One member Notification: typed kind/data and Instants, never rendered text. */
@@ -52,6 +53,13 @@ export const memberNotificationResponseSchema = z.discriminatedUnion('kind', [
     id: z.uuid(),
     kind: z.literal('cycle_ready_to_prepare'),
     data: cycleReadyToPrepareNotificationDataSchema,
+    createdAt: instantSchema,
+    readAt: instantSchema.optional(),
+  }),
+  z.object({
+    id: z.uuid(),
+    kind: z.literal('swap_request_answered'),
+    data: swapRequestAnsweredNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),

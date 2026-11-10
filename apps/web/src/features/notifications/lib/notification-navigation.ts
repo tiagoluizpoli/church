@@ -5,6 +5,7 @@ import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAP
 export type NotificationNavigationTarget =
   | { to: '/notifications' }
   | { to: '/my-schedule' }
+  | { to: '/my-schedule/$assignmentId'; params: { assignmentId: string } }
   | { to: '/availability' }
   | { to: '/availability/$checkId'; params: { checkId: string } }
   | {
@@ -88,6 +89,14 @@ export function resolveNotificationDestination(
         isFallback: false,
       };
     }
+    case 'swap_request_answered':
+      return {
+        target: {
+          to: '/my-schedule/$assignmentId',
+          params: { assignmentId: item.data.assignmentId },
+        },
+        isFallback: false,
+      };
     default:
       return { target: { to: '/notifications' }, isFallback: true };
   }

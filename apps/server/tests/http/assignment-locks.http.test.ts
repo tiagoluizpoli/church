@@ -642,3 +642,117 @@ for (const [scope, first] of [
     }
   });
 }
+
+type CancelScope = 'event' | 'eventTimeBlock';
+
+function confirmCancel({
+  seed,
+  scope,
+}: {
+  seed: Awaited<ReturnType<typeof seedLockedAssignment>>;
+  scope: CancelScope;
+}) {
+  const blockPath =
+    scope === 'event'
+      ? ''
+      : `/event-time-blocks/${seed.graph.eventTimeBlock.id}`;
+  return app
+    .inject({
+      method: 'POST',
+      url: `/api/v1/admin/cycles/${seed.cycle.id}/events/${seed.graph.event.id}${blockPath}/cancel`,
+      headers: seed.headers,
+      // The suite's default locale is pt-BR.
+      payload: { confirmation: 'cancelar' },
+    })
+    .then((result) => result);
+}
+
+function createReplacement(
+  seed: Awaited<ReturnType<typeof seedLockedAssignment>>,
+) {
+  return app
+    .inject({
+      method: 'POST',
+      url: `/api/v1/assign/shifts/${seed.shift.id}/assignments`,
+      headers: seed.headers,
+      payload: {
+        volunteerId: seed.replacementId,
+        shiftRequirementId: seed.source.id,
+      },
+    })
+    .then((result) => result);
+}
+
+async function shiftAssignmentRows(shiftId: string) {
+  return db
+    .select({ volunteerId: assignment.volunteerId, status: assignment.status })
+    .from(assignment)
+    .where(eq(assignment.shiftId, shiftId));
+}
+
+for (const scope of ['event', 'eventTimeBlock'] as const) {
+  for (const mutation of ['create', 'reassign'] as const) {
+    it(`${mutation} refuses a Shift whose ${scope} is cancelled`, async () => {
+      const seed = await seedLockedAssignment();
+      const cancelled = await confirmCancel({ seed, scope });
+      expect(cancelled.statusCode).toBe(200);
+      const before = await shiftAssignmentRows(seed.shift.id);
+
+      const result =
+        mutation === 'create'
+          ? await createReplacement(seed)
+          : await app.inject({
+              method: 'PATCH',
+              url: `/api/v1/assign/assignments/${seed.current.id}/reassign`,
+              headers: seed.headers,
+              payload: { volunteerId: seed.replacementId },
+            });
+
+      expect(result.statusCode).toBe(409);
+      expect(result.json()).toMatchObject({
+        error: 'ILLEGAL_STATE_TRANSITION',
+      });
+      expect(await shiftAssignmentRows(seed.shift.id)).toEqual(before);
+    });
+  }
+
+  it(`a create waiting on ${scope} cancellation's Church lock refuses once it commits`, async () => {
+    const seed = await seedLockedAssignment();
+    const blocker = new pg.Client({
+      connectionString: getIntegrationDatabaseUrl(),
+    });
+    await blocker.connect();
+    const pending: Promise<unknown>[] = [];
+    try {
+      await blocker.query('BEGIN');
+      const blockerPid = await readBackendPid(blocker);
+      // Pauses confirm at its Assignment write, its Church lock held.
+      await blocker.query(
+        'SELECT id FROM assignment WHERE id = $1 FOR UPDATE',
+        [seed.current.id],
+      );
+      const cancel = confirmCancel({ seed, scope });
+      pending.push(cancel);
+      const cancelPid = await waitForBlockedRequest(blocker, blockerPid);
+      if (cancelPid === undefined) throw new Error('Cancel never paused');
+      const create = createReplacement(seed);
+      pending.push(create);
+      await waitForBlockedRequest(blocker, cancelPid);
+      await blocker.query('COMMIT');
+
+      expect((await cancel).statusCode).toBe(200);
+      const created = await create;
+      expect(created.statusCode).toBe(409);
+      expect(created.json()).toMatchObject({
+        error: 'ILLEGAL_STATE_TRANSITION',
+      });
+      expect(await shiftAssignmentRows(seed.shift.id)).toEqual([
+        { volunteerId: seed.current.volunteerId, status: 'cancelled' },
+      ]);
+    } finally {
+      await blocker.query('ROLLBACK');
+      await Promise.allSettled(pending);
+      await blocker.end();
+    }
+  });
+}

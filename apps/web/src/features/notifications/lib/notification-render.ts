@@ -481,7 +481,8 @@ function eventCancelledTitle({
 }: EventCancelledTitleInput): string {
   const startInstant = parseInstant({ value: start });
   const startDay = today({ instant: startInstant, timeZone });
-  const day = formatDayLabel({ day: startDay, locale: getLocale() });
+  const locale = getLocale();
+  const day = formatDayLabel({ day: startDay, locale });
   return m.notification_event_cancelled_title({ eventTitle, day });
 }
 

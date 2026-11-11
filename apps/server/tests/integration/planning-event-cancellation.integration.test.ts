@@ -542,7 +542,11 @@ describe('a SwapRequest raised while confirm runs', () => {
     paused.open();
 
     await expect(raising).resolves.toMatchObject({ status: 'open' });
-    await expect(confirming).resolves.toMatchObject({ volunteerCount: 2 });
+    // Ana's seeded request and the one raised while confirm waited.
+    await expect(confirming).resolves.toMatchObject({
+      volunteerCount: 2,
+      openSwapRequestCount: 2,
+    });
     const { id } = sunday.biaService.assignment;
     expect(await statusOf(id)).toBe('cancelled');
     expect(await biaRequests(id)).toEqual([{ status: 'covered' }]);

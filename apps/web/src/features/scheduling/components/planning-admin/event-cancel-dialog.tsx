@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { Ban } from 'lucide-react';
 import { useState } from 'react';
 import { getErrorMessage } from './planning-admin.utils';
@@ -34,6 +35,10 @@ const CANCELLATION_READERS = [
   ['availability-check'],
 ] as const;
 
+interface RefusalBody {
+  error?: string;
+}
+
 export interface EventCancelDialogProps {
   cycleId: string;
   eventId: string;
@@ -60,6 +65,26 @@ export function EventCancelDialog({
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
   const queryClient = useQueryClient();
+  const refreshPlanning = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
+      ...CANCELLATION_READERS.map((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      ),
+      queryClient.invalidateQueries({
+        predicate: ({ queryKey: [key] }) =>
+          typeof key === 'string' && key.startsWith('prepare-'),
+      }),
+    ]);
+  // The scope has started: refresh so it shows read-only behind the refusal.
+  const refreshWhenWindowClosed = (error: Error) => {
+    if (
+      isAxiosError<RefusalBody>(error) &&
+      error.response?.data?.error === 'ADMIN_CANCELLATION_WINDOW_CLOSED'
+    ) {
+      void refreshPlanning();
+    }
+  };
   const preview = useMutation({
     mutationFn: () =>
       eventTimeBlockId
@@ -69,6 +94,7 @@ export function EventCancelDialog({
             eventTimeBlockId,
           )
         : adminApi.previewPlanningEventCancellation(cycleId, eventId),
+    onError: refreshWhenWindowClosed,
   });
   const cancel = useMutation({
     mutationFn: (confirmation: string) =>
@@ -80,6 +106,7 @@ export function EventCancelDialog({
             { confirmation },
           )
         : adminApi.cancelPlanningEvent(cycleId, eventId, { confirmation }),
+    onError: refreshWhenWindowClosed,
   });
   const impact = preview.data;
   const done = cancel.data;
@@ -97,18 +124,7 @@ export function EventCancelDialog({
     setOpen(next);
     if (next) return;
     // Refresh only once closed, so the success state stays readable.
-    if (done) {
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
-        ...CANCELLATION_READERS.map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
-        queryClient.invalidateQueries({
-          predicate: ({ queryKey: [key] }) =>
-            typeof key === 'string' && key.startsWith('prepare-'),
-        }),
-      ]);
-    }
+    if (done) void refreshPlanning();
     setTyped('');
     preview.reset();
     cancel.reset();

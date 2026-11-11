@@ -933,13 +933,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     tx,
   }: EnqueueEventMovedInput): Promise<void> {
     const churchId = church.id;
-    const ministries = await this.eventRepository.listMoveAffectedMinistries({
-      churchId,
-      cycleId: cycle.id,
-      eventId: event.id,
-      eventTimeBlockIds: movedBlockIds,
-      tx,
-    });
+    const ministries =
+      await this.eventRepository.listScopeParticipatingMinistries({
+        churchId,
+        cycleId: cycle.id,
+        eventId: event.id,
+        eventTimeBlockIds: movedBlockIds,
+        tx,
+      });
     if (ministries.length === 0) return;
     const adminName =
       (await this.churchRepository.findUserName({ userId: actingUserId })) ??
@@ -1121,8 +1122,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // exactly what the writes below cancel.
       await this.enqueueEventCancelled({ actingUserId, church, computed, tx });
 
+      // A request raised while confirm waited is closed too: count closures.
+      let openSwapRequestCount = 0;
       for (const { assignmentId } of scopeAssignments) {
-        await cancelAssignment({
+        const closed = await cancelAssignment({
           churchId,
           assignmentId,
           actorId: actingUserId,
@@ -1131,6 +1134,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           auditRepository: this.auditRepository,
           swapRequestRepository: this.swapRequestRepository,
         });
+        if (closed) openSwapRequestCount += 1;
       }
       const { eventTimeBlockIds } = resolved;
       await this.eventRepository.deleteScopeUnavailableShifts({
@@ -1161,7 +1165,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           tx,
         });
       }
-      return impact;
+      return { ...impact, openSwapRequestCount };
     });
   }
 
@@ -1296,13 +1300,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         eventTimeBlockId,
         tx,
       });
-    const ministries = await this.eventRepository.listMoveAffectedMinistries({
-      churchId,
-      cycleId: cycle.id,
-      eventId,
-      eventTimeBlockIds: resolved.eventTimeBlockIds,
-      tx,
-    });
+    const ministries =
+      await this.eventRepository.listScopeParticipatingMinistries({
+        churchId,
+        cycleId: cycle.id,
+        eventId,
+        eventTimeBlockIds: resolved.eventTimeBlockIds,
+        tx,
+      });
     const impact = summarizeCancellationImpact({
       scope,
       event,

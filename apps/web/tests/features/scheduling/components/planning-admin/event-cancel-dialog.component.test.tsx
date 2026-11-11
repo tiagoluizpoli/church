@@ -220,6 +220,49 @@ describe('EventCancelDialog', () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    'preview',
+    'confirm',
+  ] as const)('refreshes the planning reads when %s finds the window closed', async (step) => {
+    const windowClosed = new AxiosError(
+      'Conflict',
+      '409',
+      undefined,
+      undefined,
+      {
+        status: 409,
+        data: {
+          error: 'ADMIN_CANCELLATION_WINDOW_CLOSED',
+          message: 'Já começou',
+        },
+      } as AxiosResponse,
+    );
+    if (step === 'preview') {
+      previewPlanningEventCancellation.mockRejectedValue(windowClosed);
+    } else {
+      previewPlanningEventCancellation.mockResolvedValue(impact());
+      cancelPlanningEvent.mockRejectedValue(windowClosed);
+    }
+    const queryClient = new QueryClient();
+    for (const queryKey of READERS) queryClient.setQueryData(queryKey, {});
+    const user = await open({ queryClient });
+    if (step === 'confirm') {
+      await screen.findByTestId('event-cancel-impact');
+      await user.type(
+        screen.getByLabelText(
+          m.event_cancel_confirm_label({ word: 'cancelar' }),
+        ),
+        'cancelar',
+      );
+      await user.click(confirmButton());
+    }
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Já começou');
+    for (const queryKey of READERS) {
+      expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true);
+    }
+  });
+
   it('shows the preview refusal, offering no confirm', async () => {
     previewPlanningEventCancellation.mockRejectedValue(
       new AxiosError('Conflict', '409', undefined, undefined, {

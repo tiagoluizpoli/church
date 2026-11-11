@@ -40,16 +40,14 @@ export function EventEditPage({ cycleId, eventId }: EventEditPageProps) {
       }
       action={({ cycle, events }) => {
         const graph = findGraph({ events, eventId });
-        return graph &&
-          canCancelEvent({
-            cycleState: cycle.state,
-            eventStatus: graph.event.status,
-            start: graph.event.start,
-          }) ? (
+        if (!graph) return null;
+        const { status: eventStatus, start, title } = graph.event;
+        const { state: cycleState } = cycle;
+        return canCancelEvent({ cycleState, eventStatus, start }) ? (
           <EventCancelDialog
             cycleId={cycleId}
             eventId={eventId}
-            title={graph.event.title}
+            title={title}
           />
         ) : null;
       }}

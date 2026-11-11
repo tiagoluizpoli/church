@@ -77,8 +77,7 @@ function describePlanningIntro({
   if (isReviewingCyclePath({ pathname }) && selectedCycleName) {
     return {
       title: selectedCycleName,
-      description:
-        'Cycles. Review this cycle, apply templates on demand, add exceptions, and send the cycle to Ministries when it is ready for staffing.',
+      description: m.cycle_review_description(),
     };
   }
 

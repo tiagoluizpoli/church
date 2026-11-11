@@ -1,6 +1,8 @@
+import { m } from '@church/i18n/messages';
 import { useMemo, useState } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import type { MinistryPrepareSummaryRow } from '../participation-prepare.utils';
+import { prepareCountsSummary } from './cycle-list.utils';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
@@ -15,11 +17,20 @@ export interface MinistryPrepareListProps {
   onSelectMinistry: (input: SelectMinistryInput) => void;
 }
 
-const MINISTRY_TABLE_COLUMNS: DataTableColumn[] = [
-  { id: 'name', name: 'Ministry', allowsSorting: true, isRowHeader: true },
-  { id: 'events', name: 'Events', allowsSorting: true },
-  { id: 'eventTimeBlocks', name: 'Time blocks', allowsSorting: true },
-  { id: 'actions', name: 'Actions' },
+const ministryTableColumns = (): DataTableColumn[] => [
+  {
+    id: 'name',
+    name: m.breadcrumb_ministry(),
+    allowsSorting: true,
+    isRowHeader: true,
+  },
+  { id: 'events', name: m.cycle_header_events(), allowsSorting: true },
+  {
+    id: 'eventTimeBlocks',
+    name: m.cycle_review_column_time_blocks(),
+    allowsSorting: true,
+  },
+  { id: 'actions', name: m.cycle_review_column_actions() },
 ];
 
 const DEFAULT_SORT_DESCRIPTOR: SortDescriptor = {
@@ -80,7 +91,7 @@ export function MinistryPrepareList({
         className="text-muted-foreground text-sm"
         data-testid="ministry-prepare-empty-state"
       >
-        No ministries yet. Join or create a ministry before preparing a cycle.
+        {m.prepare_ministry_list_empty()}
       </p>
     );
   }
@@ -92,8 +103,8 @@ export function MinistryPrepareList({
         data-testid="ministry-prepare-list-panel"
       >
         <DataTable<MinistryPrepareSummaryRow>
-          aria-label="Ministries"
-          columns={MINISTRY_TABLE_COLUMNS}
+          aria-label={m.nav_ministries()}
+          columns={ministryTableColumns()}
           items={sortedRows}
           rowId={({ item }) => item.ministryId}
           rowTestId={({ item }) => `ministry-prepare-row-${item.ministryId}`}
@@ -116,7 +127,7 @@ export function MinistryPrepareList({
               data-testid={`ministry-prepare-button-${item.ministryId}`}
               onClick={() => onSelectMinistry({ ministryId: item.ministryId })}
             >
-              View cycles
+              {m.prepare_ministry_view_cycles()}
             </Button>
           )}
           renderMobileCard={({ item }) => (
@@ -127,8 +138,10 @@ export function MinistryPrepareList({
               <div className="space-y-1">
                 <div className="font-medium">{item.ministryName}</div>
                 <div className="text-muted-foreground text-xs">
-                  {item.eventCount} events · {item.eventTimeBlockCount} time
-                  blocks
+                  {prepareCountsSummary({
+                    eventCount: item.eventCount,
+                    eventTimeBlockCount: item.eventTimeBlockCount,
+                  })}
                 </div>
               </div>
             </div>

@@ -14,13 +14,12 @@ import { volunteerApi } from '@/utils/api-instances';
 
 const ASSIGNMENT_LIMIT = 3;
 
-function Failure({
-  message,
-  onRetry,
-}: {
+interface FailureProps {
   message: string;
   onRetry: () => void;
-}) {
+}
+
+function Failure({ message, onRetry }: FailureProps) {
   return (
     <div role="alert" className="space-y-3">
       <p>{message}</p>

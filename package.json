@@ -70,6 +70,7 @@
     "validate:date-time-seam": "bun tooling/validation/date-time-seam-guards.ts",
     "validate:test-placement": "bun tooling/validation/test-placement-guard.ts",
     "validate:named-parameters": "bun tooling/validation/named-parameters-guard.ts",
+    "validate:presentation-text": "bun tooling/validation/presentation-text-guard.ts",
     "validate:api-generated": "bun tooling/validation/api-generated-guard.ts",
     "validate:journey-map": "bun tooling/validation/journey-map-guard.ts",
     "validate:affected": "bun tooling/validation/affected.ts",

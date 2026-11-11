@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { useEffect, useState } from 'react';
 import { DatePickerField } from '@/components/date-picker-field';
 import { Button } from '@/components/ui/button';
@@ -93,7 +94,9 @@ export function CycleListFiltersBar({
   return (
     <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
       <div className="space-y-1">
-        <Label htmlFor="prepare-cycle-date-mode-filter">Date range</Label>
+        <Label htmlFor="prepare-cycle-date-mode-filter">
+          {m.builder_ui_date_range()}
+        </Label>
         {/* base-ui's Select renders a visually-hidden native `<input>`
          * (form/autofill semantics) as a direct sibling of the trigger —
          * clipped, not `display:none`, so it still occupies normal-flow
@@ -120,15 +123,17 @@ export function CycleListFiltersBar({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="starts">Starts</SelectItem>
-              <SelectItem value="ends">Ends</SelectItem>
-              <SelectItem value="within">Within</SelectItem>
+              <SelectItem value="starts">{m.builder_ui_starts()}</SelectItem>
+              <SelectItem value="ends">{m.builder_ui_ends()}</SelectItem>
+              <SelectItem value="within">{m.builder_ui_within()}</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="prepare-cycle-date-start-filter">From</Label>
+        <Label htmlFor="prepare-cycle-date-start-filter">
+          {m.builder_ui_from()}
+        </Label>
         <DatePickerField
           id="prepare-cycle-date-start-filter"
           data-testid="prepare-cycle-date-start-filter"
@@ -138,7 +143,9 @@ export function CycleListFiltersBar({
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="prepare-cycle-date-end-filter">To</Label>
+        <Label htmlFor="prepare-cycle-date-end-filter">
+          {m.builder_ui_to()}
+        </Label>
         <DatePickerField
           id="prepare-cycle-date-end-filter"
           data-testid="prepare-cycle-date-end-filter"
@@ -148,7 +155,9 @@ export function CycleListFiltersBar({
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="prepare-cycle-involvement-filter">Involvement</Label>
+        <Label htmlFor="prepare-cycle-involvement-filter">
+          {m.prepare_cycle_filter_involvement()}
+        </Label>
         <div className={isMobile ? 'h-11' : 'h-8'}>
           <Select
             value={draft.involvement}
@@ -170,15 +179,23 @@ export function CycleListFiltersBar({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="part_of">Part of</SelectItem>
-              <SelectItem value="not_part_of">Not part of</SelectItem>
+              <SelectItem value="all">
+                {m.prepare_cycle_filter_all()}
+              </SelectItem>
+              <SelectItem value="part_of">
+                {m.prepare_cycle_filter_part_of()}
+              </SelectItem>
+              <SelectItem value="not_part_of">
+                {m.prepare_cycle_filter_not_part_of()}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="prepare-cycle-status-filter">Status</Label>
+        <Label htmlFor="prepare-cycle-status-filter">
+          {m.cycles_column_status()}
+        </Label>
         <div className={isMobile ? 'h-11' : 'h-8'}>
           <Select
             value={draft.status}
@@ -200,10 +217,18 @@ export function CycleListFiltersBar({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="not_started">Not started</SelectItem>
-              <SelectItem value="in_progress">In progress</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="all">
+                {m.prepare_cycle_filter_all()}
+              </SelectItem>
+              <SelectItem value="not_started">
+                {m.prepare_cycle_status_not_started()}
+              </SelectItem>
+              <SelectItem value="in_progress">
+                {m.prepare_cycle_status_in_progress()}
+              </SelectItem>
+              <SelectItem value="published">
+                {m.schedules_published()}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -216,7 +241,7 @@ export function CycleListFiltersBar({
           data-testid="prepare-cycle-filters-apply"
           onClick={() => onApply(draft)}
         >
-          Apply filters
+          {m.prepare_cycle_filter_apply()}
         </Button>
         <Button
           type="button"
@@ -226,7 +251,7 @@ export function CycleListFiltersBar({
           data-testid="prepare-cycle-filters-clear"
           onClick={handleClear}
         >
-          Clear filters
+          {m.builder_ui_clear_filters()}
         </Button>
       </div>
     </div>

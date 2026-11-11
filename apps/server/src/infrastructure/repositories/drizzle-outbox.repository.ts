@@ -50,7 +50,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
           lte(outboxMessage.scheduledFor, now),
         ),
       )
-      .orderBy(asc(outboxMessage.scheduledFor))
+      .orderBy(asc(outboxMessage.scheduledFor), asc(outboxMessage.createdAt))
       .limit(limit)
       .for('update', { skipLocked: true });
     if (claimable.length === 0) return [];
@@ -61,7 +61,11 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       .set({ status: 'processing' })
       .where(inArray(outboxMessage.id, claimedIds))
       .returning();
-    return rows.map(mapOutboxMessage);
+    // RETURNING comes back in storage order; the drainer delivers in claim order.
+    const position = (id: string) => claimedIds.indexOf(id);
+    return rows
+      .sort((a, b) => position(a.id) - position(b.id))
+      .map(mapOutboxMessage);
   }
 
   async markSent(input: MarkOutboxMessageSentInput): Promise<void> {

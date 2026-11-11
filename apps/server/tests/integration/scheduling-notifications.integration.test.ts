@@ -22,7 +22,7 @@ import {
   resetClock,
   setTestClock,
 } from '@church/time';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
@@ -275,7 +275,8 @@ async function outboxRows() {
   return schedulingTestDb
     .select()
     .from(outboxMessage)
-    .where(eq(outboxMessage.churchId, ids.churchId));
+    .where(eq(outboxMessage.churchId, ids.churchId))
+    .orderBy(asc(outboxMessage.createdAt));
 }
 
 /** The planning manager wired to the real repositories and the outbox. */

@@ -42,6 +42,13 @@ function isPermanentReply(code: number | undefined): boolean {
   );
 }
 
+/** The fields of nodemailer's SMTP result this sender relies on. */
+interface SmtpDelivery {
+  messageId: string;
+  rejected?: Array<string | { address: string }>;
+  rejectedErrors?: unknown[];
+}
+
 /** Reads `responseCode` off an unknown thrown value without trusting its type. */
 function responseCodeOf(failure: unknown): number | undefined {
   if (typeof failure !== 'object' || failure === null) return undefined;
@@ -109,7 +116,11 @@ export class SmtpEmailSender implements EmailSender {
         retryable: !isPermanentReply(responseCodeOf(cause)),
       });
     }
-    const { messageId, rejected = [], rejectedErrors = [] } = info;
+    const {
+      messageId,
+      rejected = [],
+      rejectedErrors = [],
+    }: SmtpDelivery = info;
     // Nodemailer resolves when at least one recipient was accepted, so a
     // partial rejection must be surfaced here or the outbox marks it sent.
     if (rejected.length > 0) {

@@ -19,7 +19,8 @@ export interface CancelAssignmentInput {
  * `cancelled` for history (never Remove Assignment's hard delete), audit it as
  * `event_cancelled` by the acting User and close an open SwapRequest through
  * Spec 28's `covered` close, which sends no N8 (only a `kept` answer does).
- * The caller holds the Church and Participation locks.
+ * The caller holds the Church and Participation locks. True when it closed a
+ * request.
  */
 export async function cancelAssignment({
   churchId,
@@ -29,7 +30,7 @@ export async function cancelAssignment({
   assignmentRepository,
   auditRepository,
   swapRequestRepository,
-}: CancelAssignmentInput): Promise<void> {
+}: CancelAssignmentInput): Promise<boolean> {
   await assignmentRepository.updateStatus({
     churchId,
     assignmentId,
@@ -41,7 +42,7 @@ export async function cancelAssignment({
     input: { assignmentId, actorId, action: 'event_cancelled' },
     tx,
   });
-  await swapRequestRepository.closeOpenByAssignment({
+  return swapRequestRepository.closeOpenByAssignment({
     churchId,
     assignmentId,
     status: 'covered',

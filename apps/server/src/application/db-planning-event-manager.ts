@@ -1121,8 +1121,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // exactly what the writes below cancel.
       await this.enqueueEventCancelled({ actingUserId, church, computed, tx });
 
+      // A request raised while confirm waited is closed too: count closures.
+      let openSwapRequestCount = 0;
       for (const { assignmentId } of scopeAssignments) {
-        await cancelAssignment({
+        const closed = await cancelAssignment({
           churchId,
           assignmentId,
           actorId: actingUserId,
@@ -1131,6 +1133,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           auditRepository: this.auditRepository,
           swapRequestRepository: this.swapRequestRepository,
         });
+        if (closed) openSwapRequestCount += 1;
       }
       const { eventTimeBlockIds } = resolved;
       await this.eventRepository.deleteScopeUnavailableShifts({
@@ -1161,7 +1164,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           tx,
         });
       }
-      return impact;
+      return { ...impact, openSwapRequestCount };
     });
   }
 

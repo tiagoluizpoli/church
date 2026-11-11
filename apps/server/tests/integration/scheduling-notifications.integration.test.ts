@@ -30,6 +30,7 @@ import { DbAvailabilityCheckManager } from '@/application/db-availability-check-
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import {
+  AssignmentId,
   ChurchId,
   CycleId,
   EventId,
@@ -1888,6 +1889,95 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       }),
     ]);
     expect(JSON.stringify(sent)).not.toContain('swapRequestCovered');
+  });
+
+  it('Send updates tells no removal for a told Assignment removed before its EventTimeBlock was cancelled', async () => {
+    const ana = await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    const carla = await seedMember({ name: 'Carla', email: 'carla@test.com' });
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    const sibling = await buildEventTimeBlock({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      eventId,
+      start: parseInstant({ value: '2026-12-25T04:00:00.000Z' }),
+      end: parseInstant({ value: '2026-12-25T06:00:00.000Z' }),
+      label: 'Sibling',
+    });
+    const book = async (block: string, volunteerId: string, hour: number) => {
+      const booked = await seedShift({
+        churchId: ids.churchId,
+        participationId,
+        eventTimeBlockId: block,
+        startTime: new Date(`2026-12-25T0${hour}:00:00.000Z`),
+        endTime: new Date(`2026-12-25T0${hour + 1}:00:00.000Z`),
+        label: 'Shift',
+      });
+      const requirement = await seedRequirement({
+        churchId: ids.churchId,
+        participationId,
+        shiftId: booked.id,
+        roleId: role.id,
+        peopleNeeded: 1,
+      });
+      return buildAssignment({
+        db: schedulingTestDb,
+        churchId: ids.churchId,
+        participationId,
+        shiftId: booked.id,
+        shiftRequirementId: requirement.id,
+        volunteerId,
+        roleId: role.id,
+        status: 'confirmed',
+      });
+    };
+    const removed = await book(eventTimeBlockId, ana.volunteer.id, 3);
+    await book(sibling.id, carla.volunteer.id, 4);
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.ministryId, ids.ministryId));
+    const managers = createSchedulingManagers({ notifications });
+    const publishInput = {
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      ministryId: MinistryId.from(ids.ministryId),
+      userId: UserId.from(ids.adminUserId),
+      confirmBelowFull: true,
+    };
+    await managers.participationManager.publishCycle(publishInput);
+    // The leader removes Ana's told Assignment; her last-told row keeps it.
+    await managers.assignmentManager.deleteAssignment({
+      churchId: ChurchId.from(ids.churchId),
+      assignmentId: AssignmentId.from(removed.id),
+      actorId: UserId.from(ids.adminUserId),
+    });
+    await book(sibling.id, carla.volunteer.id, 5);
+
+    await buildPlanningManager().confirmCancellation({
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      eventId: EventId.from(eventId),
+      scope: {
+        kind: 'eventTimeBlock',
+        eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+      },
+      actingUserId: UserId.from(ids.adminUserId),
+    });
+    const before = new Set((await outboxRows()).map(({ id }) => id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+
+    const sent = (await outboxRows())
+      .filter(({ id }) => !before.has(id))
+      .map(
+        ({ payload }) => payload as { kind: string; to: { userId: string } },
+      );
+    expect(sent.map(({ kind, to }) => [kind, to.userId])).toEqual([
+      ['schedule_updated', carla.volunteer.userId],
+    ]);
   });
 
   it('rolls back publication and snapshots when notification enqueue fails', async () => {

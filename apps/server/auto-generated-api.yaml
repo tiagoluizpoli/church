@@ -7060,6 +7060,8 @@ paths:
                           type: number
                         openSwapRequestCount:
                           type: number
+                        gapCount:
+                          type: number
                         asking:
                           type: object
                           properties:
@@ -7078,6 +7080,7 @@ paths:
                         - stage
                         - lateMarkCount
                         - openSwapRequestCount
+                        - gapCount
                       additionalProperties: false
                 required:
                   - schedules

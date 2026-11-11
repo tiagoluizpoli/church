@@ -266,6 +266,7 @@ export const scheduleResponseSchema = z.object({
   stage: z.enum(SCHEDULE_STAGE_OPTIONS),
   lateMarkCount: z.number(),
   openSwapRequestCount: z.number(),
+  gapCount: z.number(),
   asking: z.object({ confirmed: z.number(), asked: z.number() }).optional(),
 });
 export type ScheduleResponse = z.infer<typeof scheduleResponseSchema>;
@@ -397,6 +398,7 @@ function toScheduleResponse({
   stage,
   lateMarkCount,
   openSwapRequestCount,
+  gapCount,
   asking,
 }: ScheduleView): ScheduleResponse {
   return {
@@ -411,6 +413,7 @@ function toScheduleResponse({
     stage,
     lateMarkCount,
     openSwapRequestCount,
+    gapCount,
     affectedVolunteerCount,
     asking,
   };

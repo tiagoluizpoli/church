@@ -50,14 +50,14 @@ import type {
   GetPlanningEventInput,
   ListCancellationScopeAssignmentsInput,
   ListCycleEventsInput,
-  ListMoveAffectedMinistriesInput,
   ListMoveClashCandidatesInput,
   ListMoveScopeAssignmentsInput,
+  ListScopeParticipatingMinistriesInput,
   LockEventParticipationsInput,
-  MoveAffectedMinistry,
   MoveEventTimeBlocksInput,
   PlanningEventRepository,
   RemoveLastToldAssignmentsInput,
+  ScopeParticipatingMinistry,
   SeededMinistry,
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
@@ -463,13 +463,15 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       .for('no key update');
   }
 
-  async listMoveAffectedMinistries({
+  async listScopeParticipatingMinistries({
     churchId,
     cycleId,
     eventId,
     eventTimeBlockIds,
     tx,
-  }: ListMoveAffectedMinistriesInput): Promise<MoveAffectedMinistry[]> {
+  }: ListScopeParticipatingMinistriesInput): Promise<
+    ScopeParticipatingMinistry[]
+  > {
     if (eventTimeBlockIds.length === 0) return [];
     const client = getClient({ db: this.db, tx });
     const optedIn = client

@@ -933,13 +933,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     tx,
   }: EnqueueEventMovedInput): Promise<void> {
     const churchId = church.id;
-    const ministries = await this.eventRepository.listMoveAffectedMinistries({
-      churchId,
-      cycleId: cycle.id,
-      eventId: event.id,
-      eventTimeBlockIds: movedBlockIds,
-      tx,
-    });
+    const ministries =
+      await this.eventRepository.listScopeParticipatingMinistries({
+        churchId,
+        cycleId: cycle.id,
+        eventId: event.id,
+        eventTimeBlockIds: movedBlockIds,
+        tx,
+      });
     if (ministries.length === 0) return;
     const adminName =
       (await this.churchRepository.findUserName({ userId: actingUserId })) ??
@@ -1299,13 +1300,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         eventTimeBlockId,
         tx,
       });
-    const ministries = await this.eventRepository.listMoveAffectedMinistries({
-      churchId,
-      cycleId: cycle.id,
-      eventId,
-      eventTimeBlockIds: resolved.eventTimeBlockIds,
-      tx,
-    });
+    const ministries =
+      await this.eventRepository.listScopeParticipatingMinistries({
+        churchId,
+        cycleId: cycle.id,
+        eventId,
+        eventTimeBlockIds: resolved.eventTimeBlockIds,
+        tx,
+      });
     const impact = summarizeCancellationImpact({
       scope,
       event,

@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import {
   assignment,
   assignmentAudit,
@@ -8,85 +9,61 @@ import {
   swapRequest,
   unavailableShift,
 } from '@church/db';
-import {
-  parseCalendarDay,
-  parseInstant,
-  parseTimeOfDay,
-  resetClock,
-  setTestClock,
-  toInstant,
-} from '@church/time';
-import { eq } from 'drizzle-orm';
+import { parseInstant, resetClock, setTestClock } from '@church/time';
+import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
+import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import { DbSwapRequestManager } from '@/application/db-swap-request-manager';
 import {
   AssignmentId,
   ChurchId,
-  CycleId,
-  EventId,
   EventTimeBlockId,
   UserId,
 } from '@/domain/branded-ids';
+import type {
+  CloseOpenSwapRequestInput,
+  CreateSwapRequestInput,
+} from '@/domain/contracts/infrastructure/swap-request.repository';
 import { AdminCancellationWindowClosedError } from '@/domain/errors/admin-cancellation-window-closed';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
+import { SwapRequestUnpublishedError } from '@/domain/errors/swap-request';
+import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
-import { buildUser } from '@/seeds/builders/identity';
-import {
-  buildMinistry,
-  buildRole,
-  buildSector,
-} from '@/seeds/builders/ministry';
-import {
-  buildAssignment,
-  buildCycle,
-  buildEvent,
-  buildEventTimeBlock,
-  buildMinistryParticipation,
-  buildShift,
-  buildShiftRequirement,
-} from '@/seeds/builders/scheduling';
-import {
-  buildConfirmedAvailabilityCheck,
-  buildUnavailableShift,
-} from '@/seeds/builders/unavailable-shift';
-import {
-  buildMinistryMembership,
-  buildVolunteer,
-} from '@/seeds/builders/volunteer';
+import { buildChurchMembership } from '@/seeds/builders/church';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
-  seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import {
+  at,
+  CHURCH_OCTOBER_1_NOON,
+  seedSentSunday,
+} from '@/tests/test-support/cancellation-fixture';
 
 const db = schedulingTestDb;
-const CHURCH_TIME_ZONE = 'America/Sao_Paulo';
-const CHURCH_OCTOBER_1_NOON = '2026-10-01T15:00:00.000Z';
-
-/** A Church-local wall clock on Sunday 2026-10-18 in São Paulo. */
-const at = (time: string) =>
-  toInstant({
-    day: parseCalendarDay({ value: '2026-10-18' }),
-    time: parseTimeOfDay({ value: time }),
-    timeZone: CHURCH_TIME_ZONE,
-  });
-
 const eventRepository = new DrizzlePlanningEventRepository({ db });
 const churchRepository = new DrizzleChurchRepository({ db });
 const unitOfWork = new DrizzleUnitOfWork({ db });
-const manager = new DbPlanningEventManager({
+const managerDependencies = {
   cycleRepository: new DrizzleCycleRepository({ db }),
   eventRepository,
   templateRepository: new DrizzleEventTemplateRepository({ db }),
@@ -103,7 +80,8 @@ const manager = new DbPlanningEventManager({
   notifications: new ChurchNotifications({
     outboxRepository: new DrizzleOutboxRepository({ db }),
   }),
-});
+};
+const manager = new DbPlanningEventManager(managerDependencies);
 
 beforeEach(async () => {
   setTestClock({ instant: parseInstant({ value: CHURCH_OCTOBER_1_NOON }) });
@@ -113,308 +91,6 @@ beforeEach(async () => {
 afterEach(() => {
   resetClock();
 });
-
-interface SeedVolunteerInput {
-  churchId: string;
-  ministryId: string;
-  name: string;
-}
-
-async function seedVolunteer({
-  churchId,
-  ministryId,
-  name,
-}: SeedVolunteerInput) {
-  const user = await buildUser({
-    db,
-    id: `user-${name}`,
-    name,
-    email: `${name}@test.com`,
-  });
-  const volunteer = await buildVolunteer({ db, churchId, userId: user.id });
-  const membership = await buildMinistryMembership({
-    db,
-    churchId,
-    volunteerId: volunteer.id,
-    ministryId,
-    ministryAccessLevel: 'volunteer',
-    roleIds: [],
-  });
-  return { volunteer, membership, userId: user.id };
-}
-
-interface StaffInput {
-  churchId: string;
-  participationId: string;
-  eventTimeBlockId: string;
-  roleId: string;
-  sectorId: string;
-  volunteerId: string;
-  start: string;
-  end: string;
-  status: 'draft' | 'pending' | 'confirmed' | 'declined';
-}
-
-/** One Shift on an existing block with one Assignment on it. */
-async function staff({
-  churchId,
-  participationId,
-  eventTimeBlockId,
-  roleId,
-  sectorId,
-  volunteerId,
-  start,
-  end,
-  status,
-}: StaffInput) {
-  const shiftRow = await buildShift({
-    db,
-    churchId,
-    participationId,
-    eventTimeBlockId,
-    start: at(start),
-    end: at(end),
-  });
-  const requirement = await buildShiftRequirement({
-    db,
-    churchId,
-    participationId,
-    shiftId: shiftRow.id,
-    roleId,
-    sectorId,
-    peopleNeeded: 1,
-  });
-  const booked = await buildAssignment({
-    db,
-    churchId,
-    participationId,
-    shiftId: shiftRow.id,
-    volunteerId,
-    roleId,
-    shiftRequirementId: requirement.id,
-    status,
-  });
-  return { shift: shiftRow, assignment: booked };
-}
-
-/**
- * A Sent Cycle with Sunday 09:00–12:00 (Welcome 09–10, Service 10–12).
- * Ministry A is published: Ana (Welcome, confirmed, open SwapRequest), Bia
- * (Service, pending) and Dani (Service, declined). Media is unpublished:
- * Caio (Service, confirmed). Edu only marked both Shifts unavailable. Ana's
- * last-told snapshot also holds an unrelated entry.
- */
-async function seedSentSunday() {
-  const seed = await seedSchedulingPhase3Base();
-  const churchId = seed.churchAId;
-  const cycle = await buildCycle({
-    db,
-    churchId,
-    name: 'October',
-    state: 'sent',
-    startDate: parseCalendarDay({ value: '2026-10-12' }),
-    endDate: parseCalendarDay({ value: '2026-10-25' }),
-  });
-  const sunday = await buildEvent({
-    db,
-    churchId,
-    cycleId: cycle.id,
-    title: 'Sunday',
-    start: at('09:00'),
-    end: at('12:00'),
-    status: 'scheduled',
-  });
-  const welcome = await buildEventTimeBlock({
-    db,
-    churchId,
-    eventId: sunday.id,
-    start: at('09:00'),
-    end: at('10:00'),
-    label: 'Welcome',
-  });
-  const service = await buildEventTimeBlock({
-    db,
-    churchId,
-    eventId: sunday.id,
-    start: at('10:00'),
-    end: at('12:00'),
-    label: 'Service',
-  });
-  const media = await buildMinistry({ db, churchId, name: 'Zeta Media' });
-  const published = await buildMinistryParticipation({
-    db,
-    churchId,
-    ministryId: seed.ministryAId,
-    eventId: sunday.id,
-    state: 'published',
-    eventTimeBlockIds: [welcome.id, service.id],
-  });
-  const unpublished = await buildMinistryParticipation({
-    db,
-    churchId,
-    ministryId: media.id,
-    eventId: sunday.id,
-    state: 'assigning',
-    eventTimeBlockIds: [service.id],
-  });
-  const usher = await buildRole({
-    db,
-    churchId,
-    ministryId: seed.ministryAId,
-    name: 'Usher',
-  });
-  const camera = await buildRole({
-    db,
-    churchId,
-    ministryId: media.id,
-    name: 'Camera',
-  });
-  const lobby = await buildSector({
-    db,
-    churchId,
-    ministryId: seed.ministryAId,
-    name: 'Lobby',
-  });
-  const booth = await buildSector({
-    db,
-    churchId,
-    ministryId: media.id,
-    name: 'Booth',
-  });
-  const ana = await seedVolunteer({
-    churchId,
-    ministryId: seed.ministryAId,
-    name: 'ana',
-  });
-  const bia = await seedVolunteer({
-    churchId,
-    ministryId: seed.ministryAId,
-    name: 'bia',
-  });
-  const dani = await seedVolunteer({
-    churchId,
-    ministryId: seed.ministryAId,
-    name: 'dani',
-  });
-  const caio = await seedVolunteer({
-    churchId,
-    ministryId: media.id,
-    name: 'caio',
-  });
-  const edu = await seedVolunteer({
-    churchId,
-    ministryId: seed.ministryAId,
-    name: 'edu',
-  });
-  const ministryA = { participationId: published.id, roleId: usher.id };
-  const anaWelcome = await staff({
-    churchId,
-    ...ministryA,
-    sectorId: lobby.id,
-    eventTimeBlockId: welcome.id,
-    volunteerId: ana.volunteer.id,
-    start: '09:00',
-    end: '10:00',
-    status: 'confirmed',
-  });
-  const biaService = await staff({
-    churchId,
-    ...ministryA,
-    sectorId: lobby.id,
-    eventTimeBlockId: service.id,
-    volunteerId: bia.volunteer.id,
-    start: '10:00',
-    end: '12:00',
-    status: 'pending',
-  });
-  const daniService = await staff({
-    churchId,
-    ...ministryA,
-    sectorId: lobby.id,
-    eventTimeBlockId: service.id,
-    volunteerId: dani.volunteer.id,
-    start: '10:00',
-    end: '11:00',
-    status: 'declined',
-  });
-  const caioService = await staff({
-    churchId,
-    participationId: unpublished.id,
-    roleId: camera.id,
-    sectorId: booth.id,
-    eventTimeBlockId: service.id,
-    volunteerId: caio.volunteer.id,
-    start: '10:00',
-    end: '12:00',
-    status: 'confirmed',
-  });
-  await db.insert(swapRequest).values({
-    churchId,
-    assignmentId: anaWelcome.assignment.id,
-    status: 'open',
-    raisedBy: ana.userId,
-  });
-  const check = await buildConfirmedAvailabilityCheck({
-    db,
-    churchId,
-    cycleId: cycle.id,
-    ministryMembershipId: edu.membership.id,
-    id: crypto.randomUUID(),
-    confirmedAt: parseInstant({ value: CHURCH_OCTOBER_1_NOON }),
-  });
-  for (const shiftId of [anaWelcome.shift.id, biaService.shift.id]) {
-    await buildUnavailableShift({
-      db,
-      churchId,
-      availabilityCheckId: check.id,
-      shiftId,
-    });
-  }
-  const toldAt = new Date(CHURCH_OCTOBER_1_NOON);
-  const unrelated = { assignmentId: crypto.randomUUID(), eventTitle: 'Other' };
-  await db.insert(scheduleLastTold).values([
-    {
-      churchId,
-      ministryId: seed.ministryAId,
-      cycleId: cycle.id,
-      volunteerId: ana.volunteer.id,
-      assignments: [
-        { assignmentId: anaWelcome.assignment.id, eventTitle: 'Sunday' },
-        unrelated,
-      ],
-      toldAt,
-    },
-    {
-      churchId,
-      ministryId: seed.ministryAId,
-      cycleId: cycle.id,
-      volunteerId: bia.volunteer.id,
-      assignments: [
-        { assignmentId: biaService.assignment.id, eventTitle: 'Sunday' },
-      ],
-      toldAt,
-    },
-  ]);
-
-  return {
-    seed,
-    churchId: ChurchId.from(churchId),
-    cycleId: CycleId.from(cycle.id),
-    eventId: EventId.from(sunday.id),
-    welcomeId: EventTimeBlockId.from(welcome.id),
-    serviceId: EventTimeBlockId.from(service.id),
-    media,
-    ana,
-    bia,
-    caio,
-    anaWelcome,
-    biaService,
-    daniService,
-    caioService,
-    unrelated,
-    toldAt,
-  };
-}
 
 async function lastToldOf(volunteerId: string) {
   const [row] = await db
@@ -660,7 +336,7 @@ describe('DbPlanningEventManager cancellation', () => {
         })
         .from(assignmentAudit)
         .where(eq(assignmentAudit.assignmentId, anaAssignmentId)),
-    ).toEqual([{ actorId: actingUserId, action: 'status_change' }]);
+    ).toEqual([{ actorId: actingUserId, action: 'event_cancelled' }]);
     expect(await db.select().from(swapRequest)).toMatchObject([
       { status: 'covered', closedBy: actingUserId },
     ]);
@@ -674,7 +350,11 @@ describe('DbPlanningEventManager cancellation', () => {
     expect(
       (await lastToldOf(sunday.bia.volunteer.id))?.assignments,
     ).toHaveLength(1);
-    expect(await db.select().from(outboxMessage)).toEqual([]);
+    // Only N9 (Ana) and N10 (the leader): the covered close sends no N8.
+    const kinds = (await db.select().from(outboxMessage)).map(
+      ({ payload }) => (payload as { kind: string }).kind,
+    );
+    expect(kinds.sort()).toEqual(['event_cancelled', 'event_changed']);
 
     await expect(
       manager.confirmCancellation({
@@ -748,5 +428,157 @@ describe('DbPlanningEventManager cancellation', () => {
     await expect(preview({ kind: 'event' })).rejects.toBeInstanceOf(
       IllegalStateTransitionError,
     );
+  });
+});
+
+/** A promise the test resolves to let a paused transaction go on. */
+function gate() {
+  let open = () => {};
+  const opened = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { opened, open };
+}
+
+/** Waits until some backend of this database waits on a row lock. */
+async function waitForLockWait() {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const { rows } = await db.execute<{ waiting: number }>(
+      sql`select count(*)::int as waiting from pg_stat_activity
+          where datname = current_database() and wait_event_type = 'Lock'`,
+    );
+    if ((rows[0]?.waiting ?? 0) > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('No transaction ever waited on the Assignment row lock');
+}
+
+/** Bia's own SwapRequest raise, with every real repository. */
+function swapRequestManager(swapRequestRepo: DrizzleSwapRequestRepository) {
+  const plainEventRepo = new DrizzleEventRepository({ db });
+  const ministryRepo = new DrizzleMinistryRepository({ db });
+  return new DbSwapRequestManager({
+    swapRequestRepo,
+    assignmentRepo: new DrizzleAssignmentRepository({ db }),
+    participationRepo: new DrizzleMinistryParticipationRepository({ db }),
+    shiftRepo: new DrizzleShiftRepository({ db }),
+    eventRepo: plainEventRepo,
+    ministryRepo,
+    roleRepo: new DrizzleRoleRepository({ db }),
+    churchRepo: churchRepository,
+    volunteerRepo: new DrizzleVolunteerRepository({ db }),
+    recipients: new ChurchRecipients({
+      churchRepository,
+      volunteerRepository: new DrizzleVolunteerRepository({ db }),
+    }),
+    notifications: new ChurchNotifications({
+      outboxRepository: new DrizzleOutboxRepository({ db }),
+    }),
+    authorityManager: new DbAuthorityManager({
+      actorRepository: new DrizzleAuthorityActorResolver({ db }),
+      scopeRepository: new DrizzleSchedulingScopeResolver({ db }),
+      eventRepository: plainEventRepo,
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      ministryRepository: ministryRepo,
+    }),
+    unitOfWork,
+    config: appConfig,
+  });
+}
+
+/**
+ * The raise locks the Assignment row (FOR UPDATE) from its published check to
+ * its insert, and confirm's status update needs that row: whichever goes
+ * first, no open SwapRequest is stored on a cancelled Assignment.
+ */
+describe('a SwapRequest raised while confirm runs', () => {
+  async function seedRace() {
+    const sunday = await seedSentSunday();
+    await buildChurchMembership({
+      db,
+      churchId: sunday.churchId,
+      userId: sunday.bia.userId,
+      accessLevel: 'member',
+    });
+    const raise = {
+      churchId: sunday.churchId,
+      userId: UserId.from(sunday.bia.userId),
+      assignmentId: AssignmentId.from(sunday.biaService.assignment.id),
+    };
+    const confirm = {
+      churchId: sunday.churchId,
+      cycleId: sunday.cycleId,
+      eventId: sunday.eventId,
+      scope: { kind: 'event' } as const,
+      actingUserId: UserId.from(sunday.seed.adminUserId),
+    };
+    return { sunday, raise, confirm };
+  }
+
+  async function biaRequests(assignmentId: string) {
+    return db
+      .select({ status: swapRequest.status })
+      .from(swapRequest)
+      .where(eq(swapRequest.assignmentId, assignmentId));
+  }
+
+  it('closes as covered a request raised first and committed while confirm waits', async () => {
+    const { sunday, raise, confirm } = await seedRace();
+    const paused = gate();
+    const reached = gate();
+    // Pauses the raise after its Assignment lock and published check.
+    class PausedCreate extends DrizzleSwapRequestRepository {
+      override async create(input: CreateSwapRequestInput) {
+        reached.open();
+        await paused.opened;
+        return super.create(input);
+      }
+    }
+    const raising = swapRequestManager(new PausedCreate({ db })).raise(raise);
+    await reached.opened;
+
+    const confirming = manager.confirmCancellation(confirm);
+    await waitForLockWait();
+    paused.open();
+
+    await expect(raising).resolves.toMatchObject({ status: 'open' });
+    await expect(confirming).resolves.toMatchObject({ volunteerCount: 2 });
+    const { id } = sunday.biaService.assignment;
+    expect(await statusOf(id)).toBe('cancelled');
+    expect(await biaRequests(id)).toEqual([{ status: 'covered' }]);
+  });
+
+  it('refuses a raise that reaches the Assignment after confirm cancelled it', async () => {
+    const { sunday, raise, confirm } = await seedRace();
+    const paused = gate();
+    const reached = gate();
+    // Pauses confirm after Bia's status update, holding her row.
+    class PausedClose extends DrizzleSwapRequestRepository {
+      override async closeOpenByAssignment(input: CloseOpenSwapRequestInput) {
+        if (input.assignmentId === sunday.biaService.assignment.id) {
+          reached.open();
+          await paused.opened;
+        }
+        return super.closeOpenByAssignment(input);
+      }
+    }
+    const pausedManager = new DbPlanningEventManager({
+      ...managerDependencies,
+      swapRequestRepository: new PausedClose({ db }),
+    });
+    const confirming = pausedManager.confirmCancellation(confirm);
+    await reached.opened;
+
+    const raising = swapRequestManager(
+      new DrizzleSwapRequestRepository({ db }),
+    ).raise(raise);
+    await waitForLockWait();
+    paused.open();
+
+    await expect(confirming).resolves.toMatchObject({ volunteerCount: 2 });
+    await expect(raising).rejects.toBeInstanceOf(SwapRequestUnpublishedError);
+    const { id } = sunday.biaService.assignment;
+    expect(await statusOf(id)).toBe('cancelled');
+    expect(await biaRequests(id)).toEqual([]);
   });
 });

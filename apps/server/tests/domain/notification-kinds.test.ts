@@ -10,6 +10,7 @@ describe('notification kinds', () => {
       'availability_opened',
       'availability_reminder',
       'cycle_ready_to_prepare',
+      'event_cancelled',
       'event_changed',
       'ministry_invitation',
       'schedule_published',

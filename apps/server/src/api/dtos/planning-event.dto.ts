@@ -165,3 +165,41 @@ export const eventMoveMapper = {
     };
   },
 };
+
+/** The typed gate: the locale's fixed word, trimmed and case-insensitive. */
+export const cancelPlanningEventBodySchema = z.object({
+  confirmation: z.string(),
+});
+
+export type CancelPlanningEventBody = z.infer<
+  typeof cancelPlanningEventBodySchema
+>;
+
+/** What a cancellation affects: preview and confirm both return it. */
+export const cancellationImpactResponseSchema = z.object({
+  scope: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('event') }),
+    z.object({
+      kind: z.literal('eventTimeBlock'),
+      eventTimeBlockId: z.string(),
+    }),
+  ]),
+  eventId: z.string(),
+  eventTitle: z.string(),
+  /** The selected scope's own bounds. */
+  start: instantSchema,
+  end: instantSchema,
+  /** Distinct published Volunteers told now. */
+  volunteerCount: z.number().int().nonnegative(),
+  /** Ministries those Volunteers span. */
+  ministryCount: z.number().int().nonnegative(),
+  /** Every participating Ministry with its told count, possibly 0. */
+  ministries: z.array(
+    z.object({
+      ministryId: z.string(),
+      ministryName: z.string(),
+      volunteerCount: z.number().int().nonnegative(),
+    }),
+  ),
+  openSwapRequestCount: z.number().int().nonnegative(),
+});

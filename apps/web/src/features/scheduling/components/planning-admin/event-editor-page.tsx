@@ -7,6 +7,7 @@ import { RetryAlert } from './retry-alert';
 import { buttonVariants } from '@/components/ui/button';
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -22,6 +23,8 @@ export interface EventEditorPageProps {
   title: string;
   /** A function picks the copy once the Cycle is read; `null` shows none. */
   description: string | ((details: GetCycle200) => string | null);
+  /** A header action once the Cycle is read, e.g. Cancel Event. */
+  action?: (details: GetCycle200) => ReactNode;
   children: (details: GetCycle200) => ReactNode;
 }
 
@@ -67,6 +70,7 @@ export function EventEditorPage({
   testId,
   title,
   description,
+  action,
   children,
 }: EventEditorPageProps) {
   const cycleQuery = useQuery({
@@ -87,6 +91,7 @@ export function EventEditorPage({
         {shownDescription ? (
           <CardDescription>{shownDescription}</CardDescription>
         ) : null}
+        {details && action ? <CardAction>{action(details)}</CardAction> : null}
       </CardHeader>
       <CardContent>
         {cycleQuery.data ? (

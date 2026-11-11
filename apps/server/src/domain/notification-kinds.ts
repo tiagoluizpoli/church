@@ -170,6 +170,23 @@ export const eventChangedChangeSchema = z.discriminatedUnion('kind', [
       )
       .min(1),
   }),
+  z.object({
+    kind: z.literal('cancel'),
+    /** The cancelled scope's bounds: the Event's, or the one EventTimeBlock's. */
+    start: instantSchema,
+    end: instantSchema,
+    /** One line per recipient Ministry, in `ministries` order. */
+    impacts: z
+      .array(
+        z.object({
+          ministryId: z.uuid(),
+          ministryName: z.string(),
+          /** Distinct published Volunteers of the Ministry told by N9; may be 0. */
+          volunteerCount: z.number().int().nonnegative(),
+        }),
+      )
+      .min(1),
+  }),
 ]);
 
 /**
@@ -187,6 +204,21 @@ export const eventChangedNotificationDataSchema = z.object({
   churchTimezone: z.string(),
   ministries: z.array(z.object({ id: z.uuid(), name: z.string() })).min(1),
   change: eventChangedChangeSchema,
+});
+
+/**
+ * N9: an admin cancelled an Event or one of its EventTimeBlocks. One message
+ * per Volunteer, listing every cancelled Shift that was already published to
+ * them. Frozen before the cancellation writes, so it survives them.
+ */
+export const eventCancelledNotificationDataSchema = z.object({
+  cycleId: z.uuid(),
+  eventId: z.uuid(),
+  eventTitle: z.string(),
+  /** The cancelled scope's start: its day names the message. */
+  start: instantSchema,
+  churchTimezone: z.string(),
+  shifts: z.array(schedulePublishedShiftSchema).min(1),
 });
 
 export const notificationKindDataSchemas = {
@@ -208,6 +240,8 @@ export const notificationKindDataSchemas = {
   swap_request_answered: swapRequestAnsweredNotificationDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   event_changed: eventChangedNotificationDataSchema,
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  event_cancelled: eventCancelledNotificationDataSchema,
 } as const;
 
 export const NOTIFICATION_KIND_OPTIONS = Object.keys(
@@ -287,6 +321,10 @@ export const notificationRequestDataSchemas = {
     churchName: z.string(),
   }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  event_cancelled: eventCancelledNotificationDataSchema.extend({
+    churchName: z.string(),
+  }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   transfer_ministry_digest: transferDigestRequestDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   transfer_leaderless_ministry: transferDigestRequestDataSchema,
@@ -358,6 +396,13 @@ export type EventChangedDeliveryFacts = NotificationDataOf<'event_changed'> & {
   actionUrl: string;
 };
 
+export type EventCancelledDeliveryFacts =
+  NotificationDataOf<'event_cancelled'> & {
+    churchName: string;
+    /** My schedule. */
+    actionUrl: string;
+  };
+
 export type SwapRequestDeliveryFacts = NotificationDataOf<'swap_request'> & {
   churchName: string;
   /** The board with this request open. */
@@ -409,6 +454,8 @@ export interface NotificationDeliveryDataByKind {
   swap_request_answered: SwapRequestAnsweredDeliveryFacts;
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   event_changed: EventChangedDeliveryFacts;
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  event_cancelled: EventCancelledDeliveryFacts;
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   transfer_ministry_digest: TransferDigestDeliveryFacts;
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
@@ -478,6 +525,10 @@ export const notificationDeliveryFactsSchemas = {
     .extend({ actionUrl: z.string() }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   event_changed: eventChangedNotificationDataSchema
+    .extend(emailFactsSchema.shape)
+    .extend({ actionUrl: z.string() }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  event_cancelled: eventCancelledNotificationDataSchema
     .extend(emailFactsSchema.shape)
     .extend({ actionUrl: z.string() }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case

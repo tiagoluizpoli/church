@@ -211,6 +211,20 @@ export interface EventChangedEmail {
   actionUrl: string;
 }
 
+/** N9: an admin cancelled the recipient's published Shifts. */
+export interface EventCancelledEmail {
+  kind: 'event.cancelled';
+  to: string;
+  churchName: string;
+  recipientFirstName: string;
+  eventTitle: string;
+  /** The cancelled scope's start; its day names the message. */
+  start: Instant;
+  churchTimezone: string;
+  shifts: SchedulePublishedEmailShift[];
+  actionUrl: string;
+}
+
 /** N7: a Volunteer raised a Swap request; the note is leader-facing. */
 export interface SwapRequestEmail {
   kind: 'swap.request';
@@ -240,6 +254,7 @@ export interface SwapRequestAnsweredEmail {
 }
 
 export type EmailPayload =
+  | EventCancelledEmail
   | EventChangedEmail
   | SwapRequestAnsweredEmail
   | SwapRequestEmail

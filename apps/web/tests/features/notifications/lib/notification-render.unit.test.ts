@@ -525,6 +525,94 @@ describe('Event changed Notification (N10 add)', () => {
   });
 });
 
+describe('Event cancelled Notifications (N9 and N10 cancel)', () => {
+  const MINISTRY_A = '33333333-3333-4333-8333-333333333331';
+  const MINISTRY_B = '33333333-3333-4333-8333-333333333332';
+  const cancelled = {
+    ...base,
+    kind: 'event_cancelled',
+    data: {
+      cycleId: ID,
+      eventId: ID,
+      eventTitle: 'Vigília de Natal',
+      start: '2026-12-25T02:30:00.000Z',
+      churchTimezone: 'America/Sao_Paulo',
+      shifts: published.shifts,
+    },
+  } as GetNotifications200ItemsItem;
+
+  it('renders N9 in pt-BR with the Church-Timezone day and every Shift line, opening My schedule', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const { title, body, kindLabel, actionLabel } =
+      renderNotification(cancelled);
+
+    // 02:30Z on the 25th is 23:30 on the 24th in São Paulo.
+    expect(title).toBe('Cancelado: Vigília de Natal · qui 24 dez');
+    expect(body.split('\n')).toEqual([
+      'Por isso você não serve mais em:',
+      'qui 24 dez · 23:30–01:00 · Vigília de Natal · Violão · Palco',
+      'sáb 26 dez · 09:00–10:00 · Culto · Voz · Coro',
+    ]);
+    expect(kindLabel).toBe(m.notification_kind_event_cancelled());
+    expect(actionLabel).toBe('Ver minha escala');
+    expect(resolveNotificationDestination(cancelled)).toEqual({
+      target: { to: '/my-schedule' },
+      isFallback: false,
+    });
+  });
+
+  it('renders the N10 cancel variant: same title, bounds, one told line per Ministry, opening the picker', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const changed = {
+      ...base,
+      kind: 'event_changed',
+      data: {
+        cycleId: ID,
+        cycleName: 'Outubro',
+        eventId: ID,
+        eventTitle: 'Vigília',
+        adminName: 'Ana',
+        churchTimezone: 'America/Sao_Paulo',
+        ministries: [
+          { id: MINISTRY_A, name: 'Louvor' },
+          { id: MINISTRY_B, name: 'Recepção' },
+        ],
+        change: {
+          kind: 'cancel',
+          start: '2026-10-14T22:00:00.000Z',
+          end: '2026-10-15T00:00:00.000Z',
+          impacts: [
+            {
+              ministryId: MINISTRY_A,
+              ministryName: 'Louvor',
+              volunteerCount: 1,
+            },
+            {
+              ministryId: MINISTRY_B,
+              ministryName: 'Recepção',
+              volunteerCount: 0,
+            },
+          ],
+        },
+      },
+    } as GetNotifications200ItemsItem;
+
+    const { title, body } = renderNotification(changed);
+
+    expect(title).toBe('Cancelado: Vigília · qua 14 out');
+    expect(body).toContain('19:00–21:00');
+    expect(body).toContain(
+      'Louvor: Ana cancelou. 1 dos seus voluntários foi avisado.',
+    );
+    expect(body).toContain(
+      'Recepção: Ana cancelou. 0 dos seus voluntários foram avisados.',
+    );
+    expect(resolveNotificationDestination(changed)).toMatchObject({
+      target: { to: '/schedules' },
+    });
+  });
+});
+
 describe('Ministry invitation Notification (N1)', () => {
   const pt = { locale: 'pt-BR' } as const;
   const legacy = {

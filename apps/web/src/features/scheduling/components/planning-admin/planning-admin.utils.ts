@@ -1,10 +1,12 @@
 import { m } from '@church/i18n/messages';
 import {
   addCalendarDays,
+  compareInstants,
   formatMonthYear,
   formatWeekdayOfIndex,
   instantSpan,
   type Locale,
+  now,
   parseCalendarDay,
   parseInstant,
   parseTimeOfDay,
@@ -616,4 +618,21 @@ export function toCycleCalendarTableRow({
       }),
     ),
   };
+}
+
+interface CanCancelEventInput {
+  cycleState: string;
+  eventStatus: string;
+  start: string;
+}
+
+/** A scheduled Event of a Sent Cycle that has not started; the server decides. */
+export function canCancelEvent({
+  cycleState,
+  eventStatus,
+  start,
+}: CanCancelEventInput): boolean {
+  const startInstant = parseInstant({ value: start });
+  const started = compareInstants({ left: now(), right: startInstant }) >= 0;
+  return cycleState === 'sent' && eventStatus === 'scheduled' && !started;
 }

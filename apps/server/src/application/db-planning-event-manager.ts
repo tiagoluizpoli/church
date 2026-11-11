@@ -16,7 +16,6 @@ import type {
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
-  CancelPlanningEventManagerInput,
   ConfirmPlanningCancellationManagerInput,
   ConfirmPlanningMoveManagerInput,
   CreatePlanningEventManagerInput,
@@ -110,6 +109,13 @@ interface ComputedCancellation {
   scopeAssignments: CancellationScopeAssignment[];
 }
 
+interface EnqueueEventCancelledInput {
+  actingUserId: UserId;
+  church: Church;
+  computed: ComputedCancellation;
+  tx: TransactionContext;
+}
+
 interface EnqueueEventMovedInput {
   actingUserId: UserId;
   church: Church;
@@ -146,7 +152,6 @@ interface GetCycleEventInput {
     | EnsureWritableEventInput['input']
     | UpdatePlanningEventManagerInput
     | UpdatePlanningEventDetailsManagerInput
-    | CancelPlanningEventManagerInput
     | DeletePlanningEventManagerInput
     | PlanningCancellationManagerInput;
   tx: TransactionContext;
@@ -798,45 +803,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     });
   }
 
-  async cancelEvent(input: CancelPlanningEventManagerInput): Promise<void> {
-    const church = await this.churchRepository.getById({ id: input.churchId });
-
-    await this.unitOfWork.run(async (tx) => {
-      await this.cycleRepository.acquireChurchLock({
-        churchId: input.churchId,
-        tx,
-      });
-
-      const cycle = await this.ensureCycleWritable({
-        cycle: await this.cycleRepository.getById({ ...input, tx }),
-        churchTimeZone: church.timezone,
-      });
-      const currentEvent = await this.getCycleEvent({ input, tx });
-
-      if (cycle.state === 'sent' && currentEvent.status !== 'draft') {
-        throw new IllegalStateTransitionError({
-          from: currentEvent.status,
-          to: 'cancel',
-        });
-      }
-
-      // A Draft Event is deleted (deleteEvent), never cancelled.
-      if (currentEvent.status === 'draft') {
-        throw new IllegalStateTransitionError({
-          from: currentEvent.status,
-          to: 'cancel',
-        });
-      }
-
-      await this.eventRepository.updateEvent({
-        churchId: input.churchId,
-        eventId: input.eventId,
-        status: 'cancelled',
-        tx,
-      });
-    });
-  }
-
   /** N10 add: one outbox row per recipient, in the planning transaction. */
   private async enqueueEventAdded({
     churchId,
@@ -1149,8 +1115,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // scope already cancelled.
       await this.cycleRepository.acquireChurchLock({ churchId, tx });
       await this.eventRepository.lockParticipations({ churchId, eventId, tx });
-      const { impact, cycle, resolved, scopeAssignments } =
-        await this.computeCancellation({ input, church, tx });
+      const computed = await this.computeCancellation({ input, church, tx });
+      const { impact, cycle, resolved, scopeAssignments } = computed;
+      // Frozen before any write: the Shifts and counts the rows carry are
+      // exactly what the writes below cancel.
+      await this.enqueueEventCancelled({ actingUserId, church, computed, tx });
 
       for (const { assignmentId } of scopeAssignments) {
         await cancelAssignment({
@@ -1194,6 +1163,90 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       }
       return impact;
     });
+  }
+
+  /**
+   * N9 per published Volunteer with all of their cancelled Shift lines, then
+   * N10 `cancel` per leader (or fallback admin) of the participating
+   * Ministries, counting only the Volunteers N9 tells. One transaction.
+   */
+  private async enqueueEventCancelled({
+    actingUserId,
+    church,
+    computed: { impact, cycle, event, resolved, scopeAssignments },
+    tx,
+  }: EnqueueEventCancelledInput): Promise<void> {
+    const churchId = church.id;
+    const shiftsByUser = new Map<UserId, CancellationScopeAssignment[]>();
+    for (const row of scopeAssignments.filter(({ published }) => published)) {
+      shiftsByUser.set(row.userId, [
+        ...(shiftsByUser.get(row.userId) ?? []),
+        row,
+      ]);
+    }
+    for (const [userId, rows] of shiftsByUser) {
+      await this.notifications.enqueue({
+        tx,
+        kind: 'event_cancelled',
+        to: [{ userId, churchId }],
+        data: {
+          cycleId: cycle.id,
+          eventId: event.id,
+          eventTitle: event.title,
+          start: resolved.start,
+          churchName: church.name,
+          churchTimezone: church.timezone,
+          shifts: rows.map((row) => ({
+            eventTitle: event.title,
+            roleName: row.roleName,
+            sectorName: row.sectorName,
+            startsAt: row.shiftStart,
+            endsAt: row.shiftEnd,
+          })),
+        },
+      });
+    }
+
+    const { ministries } = impact;
+    if (ministries.length === 0) return;
+    const adminName =
+      (await this.churchRepository.findUserName({ userId: actingUserId })) ??
+      '';
+    const recipients = await this.recipients.eventChangedRecipients({
+      tx,
+      churchId,
+      ministryIds: ministries.map(({ ministryId }) => ministryId),
+      actingUserId,
+    });
+    for (const { ministryIds, ...recipient } of recipients) {
+      const impacts = ministries.filter(({ ministryId }) =>
+        ministryIds.includes(ministryId),
+      );
+      await this.notifications.enqueue({
+        tx,
+        kind: 'event_changed',
+        to: [recipient],
+        data: {
+          cycleId: cycle.id,
+          cycleName: cycle.name,
+          eventId: event.id,
+          eventTitle: event.title,
+          adminName,
+          churchName: church.name,
+          churchTimezone: church.timezone,
+          ministries: impacts.map(({ ministryId, ministryName }) => ({
+            id: ministryId,
+            name: ministryName,
+          })),
+          change: {
+            kind: 'cancel',
+            start: resolved.start,
+            end: resolved.end,
+            impacts,
+          },
+        },
+      });
+    }
   }
 
   /**

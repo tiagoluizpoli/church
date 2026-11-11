@@ -660,7 +660,7 @@ describe('DbPlanningEventManager cancellation', () => {
         })
         .from(assignmentAudit)
         .where(eq(assignmentAudit.assignmentId, anaAssignmentId)),
-    ).toEqual([{ actorId: actingUserId, action: 'status_change' }]);
+    ).toEqual([{ actorId: actingUserId, action: 'event_cancelled' }]);
     expect(await db.select().from(swapRequest)).toMatchObject([
       { status: 'covered', closedBy: actingUserId },
     ]);

@@ -89,7 +89,7 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
     await resetSchedulingPhase3Db();
   });
 
-  it('create maps event_published/event_cancelled to status_change and defaults reason to null', async () => {
+  it('create maps event_published to status_change, keeps event_cancelled distinct and defaults reason to null', async () => {
     const seed = await seedSchedulingPhase3Base();
     const { assignment: assignmentRow } = await seedAssignment({
       churchId: seed.churchAId,
@@ -120,7 +120,7 @@ describe('DrizzleAssignmentAuditRepository (extra coverage)', () => {
         action: 'event_cancelled',
       },
     });
-    expect(cancelled.action).toBe('status_change');
+    expect(cancelled.action).toBe('event_cancelled');
 
     const created = await repo.create({
       churchId,

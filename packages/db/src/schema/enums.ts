@@ -65,6 +65,7 @@ export const auditActionEnum = pgEnum('audit_action', [
   'updated',
   'deleted',
   'status_change',
+  'event_cancelled',
 ]);
 
 export const ministryInvitationStatusEnum = pgEnum(

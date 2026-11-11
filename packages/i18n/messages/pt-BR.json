@@ -1403,5 +1403,8 @@
   "home_welcome": "Boas-vindas a {churchName}. Nada precisa de você agora.",
   "home_load_error": "Não conseguimos carregar seu Início. Tente novamente.",
   "home_retry": "Tentar novamente",
-  "home_loading": "Carregando Início"
+  "home_loading": "Carregando Início",
+  "schedules_asking_outstanding": "Perguntando · {count} por responder",
+  "schedules_assigning_gaps": "Escalando · {count} a preencher",
+  "home_leadership_empty": "Nada precisa de você agora."
 }

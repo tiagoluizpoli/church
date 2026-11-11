@@ -1403,5 +1403,8 @@
   "home_welcome": "Welcome to {churchName}. Nothing needs you right now.",
   "home_load_error": "We couldn’t load your Home. Try again.",
   "home_retry": "Try again",
-  "home_loading": "Loading Home"
+  "home_loading": "Loading Home",
+  "schedules_asking_outstanding": "Asking · {count} to answer",
+  "schedules_assigning_gaps": "Assigning · {count} to fill",
+  "home_leadership_empty": "Nothing needs you right now."
 }

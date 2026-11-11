@@ -299,11 +299,13 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
 
       const links = screen.getAllByTestId('schedule-assign-link-cycle-2');
       expect(links).toHaveLength(2);
+      const assignLabel = m.prepare_cycle_action_assign();
       for (const link of links) {
         expect(link).toHaveAttribute(
           'href',
           expect.stringContaining('/schedules/ministry-1/cycle-2/assign'),
         );
+        expect(link).toHaveTextContent(assignLabel);
       }
 
       await user.click(links[0] as HTMLElement);

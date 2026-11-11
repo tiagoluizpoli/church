@@ -277,7 +277,7 @@ function CycleRowActions({
           data-testid={`schedule-assign-link-${cycle.id}`}
           className={buttonVariants({ variant: 'outline', size })}
         >
-          {m.breadcrumb_assign()}
+          {m.prepare_cycle_action_assign()}
         </Link>
       ) : (
         <Button
@@ -289,7 +289,7 @@ function CycleRowActions({
           aria-label={m.prepare_cycle_assign_locked()}
           data-testid={`schedule-assign-button-${cycle.id}`}
         >
-          {m.breadcrumb_assign()}
+          {m.prepare_cycle_action_assign()}
         </Button>
       )}
     </div>

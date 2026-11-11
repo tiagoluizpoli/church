@@ -565,6 +565,7 @@
   "prepare_cycle_status_not_started": "Not started",
   "prepare_cycle_status_in_progress": "In progress",
   "prepare_cycle_action_schedule": "Schedule",
+  "prepare_cycle_action_assign": "Assign",
   "prepare_cycle_assign_locked": "Unlocks once availability is requested for this Cycle",
   "prepare_cycle_list_empty": "No sent Cycles are available for this Ministry to prepare right now.",
   "prepare_ministry_list_empty": "No Ministries yet. Join or create a Ministry before preparing a Cycle.",

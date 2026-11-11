@@ -323,7 +323,11 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       .where(
         withChurchIsolation({ table: eventTemplate, churchId: input.churchId }),
       )
-      .orderBy(asc(sql`lower(${eventTemplate.name})`), asc(eventTemplate.name));
+      .orderBy(
+        asc(sql`lower(${eventTemplate.name})`),
+        asc(eventTemplate.name),
+        asc(eventTemplate.id),
+      );
 
     return Promise.all(
       templateRows.map((templateRow) =>

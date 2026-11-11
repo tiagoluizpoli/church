@@ -103,7 +103,7 @@ export class DrizzleRoleRepository implements RoleRepository {
           eq(role.ministryId, ministryId),
         ),
       )
-      .orderBy(asc(role.name));
+      .orderBy(asc(role.name), asc(role.id));
     return rows.map(mapRole);
   }
 
@@ -244,7 +244,7 @@ export class DrizzleRoleRepository implements RoleRepository {
           sql`${usualSetup.headcounts} @> ${JSON.stringify([{ roleId }])}::jsonb`,
         ),
       )
-      .orderBy(asc(usualSetup.sourceTemplateTimeBlockId));
+      .orderBy(asc(usualSetup.sourceTemplateTimeBlockId), asc(usualSetup.id));
     return [
       ...requirements.map(
         ({ eventStart: _eventStart, ...located }): ArchiveBlocker => ({

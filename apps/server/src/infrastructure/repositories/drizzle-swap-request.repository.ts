@@ -123,7 +123,11 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
           gt(shift.endTime, nowAsDate()),
         ),
       )
-      .orderBy(asc(shift.startTime), asc(swapRequest.raisedAt));
+      .orderBy(
+        asc(shift.startTime),
+        asc(swapRequest.raisedAt),
+        asc(swapRequest.id),
+      );
     return rows.map(({ request, ...facts }) => ({
       id: request.id as SwapRequestId,
       assignmentId: request.assignmentId as AssignmentId,
@@ -205,7 +209,7 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
           eq(swapRequest.assignmentId, assignmentId),
         ),
       )
-      .orderBy(desc(swapRequest.raisedAt))
+      .orderBy(desc(swapRequest.raisedAt), desc(swapRequest.id))
       .limit(1);
     return row ? mapSwapRequest({ row }) : null;
   }

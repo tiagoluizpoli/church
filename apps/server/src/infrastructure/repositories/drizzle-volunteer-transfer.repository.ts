@@ -103,7 +103,7 @@ export class DrizzleVolunteerTransferRepository
           eq(ministryMembership.status, 'active'),
         ),
       )
-      .orderBy(asc(ministry.name));
+      .orderBy(asc(ministry.name), asc(ministry.id));
 
     const withdrawnAssignments = await db
       .select({
@@ -123,7 +123,7 @@ export class DrizzleVolunteerTransferRepository
           gt(eventTimeBlock.startTime, now),
         ),
       )
-      .orderBy(asc(eventTimeBlock.startTime));
+      .orderBy(asc(eventTimeBlock.startTime), asc(eventTimeBlock.id));
 
     return { endedMemberships, withdrawnAssignments };
   }
@@ -545,7 +545,7 @@ export class DrizzleVolunteerTransferRepository
           eq(ministryParticipation.ministryId, ministryId),
         ),
       )
-      .orderBy(asc(shift.startTime));
+      .orderBy(asc(shift.startTime), asc(shift.id));
 
     return {
       churchName: churchRow.name,

@@ -88,7 +88,7 @@ export class DrizzleAssignmentAuditRepository
           eq(ministryParticipation.ministryId, input.ministryId),
         ),
       )
-      .orderBy(desc(assignmentAudit.timestamp));
+      .orderBy(desc(assignmentAudit.timestamp), desc(assignmentAudit.id));
     return rows.map(mapAssignmentAudit);
   }
 
@@ -100,7 +100,7 @@ export class DrizzleAssignmentAuditRepository
       .select()
       .from(assignmentAudit)
       .where(withChurchIsolation({ table: assignmentAudit, churchId }))
-      .orderBy(desc(assignmentAudit.timestamp));
+      .orderBy(desc(assignmentAudit.timestamp), desc(assignmentAudit.id));
     return rows.map(mapAssignmentAudit);
   }
 
@@ -118,7 +118,7 @@ export class DrizzleAssignmentAuditRepository
           eq(assignmentAudit.actorId, actorId),
         ),
       )
-      .orderBy(desc(assignmentAudit.timestamp));
+      .orderBy(desc(assignmentAudit.timestamp), desc(assignmentAudit.id));
     return rows.map(mapAssignmentAudit);
   }
 
@@ -162,7 +162,7 @@ export class DrizzleAssignmentAuditRepository
           eq(eventTimeBlock.eventId, eventId),
         ),
       )
-      .orderBy(desc(assignmentAudit.timestamp));
+      .orderBy(desc(assignmentAudit.timestamp), desc(assignmentAudit.id));
 
     return rows.map((r) => ({
       id: r.id,

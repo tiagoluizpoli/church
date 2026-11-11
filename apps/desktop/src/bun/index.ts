@@ -24,7 +24,8 @@ async function getMainViewUrl(): Promise<string> {
 const url = await getMainViewUrl();
 
 new BrowserWindow({
-  title: 'base-fullstack-template',
+  // presentation-text-ignore: product name, not translatable copy
+  title: 'church',
   url,
   frame: {
     width: 1280,

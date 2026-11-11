@@ -90,9 +90,8 @@ finds authored copy that bypasses the `@church/i18n` catalog. It parses each
 file (no type information) and reports every finding as
 `path:line:column: <context> "<text>": use a catalog message (m.*) or pass translated content`,
 exiting nonzero on any. Pass repo-relative paths after `--` to check only
-those files. It is not part of `lint` yet:
-[#842](https://github.com/tiagoluizpoli/church/issues/842) turns it on once
-the tree passes.
+those files. It runs as the last step of `bun run lint`, so a finding fails
+lint and every `validate:affected`.
 
 **Scope.** All of `apps/web/src` (shared `components/ui` included) and
 `apps/desktop/src`; in `apps/server/src` only the email and response
@@ -558,7 +557,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Follow-up [#551](https://github.com/tiagoluizpoli/church/issues/551) |
 | Run commands through root Bun scripts | Tooling | Judgement | — | Review: governs how an agent works, leaves nothing in the repository to check |
 | Tests live in the owning project's `tests/` and import by alias | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:test-placement`, part of `lint` |
-| User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | `bun run validate:presentation-text`; joins `lint` in [#842](https://github.com/tiagoluizpoli/church/issues/842). Copy reached only through calls or unrelated names stays with review (see Presentation text) |
+| User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:presentation-text`, part of `lint`. Copy reached only through calls or unrelated names stays with review (see Presentation text) |
 | Seed-relevant changes carry a seed decision | Tooling, ADR-0006 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-impact.ts` in `validate:affected` |
 | Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
 | No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |

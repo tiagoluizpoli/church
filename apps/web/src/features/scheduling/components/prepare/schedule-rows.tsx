@@ -15,10 +15,12 @@ export function swapRequestCountLabel(count: number): string {
     : m.schedules_swap_requests_other({ count });
 }
 
-function stageLabel(
-  row: ListSchedules200SchedulesItem,
-  showOutstanding: boolean,
-): string {
+interface StageLabelInput {
+  row: ListSchedules200SchedulesItem;
+  showOutstanding: boolean;
+}
+
+function stageLabel({ row, showOutstanding }: StageLabelInput): string {
   switch (row.stage) {
     case 'to_prepare':
       return m.schedules_to_prepare();
@@ -75,7 +77,7 @@ export function ScheduleRows({
                 </Badge>
               ) : null}
               <Badge variant="secondary">
-                {stageLabel(row, showOutstanding)}
+                {stageLabel({ row, showOutstanding })}
               </Badge>
             </span>
           </Link>

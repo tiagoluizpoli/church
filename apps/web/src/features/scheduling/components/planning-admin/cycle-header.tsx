@@ -98,17 +98,17 @@ export function CycleListStats() {
     <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
       <HeaderStatChip
         testId="cycles-total-chip"
-        label="Cycles"
+        label={m.nav_cycles()}
         value={String(totalCount)}
       />
       <HeaderStatChip
         testId="cycles-draft-chip"
-        label="Draft"
+        label={m.cycles_state_draft()}
         value={String(draftCount)}
       />
       <HeaderStatChip
         testId="cycles-sent-chip"
-        label="Sent"
+        label={m.cycles_state_sent()}
         value={String(sentCount)}
       />
     </div>
@@ -127,7 +127,7 @@ export function PlanningTemplateLibraryStats() {
     <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
       <HeaderStatChip
         testId="planning-templates-total-chip"
-        label="Templates"
+        label={m.nav_event_templates()}
         value={String(totalCount)}
       />
     </div>

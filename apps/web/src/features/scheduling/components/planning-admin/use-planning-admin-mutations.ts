@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -84,7 +85,7 @@ export function usePlanningAdminMutations({
         eventTimeBlockId,
       ),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
-    successMessage: 'Time block deleted',
+    successMessage: m.event_time_block_deleted_toast(),
     queryClient,
   });
 

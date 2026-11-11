@@ -658,7 +658,9 @@ describe('Cycle header visibility (chip-leak fix)', () => {
       '2',
     );
     expect(screen.getByTestId('cycles-draft-chip')).toHaveTextContent('1');
-    expect(screen.getByText('Sent')).toBeInTheDocument();
+    expect(screen.getByTestId('cycles-sent-chip')).toHaveTextContent(
+      m.cycles_state_sent(),
+    );
     expect(screen.getByTestId('cycles-sent-chip')).toHaveTextContent('1');
     expect(screen.queryByTestId('cycle-period-chip')).not.toBeInTheDocument();
     expect(

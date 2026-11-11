@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -26,7 +27,7 @@ describe('MinistryPrepareList desktop table (US1/T010)', () => {
       <MinistryPrepareList rows={ROWS} onSelectMinistry={vi.fn()} />,
     );
 
-    const table = screen.getByRole('grid', { name: 'Ministries' });
+    const table = screen.getByRole('grid', { name: m.nav_ministries() });
     const greetersRow = within(table).getByRole('row', { name: /Greeters/ });
     expect(greetersRow).toHaveTextContent('3');
     expect(greetersRow).toHaveTextContent('9');
@@ -55,9 +56,11 @@ describe('MinistryPrepareList desktop table (US1/T010)', () => {
       <MinistryPrepareList rows={ROWS} onSelectMinistry={vi.fn()} />,
     );
 
-    const table = screen.getByRole('grid', { name: 'Ministries' });
+    const table = screen.getByRole('grid', { name: m.nav_ministries() });
     await user.click(
-      within(table).getByRole('columnheader', { name: 'Events' }),
+      within(table).getByRole('columnheader', {
+        name: m.cycle_header_events(),
+      }),
     );
 
     const rows = within(table).getAllByTestId(/^ministry-prepare-row-/);
@@ -73,7 +76,7 @@ describe('MinistryPrepareList desktop table (US1/T010)', () => {
       <MinistryPrepareList rows={ROWS} onSelectMinistry={onSelectMinistry} />,
     );
 
-    const table = screen.getByRole('grid', { name: 'Ministries' });
+    const table = screen.getByRole('grid', { name: m.nav_ministries() });
     const greetersRow = within(table).getByRole('row', { name: /Greeters/ });
     await user.click(greetersRow);
     expect(onSelectMinistry).not.toHaveBeenCalled();
@@ -107,11 +110,19 @@ describe('MinistryPrepareList mobile card list (US1/T011)', () => {
     const cards = within(list).getAllByTestId(/^ministry-prepare-card-/);
     expect(cards).toHaveLength(2);
     expect(cards[0]).toHaveTextContent('Greeters');
-    expect(cards[0]).toHaveTextContent('3 events');
-    expect(cards[0]).toHaveTextContent('9 time blocks');
+    expect(cards[0]).toHaveTextContent(
+      m.prepare_ask_events_other({ count: 3 }),
+    );
+    expect(cards[0]).toHaveTextContent(
+      m.prepare_time_blocks_count_other({ count: 9 }),
+    );
     expect(cards[1]).toHaveTextContent('Untouched Ministry');
-    expect(cards[1]).toHaveTextContent('0 events');
-    expect(cards[1]).toHaveTextContent('0 time blocks');
+    expect(cards[1]).toHaveTextContent(
+      m.prepare_ask_events_other({ count: 0 }),
+    );
+    expect(cards[1]).toHaveTextContent(
+      m.prepare_time_blocks_count_other({ count: 0 }),
+    );
   });
 
   it("calls onSelectMinistry when a card's Prepare button is activated", async () => {

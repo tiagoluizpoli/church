@@ -17,6 +17,7 @@ import type {
   ExpandedCalendarRowsState,
 } from './planning-admin.types';
 import {
+  canCancelEvent,
   groupRowsByWeek,
   isNotFoundError,
   toCycleCalendarTableRow,
@@ -304,6 +305,13 @@ export function CycleReviewCard({
                           cycleState: reviewedCycle.state,
                           eventStatus: item.row.status,
                         }),
+                      canCancel:
+                        item.kind === 'parent' &&
+                        canCancelEvent({
+                          cycleState: reviewedCycle.state,
+                          eventStatus: item.row.status,
+                          start: item.row.start,
+                        }),
                       isConfirmingDeleteEventTimeBlock:
                         item.kind === 'event-time-block' &&
                         isConfirmingDeleteEventTimeBlock({
@@ -348,6 +356,11 @@ export function CycleReviewCard({
                         canPreviewMove={canPreviewEventMove({
                           cycleState: reviewedCycle.state,
                           eventStatus: item.row.status,
+                        })}
+                        canCancel={canCancelEvent({
+                          cycleState: reviewedCycle.state,
+                          eventStatus: item.row.status,
+                          start: item.row.start,
                         })}
                         deleteEventTimeBlockPending={
                           deleteEventTimeBlockPending

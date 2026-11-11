@@ -418,3 +418,47 @@ describe('PlanningEventCard move preview', () => {
     ).toHaveLength(count);
   });
 });
+
+describe('PlanningEventCard cancellation', () => {
+  it('offers Cancel event beside the move preview for a cancellable Event', () => {
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="UTC">
+        <PlanningEventCard
+          row={rowWithTwoEventTimeBlocks()}
+          isReadOnly
+          canPreviewMove
+          canCancel
+          {...baseProps()}
+        />
+      </TimezoneProvider>,
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: m.event_cancel_action_label({ title: 'Sunday Service' }),
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps a cancelled Event visible, greyed and struck through with its badge and no actions', () => {
+    render(
+      <PlanningEventCard
+        row={{ ...rowWithTwoEventTimeBlocks(), status: 'cancelled' }}
+        isReadOnly
+        {...baseProps()}
+      />,
+    );
+
+    const card = screen.getByTestId('planning-event-card');
+    expect(card).toHaveClass('opacity-60');
+    expect(within(card).getByText('Sunday Service')).toHaveClass(
+      'line-through',
+    );
+    expect(
+      within(card).getByText(m.event_status_cancelled()),
+    ).toBeInTheDocument();
+    expect(
+      within(card).queryAllByRole('button', { name: /Cancelar|Mover/ }),
+    ).toHaveLength(0);
+  });
+});

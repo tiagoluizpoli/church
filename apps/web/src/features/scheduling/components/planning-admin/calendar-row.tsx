@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import type { Instant } from '@church/time';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { EventCancelDialog } from './event-cancel-dialog';
 import { EventMovePreview } from './event-move-preview';
 import type {
   CycleCalendarTableRow,
@@ -222,6 +223,8 @@ export interface RenderCalendarCellInput {
   isExpanded: boolean;
   isReadOnly: boolean;
   canPreviewMove?: boolean;
+  /** A future scheduled Event of a Sent Cycle can be cancelled. */
+  canCancel?: boolean;
   isConfirmingDeleteEventTimeBlock: boolean;
   deleteEventTimeBlockPending: boolean;
   timeZone: string;
@@ -245,6 +248,7 @@ export function renderCalendarCell({
   isExpanded,
   isReadOnly,
   canPreviewMove = false,
+  canCancel = false,
   isConfirmingDeleteEventTimeBlock,
   deleteEventTimeBlockPending,
   timeZone,
@@ -266,6 +270,7 @@ export function renderCalendarCell({
       isExpanded={isExpanded}
       isReadOnly={isReadOnly}
       canPreviewMove={canPreviewMove}
+      canCancel={canCancel}
       timeZone={timeZone}
       onToggleExpand={onToggleExpand}
     />
@@ -292,6 +297,7 @@ interface ParentRowCellProps {
   isExpanded: boolean;
   isReadOnly: boolean;
   canPreviewMove: boolean;
+  canCancel: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
 }
@@ -303,6 +309,7 @@ function ParentRowCell({
   isExpanded,
   isReadOnly,
   canPreviewMove,
+  canCancel,
   timeZone,
   onToggleExpand,
 }: ParentRowCellProps) {
@@ -324,7 +331,15 @@ function ParentRowCell({
             {isExpanded ? <ChevronDown /> : <ChevronRight />}
           </Button>
           <span className="flex flex-col">
-            {row.title}
+            <span
+              className={
+                row.status === 'cancelled'
+                  ? 'text-muted-foreground line-through'
+                  : undefined
+              }
+            >
+              {row.title}
+            </span>
             {row.location ? (
               <span className="font-normal text-muted-foreground text-xs">
                 {m.cycle_review_location({ location: row.location })}
@@ -362,6 +377,14 @@ function ParentRowCell({
           eventId={row.eventId}
           title={row.title}
           start={row.start as Instant}
+          size="icon-xs"
+        />
+      ) : null}
+      {column.id === 'actions' && canCancel ? (
+        <EventCancelDialog
+          cycleId={cycleId}
+          eventId={row.eventId}
+          title={row.title}
           size="icon-xs"
         />
       ) : null}

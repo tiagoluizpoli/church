@@ -1,4 +1,5 @@
 import type {
+  AssignmentId,
   ChurchId,
   CycleId,
   EventId,
@@ -13,6 +14,7 @@ import type {
   EventStatus,
   EventWithEventTimeBlocks,
 } from '../../entities/event';
+import type { CancellationScopeAssignment } from '../../services/event-cancellation';
 import type {
   MoveClashCandidate,
   MoveScopeAssignment,
@@ -135,6 +137,35 @@ export interface MoveEventTimeBlocksInput {
   tx: TransactionContext;
 }
 
+export interface ListCancellationScopeAssignmentsInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  /** Only this EventTimeBlock's Assignments; absent for the whole Event. */
+  eventTimeBlockId?: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
+export interface CancelEventTimeBlockInput {
+  churchId: ChurchId;
+  eventTimeBlockId: EventTimeBlockId;
+  tx: TransactionContext;
+}
+
+export interface DeleteScopeUnavailableShiftsInput {
+  churchId: ChurchId;
+  /** The cancelled blocks: every mark on one of their Shifts goes. */
+  eventTimeBlockIds: EventTimeBlockId[];
+  tx: TransactionContext;
+}
+
+export interface RemoveLastToldAssignmentsInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  /** The cancelled Assignments; every other last-told entry stays. */
+  assignmentIds: AssignmentId[];
+  tx: TransactionContext;
+}
+
 export interface PlanningEventRepository {
   createEvent(input: CreatePlanningEventInput): Promise<Event>;
   updateEvent(input: UpdatePlanningEventInput): Promise<Event>;
@@ -180,4 +211,26 @@ export interface PlanningEventRepository {
   ): Promise<MoveAffectedMinistry[]>;
   /** Shifts the blocks and all of their Shifts by one delta. */
   moveEventTimeBlocks(input: MoveEventTimeBlocksInput): Promise<void>;
+  /**
+   * The active Assignments (draft, pending, confirmed) on the cancellation
+   * scope, flagged published (pending/confirmed in a published Schedule) and
+   * with an open SwapRequest, with the Shift-line facts N9 freezes.
+   */
+  listCancellationScopeAssignments(
+    input: ListCancellationScopeAssignmentsInput,
+  ): Promise<CancellationScopeAssignment[]>;
+  /** Sets one EventTimeBlock `cancelled`; its siblings stay as they are. */
+  cancelEventTimeBlock(input: CancelEventTimeBlockInput): Promise<void>;
+  /** Deletes the UnavailableShifts on the blocks' Shifts; returns how many. */
+  deleteScopeUnavailableShifts(
+    input: DeleteScopeUnavailableShiftsInput,
+  ): Promise<number>;
+  /**
+   * Drops only these Assignments' entries from every last-told snapshot of
+   * the Cycle, keeping each row (even emptied) and its `toldAt`, so Send
+   * updates neither reports them as removals nor loses a genuine change.
+   */
+  removeLastToldAssignments(
+    input: RemoveLastToldAssignmentsInput,
+  ): Promise<void>;
 }

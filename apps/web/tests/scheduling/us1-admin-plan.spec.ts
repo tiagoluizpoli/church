@@ -316,7 +316,11 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await expect(overlapDialog.getByTestId('cycle-create-error')).toContainText(
     m.error_overlapping_cycle({}, { locale: 'pt-BR' }),
   );
-  await overlapDialog.getByRole('button', { name: 'Close' }).click();
+  await overlapDialog
+    .getByRole('button', {
+      name: m.shell_close({}, { locale: 'pt-BR' }),
+    })
+    .click();
 
   // Closing the failed overlap attempt returns to the cycles list (the
   // dialog's own URL is /new); re-select the original cycle to send it.

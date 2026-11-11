@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
 import { authErrorMessage } from '@/lib/auth-error-message';
 
+const MIN_NAME_LENGTH = 2;
+const MIN_PASSWORD_LENGTH = 8;
+
 interface SignUpFormProps {
   onSwitchToSignIn: () => void;
 }
@@ -20,6 +23,9 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
   });
   const { isPending } = authClient.useSession();
 
+  const nameTooShort = m.auth_sign_up_name_too_short();
+  const invalidEmail = m.password_recovery_invalid_email();
+  const passwordTooShort = m.password_recovery_password_too_short();
   const form = useForm({
     defaultValues: {
       email: '',
@@ -48,9 +54,9 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
     },
     validators: {
       onSubmit: z.object({
-        name: z.string().min(2, m.auth_sign_up_name_too_short()),
-        email: z.email(m.password_recovery_invalid_email()),
-        password: z.string().min(8, m.password_recovery_password_too_short()),
+        name: z.string().min(MIN_NAME_LENGTH, nameTooShort),
+        email: z.email(invalidEmail),
+        password: z.string().min(MIN_PASSWORD_LENGTH, passwordTooShort),
       }),
     },
   });

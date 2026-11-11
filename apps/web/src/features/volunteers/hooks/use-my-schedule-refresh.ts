@@ -92,7 +92,8 @@ export function useMyScheduleRefresh({
     } catch (error) {
       setRefreshState('error');
       isManualRefreshRef.current = false;
-      toast.error(requestErrorMessage(error));
+      const message = requestErrorMessage(error);
+      toast.error(message);
     }
   };
 

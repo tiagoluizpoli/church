@@ -19,6 +19,7 @@ and task ordering.
 | Seed contracts (every recipe, refusals) | `bun run test:seeds` |
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
+| Presentation-text guard (no hard-coded copy) | `bun run validate:presentation-text` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
 | Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
@@ -81,6 +82,79 @@ on an inline object type in a parameter, variable, return or `as` position.
 to a dependency's API is exempt; a named function whose signature a framework
 controls carries `// named-parameters-ignore: <reason>` directly above its
 declaration. Details: [ADR-0010](../adr/0010-mechanical-rules-enforced-by-tooling.md).
+
+## Presentation text
+
+`bun run validate:presentation-text` (`tooling/validation/presentation-text-guard.ts`)
+finds authored copy that bypasses the `@church/i18n` catalog. It parses each
+file (no type information) and reports every finding as
+`path:line:column: <context> "<text>": use a catalog message (m.*) or pass translated content`,
+exiting nonzero on any. Pass repo-relative paths after `--` to check only
+those files. It is not part of `lint` yet:
+[#842](https://github.com/tiagoluizpoli/church/issues/842) turns it on once
+the tree passes.
+
+**Scope.** All of `apps/web/src` (shared `components/ui` included) and
+`apps/desktop/src`; in `apps/server/src` only the email and response
+boundaries below. Skipped: `tests/`, Paraglide output, `*.gen.*`, `*.d.ts`,
+files with a generated header, seeds, catalogs, `packages/*` (generic code
+with no presentation), `apps/fumadocs` and `tooling/`.
+
+**Copy** is a literal whose authored text holds a letter once markup tags,
+HTML entities, URLs and email addresses are removed; template interpolations
+are runtime data. Punctuation, separators, symbols and digits alone are fine.
+Capitalization and spaces prove nothing: `'Close'` and a lower-case
+`aria-label="breadcrumb"` are copy; the context decides, not the wording.
+
+**Presentation contexts (UI scope).** A literal reaches a context directly or
+through `?:` branches, `&&`, `||`, `??`, `+`, parentheses and `as`/`satisfies`;
+a call result, identifier or property read is runtime data.
+
+| Context | Example |
+| --- | --- |
+| JSX text | `<span className="sr-only">Close</span>` |
+| JSX child expression | `{open ? 'Hide' : m.show()}`, `` {`${n} items`} `` |
+| Copy attribute: `aria-label`, `aria-description`, `aria-roledescription`, `aria-valuetext`, `aria-placeholder`, `alt`, and copy names (below) | `placeholder="Search"`, `submitLabel="Save"` |
+| Property, variable or parameter default with a copy name | `{ label: 'Draft' }`, `const emptyText = 'None'`, `({ closeLabel = 'Close' })` |
+| Every value of a map or list variable with a copy name | `const STATUS_LABELS = { open: 'Open' }` |
+| Return of a function with a copy name | `function statusLabel() { return 'Open'; }` |
+| First argument of `toast`, `toast.success/error/info/warning/message/loading`, `alert`, `confirm`, `prompt` (`window.` too) | `toast.error('Failed')` |
+| Zod check message (call chain rooted at `z`) | `z.string().min(2, 'Too short')`, `.refine(f, { message: '…' })` |
+| `document.title` assignment | `document.title = 'Church'` |
+
+A copy name is `label`, `title`, `message`, `description`, `placeholder`,
+`heading`, `subheading`, `subtitle`, `caption`, `tooltip`, `hint` or `copy`
+(optionally plural), the camelCase suffix of one of these or `Text`
+(`submitLabel`, `emptyText`), or the SCREAMING_CASE suffix (`STATUS_LABELS`).
+A bare `text` is not one: it is too often a CSS or data key.
+
+**Server boundaries.** Literal values of the `EmailContent` fields `subject`,
+`greeting`, `heading`, `facts` and `footer`, of `label` inside an `action`
+object, and of `message` in an object passed to `.send(…)`. Other server
+strings (OpenAPI descriptions, domain-error messages, Zod DTO issues) are
+English diagnostics.
+
+**Never copy.** Strings inside `throw`, `new …Error(…)`, `console.*`,
+`logger.*` and `*.log.*` calls; Zod `literal`/`enum`/`default` values and the
+pattern argument of `startsWith`/`endsWith`/`includes`; a copy-named function
+whose declared return type is a literal union (`'hourly' | 'day_based'`),
+since it returns keys.
+
+**Not followed** (review these by hand): copy that reaches a presentation
+context through a call, an import or a differently named variable or
+property (`{ id: 'name', name: 'Ministry' }` column definitions, a thrown
+message later shown with `toast.error(error.message)`), JSX built with
+`createElement`, and `toast.promise` options.
+
+**Suppression.** Put
+`// presentation-text-ignore: <why this text is not translatable copy>`
+(`{/* presentation-text-ignore: … */}` inside JSX) on its own line directly
+above the reported line; it covers that one line only. The reason is
+required and must name the technical, nonlinguistic nature of the text
+(a keyboard key name, a protocol token). The guard fails on a suppression
+with no reason and on one whose next line has no finding. There is no
+file-wide, folder or baseline exemption, and a parked feature is no reason
+to suppress.
 
 ## Journey map
 
@@ -484,6 +558,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Follow-up [#551](https://github.com/tiagoluizpoli/church/issues/551) |
 | Run commands through root Bun scripts | Tooling | Judgement | — | Review: governs how an agent works, leaves nothing in the repository to check |
 | Tests live in the owning project's `tests/` and import by alias | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:test-placement`, part of `lint` |
+| User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | `bun run validate:presentation-text`; joins `lint` in [#842](https://github.com/tiagoluizpoli/church/issues/842). Copy reached only through calls or unrelated names stays with review (see Presentation text) |
 | Seed-relevant changes carry a seed decision | Tooling, ADR-0006 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-impact.ts` in `validate:affected` |
 | Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
 | No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |

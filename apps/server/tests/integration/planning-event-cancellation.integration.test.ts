@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import {
   assignment,
   assignmentAudit,
@@ -9,30 +10,45 @@ import {
   unavailableShift,
 } from '@church/db';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
+import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import { DbSwapRequestManager } from '@/application/db-swap-request-manager';
 import {
   AssignmentId,
   ChurchId,
   EventTimeBlockId,
   UserId,
 } from '@/domain/branded-ids';
+import type {
+  CloseOpenSwapRequestInput,
+  CreateSwapRequestInput,
+} from '@/domain/contracts/infrastructure/swap-request.repository';
 import { AdminCancellationWindowClosedError } from '@/domain/errors/admin-cancellation-window-closed';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
+import { SwapRequestUnpublishedError } from '@/domain/errors/swap-request';
+import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
+import { buildChurchMembership } from '@/seeds/builders/church';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
@@ -47,7 +63,7 @@ const db = schedulingTestDb;
 const eventRepository = new DrizzlePlanningEventRepository({ db });
 const churchRepository = new DrizzleChurchRepository({ db });
 const unitOfWork = new DrizzleUnitOfWork({ db });
-const manager = new DbPlanningEventManager({
+const managerDependencies = {
   cycleRepository: new DrizzleCycleRepository({ db }),
   eventRepository,
   templateRepository: new DrizzleEventTemplateRepository({ db }),
@@ -64,7 +80,8 @@ const manager = new DbPlanningEventManager({
   notifications: new ChurchNotifications({
     outboxRepository: new DrizzleOutboxRepository({ db }),
   }),
-});
+};
+const manager = new DbPlanningEventManager(managerDependencies);
 
 beforeEach(async () => {
   setTestClock({ instant: parseInstant({ value: CHURCH_OCTOBER_1_NOON }) });
@@ -411,5 +428,157 @@ describe('DbPlanningEventManager cancellation', () => {
     await expect(preview({ kind: 'event' })).rejects.toBeInstanceOf(
       IllegalStateTransitionError,
     );
+  });
+});
+
+/** A promise the test resolves to let a paused transaction go on. */
+function gate() {
+  let open = () => {};
+  const opened = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { opened, open };
+}
+
+/** Waits until some backend of this database waits on a row lock. */
+async function waitForLockWait() {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const { rows } = await db.execute<{ waiting: number }>(
+      sql`select count(*)::int as waiting from pg_stat_activity
+          where datname = current_database() and wait_event_type = 'Lock'`,
+    );
+    if ((rows[0]?.waiting ?? 0) > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('No transaction ever waited on the Assignment row lock');
+}
+
+/** Bia's own SwapRequest raise, with every real repository. */
+function swapRequestManager(swapRequestRepo: DrizzleSwapRequestRepository) {
+  const plainEventRepo = new DrizzleEventRepository({ db });
+  const ministryRepo = new DrizzleMinistryRepository({ db });
+  return new DbSwapRequestManager({
+    swapRequestRepo,
+    assignmentRepo: new DrizzleAssignmentRepository({ db }),
+    participationRepo: new DrizzleMinistryParticipationRepository({ db }),
+    shiftRepo: new DrizzleShiftRepository({ db }),
+    eventRepo: plainEventRepo,
+    ministryRepo,
+    roleRepo: new DrizzleRoleRepository({ db }),
+    churchRepo: churchRepository,
+    volunteerRepo: new DrizzleVolunteerRepository({ db }),
+    recipients: new ChurchRecipients({
+      churchRepository,
+      volunteerRepository: new DrizzleVolunteerRepository({ db }),
+    }),
+    notifications: new ChurchNotifications({
+      outboxRepository: new DrizzleOutboxRepository({ db }),
+    }),
+    authorityManager: new DbAuthorityManager({
+      actorRepository: new DrizzleAuthorityActorResolver({ db }),
+      scopeRepository: new DrizzleSchedulingScopeResolver({ db }),
+      eventRepository: plainEventRepo,
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      ministryRepository: ministryRepo,
+    }),
+    unitOfWork,
+    config: appConfig,
+  });
+}
+
+/**
+ * The raise locks the Assignment row (FOR UPDATE) from its published check to
+ * its insert, and confirm's status update needs that row: whichever goes
+ * first, no open SwapRequest is stored on a cancelled Assignment.
+ */
+describe('a SwapRequest raised while confirm runs', () => {
+  async function seedRace() {
+    const sunday = await seedSentSunday();
+    await buildChurchMembership({
+      db,
+      churchId: sunday.churchId,
+      userId: sunday.bia.userId,
+      accessLevel: 'member',
+    });
+    const raise = {
+      churchId: sunday.churchId,
+      userId: UserId.from(sunday.bia.userId),
+      assignmentId: AssignmentId.from(sunday.biaService.assignment.id),
+    };
+    const confirm = {
+      churchId: sunday.churchId,
+      cycleId: sunday.cycleId,
+      eventId: sunday.eventId,
+      scope: { kind: 'event' } as const,
+      actingUserId: UserId.from(sunday.seed.adminUserId),
+    };
+    return { sunday, raise, confirm };
+  }
+
+  async function biaRequests(assignmentId: string) {
+    return db
+      .select({ status: swapRequest.status })
+      .from(swapRequest)
+      .where(eq(swapRequest.assignmentId, assignmentId));
+  }
+
+  it('closes as covered a request raised first and committed while confirm waits', async () => {
+    const { sunday, raise, confirm } = await seedRace();
+    const paused = gate();
+    const reached = gate();
+    // Pauses the raise after its Assignment lock and published check.
+    class PausedCreate extends DrizzleSwapRequestRepository {
+      override async create(input: CreateSwapRequestInput) {
+        reached.open();
+        await paused.opened;
+        return super.create(input);
+      }
+    }
+    const raising = swapRequestManager(new PausedCreate({ db })).raise(raise);
+    await reached.opened;
+
+    const confirming = manager.confirmCancellation(confirm);
+    await waitForLockWait();
+    paused.open();
+
+    await expect(raising).resolves.toMatchObject({ status: 'open' });
+    await expect(confirming).resolves.toMatchObject({ volunteerCount: 2 });
+    const { id } = sunday.biaService.assignment;
+    expect(await statusOf(id)).toBe('cancelled');
+    expect(await biaRequests(id)).toEqual([{ status: 'covered' }]);
+  });
+
+  it('refuses a raise that reaches the Assignment after confirm cancelled it', async () => {
+    const { sunday, raise, confirm } = await seedRace();
+    const paused = gate();
+    const reached = gate();
+    // Pauses confirm after Bia's status update, holding her row.
+    class PausedClose extends DrizzleSwapRequestRepository {
+      override async closeOpenByAssignment(input: CloseOpenSwapRequestInput) {
+        if (input.assignmentId === sunday.biaService.assignment.id) {
+          reached.open();
+          await paused.opened;
+        }
+        return super.closeOpenByAssignment(input);
+      }
+    }
+    const pausedManager = new DbPlanningEventManager({
+      ...managerDependencies,
+      swapRequestRepository: new PausedClose({ db }),
+    });
+    const confirming = pausedManager.confirmCancellation(confirm);
+    await reached.opened;
+
+    const raising = swapRequestManager(
+      new DrizzleSwapRequestRepository({ db }),
+    ).raise(raise);
+    await waitForLockWait();
+    paused.open();
+
+    await expect(confirming).resolves.toMatchObject({ volunteerCount: 2 });
+    await expect(raising).rejects.toBeInstanceOf(SwapRequestUnpublishedError);
+    const { id } = sunday.biaService.assignment;
+    expect(await statusOf(id)).toBe('cancelled');
+    expect(await biaRequests(id)).toEqual([]);
   });
 });

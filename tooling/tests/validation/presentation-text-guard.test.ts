@@ -20,6 +20,26 @@ describe('presentation text guard', () => {
     ]);
   });
 
+  it('locates deeply indented JSX text on its own line, so a suppression above it applies', () => {
+    const indent = ' '.repeat(18);
+    expect(
+      failuresFor(`export const A = () => (
+  <span>
+${indent}{/* presentation-text-ignore: keyboard key names are not translated */}
+${indent}Ctrl K
+  </span>
+);
+export const B = () => (
+  <span>
+${indent}Ctrl K
+  </span>
+);
+`),
+    ).toEqual([
+      `${PATH}:9:19: JSX text "Ctrl K": use a catalog message (m.*) or pass translated content`,
+    ]);
+  });
+
   it('accepts JSX text that is only punctuation, symbols, digits or entities', () => {
     expect(
       failuresFor(`export const A = () => (

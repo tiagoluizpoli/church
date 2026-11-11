@@ -1425,5 +1425,6 @@
   "home_next_cycle_none": "Nenhum ciclo previsto.",
   "home_next_cycle_plan": "Planejar um ciclo",
   "home_next_cycle_loading": "Carregando o próximo ciclo",
-  "home_next_cycle_load_error": "Não conseguimos carregar seus ciclos. Tente novamente."
+  "home_next_cycle_load_error": "Não conseguimos carregar seus ciclos. Tente novamente.",
+  "home_serving_see_all": "Ver tudo"
 }

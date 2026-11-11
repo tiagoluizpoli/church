@@ -23,6 +23,19 @@ vi.mock('@/utils/api-instances', async () => ({
     .activeChurchApiMock,
   callerCapabilitiesApi: (await import('@/tests/setup/caller-capabilities'))
     .callerCapabilitiesApiMock,
+  volunteerApi: {
+    listAvailabilityChecks: vi.fn().mockResolvedValue({ checks: [] }),
+    getPublishedVolunteerSchedule: vi
+      .fn()
+      .mockResolvedValue({ assignments: [], schedules: [] }),
+  },
+}));
+
+vi.mock('@tanstack/react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-router')>()),
+  Link: ({ children }: { children: React.ReactNode }) => (
+    <a href="/">{children}</a>
+  ),
 }));
 
 const toastSuccess = vi.hoisted(() => vi.fn());

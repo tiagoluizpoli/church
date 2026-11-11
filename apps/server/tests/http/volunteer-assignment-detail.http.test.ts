@@ -222,9 +222,10 @@ describe('Volunteer Assignment detail', () => {
         {
           sectorName: 'Geral',
           roleName: 'Teacher',
+          // Alphabetical for everyone; the caller is flagged, not moved first.
           people: [
-            { name: 'Maria L.', isYou: true },
             { name: 'Joao P.', isYou: false },
+            { name: 'Maria L.', isYou: true },
           ],
           openCount: 1,
         },

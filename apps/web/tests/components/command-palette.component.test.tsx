@@ -46,6 +46,8 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
       leadsMinistries: false,
       hasVolunteerMembership: false,
       isResolving: false,
+      isError: false,
+      retry: vi.fn(),
     });
     const onOpenChange = vi.fn();
     render(<CommandPalette open onOpenChange={onOpenChange} />);
@@ -54,11 +56,11 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
     await waitFor(() => expect(input).toHaveFocus());
 
     const user = userEvent.setup();
-    await user.type(input, 'dashboard');
+    await user.type(input, 'home');
 
-    const resultLink = screen.getByRole('link', { name: /Go to Dashboard/ });
+    const resultLink = screen.getByRole('link', { name: /Go to Home/ });
     expect(resultLink).toBeVisible();
-    expect(resultLink).toHaveAttribute('href', '/dashboard');
+    expect(resultLink).toHaveAttribute('href', '/');
     expect(
       screen.queryByRole('link', { name: /Go to Availability/ }),
     ).not.toBeInTheDocument();
@@ -70,6 +72,8 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
       leadsMinistries: false,
       hasVolunteerMembership: false,
       isResolving: false,
+      isError: false,
+      retry: vi.fn(),
     });
     render(<CommandPalette open onOpenChange={vi.fn()} />);
 
@@ -88,12 +92,14 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
       leadsMinistries: false,
       hasVolunteerMembership: false,
       isResolving: false,
+      isError: false,
+      retry: vi.fn(),
     });
     const onOpenChange = vi.fn();
     render(<CommandPalette open onOpenChange={onOpenChange} />);
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('link', { name: /Go to Dashboard/ }));
+    await user.click(screen.getByRole('link', { name: /Go to Home/ }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
@@ -104,6 +110,8 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
       leadsMinistries: false,
       hasVolunteerMembership: false,
       isResolving: false,
+      isError: false,
+      retry: vi.fn(),
     });
     const onOpenChange = vi.fn();
     render(<CommandPalette open onOpenChange={onOpenChange} />);
@@ -120,6 +128,8 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
       leadsMinistries: false,
       hasVolunteerMembership: false,
       isResolving: false,
+      isError: false,
+      retry: vi.fn(),
     });
     render(<CommandPalette open onOpenChange={vi.fn()} />);
 
@@ -134,6 +144,8 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
       leadsMinistries: false,
       hasVolunteerMembership: false,
       isResolving: false,
+      isError: false,
+      retry: vi.fn(),
     });
     const { container } = render(
       <CommandPalette open={false} onOpenChange={vi.fn()} />,

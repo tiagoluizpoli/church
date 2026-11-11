@@ -149,6 +149,8 @@ function asPersona({
     leadsMinistries,
     hasVolunteerMembership,
     isResolving,
+    isError: false,
+    retry: vi.fn(),
   });
 }
 
@@ -284,9 +286,9 @@ describe('AppShell flat nav per persona (F7)', () => {
     expect(current(await findDrawerNav())).toEqual([m.nav_cycles()]);
   });
 
-  it.each(['/', '/dashboard'])('marks Home active on %s', (pathname) => {
+  it('marks Home active on /', () => {
     asPersona();
-    mockPathname = pathname;
+    mockPathname = '/';
 
     renderShell();
 
@@ -297,6 +299,8 @@ describe('AppShell flat nav per persona (F7)', () => {
 
   it('targets Home at / and never shows a Dashboard entry', () => {
     asPersona();
+    mockPathname = '/';
+    mockHref = '/';
 
     renderShell();
 

@@ -14,7 +14,7 @@ import {
 import { validateInternalReturnTarget } from '@/shared/utils/return-target';
 import { activeChurchApi } from '@/utils/api-instances';
 
-const DASHBOARD_PATH = '/dashboard';
+const HOME_PATH = '/';
 
 const switchChurchConfirmSearchSchema = z.object({
   target: z.string(),
@@ -119,7 +119,7 @@ function SwitchChurchConfirmRoute() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const destination =
-    validateInternalReturnTarget({ target: redirect }) ?? DASHBOARD_PATH;
+    validateInternalReturnTarget({ target: redirect }) ?? HOME_PATH;
   const currentChurchId = session.data?.session.activeOrganizationId ?? null;
 
   const optionsQuery = useQuery({
@@ -167,12 +167,12 @@ function SwitchChurchConfirmRoute() {
   // than confirm a switch to a Church the caller can no longer prove.
   useEffect(() => {
     if (hasMembershipChanged) {
-      navigate({ to: DASHBOARD_PATH, search: { accessDenied: true } });
+      navigate({ to: HOME_PATH, search: { accessDenied: true } });
     }
   }, [hasMembershipChanged, navigate]);
 
   const handleStay = (): void => {
-    navigate({ to: DASHBOARD_PATH });
+    navigate({ to: HOME_PATH });
   };
 
   const handleSwitch = (): void => {

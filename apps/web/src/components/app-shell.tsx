@@ -176,9 +176,6 @@ const NAV_ENTRIES: NavEntry[] = [
   },
 ];
 
-// Keyboard key names are not translatable copy.
-const PALETTE_SHORTCUT = 'Ctrl K';
-
 const GROUP_ORDER: NavGroup[] = ['home', 'serving', 'scheduling', 'church'];
 
 // Home has no heading.
@@ -667,7 +664,8 @@ export function AppShell({
                 <Search className="h-4 w-4" />
                 <span className="text-sm">{m.shell_search()}</span>
                 <span className="hidden rounded-sm border border-border/70 bg-background/90 px-1.5 py-0.5 font-mono text-[0.65rem] text-muted-foreground lg:inline">
-                  {PALETTE_SHORTCUT}
+                  {/* presentation-text-ignore: keyboard key names, not translatable copy */}
+                  Ctrl K
                 </span>
               </button>
             )}

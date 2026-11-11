@@ -7,7 +7,7 @@ import {
   volunteer,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { MinistryId, UserId, VolunteerId } from '../../domain/branded-ids';
 import type {
   ActiveMinistryLeadership,
@@ -111,7 +111,8 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         ),
       )
       .innerJoin(user, eq(user.id, volunteer.userId))
-      .where(withChurchIsolation({ table: volunteer, churchId }));
+      .where(withChurchIsolation({ table: volunteer, churchId }))
+      .orderBy(asc(sql`lower(${user.name})`), asc(volunteer.id));
     return rows.map((r) =>
       mapVolunteer({ row: r.volunteer, name: r.userName }),
     );
@@ -211,7 +212,8 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
         ),
       )
       .innerJoin(user, eq(user.id, volunteer.userId))
-      .where(withChurchIsolation({ table: volunteer, churchId }));
+      .where(withChurchIsolation({ table: volunteer, churchId }))
+      .orderBy(asc(sql`lower(${user.name})`), asc(volunteer.id));
     return rows.map((r) =>
       mapVolunteer({ row: r.volunteer, name: r.userName }),
     );
@@ -301,7 +303,8 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryMembership.ministryAccessLevel, 'leader'),
           isNull(ministry.deletedAt),
         ),
-      );
+      )
+      .orderBy(asc(sql`lower(${ministry.name})`), asc(ministry.id));
     return rows.map((r) => ({
       ministryId: r.ministryId as MinistryId,
       ministryName: r.ministryName,
@@ -324,7 +327,8 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           withChurchIsolation({ table: volunteer, churchId }),
           inArray(volunteer.id, ids),
         ),
-      );
+      )
+      .orderBy(asc(sql`lower(${user.name})`), asc(volunteer.id));
     return rows.map((r) =>
       mapVolunteer({ row: r.volunteer, name: r.userName }),
     );
@@ -345,7 +349,8 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryMembership.churchId, churchId),
           eq(ministryMembership.status, 'active'),
         ),
-      );
+      )
+      .orderBy(asc(ministryMembership.ministryId));
     return rows.map((r) => r.ministryId as MinistryId);
   }
 
@@ -369,7 +374,11 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           ministryAccessLevel: ministryMembership.ministryAccessLevel,
         })
         .from(ministryMembership)
-        .where(membershipScope),
+        .where(membershipScope)
+        .orderBy(
+          asc(ministryMembership.volunteerId),
+          asc(ministryMembership.id),
+        ),
       db
         .select({
           membershipId: ministryMembershipRole.ministryMembershipId,
@@ -383,7 +392,11 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
             ministryMembershipRole.ministryMembershipId,
           ),
         )
-        .where(membershipScope),
+        .where(membershipScope)
+        .orderBy(
+          asc(ministryMembershipRole.ministryMembershipId),
+          asc(ministryMembershipRole.roleId),
+        ),
     ]);
 
     const roleIdsByMembership = groupByMembership({
@@ -415,7 +428,8 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
           eq(ministryMembership.status, 'active'),
           eq(ministryMembership.ministryAccessLevel, 'leader'),
         ),
-      );
+      )
+      .orderBy(asc(volunteer.userId));
     return rows.map((r) => r.userId as UserId);
   }
 

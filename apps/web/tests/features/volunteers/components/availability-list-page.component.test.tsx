@@ -11,7 +11,6 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AvailabilityListPage } from '@/features/volunteers/components/availability-list-page';
-import { DashboardEntry } from '@/features/volunteers/components/dashboard-entry';
 import type { ListAvailabilityChecks200ChecksItem } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { renderWithProviders } from '@/tests/setup/render';
@@ -189,13 +188,5 @@ describe('Availability checks list', () => {
     expect(
       screen.queryByText(m.availability_list_empty()),
     ).not.toBeInTheDocument();
-  });
-  it('links the dashboard entry directly to the Availability list', () => {
-    renderPage(<DashboardEntry search={{}} />);
-    return screen
-      .findByRole('link', { name: m.dashboard_entry_availability_link() })
-      .then((link) => {
-        expect(link).toHaveAttribute('href', '/availability');
-      });
   });
 });

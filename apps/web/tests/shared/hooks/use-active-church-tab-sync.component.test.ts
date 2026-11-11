@@ -72,7 +72,7 @@ describe('useActiveChurchTabSync', () => {
     });
 
     expect(queryClient.getQueryData(['cycles'])).toBeUndefined();
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/dashboard' });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });
     expect(result.current.pendingSwitch).toBeNull();
   });
 });

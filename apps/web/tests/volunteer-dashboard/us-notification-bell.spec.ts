@@ -10,7 +10,7 @@ test('US2: bell shows unread count, opens dropdown, deep-links, and views full h
   // notification: no other spec's decline or publish reaches this dashboard.
   const journey = loadVolunteerDashboardJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.volunteer });
-  await page.goto('/dashboard');
+  await page.goto('/');
 
   const bellTrigger = page.getByRole('button', {
     name: m.notification_bell_label({}, { locale: 'pt-BR' }),
@@ -35,7 +35,7 @@ test('US2: bell shows unread count, opens dropdown, deep-links, and views full h
 
   // Selecting opens the detail and marks it read; only Open navigates.
   await page.getByText(title, { exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/$/);
   const sheet = page.getByRole('dialog');
   await expect(sheet.getByText(title, { exact: true })).toBeVisible();
   await expect(bellTrigger.locator('[data-slot="badge"]')).toHaveCount(0);

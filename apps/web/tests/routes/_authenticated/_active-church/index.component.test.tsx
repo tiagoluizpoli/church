@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { activeChurchApiMock } from '@/tests/setup/active-church';
+import { callerCapabilitiesApiMock } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
@@ -11,11 +12,12 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getSession = vi.fn();
 const toastWarning = vi.hoisted(() => vi.fn());
 const toastSuccess = vi.hoisted(() => vi.fn());
+const toastInfo = vi.hoisted(() => vi.fn());
 
 vi.mock('sonner', () => ({
   toast: {
     warning: toastWarning,
-    info: vi.fn(),
+    info: toastInfo,
     success: toastSuccess,
     error: vi.fn(),
   },
@@ -31,6 +33,8 @@ vi.mock('@/lib/auth-client', () => ({
 vi.mock('@/utils/api-instances', async () => ({
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
+  callerCapabilitiesApi: (await import('@/tests/setup/caller-capabilities'))
+    .callerCapabilitiesApiMock,
 }));
 
 vi.mock('@/components/app-shell', () => ({
@@ -51,19 +55,18 @@ describe('_active-church index route', () => {
     getSession.mockResolvedValue({
       data: { user: { id: 'u1', name: 'Any Caller' }, session: {} },
     });
+    callerCapabilitiesApiMock.getCallerCapabilities.mockReturnValue(
+      new Promise(() => {}),
+    );
   });
 
   it('renders Home at "/" without cycling through /dashboard', async () => {
     const { router } = renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
 
-    expect(await screen.findByText(m.dashboard_entry_title())).toBeVisible();
-    expect(router.state.location.pathname).toBe('/');
-    expect(screen.getByText(m.dashboard_entry_title())).toBeVisible();
     expect(
-      screen.getByText(
-        m.dashboard_entry_description_named({ name: 'Any Caller' }),
-      ),
+      await screen.findByRole('heading', { name: m.nav_home() }),
     ).toBeVisible();
+    expect(router.state.location.pathname).toBe('/');
   });
 
   it('sends a caller who must choose a Church to /select-church', async () => {
@@ -93,20 +96,36 @@ describe('_active-church index route', () => {
     );
   });
 
-  it('shows the Church-only warning carried in navigation state', async () => {
+  it('shows the Church-only warning carried in navigation state as a banner', async () => {
     renderRoute({
       initialPath: '/?joinedChurch=St.%20Peter&invitedMinistry=Youth',
       churchTimezone: 'UTC',
     });
 
-    await waitFor(() =>
-      expect(toastWarning).toHaveBeenCalledWith(
+    expect(
+      await screen.findByText(
         m.home_church_only_warning({
           churchName: 'St. Peter',
           ministryName: 'Youth',
         }),
       ),
-    );
+    ).toBeVisible();
+    expect(toastWarning).not.toHaveBeenCalled();
+  });
+
+  it('shows membership-removed and access-denied banners, not toasts', async () => {
+    renderRoute({
+      initialPath: '/?removedFrom=Old+Church&accessDenied=true',
+      churchTimezone: 'UTC',
+    });
+
+    expect(
+      await screen.findByText(
+        m.no_access_removed_from({ churchName: 'Old Church' }),
+      ),
+    ).toBeVisible();
+    expect(screen.getByText(m.switch_church_access_denied())).toBeVisible();
+    expect(toastInfo).not.toHaveBeenCalled();
   });
 
   it('announces the Ministry just joined', async () => {

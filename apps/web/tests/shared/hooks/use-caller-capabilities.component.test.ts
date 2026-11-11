@@ -50,6 +50,8 @@ describe('useCallerCapabilities', () => {
       leadsMinistries: false,
       hasVolunteerMembership: false,
       isResolving: true,
+      isError: false,
+      retry: expect.any(Function),
     });
   });
 
@@ -69,6 +71,8 @@ describe('useCallerCapabilities', () => {
       leadsMinistries: true,
       hasVolunteerMembership: true,
       isResolving: false,
+      isError: false,
+      retry: expect.any(Function),
     });
   });
 
@@ -86,18 +90,37 @@ describe('useCallerCapabilities', () => {
     expect(result.current.leadsMinistries).toBe(false);
   });
 
-  it('fails closed when the capability query fails', async () => {
+  it('fails closed and reports the error when the capability query fails', async () => {
     mockedGetCallerCapabilities.mockRejectedValue(new Error('Unavailable'));
 
     const { result } = renderCallerCapabilities();
 
-    await waitFor(() => expect(result.current.isResolving).toBe(false));
+    await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current).toEqual({
       isChurchAdmin: false,
       leadsMinistries: false,
       hasVolunteerMembership: false,
       isResolving: false,
+      isError: true,
+      retry: expect.any(Function),
     });
+  });
+
+  it('retry re-reads the projection and recovers', async () => {
+    mockedGetCallerCapabilities.mockRejectedValueOnce(new Error('Unavailable'));
+    mockedGetCallerCapabilities.mockResolvedValueOnce({
+      churchId: CHURCH_ID,
+      isChurchAdmin: true,
+      ledMinistries: [],
+      hasVolunteerMembership: false,
+    });
+
+    const { result } = renderCallerCapabilities();
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    result.current.retry();
+
+    await waitFor(() => expect(result.current.isChurchAdmin).toBe(true));
+    expect(result.current.isError).toBe(false);
   });
 
   it('fails closed when the projection belongs to another Church', async () => {
@@ -113,5 +136,6 @@ describe('useCallerCapabilities', () => {
     await waitFor(() => expect(result.current.isResolving).toBe(false));
     expect(result.current.isChurchAdmin).toBe(false);
     expect(result.current.hasVolunteerMembership).toBe(false);
+    expect(result.current.isError).toBe(true);
   });
 });

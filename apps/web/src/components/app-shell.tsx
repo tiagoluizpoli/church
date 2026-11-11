@@ -186,15 +186,11 @@ const GROUP_HEADINGS: Record<NavGroup, (() => string) | null> = {
   church: () => m.nav_group_church(),
 };
 
-// Pages that light up an entry besides its own path: Home's page is still
-// /dashboard until Spec 31; the legacy availability page remains active until removal.
-const EXTRA_ACTIVE_PATHS: Record<string, string[]> = {
-  '/': ['/dashboard'],
-};
+// Pages that light up an entry besides its own path.
+const EXTRA_ACTIVE_PATHS: Record<string, string[]> = {};
 
 // Static URL segment -> catalog label. A spec adding a segment adds it here.
 const BREADCRUMB_SEGMENT_LABELS: Record<string, () => string> = {
-  dashboard: () => m.breadcrumb_dashboard(),
   availability: () => m.nav_availability(),
   notifications: () => m.breadcrumb_notifications(),
   cycles: () => m.nav_cycles(),

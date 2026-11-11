@@ -628,16 +628,24 @@ interface CanCancelEventTimeBlockInput {
   start: string;
 }
 
+interface HasStartedInput {
+  start: string;
+}
+
+/** Admin cancellation's window closes at the scope's start. */
+function hasStarted({ start }: HasStartedInput): boolean {
+  const currentInstant = now();
+  const startInstant = parseInstant({ value: start });
+  return compareInstants({ left: currentInstant, right: startInstant }) >= 0;
+}
+
 /** An active block that has not started; a started sibling does not matter. */
 export function canCancelEventTimeBlock({
   eventAllows,
   status,
   start,
 }: CanCancelEventTimeBlockInput): boolean {
-  const started =
-    compareInstants({ left: now(), right: parseInstant({ value: start }) }) >=
-    0;
-  return eventAllows && status === 'active' && !started;
+  return eventAllows && status === 'active' && !hasStarted({ start });
 }
 
 /** A scheduled Event of a Sent Cycle; each block is judged on its own start. */
@@ -660,7 +668,6 @@ export function canCancelEvent({
   eventStatus,
   start,
 }: CanCancelEventInput): boolean {
-  const startInstant = parseInstant({ value: start });
-  const started = compareInstants({ left: now(), right: startInstant }) >= 0;
-  return cycleState === 'sent' && eventStatus === 'scheduled' && !started;
+  const lifecycleAllows = canCancelEventBlocks({ cycleState, eventStatus });
+  return lifecycleAllows && !hasStarted({ start });
 }

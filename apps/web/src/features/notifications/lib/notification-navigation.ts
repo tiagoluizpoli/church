@@ -24,14 +24,6 @@ export type NotificationNavigationTarget =
   | {
       to: '/schedules';
       search: { cycleId: string; ministryIds: string };
-    }
-  | {
-      to: '/dashboard';
-      search: {
-        section: 'assignments';
-        eventId?: string;
-        ministryId?: string;
-      };
     };
 
 export interface NotificationDestination {

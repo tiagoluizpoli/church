@@ -175,6 +175,7 @@ beforeAll(async () => {
     planningEventManager: managers.planningEventManager,
     activeChurchResolver: activeChurchResolver as never,
     ministryManager,
+    setupProgressManager: {} as never,
     authorityGuard,
   });
   const { createSchedulingManagers } = await import(

@@ -2,38 +2,13 @@ import { m } from '@church/i18n/messages';
 import { now, today } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { CheckDeadline } from './check-deadline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { ListAvailabilityChecks200ChecksItem } from '@/infrastructure/api/churchAPI.schemas';
 import { CapabilityGate } from '@/shared/components/capability-gate';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { volunteerApi } from '@/utils/api-instances';
-
-interface CheckDeadlineProps {
-  check: ListAvailabilityChecks200ChecksItem;
-  churchDay: string;
-}
-
-function CheckDeadline({ check, churchDay }: CheckDeadlineProps) {
-  if (!check.answerBy) return null;
-  const date = formatCalendarDateOnly({ value: check.answerBy });
-  const overdue = check.answerBy < churchDay;
-  return (
-    <p
-      className={
-        overdue ? 'font-medium text-destructive' : 'text-muted-foreground'
-      }
-    >
-      <time dateTime={check.answerBy}>
-        {overdue
-          ? m.availability_list_overdue({ date })
-          : m.availability_list_answer_by({ date })}
-      </time>
-    </p>
-  );
-}
 
 function AvailabilityListContent() {
   const { churchTimezone } = useTimezone();

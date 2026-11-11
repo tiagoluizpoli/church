@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import type { GetCallerCapabilities200 } from '@/infrastructure/api/churchAPI.schemas';
 import { DEFAULT_CHURCH_ID } from '@/tests/setup/active-church';
 
@@ -24,3 +25,11 @@ export function callerCapabilitiesFixture({
     hasVolunteerMembership,
   };
 }
+
+/**
+ * Stand-in for `callerCapabilitiesApi`; wire it in with
+ * `vi.mock('@/utils/api-instances', async () => ({ callerCapabilitiesApi: (await import('@/tests/setup/caller-capabilities')).callerCapabilitiesApiMock }))`.
+ */
+export const callerCapabilitiesApiMock = {
+  getCallerCapabilities: vi.fn(),
+};

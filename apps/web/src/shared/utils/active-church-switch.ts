@@ -38,7 +38,7 @@ interface ClearActiveChurchScopedCacheInput {
   queryClient: QueryClient;
 }
 
-const DASHBOARD_DESTINATION = '/dashboard';
+const HOME_DESTINATION = '/';
 const DESTINATION_BASE_URL = 'https://church.local';
 
 // Every current Church-scoped route has an explicit policy. Parameterized
@@ -105,7 +105,7 @@ export function getActiveChurchDestination({
   destination,
 }: GetActiveChurchDestinationInput): string {
   const pathname = getDestinationPathname({ destination });
-  if (!pathname) return DASHBOARD_DESTINATION;
+  if (!pathname) return HOME_DESTINATION;
 
   const routePolicy = ACTIVE_CHURCH_ROUTE_POLICIES.find(({ pattern }) =>
     pattern.test(pathname),
@@ -114,7 +114,7 @@ export function getActiveChurchDestination({
   return routePolicy?.policy === 'preserve' &&
     availableAreas.includes(routePolicy.requiredArea)
     ? destination
-    : DASHBOARD_DESTINATION;
+    : HOME_DESTINATION;
 }
 
 export async function switchActiveChurch({

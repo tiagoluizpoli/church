@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { compareInstants, now, parseInstant } from '@church/time';
+import { now } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
@@ -8,9 +8,9 @@ import { useOnlineState } from '../hooks/use-online-state';
 import { assignmentDayLabel } from '../lib/assignment-day-label';
 import { cachedReadOptions, fetchAndCache } from '../lib/my-schedule-cache';
 import { cachedMyScheduleSchema } from '../lib/my-schedule-schemas';
+import { AssignmentLink } from './assignment-link';
 import { BackgroundRefreshIndicator } from './background-refresh-indicator';
 import { MyScheduleOfflineBanner } from './my-schedule-offline-banner';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type {
@@ -19,7 +19,7 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { dayOf, formatTimeOf } from '@/shared/utils/church-time';
+import { dayOf } from '@/shared/utils/church-time';
 import { volunteerApi } from '@/utils/api-instances';
 
 interface DayGroup {
@@ -73,7 +73,6 @@ function MySchedule({
     onRefresh,
     visibleData: { assignments: data.assignments, schedules: data.schedules },
   });
-  const current = now();
   // A failed background refetch keeps the retained schedule and says so in the banner.
   const refreshState =
     refresh.refreshState === 'idle' && isRefreshError
@@ -103,37 +102,11 @@ function MySchedule({
           <div key={group.day} className="space-y-2">
             <h3 className="text-muted-foreground text-sm">{group.label}</h3>
             <ul className="space-y-2">
-              {group.assignments.map((a) => {
-                const start = parseInstant({ value: a.startTime });
-                const end = parseInstant({ value: a.endTime });
-                const inProgress =
-                  compareInstants({ left: start, right: current }) <= 0 &&
-                  compareInstants({ left: current, right: end }) < 0;
-                return (
-                  <li key={a.assignmentId}>
-                    <Link
-                      to="/my-schedule/$assignmentId"
-                      params={{ assignmentId: a.assignmentId }}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
-                    >
-                      <span>
-                        {group.label} ·{' '}
-                        {formatTimeOf({ value: a.startTime, timeZone })}–
-                        {formatTimeOf({ value: a.endTime, timeZone })} ·{' '}
-                        {a.ministryName} · {a.roleName} · {a.sectorName}
-                      </span>
-                      {inProgress ? (
-                        <Badge>{m.my_schedule_in_progress()}</Badge>
-                      ) : null}
-                      {a.swapRequested ? (
-                        <Badge variant="outline">
-                          {m.my_schedule_swap_requested()}
-                        </Badge>
-                      ) : null}
-                    </Link>
-                  </li>
-                );
-              })}
+              {group.assignments.map((a) => (
+                <li key={a.assignmentId}>
+                  <AssignmentLink assignment={a} timeZone={timeZone} />
+                </li>
+              ))}
             </ul>
           </div>
         ))}

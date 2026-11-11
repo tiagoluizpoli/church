@@ -132,6 +132,8 @@ export class DrizzleCycleRepository implements CycleRepository {
       .update(cycle)
       .set({
         state: input.state,
+        // Stamped with Send in its transaction; no later transition clears it.
+        ...(input.state === 'sent' ? { hasBeenSent: true } : {}),
         updatedAt: nowAsDate(),
       })
       .where(

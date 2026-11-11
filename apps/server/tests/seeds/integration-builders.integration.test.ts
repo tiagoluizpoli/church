@@ -681,4 +681,30 @@ describe('integration composition of the shared seed builders', () => {
     expect(built.template).toMatchObject({ name: 'Sunday', weekday: 0 });
     expect(built.blocks.map((block) => block.label)).toEqual(['Early', 'Late']);
   });
+
+  it.each([
+    ['draft', 'draft', false],
+    ['sent', 'sent', true],
+    ['past-from-draft', 'past', false],
+    ['past-from-sent', 'past', true],
+  ] as const)('builds a %s Cycle with its Send history', async (lifecycle, state, hasBeenSent) => {
+    await buildChurch({
+      db: testDb,
+      id: CHURCH_ID,
+      name: 'Built Church',
+      slug: 'built-church',
+      timezone: 'UTC',
+    });
+
+    const built = await buildCycle({
+      db: testDb,
+      churchId: CHURCH_ID,
+      name: 'June',
+      startDate: parseCalendarDay({ value: '2024-06-01' }),
+      endDate: parseCalendarDay({ value: '2024-06-30' }),
+      state: lifecycle,
+    });
+
+    expect(built).toMatchObject({ state, hasBeenSent });
+  });
 });

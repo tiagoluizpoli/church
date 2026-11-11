@@ -134,7 +134,7 @@ interface SeedCycleAndEventInput {
   seed: Awaited<ReturnType<typeof seedSchedulingPhase3Base>>;
   ministryId?: string;
   churchId?: string;
-  state?: 'draft' | 'sent' | 'past';
+  state?: 'draft' | 'sent';
 }
 
 async function seedCycleAndEvent({

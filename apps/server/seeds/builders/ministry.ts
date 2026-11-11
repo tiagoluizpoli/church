@@ -1,10 +1,11 @@
-import { ministry, role, sector, team } from '@church/db';
+import { ministry, ministryInvitation, role, sector, team } from '@church/db';
 import type { SeedWriter } from '../recipe';
 import { requireInsertedRow } from './require-inserted-row';
 
 export type SeededMinistry = typeof ministry.$inferSelect;
 export type SeededTeam = typeof team.$inferSelect;
 export type SeededRole = typeof role.$inferSelect;
+export type SeededMinistryInvitation = typeof ministryInvitation.$inferSelect;
 export type SeededSector = typeof sector.$inferSelect;
 
 export interface BuildMinistryInput {
@@ -85,5 +86,43 @@ export async function buildSector({
       .values({ id, churchId, ministryId, name })
       .returning(),
     description: `Sector ${name}`,
+  });
+}
+
+export interface BuildMinistryInvitationInput {
+  db: SeedWriter;
+  churchId: string;
+  ministryId: string;
+  inviteeUserId: string;
+  inviterId: string;
+  expiresAt: Date;
+  ministryAccessLevel?: SeededMinistryInvitation['ministryAccessLevel'];
+  status?: SeededMinistryInvitation['status'];
+}
+
+export async function buildMinistryInvitation({
+  db,
+  churchId,
+  ministryId,
+  inviteeUserId,
+  inviterId,
+  expiresAt,
+  ministryAccessLevel = 'leader',
+  status = 'pending',
+}: BuildMinistryInvitationInput): Promise<SeededMinistryInvitation> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(ministryInvitation)
+      .values({
+        churchId,
+        ministryId,
+        inviteeUserId,
+        ministryAccessLevel,
+        status,
+        inviterId,
+        expiresAt,
+      })
+      .returning(),
+    description: `Ministry Invitation for ${inviteeUserId}`,
   });
 }

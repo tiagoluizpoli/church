@@ -66,6 +66,7 @@ import {
   buildEvent,
   buildEventTimeBlock,
   buildMinistryParticipation,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   resetSchedulingPhase3Db,
@@ -148,6 +149,7 @@ beforeAll(async () => {
     }),
     activeChurchResolver: activeChurchResolver as never,
     ministryManager: {} as never,
+    setupProgressManager: {} as never,
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({
         actorRepository: actorRepository as never,
@@ -229,7 +231,7 @@ async function signIn({ persona = 'admin' }: SignInInput = {}) {
 
 interface SeedCycleInput {
   churchId: string;
-  state?: 'draft' | 'sent' | 'past';
+  state?: SeededCycleLifecycle;
 }
 
 function seedCycle({ churchId, state = 'draft' }: SeedCycleInput) {
@@ -646,7 +648,10 @@ describe('POST /admin/cycles/:cycleId/events', () => {
 
   it('refuses a past Cycle with ILLEGAL_STATE_TRANSITION', async () => {
     const seed = await signIn();
-    const target = await seedCycle({ churchId: seed.churchAId, state: 'past' });
+    const target = await seedCycle({
+      churchId: seed.churchAId,
+      state: 'past-from-sent',
+    });
 
     const response = await postEvent({
       cycleId: target.id,

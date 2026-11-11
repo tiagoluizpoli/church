@@ -9,6 +9,7 @@ import { getPeople } from '@/infrastructure/api/people';
 import { getPlanning } from '@/infrastructure/api/planning';
 import { getPrepare } from '@/infrastructure/api/prepare';
 import { getRedemption } from '@/infrastructure/api/redemption';
+import { getSetup } from '@/infrastructure/api/setup';
 import { getSwapRequests } from '@/infrastructure/api/swap-requests';
 import { getVolunteer } from '@/infrastructure/api/volunteer';
 
@@ -31,3 +32,4 @@ export const redemptionApi = getRedemption();
 export const callerCapabilitiesApi = getCallerCapabilities();
 export const invitationsApi = getInvitations();
 export const peopleApi = getPeople();
+export const setupApi = getSetup();

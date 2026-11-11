@@ -34,6 +34,7 @@ import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
+import { DbSetupProgressManager } from '@/application/db-setup-progress-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import { ChurchId, MinistryId, UserId } from '@/domain/branded-ids';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
@@ -46,6 +47,7 @@ import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleSetupProgressRepository } from '@/infrastructure/repositories/drizzle-setup-progress.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
@@ -61,6 +63,7 @@ import {
   buildCycle,
   buildEvent,
   buildEventTimeBlock,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
@@ -92,6 +95,8 @@ const CHURCH_OCTOBER_1_NOON = '2026-10-01T15:00:00.000Z';
 const CYCLE_START = '2026-10-12';
 const CYCLE_END = '2026-10-25';
 const SUNDAY = 0;
+/** The Church day after CYCLE_END, when the Cycle resolves to Past. */
+const AFTER_CYCLE_END = '2026-10-26T15:00:00.000Z';
 
 let app: FastifyTypedInstance;
 
@@ -147,6 +152,9 @@ beforeAll(async () => {
     }),
     activeChurchResolver: activeChurchResolver as never,
     ministryManager: {} as never,
+    setupProgressManager: new DbSetupProgressManager({
+      setupProgressRepository: new DrizzleSetupProgressRepository({ db }),
+    }),
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({
         actorRepository: actorRepository as never,
@@ -222,7 +230,7 @@ async function signIn({ persona = 'admin' }: SignInInput = {}) {
 
 interface SeedCycleInput {
   churchId: string;
-  state?: 'draft' | 'sent' | 'past';
+  state?: SeededCycleLifecycle;
 }
 
 function seedCycle({ churchId, state = 'draft' }: SeedCycleInput) {
@@ -324,6 +332,11 @@ async function applySunday({ churchId, cycleId }: ApplySundayInput) {
   return { block };
 }
 
+/** Listing resolves every elapsed Cycle to Past. */
+function listCycles() {
+  return app.inject({ method: 'GET', url: '/api/v1/admin/cycles' });
+}
+
 async function cycleState(cycleId: string) {
   const [row] = await db
     .select({ state: cycle.state })
@@ -337,6 +350,15 @@ async function cycleState(cycleId: string) {
     state: row?.state,
     events: [...new Set(events.map(({ status }) => status))].sort(),
   };
+}
+
+/** The Church's durable Send history, read through the setup-progress seam. */
+async function everSent(): Promise<boolean> {
+  const response = await app.inject({
+    method: 'GET',
+    url: '/api/v1/admin/setup-progress',
+  });
+  return response.json().hasEverSentCycle;
 }
 
 interface QueuedNotification {
@@ -806,11 +828,41 @@ describe('POST /admin/cycles/:cycleId/send', () => {
     });
     expect(await staffingCounts()).toEqual({ inclusions: 0, shifts: 0 });
     expect(await queuedNotifications()).toEqual([]);
+    expect(await everSent()).toBe(false);
 
     // Retrying the whole Send succeeds once the failure is gone.
     expect((await send({ cycleId: target.id })).statusCode).toBe(204);
     expect(await staffingCounts()).toEqual({ inclusions: 2, shifts: 2 });
     expect(await queuedNotifications()).toHaveLength(1);
+    expect(await everSent()).toBe(true);
+  });
+
+  it('records durable Send history that survives the Cycle becoming Past', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId });
+    expect((await postEvening({ cycleId: target.id })).statusCode).toBe(201);
+    expect(await everSent()).toBe(false);
+
+    expect((await send({ cycleId: target.id })).statusCode).toBe(204);
+    expect(await everSent()).toBe(true);
+
+    setTestClock({ instant: parseInstant({ value: AFTER_CYCLE_END }) });
+    await listCycles();
+
+    expect((await cycleState(target.id)).state).toBe('past');
+    expect(await everSent()).toBe(true);
+  });
+
+  it('never records Send history for a draft that expires unsent', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId });
+    expect((await postEvening({ cycleId: target.id })).statusCode).toBe(201);
+
+    setTestClock({ instant: parseInstant({ value: AFTER_CYCLE_END }) });
+    await listCycles();
+
+    expect((await cycleState(target.id)).state).toBe('past');
+    expect(await everSent()).toBe(false);
   });
 
   it('serializes simultaneous Sends so the handoff and its N2 set happen once', async () => {

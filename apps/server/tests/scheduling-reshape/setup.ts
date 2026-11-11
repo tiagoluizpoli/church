@@ -13,6 +13,7 @@ import {
   buildEvent,
   buildEventTimeBlock,
   buildMinistryParticipation,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   buildMinistryMembership,
@@ -42,7 +43,7 @@ export interface CreatePhase3CycleInput {
   name: string;
   startDate: Date;
   endDate: Date;
-  state?: 'draft' | 'sent' | 'past';
+  state?: SeededCycleLifecycle;
 }
 
 export interface CreatePhase3EventGraphInput {

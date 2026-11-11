@@ -104,8 +104,8 @@ test.describe('#67 — Active Church selection and switching', () => {
 
     await churchOptionRow({ page, churchId: churchB.id }).click();
     // Church B has no scheduling access, so the "preserve" route policy
-    // falls back to the dashboard (spec 024 §1.5) once the switch commits.
-    await expect(page).toHaveURL(/\/dashboard(\?.*)?$/);
+    // falls back to Home (spec 024 §1.5) once the switch commits.
+    await expect(page).toHaveURL(/\/(\?.*)?$/);
     // The URL commits before the code-split dashboard chunk renders.
     await expect(
       page.getByRole('heading', {

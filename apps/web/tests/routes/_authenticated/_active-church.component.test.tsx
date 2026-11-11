@@ -278,7 +278,7 @@ describe('the Active Church guard (_active-church)', () => {
     expect(router.state.location.search).toEqual({ removedFrom: 'Old Church' });
   });
 
-  it('redirects to /dashboard with the former Church name when the active Membership was removed but one remaining Church auto-selects silently', async () => {
+  it('redirects to Home with the former Church name when the active Membership was removed but one remaining Church auto-selects silently', async () => {
     getSession.mockResolvedValue({
       data: {
         user: { id: 'u1' },
@@ -292,7 +292,7 @@ describe('the Active Church guard (_active-church)', () => {
           membershipRemovedFrom: 'Old Church',
         }),
       )
-      // The redirect to /dashboard re-enters this same layout's beforeLoad —
+      // The redirect to Home re-enters this same layout's beforeLoad —
       // by then the session's active organization is the newly auto-selected
       // Church, so the real endpoint would no longer report a removal.
       .mockResolvedValue(resolvedActiveChurchStatus({ churchId: 'church-2' }));
@@ -300,7 +300,7 @@ describe('the Active Church guard (_active-church)', () => {
     const { router } = renderCycles();
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
     expect(router.state.location.search).toEqual({ removedFrom: 'Old Church' });
     expect(listCycles).not.toHaveBeenCalled();
@@ -478,7 +478,7 @@ describe('the Active Church guard (_active-church)', () => {
       const { router } = renderWithChurchParam('church-9');
 
       await waitFor(() => {
-        expect(router.state.location.pathname).toBe('/dashboard');
+        expect(router.state.location.pathname).toBe('/');
       });
       expect(router.state.location.search).toEqual({ accessDenied: true });
       expect(selectActiveChurch).not.toHaveBeenCalled();

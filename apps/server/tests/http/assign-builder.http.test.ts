@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { appConfig } from '@church/app-config';
+import { eventTimeBlock } from '@church/db';
+import { eq } from 'drizzle-orm';
 import pg from 'pg';
 import {
   afterAll,
@@ -25,7 +27,10 @@ import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry, buildTeam } from '@/seeds/builders/ministry';
-import { buildAssignment } from '@/seeds/builders/scheduling';
+import {
+  buildAssignment,
+  buildEventTimeBlock,
+} from '@/seeds/builders/scheduling';
 import {
   buildTeamMembership,
   buildVolunteerWithMembership,
@@ -166,6 +171,79 @@ describe('builder read', () => {
         { event: { title: 'Sunday' }, eventTimeBlocks: expect.any(Array) },
       ],
       roles: [],
+    });
+  });
+
+  it('keeps a cancelled EventTimeBlock visible to the leader as cancelled, beside its live sibling', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'August',
+      startDate: new Date('2026-08-01T00:00:00Z'),
+      endDate: new Date('2026-08-31T00:00:00Z'),
+      state: 'sent',
+    });
+    const graph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Sunday',
+      start: new Date('2026-08-02T09:00:00Z'),
+      end: new Date('2026-08-02T11:00:00Z'),
+      status: 'scheduled',
+    });
+    const sibling = await buildEventTimeBlock({
+      db,
+      churchId: seed.churchAId,
+      eventId: graph.event.id,
+      start: new Date('2026-08-02T09:00:00Z'),
+      end: new Date('2026-08-02T11:00:00Z'),
+      label: 'Sibling',
+    });
+    await db
+      .update(eventTimeBlock)
+      .set({ status: 'cancelled' })
+      .where(eq(eventTimeBlock.id, graph.eventTimeBlock.id));
+    const leader = await buildVolunteerWithMembership({
+      db,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Leader',
+      email: `${randomUUID()}@test.com`,
+      roleIds: [],
+      ministryAccessLevel: 'leader',
+    });
+    await buildChurchMembership({
+      db,
+      churchId: seed.churchAId,
+      userId: leader.user.id,
+      accessLevel: 'member',
+    });
+    getSession.mockResolvedValue({
+      user: { id: leader.user.id },
+      session: { activeOrganizationId: seed.churchAId },
+    } as never);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${cycle.id}/builder?ministryId=${seed.ministryAId}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const [{ eventTimeBlocks }] = response.json().events;
+    expect(
+      Object.fromEntries(
+        eventTimeBlocks.map(
+          ({
+            eventTimeBlock: b,
+          }: {
+            eventTimeBlock: { id: string; status: string };
+          }) => [b.id, b.status],
+        ),
+      ),
+    ).toEqual({
+      [graph.eventTimeBlock.id]: 'cancelled',
+      [sibling.id]: 'active',
     });
   });
 

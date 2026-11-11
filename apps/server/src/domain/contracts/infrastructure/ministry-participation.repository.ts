@@ -243,6 +243,10 @@ export interface MinistryParticipationRepository {
   countScheduleOpenSwapRequests(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleCountRow[]>;
+  /** Unfilled headcount of active, not-started requirements, per Schedule. */
+  countScheduleGaps(
+    input: ListSchedulesFactsInput,
+  ): Promise<ScheduleCountRow[]>;
   countScheduleChecks(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleCheckCountRow[]>;

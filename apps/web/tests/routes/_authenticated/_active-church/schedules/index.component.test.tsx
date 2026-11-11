@@ -93,6 +93,7 @@ function schedule(
     stage: 'to_prepare',
     lateMarkCount: 0,
     openSwapRequestCount: 0,
+    gapCount: 0,
     ...overrides,
   };
 }

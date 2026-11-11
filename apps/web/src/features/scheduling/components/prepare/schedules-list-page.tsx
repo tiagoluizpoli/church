@@ -1,10 +1,8 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -24,10 +22,8 @@ import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
-import type {
-  ListSchedules200SchedulesItem,
-  ListSchedules200SchedulesItemStage,
-} from '@/infrastructure/api/churchAPI.schemas';
+import { ScheduleRows } from '@/features/scheduling/components/prepare/schedule-rows';
+import type { ListSchedules200SchedulesItemStage } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { adminApi } from '@/utils/api-instances';
 
@@ -145,70 +141,3 @@ const STAGE_ORDER: ListSchedules200SchedulesItemStage[] = [
   'published',
   'not_serving',
 ];
-
-interface ScheduleRowsProps {
-  schedules: ListSchedules200SchedulesItem[];
-}
-
-export function swapRequestCountLabel(count: number): string {
-  return count === 1
-    ? m.schedules_swap_request_one()
-    : m.schedules_swap_requests_other({ count });
-}
-
-function stageLabel(row: ListSchedules200SchedulesItem): string {
-  switch (row.stage) {
-    case 'to_prepare':
-      return m.schedules_to_prepare();
-    case 'asking':
-      return row.asking
-        ? m.schedules_asking(row.asking)
-        : m.schedules_asking_stage();
-    case 'assigning':
-      return m.schedules_assigning();
-    case 'published': {
-      const published =
-        row.affectedVolunteerCount > 0
-          ? m.schedules_unsent({ count: row.affectedVolunteerCount })
-          : m.schedules_published();
-      return row.openSwapRequestCount > 0
-        ? `${published} · ${swapRequestCountLabel(row.openSwapRequestCount)}`
-        : published;
-    }
-    case 'not_serving':
-      return m.schedules_not_serving();
-  }
-}
-
-function ScheduleRows({ schedules }: ScheduleRowsProps) {
-  return (
-    <ul className="grid gap-2">
-      {schedules.map((row) => (
-        <li key={`${row.ministry.id}:${row.cycle.id}`}>
-          <Link
-            to="/schedules/$ministryId/$cycleId"
-            params={{ ministryId: row.ministry.id, cycleId: row.cycle.id }}
-            className="flex min-h-11 flex-wrap items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <span>
-              {row.ministry.name} · {row.cycle.name}
-            </span>
-            <span className="flex items-center gap-2">
-              {row.lateMarkCount > 0 ? (
-                <Badge
-                  variant="outline"
-                  aria-label={m.schedule_late_mark_count({
-                    count: row.lateMarkCount,
-                  })}
-                >
-                  ⚠ {row.lateMarkCount}
-                </Badge>
-              ) : null}
-              <Badge variant="secondary">{stageLabel(row)}</Badge>
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}

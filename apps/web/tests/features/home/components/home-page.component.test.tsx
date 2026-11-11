@@ -18,6 +18,7 @@ import {
 } from '@/tests/setup/caller-capabilities';
 
 vi.mock('@/utils/api-instances', async () => ({
+  adminApi: { listSchedules: vi.fn().mockResolvedValue({ schedules: [] }) },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
   callerCapabilitiesApi: (await import('@/tests/setup/caller-capabilities'))

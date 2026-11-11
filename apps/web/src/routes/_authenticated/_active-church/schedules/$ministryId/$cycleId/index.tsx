@@ -24,7 +24,7 @@ import { PrepareEventTimeBlockList } from '@/features/scheduling/components/prep
 import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
 import { ScheduleAsk } from '@/features/scheduling/components/prepare/schedule-ask';
 import { SchedulePublish } from '@/features/scheduling/components/prepare/schedule-publish';
-import { swapRequestCountLabel } from '@/features/scheduling/components/prepare/schedules-list-page';
+import { swapRequestCountLabel } from '@/features/scheduling/components/prepare/schedule-rows';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';

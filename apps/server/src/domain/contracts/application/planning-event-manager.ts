@@ -9,6 +9,10 @@ import type {
 import type { Event } from '../../entities/event';
 import type { EventTimeBlock } from '../../entities/event-time-block';
 import type {
+  CancellationImpact,
+  CancellationScope,
+} from '../../services/event-cancellation';
+import type {
   MoveClash,
   MoveProposal,
   MoveScope,
@@ -148,6 +152,23 @@ export interface PlanningMoveResult {
   withdrawn: MoveClash[];
 }
 
+/** A cancellation request for one scope: the whole Event or one EventTimeBlock. */
+export interface PlanningCancellationManagerInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  eventId: EventId;
+  scope: CancellationScope;
+}
+
+export type PreviewPlanningCancellationManagerInput =
+  PlanningCancellationManagerInput;
+
+export interface ConfirmPlanningCancellationManagerInput
+  extends PlanningCancellationManagerInput {
+  /** The session's ChurchAdmin: audits the Assignments, closes the requests. */
+  actingUserId: UserId;
+}
+
 export interface IPlanningEventManager {
   generateFromTemplates(
     input: GeneratePlanningTemplatesInput,
@@ -184,4 +205,18 @@ export interface IPlanningEventManager {
   confirmMove(
     input: ConfirmPlanningMoveManagerInput,
   ): Promise<PlanningMoveResult>;
+  /** Advisory and write-free: confirm recalculates and never trusts it. */
+  previewCancellation(
+    input: PreviewPlanningCancellationManagerInput,
+  ): Promise<CancellationImpact>;
+  /**
+   * Recalculates the impact under the Church and Event Participation locks,
+   * then cancels the scope in one transaction: soft-cancels and audits its
+   * active Assignments, closes their open SwapRequests as covered, deletes
+   * its UnavailableShifts and drops its last-told entries. Returns the actual
+   * impact.
+   */
+  confirmCancellation(
+    input: ConfirmPlanningCancellationManagerInput,
+  ): Promise<CancellationImpact>;
 }

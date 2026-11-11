@@ -8,9 +8,13 @@ import {
   ministryMembership,
   ministryParticipation,
   participationEventTimeBlockInclusion,
+  role,
+  scheduleLastTold,
   sector,
   shift,
   shiftRequirement,
+  swapRequest,
+  unavailableShift,
   user,
   volunteer,
 } from '@church/db';
@@ -34,13 +38,17 @@ import {
   EventTimeBlockId,
   MinistryId,
   ShiftId,
+  UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
 import type {
+  CancelEventTimeBlockInput,
   CreatePlanningEventInput,
   CreatePlanningEventTimeBlockInput,
   DeletePlanningEventInput,
+  DeleteScopeUnavailableShiftsInput,
   GetPlanningEventInput,
+  ListCancellationScopeAssignmentsInput,
   ListCycleEventsInput,
   ListMoveAffectedMinistriesInput,
   ListMoveClashCandidatesInput,
@@ -49,6 +57,7 @@ import type {
   MoveAffectedMinistry,
   MoveEventTimeBlocksInput,
   PlanningEventRepository,
+  RemoveLastToldAssignmentsInput,
   SeededMinistry,
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
@@ -58,6 +67,7 @@ import type {
   EventWithEventTimeBlocks,
 } from '../../domain/entities/event';
 import { deriveScheduleParticipationState } from '../../domain/entities/ministry-participation';
+import type { CancellationScopeAssignment } from '../../domain/services/event-cancellation';
 import type {
   MoveClashCandidate,
   MoveScopeAssignment,
@@ -69,6 +79,8 @@ import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
+/** The active statuses a Volunteer already sees once the Schedule is published. */
+const PUBLISHED_ASSIGNMENT_STATUSES = ['pending', 'confirmed'] as const;
 
 interface DrizzlePlanningEventRepositoryInput {
   db: AnyDrizzleDb;
@@ -554,6 +566,167 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         and(
           withChurchIsolation({ table: shift, churchId }),
           inArray(shift.eventTimeBlockId, eventTimeBlockIds),
+        ),
+      );
+  }
+
+  async listCancellationScopeAssignments({
+    churchId,
+    eventId,
+    eventTimeBlockId,
+    tx,
+  }: ListCancellationScopeAssignmentsInput): Promise<
+    CancellationScopeAssignment[]
+  > {
+    const client = getClient({ db: this.db, tx });
+    const conditions: SQL[] = [
+      withChurchIsolation({ table: assignment, churchId }),
+      eq(eventTimeBlock.eventId, eventId),
+      inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+    ];
+    if (eventTimeBlockId) {
+      conditions.push(eq(eventTimeBlock.id, eventTimeBlockId));
+    }
+    const openRequest = client
+      .select({ id: swapRequest.id })
+      .from(swapRequest)
+      .where(
+        and(
+          eq(swapRequest.assignmentId, assignment.id),
+          eq(swapRequest.status, 'open'),
+        ),
+      );
+    const published = and(
+      eq(ministryParticipation.state, 'published'),
+      inArray(assignment.status, [...PUBLISHED_ASSIGNMENT_STATUSES]),
+    );
+    const rows = await client
+      .select({
+        assignmentId: assignment.id,
+        eventTimeBlockId: shift.eventTimeBlockId,
+        shiftId: shift.id,
+        volunteerId: assignment.volunteerId,
+        userId: volunteer.userId,
+        ministryId: ministry.id,
+        ministryName: ministry.name,
+        roleName: role.name,
+        sectorName: sector.name,
+        shiftStart: shift.startTime,
+        shiftEnd: shift.endTime,
+        published: sql<boolean>`${published}`,
+        openSwapRequest: sql<boolean>`${exists(openRequest)}`,
+      })
+      .from(assignment)
+      .innerJoin(shift, eq(shift.id, assignment.shiftId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(volunteer, eq(volunteer.id, assignment.volunteerId))
+      .innerJoin(role, eq(role.id, assignment.roleId))
+      .innerJoin(
+        shiftRequirement,
+        eq(shiftRequirement.id, assignment.shiftRequirementId),
+      )
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, assignment.participationId),
+      )
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
+      .where(and(...conditions))
+      .orderBy(asc(shift.startTime), asc(assignment.id));
+
+    return rows.map((row) => ({
+      assignmentId: AssignmentId.from(row.assignmentId),
+      eventTimeBlockId: EventTimeBlockId.from(row.eventTimeBlockId),
+      shiftId: ShiftId.from(row.shiftId),
+      volunteerId: VolunteerId.from(row.volunteerId),
+      userId: UserId.from(row.userId),
+      ministryId: MinistryId.from(row.ministryId),
+      ministryName: row.ministryName,
+      roleName: row.roleName,
+      sectorName: row.sectorName,
+      shiftStart: fromDate({ date: row.shiftStart }),
+      shiftEnd: fromDate({ date: row.shiftEnd }),
+      published: row.published,
+      openSwapRequest: row.openSwapRequest,
+    }));
+  }
+
+  async cancelEventTimeBlock({
+    churchId,
+    eventTimeBlockId,
+    tx,
+  }: CancelEventTimeBlockInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .update(eventTimeBlock)
+      .set({ status: 'cancelled' })
+      .where(
+        and(
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
+          eq(eventTimeBlock.id, eventTimeBlockId),
+        ),
+      );
+  }
+
+  async deleteScopeUnavailableShifts({
+    churchId,
+    eventTimeBlockIds,
+    tx,
+  }: DeleteScopeUnavailableShiftsInput): Promise<number> {
+    if (eventTimeBlockIds.length === 0) return 0;
+    const client = getClient({ db: this.db, tx });
+    const scopeShifts = client
+      .select({ id: shift.id })
+      .from(shift)
+      .where(
+        and(
+          withChurchIsolation({ table: shift, churchId }),
+          inArray(shift.eventTimeBlockId, eventTimeBlockIds),
+        ),
+      );
+    const deleted = await client
+      .delete(unavailableShift)
+      .where(
+        and(
+          withChurchIsolation({ table: unavailableShift, churchId }),
+          inArray(unavailableShift.shiftId, scopeShifts),
+        ),
+      )
+      .returning({ id: unavailableShift.id });
+    return deleted.length;
+  }
+
+  async removeLastToldAssignments({
+    churchId,
+    cycleId,
+    assignmentIds,
+    tx,
+  }: RemoveLastToldAssignmentsInput): Promise<void> {
+    if (assignmentIds.length === 0) return;
+    const ids = sql.join(
+      assignmentIds.map((id) => sql`${id}`),
+      sql`, `,
+    );
+    const cancelled = sql`entry.value ->> 'assignmentId' in (${ids})`;
+    // toldAt stays: a cover closed since the last send is still news to it.
+    await getClient({ db: this.db, tx })
+      .update(scheduleLastTold)
+      .set({
+        assignments: sql`coalesce((
+          select jsonb_agg(entry.value order by entry.position)
+          from jsonb_array_elements(${scheduleLastTold.assignments})
+            with ordinality as entry(value, position)
+          where not (${cancelled})
+        ), '[]'::jsonb)`,
+      })
+      .where(
+        and(
+          eq(scheduleLastTold.churchId, churchId),
+          eq(scheduleLastTold.cycleId, cycleId),
+          sql`exists (
+            select 1
+            from jsonb_array_elements(${scheduleLastTold.assignments}) as entry(value)
+            where ${cancelled}
+          )`,
         ),
       );
   }

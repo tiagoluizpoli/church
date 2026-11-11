@@ -42,6 +42,7 @@ export const ISOLATED_SPECS = [
   'scheduling/j6-leader-availability.spec.ts',
   'scheduling/us3-volunteer-availability.spec.ts',
   'scheduling/j9-swap-request.spec.ts',
+  'scheduling/j10-admin-cancel.spec.ts',
   'scheduling/us4-schedule-publish.spec.ts',
   'scheduling/us5-leader-reassign.spec.ts',
   'volunteer-dashboard/us-notification-bell.spec.ts',

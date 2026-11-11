@@ -26,6 +26,8 @@ export const E2E_JOURNEY_RECIPES: Record<
     (await import('./recipes/schedule-publish')).createSchedulePublishRecipe,
   [E2E_JOURNEY_RECIPE_NAMES.swapRequest]: async () =>
     (await import('./recipes/swap-request')).createSwapRequestRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.adminCancel]: async () =>
+    (await import('./recipes/admin-cancel')).createAdminCancelRecipe,
   [E2E_JOURNEY_RECIPE_NAMES.volunteerDashboard]: async () =>
     (await import('./recipes/volunteer-dashboard'))
       .createVolunteerDashboardRecipe,

@@ -262,7 +262,7 @@ describe('shared Compose', () => {
       .filter(([, service]) => !service.profiles)
       .map(([name]) => name);
 
-    expect(defaultServices).toEqual(['db']);
+    expect(defaultServices).toEqual(['db', 'mailpit']);
     expect(compose.services.dns?.profiles).toEqual(['dns']);
   });
 

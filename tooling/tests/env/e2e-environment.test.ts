@@ -73,6 +73,7 @@ describe('process environments', () => {
       PORT: '4100',
       CORS_ORIGIN: 'http://localhost:4101',
       BETTER_AUTH_URL: 'http://localhost:4100',
+      DEV_EMAIL_SENDER: 'capture',
     });
   });
 

@@ -2,13 +2,13 @@ import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/servic
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import type { CompositionRootDependencies } from './dependencies';
 import { auth, createServerAuth, useResetMailSender } from './server-auth';
-import { captureEmailSender, serverEmailSender } from './server-email-sender';
+import { serverEmailSender } from './server-email-sender';
 
 export type Services = Pick<
   CompositionRootDependencies,
   'redemptionIdentityGateway' | 'emailSender'
 > &
-  // Absent in production, where no capturing sender exists.
+  // Absent unless the sender is capture.
   Partial<Pick<CompositionRootDependencies, 'verificationCodeInspector'>>;
 
 export interface BuildServicesInput {
@@ -26,9 +26,7 @@ export function buildServices({ overrides }: BuildServicesInput): Services {
   useResetMailSender(emailSender);
   const verificationCodeInspector =
     overrides.verificationCodeInspector ??
-    (emailSender instanceof CaptureEmailSender
-      ? emailSender
-      : captureEmailSender);
+    (emailSender instanceof CaptureEmailSender ? emailSender : undefined);
 
   return {
     redemptionIdentityGateway,

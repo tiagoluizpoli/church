@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import {
@@ -25,7 +26,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         name: 'description',
-        content: 'church is a web application',
+        content: m.shell_app_description(),
       },
     ],
     links: [

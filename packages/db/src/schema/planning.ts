@@ -55,6 +55,8 @@ export const cycle = pgTable(
     startDate: date('start_date', { mode: 'date' }).notNull(),
     endDate: date('end_date', { mode: 'date' }).notNull(),
     state: cycleStateEnum('state').default('draft').notNull(),
+    /** Durable Send history: set by Send and kept through Past, unlike `state`. */
+    hasBeenSent: boolean('has_been_sent').default(false).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),

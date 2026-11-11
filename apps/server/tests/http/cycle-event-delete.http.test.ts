@@ -61,6 +61,7 @@ import {
   buildEventTimeBlock,
   buildMinistryParticipation,
   buildShift,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   resetSchedulingPhase3Db,
@@ -143,6 +144,7 @@ beforeAll(async () => {
     }),
     activeChurchResolver: activeChurchResolver as never,
     ministryManager: {} as never,
+    setupProgressManager: {} as never,
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({
         actorRepository: actorRepository as never,
@@ -224,7 +226,7 @@ async function signIn({ persona = 'admin' }: SignInInput = {}) {
 
 interface SeedCycleInput {
   churchId: string;
-  state?: 'draft' | 'sent' | 'past';
+  state?: SeededCycleLifecycle;
   startDate?: string;
   endDate?: string;
 }
@@ -398,11 +400,11 @@ describe('DELETE /admin/cycles/:cycleId/events/:eventId', () => {
 
   it('returns 409 for a Sent Cycle with a reopened draft Event and for a Past Cycle', async () => {
     const seed = await signIn();
-    for (const state of ['sent', 'past'] as const) {
+    for (const state of ['sent', 'past-from-sent'] as const) {
       const target = await seedCycle({
         churchId: seed.churchAId,
         state,
-        ...(state === 'past'
+        ...(state === 'past-from-sent'
           ? { startDate: '2026-08-01', endDate: '2026-08-14' }
           : {}),
       });

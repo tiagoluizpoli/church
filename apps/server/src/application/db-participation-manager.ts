@@ -1730,18 +1730,20 @@ export class DbParticipationManager implements IParticipationManager {
       ministryIds: ministries.map((ministry) => ministry.id),
       cycleIds: sentCycles.map((cycle) => cycle.id),
     };
-    const [servingStates, checkCounts, lateMarkCounts, swapCounts] =
+    const [servingStates, checkCounts, lateMarkCounts, swapCounts, gapCounts] =
       await Promise.all([
         this.participationRepository.listScheduleServingStates(scope),
         this.participationRepository.countScheduleChecks(scope),
         this.participationRepository.countScheduleLateMarks(scope),
         this.participationRepository.countScheduleOpenSwapRequests(scope),
+        this.participationRepository.countScheduleGaps(scope),
       ]);
     const countEntry = (row: ScheduleCountRow): [string, number] => [
       scheduleKey(row),
       row.count,
     ];
     const swapCountBySchedule = new Map(swapCounts.map(countEntry));
+    const gapCountBySchedule = new Map(gapCounts.map(countEntry));
     const lateMarksBySchedule = new Map(lateMarkCounts.map(countEntry));
     const statesBySchedule = Map.groupBy(servingStates, scheduleKey);
     const countsBySchedule = new Map(
@@ -1761,6 +1763,7 @@ export class DbParticipationManager implements IParticipationManager {
           });
           const lateMarkCount = lateMarksBySchedule.get(key) ?? 0;
           const openSwapRequestCount = swapCountBySchedule.get(key) ?? 0;
+          const gapCount = gapCountBySchedule.get(key) ?? 0;
           const affectedVolunteerCount = await this.unitOfWork.run((tx) =>
             this.countScheduleChanges({
               churchId,
@@ -1776,6 +1779,7 @@ export class DbParticipationManager implements IParticipationManager {
               stage,
               lateMarkCount,
               openSwapRequestCount,
+              gapCount,
               affectedVolunteerCount,
             };
           const { confirmed = 0, asked = 0 } = countsBySchedule.get(key) ?? {};
@@ -1785,6 +1789,7 @@ export class DbParticipationManager implements IParticipationManager {
             stage,
             lateMarkCount,
             openSwapRequestCount,
+            gapCount,
             affectedVolunteerCount,
             asking: { confirmed, asked },
           };

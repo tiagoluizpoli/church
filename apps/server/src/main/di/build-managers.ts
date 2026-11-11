@@ -20,6 +20,7 @@ import {
   DbPlanningEventManager,
   DbRedemptionManager,
   DbSectorManager,
+  DbSetupProgressManager,
   DbSwapRequestListManager,
   DbSwapRequestManager,
   DbVolunteerManager,
@@ -61,6 +62,7 @@ export type Managers = Pick<
   | 'notificationManager'
   | 'invitationListManager'
   | 'peopleListManager'
+  | 'setupProgressManager'
   | 'churchAccessManager'
   | 'ministryMembershipManager'
 >;
@@ -104,6 +106,7 @@ export function buildManagers({
     notificationRepository,
     invitationListRepository,
     peopleListRepository,
+    setupProgressRepository,
     churchAccessRepository,
     ministryMembershipRepository,
     unitOfWork,
@@ -397,6 +400,10 @@ export function buildManagers({
       config,
     });
 
+  const setupProgressManager =
+    overrides.setupProgressManager ??
+    new DbSetupProgressManager({ setupProgressRepository });
+
   const churchAccessManager =
     overrides.churchAccessManager ??
     new DbChurchAccessManager({
@@ -438,6 +445,7 @@ export function buildManagers({
     notificationManager,
     invitationListManager,
     peopleListManager,
+    setupProgressManager,
     churchAccessManager,
     ministryMembershipManager,
   };

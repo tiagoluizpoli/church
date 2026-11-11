@@ -31,6 +31,7 @@ import {
   buildEvent,
   buildEventTimeBlock,
   buildMinistryParticipation,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   buildAvailabilityCheck,
@@ -178,7 +179,7 @@ interface SeedCycleInput {
   name: string;
   month: string;
   lastDay: string;
-  state: 'draft' | 'sent' | 'past';
+  state: SeededCycleLifecycle;
 }
 
 function seedCycle({ churchId, name, month, lastDay, state }: SeedCycleInput) {
@@ -198,6 +199,8 @@ interface SeedParticipationInput {
   state: ParticipationState;
   serves?: boolean;
   eventStatus?: 'scheduled' | 'cancelled';
+  startsAt?: string;
+  endsAt?: string;
 }
 
 async function seedParticipation({
@@ -207,9 +210,11 @@ async function seedParticipation({
   state,
   serves = true,
   eventStatus = 'scheduled',
+  startsAt = '2026-09-06T12:00:00.000Z',
+  endsAt = '2026-09-06T14:00:00.000Z',
 }: SeedParticipationInput) {
-  const start = parseInstant({ value: '2026-09-06T12:00:00.000Z' });
-  const end = parseInstant({ value: '2026-09-06T14:00:00.000Z' });
+  const start = parseInstant({ value: startsAt });
+  const end = parseInstant({ value: endsAt });
   const planningEvent = await buildEvent({
     db,
     churchId,
@@ -322,6 +327,129 @@ describe('late availability counts', () => {
   });
 });
 
+describe('GET /prepare/schedules gapCount', () => {
+  const FUTURE = '2099-09-06T12:00:00Z';
+  const FUTURE_END = '2099-09-06T14:00:00Z';
+
+  async function seedGapSchedule({
+    eventStatus,
+    shiftStart = FUTURE,
+    shiftEnd = FUTURE_END,
+    requirements,
+  }: {
+    eventStatus?: 'scheduled' | 'cancelled';
+    shiftStart?: string;
+    shiftEnd?: string;
+    requirements: { peopleNeeded: number; assigned: number }[];
+  }) {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'September',
+      month: '2026-09',
+      lastDay: '30',
+      state: 'sent',
+    });
+    const { participation, block } = await seedParticipation({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      state: 'assigning',
+      eventStatus,
+      startsAt: shiftStart,
+      endsAt: shiftEnd,
+    });
+    const shift = await seedShift({
+      churchId: seed.churchAId,
+      participationId: participation.id,
+      eventTimeBlockId: block.id,
+      startTime: new Date(shiftStart),
+      endTime: new Date(shiftEnd),
+      label: 'Morning',
+    });
+    for (const [index, { peopleNeeded, assigned }] of requirements.entries()) {
+      const role = await seedRole({
+        churchId: seed.churchAId,
+        ministryId: seed.ministryAId,
+        name: `Role ${index}`,
+      });
+      const requirement = await seedRequirement({
+        churchId: seed.churchAId,
+        participationId: participation.id,
+        shiftId: shift.id,
+        roleId: role.id,
+        peopleNeeded,
+      });
+      for (let n = 0; n < assigned; n += 1) {
+        const person = await seedVolunteerMembership({
+          churchId: seed.churchAId,
+          ministryId: seed.ministryAId,
+          name: `Person ${index}-${n}`,
+          email: `gap-${index}-${n}@test.com`,
+        });
+        await buildAssignment({
+          db,
+          churchId: seed.churchAId,
+          participationId: participation.id,
+          shiftId: shift.id,
+          roleId: role.id,
+          shiftRequirementId: requirement.id,
+          volunteerId: person.volunteer.id,
+          status: 'pending',
+        });
+      }
+    }
+    signIn({ userId: seed.adminUserId, churchId: seed.churchAId });
+    const response = await listSchedules();
+    const row = response
+      .json()
+      .schedules.find(
+        (item: { ministry: { id: string }; cycle: { id: string } }) =>
+          item.ministry.id === seed.ministryAId && item.cycle.id === cycle.id,
+      );
+    return { seed, row };
+  }
+
+  it('sums the unfilled headcount across requirements, counting partial staffing and never going negative', async () => {
+    const { row } = await seedGapSchedule({
+      requirements: [
+        { peopleNeeded: 3, assigned: 1 },
+        { peopleNeeded: 2, assigned: 2 },
+        { peopleNeeded: 1, assigned: 0 },
+      ],
+    });
+    expect(row.gapCount).toBe(3);
+  });
+
+  it('leaves out a cancelled Event and a started Shift', async () => {
+    const cancelled = await seedGapSchedule({
+      eventStatus: 'cancelled',
+      requirements: [{ peopleNeeded: 2, assigned: 0 }],
+    });
+    expect(cancelled.row?.gapCount ?? 0).toBe(0);
+    await resetSchedulingPhase3Db();
+    const started = await seedGapSchedule({
+      shiftStart: '2020-09-06T12:00:00Z',
+      shiftEnd: '2020-09-06T14:00:00Z',
+      requirements: [{ peopleNeeded: 2, assigned: 0 }],
+    });
+    expect(started.row.gapCount).toBe(0);
+  });
+
+  it('does not carry gaps of another Church into this one', async () => {
+    const { seed } = await seedGapSchedule({
+      requirements: [{ peopleNeeded: 2, assigned: 0 }],
+    });
+    const adminB = await seedMember({
+      churchId: seed.churchBId,
+      accessLevel: 'admin',
+    });
+    signIn({ userId: adminB, churchId: seed.churchBId });
+    const schedules = (await listSchedules()).json().schedules;
+    expect(JSON.stringify(schedules)).not.toContain(seed.ministryAId);
+  });
+});
+
 describe('GET /prepare/schedules access', () => {
   it('answers 401 when signed out', async () => {
     mockGetSession.mockResolvedValue(null as never);
@@ -405,7 +533,7 @@ describe('GET /prepare/schedules scoping', () => {
       name: 'September 2026',
       month: '2026-09',
       lastDay: '30',
-      state: 'past',
+      state: 'past-from-sent',
     });
     return {
       ...base,
@@ -458,6 +586,7 @@ describe('GET /prepare/schedules scoping', () => {
       stage: 'not_serving',
       lateMarkCount: 0,
       openSwapRequestCount: 0,
+      gapCount: 0,
       affectedVolunteerCount: 0,
     });
     expect(schedules[4].cycle).toEqual({
@@ -538,6 +667,7 @@ describe('GET /prepare/schedules scoping', () => {
         stage: 'published',
         lateMarkCount: 0,
         openSwapRequestCount: 0,
+        gapCount: 0,
         affectedVolunteerCount: 0,
       },
     ]);
@@ -641,7 +771,7 @@ describe('GET /prepare/schedules stage', () => {
       name: 'September 2026',
       month: '2026-09',
       lastDay: '30',
-      state: 'past',
+      state: 'past-from-sent',
     });
     const otherMinistry = await buildMinistry({
       db,
@@ -782,7 +912,7 @@ describe('GET /prepare/schedules stage', () => {
       name: 'September 2026',
       month: '2026-09',
       lastDay: '30',
-      state: 'past',
+      state: 'past-from-sent',
     });
     await seedParticipation({
       ...seed,

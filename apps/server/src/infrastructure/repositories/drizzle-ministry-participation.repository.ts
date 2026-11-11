@@ -4,11 +4,15 @@ import {
   availabilityCheck,
   cycle,
   event,
+  eventTimeBlock,
   ministryMembership,
   ministryParticipation,
   participationEventTimeBlockInclusion,
+  role,
   scheduleLastTold,
+  sector,
   shift,
+  shiftRequirement,
   swapRequest,
   unavailableShift,
 } from '@church/db';
@@ -756,6 +760,48 @@ export class DrizzleMinistryParticipationRepository
           // Same predicate as the leader list's open count (not derived-expired).
           eq(swapRequest.status, 'open'),
           gt(shift.startTime, nowAsDate()),
+          inArray(ministryParticipation.ministryId, ministryIds),
+          inArray(event.cycleId, cycleIds),
+        ),
+      )
+      .groupBy(ministryParticipation.ministryId, event.cycleId);
+  }
+
+  async countScheduleGaps({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: ListSchedulesFactsInput): Promise<ScheduleCountRow[]> {
+    // Per-requirement shortfall via a correlated count: one batched query, no fan-out.
+    const assigned = sql<number>`(select count(*) from ${assignment} where ${assignment.shiftRequirementId} = ${shiftRequirement.id} and ${assignment.status} in ('draft', 'pending', 'confirmed'))`;
+    return getClient({ db: this.db, tx })
+      .select({
+        ministryId: ministryParticipation.ministryId,
+        cycleId: event.cycleId,
+        count:
+          sql<number>`coalesce(sum(greatest(${shiftRequirement.peopleNeeded} - ${assigned}, 0)), 0)`.mapWith(
+            Number,
+          ),
+      })
+      .from(shiftRequirement)
+      .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, shiftRequirement.participationId),
+      )
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
+      .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+      .where(
+        and(
+          withChurchIsolation({ table: shiftRequirement, churchId }),
+          eq(eventTimeBlock.status, 'active'),
+          ne(event.status, 'cancelled'),
+          gt(shift.startTime, nowAsDate()),
+          isNull(sector.archivedAt),
+          isNull(role.archivedAt),
           inArray(ministryParticipation.ministryId, ministryIds),
           inArray(event.cycleId, cycleIds),
         ),

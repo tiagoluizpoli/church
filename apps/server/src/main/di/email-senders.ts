@@ -44,19 +44,17 @@ export function createEmailSenders(config: EmailSenderConfig): EmailSenders {
     const capture = new CaptureEmailSender(config.appName);
     return { serverEmailSender: capture, captureEmailSender: capture };
   }
-  if (
-    choice === 'smtp' &&
-    Boolean(config.smtp.user) !== Boolean(config.smtp.password)
-  ) {
+  const { smtp, resend, appName } = config;
+  if (choice === 'smtp' && Boolean(smtp.user) !== Boolean(smtp.password)) {
     throw new Error('SMTP_USER and SMTP_PASSWORD must be set together.');
   }
   const serverEmailSender =
     choice === 'resend'
       ? new ResendEmailSender({
-          apiKey: config.resend.apiKey ?? '',
-          from: config.resend.from,
-          appName: config.appName,
+          apiKey: resend.apiKey ?? '',
+          from: resend.from,
+          appName,
         })
-      : new SmtpEmailSender({ ...config.smtp, appName: config.appName });
+      : new SmtpEmailSender({ ...smtp, appName });
   return { serverEmailSender, captureEmailSender: undefined };
 }

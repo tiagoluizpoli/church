@@ -12,11 +12,13 @@ interface Received {
 let server: SMTPServer;
 let received: Received[];
 let rejectWith: number | undefined;
+let rejectAddress: string | undefined;
 let authRequired = false;
 
 beforeEach(async () => {
   received = [];
   rejectWith = undefined;
+  rejectAddress = undefined;
   authRequired = false;
   server = new SMTPServer({
     get authOptional() {
@@ -29,8 +31,8 @@ beforeEach(async () => {
       callback(new Error('Invalid login'));
     },
     disabledCommands: ['STARTTLS'],
-    onRcptTo(_address, _session, callback) {
-      if (rejectWith) {
+    onRcptTo(address, _session, callback) {
+      if (rejectWith && (!rejectAddress || address.address === rejectAddress)) {
         const error = Object.assign(new Error('rejected'), {
           responseCode: rejectWith,
         });
@@ -132,6 +134,31 @@ describe('SmtpEmailSender', () => {
     await expect(smtp.deliver({ email })).rejects.toMatchObject({
       retryable: true,
     });
+  });
+
+  it.each([
+    [550, false],
+    [451, true],
+  ])('fails a send where only some recipients were accepted (%i, retryable %s)', async (code, retryable) => {
+    const smtp = sender();
+    const prepared = smtp.prepare({ payload, locale: 'en' });
+    rejectWith = code;
+    rejectAddress = 'bad@example.com';
+    const error = await smtp
+      .deliver({
+        email: {
+          ...prepared,
+          request: {
+            ...prepared.request,
+            to: ['good@example.com', 'bad@example.com'],
+          },
+        },
+      })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({ code: 'EMAIL_SEND_FAILED', retryable });
+    expect((error as Error).message).toContain('bad@example.com');
+    expect(received[0]?.to).toEqual(['good@example.com']);
   });
 
   it('marks an unreachable server retryable', async () => {

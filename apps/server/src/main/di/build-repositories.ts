@@ -22,6 +22,7 @@ import {
   DrizzleRoleRepository,
   DrizzleSectorRepository,
   DrizzleSecurityLogRepository,
+  DrizzleSetupProgressRepository,
   DrizzleShiftRepository,
   DrizzleSwapRequestRepository,
   DrizzleUnavailableShiftRepository,
@@ -61,6 +62,7 @@ export type Repositories = Pick<
   | 'notificationRepository'
   | 'invitationListRepository'
   | 'peopleListRepository'
+  | 'setupProgressRepository'
   | 'churchAccessRepository'
   | 'ministryMembershipRepository'
   | 'unitOfWork'
@@ -158,6 +160,9 @@ export function buildRepositories({
   const peopleListRepository =
     overrides.peopleListRepository ??
     new DrizzlePeopleListRepository({ db: database });
+  const setupProgressRepository =
+    overrides.setupProgressRepository ??
+    new DrizzleSetupProgressRepository({ db: database });
   const unitOfWork =
     overrides.unitOfWork ?? new DrizzleUnitOfWork({ db: database });
 
@@ -189,6 +194,7 @@ export function buildRepositories({
     notificationRepository,
     invitationListRepository,
     peopleListRepository,
+    setupProgressRepository,
     churchAccessRepository,
     ministryMembershipRepository,
     unitOfWork,

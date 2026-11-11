@@ -128,6 +128,7 @@ beforeAll(async () => {
     eventTemplateManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
     ministryManager: {} as never,
+    setupProgressManager: {} as never,
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({
         actorRepository: actorRepository as never,

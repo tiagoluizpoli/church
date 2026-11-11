@@ -108,6 +108,7 @@ beforeAll(async () => {
       notifications,
     }),
     activeChurchResolver,
+    setupProgressManager: {} as never,
     authorityGuard,
   });
   const controller = new AssignController({

@@ -22,6 +22,7 @@ export default defineConfig({
           'invitations',
           'people',
           'swap-requests',
+          'setup',
         ],
       },
     },

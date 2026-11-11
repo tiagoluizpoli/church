@@ -70,6 +70,7 @@ import {
   buildEvent,
   buildEventTimeBlock,
   buildMinistryParticipation,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   buildConfirmedAvailabilityCheck,
@@ -160,6 +161,7 @@ beforeAll(async () => {
     }),
     activeChurchResolver: activeChurchResolver as never,
     ministryManager: {} as never,
+    setupProgressManager: {} as never,
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({
         actorRepository: actorRepository as never,
@@ -241,7 +243,7 @@ async function signIn({ persona = 'admin' }: SignInInput = {}) {
 
 interface SeedCycleInput {
   churchId: string;
-  state?: 'draft' | 'sent' | 'past';
+  state?: SeededCycleLifecycle;
 }
 
 function seedCycle({ churchId, state = 'draft' }: SeedCycleInput) {
@@ -683,7 +685,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
 
   it.each([
     ['a Draft Cycle', 'draft', 'scheduled'],
-    ['a Past Cycle', 'past', 'scheduled'],
+    ['a Past Cycle', 'past-from-sent', 'scheduled'],
     ['a Draft Event of a Sent Cycle', 'sent', 'draft'],
   ] as const)('refuses %s with ILLEGAL_STATE_TRANSITION', async (_name, cycleState, eventStatus) => {
     const seed = await signIn();

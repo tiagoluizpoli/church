@@ -51,7 +51,10 @@ import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzl
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildEventTemplate } from '@/seeds/builders/planning';
-import { buildCycle } from '@/seeds/builders/scheduling';
+import {
+  buildCycle,
+  type SeededCycleLifecycle,
+} from '@/seeds/builders/scheduling';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
@@ -131,6 +134,7 @@ beforeAll(async () => {
     }),
     activeChurchResolver: activeChurchResolver as never,
     ministryManager: {} as never,
+    setupProgressManager: {} as never,
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({
         actorRepository: actorRepository as never,
@@ -211,7 +215,7 @@ interface SeedCycleInput {
   churchId: string;
   startDate: string;
   endDate: string;
-  state?: 'draft' | 'sent' | 'past';
+  state?: SeededCycleLifecycle;
 }
 
 function seedCycle({ state = 'draft', ...input }: SeedCycleInput) {
@@ -389,7 +393,7 @@ describe('POST /admin/cycles/:cycleId/apply-templates', () => {
 
   it.each([
     'sent',
-    'past',
+    'past-from-sent',
   ] as const)('refuses a %s Cycle with ILLEGAL_STATE_TRANSITION', async (state) => {
     const seed = await signIn();
     const sunday = await seedTemplate({ churchId: seed.churchAId });

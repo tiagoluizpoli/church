@@ -171,7 +171,7 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       name: 'Past',
       startDate: new Date('2026-07-01'),
       endDate: new Date('2026-07-31'),
-      state: 'past',
+      state: 'past-from-sent',
     });
     await buildAvailabilityCheck({
       db,

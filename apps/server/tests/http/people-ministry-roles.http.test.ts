@@ -68,8 +68,8 @@ import {
   buildMinistryParticipation,
   buildShift,
   buildShiftRequirement,
-  type CycleState,
   type EventStatus,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   buildAvailabilityCheck,
@@ -2503,7 +2503,11 @@ async function answeredChecks() {
     eventStart: '2026-11-15T10:00:00.000Z',
     eventEnd: '2026-11-15T12:00:00.000Z',
   });
-  const cycleOf = async (name: string, month: string, state: CycleState) =>
+  const cycleOf = async (
+    name: string,
+    month: string,
+    state: SeededCycleLifecycle,
+  ) =>
     (
       await buildCycle({
         db,
@@ -2544,7 +2548,7 @@ async function answeredChecks() {
     await buildConfirmedAvailabilityCheck({
       db,
       churchId: CHURCH_A,
-      cycleId: await cycleOf('Outubro', '2026-10', 'past'),
+      cycleId: await cycleOf('Outubro', '2026-10', 'past-from-sent'),
       ministryMembershipId: valWs,
       id: crypto.randomUUID(),
       confirmedAt: parseInstant({ value: '2026-09-20T09:00:00.000Z' }),

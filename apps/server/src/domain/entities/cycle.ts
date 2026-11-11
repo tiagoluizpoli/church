@@ -20,11 +20,13 @@ export interface CycleProps {
   startDate: CalendarDay;
   endDate: CalendarDay;
   state: CycleState;
+  /** Whether Send ever succeeded; `past` alone also covers expired drafts. */
+  hasBeenSent: boolean;
 }
 
 export interface CycleInput {
-  props: Omit<LooseProps<CycleProps>, 'state'> &
-    Partial<Pick<LooseProps<CycleProps>, 'state'>>;
+  props: Omit<LooseProps<CycleProps>, 'state' | 'hasBeenSent'> &
+    Partial<Pick<LooseProps<CycleProps>, 'state' | 'hasBeenSent'>>;
   id?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -44,6 +46,7 @@ export class Cycle extends Entity<CycleProps, CycleId> {
     const normalizedProps = {
       ...props,
       state: props.state ?? 'draft',
+      hasBeenSent: props.hasBeenSent ?? false,
     } as CycleProps;
 
     if (
@@ -78,12 +81,17 @@ export class Cycle extends Entity<CycleProps, CycleId> {
     return this._props.state;
   }
 
+  get hasBeenSent(): boolean {
+    return this._props.hasBeenSent;
+  }
+
   send(): void {
     if (this.state !== 'draft') {
       throw new IllegalStateTransitionError({ from: this.state, to: 'sent' });
     }
 
     this._props.state = 'sent';
+    this._props.hasBeenSent = true;
     this._updatedAt = toDate({ instant: now() });
   }
 

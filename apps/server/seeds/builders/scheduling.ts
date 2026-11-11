@@ -38,6 +38,14 @@ export type SeededShift = typeof shift.$inferSelect;
 export type SeededShiftRequirement = typeof shiftRequirement.$inferSelect;
 export type SeededAssignment = typeof assignment.$inferSelect;
 export type CycleState = SeededCycle['state'];
+/**
+ * A seeded Cycle's lifecycle. Past names its provenance, because only a sent
+ * Cycle carries Send history: an expired draft is Past too, but never sent.
+ */
+export type SeededCycleLifecycle =
+  | Exclude<CycleState, 'past'>
+  | 'past-from-draft'
+  | 'past-from-sent';
 export type EventStatus = SeededEvent['status'];
 export type ParticipationState = SeededMinistryParticipation['state'];
 export type AssignmentStatus = SeededAssignment['status'];
@@ -51,7 +59,29 @@ export interface BuildCycleInput {
   /** First day of the cycle; stored as a date, so no timezone is involved. */
   startDate: CalendarDay;
   endDate: CalendarDay;
+  state: SeededCycleLifecycle;
+}
+
+interface SeededCycleStateInput {
+  lifecycle: SeededCycleLifecycle;
+}
+
+interface SeededCycleState {
   state: CycleState;
+  hasBeenSent: boolean;
+}
+
+function seededCycleState({
+  lifecycle,
+}: SeededCycleStateInput): SeededCycleState {
+  switch (lifecycle) {
+    case 'past-from-draft':
+      return { state: 'past', hasBeenSent: false };
+    case 'past-from-sent':
+      return { state: 'past', hasBeenSent: true };
+    default:
+      return { state: lifecycle, hasBeenSent: lifecycle === 'sent' };
+  }
 }
 
 interface CalendarDayDateInput {
@@ -81,7 +111,7 @@ export async function buildCycle({
         name,
         startDate: calendarDayDate({ day: startDate }),
         endDate: calendarDayDate({ day: endDate }),
-        state,
+        ...seededCycleState({ lifecycle: state }),
       })
       .returning(),
     description: `Cycle ${name}`,

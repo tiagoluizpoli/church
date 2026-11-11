@@ -102,6 +102,7 @@ beforeAll(async () => {
     planningEventManager: planningEventManager as never,
     activeChurchResolver: activeChurchResolver as never,
     ministryManager: ministryManager as never,
+    setupProgressManager: {} as never,
     authorityGuard: authorityGuard as never,
   });
   await app.register(

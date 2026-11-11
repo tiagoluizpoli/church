@@ -3,7 +3,6 @@ import type { Instant } from '@church/time';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock } from 'lucide-react';
 import { useState } from 'react';
-import { getErrorMessage } from './planning-admin.utils';
 import { InstantField } from '@/components/instant-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +19,7 @@ import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-b
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
 interface BoundsRange {
@@ -156,7 +156,7 @@ export function EventMovePreview({
           </div>
           {error ? (
             <p role="alert" className="text-destructive text-sm">
-              {getErrorMessage({ error })}
+              {requestErrorMessage(error)}
             </p>
           ) : null}
           {moved ? (

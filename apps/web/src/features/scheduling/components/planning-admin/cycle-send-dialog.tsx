@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { getErrorMessage } from './planning-admin.utils';
 import { RetryAlert } from './retry-alert';
 import {
   AlertDialog,
@@ -17,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { pluralMessage } from '@/shared/utils/plural';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
 export interface CycleSendActionProps {
@@ -113,7 +113,7 @@ function isRecoverableSummaryError({ error }: RefusalInput) {
 
 function refusalMessage({ error }: RefusalInput) {
   return isAxiosError(error) && error.response
-    ? getErrorMessage({ error })
+    ? requestErrorMessage(error)
     : m.cycle_send_failed();
 }
 

@@ -6,7 +6,6 @@ import {
   CYCLE_NAME_MAX_LENGTH,
   canCreateCycle,
   conflictingCyclesOf,
-  getErrorMessage,
   isCycleNameTooLong,
   isCycleRangeReversed,
   outsideEventsOf,
@@ -22,6 +21,7 @@ import {
   formatCalendarDateOnly,
   formatInstantRangeOf,
 } from '@/shared/utils/church-time';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 
 export type CycleFormValues = CycleFormState;
 
@@ -117,8 +117,9 @@ export function CycleFormDialog({
         values: { ...cycleForm, name: cycleForm.name.trim() },
       });
     } catch (error) {
+      const message = requestErrorMessage(error);
       setFailure({
-        message: getErrorMessage({ error }),
+        message,
         conflicts: conflictingCyclesOf({ error }).map((conflict) =>
           m.cycles_form_conflict_item({
             name: conflict.name,

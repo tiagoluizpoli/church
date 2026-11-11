@@ -36,7 +36,6 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
-import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { describeSpan } from '@/shared/utils/span-description';
 
 let templateTemplateTimeBlockDraftCounter = 0;
@@ -138,10 +137,6 @@ export function createTemplateFormFromTemplate({
         endTime: parseTimeOfDay({ value: block.endTime }),
       })),
   };
-}
-
-export function getErrorMessage({ error }: ErrorMessageInput): string {
-  return requestErrorMessage(error);
 }
 
 export function isForbiddenError({ error }: ForbiddenErrorInput): boolean {

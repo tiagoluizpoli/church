@@ -1,4 +1,3 @@
-import { m } from '@church/i18n/messages';
 import { fromTimeColumn } from '@church/time';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { describe, expect, it } from 'vitest';
@@ -18,7 +17,6 @@ import {
   describeTemplateTimeBlockSpan,
   eventSpanLabel,
   eventStatusBadgeVariant,
-  getErrorMessage,
   groupCyclesForList,
   groupRowsByWeek,
   stateBadgeVariant,
@@ -511,20 +509,5 @@ describe('toTemplateRequestBlocks', () => {
       { label: 'New', startTime: '09:00', endTime: '09:30' },
       { id: 'stored-id', label: 'Kept', startTime: '09:00', endTime: '09:30' },
     ]);
-  });
-});
-
-describe('getErrorMessage', () => {
-  it('shows the localized Send refusal when Draft staffing needs reconciliation', () => {
-    const message = m.error_draft_staffing_reconciliation_required(
-      {},
-      { locale: 'en' },
-    );
-    const error = new AxiosError('Conflict', '409', undefined, undefined, {
-      status: 409,
-      data: { error: 'DRAFT_STAFFING_RECONCILIATION_REQUIRED', message },
-    } as AxiosResponse);
-
-    expect(getErrorMessage({ error })).toBe(message);
   });
 });

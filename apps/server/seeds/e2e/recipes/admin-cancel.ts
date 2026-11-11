@@ -156,6 +156,9 @@ export function createAdminCancelRecipe({
     });
     await db.insert(swapRequest).values({
       id: idOf({ kind: 'swap-request' }),
+      raisedAt: toDate({
+        instant: parseInstant({ value: '2000-01-02T00:00:00.000Z' }),
+      }),
       churchId,
       assignmentId: assignment.id,
       status: 'open',

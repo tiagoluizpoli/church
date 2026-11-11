@@ -694,6 +694,12 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     'apps/server/src/domain/contracts/infrastructure/email-sender.ts',
     'apps/server/src/api/dtos/planning-event.dto.ts',
     'apps/server/src/api/dtos/member-notification.dto.ts',
+    'apps/server/src/api/utils/error-messages.ts',
+    'apps/server/src/api/utils/error-table.ts',
+    'apps/server/src/application/db-volunteer-manager.ts',
+    'apps/server/src/domain/errors/index.ts',
+    'apps/server/src/domain/errors/validation-rule-error.ts',
+    'apps/web/src/infrastructure/api/churchAPI.schemas.ts',
   ].map((sourcePathPrefix) => ({
     sourcePathPrefix,
     specPaths: ADMIN_CANCEL_SPEC_PATHS,

@@ -21,6 +21,8 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import { Assignment } from '@/domain/entities/assignment';
+import { Event } from '@/domain/entities/event';
+import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { MinistryParticipation } from '@/domain/entities/ministry-participation';
 import { Shift } from '@/domain/entities/shift';
 import { ShiftRequirement } from '@/domain/entities/shift-requirement';
@@ -159,6 +161,29 @@ function createHarness() {
   const availabilityCheckRepo = createAvailabilityCheckRepositoryFake();
   const eventRepository = createPlanningEventRepositoryFake();
   const eventTimeBlockRepository = createEventTimeBlockRepositoryFake();
+  eventRepo.getById.mockResolvedValue(
+    new Event({
+      id: EventId.from('event'),
+      props: {
+        churchId,
+        cycleId: CycleId.from('cycle'),
+        title: 'Service',
+        start,
+        end,
+      },
+    }),
+  );
+  eventTimeBlockRepository.getById.mockResolvedValue(
+    new EventTimeBlock({
+      id: EventTimeBlockId.from('block'),
+      props: {
+        churchId,
+        eventId: EventId.from('event'),
+        startTime: start,
+        endTime: end,
+      },
+    }),
+  );
   const usualSetupRepository = createUsualSetupRepositoryFake();
   const eventTemplateRepository = createEventTemplateRepositoryFake();
   const sectorRepository = createSectorRepositoryFake();
@@ -171,6 +196,8 @@ function createHarness() {
     volunteerRepository,
     unavailableShiftRepository,
     cycleRepository,
+    eventRepository: eventRepo,
+    eventTimeBlockRepository,
     swapRequestRepo: createSwapRequestRepositoryFake(),
     unitOfWork,
   });

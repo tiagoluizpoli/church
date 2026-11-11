@@ -116,6 +116,8 @@ export function createSchedulingManagers({
       volunteerRepository: volunteerRepo,
       unavailableShiftRepository: unavailableShiftRepo,
       cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
+      eventRepository: plainEventRepo,
+      eventTimeBlockRepository: eventTimeBlockRepo,
       swapRequestRepo: new DrizzleSwapRequestRepository({
         db: schedulingTestDb,
       }),

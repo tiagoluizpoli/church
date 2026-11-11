@@ -3,10 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
 import { ChurchSection } from '@/features/home/components/church-section';
+import { HomeError } from '@/features/home/components/home-error';
 import { LeadershipSection } from '@/features/home/components/leadership-section';
 import { MyServingSection } from '@/features/home/components/my-serving-section';
 import {
@@ -55,24 +55,6 @@ function HomeBanners({ search }: HomeBannersProps) {
         </Alert>
       ))}
     </div>
-  );
-}
-
-interface HomeErrorProps {
-  message: string;
-  onRetry: () => void;
-}
-
-function HomeError({ message, onRetry }: HomeErrorProps) {
-  return (
-    <Alert variant="destructive">
-      <AlertDescription className="flex flex-wrap items-center gap-3">
-        {message}
-        <Button variant="outline" size="sm" onClick={onRetry}>
-          {m.home_retry()}
-        </Button>
-      </AlertDescription>
-    </Alert>
   );
 }
 

@@ -151,7 +151,6 @@
   "shell_drawer_description": "Move between your core workflows.",
   "shell_account": "Account",
   "shell_close": "Close",
-  "breadcrumb_dashboard": "Dashboard",
   "breadcrumb_notifications": "Notifications",
   "breadcrumb_new": "New",
   "breadcrumb_assign": "Assign",
@@ -448,10 +447,6 @@
   "auth_sign_in_submitting": "Signing in...",
   "auth_sign_in_success": "Signed in",
   "auth_sign_up_success": "Account created",
-  "dashboard_entry_title": "Volunteer dashboard",
-  "dashboard_entry_description": "Review what needs your attention.",
-  "dashboard_entry_description_named": "Review what needs your attention, {name}.",
-  "dashboard_entry_availability_link": "View availability",
   "volunteer_transfer_split_title": "You're a member of {churchName}",
   "volunteer_transfer_split_current": "You already serve as a Volunteer at {sourceChurchName}, and a Volunteer profile can be active at only one Church at a time. Your Ministry invitation at {destinationChurchName} is still waiting for you.",
   "volunteer_transfer_split_move": "Move your Volunteer profile to {destinationChurchName} to accept it. This ends your serving at {sourceChurchName}; they cannot stop the move.",
@@ -1401,5 +1396,12 @@
   "event_move_done": "Moved to {range}.",
   "event_move_withdrawn_none": "No Assignment was withdrawn.",
   "event_move_withdrawn_title_one": "1 clashing Assignment was withdrawn",
-  "event_move_withdrawn_title_other": "{count} clashing Assignments were withdrawn"
+  "event_move_withdrawn_title_other": "{count} clashing Assignments were withdrawn",
+  "home_section_church": "Church",
+  "home_section_leadership": "Ministries I lead",
+  "home_section_serving": "My serving",
+  "home_welcome": "Welcome to {churchName}. Nothing needs you right now.",
+  "home_load_error": "We couldn’t load your Home. Try again.",
+  "home_retry": "Try again",
+  "home_loading": "Loading Home"
 }

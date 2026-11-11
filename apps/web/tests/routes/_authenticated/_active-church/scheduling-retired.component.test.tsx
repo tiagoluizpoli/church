@@ -50,6 +50,8 @@ describe('/scheduling retired', () => {
 
     renderRoute({ initialPath: '/cycles', churchTimezone: 'UTC' });
 
-    expect(await screen.findByText(m.dashboard_entry_title())).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: m.nav_home() }),
+    ).toBeVisible();
   });
 });

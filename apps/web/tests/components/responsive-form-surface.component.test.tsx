@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
@@ -32,6 +33,9 @@ describe('ResponsiveFormSurface', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText('New Event')).toBeInTheDocument();
     expect(screen.getByTestId('surface-children')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: m.shell_close() }),
+    ).toBeInTheDocument();
   });
 
   it('renders the Drawer shell at a mocked mobile viewport with identical children', () => {
@@ -51,6 +55,9 @@ describe('ResponsiveFormSurface', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText('New Event')).toBeInTheDocument();
     expect(screen.getByTestId('surface-children')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: m.shell_close() }),
+    ).toBeInTheDocument();
   });
 
   it('renders the footer prop via DialogFooter on desktop, and via DrawerFooter outside the scroll region on mobile', () => {

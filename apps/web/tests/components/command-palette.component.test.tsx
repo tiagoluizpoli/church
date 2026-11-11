@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -53,17 +54,21 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
     const onOpenChange = vi.fn();
     render(<CommandPalette open onOpenChange={onOpenChange} />);
 
-    const input = screen.getByPlaceholderText('Type a command or search...');
+    const input = screen.getByPlaceholderText(m.shell_search_placeholder());
     await waitFor(() => expect(input).toHaveFocus());
 
     const user = userEvent.setup();
-    await user.type(input, 'home');
+    await user.type(input, m.nav_home().toLowerCase());
 
-    const resultLink = screen.getByRole('link', { name: /Go to Home/ });
+    const resultLink = screen.getByRole('link', {
+      name: new RegExp(m.shell_search_go_to({ label: m.nav_home() })),
+    });
     expect(resultLink).toBeVisible();
     expect(resultLink).toHaveAttribute('href', '/');
     expect(
-      screen.queryByRole('link', { name: /Go to Availability/ }),
+      screen.queryByRole('link', {
+        name: new RegExp(m.shell_search_go_to({ label: m.nav_availability() })),
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -81,11 +86,11 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
 
     const user = userEvent.setup();
     await user.type(
-      screen.getByPlaceholderText('Type a command or search...'),
+      screen.getByPlaceholderText(m.shell_search_placeholder()),
       'nonexistent-command',
     );
 
-    expect(screen.getByText('No results found.')).toBeVisible();
+    expect(screen.getByText(m.shell_search_no_results())).toBeVisible();
   });
 
   it('closes and navigates when a result is clicked', async () => {
@@ -102,7 +107,11 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
     render(<CommandPalette open onOpenChange={onOpenChange} />);
 
     const user = userEvent.setup();
-    await user.click(screen.getByRole('link', { name: /Go to Home/ }));
+    await user.click(
+      screen.getByRole('link', {
+        name: new RegExp(m.shell_search_go_to({ label: m.nav_home() })),
+      }),
+    );
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
@@ -139,7 +148,11 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
     render(<CommandPalette open onOpenChange={vi.fn()} />);
 
     expect(
-      screen.getByRole('link', { name: /Go to Scheduling/ }),
+      screen.getByRole('link', {
+        name: new RegExp(
+          m.shell_search_go_to({ label: m.nav_group_scheduling() }),
+        ),
+      }),
     ).toBeVisible();
   });
 

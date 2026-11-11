@@ -142,3 +142,13 @@ describe('SignInForm Better Auth error messages', () => {
     });
   });
 });
+
+describe('SignInForm sign-up switch', () => {
+  it('labels the switch-to-sign-up link from the catalog', () => {
+    renderWithProviders(<SignInForm onSwitchToSignUp={vi.fn()} />);
+
+    expect(
+      screen.getByRole('button', { name: m.auth_sign_in_switch_to_sign_up() }),
+    ).toBeVisible();
+  });
+});

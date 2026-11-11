@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import { CalendarClock, Clock, Home, Search } from 'lucide-react';
 import * as React from 'react';
@@ -14,18 +15,18 @@ export interface CommandPaletteProps {
 }
 
 interface CommandItem {
-  label: string;
+  label: () => string;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
 const BASE_COMMANDS: CommandItem[] = [
-  { label: 'Home', to: '/', icon: Home },
-  { label: 'Availability', to: '/availability', icon: Clock },
+  { label: () => m.nav_home(), to: '/', icon: Home },
+  { label: () => m.nav_availability(), to: '/availability', icon: Clock },
 ];
 
 const SCHEDULING_COMMAND: CommandItem = {
-  label: 'Scheduling',
+  label: () => m.nav_group_scheduling(),
   to: '/schedules',
   icon: CalendarClock,
 };
@@ -65,7 +66,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   if (!open) return null;
 
   const filteredCommands = commands.filter((cmd) =>
-    cmd.label.toLowerCase().includes(query.toLowerCase()),
+    cmd.label().toLowerCase().includes(query.toLowerCase()),
   );
 
   const handleClose = () => {
@@ -86,7 +87,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
           type="text"
           value={query}
           onChange={handleQueryChange}
-          placeholder="Type a command or search..."
+          placeholder={m.shell_search_placeholder()}
           className="w-full border-0 bg-transparent text-base placeholder-muted-foreground outline-hidden focus:ring-0"
         />
       </div>
@@ -95,7 +96,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       <div className="max-h-[300px] flex-1 space-y-1 overflow-y-auto p-2 md:max-h-[400px]">
         {filteredCommands.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground text-sm">
-            No results found.
+            {m.shell_search_no_results()}
           </div>
         ) : (
           filteredCommands.map((cmd) => {
@@ -109,9 +110,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               >
                 <Icon className="h-5 w-5 shrink-0 text-muted-foreground group-hover:text-foreground" />
                 <div className="flex flex-col text-left align-start">
-                  <span className="font-medium">{cmd.label}</span>
+                  <span className="font-medium">{cmd.label()}</span>
                   <span className="font-normal text-muted-foreground text-xs">
-                    Go to {cmd.label}
+                    {m.shell_search_go_to({ label: cmd.label() })}
                   </span>
                 </div>
               </Link>
@@ -127,8 +128,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       <MobileDrawer
         open={open}
         onOpenChange={onOpenChange}
-        title="Search"
-        description="Find pages and commands."
+        title={m.shell_search()}
+        description={m.shell_search_description()}
       >
         <div data-testid="command-palette" className="h-full">
           {content}
@@ -147,7 +148,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         type="button"
         className="fixed inset-0 cursor-default bg-black/60 backdrop-blur-xs transition-opacity"
         onClick={handleClose}
-        aria-label="Close search"
+        aria-label={m.shell_search_close()}
       />
 
       {/* Centered Modal Dialog */}

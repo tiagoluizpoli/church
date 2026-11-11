@@ -48,9 +48,9 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
     },
     validators: {
       onSubmit: z.object({
-        name: z.string().min(2, 'Name must be at least 2 characters'),
-        email: z.email('Invalid email address'),
-        password: z.string().min(8, 'Password must be at least 8 characters'),
+        name: z.string().min(2, m.auth_sign_up_name_too_short()),
+        email: z.email(m.password_recovery_invalid_email()),
+        password: z.string().min(8, m.password_recovery_password_too_short()),
       }),
     },
   });
@@ -61,7 +61,9 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
 
   return (
     <div className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="mb-6 text-center font-bold text-3xl">Create Account</h1>
+      <h1 className="mb-6 text-center font-bold text-3xl">
+        {m.auth_sign_up_title()}
+      </h1>
 
       <form
         onSubmit={(e) => {
@@ -75,7 +77,9 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
           <form.Field name="name">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Name</Label>
+                <Label htmlFor={field.name}>
+                  {m.auth_sign_up_name_label()}
+                </Label>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -97,7 +101,9 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
           <form.Field name="email">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Email</Label>
+                <Label htmlFor={field.name}>
+                  {m.password_recovery_email_label()}
+                </Label>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -120,7 +126,7 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
           <form.Field name="password">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Password</Label>
+                <Label htmlFor={field.name}>{m.auth_password_label()}</Label>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -151,7 +157,9 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
               className="w-full"
               disabled={!canSubmit || isSubmitting}
             >
-              {isSubmitting ? 'Submitting...' : 'Sign Up'}
+              {isSubmitting
+                ? m.auth_sign_up_submitting()
+                : m.auth_sign_up_submit()}
             </Button>
           )}
         </form.Subscribe>
@@ -163,7 +171,7 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
           onClick={onSwitchToSignIn}
           className="text-indigo-600 hover:text-indigo-800"
         >
-          Already have an account? Sign In
+          {m.auth_sign_up_switch_to_sign_in()}
         </Button>
       </div>
     </div>

@@ -55,6 +55,7 @@ import {
   buildCycle,
   buildEvent,
   buildEventTimeBlock,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   resetSchedulingPhase3Db,
@@ -137,6 +138,7 @@ beforeAll(async () => {
     }),
     activeChurchResolver: activeChurchResolver as never,
     ministryManager: {} as never,
+    setupProgressManager: {} as never,
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({
         actorRepository: actorRepository as never,
@@ -218,7 +220,7 @@ async function signIn({ persona = 'admin' }: SignInInput = {}) {
 
 interface SeedCycleInput {
   churchId: string;
-  state?: 'draft' | 'sent' | 'past';
+  state?: SeededCycleLifecycle;
 }
 
 function seedCycle({ churchId, state = 'draft' }: SeedCycleInput) {
@@ -703,7 +705,7 @@ describe('PATCH /admin/cycles/:cycleId/events/:eventId', () => {
 
   it.each([
     'sent',
-    'past',
+    'past-from-sent',
   ] as const)('refuses a Draft Event in a %s Cycle with ILLEGAL_STATE_TRANSITION', async (state) => {
     const seed = await signIn();
     const target = await seedCycle({ churchId: seed.churchAId, state });
@@ -820,7 +822,7 @@ describe('Edit Sent Event details', () => {
     });
   }
 
-  async function seedEventIn(state: 'draft' | 'sent' | 'past') {
+  async function seedEventIn(state: SeededCycleLifecycle) {
     const seed = await signIn();
     const target = await seedCycle({ churchId: seed.churchAId, state });
     const fixture = await seedGeneratedEvent({
@@ -885,7 +887,7 @@ describe('Edit Sent Event details', () => {
   });
 
   it.each([
-    'past',
+    'past-from-sent',
     'draft',
   ] as const)('refuses a %s Cycle with ILLEGAL_STATE_TRANSITION', async (state) => {
     const { cycleId, fixture } = await seedEventIn(state);

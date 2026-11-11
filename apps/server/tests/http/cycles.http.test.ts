@@ -70,6 +70,7 @@ import {
   buildEvent,
   buildEventTimeBlock,
   buildMinistryParticipation,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   resetSchedulingPhase3Db,
@@ -151,6 +152,7 @@ beforeAll(async () => {
     }),
     activeChurchResolver: activeChurchResolver as never,
     ministryManager: {} as never,
+    setupProgressManager: {} as never,
     authorityGuard: new AuthorityGuard({
       manager: new DbAuthorityManager({
         actorRepository: actorRepository as never,
@@ -256,7 +258,7 @@ interface SeedCycleInput {
   name?: string;
   startDate: string;
   endDate: string;
-  state?: 'draft' | 'sent' | 'past';
+  state?: SeededCycleLifecycle;
 }
 
 function seedCycle({
@@ -555,7 +557,7 @@ describe('GET /admin/cycles/:cycleId', () => {
 
   async function seedReviewCycle(input: {
     churchId: string;
-    state?: 'draft' | 'sent' | 'past';
+    state?: SeededCycleLifecycle;
   }) {
     return seedCycle({
       ...input,
@@ -651,9 +653,9 @@ describe('GET /admin/cycles/:cycleId', () => {
   });
 
   it.each([
-    'sent',
-    'past',
-  ] as const)('returns a stored %s Cycle with its complete graph', async (state) => {
+    ['sent', 'sent'],
+    ['past-from-sent', 'past'],
+  ] as const)('returns a stored %s Cycle with its complete graph', async (state, storedState) => {
     const seed = await signIn();
     const stored = await seedReviewCycle({ churchId: seed.churchAId, state });
     await buildEvent({
@@ -671,7 +673,7 @@ describe('GET /admin/cycles/:cycleId', () => {
       url: `/api/v1/admin/cycles/${stored.id}`,
     });
 
-    expect(response.json().cycle.state).toBe(state);
+    expect(response.json().cycle.state).toBe(storedState);
     expect(response.json().events).toHaveLength(1);
   });
 
@@ -1077,7 +1079,7 @@ describe('DELETE /admin/cycles/:cycleId', () => {
 
   it.each([
     'sent',
-    'past',
+    'past-from-sent',
   ] as const)('refuses a %s Cycle with ILLEGAL_STATE_TRANSITION and keeps its graph', async (state) => {
     const seed = await signIn();
     const target = await seedCycle({
@@ -1529,9 +1531,9 @@ describe('PATCH /admin/cycles/:cycleId', () => {
   });
 
   it.each([
-    'sent',
-    'past',
-  ] as const)('refuses a %s Cycle with ILLEGAL_STATE_TRANSITION, changing nothing', async (state) => {
+    ['sent', 'sent'],
+    ['past-from-sent', 'past'],
+  ] as const)('refuses a %s Cycle with ILLEGAL_STATE_TRANSITION, changing nothing', async (state, storedState) => {
     const seed = await signIn();
     const target = await seedCycle({
       churchId: seed.churchAId,
@@ -1559,7 +1561,7 @@ describe('PATCH /admin/cycles/:cycleId', () => {
       name: 'Frozen',
       startDate: '2026-10-12',
       endDate: '2026-10-25',
-      state,
+      state: storedState,
     });
   });
 

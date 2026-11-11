@@ -31,6 +31,7 @@ import {
   buildEvent,
   buildEventTimeBlock,
   buildMinistryParticipation,
+  type SeededCycleLifecycle,
 } from '@/seeds/builders/scheduling';
 import {
   buildAvailabilityCheck,
@@ -178,7 +179,7 @@ interface SeedCycleInput {
   name: string;
   month: string;
   lastDay: string;
-  state: 'draft' | 'sent' | 'past';
+  state: SeededCycleLifecycle;
 }
 
 function seedCycle({ churchId, name, month, lastDay, state }: SeedCycleInput) {
@@ -532,7 +533,7 @@ describe('GET /prepare/schedules scoping', () => {
       name: 'September 2026',
       month: '2026-09',
       lastDay: '30',
-      state: 'past',
+      state: 'past-from-sent',
     });
     return {
       ...base,
@@ -770,7 +771,7 @@ describe('GET /prepare/schedules stage', () => {
       name: 'September 2026',
       month: '2026-09',
       lastDay: '30',
-      state: 'past',
+      state: 'past-from-sent',
     });
     const otherMinistry = await buildMinistry({
       db,
@@ -911,7 +912,7 @@ describe('GET /prepare/schedules stage', () => {
       name: 'September 2026',
       month: '2026-09',
       lastDay: '30',
-      state: 'past',
+      state: 'past-from-sent',
     });
     await seedParticipation({
       ...seed,

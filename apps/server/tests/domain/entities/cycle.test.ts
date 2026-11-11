@@ -69,9 +69,12 @@ describe('Cycle', () => {
   it('sends from draft to sent', () => {
     const cycle = createCycle();
 
+    expect(cycle.hasBeenSent).toBe(false);
+
     cycle.send();
 
     expect(cycle.state).toBe('sent');
+    expect(cycle.hasBeenSent).toBe(true);
   });
 
   it('rejects sending once no longer draft', () => {
@@ -90,11 +93,13 @@ describe('Cycle', () => {
     const draft = createCycle();
     draft.markPast();
     expect(draft.state).toBe('past');
+    expect(draft.hasBeenSent).toBe(false);
 
     const sent = createCycle();
     sent.send();
     sent.markPast();
     expect(sent.state).toBe('past');
+    expect(sent.hasBeenSent).toBe(true);
   });
 
   it('rejects marking an already past cycle past', () => {

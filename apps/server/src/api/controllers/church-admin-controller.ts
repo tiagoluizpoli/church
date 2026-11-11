@@ -15,6 +15,7 @@ import type { ICycleManager } from '../../domain/contracts/application/cycle-man
 import type { IEventTemplateManager } from '../../domain/contracts/application/event-template-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { IPlanningEventManager } from '../../domain/contracts/application/planning-event-manager';
+import type { ISetupProgressManager } from '../../domain/contracts/application/setup-progress-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
@@ -68,6 +69,7 @@ import {
   updatePlanningEventBodySchema,
   updatePlanningEventDetailsBodySchema,
 } from '../dtos/planning-event.dto';
+import { setupProgressResponseSchema } from '../dtos/setup-progress.dto';
 import {
   type SetDefaultDirectionBody,
   setDefaultDirectionBodySchema,
@@ -115,6 +117,7 @@ interface ChurchAdminControllerDependencies {
   planningEventManager: IPlanningEventManager;
   activeChurchResolver: IActiveChurchResolver;
   ministryManager: IMinistryManager;
+  setupProgressManager: ISetupProgressManager;
   authorityGuard: AuthorityGuard;
 }
 
@@ -132,6 +135,7 @@ export class ChurchAdminController implements FastifyController {
   private readonly planningEventManager: IPlanningEventManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly ministryManager: IMinistryManager;
+  private readonly setupProgressManager: ISetupProgressManager;
   private readonly authorityGuard: AuthorityGuard;
 
   constructor({
@@ -140,6 +144,7 @@ export class ChurchAdminController implements FastifyController {
     planningEventManager,
     activeChurchResolver,
     ministryManager,
+    setupProgressManager,
     authorityGuard,
   }: ChurchAdminControllerDependencies) {
     this.cycleManager = cycleManager;
@@ -147,6 +152,7 @@ export class ChurchAdminController implements FastifyController {
     this.planningEventManager = planningEventManager;
     this.activeChurchResolver = activeChurchResolver;
     this.ministryManager = ministryManager;
+    this.setupProgressManager = setupProgressManager;
     this.authorityGuard = authorityGuard;
   }
 
@@ -169,6 +175,32 @@ export class ChurchAdminController implements FastifyController {
         return refuse({ reply, request, code: 'FORBIDDEN' });
       }
     });
+
+    app.get(
+      '/setup-progress',
+      {
+        schema: {
+          tags: ['setup'],
+          operationId: 'getSetupProgress',
+          summary: 'Get the Active Church setup progress',
+          description:
+            'Five independently derived setup facts of the Active Church: an active Ministry; one active Ministry holding both an active Sector and an active Role; an issued leader-level Ministry Invitation (pending or accepted); an event template; and a Cycle ever sent, which an expired unsent draft never is. Nothing is persisted.',
+          response: {
+            200: setupProgressResponseSchema,
+            401: notFoundResponseSchema,
+            403: notFoundResponseSchema,
+            409: notFoundResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const progress = await this.setupProgressManager.getSetupProgress({
+          churchId,
+        });
+        return reply.send({ churchId, ...progress });
+      },
+    );
 
     app.post(
       '/cycles',

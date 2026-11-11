@@ -14,6 +14,7 @@ export function mapCycle(row: CycleRow): Cycle {
     startDate: fromDateColumn({ date: row.startDate }),
     endDate: fromDateColumn({ date: row.endDate }),
     state: row.state as CycleProps['state'],
+    hasBeenSent: row.hasBeenSent,
   };
 
   return new Cycle({

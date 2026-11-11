@@ -26,6 +26,7 @@ export * from './role.repository';
 export * from './scheduling-scope.repository';
 export * from './sector.repository';
 export * from './security-log.repository';
+export * from './setup-progress.repository';
 export * from './shift.repository';
 export * from './swap-request.repository';
 export * from './transaction-context';

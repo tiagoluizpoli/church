@@ -23,6 +23,7 @@ import type {
   IPeopleListManager,
   IPlanningEventManager,
   ISectorManager,
+  ISetupProgressManager,
   ISwapRequestListManager,
   ISwapRequestManager,
   IVolunteerManager,
@@ -58,6 +59,7 @@ import type {
   SchedulingScopeRepository,
   SectorRepository,
   SecurityLogRepository,
+  SetupProgressRepository,
   ShiftRepository,
   SwapRequestRepository,
   UnavailableShiftRepository,
@@ -99,6 +101,7 @@ export interface CompositionRootDependencies {
   notificationRepository: NotificationRepository;
   invitationListRepository: InvitationListRepository;
   peopleListRepository: PeopleListRepository;
+  setupProgressRepository: SetupProgressRepository;
   churchAccessRepository: ChurchAccessRepository;
   ministryMembershipRepository: MinistryMembershipRepository;
   unitOfWork: UnitOfWork;
@@ -137,6 +140,7 @@ export interface CompositionRootDependencies {
   notificationManager: INotificationManager;
   invitationListManager: IInvitationListManager;
   peopleListManager: IPeopleListManager;
+  setupProgressManager: ISetupProgressManager;
   churchAccessManager: IChurchAccessManager;
   ministryMembershipManager: IMinistryMembershipManager;
 }

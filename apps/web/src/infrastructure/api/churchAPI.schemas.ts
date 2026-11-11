@@ -86,6 +86,31 @@ export type SelectActiveChurch500 = {
   message: string;
 };
 
+export type GetSetupProgress200 = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  churchId: string;
+  hasMinistry: boolean;
+  hasMinistryWithSectorsAndRoles: boolean;
+  hasInvitedLeader: boolean;
+  hasEventTemplate: boolean;
+  hasEverSentCycle: boolean;
+};
+
+export type GetSetupProgress401 = {
+  error: string;
+  message: string;
+};
+
+export type GetSetupProgress403 = {
+  error: string;
+  message: string;
+};
+
+export type GetSetupProgress409 = {
+  error: string;
+  message: string;
+};
+
 export type CreateCycleBody = {
   /**
      * @minLength 1

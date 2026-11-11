@@ -1788,6 +1788,108 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     ]);
   });
 
+  it('Send updates after one EventTimeBlock cancellation tells nothing about it and keeps the sibling genuine change', async () => {
+    const ana = await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    const carla = await seedMember({ name: 'Carla', email: 'carla@test.com' });
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    const sibling = await buildEventTimeBlock({
+      db: schedulingTestDb,
+      churchId: ids.churchId,
+      eventId,
+      start: parseInstant({ value: '2026-12-25T04:00:00.000Z' }),
+      end: parseInstant({ value: '2026-12-25T06:00:00.000Z' }),
+      label: 'Sibling',
+    });
+    const book = async (block: string, volunteerId: string, hour: number) => {
+      const booked = await seedShift({
+        churchId: ids.churchId,
+        participationId,
+        eventTimeBlockId: block,
+        startTime: new Date(`2026-12-25T0${hour}:00:00.000Z`),
+        endTime: new Date(`2026-12-25T0${hour + 1}:00:00.000Z`),
+        label: 'Shift',
+      });
+      const requirement = await seedRequirement({
+        churchId: ids.churchId,
+        participationId,
+        shiftId: booked.id,
+        roleId: role.id,
+        peopleNeeded: 1,
+      });
+      return buildAssignment({
+        db: schedulingTestDb,
+        churchId: ids.churchId,
+        participationId,
+        shiftId: booked.id,
+        shiftRequirementId: requirement.id,
+        volunteerId,
+        roleId: role.id,
+        status: 'confirmed',
+      });
+    };
+    const cancelled = await book(eventTimeBlockId, ana.volunteer.id, 3);
+    await book(sibling.id, carla.volunteer.id, 4);
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.ministryId, ids.ministryId));
+    const managers = createSchedulingManagers({ notifications });
+    const publishInput = {
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      ministryId: MinistryId.from(ids.ministryId),
+      userId: UserId.from(ids.adminUserId),
+      confirmBelowFull: true,
+    };
+    await managers.participationManager.publishCycle(publishInput);
+    await schedulingTestDb.insert(swapRequest).values({
+      churchId: ids.churchId,
+      assignmentId: cancelled.id,
+      status: 'open',
+      raisedBy: ana.volunteer.userId,
+    });
+    // A genuine change since the send: Carla gains a second Shift on the sibling.
+    await book(sibling.id, carla.volunteer.id, 5);
+
+    await buildPlanningManager().confirmCancellation({
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      eventId: EventId.from(eventId),
+      scope: {
+        kind: 'eventTimeBlock',
+        eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+      },
+      actingUserId: UserId.from(ids.adminUserId),
+    });
+    const before = new Set((await outboxRows()).map(({ id }) => id));
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+
+    const sent = (await outboxRows())
+      .filter(({ id }) => !before.has(id))
+      .map(({ payload }) => payload);
+    expect(sent).toEqual([
+      expect.objectContaining({
+        kind: 'schedule_updated',
+        to: { userId: carla.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'added',
+              assignment: expect.objectContaining({
+                startsAt: '2026-12-25T05:00:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    ]);
+    expect(JSON.stringify(sent)).not.toContain('swapRequestCovered');
+  });
+
   it('rolls back publication and snapshots when notification enqueue fails', async () => {
     const assigned = await seedMember({
       name: 'Ana',

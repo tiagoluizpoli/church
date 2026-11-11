@@ -18,6 +18,7 @@ import type {
 } from './planning-admin.types';
 import {
   canCancelEvent,
+  canCancelEventBlocks,
   groupRowsByWeek,
   isNotFoundError,
   toCycleCalendarTableRow,
@@ -305,6 +306,15 @@ export function CycleReviewCard({
                           cycleState: reviewedCycle.state,
                           eventStatus: item.row.status,
                         }),
+                      canCancelBlocks: canCancelEventBlocks({
+                        cycleState: reviewedCycle.state,
+                        eventStatus:
+                          item.kind === 'parent'
+                            ? item.row.status
+                            : item.kind === 'event-time-block'
+                              ? item.parentStatus
+                              : '',
+                      }),
                       canCancel:
                         item.kind === 'parent' &&
                         canCancelEvent({
@@ -354,6 +364,10 @@ export function CycleReviewCard({
                         cycleId={reviewedCycle.id}
                         isReadOnly={isReadOnly}
                         canPreviewMove={canPreviewEventMove({
+                          cycleState: reviewedCycle.state,
+                          eventStatus: item.row.status,
+                        })}
+                        canCancelBlocks={canCancelEventBlocks({
                           cycleState: reviewedCycle.state,
                           eventStatus: item.row.status,
                         })}

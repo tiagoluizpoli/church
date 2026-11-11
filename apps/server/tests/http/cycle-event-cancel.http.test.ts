@@ -56,7 +56,11 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
-import { buildCycle } from '@/seeds/builders/scheduling';
+import {
+  buildCycle,
+  buildEvent,
+  buildEventTimeBlock,
+} from '@/seeds/builders/scheduling';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
@@ -665,5 +669,219 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
     expect((await preview(sunday)).statusCode).toBe(status);
     expect((await confirm(sunday)).statusCode).toBe(status);
     expect(await writeSnapshot()).toEqual(before);
+  });
+});
+
+interface BlockInput extends ConfirmInput {
+  blockId: string;
+}
+
+const blockUrl = ({ cycleId, eventId, blockId }: BlockInput, tail: string) =>
+  `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${blockId}/cancel${tail}`;
+
+function previewBlock(input: BlockInput) {
+  return app.inject({
+    method: 'POST',
+    url: blockUrl(input, '/preview'),
+    cookies: { [testLocale.localeCookieName]: input.locale ?? 'en' },
+  });
+}
+
+function confirmBlock(input: BlockInput) {
+  return app.inject({
+    method: 'POST',
+    url: blockUrl(input, ''),
+    payload: (input.payload ?? { confirmation: 'cancel' }) as never,
+    cookies: { [testLocale.localeCookieName]: input.locale ?? 'en' },
+  });
+}
+
+describe('POST …/event-time-blocks/:eventTimeBlockId/cancel(/preview)', () => {
+  it('previews only the block and writes nothing', async () => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+    const before = await writeSnapshot();
+
+    const response = await previewBlock({
+      ...sunday,
+      blockId: sunday.serviceId,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      scope: { kind: 'eventTimeBlock', eventTimeBlockId: sunday.serviceId },
+      start: at('10:00'),
+      end: at('12:00'),
+      volunteerCount: 1,
+      ministryCount: 1,
+      openSwapRequestCount: 0,
+    });
+    expect(await writeSnapshot()).toEqual(before);
+  });
+
+  it('cancels only that block while a sibling has started, leaving Event and sibling untouched', async () => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+    setTestClock({ instant: at('09:30') });
+    const actingUserId = sunday.seed.adminUserId;
+
+    const response = await confirmBlock({
+      ...sunday,
+      blockId: sunday.serviceId,
+      payload: { confirmation: ' Cancel' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const blocks = await db.select().from(eventTimeBlock);
+    expect(
+      Object.fromEntries(blocks.map(({ id, status }) => [id, status])),
+    ).toEqual({
+      [sunday.welcomeId]: 'active',
+      [sunday.serviceId]: 'cancelled',
+    });
+    const [sundayRow] = await db.select().from(event);
+    expect(sundayRow?.status).toBe('scheduled');
+    const { anaWelcome, biaService, caioService, daniService } = sunday;
+    expect(await statusOf(biaService.assignment.id)).toBe('cancelled');
+    expect(await statusOf(caioService.assignment.id)).toBe('cancelled');
+    expect(await statusOf(daniService.assignment.id)).toBe('declined');
+    expect(await statusOf(anaWelcome.assignment.id)).toBe('confirmed');
+    const audits = await db.select().from(assignmentAudit);
+    expect(audits.map(({ assignmentId }) => assignmentId).sort()).toEqual(
+      [biaService.assignment.id, caioService.assignment.id].sort(),
+    );
+    for (const audit of audits) {
+      expect(audit).toMatchObject({
+        actorId: actingUserId,
+        action: 'event_cancelled',
+      });
+    }
+    // Ana's open SwapRequest is on the sibling and stays open.
+    expect(await db.select().from(swapRequest)).toMatchObject([
+      { status: 'open' },
+    ]);
+    // Only Bia's mark (on the cancelled block) is dropped.
+    expect(await db.select().from(unavailableShift)).toMatchObject([
+      { shiftId: anaWelcome.shift.id },
+    ]);
+    const told = await db.select().from(scheduleLastTold);
+    expect(
+      told.find(({ volunteerId }) => volunteerId === sunday.ana.volunteer.id)
+        ?.assignments,
+    ).toEqual([
+      { assignmentId: anaWelcome.assignment.id, eventTitle: 'Sunday' },
+      sunday.unrelated,
+    ]);
+    expect(
+      told.find(({ volunteerId }) => volunteerId === sunday.bia.volunteer.id)
+        ?.assignments,
+    ).toEqual([]);
+  });
+
+  it('refuses a started block with the admin window code and writes nothing', async () => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+    setTestClock({ instant: at('09:30') });
+    const before = await writeSnapshot();
+    const input = { ...sunday, blockId: sunday.welcomeId };
+
+    const previewed = await previewBlock(input);
+    const response = await confirmBlock(input);
+
+    expect(previewed.statusCode).toBe(409);
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error: 'ADMIN_CANCELLATION_WINDOW_CLOSED',
+    });
+    expect(await writeSnapshot()).toEqual(before);
+  });
+
+  it('answers 404 to an unknown block or a block of another Event', async () => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+    const other = await buildEvent({
+      db,
+      churchId: sunday.churchId,
+      cycleId: sunday.cycleId,
+      title: 'Other',
+      start: at('14:00'),
+      end: at('15:00'),
+      status: 'scheduled',
+    });
+    const foreign = await buildEventTimeBlock({
+      db,
+      churchId: sunday.churchId,
+      eventId: other.id,
+      start: at('14:00'),
+      end: at('15:00'),
+      label: 'Foreign',
+    });
+    const before = await writeSnapshot();
+
+    for (const blockId of [crypto.randomUUID(), foreign.id]) {
+      expect((await previewBlock({ ...sunday, blockId })).statusCode).toBe(404);
+      expect((await confirmBlock({ ...sunday, blockId })).statusCode).toBe(404);
+    }
+    expect(await writeSnapshot()).toEqual(before);
+  });
+
+  it('refuses a repeated cancel with 409 and writes nothing more', async () => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+    const input = { ...sunday, blockId: sunday.serviceId };
+    expect((await confirmBlock(input)).statusCode).toBe(200);
+    const after = await writeSnapshot();
+
+    const again = await confirmBlock(input);
+
+    expect(again.statusCode).toBe(409);
+    expect(await writeSnapshot()).toEqual(after);
+  });
+
+  it('enqueues N9 for the block Shifts only and N10 with the block bounds and its told counts', async () => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+    await seedOtherAdmin({ sunday });
+
+    await confirmBlock({ ...sunday, blockId: sunday.serviceId });
+
+    const payloads = await outboxPayloads();
+    const n9 = payloads.filter(({ kind }) => kind === 'event_cancelled');
+    // Only Bia (published, Service); Ana's Welcome work is not part of it.
+    expect(n9.map(({ to }) => to.userId)).toEqual([sunday.bia.userId]);
+    expect(n9[0]?.data).toMatchObject({
+      shifts: [
+        { startsAt: at('10:00'), endsAt: at('12:00'), roleName: 'Usher' },
+      ],
+    });
+    const n10 = payloads.filter(({ kind }) => kind === 'event_changed');
+    expect(n10).toHaveLength(2);
+    const impacts = n10.flatMap(
+      ({ data }) =>
+        (
+          data.change as {
+            impacts: { ministryName: string; volunteerCount: number }[];
+          }
+        ).impacts,
+    );
+    expect(
+      impacts.sort((a, b) => a.ministryName.localeCompare(b.ministryName)),
+    ).toEqual([
+      expect.objectContaining({
+        ministryName: 'Scheduling Ministry A',
+        volunteerCount: 1,
+      }),
+      expect.objectContaining({
+        ministryName: 'Zeta Media',
+        volunteerCount: 0,
+      }),
+    ]);
+    for (const { data } of n10) {
+      expect(data.change).toMatchObject({
+        kind: 'cancel',
+        start: at('10:00'),
+        end: at('12:00'),
+      });
+    }
   });
 });

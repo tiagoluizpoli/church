@@ -5,6 +5,7 @@ import {
   ministryParticipation,
   swapRequest,
 } from '@church/db';
+import type { Instant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -26,7 +27,10 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildMinistry } from '@/seeds/builders/ministry';
-import { buildAssignment } from '@/seeds/builders/scheduling';
+import {
+  buildAssignment,
+  buildEventTimeBlock,
+} from '@/seeds/builders/scheduling';
 import {
   createSchedulingManagers,
   seedRequirement,
@@ -542,6 +546,74 @@ describe('Volunteer reads after an admin cancellation', () => {
       ]),
     );
     expect(events).toHaveLength(2);
+  });
+
+  it('keeps the live sibling block of the same Event when one block is cancelled', async () => {
+    const { churchId, ministryId, assignMe } = await seedWorld();
+    const cycle = await seedCycle({
+      churchId,
+      name: 'Current',
+      startOffsetMs: -DAY_MS,
+      endOffsetMs: 20 * DAY_MS,
+    });
+    const first = await seedShiftGraph({
+      churchId,
+      ministryId,
+      cycleId: cycle.id,
+      title: 'Two blocks',
+      startOffsetMs: DAY_MS,
+      endOffsetMs: DAY_MS + HOUR_MS,
+    });
+    const siblingStart = fromNow(DAY_MS + HOUR_MS);
+    const siblingEnd = fromNow(DAY_MS + 2 * HOUR_MS);
+    const siblingBlock = await buildEventTimeBlock({
+      db,
+      churchId,
+      eventId: first.graph.event.id,
+      start: siblingStart.toISOString() as Instant,
+      end: siblingEnd.toISOString() as Instant,
+      label: 'Sibling',
+    });
+    const sibling = {
+      graph: first.graph,
+      shift: await seedShift({
+        churchId,
+        participationId: first.graph.participation.id,
+        eventTimeBlockId: siblingBlock.id,
+        startTime: siblingStart,
+        endTime: siblingEnd,
+        label: 'Sibling',
+      }),
+    };
+    const inCancelled = await assignMe(first);
+    const inSibling = await assignMe(sibling);
+    await db
+      .update(eventTimeBlock)
+      .set({ status: 'cancelled' })
+      .where(eq(eventTimeBlock.id, first.graph.eventTimeBlock.id));
+
+    const mine = await app.inject({ method: 'GET', url: SCHEDULE_URL });
+    const ministry = await app.inject({
+      method: 'GET',
+      url: `/api/v1/volunteer/ministries/${ministryId}/schedule?cycleId=${cycle.id}`,
+    });
+    const detail = (id: string) =>
+      app.inject({ method: 'GET', url: `/api/v1/volunteer/assignments/${id}` });
+
+    expect(
+      mine
+        .json()
+        .assignments.map((a: { assignmentId: string }) => a.assignmentId),
+    ).toEqual([inSibling.id]);
+    const rowShiftIds = ministry
+      .json()
+      .events.flatMap((item: { rows: { shiftId: string }[] }) =>
+        item.rows.map(({ shiftId }) => shiftId),
+      );
+    expect(rowShiftIds).toContain(sibling.shift.id);
+    expect(rowShiftIds).not.toContain(first.shift.id);
+    expect((await detail(inSibling.id)).statusCode).toBe(200);
+    expect((await detail(inCancelled.id)).statusCode).toBe(404);
   });
 
   it('answers the stale-link 404 for an Assignment in a cancelled Event or block', async () => {

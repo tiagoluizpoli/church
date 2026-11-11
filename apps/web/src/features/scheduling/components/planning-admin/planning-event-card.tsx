@@ -8,6 +8,7 @@ import { EventCancelDialog } from './event-cancel-dialog';
 import { EventMovePreview } from './event-move-preview';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
+  canCancelEventTimeBlock,
   eventStatusBadgeVariant,
   eventStatusLabel,
   timeBlockCountLabel,
@@ -38,6 +39,8 @@ export interface PlanningEventCardProps {
   canPreviewMove?: boolean;
   /** A future scheduled Event of a Sent Cycle can be cancelled. */
   canCancel?: boolean;
+  /** The Event's blocks can be cancelled (Sent Cycle, scheduled Event). */
+  canCancelBlocks?: boolean;
   deleteEventTimeBlockPending: boolean;
   onDeleteEventTimeBlockConfirm: (
     input: ConfirmDeleteEventTimeBlockInput,
@@ -58,6 +61,7 @@ export function PlanningEventCard({
   isReadOnly,
   canPreviewMove = false,
   canCancel = false,
+  canCancelBlocks = false,
   deleteEventTimeBlockPending,
   onDeleteEventTimeBlockConfirm,
 }: PlanningEventCardProps) {
@@ -166,7 +170,11 @@ export function PlanningEventCard({
               data-testid="planning-event-time-block-item"
               className="flex items-center justify-between gap-2"
             >
-              <span>
+              <span
+                className={cn(
+                  eventTimeBlock.status === 'cancelled' && 'line-through',
+                )}
+              >
                 <span>{eventTimeBlock.label}</span> ·{' '}
                 <span>
                   {formatInstantRangeOf({
@@ -186,7 +194,20 @@ export function PlanningEventCard({
                   size="icon-xs"
                 />
               ) : null}
-              {!isReadOnly ? (
+              {canCancelEventTimeBlock({
+                eventAllows: canCancelBlocks,
+                status: eventTimeBlock.status,
+                start: eventTimeBlock.startTime,
+              }) ? (
+                <EventCancelDialog
+                  cycleId={cycleId}
+                  eventId={row.eventId}
+                  eventTimeBlockId={eventTimeBlock.eventTimeBlockId}
+                  title={`${row.title} · ${eventTimeBlock.label}`}
+                  size="icon-xs"
+                />
+              ) : null}
+              {!isReadOnly && eventTimeBlock.status === 'active' ? (
                 <span className="flex items-center gap-1">
                   {eventTimeBlock.isOnlyEventTimeBlockInEvent ? (
                     <Button

@@ -1670,6 +1670,176 @@ export type MovePlanningEventTimeBlock422 = {
   issues?: unknown[];
 };
 
+export type PreviewPlanningEventTimeBlockCancellation200Scope = {
+  kind: 'event';
+} | {
+  kind: 'eventTimeBlock';
+  eventTimeBlockId: string;
+};
+
+export type PreviewPlanningEventTimeBlockCancellation200MinistriesItem = {
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+};
+
+export type PreviewPlanningEventTimeBlockCancellation200 = {
+  scope: PreviewPlanningEventTimeBlockCancellation200Scope;
+  eventId: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  ministryCount: number;
+  ministries: PreviewPlanningEventTimeBlockCancellation200MinistriesItem[];
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  openSwapRequestCount: number;
+};
+
+export type PreviewPlanningEventTimeBlockCancellation404 = {
+  error: string;
+  message: string;
+};
+
+export type PreviewPlanningEventTimeBlockCancellation422Error = typeof PreviewPlanningEventTimeBlockCancellation422Error[keyof typeof PreviewPlanningEventTimeBlockCancellation422Error];
+
+
+export const PreviewPlanningEventTimeBlockCancellation422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type PreviewPlanningEventTimeBlockCancellation422Reason = typeof PreviewPlanningEventTimeBlockCancellation422Reason[keyof typeof PreviewPlanningEventTimeBlockCancellation422Reason];
+
+
+export const PreviewPlanningEventTimeBlockCancellation422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+} as const;
+
+export type PreviewPlanningEventTimeBlockCancellation422 = {
+  error: PreviewPlanningEventTimeBlockCancellation422Error;
+  message: string;
+  reason?: PreviewPlanningEventTimeBlockCancellation422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type CancelPlanningEventTimeBlockBody = {
+  confirmation: string;
+};
+
+export type CancelPlanningEventTimeBlock200Scope = {
+  kind: 'event';
+} | {
+  kind: 'eventTimeBlock';
+  eventTimeBlockId: string;
+};
+
+export type CancelPlanningEventTimeBlock200MinistriesItem = {
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+};
+
+export type CancelPlanningEventTimeBlock200 = {
+  scope: CancelPlanningEventTimeBlock200Scope;
+  eventId: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  ministryCount: number;
+  ministries: CancelPlanningEventTimeBlock200MinistriesItem[];
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  openSwapRequestCount: number;
+};
+
+export type CancelPlanningEventTimeBlock404 = {
+  error: string;
+  message: string;
+};
+
+export type CancelPlanningEventTimeBlock422Error = typeof CancelPlanningEventTimeBlock422Error[keyof typeof CancelPlanningEventTimeBlock422Error];
+
+
+export const CancelPlanningEventTimeBlock422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type CancelPlanningEventTimeBlock422Reason = typeof CancelPlanningEventTimeBlock422Reason[keyof typeof CancelPlanningEventTimeBlock422Reason];
+
+
+export const CancelPlanningEventTimeBlock422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+} as const;
+
+export type CancelPlanningEventTimeBlock422 = {
+  error: CancelPlanningEventTimeBlock422Error;
+  message: string;
+  reason?: CancelPlanningEventTimeBlock422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
 export type UpdatePlanningEventTimeBlockBody = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime?: string;

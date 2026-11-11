@@ -913,6 +913,86 @@ export class ChurchAdminController implements FastifyController {
       },
     );
 
+    app.post(
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId/cancel/preview',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'previewPlanningEventTimeBlockCancellation',
+          summary: 'Preview cancelling an EventTimeBlock',
+          description:
+            'Preview cancelling one future EventTimeBlock of a scheduled Event in a Sent Cycle, writing and sending nothing. Same impact shape as the Event preview, limited to that block. Refuses as the Event preview does; a block that has started is ADMIN_CANCELLATION_WINDOW_CLOSED, a cancelled block is ILLEGAL_STATE_TRANSITION, an unknown or foreign block is 404.',
+          response: {
+            200: cancellationImpactResponseSchema,
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId, eventTimeBlockId } =
+          request.params as PlanningEventTimeBlockRouteParams;
+        const impact = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.planningEventManager.previewCancellation({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              scope: {
+                kind: 'eventTimeBlock',
+                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+              },
+            }),
+        });
+        if (!impact) return;
+        return reply.send(impact);
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId/cancel',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'cancelPlanningEventTimeBlock',
+          summary: 'Cancel an EventTimeBlock',
+          description:
+            'Irreversibly cancel one future EventTimeBlock of a scheduled Event in a Sent Cycle, under the same confirmation word, locks and single transaction as an Event cancellation but limited to that block: only its Assignments, SwapRequests, UnavailableShifts and last-told entries are touched, N9 lists only its published Shifts and N10 carries the block bounds. The Event and sibling blocks are untouched. Returns the actual impact.',
+          body: cancelPlanningEventBodySchema,
+          response: {
+            200: cancellationImpactResponseSchema,
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId, eventTimeBlockId } =
+          request.params as PlanningEventTimeBlockRouteParams;
+        const { confirmation } = request.body as CancelPlanningEventBody;
+        assertCancelConfirmation({ confirmation, locale: request.locale });
+        const impact = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.planningEventManager.confirmCancellation({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              scope: {
+                kind: 'eventTimeBlock',
+                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+              },
+              actingUserId: UserId.from(request.userId),
+            }),
+        });
+        if (!impact) return;
+        return reply.send(impact);
+      },
+    );
+
     app.patch(
       '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId',
       {

@@ -1,8 +1,17 @@
 import { m } from '@church/i18n/messages';
+import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { render as rtlRender, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement, ReactNode } from 'react';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import type { CycleCalendarTableRow } from '@/features/scheduling/components/planning-admin/planning-admin.types';
 import { PlanningEventCard } from '@/features/scheduling/components/planning-admin/planning-event-card';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
@@ -51,6 +60,7 @@ function rowWithTwoEventTimeBlocks(): CycleCalendarTableRow {
         label: 'Worship',
         startTime: '2026-08-02T09:00:00Z',
         endTime: '2026-08-02T10:00:00Z',
+        status: 'active',
         isOnlyEventTimeBlockInEvent: false,
       },
       {
@@ -58,6 +68,7 @@ function rowWithTwoEventTimeBlocks(): CycleCalendarTableRow {
         label: 'Message',
         startTime: '2026-08-02T10:00:00Z',
         endTime: '2026-08-02T11:00:00Z',
+        status: 'active',
         isOnlyEventTimeBlockInEvent: false,
       },
     ],
@@ -77,6 +88,7 @@ function oneEventTimeBlockRow(): CycleCalendarTableRow {
         label: 'Midweek',
         startTime: '2026-08-05T19:00:00Z',
         endTime: '2026-08-05T20:00:00Z',
+        status: 'active',
         isOnlyEventTimeBlockInEvent: true,
       },
     ],
@@ -353,6 +365,7 @@ describe('PlanningEventCard review content', () => {
               label: 'Night vigil',
               startTime: '2026-08-07T22:00:00Z',
               endTime: '2026-08-08T02:00:00Z',
+              status: 'active',
               isOnlyEventTimeBlockInEvent: false,
             },
             {
@@ -360,6 +373,7 @@ describe('PlanningEventCard review content', () => {
               label: 'Closing',
               startTime: '2026-08-09T13:00:00Z',
               endTime: '2026-08-09T15:00:00Z',
+              status: 'active',
               isOnlyEventTimeBlockInEvent: false,
             },
           ],
@@ -460,5 +474,53 @@ describe('PlanningEventCard cancellation', () => {
     expect(
       within(card).queryAllByRole('button', { name: /Cancelar|Mover/ }),
     ).toHaveLength(0);
+  });
+});
+
+describe('PlanningEventCard block cancellation', () => {
+  afterEach(() => resetClock());
+
+  it('offers Cancel only on a future active block, strikes through a cancelled one and keeps siblings unchanged', () => {
+    setTestClock({ instant: parseInstant({ value: '2026-08-02T09:30:00Z' }) });
+    const row = rowWithTwoEventTimeBlocks();
+    const [started, future] = row.eventTimeBlocks;
+    if (!started || !future) throw new Error('fixture needs two blocks');
+    row.eventTimeBlocks = [
+      started,
+      future,
+      {
+        ...future,
+        eventTimeBlockId: 'event-time-block-3',
+        label: 'Closing',
+        status: 'cancelled',
+      },
+    ];
+
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="UTC">
+        <PlanningEventCard
+          row={row}
+          isReadOnly
+          canCancelBlocks
+          {...baseProps()}
+        />
+      </TimezoneProvider>,
+    );
+
+    const cancelButton = (label: string) =>
+      screen.queryByRole('button', {
+        name: m.event_cancel_action_label({
+          title: `Sunday Service · ${label}`,
+        }),
+      });
+    expect(cancelButton('Worship')).not.toBeInTheDocument();
+    expect(cancelButton('Message')).toBeInTheDocument();
+    expect(cancelButton('Closing')).not.toBeInTheDocument();
+    expect(screen.getByText('Closing').parentElement).toHaveClass(
+      'line-through',
+    );
+    expect(screen.getByText('Message').parentElement).not.toHaveClass(
+      'line-through',
+    );
   });
 });

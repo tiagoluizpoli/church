@@ -1,7 +1,6 @@
 import {
   invitation as churchInvitation,
   ministry,
-  ministryInvitation,
   role,
   sector,
 } from '@church/db';
@@ -28,6 +27,7 @@ import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import {
   buildMinistry,
+  buildMinistryInvitation,
   buildRole,
   buildSector,
 } from '@/seeds/builders/ministry';
@@ -196,7 +196,8 @@ async function seedMinistryInvitation({
   status = 'pending',
 }: SeedLeaderInvitationInput = {}) {
   const invited = await seedMinistry({ churchId });
-  await db.insert(ministryInvitation).values({
+  await buildMinistryInvitation({
+    db,
     churchId,
     ministryId: invited.id,
     inviteeUserId: INVITEE,

@@ -2,9 +2,9 @@ import { m } from '@church/i18n/messages';
 import { compareInstants, now, parseInstant, today } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HomeError } from '@/features/home/components/home-error';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
 import { AssignmentLink } from '@/features/volunteers/components/assignment-link';
@@ -14,42 +14,29 @@ import { volunteerApi } from '@/utils/api-instances';
 
 const ASSIGNMENT_LIMIT = 3;
 
-interface FailureProps {
-  message: string;
-  onRetry: () => void;
-}
-
-function Failure({ message, onRetry }: FailureProps) {
-  return (
-    <div role="alert" className="space-y-3">
-      <p>{message}</p>
-      <Button variant="outline" size="touch" onClick={onRetry}>
-        {m.home_retry()}
-      </Button>
-    </div>
-  );
-}
-
 export function MyServingSection({ churchId, userId }: HomeSectionProps) {
   const { churchTimezone: timeZone } = useTimezone();
-  const churchDay = today({ instant: now(), timeZone });
+  const nowInstant = now();
+  const churchDay = today({ instant: nowInstant, timeZone });
+  const checksQueryKey = homeSectionQueryKey({
+    section: 'serving',
+    churchId,
+    userId,
+    parts: ['availability-checks'],
+  });
   const checksQuery = useQuery({
-    queryKey: homeSectionQueryKey({
-      section: 'serving',
-      churchId,
-      userId,
-      parts: ['availability-checks'],
-    }),
+    queryKey: checksQueryKey,
     queryFn: () => volunteerApi.listAvailabilityChecks(),
     retry: false,
   });
+  const scheduleQueryKey = homeSectionQueryKey({
+    section: 'serving',
+    churchId,
+    userId,
+    parts: ['schedule'],
+  });
   const scheduleQuery = useQuery({
-    queryKey: homeSectionQueryKey({
-      section: 'serving',
-      churchId,
-      userId,
-      parts: ['schedule'],
-    }),
+    queryKey: scheduleQueryKey,
     queryFn: () => volunteerApi.getPublishedVolunteerSchedule(),
     retry: false,
   });
@@ -58,12 +45,11 @@ export function MyServingSection({ churchId, userId }: HomeSectionProps) {
   );
   // Sort before limiting so the three are the next Assignments, not the first day groups.
   const upcoming = [...(scheduleQuery.data?.assignments ?? [])]
-    .sort((left, right) =>
-      compareInstants({
-        left: parseInstant({ value: left.startTime }),
-        right: parseInstant({ value: right.startTime }),
-      }),
-    )
+    .sort((leftAssignment, rightAssignment) => {
+      const left = parseInstant({ value: leftAssignment.startTime });
+      const right = parseInstant({ value: rightAssignment.startTime });
+      return compareInstants({ left, right });
+    })
     .slice(0, ASSIGNMENT_LIMIT);
 
   return (
@@ -81,7 +67,7 @@ export function MyServingSection({ churchId, userId }: HomeSectionProps) {
           <Skeleton className="h-20 w-full" />
         </div>
       ) : checksQuery.isError ? (
-        <Failure
+        <HomeError
           message={m.availability_list_error()}
           onRetry={() => checksQuery.refetch()}
         />
@@ -113,7 +99,7 @@ export function MyServingSection({ churchId, userId }: HomeSectionProps) {
           <Skeleton className="h-24 w-full" />
         </div>
       ) : scheduleQuery.isError ? (
-        <Failure
+        <HomeError
           message={m.my_schedule_load_error()}
           onRetry={() => scheduleQuery.refetch()}
         />

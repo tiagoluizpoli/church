@@ -13,13 +13,14 @@ import { setupApi } from '@/utils/api-instances';
  * Church has ever sent a Cycle, then the next-Cycle card for good.
  */
 export function ChurchSection({ churchId, userId }: HomeSectionProps) {
+  const progressKey = homeSectionQueryKey({
+    section: 'church',
+    churchId,
+    userId,
+    parts: ['setup-progress'],
+  });
   const progressQuery = useQuery({
-    queryKey: homeSectionQueryKey({
-      section: 'church',
-      churchId,
-      userId,
-      parts: ['setup-progress'],
-    }),
+    queryKey: progressKey,
     queryFn: () => setupApi.getSetupProgress(),
     // Setup happens in other tabs; returning to Home shows it.
     refetchOnWindowFocus: 'always',

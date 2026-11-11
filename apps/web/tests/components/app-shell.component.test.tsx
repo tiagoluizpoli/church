@@ -148,6 +148,7 @@ function asPersona({
     isChurchAdmin,
     leadsMinistries,
     hasVolunteerMembership,
+    ledMinistryIds: [],
     isResolving,
     isError: false,
     retry: vi.fn(),

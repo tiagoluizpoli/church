@@ -54,13 +54,14 @@ function NextCycleContent({ cycle }: NextCycleContentProps) {
 /** Shown once the Church has ever sent a Cycle: the latest Cycle still to come. */
 export function NextCycleCard({ churchId, userId }: HomeSectionProps) {
   const { churchTimezone } = useTimezone();
+  const cyclesKey = homeSectionQueryKey({
+    section: 'church',
+    churchId,
+    userId,
+    parts: ['cycles'],
+  });
   const cyclesQuery = useQuery({
-    queryKey: homeSectionQueryKey({
-      section: 'church',
-      churchId,
-      userId,
-      parts: ['cycles'],
-    }),
+    queryKey: cyclesKey,
     queryFn: () => adminApi.listCycles(),
     refetchOnWindowFocus: 'always',
   });
@@ -82,17 +83,15 @@ export function NextCycleCard({ churchId, userId }: HomeSectionProps) {
     );
   }
 
-  const churchToday = today({ instant: now(), timeZone: churchTimezone });
+  const nowInstant = now();
+  const churchToday = today({ instant: nowInstant, timeZone: churchTimezone });
   // The read is ordered start day desc, end day desc, id asc, so the first
   // row still to come is the latest one: a newer draft wins over a current Sent Cycle.
-  const next = data.cycles.find(
-    ({ state, endDate }) =>
-      state !== 'past' &&
-      compareCalendarDays({
-        left: parseCalendarDay({ value: endDate }),
-        right: churchToday,
-      }) >= 0,
-  );
+  const next = data.cycles.find(({ state, endDate }) => {
+    if (state === 'past') return false;
+    const cycleEnd = parseCalendarDay({ value: endDate });
+    return compareCalendarDays({ left: cycleEnd, right: churchToday }) >= 0;
+  });
 
   return (
     <div className="space-y-2 rounded-lg border p-4">

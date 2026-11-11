@@ -7,6 +7,8 @@ export interface HomeCapacities {
   leadership: boolean;
   /** My serving: serving membership only. */
   serving: boolean;
+  /** Identity of the leadership authority (admin flag + led Ministries); changes when it grows or shrinks. */
+  leadershipScope: string;
 }
 
 export type HomeCapacityState =
@@ -24,12 +26,15 @@ export function useHomeCapacities(): HomeCapacityState {
   if (capabilities.isError) {
     return { status: 'error', retry: capabilities.retry };
   }
+  const { isChurchAdmin, ledMinistryIds } = capabilities;
+  const leadershipScope = `${isChurchAdmin ? 'admin' : 'leader'}:${[...ledMinistryIds].sort().join(',')}`;
   return {
     status: 'ready',
     capacities: {
       church: capabilities.isChurchAdmin,
       leadership: capabilities.isChurchAdmin || capabilities.leadsMinistries,
       serving: capabilities.hasVolunteerMembership,
+      leadershipScope,
     },
   };
 }

@@ -13,6 +13,8 @@ export const isAdminOrLeader = (capabilities: CallerCapabilities) =>
 
 export interface CallerCapabilitiesState extends CallerCapabilities {
   isResolving: boolean;
+  /** Ministries the caller leads, for scoping reads that narrow with authority. */
+  ledMinistryIds: string[];
   /** The read failed (or answered for another Church): all capabilities are false, but this is not a "no capacity" result. */
   isError: boolean;
   retry: () => void;
@@ -26,6 +28,7 @@ const NO_CAPABILITIES: CallerCapabilities = {
   leadsMinistries: false,
   hasVolunteerMembership: false,
 };
+const NO_LED_MINISTRIES: string[] = [];
 
 /**
  * Resolves what the caller may do in the Active Church from the server's
@@ -51,7 +54,13 @@ export function useCallerCapabilities(): CallerCapabilitiesState {
   };
 
   if (!scope || callerCapabilitiesQuery.isLoading) {
-    return { ...NO_CAPABILITIES, isResolving: true, isError: false, retry };
+    return {
+      ...NO_CAPABILITIES,
+      ledMinistryIds: NO_LED_MINISTRIES,
+      isResolving: true,
+      isError: false,
+      retry,
+    };
   }
 
   const capabilities = callerCapabilitiesQuery.data;
@@ -59,13 +68,22 @@ export function useCallerCapabilities(): CallerCapabilitiesState {
     callerCapabilitiesQuery.isError ||
     capabilities?.churchId !== scope.churchId
   ) {
-    return { ...NO_CAPABILITIES, isResolving: false, isError: true, retry };
+    return {
+      ...NO_CAPABILITIES,
+      ledMinistryIds: NO_LED_MINISTRIES,
+      isResolving: false,
+      isError: true,
+      retry,
+    };
   }
 
   return {
     isChurchAdmin: capabilities.isChurchAdmin,
     leadsMinistries: capabilities.ledMinistries.length > 0,
     hasVolunteerMembership: capabilities.hasVolunteerMembership,
+    ledMinistryIds: capabilities.ledMinistries.map(
+      ({ ministryId }) => ministryId,
+    ),
     isResolving: false,
     isError: false,
     retry,

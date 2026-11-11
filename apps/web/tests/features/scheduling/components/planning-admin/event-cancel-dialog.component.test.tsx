@@ -11,12 +11,18 @@ import { renderWithProviders } from '@/tests/setup/render';
 
 const previewPlanningEventCancellation = vi.fn();
 const cancelPlanningEvent = vi.fn();
+const previewPlanningEventTimeBlockCancellation = vi.fn();
+const cancelPlanningEventTimeBlock = vi.fn();
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
     previewPlanningEventCancellation: (...args: unknown[]) =>
       previewPlanningEventCancellation(...args),
     cancelPlanningEvent: (...args: unknown[]) => cancelPlanningEvent(...args),
+    previewPlanningEventTimeBlockCancellation: (...args: unknown[]) =>
+      previewPlanningEventTimeBlockCancellation(...args),
+    cancelPlanningEventTimeBlock: (...args: unknown[]) =>
+      cancelPlanningEventTimeBlock(...args),
   },
 }));
 
@@ -81,6 +87,8 @@ const confirmButton = () =>
 beforeEach(() => {
   previewPlanningEventCancellation.mockReset();
   cancelPlanningEvent.mockReset();
+  previewPlanningEventTimeBlockCancellation.mockReset();
+  cancelPlanningEventTimeBlock.mockReset();
 });
 
 afterEach(() => overwriteGetLocale(() => 'pt-BR'));
@@ -226,5 +234,52 @@ describe('EventCancelDialog', () => {
     expect(
       screen.queryByRole('button', { name: m.event_cancel_confirm() }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('EventCancelDialog for one EventTimeBlock', () => {
+  it.each([
+    ['en', 'cancel', 'Cancel time block'],
+    ['pt-BR', 'cancelar', 'Cancelar bloco'],
+  ] as const)('uses the nested endpoints and the %s word', async (locale, word, confirmName) => {
+    overwriteGetLocale(() => locale);
+    previewPlanningEventTimeBlockCancellation.mockResolvedValue(impact());
+    cancelPlanningEventTimeBlock.mockResolvedValue(impact());
+    const user = userEvent.setup();
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="America/Sao_Paulo">
+        <EventCancelDialog
+          cycleId="cycle-1"
+          eventId="event-1"
+          eventTimeBlockId="block-1"
+          title="Sunday · Service"
+        />
+      </TimezoneProvider>,
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: m.event_cancel_action_label({ title: 'Sunday · Service' }),
+      }),
+    );
+    await screen.findByTestId('event-cancel-impact');
+    await user.type(
+      screen.getByLabelText(m.event_cancel_confirm_label({ word })),
+      word,
+    );
+    await user.click(screen.getByRole('button', { name: confirmName }));
+
+    expect(previewPlanningEventTimeBlockCancellation).toHaveBeenCalledWith(
+      'cycle-1',
+      'event-1',
+      'block-1',
+    );
+    expect(cancelPlanningEventTimeBlock).toHaveBeenCalledWith(
+      'cycle-1',
+      'event-1',
+      'block-1',
+      { confirmation: word },
+    );
+    expect(previewPlanningEventCancellation).not.toHaveBeenCalled();
+    expect(cancelPlanningEvent).not.toHaveBeenCalled();
   });
 });

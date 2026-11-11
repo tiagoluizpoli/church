@@ -37,6 +37,8 @@ const CANCELLATION_READERS = [
 export interface EventCancelDialogProps {
   cycleId: string;
   eventId: string;
+  /** Cancels only this block through the nested endpoints. */
+  eventTimeBlockId?: string;
   title: string;
   size?: 'touch' | 'icon-xs';
 }
@@ -50,6 +52,7 @@ export interface EventCancelDialogProps {
 export function EventCancelDialog({
   cycleId,
   eventId,
+  eventTimeBlockId,
   title,
   size = 'touch',
 }: EventCancelDialogProps) {
@@ -59,11 +62,24 @@ export function EventCancelDialog({
   const queryClient = useQueryClient();
   const preview = useMutation({
     mutationFn: () =>
-      adminApi.previewPlanningEventCancellation(cycleId, eventId),
+      eventTimeBlockId
+        ? adminApi.previewPlanningEventTimeBlockCancellation(
+            cycleId,
+            eventId,
+            eventTimeBlockId,
+          )
+        : adminApi.previewPlanningEventCancellation(cycleId, eventId),
   });
   const cancel = useMutation({
     mutationFn: (confirmation: string) =>
-      adminApi.cancelPlanningEvent(cycleId, eventId, { confirmation }),
+      eventTimeBlockId
+        ? adminApi.cancelPlanningEventTimeBlock(
+            cycleId,
+            eventId,
+            eventTimeBlockId,
+            { confirmation },
+          )
+        : adminApi.cancelPlanningEvent(cycleId, eventId, { confirmation }),
   });
   const impact = preview.data;
   const done = cancel.data;
@@ -116,7 +132,11 @@ export function EventCancelDialog({
         onClick={openDialog}
       >
         <Ban className="size-3.5" />
-        {size === 'touch' ? m.event_cancel_action() : null}
+        {size === 'touch'
+          ? eventTimeBlockId
+            ? m.event_cancel_block_action()
+            : m.event_cancel_action()
+          : null}
       </Button>
       <Dialog open={open} onOpenChange={changeOpen}>
         <DialogContent data-testid="event-cancel-dialog">
@@ -207,7 +227,11 @@ export function EventCancelDialog({
           ) : null}
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
-              {done ? m.event_cancel_done_close() : m.event_cancel_keep()}
+              {done
+                ? m.event_cancel_done_close()
+                : eventTimeBlockId
+                  ? m.event_cancel_block_keep()
+                  : m.event_cancel_keep()}
             </DialogClose>
             {impact && !done ? (
               <Button
@@ -218,7 +242,9 @@ export function EventCancelDialog({
               >
                 {cancel.isPending
                   ? m.event_cancel_confirming()
-                  : m.event_cancel_confirm()}
+                  : eventTimeBlockId
+                    ? m.event_cancel_block_confirm()
+                    : m.event_cancel_confirm()}
               </Button>
             ) : null}
           </DialogFooter>

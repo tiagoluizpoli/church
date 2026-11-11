@@ -614,10 +614,38 @@ export function toCycleCalendarTableRow({
         label: eventTimeBlock.label ?? m.cycle_review_time_block_fallback(),
         startTime: eventTimeBlock.startTime,
         endTime: eventTimeBlock.endTime,
+        status: eventTimeBlock.status,
         isOnlyEventTimeBlockInEvent,
       }),
     ),
   };
+}
+
+interface CanCancelEventTimeBlockInput {
+  /** The Event allows block cancellation: Sent Cycle, scheduled Event. */
+  eventAllows: boolean;
+  status: string;
+  start: string;
+}
+
+/** An active block that has not started; a started sibling does not matter. */
+export function canCancelEventTimeBlock({
+  eventAllows,
+  status,
+  start,
+}: CanCancelEventTimeBlockInput): boolean {
+  const started =
+    compareInstants({ left: now(), right: parseInstant({ value: start }) }) >=
+    0;
+  return eventAllows && status === 'active' && !started;
+}
+
+/** A scheduled Event of a Sent Cycle; each block is judged on its own start. */
+export function canCancelEventBlocks({
+  cycleState,
+  eventStatus,
+}: Omit<CanCancelEventInput, 'start'>): boolean {
+  return cycleState === 'sent' && eventStatus === 'scheduled';
 }
 
 interface CanCancelEventInput {

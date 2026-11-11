@@ -1,6 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "common_generic_error": "Something went wrong. Please try again.",
+  "common_retry": "Try again",
   "common_validation_error": "Some of the information sent is invalid.",
   "common_publish_failed": "Publish failed",
   "common_assignment_failed": "Assignment failed",

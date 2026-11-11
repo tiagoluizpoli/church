@@ -337,4 +337,126 @@ export const B = () => <p>Hello</p>; // presentation-text-ignore: same line does
       `${PATH}:13:27: JSX text "Hello": use a catalog message (m.*) or pass translated content`,
     ]);
   });
+
+  it('rejects literal copy inside template interpolations but keeps dynamic values', () => {
+    const failure = (position: string, text: string) =>
+      `${PATH}:${position}: JSX expression "${text}": use a catalog message (m.*) or pass translated content`;
+    expect(
+      failuresFor(`export const A = () => (
+  <p>
+    {\`\${ready ? 'Ready' : 'Wait'}\`}
+    {\`\${count} · \${name ?? 'Unknown'}\`}
+    {\`\${first} \${last}\`}
+    {\`\${ready ? m.ready() : m.wait()}\`}
+    {\`\${count === 1 ? '·' : '—'}\`}
+  </p>
+);
+`),
+    ).toEqual([
+      failure('3:17', 'Ready'),
+      failure('3:27', 'Wait'),
+      failure('4:28', 'Unknown'),
+    ]);
+  });
+
+  it('rejects notification-shaped title/body content on web and server', () => {
+    const serverPath = 'apps/server/src/application/notification-content.ts';
+    const webFailure = (position: string, context: string, text: string) =>
+      `${PATH}:${position}: ${context} "${text}": use a catalog message (m.*) or pass translated content`;
+    const serverFailure = (position: string, context: string, text: string) =>
+      `${serverPath}:${position}: ${context} "${text}": use a catalog message (m.*) or pass translated content`;
+    expect(
+      failuresFor(`export const render = () => ({ title: m.title(), body: 'Please join' });
+export const request = { method: 'POST', body: 'grant_type=client_credentials' };
+`),
+    ).toEqual([webFailure('1:56', 'notification "body"', 'Please join')]);
+    expect(
+      failuresFor(
+        `export const notify = () => ({ title: 'Welcome', body: 'Please join', actionLabel: 'Open', kindLabel: m.kind() });
+export const route = { schema: { body: bodySchema, description: 'Create a Ministry' } };
+export const openapi = { info: { title: 'Church API', version: '1.0.0' } };
+export const persisted = { organizationId: null, body: { organizationId: 'church-1' } };
+`,
+        serverPath,
+      ),
+    ).toEqual([
+      serverFailure('1:39', 'notification "title"', 'Welcome'),
+      serverFailure('1:56', 'notification "body"', 'Please join'),
+      serverFailure('1:84', 'notification "actionLabel"', 'Open'),
+    ]);
+  });
+
+  it('rejects literal rendered-email html, text and list content on the server', () => {
+    const path = 'apps/server/src/infrastructure/services/email-layout.ts';
+    const failure = (position: string, context: string, text: string) =>
+      `${path}:${position}: ${context} "${text}": use a catalog message (m.*) or pass translated content`;
+    expect(
+      failuresFor(
+        `export const rendered = () => ({
+  html: \`<p>Welcome</p>\`,
+  text: 'Welcome',
+  list: ['Please join', shift.label],
+});
+export const layout = ({ blocks, textBlocks }: Input) => ({
+  subject,
+  html: \`<!doctype html><html><body style="font-family:sans-serif">\${blocks.join('\\n')}</body></html>\`,
+  text: textBlocks.filter(Boolean).join('\\n\\n'),
+});
+`,
+        path,
+      ),
+    ).toEqual([
+      failure('2:9', 'email "html"', '<p>Welcome</p>'),
+      failure('3:9', 'email "text"', 'Welcome'),
+      failure('4:10', 'email "list"', 'Please join'),
+    ]);
+  });
+
+  it('rejects column names in inline, local-constant and local-function column arrays', () => {
+    const failure = (position: string, text: string) =>
+      `${PATH}:${position}: column "name" "${text}": use a catalog message (m.*) or pass translated content`;
+    expect(
+      failuresFor(`const CYCLE_TABLE_COLUMNS = [{ id: 'name', name: 'Name', allowsSorting: true }];
+function ministryColumns() {
+  return [{ id: 'events', name: 'Events' }, { id: 'actions', name: m.actions() }];
+}
+const columnsFor = () => [{ id: 'status', header: 'Status' }];
+export const A = () => (
+  <>
+    <DataTable columns={CYCLE_TABLE_COLUMNS} />
+    <DataTable columns={ministryColumns()} />
+    <DataTable columns={[{ id: 'window', name: 'Window' }]} />
+    <DataTable columns={columnsFor()} />
+    <DataTable columns={importedColumns} />
+  </>
+);
+`),
+    ).toEqual([
+      failure('1:50', 'Name'),
+      failure('3:33', 'Events'),
+      `${PATH}:5:51: column "header" "Status": use a catalog message (m.*) or pass translated content`,
+      failure('10:48', 'Window'),
+    ]);
+  });
+
+  it('accepts technical metadata beside labels in label maps and option lists', () => {
+    expect(
+      failuresFor(`const STATUS_LABELS = {
+  draft: { value: 'draft', label: m.draft(), tone: 'muted' },
+  sent: { value: 'sent', label: m.sent(), tone: 'success' },
+};
+const FILTER_OPTIONS_LABELS = [{ id: 'all', value: 'all', label: m.all() }];
+export const A = () => <DataTable columns={[{ id: 'name', name: m.name(), allowsSorting: true }]} />;
+`),
+    ).toEqual([]);
+  });
+
+  it('still rejects copy in nested label maps without record fields', () => {
+    expect(
+      failuresFor(`const STATUS_LABELS = { cycle: { open: 'Open' }, event: m.event() };
+`),
+    ).toEqual([
+      `${PATH}:1:40: value of "STATUS_LABELS" "Open": use a catalog message (m.*) or pass translated content`,
+    ]);
+  });
 });

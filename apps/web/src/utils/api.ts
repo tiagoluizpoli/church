@@ -6,8 +6,10 @@ import { requestErrorMessage } from '@/shared/utils/request-error-message';
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
-      toast.error(requestErrorMessage(error), {
-        action: { label: m.common_retry(), onClick: query.invalidate },
+      const message = requestErrorMessage(error);
+      const retryLabel = m.common_retry();
+      toast.error(message, {
+        action: { label: retryLabel, onClick: query.invalidate },
       });
     },
   }),

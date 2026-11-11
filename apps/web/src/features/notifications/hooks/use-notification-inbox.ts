@@ -244,7 +244,8 @@ export function useNotificationInbox() {
       });
     },
     onError: (error) => {
-      toast.error(requestErrorMessage(error));
+      const message = requestErrorMessage(error);
+      toast.error(message);
     },
   });
 
@@ -259,7 +260,8 @@ export function useNotificationInbox() {
       });
     },
     onError: (error) => {
-      toast.error(requestErrorMessage(error));
+      const message = requestErrorMessage(error);
+      toast.error(message);
     },
   });
 

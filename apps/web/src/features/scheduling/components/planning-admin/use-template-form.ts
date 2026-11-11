@@ -5,7 +5,6 @@ import type { TemplateFormState } from './planning-admin.types';
 import {
   canSaveTemplate,
   createEmptyTemplateTimeBlock,
-  getErrorMessage,
 } from './planning-admin.utils';
 import type {
   NameChangeInput,
@@ -18,6 +17,7 @@ import {
   CreateEventTemplate422Reason,
   type UpdateEventTemplate422,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 
 interface RemoveBlockInput {
   blockKey: string;
@@ -42,7 +42,7 @@ export function toSaveRefusal({ error }: SaveRefusalInput): SaveRefusal {
   if (reason === CreateEventTemplate422Reason.DUPLICATE_TEMPLATE_NAME) {
     return { nameError: m.error_validation_duplicate_template_name() };
   }
-  return { formError: getErrorMessage({ error }) };
+  return { formError: requestErrorMessage(error) };
 }
 
 export interface UseTemplateFormInput {

@@ -3,7 +3,7 @@ import { getLocale } from '@church/i18n/runtime';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { describeTemplate, getErrorMessage } from './planning-admin.utils';
+import { describeTemplate } from './planning-admin.utils';
 import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { pluralMessage } from '@/shared/utils/plural';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
 interface ApplyTemplatesDialogProps {
@@ -219,7 +220,7 @@ export function ApplyTemplatesDialog({
             className="text-destructive text-sm"
             data-testid="apply-templates-error"
           >
-            {getErrorMessage({ error: applyMutation.error })}
+            {requestErrorMessage(applyMutation.error)}
           </div>
         )}
 

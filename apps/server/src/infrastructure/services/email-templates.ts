@@ -1,5 +1,10 @@
 import { m } from '@church/i18n/messages';
-import { formatCalendarDay, formatInstant } from '@church/time';
+import {
+  formatCalendarDay,
+  formatDayLabel,
+  formatInstant,
+  today,
+} from '@church/time';
 import type {
   AvailabilityEmail,
   ChainedInvitationEmail,
@@ -8,6 +13,7 @@ import type {
   CycleReadyToPrepareEmail,
   EmailLocale,
   EmailPayload,
+  EventCancelledEmail,
   EventChangedEmail,
   MinistryInvitationEmail,
   PasswordResetEmail,
@@ -96,6 +102,13 @@ export function prepareEmail({
         locale,
         from: sender(payload.churchName),
         content: eventChangedContent({ payload, locale }),
+      });
+    case 'event.cancelled':
+      return prepareLayoutEmail({
+        payload,
+        locale,
+        from: sender(payload.churchName),
+        content: eventCancelledContent({ payload, locale }),
       });
     case 'swap-request.answered':
       return prepareLayoutEmail({
@@ -461,7 +474,26 @@ function eventChangedContent({
   let title: string;
   let facts: EmailContent['facts'];
   let list: string[] = [];
-  if (change.kind === 'move') {
+  if (change.kind === 'cancel') {
+    title = eventCancelledTitle({
+      eventTitle,
+      start: change.start,
+      churchTimezone,
+      locale,
+    });
+    facts = [when];
+    list = change.impacts.map(({ ministryName, volunteerCount: count }) =>
+      count === 1
+        ? m.notification_event_changed_cancel_ministry_one(
+            { ministryName, adminName },
+            options,
+          )
+        : m.notification_event_changed_cancel_ministry_other(
+            { ministryName, adminName, count },
+            options,
+          ),
+    );
+  } else if (change.kind === 'move') {
     const previous = formatEventWhen({
       start: change.previousStart,
       end: change.previousEnd,
@@ -544,6 +576,57 @@ function eventMoveImpactLine({
   return answersGiven
     ? `${line} · ${m.prepare_answers_coverage_note({}, options)}`
     : line;
+}
+
+interface EventCancelledTitleInput {
+  eventTitle: string;
+  start: EventCancelledEmail['start'];
+  churchTimezone: string;
+  locale: EmailLocale;
+}
+
+/** N9 and N10 cancel share it: `Cancelado: {event} · {day}`, the scope's Church-Timezone day. */
+function eventCancelledTitle({
+  eventTitle,
+  start,
+  churchTimezone: timeZone,
+  locale,
+}: EventCancelledTitleInput): string {
+  const startDay = today({ instant: start, timeZone });
+  const day = formatDayLabel({ day: startDay, locale });
+  return m.notification_event_cancelled_title({ eventTitle, day }, { locale });
+}
+
+interface EventCancelledContentInput {
+  payload: EventCancelledEmail;
+  locale: EmailLocale;
+}
+
+/** N9 on the bell's catalog keys: the frozen Shift lines, then My schedule. */
+function eventCancelledContent({
+  payload,
+  locale,
+}: EventCancelledContentInput): EmailContent {
+  const options = { locale };
+  const { churchName, churchTimezone } = payload;
+  const firstName = payload.recipientFirstName.trim();
+  const title = eventCancelledTitle({ ...payload, locale });
+  return {
+    subject: title,
+    greeting: firstName
+      ? m.email_greeting_notification({ firstName }, options)
+      : m.email_greeting_transactional({}, options),
+    heading: title,
+    facts: [m.notification_event_cancelled_body({}, options)],
+    list: payload.shifts.map((shift) =>
+      formatShiftLine({ ...shift, churchTimezone, locale }),
+    ),
+    action: {
+      label: m.notification_event_cancelled_action({}, options),
+      url: payload.actionUrl,
+    },
+    footer: m.email_footer_membership({ churchName }, options),
+  };
 }
 
 interface SwapRequestAnsweredContentInput {

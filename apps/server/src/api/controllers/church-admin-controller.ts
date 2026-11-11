@@ -50,7 +50,10 @@ import {
 } from '../dtos/event-time-block.dto';
 import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
 import {
+  type CancelPlanningEventBody,
   type CreatePlanningEventBody,
+  cancellationImpactResponseSchema,
+  cancelPlanningEventBodySchema,
   createPlanningEventBodySchema,
   eventGraphMapper,
   eventGraphResponseSchema,
@@ -70,6 +73,7 @@ import {
   setDefaultDirectionBodySchema,
 } from '../dtos/usual-setup.dto';
 import { validationErrorResponseSchema } from '../dtos/validation-error.dto';
+import { assertCancelConfirmation } from '../utils/cancel-confirmation';
 import { refuse } from '../utils/refuse';
 import {
   dateFromCalendarDayString,
@@ -662,23 +666,60 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
+      '/cycles/:cycleId/events/:eventId/cancel/preview',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'previewPlanningEventCancellation',
+          summary: 'Preview cancelling an Event',
+          description:
+            'Preview cancelling a scheduled Event of a Sent Cycle, writing and sending nothing. Returns the scope bounds, the distinct published Volunteers who would be told (N9) and the Ministries they span, one told-count row per participating Ministry, and the open SwapRequests that would close. Advisory only: confirm recalculates. Refuses a Draft or Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION) and an Event that has started (ADMIN_CANCELLATION_WINDOW_CLOSED).',
+          response: {
+            200: cancellationImpactResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const impact = await this.planningEventManager.previewCancellation({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: { kind: 'event' },
+        });
+        return reply.send(impact);
+      },
+    );
+
+    app.post(
       '/cycles/:cycleId/events/:eventId/cancel',
       {
         schema: {
           tags: ['planning'],
           operationId: 'cancelPlanningEvent',
           summary: 'Cancel an Event',
-          description: 'Cancel an Event within its Cycle.',
+          description:
+            "Irreversibly cancel a scheduled Event of a Sent Cycle. The confirmation must be the request locale's fixed word (cancel / cancelar), trimmed and case-insensitive, else 422 VALIDATION_ERROR reason CANCEL_CONFIRMATION. Recalculates the impact under the Church and Event Participation locks, then in one transaction: soft-cancels and audits (event_cancelled, acting User) every active Assignment, closes their open SwapRequests as covered without N8, deletes their UnavailableShifts, drops only their last-told entries, enqueues N9 per published Volunteer and N10 per leader, and cancels the Event. Returns the actual impact. Refuses as preview does; a racing confirm gets ILLEGAL_STATE_TRANSITION.",
+          body: cancelPlanningEventBodySchema,
+          response: {
+            200: cancellationImpactResponseSchema,
+            422: validationErrorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
-        await this.planningEventManager.cancelEvent({
+        const { confirmation } = request.body as CancelPlanningEventBody;
+        assertCancelConfirmation({ confirmation, locale: request.locale });
+        const impact = await this.planningEventManager.confirmCancellation({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
+          scope: { kind: 'event' },
+          actingUserId: UserId.from(request.userId),
         });
-        return reply.status(204).send();
+        return reply.send(impact);
       },
     );
 

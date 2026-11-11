@@ -85,13 +85,11 @@ export interface UpdatePlanningEventDetailsManagerInput {
   location?: string;
 }
 
-export interface CancelPlanningEventManagerInput {
+export interface DeletePlanningEventManagerInput {
   churchId: ChurchId;
   cycleId: CycleId;
   eventId: EventId;
 }
-
-export type DeletePlanningEventManagerInput = CancelPlanningEventManagerInput;
 
 export interface CreatePlanningEventTimeBlockManagerInput {
   churchId: ChurchId;
@@ -183,7 +181,6 @@ export interface IPlanningEventManager {
     input: UpdatePlanningEventDetailsManagerInput,
   ): Promise<PlanningEventGraph>;
   deleteEvent(input: DeletePlanningEventManagerInput): Promise<void>;
-  cancelEvent(input: CancelPlanningEventManagerInput): Promise<void>;
   createEventTimeBlock(
     input: CreatePlanningEventTimeBlockManagerInput,
   ): Promise<EventTimeBlock>;

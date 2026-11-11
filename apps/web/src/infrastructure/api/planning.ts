@@ -7,6 +7,8 @@
 import type {
   ApplyPlanningTemplates201,
   ApplyPlanningTemplatesBody,
+  CancelPlanningEvent200,
+  CancelPlanningEventBody,
   CreateCycle201,
   CreateCycleBody,
   CreateEventTemplate201,
@@ -28,6 +30,7 @@ import type {
   MovePlanningEventBody,
   MovePlanningEventTimeBlock200,
   MovePlanningEventTimeBlockBody,
+  PreviewPlanningEventCancellation200,
   PreviewPlanningEventMove200,
   PreviewPlanningEventMoveBody,
   PreviewPlanningEventTimeBlockMove200,
@@ -309,15 +312,31 @@ const updatePlanningEventDetails = (
       );
     }
   /**
- * Cancel an Event within its Cycle.
+ * Preview cancelling a scheduled Event of a Sent Cycle, writing and sending nothing. Returns the scope bounds, the distinct published Volunteers who would be told (N9) and the Ministries they span, one told-count row per participating Ministry, and the open SwapRequests that would close. Advisory only: confirm recalculates. Refuses a Draft or Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION) and an Event that has started (ADMIN_CANCELLATION_WINDOW_CLOSED).
+ * @summary Preview cancelling an Event
+ */
+const previewPlanningEventCancellation = (
+    cycleId: string,
+    eventId: string,
+ ) => {
+      return apiClient<PreviewPlanningEventCancellation200>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/cancel/preview`, method: 'POST'
+    },
+      );
+    }
+  /**
+ * Irreversibly cancel a scheduled Event of a Sent Cycle. The confirmation must be the request locale's fixed word (cancel / cancelar), trimmed and case-insensitive, else 422 VALIDATION_ERROR reason CANCEL_CONFIRMATION. Recalculates the impact under the Church and Event Participation locks, then in one transaction: soft-cancels and audits (event_cancelled, acting User) every active Assignment, closes their open SwapRequests as covered without N8, deletes their UnavailableShifts, drops only their last-told entries, enqueues N9 per published Volunteer and N10 per leader, and cancels the Event. Returns the actual impact. Refuses as preview does; a racing confirm gets ILLEGAL_STATE_TRANSITION.
  * @summary Cancel an Event
  */
 const cancelPlanningEvent = (
     cycleId: string,
     eventId: string,
+    cancelPlanningEventBody: CancelPlanningEventBody,
  ) => {
-      return apiClient<void>(
-      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/cancel`, method: 'POST'
+      return apiClient<CancelPlanningEvent200>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/cancel`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: cancelPlanningEventBody
     },
       );
     }
@@ -449,7 +468,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,previewPlanningEventCancellation,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
@@ -469,6 +488,7 @@ export type CreatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnTyp
 export type UpdatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEvent']>>>
 export type DeletePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deletePlanningEvent']>>>
 export type UpdatePlanningEventDetailsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventDetails']>>>
+export type PreviewPlanningEventCancellationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['previewPlanningEventCancellation']>>>
 export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['cancelPlanningEvent']>>>
 export type PreviewPlanningEventMoveResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['previewPlanningEventMove']>>>
 export type MovePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['movePlanningEvent']>>>

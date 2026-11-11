@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { ReactNode } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import type { TableProps as TablePrimitiveProps } from 'react-aria-components/Table';
@@ -82,21 +83,21 @@ export interface DataTableProps<T extends object> {
   className?: string;
 }
 
-const DEFAULT_LOADING_CONTENT = (
+const defaultLoadingContent = () => (
   <p
     className="text-muted-foreground text-sm"
     data-testid="data-table-loading-state"
   >
-    Loading…
+    {m.shell_table_loading()}
   </p>
 );
 
-const DEFAULT_EMPTY_CONTENT = (
+const defaultEmptyContent = () => (
   <p
     className="text-muted-foreground text-sm"
     data-testid="data-table-empty-state"
   >
-    No data available.
+    {m.shell_table_empty()}
   </p>
 );
 
@@ -122,8 +123,8 @@ export function DataTable<T extends object>({
   sortDescriptor,
   onSortChange,
   isLoading = false,
-  loadingContent = DEFAULT_LOADING_CONTENT,
-  emptyContent = DEFAULT_EMPTY_CONTENT,
+  loadingContent = defaultLoadingContent(),
+  emptyContent = defaultEmptyContent(),
   selectionMode,
   selectionBehavior,
   disallowEmptySelection,

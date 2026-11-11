@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import type { QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import {
@@ -20,11 +21,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
+        // presentation-text-ignore: product name, not translatable copy
         title: 'church',
       },
       {
         name: 'description',
-        content: 'church is a web application',
+        content: m.shell_app_description(),
       },
     ],
     links: [

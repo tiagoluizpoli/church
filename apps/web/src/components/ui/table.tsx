@@ -1,5 +1,6 @@
 'use client';
 
+import { m } from '@church/i18n/messages';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
 import { createContext, use } from 'react';
 import { Button } from 'react-aria-components/Button';
@@ -281,10 +282,10 @@ const TableBody = <T extends object>({
 
             <div className="absolute top-[65%] space-y-0.5 px-2 text-center">
               <CardTitle className="font-semibold text-lg">
-                No data found
+                {m.shell_table_empty_title()}
               </CardTitle>
               <CardDescription>
-                No information is currently available in this section.
+                {m.shell_table_empty_description()}
               </CardDescription>
             </div>
           </div>

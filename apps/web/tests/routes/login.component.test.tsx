@@ -53,9 +53,9 @@ describe('the sign-in route (login)', () => {
 
     expect(await screen.findByText(m.auth_sign_in_title())).toBeVisible();
     expect(screen.getByText(m.auth_sign_in_invitation_only())).toBeVisible();
-    expect(screen.queryByText('Create Account')).not.toBeInTheDocument();
+    expect(screen.queryByText(m.auth_sign_up_title())).not.toBeInTheDocument();
     expect(
-      screen.queryByText('Need an account? Sign Up'),
+      screen.queryByText(m.auth_sign_in_switch_to_sign_up()),
     ).not.toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/login');
   });

@@ -1083,6 +1083,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -1397,6 +1398,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -1724,6 +1726,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -1956,6 +1959,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -2178,6 +2182,154 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/cancel/preview:
+    post:
+      operationId: previewPlanningEventCancellation
+      summary: Preview cancelling an Event
+      tags:
+        - planning
+      description: "Preview cancelling a scheduled Event of a Sent Cycle, writing and
+        sending nothing. Returns the scope bounds, the distinct published
+        Volunteers who would be told (N9) and the Ministries they span, one
+        told-count row per participating Ministry, and the open SwapRequests
+        that would close. Advisory only: confirm recalculates. Refuses a Draft
+        or Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION) and an
+        Event that has started (ADMIN_CANCELLATION_WINDOW_CLOSED)."
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scope:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - event
+                        required:
+                          - kind
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - eventTimeBlock
+                          eventTimeBlockId:
+                            type: string
+                        required:
+                          - kind
+                          - eventTimeBlockId
+                        additionalProperties: false
+                  eventId:
+                    type: string
+                  eventTitle:
+                    type: string
+                  start:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  end:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  volunteerCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                  ministryCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                  ministries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ministryId:
+                          type: string
+                        ministryName:
+                          type: string
+                        volunteerCount:
+                          type: integer
+                          minimum: 0
+                          maximum: 9007199254740991
+                      required:
+                        - ministryId
+                        - ministryName
+                        - volunteerCount
+                      additionalProperties: false
+                  openSwapRequestCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                required:
+                  - scope
+                  - eventId
+                  - eventTitle
+                  - start
+                  - end
+                  - volunteerCount
+                  - ministryCount
+                  - ministries
+                  - openSwapRequestCount
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -2193,7 +2345,28 @@ paths:
       summary: Cancel an Event
       tags:
         - planning
-      description: Cancel an Event within its Cycle.
+      description: "Irreversibly cancel a scheduled Event of a Sent Cycle. The
+        confirmation must be the request locale's fixed word (cancel /
+        cancelar), trimmed and case-insensitive, else 422 VALIDATION_ERROR
+        reason CANCEL_CONFIRMATION. Recalculates the impact under the Church and
+        Event Participation locks, then in one transaction: soft-cancels and
+        audits (event_cancelled, acting User) every active Assignment, closes
+        their open SwapRequests as covered without N8, deletes their
+        UnavailableShifts, drops only their last-told entries, enqueues N9 per
+        published Volunteer and N10 per leader, and cancels the Event. Returns
+        the actual impact. Refuses as preview does; a racing confirm gets
+        ILLEGAL_STATE_TRANSITION."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmation:
+                  type: string
+              required:
+                - confirmation
       parameters:
         - schema:
             type: string
@@ -2208,6 +2381,126 @@ paths:
       responses:
         "200":
           description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scope:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - event
+                        required:
+                          - kind
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - eventTimeBlock
+                          eventTimeBlockId:
+                            type: string
+                        required:
+                          - kind
+                          - eventTimeBlockId
+                        additionalProperties: false
+                  eventId:
+                    type: string
+                  eventTitle:
+                    type: string
+                  start:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  end:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  volunteerCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                  ministryCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                  ministries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ministryId:
+                          type: string
+                        ministryName:
+                          type: string
+                        volunteerCount:
+                          type: integer
+                          minimum: 0
+                          maximum: 9007199254740991
+                      required:
+                        - ministryId
+                        - ministryName
+                        - volunteerCount
+                      additionalProperties: false
+                  openSwapRequestCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                required:
+                  - scope
+                  - eventId
+                  - eventTitle
+                  - start
+                  - end
+                  - volunteerCount
+                  - ministryCount
+                  - ministries
+                  - openSwapRequestCount
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/events/{eventId}/move/preview:
     post:
       operationId: previewPlanningEventMove
@@ -2425,6 +2718,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -2676,6 +2970,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -3034,6 +3329,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -3301,6 +3597,351 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/event-time-blocks/{eventTimeBlockId}/cancel/preview:
+    post:
+      operationId: previewPlanningEventTimeBlockCancellation
+      summary: Preview cancelling an EventTimeBlock
+      tags:
+        - planning
+      description: Preview cancelling one future EventTimeBlock of a scheduled Event
+        in a Sent Cycle, writing and sending nothing. Same impact shape as the
+        Event preview, limited to that block. Refuses as the Event preview does;
+        a block that has started is ADMIN_CANCELLATION_WINDOW_CLOSED, a
+        cancelled block is ILLEGAL_STATE_TRANSITION, an unknown or foreign block
+        is 404.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventTimeBlockId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scope:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - event
+                        required:
+                          - kind
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - eventTimeBlock
+                          eventTimeBlockId:
+                            type: string
+                        required:
+                          - kind
+                          - eventTimeBlockId
+                        additionalProperties: false
+                  eventId:
+                    type: string
+                  eventTitle:
+                    type: string
+                  start:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  end:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  volunteerCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                  ministryCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                  ministries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ministryId:
+                          type: string
+                        ministryName:
+                          type: string
+                        volunteerCount:
+                          type: integer
+                          minimum: 0
+                          maximum: 9007199254740991
+                      required:
+                        - ministryId
+                        - ministryName
+                        - volunteerCount
+                      additionalProperties: false
+                  openSwapRequestCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                required:
+                  - scope
+                  - eventId
+                  - eventTitle
+                  - start
+                  - end
+                  - volunteerCount
+                  - ministryCount
+                  - ministries
+                  - openSwapRequestCount
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/event-time-blocks/{eventTimeBlockId}/cancel:
+    post:
+      operationId: cancelPlanningEventTimeBlock
+      summary: Cancel an EventTimeBlock
+      tags:
+        - planning
+      description: "Irreversibly cancel one future EventTimeBlock of a scheduled Event
+        in a Sent Cycle, under the same confirmation word, locks and single
+        transaction as an Event cancellation but limited to that block: only its
+        Assignments, SwapRequests, UnavailableShifts and last-told entries are
+        touched, N9 lists only its published Shifts and N10 carries the block
+        bounds. The Event and sibling blocks are untouched. Returns the actual
+        impact."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmation:
+                  type: string
+              required:
+                - confirmation
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventTimeBlockId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scope:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - event
+                        required:
+                          - kind
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - eventTimeBlock
+                          eventTimeBlockId:
+                            type: string
+                        required:
+                          - kind
+                          - eventTimeBlockId
+                        additionalProperties: false
+                  eventId:
+                    type: string
+                  eventTitle:
+                    type: string
+                  start:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  end:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  volunteerCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                  ministryCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                  ministries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ministryId:
+                          type: string
+                        ministryName:
+                          type: string
+                        volunteerCount:
+                          type: integer
+                          minimum: 0
+                          maximum: 9007199254740991
+                      required:
+                        - ministryId
+                        - ministryName
+                        - volunteerCount
+                      additionalProperties: false
+                  openSwapRequestCount:
+                    type: integer
+                    minimum: 0
+                    maximum: 9007199254740991
+                required:
+                  - scope
+                  - eventId
+                  - eventTitle
+                  - start
+                  - end
+                  - volunteerCount
+                  - ministryCount
+                  - ministries
+                  - openSwapRequestCount
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -4747,6 +5388,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   field:
                     type: string
                   issues:
@@ -7458,6 +8100,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   issues:
                     type: array
                     items: {}
@@ -7644,6 +8287,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   issues:
                     type: array
                     items: {}
@@ -7786,6 +8430,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
                   issues:
                     type: array
                     items: {}
@@ -10083,6 +10728,47 @@ paths:
                                         - volunteerCount
                                         - impacts
                                       additionalProperties: false
+                                    - type: object
+                                      properties:
+                                        kind:
+                                          type: string
+                                          enum:
+                                            - cancel
+                                        start:
+                                          type: string
+                                          format: date-time
+                                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                        end:
+                                          type: string
+                                          format: date-time
+                                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                        impacts:
+                                          minItems: 1
+                                          type: array
+                                          items:
+                                            type: object
+                                            properties:
+                                              ministryId:
+                                                type: string
+                                                format: uuid
+                                                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                              ministryName:
+                                                type: string
+                                              volunteerCount:
+                                                type: integer
+                                                minimum: 0
+                                                maximum: 9007199254740991
+                                            required:
+                                              - ministryId
+                                              - ministryName
+                                              - volunteerCount
+                                            additionalProperties: false
+                                      required:
+                                        - kind
+                                        - start
+                                        - end
+                                        - impacts
+                                      additionalProperties: false
                               required:
                                 - cycleId
                                 - cycleName
@@ -10092,6 +10778,84 @@ paths:
                                 - churchTimezone
                                 - ministries
                                 - change
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - event_cancelled
+                            data:
+                              type: object
+                              properties:
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                eventId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                eventTitle:
+                                  type: string
+                                start:
+                                  type: string
+                                  format: date-time
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                churchTimezone:
+                                  type: string
+                                shifts:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      eventTitle:
+                                        type: string
+                                      roleName:
+                                        type: string
+                                      sectorName:
+                                        type: string
+                                      startsAt:
+                                        type: string
+                                        format: date-time
+                                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                      endsAt:
+                                        type: string
+                                        format: date-time
+                                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                    required:
+                                      - eventTitle
+                                      - roleName
+                                      - sectorName
+                                      - startsAt
+                                      - endsAt
+                                    additionalProperties: false
+                              required:
+                                - cycleId
+                                - eventId
+                                - eventTitle
+                                - start
+                                - churchTimezone
+                                - shifts
                               additionalProperties: false
                             createdAt:
                               type: string
@@ -14040,6 +14804,47 @@ paths:
                                         - volunteerCount
                                         - impacts
                                       additionalProperties: false
+                                    - type: object
+                                      properties:
+                                        kind:
+                                          type: string
+                                          enum:
+                                            - cancel
+                                        start:
+                                          type: string
+                                          format: date-time
+                                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                        end:
+                                          type: string
+                                          format: date-time
+                                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                        impacts:
+                                          minItems: 1
+                                          type: array
+                                          items:
+                                            type: object
+                                            properties:
+                                              ministryId:
+                                                type: string
+                                                format: uuid
+                                                pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                              ministryName:
+                                                type: string
+                                              volunteerCount:
+                                                type: integer
+                                                minimum: 0
+                                                maximum: 9007199254740991
+                                            required:
+                                              - ministryId
+                                              - ministryName
+                                              - volunteerCount
+                                            additionalProperties: false
+                                      required:
+                                        - kind
+                                        - start
+                                        - end
+                                        - impacts
+                                      additionalProperties: false
                               required:
                                 - cycleId
                                 - cycleName
@@ -14049,6 +14854,84 @@ paths:
                                 - churchTimezone
                                 - ministries
                                 - change
+                              additionalProperties: false
+                            createdAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            readAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - id
+                            - kind
+                            - data
+                            - createdAt
+                          additionalProperties: false
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                            kind:
+                              type: string
+                              enum:
+                                - event_cancelled
+                            data:
+                              type: object
+                              properties:
+                                cycleId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                eventId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                eventTitle:
+                                  type: string
+                                start:
+                                  type: string
+                                  format: date-time
+                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                churchTimezone:
+                                  type: string
+                                shifts:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    type: object
+                                    properties:
+                                      eventTitle:
+                                        type: string
+                                      roleName:
+                                        type: string
+                                      sectorName:
+                                        type: string
+                                      startsAt:
+                                        type: string
+                                        format: date-time
+                                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                      endsAt:
+                                        type: string
+                                        format: date-time
+                                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                    required:
+                                      - eventTitle
+                                      - roleName
+                                      - sectorName
+                                      - startsAt
+                                      - endsAt
+                                    additionalProperties: false
+                              required:
+                                - cycleId
+                                - eventId
+                                - eventTitle
+                                - start
+                                - churchTimezone
+                                - shifts
                               additionalProperties: false
                             createdAt:
                               type: string

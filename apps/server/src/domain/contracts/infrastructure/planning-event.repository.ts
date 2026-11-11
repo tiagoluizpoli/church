@@ -1,4 +1,5 @@
 import type {
+  AssignmentId,
   ChurchId,
   CycleId,
   EventId,
@@ -13,6 +14,7 @@ import type {
   EventStatus,
   EventWithEventTimeBlocks,
 } from '../../entities/event';
+import type { CancellationScopeAssignment } from '../../services/event-cancellation';
 import type {
   MoveClashCandidate,
   MoveScopeAssignment,
@@ -111,16 +113,16 @@ export interface LockEventParticipationsInput {
   tx: TransactionContext;
 }
 
-export interface ListMoveAffectedMinistriesInput {
+export interface ListScopeParticipatingMinistriesInput {
   churchId: ChurchId;
   cycleId: CycleId;
   eventId: EventId;
-  /** The moved blocks; a Ministry is affected when it opted into or staffs one. */
+  /** The scope's blocks; a Ministry participates when it opted into or staffs one. */
   eventTimeBlockIds: EventTimeBlockId[];
   tx: TransactionContext;
 }
 
-export interface MoveAffectedMinistry {
+export interface ScopeParticipatingMinistry {
   id: MinistryId;
   name: string;
   /** A confirmed availability answer of the Ministry exists in the Cycle. */
@@ -132,6 +134,35 @@ export interface MoveEventTimeBlocksInput {
   eventTimeBlockIds: EventTimeBlockId[];
   /** Added to each block's and each of its Shifts' start and end. */
   deltaMs: number;
+  tx: TransactionContext;
+}
+
+export interface ListCancellationScopeAssignmentsInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  /** Only this EventTimeBlock's Assignments; absent for the whole Event. */
+  eventTimeBlockId?: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
+export interface CancelEventTimeBlockInput {
+  churchId: ChurchId;
+  eventTimeBlockId: EventTimeBlockId;
+  tx: TransactionContext;
+}
+
+export interface DeleteScopeUnavailableShiftsInput {
+  churchId: ChurchId;
+  /** The cancelled blocks: every mark on one of their Shifts goes. */
+  eventTimeBlockIds: EventTimeBlockId[];
+  tx: TransactionContext;
+}
+
+export interface RemoveLastToldAssignmentsInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  /** The cancelled Assignments; every other last-told entry stays. */
+  assignmentIds: AssignmentId[];
   tx: TransactionContext;
 }
 
@@ -174,10 +205,32 @@ export interface PlanningEventRepository {
    * saves take; needs `tx`.
    */
   lockParticipations(input: LockEventParticipationsInput): Promise<void>;
-  /** Active Ministries opted into (or staffing) the moved blocks, by name. */
-  listMoveAffectedMinistries(
-    input: ListMoveAffectedMinistriesInput,
-  ): Promise<MoveAffectedMinistry[]>;
+  /** Active Ministries opted into (or staffing) the scope's blocks, by name: move and cancellation impact. */
+  listScopeParticipatingMinistries(
+    input: ListScopeParticipatingMinistriesInput,
+  ): Promise<ScopeParticipatingMinistry[]>;
   /** Shifts the blocks and all of their Shifts by one delta. */
   moveEventTimeBlocks(input: MoveEventTimeBlocksInput): Promise<void>;
+  /**
+   * The active Assignments (draft, pending, confirmed) on the cancellation
+   * scope, flagged published (pending/confirmed in a published Schedule) and
+   * with an open SwapRequest, with the Shift-line facts N9 freezes.
+   */
+  listCancellationScopeAssignments(
+    input: ListCancellationScopeAssignmentsInput,
+  ): Promise<CancellationScopeAssignment[]>;
+  /** Sets one EventTimeBlock `cancelled`; its siblings stay as they are. */
+  cancelEventTimeBlock(input: CancelEventTimeBlockInput): Promise<void>;
+  /** Deletes the UnavailableShifts on the blocks' Shifts; returns how many. */
+  deleteScopeUnavailableShifts(
+    input: DeleteScopeUnavailableShiftsInput,
+  ): Promise<number>;
+  /**
+   * Drops only these Assignments' entries from every last-told snapshot of
+   * the Cycle, keeping each row (even emptied) and its `toldAt`, so Send
+   * updates neither reports them as removals nor loses a genuine change.
+   */
+  removeLastToldAssignments(
+    input: RemoveLastToldAssignmentsInput,
+  ): Promise<void>;
 }

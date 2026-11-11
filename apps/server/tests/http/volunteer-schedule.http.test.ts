@@ -1,5 +1,11 @@
 import { appConfig } from '@church/app-config';
-import { ministryParticipation, swapRequest } from '@church/db';
+import {
+  event,
+  eventTimeBlock,
+  ministryParticipation,
+  swapRequest,
+} from '@church/db';
+import type { Instant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -21,7 +27,10 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildMinistry } from '@/seeds/builders/ministry';
-import { buildAssignment } from '@/seeds/builders/scheduling';
+import {
+  buildAssignment,
+  buildEventTimeBlock,
+} from '@/seeds/builders/scheduling';
 import {
   createSchedulingManagers,
   seedRequirement,
@@ -175,7 +184,7 @@ async function seedWorld() {
   const role = await seedRole({ churchId, ministryId, name: 'Teacher' });
   const assignMe = async (
     seeded: Awaited<ReturnType<typeof seedShiftGraph>>,
-    status: 'confirmed' | 'pending' = 'confirmed',
+    status: 'confirmed' | 'pending' | 'declined' = 'confirmed',
   ) => {
     const requirement = await seedRequirement({
       churchId,
@@ -449,5 +458,171 @@ describe('GET /volunteer/ministries/:ministryId/schedule (database-backed)', () 
       shiftLabel: 'Morning',
       volunteerDisplayName: 'Maria L.',
     });
+  });
+});
+
+describe('Volunteer reads after an admin cancellation', () => {
+  /**
+   * Live, a cancelled Event and a scheduled Event whose block is cancelled.
+   * Cancellation cancels active Assignments; a declined one stays declined,
+   * so only the Event or block status can hide it.
+   */
+  async function seedCancelled() {
+    const world = await seedWorld();
+    const { churchId, ministryId, assignMe } = world;
+    const cycle = await seedCycle({
+      churchId,
+      name: 'Current',
+      startOffsetMs: -DAY_MS,
+      endOffsetMs: 20 * DAY_MS,
+    });
+    const common = { churchId, ministryId, cycleId: cycle.id };
+    const live = await seedShiftGraph({
+      ...common,
+      title: 'Live',
+      startOffsetMs: DAY_MS,
+      endOffsetMs: DAY_MS + HOUR_MS,
+    });
+    const cancelledEvent = await seedShiftGraph({
+      ...common,
+      title: 'Cancelled Event',
+      startOffsetMs: 2 * DAY_MS,
+      endOffsetMs: 2 * DAY_MS + HOUR_MS,
+    });
+    const cancelledBlock = await seedShiftGraph({
+      ...common,
+      title: 'Cancelled Block',
+      startOffsetMs: 3 * DAY_MS,
+      endOffsetMs: 3 * DAY_MS + HOUR_MS,
+    });
+    const liveAssignment = await assignMe(live);
+    const inEvent = await assignMe(cancelledEvent, 'declined');
+    const inBlock = await assignMe(cancelledBlock, 'declined');
+    await db
+      .update(event)
+      .set({ status: 'cancelled' })
+      .where(eq(event.id, cancelledEvent.graph.event.id));
+    await db
+      .update(eventTimeBlock)
+      .set({ status: 'cancelled' })
+      .where(eq(eventTimeBlock.id, cancelledBlock.graph.eventTimeBlock.id));
+    return { ...world, cycle, live, liveAssignment, inEvent, inBlock };
+  }
+
+  it('drops cancelled Events and blocks from My schedule and keeps the live Assignment', async () => {
+    const { liveAssignment } = await seedCancelled();
+
+    const response = await app.inject({ method: 'GET', url: SCHEDULE_URL });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response
+        .json()
+        .assignments.map((a: { assignmentId: string }) => a.assignmentId),
+    ).toEqual([liveAssignment.id]);
+  });
+
+  it('drops cancelled Events and block Shifts from the Ministry schedule', async () => {
+    const { ministryId, cycle, live } = await seedCancelled();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/volunteer/ministries/${ministryId}/schedule?cycleId=${cycle.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const { published, events } = response.json();
+    expect(published).toBe(true);
+    // The block's Event stays (it is not cancelled), with no rows left.
+    expect(
+      events.map((item: { title: string; rows: { shiftId: string }[] }) => [
+        item.title,
+        item.rows.map(({ shiftId }) => shiftId),
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        ['Live', [live.shift.id, live.shift.id]],
+        ['Cancelled Block', []],
+      ]),
+    );
+    expect(events).toHaveLength(2);
+  });
+
+  it('keeps the live sibling block of the same Event when one block is cancelled', async () => {
+    const { churchId, ministryId, assignMe } = await seedWorld();
+    const cycle = await seedCycle({
+      churchId,
+      name: 'Current',
+      startOffsetMs: -DAY_MS,
+      endOffsetMs: 20 * DAY_MS,
+    });
+    const first = await seedShiftGraph({
+      churchId,
+      ministryId,
+      cycleId: cycle.id,
+      title: 'Two blocks',
+      startOffsetMs: DAY_MS,
+      endOffsetMs: DAY_MS + HOUR_MS,
+    });
+    const siblingStart = fromNow(DAY_MS + HOUR_MS);
+    const siblingEnd = fromNow(DAY_MS + 2 * HOUR_MS);
+    const siblingBlock = await buildEventTimeBlock({
+      db,
+      churchId,
+      eventId: first.graph.event.id,
+      start: siblingStart.toISOString() as Instant,
+      end: siblingEnd.toISOString() as Instant,
+      label: 'Sibling',
+    });
+    const sibling = {
+      graph: first.graph,
+      shift: await seedShift({
+        churchId,
+        participationId: first.graph.participation.id,
+        eventTimeBlockId: siblingBlock.id,
+        startTime: siblingStart,
+        endTime: siblingEnd,
+        label: 'Sibling',
+      }),
+    };
+    const inCancelled = await assignMe(first);
+    const inSibling = await assignMe(sibling);
+    await db
+      .update(eventTimeBlock)
+      .set({ status: 'cancelled' })
+      .where(eq(eventTimeBlock.id, first.graph.eventTimeBlock.id));
+
+    const mine = await app.inject({ method: 'GET', url: SCHEDULE_URL });
+    const ministry = await app.inject({
+      method: 'GET',
+      url: `/api/v1/volunteer/ministries/${ministryId}/schedule?cycleId=${cycle.id}`,
+    });
+    const detail = (id: string) =>
+      app.inject({ method: 'GET', url: `/api/v1/volunteer/assignments/${id}` });
+
+    expect(
+      mine
+        .json()
+        .assignments.map((a: { assignmentId: string }) => a.assignmentId),
+    ).toEqual([inSibling.id]);
+    const rowShiftIds = ministry
+      .json()
+      .events.flatMap((item: { rows: { shiftId: string }[] }) =>
+        item.rows.map(({ shiftId }) => shiftId),
+      );
+    expect(rowShiftIds).toContain(sibling.shift.id);
+    expect(rowShiftIds).not.toContain(first.shift.id);
+    expect((await detail(inSibling.id)).statusCode).toBe(200);
+    expect((await detail(inCancelled.id)).statusCode).toBe(404);
+  });
+
+  it('answers the stale-link 404 for an Assignment in a cancelled Event or block', async () => {
+    const { liveAssignment, inEvent, inBlock } = await seedCancelled();
+    const get = (id: string) =>
+      app.inject({ method: 'GET', url: `/api/v1/volunteer/assignments/${id}` });
+
+    expect((await get(liveAssignment.id)).statusCode).toBe(200);
+    expect((await get(inEvent.id)).statusCode).toBe(404);
+    expect((await get(inBlock.id)).statusCode).toBe(404);
   });
 });

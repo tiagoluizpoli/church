@@ -1,5 +1,6 @@
-import { availabilityAsk } from '@church/db';
+import { availabilityAsk, eventTimeBlock } from '@church/db';
 import { fromDate } from '@church/time';
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ChurchId, CycleId, MinistryId } from '@/domain/branded-ids';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
@@ -37,6 +38,8 @@ interface ServedShiftInput {
   ministryId: string;
   day: string;
   status?: 'scheduled' | 'cancelled';
+  /** Cancels the Event's only EventTimeBlock, leaving the Event scheduled. */
+  blockCancelled?: boolean;
   needs: NeededPlace[];
 }
 
@@ -51,6 +54,7 @@ interface NeededPlace {
  *   Morning needs Sound twice (two Sectors) and Camera
  *   Evening needs Camera
  *   Cancelled-Event Shift needs Sound (not served)
+ *   Cancelled-block Shift needs Lights and Sound (not served)
  *   Next Cycle's Shift needs Lights (not this Schedule)
  *   Another Ministry's Shift needs its own Role
  *
@@ -107,6 +111,7 @@ async function seedSchedule() {
     ministryId: servingMinistryId,
     day,
     status = 'scheduled',
+    blockCancelled = false,
     needs,
   }: ServedShiftInput) {
     const graph = await createSchedulingPhase3EventGraph({
@@ -118,6 +123,12 @@ async function seedSchedule() {
       end: new Date(`${day}T11:00:00.000Z`),
       status,
     });
+    if (blockCancelled) {
+      await db
+        .update(eventTimeBlock)
+        .set({ status: 'cancelled' })
+        .where(eq(eventTimeBlock.id, graph.eventTimeBlock.id));
+    }
     const shift = await buildShift({
       db,
       churchId,
@@ -160,6 +171,15 @@ async function seedSchedule() {
     day: '2026-08-16',
     status: 'cancelled',
     needs: [{ roleId: sound.id, sectorId: stage.id }],
+  });
+  const cancelledBlock = await servedShift({
+    ...inCycle,
+    day: '2026-08-23',
+    blockCancelled: true,
+    needs: [
+      { roleId: lights.id, sectorId: stage.id },
+      { roleId: sound.id, sectorId: stage.id },
+    ],
   });
   await servedShift({
     cycleId: nextCycle.id,
@@ -224,6 +244,7 @@ async function seedSchedule() {
     morning,
     evening,
     cancelled,
+    cancelledBlock,
     memberships: { ana, bia, caio, davi },
   };
 }
@@ -303,8 +324,16 @@ describe('Schedule reads of the availability repository', () => {
 
   describe('listCheckMarkCounts', () => {
     it('counts only marks on served Shifts needing a Role the check holder holds', async () => {
-      const { scope, seed, cycleId, morning, evening, cancelled, memberships } =
-        await seedSchedule();
+      const {
+        scope,
+        seed,
+        cycleId,
+        morning,
+        evening,
+        cancelled,
+        cancelledBlock,
+        memberships,
+      } = await seedSchedule();
       const churchId = seed.churchAId;
       const check = (ministryMembershipId: string) =>
         buildAvailabilityCheck({
@@ -333,6 +362,7 @@ describe('Schedule reads of the availability repository', () => {
       await mark(biaCheck.id, morning.id);
       await mark(biaCheck.id, evening.id);
       await mark(biaCheck.id, cancelled.id);
+      await mark(biaCheck.id, cancelledBlock.id);
       // Morning needs no Role that Caio holds.
       await mark(caioCheck.id, morning.id);
 

@@ -17,6 +17,8 @@ import type {
   ExpandedCalendarRowsState,
 } from './planning-admin.types';
 import {
+  canCancelEvent,
+  canCancelEventBlocks,
   groupRowsByWeek,
   isNotFoundError,
   toCycleCalendarTableRow,
@@ -52,6 +54,35 @@ function canPreviewEventMove({
   eventStatus,
 }: CanPreviewEventMoveInput): boolean {
   return cycleState === 'sent' && eventStatus === 'scheduled';
+}
+
+interface CancelPermissionsInput {
+  cycleState: GetCycle200CycleState;
+  item: CalendarVisibleRow;
+}
+
+interface CancelPermissions {
+  canCancelBlocks: boolean;
+  canCancel: boolean;
+}
+
+/** The cancel controls a calendar row or card offers; blocks judge their parent. */
+function cancelPermissions({
+  cycleState,
+  item,
+}: CancelPermissionsInput): CancelPermissions {
+  if (item.kind === 'event-time-block') {
+    const { parentStatus: eventStatus } = item;
+    const canCancelBlocks = canCancelEventBlocks({ cycleState, eventStatus });
+    return { canCancelBlocks, canCancel: false };
+  }
+  if (item.kind !== 'parent')
+    return { canCancelBlocks: false, canCancel: false };
+  const { status: eventStatus, start } = item.row;
+  return {
+    canCancelBlocks: canCancelEventBlocks({ cycleState, eventStatus }),
+    canCancel: canCancelEvent({ cycleState, eventStatus, start }),
+  };
 }
 
 type DialogState =
@@ -289,8 +320,12 @@ export function CycleReviewCard({
                       deleteEventTimeBlockPending,
                     })
                   }
-                  renderCell={({ item, column }) =>
-                    renderCalendarCell({
+                  renderCell={({ item, column }) => {
+                    const permissions = cancelPermissions({
+                      cycleState: reviewedCycle.state,
+                      item,
+                    });
+                    return renderCalendarCell({
                       item,
                       column,
                       cycleId: reviewedCycle.id,
@@ -304,6 +339,7 @@ export function CycleReviewCard({
                           cycleState: reviewedCycle.state,
                           eventStatus: item.row.status,
                         }),
+                      ...permissions,
                       isConfirmingDeleteEventTimeBlock:
                         item.kind === 'event-time-block' &&
                         isConfirmingDeleteEventTimeBlock({
@@ -333,10 +369,14 @@ export function CycleReviewCard({
                           eventId,
                           eventTimeBlockId,
                         }),
-                    })
-                  }
-                  renderMobileCard={({ item }) =>
-                    item.kind === 'week' ? (
+                    });
+                  }}
+                  renderMobileCard={({ item }) => {
+                    const permissions = cancelPermissions({
+                      cycleState: reviewedCycle.state,
+                      item,
+                    });
+                    return item.kind === 'week' ? (
                       <h3 className="font-semibold text-sm">
                         {weekLabel(item)}
                       </h3>
@@ -349,6 +389,7 @@ export function CycleReviewCard({
                           cycleState: reviewedCycle.state,
                           eventStatus: item.row.status,
                         })}
+                        {...permissions}
                         deleteEventTimeBlockPending={
                           deleteEventTimeBlockPending
                         }
@@ -356,8 +397,8 @@ export function CycleReviewCard({
                           handleDeleteEventTimeBlock
                         }
                       />
-                    ) : null
-                  }
+                    ) : null;
+                  }}
                 />
               </>
             ) : (

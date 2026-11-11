@@ -127,12 +127,15 @@ export class DrizzleAvailabilityCheckRepository
         eq(ministryParticipation.id, shiftRequirement.participationId),
       )
       .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
       .where(
         and(
           withChurchIsolation({ table: shiftRequirement, churchId }),
           eq(ministryParticipation.ministryId, ministryId),
           eq(event.cycleId, cycleId),
           ne(event.status, 'cancelled'),
+          ne(eventTimeBlock.status, 'cancelled'),
         ),
       )
       .as('served_requirement');
@@ -335,6 +338,7 @@ export class DrizzleAvailabilityCheckRepository
           eq(ministryParticipation.ministryId, ministryId),
           eq(event.cycleId, cycleId),
           ne(event.status, 'cancelled'),
+          ne(eventTimeBlock.status, 'cancelled'),
         ),
       )
       .groupBy(shift.id, event.id, eventTimeBlock.id)
@@ -645,9 +649,13 @@ export class DrizzleAvailabilityCheckRepository
         ),
       )
       .innerJoin(shift, eq(shift.participationId, ministryParticipation.id))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
       .where(
         and(
           eq(availabilityCheck.id, input.checkId),
+          // Cancelled work leaves the check: no Shift of a cancelled Event or block.
+          ne(event.status, 'cancelled'),
+          ne(eventTimeBlock.status, 'cancelled'),
           input.heldRolesOnly
             ? exists(
                 db

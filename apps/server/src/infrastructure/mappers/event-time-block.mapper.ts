@@ -31,7 +31,7 @@ export function mapEventTimeBlock({
     startTime: fromDate({ date: row.startTime }),
     endTime: fromDate({ date: row.endTime }),
     label: row.label ?? undefined,
-    status: 'active',
+    status: row.status,
     requirements,
   };
 

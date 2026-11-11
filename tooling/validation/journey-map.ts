@@ -95,6 +95,9 @@ const VOLUNTEER_AVAILABILITY_SPEC_PATHS = [
 // J9 (#812): swap request raise, keep, re-raise and cover.
 const SWAP_REQUEST_SPEC_PATHS = ['tests/scheduling/j9-swap-request.spec.ts'];
 
+// J10 (#826): a ChurchAdmin cancels a whole future Event after Send.
+const ADMIN_CANCEL_SPEC_PATHS = ['tests/scheduling/j10-admin-cancel.spec.ts'];
+
 const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/active-church-switching.spec.ts',
   'tests/identity/cross-tenant-invitation-isolation.spec.ts',
@@ -124,6 +127,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   ...LEADER_AVAILABILITY_SPEC_PATHS,
   ...VOLUNTEER_AVAILABILITY_SPEC_PATHS,
   ...SWAP_REQUEST_SPEC_PATHS,
+  ...ADMIN_CANCEL_SPEC_PATHS,
   'tests/scheduling/us4-schedule-publish.spec.ts',
   'tests/scheduling/us5-leader-reassign.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
@@ -671,6 +675,34 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   ].map((sourcePathPrefix) => ({
     sourcePathPrefix,
     specPaths: SWAP_REQUEST_SPEC_PATHS,
+  })),
+  // J10 (#826) — the Event cancellation dialog and its entry points.
+  ...[
+    'apps/web/src/features/scheduling/components/planning-admin/event-cancel-dialog.tsx',
+    'apps/web/src/features/scheduling/components/planning-admin/event-edit-page.tsx',
+    'apps/server/src/api/utils/cancel-confirmation.ts',
+    'apps/server/src/application/cancel-assignment.ts',
+    'apps/server/src/domain/services/event-cancellation.ts',
+    'apps/server/src/domain/errors/admin-cancellation-window-closed.ts',
+    'apps/server/src/domain/errors/cancel-confirmation-mismatch.ts',
+    'apps/server/src/domain/contracts/application/planning-event-manager.ts',
+    'apps/server/src/domain/contracts/infrastructure/planning-event.repository.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-planning-event.repository.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-assignment-audit.repository.ts',
+    'apps/server/src/infrastructure/mappers/event-time-block.mapper.ts',
+    'apps/server/src/infrastructure/services/email-templates.ts',
+    'apps/server/src/domain/contracts/infrastructure/email-sender.ts',
+    'apps/server/src/api/dtos/planning-event.dto.ts',
+    'apps/server/src/api/dtos/member-notification.dto.ts',
+    'apps/server/src/api/utils/error-messages.ts',
+    'apps/server/src/api/utils/error-table.ts',
+    'apps/server/src/application/db-volunteer-manager.ts',
+    'apps/server/src/domain/errors/index.ts',
+    'apps/server/src/domain/errors/validation-rule-error.ts',
+    'apps/web/src/infrastructure/api/churchAPI.schemas.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: ADMIN_CANCEL_SPEC_PATHS,
   })),
   // #217 — the church-admin-controller owns every cycle and event
   // endpoint these specs drive: list/detail isolation and the lock edge

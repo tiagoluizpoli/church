@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { EventCancelDialog } from './event-cancel-dialog';
 import { EventDeleteButton } from './event-delete-button';
 import { EventDetailsForm } from './event-details-form';
 import type { EventEditorCycleRange } from './event-editor.utils';
@@ -8,6 +9,7 @@ import {
   CancelToCycle,
   EventEditorPage,
 } from './event-editor-page';
+import { canCancelEvent } from './planning-admin.utils';
 import { useEditEvent } from './use-edit-event';
 import type {
   GetCycle200Cycle,
@@ -36,6 +38,19 @@ export function EventEditPage({ cycleId, eventId }: EventEditPageProps) {
           ? null
           : m.event_editor_edit_description()
       }
+      action={({ cycle, events }) => {
+        const graph = findGraph({ events, eventId });
+        if (!graph) return null;
+        const { status: eventStatus, start, title } = graph.event;
+        const { state: cycleState } = cycle;
+        return canCancelEvent({ cycleState, eventStatus, start }) ? (
+          <EventCancelDialog
+            cycleId={cycleId}
+            eventId={eventId}
+            title={title}
+          />
+        ) : null;
+      }}
     >
       {({ cycle, events }) => {
         const graph = findGraph({ events, eventId });

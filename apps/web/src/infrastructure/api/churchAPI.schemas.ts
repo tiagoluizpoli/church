@@ -459,6 +459,7 @@ export const CreateEventTemplate422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type CreateEventTemplate422 = {
@@ -598,6 +599,7 @@ export const UpdateEventTemplate422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type UpdateEventTemplate422 = {
@@ -737,6 +739,7 @@ export const CreatePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type CreatePlanningEvent422 = {
@@ -857,6 +860,7 @@ export const UpdatePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type UpdatePlanningEvent422 = {
@@ -970,12 +974,173 @@ export const UpdatePlanningEventDetails422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type UpdatePlanningEventDetails422 = {
   error: UpdatePlanningEventDetails422Error;
   message: string;
   reason?: UpdatePlanningEventDetails422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type PreviewPlanningEventCancellation200Scope = {
+  kind: 'event';
+} | {
+  kind: 'eventTimeBlock';
+  eventTimeBlockId: string;
+};
+
+export type PreviewPlanningEventCancellation200MinistriesItem = {
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+};
+
+export type PreviewPlanningEventCancellation200 = {
+  scope: PreviewPlanningEventCancellation200Scope;
+  eventId: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  ministryCount: number;
+  ministries: PreviewPlanningEventCancellation200MinistriesItem[];
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  openSwapRequestCount: number;
+};
+
+export type PreviewPlanningEventCancellation422Error = typeof PreviewPlanningEventCancellation422Error[keyof typeof PreviewPlanningEventCancellation422Error];
+
+
+export const PreviewPlanningEventCancellation422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type PreviewPlanningEventCancellation422Reason = typeof PreviewPlanningEventCancellation422Reason[keyof typeof PreviewPlanningEventCancellation422Reason];
+
+
+export const PreviewPlanningEventCancellation422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+} as const;
+
+export type PreviewPlanningEventCancellation422 = {
+  error: PreviewPlanningEventCancellation422Error;
+  message: string;
+  reason?: PreviewPlanningEventCancellation422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type CancelPlanningEventBody = {
+  confirmation: string;
+};
+
+export type CancelPlanningEvent200Scope = {
+  kind: 'event';
+} | {
+  kind: 'eventTimeBlock';
+  eventTimeBlockId: string;
+};
+
+export type CancelPlanningEvent200MinistriesItem = {
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+};
+
+export type CancelPlanningEvent200 = {
+  scope: CancelPlanningEvent200Scope;
+  eventId: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  ministryCount: number;
+  ministries: CancelPlanningEvent200MinistriesItem[];
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  openSwapRequestCount: number;
+};
+
+export type CancelPlanningEvent422Error = typeof CancelPlanningEvent422Error[keyof typeof CancelPlanningEvent422Error];
+
+
+export const CancelPlanningEvent422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type CancelPlanningEvent422Reason = typeof CancelPlanningEvent422Reason[keyof typeof CancelPlanningEvent422Reason];
+
+
+export const CancelPlanningEvent422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+} as const;
+
+export type CancelPlanningEvent422 = {
+  error: CancelPlanningEvent422Error;
+  message: string;
+  reason?: CancelPlanningEvent422Reason;
   field?: string;
   issues?: unknown[];
 };
@@ -1078,6 +1243,7 @@ export const PreviewPlanningEventMove422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type PreviewPlanningEventMove422 = {
@@ -1204,6 +1370,7 @@ export const MovePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type MovePlanningEvent422 = {
@@ -1360,6 +1527,7 @@ export const PreviewPlanningEventTimeBlockMove422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type PreviewPlanningEventTimeBlockMove422 = {
@@ -1491,12 +1659,183 @@ export const MovePlanningEventTimeBlock422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type MovePlanningEventTimeBlock422 = {
   error: MovePlanningEventTimeBlock422Error;
   message: string;
   reason?: MovePlanningEventTimeBlock422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type PreviewPlanningEventTimeBlockCancellation200Scope = {
+  kind: 'event';
+} | {
+  kind: 'eventTimeBlock';
+  eventTimeBlockId: string;
+};
+
+export type PreviewPlanningEventTimeBlockCancellation200MinistriesItem = {
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+};
+
+export type PreviewPlanningEventTimeBlockCancellation200 = {
+  scope: PreviewPlanningEventTimeBlockCancellation200Scope;
+  eventId: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  ministryCount: number;
+  ministries: PreviewPlanningEventTimeBlockCancellation200MinistriesItem[];
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  openSwapRequestCount: number;
+};
+
+export type PreviewPlanningEventTimeBlockCancellation404 = {
+  error: string;
+  message: string;
+};
+
+export type PreviewPlanningEventTimeBlockCancellation422Error = typeof PreviewPlanningEventTimeBlockCancellation422Error[keyof typeof PreviewPlanningEventTimeBlockCancellation422Error];
+
+
+export const PreviewPlanningEventTimeBlockCancellation422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type PreviewPlanningEventTimeBlockCancellation422Reason = typeof PreviewPlanningEventTimeBlockCancellation422Reason[keyof typeof PreviewPlanningEventTimeBlockCancellation422Reason];
+
+
+export const PreviewPlanningEventTimeBlockCancellation422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+} as const;
+
+export type PreviewPlanningEventTimeBlockCancellation422 = {
+  error: PreviewPlanningEventTimeBlockCancellation422Error;
+  message: string;
+  reason?: PreviewPlanningEventTimeBlockCancellation422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type CancelPlanningEventTimeBlockBody = {
+  confirmation: string;
+};
+
+export type CancelPlanningEventTimeBlock200Scope = {
+  kind: 'event';
+} | {
+  kind: 'eventTimeBlock';
+  eventTimeBlockId: string;
+};
+
+export type CancelPlanningEventTimeBlock200MinistriesItem = {
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+};
+
+export type CancelPlanningEventTimeBlock200 = {
+  scope: CancelPlanningEventTimeBlock200Scope;
+  eventId: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  ministryCount: number;
+  ministries: CancelPlanningEventTimeBlock200MinistriesItem[];
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  openSwapRequestCount: number;
+};
+
+export type CancelPlanningEventTimeBlock404 = {
+  error: string;
+  message: string;
+};
+
+export type CancelPlanningEventTimeBlock422Error = typeof CancelPlanningEventTimeBlock422Error[keyof typeof CancelPlanningEventTimeBlock422Error];
+
+
+export const CancelPlanningEventTimeBlock422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type CancelPlanningEventTimeBlock422Reason = typeof CancelPlanningEventTimeBlock422Reason[keyof typeof CancelPlanningEventTimeBlock422Reason];
+
+
+export const CancelPlanningEventTimeBlock422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+} as const;
+
+export type CancelPlanningEventTimeBlock422 = {
+  error: CancelPlanningEventTimeBlock422Error;
+  message: string;
+  reason?: CancelPlanningEventTimeBlock422Reason;
   field?: string;
   issues?: unknown[];
 };
@@ -2139,6 +2478,7 @@ export const MintMinistryInvitation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type MintMinistryInvitation422 = {
@@ -3192,6 +3532,7 @@ export const SaveEventTimeBlockPreparation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type SaveEventTimeBlockPreparation422 = {
@@ -3264,6 +3605,7 @@ export const AskScheduleAvailability422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type AskScheduleAvailability422 = {
@@ -3327,6 +3669,7 @@ export const SetAvailabilityDeadline422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
 } as const;
 
 export type SetAvailabilityDeadline422 = {
@@ -4282,7 +4625,52 @@ export type GetNotifications200ItemsItem = {
   volunteerCount: number;
   answersGiven: boolean;
 })[];
+} | {
+  kind: 'cancel';
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /** @minItems 1 */
+  impacts: ({
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+})[];
 };
+};
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  readAt?: string;
+} | {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id: string;
+  kind: 'event_cancelled';
+  data: {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  cycleId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  eventId: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  churchTimezone: string;
+  /** @minItems 1 */
+  shifts: ({
+  eventTitle: string;
+  roleName: string;
+  sectorName: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startsAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endsAt: string;
+})[];
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -5860,7 +6248,52 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   volunteerCount: number;
   answersGiven: boolean;
 })[];
+} | {
+  kind: 'cancel';
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /** @minItems 1 */
+  impacts: ({
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryId: string;
+  ministryName: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  volunteerCount: number;
+})[];
 };
+};
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  readAt?: string;
+} | {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id: string;
+  kind: 'event_cancelled';
+  data: {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  cycleId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  eventId: string;
+  eventTitle: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  churchTimezone: string;
+  /** @minItems 1 */
+  shifts: ({
+  eventTitle: string;
+  roleName: string;
+  sectorName: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startsAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endsAt: string;
+})[];
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;

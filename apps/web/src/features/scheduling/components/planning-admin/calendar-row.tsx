@@ -2,12 +2,14 @@ import { m } from '@church/i18n/messages';
 import type { Instant } from '@church/time';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { EventCancelDialog } from './event-cancel-dialog';
 import { EventMovePreview } from './event-move-preview';
 import type {
   CycleCalendarTableRow,
   CycleCalendarWeek,
 } from './planning-admin.types';
 import {
+  canCancelEventTimeBlock,
   eventStatusBadgeVariant,
   eventStatusLabel,
   timeBlockCountLabel,
@@ -26,6 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { DataTableColumn } from '@/components/ui/data-table';
+import { cn } from '@/lib/utils';
 import {
   formatCalendarDateOnly,
   formatInstantRangeOf,
@@ -48,10 +51,12 @@ export type CalendarVisibleRow =
   | {
       kind: 'event-time-block';
       parentId: string;
+      parentStatus: string;
       eventTimeBlockId: string;
       label: string;
       startTime: string;
       endTime: string;
+      status: 'active' | 'cancelled';
       isOnlyEventTimeBlockInEvent: boolean;
     };
 
@@ -79,10 +84,12 @@ export function buildVisibleCalendarRows({
           (eventTimeBlock): CalendarVisibleRow => ({
             kind: 'event-time-block',
             parentId: row.eventId,
+            parentStatus: row.status,
             eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
             label: eventTimeBlock.label,
             startTime: eventTimeBlock.startTime,
             endTime: eventTimeBlock.endTime,
+            status: eventTimeBlock.status,
             isOnlyEventTimeBlockInEvent:
               eventTimeBlock.isOnlyEventTimeBlockInEvent,
           }),
@@ -222,6 +229,10 @@ export interface RenderCalendarCellInput {
   isExpanded: boolean;
   isReadOnly: boolean;
   canPreviewMove?: boolean;
+  /** A future scheduled Event of a Sent Cycle can be cancelled. */
+  canCancel?: boolean;
+  /** The Event's blocks can be cancelled (Sent Cycle, scheduled Event). */
+  canCancelBlocks?: boolean;
   isConfirmingDeleteEventTimeBlock: boolean;
   deleteEventTimeBlockPending: boolean;
   timeZone: string;
@@ -245,6 +256,8 @@ export function renderCalendarCell({
   isExpanded,
   isReadOnly,
   canPreviewMove = false,
+  canCancel = false,
+  canCancelBlocks = false,
   isConfirmingDeleteEventTimeBlock,
   deleteEventTimeBlockPending,
   timeZone,
@@ -266,6 +279,7 @@ export function renderCalendarCell({
       isExpanded={isExpanded}
       isReadOnly={isReadOnly}
       canPreviewMove={canPreviewMove}
+      canCancel={canCancel}
       timeZone={timeZone}
       onToggleExpand={onToggleExpand}
     />
@@ -275,6 +289,11 @@ export function renderCalendarCell({
       visibleRow={item}
       cycleId={cycleId}
       canPreviewMove={canPreviewMove}
+      canCancelBlock={canCancelEventTimeBlock({
+        eventAllows: canCancelBlocks,
+        status: item.status,
+        start: item.startTime,
+      })}
       isReadOnly={isReadOnly}
       isConfirmingDelete={isConfirmingDeleteEventTimeBlock}
       deletePending={deleteEventTimeBlockPending}
@@ -292,6 +311,7 @@ interface ParentRowCellProps {
   isExpanded: boolean;
   isReadOnly: boolean;
   canPreviewMove: boolean;
+  canCancel: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
 }
@@ -303,6 +323,7 @@ function ParentRowCell({
   isExpanded,
   isReadOnly,
   canPreviewMove,
+  canCancel,
   timeZone,
   onToggleExpand,
 }: ParentRowCellProps) {
@@ -324,7 +345,15 @@ function ParentRowCell({
             {isExpanded ? <ChevronDown /> : <ChevronRight />}
           </Button>
           <span className="flex flex-col">
-            {row.title}
+            <span
+              className={
+                row.status === 'cancelled'
+                  ? 'text-muted-foreground line-through'
+                  : undefined
+              }
+            >
+              {row.title}
+            </span>
             {row.location ? (
               <span className="font-normal text-muted-foreground text-xs">
                 {m.cycle_review_location({ location: row.location })}
@@ -365,6 +394,14 @@ function ParentRowCell({
           size="icon-xs"
         />
       ) : null}
+      {column.id === 'actions' && canCancel ? (
+        <EventCancelDialog
+          cycleId={cycleId}
+          eventId={row.eventId}
+          title={row.title}
+          size="icon-xs"
+        />
+      ) : null}
     </>
   );
 }
@@ -374,6 +411,7 @@ interface EventTimeBlockRowCellProps {
   visibleRow: Extract<CalendarVisibleRow, { kind: 'event-time-block' }>;
   cycleId: string;
   canPreviewMove: boolean;
+  canCancelBlock: boolean;
   isReadOnly: boolean;
   isConfirmingDelete: boolean;
   deletePending: boolean;
@@ -389,6 +427,7 @@ function EventTimeBlockRowCell({
   visibleRow,
   cycleId,
   canPreviewMove,
+  canCancelBlock,
   isReadOnly,
   isConfirmingDelete,
   deletePending,
@@ -399,7 +438,14 @@ function EventTimeBlockRowCell({
   return (
     <>
       {column.id === 'event' ? (
-        <span className="pl-8 text-muted-foreground">{visibleRow.label}</span>
+        <span
+          className={cn(
+            'pl-8 text-muted-foreground',
+            visibleRow.status === 'cancelled' && 'line-through',
+          )}
+        >
+          {visibleRow.label}
+        </span>
       ) : null}
       {column.id === 'window' ? (
         <span className="text-muted-foreground">
@@ -420,7 +466,18 @@ function EventTimeBlockRowCell({
           size="icon-xs"
         />
       ) : null}
-      {column.id === 'actions' && !isReadOnly ? (
+      {column.id === 'actions' && canCancelBlock ? (
+        <EventCancelDialog
+          cycleId={cycleId}
+          eventId={visibleRow.parentId}
+          eventTimeBlockId={visibleRow.eventTimeBlockId}
+          title={visibleRow.label}
+          size="icon-xs"
+        />
+      ) : null}
+      {column.id === 'actions' &&
+      !isReadOnly &&
+      visibleRow.status === 'active' ? (
         <span className="flex items-center gap-1">
           {visibleRow.isOnlyEventTimeBlockInEvent ? (
             <Button

@@ -342,6 +342,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         });
       case 'schedule_published':
       case 'schedule_updated':
+      case 'event_cancelled':
         return {
           ...request.data,
           actionUrl: webLink({

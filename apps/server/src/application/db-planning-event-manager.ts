@@ -16,7 +16,7 @@ import type {
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
-  CancelPlanningEventManagerInput,
+  ConfirmPlanningCancellationManagerInput,
   ConfirmPlanningMoveManagerInput,
   CreatePlanningEventManagerInput,
   CreatePlanningEventTimeBlockManagerInput,
@@ -25,10 +25,12 @@ import type {
   GeneratedPlanningCounts,
   GeneratePlanningTemplatesInput,
   IPlanningEventManager,
+  PlanningCancellationManagerInput,
   PlanningEventGraph,
   PlanningMoveManagerInput,
   PlanningMovePreview,
   PlanningMoveResult,
+  PreviewPlanningCancellationManagerInput,
   PreviewPlanningMoveManagerInput,
   UpdatePlanningEventDetailsManagerInput,
   UpdatePlanningEventManagerInput,
@@ -61,6 +63,13 @@ import {
   eventTimeBlockEnvelope,
 } from '../domain/services/cycle-event-generator';
 import {
+  type CancellationImpact,
+  type CancellationScopeAssignment,
+  type ResolvedCancellationScope,
+  resolveCancellationScope,
+  summarizeCancellationImpact,
+} from '../domain/services/event-cancellation';
+import {
   assertEventGraph,
   type EventGraph,
 } from '../domain/services/event-graph';
@@ -69,6 +78,7 @@ import {
   type MoveScopeAssignment,
   proposeMove,
 } from '../domain/services/event-move';
+import { cancelAssignment } from './cancel-assignment';
 import { removeAssignment } from './remove-assignment';
 
 interface ComputeMoveInput {
@@ -82,6 +92,28 @@ interface ComputedMove extends PlanningMovePreview {
   cycle: Cycle;
   event: Event;
   scopeAssignments: MoveScopeAssignment[];
+}
+
+interface ComputeCancellationInput {
+  input: PlanningCancellationManagerInput;
+  church: Church;
+  tx: TransactionContext;
+}
+
+/** The cancellation computation with the facts confirm (and N9/N10) need. */
+interface ComputedCancellation {
+  impact: CancellationImpact;
+  cycle: Cycle;
+  event: Event;
+  resolved: ResolvedCancellationScope;
+  scopeAssignments: CancellationScopeAssignment[];
+}
+
+interface EnqueueEventCancelledInput {
+  actingUserId: UserId;
+  church: Church;
+  computed: ComputedCancellation;
+  tx: TransactionContext;
 }
 
 interface EnqueueEventMovedInput {
@@ -120,8 +152,8 @@ interface GetCycleEventInput {
     | EnsureWritableEventInput['input']
     | UpdatePlanningEventManagerInput
     | UpdatePlanningEventDetailsManagerInput
-    | CancelPlanningEventManagerInput
-    | DeletePlanningEventManagerInput;
+    | DeletePlanningEventManagerInput
+    | PlanningCancellationManagerInput;
   tx: TransactionContext;
 }
 
@@ -771,45 +803,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     });
   }
 
-  async cancelEvent(input: CancelPlanningEventManagerInput): Promise<void> {
-    const church = await this.churchRepository.getById({ id: input.churchId });
-
-    await this.unitOfWork.run(async (tx) => {
-      await this.cycleRepository.acquireChurchLock({
-        churchId: input.churchId,
-        tx,
-      });
-
-      const cycle = await this.ensureCycleWritable({
-        cycle: await this.cycleRepository.getById({ ...input, tx }),
-        churchTimeZone: church.timezone,
-      });
-      const currentEvent = await this.getCycleEvent({ input, tx });
-
-      if (cycle.state === 'sent' && currentEvent.status !== 'draft') {
-        throw new IllegalStateTransitionError({
-          from: currentEvent.status,
-          to: 'cancel',
-        });
-      }
-
-      // A Draft Event is deleted (deleteEvent), never cancelled.
-      if (currentEvent.status === 'draft') {
-        throw new IllegalStateTransitionError({
-          from: currentEvent.status,
-          to: 'cancel',
-        });
-      }
-
-      await this.eventRepository.updateEvent({
-        churchId: input.churchId,
-        eventId: input.eventId,
-        status: 'cancelled',
-        tx,
-      });
-    });
-  }
-
   /** N10 add: one outbox row per recipient, in the planning transaction. */
   private async enqueueEventAdded({
     churchId,
@@ -940,13 +933,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     tx,
   }: EnqueueEventMovedInput): Promise<void> {
     const churchId = church.id;
-    const ministries = await this.eventRepository.listMoveAffectedMinistries({
-      churchId,
-      cycleId: cycle.id,
-      eventId: event.id,
-      eventTimeBlockIds: movedBlockIds,
-      tx,
-    });
+    const ministries =
+      await this.eventRepository.listScopeParticipatingMinistries({
+        churchId,
+        cycleId: cycle.id,
+        eventId: event.id,
+        eventTimeBlockIds: movedBlockIds,
+        tx,
+      });
     if (ministries.length === 0) return;
     const adminName =
       (await this.churchRepository.findUserName({ userId: actingUserId })) ??
@@ -1095,6 +1089,233 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         candidates,
       }),
     };
+  }
+
+  async previewCancellation(
+    input: PreviewPlanningCancellationManagerInput,
+  ): Promise<CancellationImpact> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+
+    // No Church lock and no write: the preview is advisory.
+    const { impact } = await this.unitOfWork.run((tx) =>
+      this.computeCancellation({ input, church, tx }),
+    );
+    return impact;
+  }
+
+  async confirmCancellation(
+    input: ConfirmPlanningCancellationManagerInput,
+  ): Promise<CancellationImpact> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+    const { churchId, eventId, scope, actingUserId } = input;
+
+    return this.unitOfWork.run(async (tx) => {
+      // Move's lock order: Assignment creation takes the Church lock, removal
+      // and preparation saves the Participation locks, so the recalculation
+      // below sees every committed Assignment and a racing confirm finds the
+      // scope already cancelled.
+      await this.cycleRepository.acquireChurchLock({ churchId, tx });
+      await this.eventRepository.lockParticipations({ churchId, eventId, tx });
+      const computed = await this.computeCancellation({ input, church, tx });
+      const { impact, cycle, resolved, scopeAssignments } = computed;
+      // Frozen before any write: the Shifts and counts the rows carry are
+      // exactly what the writes below cancel.
+      await this.enqueueEventCancelled({ actingUserId, church, computed, tx });
+
+      // A request raised while confirm waited is closed too: count closures.
+      let openSwapRequestCount = 0;
+      for (const { assignmentId } of scopeAssignments) {
+        const closed = await cancelAssignment({
+          churchId,
+          assignmentId,
+          actorId: actingUserId,
+          tx,
+          assignmentRepository: this.assignmentRepository,
+          auditRepository: this.auditRepository,
+          swapRequestRepository: this.swapRequestRepository,
+        });
+        if (closed) openSwapRequestCount += 1;
+      }
+      const { eventTimeBlockIds } = resolved;
+      await this.eventRepository.deleteScopeUnavailableShifts({
+        churchId,
+        eventTimeBlockIds,
+        tx,
+      });
+      const assignmentIds = scopeAssignments.map(
+        ({ assignmentId }) => assignmentId,
+      );
+      await this.eventRepository.removeLastToldAssignments({
+        churchId,
+        cycleId: cycle.id,
+        assignmentIds,
+        tx,
+      });
+      if (scope.kind === 'event') {
+        await this.eventRepository.updateEvent({
+          churchId,
+          eventId,
+          status: 'cancelled',
+          tx,
+        });
+      } else {
+        await this.eventRepository.cancelEventTimeBlock({
+          churchId,
+          eventTimeBlockId: scope.eventTimeBlockId,
+          tx,
+        });
+      }
+      return { ...impact, openSwapRequestCount };
+    });
+  }
+
+  /**
+   * N9 per published Volunteer with all of their cancelled Shift lines, then
+   * N10 `cancel` per leader (or fallback admin) of the participating
+   * Ministries, counting only the Volunteers N9 tells. One transaction.
+   */
+  private async enqueueEventCancelled({
+    actingUserId,
+    church,
+    computed: { impact, cycle, event, resolved, scopeAssignments },
+    tx,
+  }: EnqueueEventCancelledInput): Promise<void> {
+    const churchId = church.id;
+    const shiftsByUser = new Map<UserId, CancellationScopeAssignment[]>();
+    for (const row of scopeAssignments.filter(({ published }) => published)) {
+      shiftsByUser.set(row.userId, [
+        ...(shiftsByUser.get(row.userId) ?? []),
+        row,
+      ]);
+    }
+    for (const [userId, rows] of shiftsByUser) {
+      await this.notifications.enqueue({
+        tx,
+        kind: 'event_cancelled',
+        to: [{ userId, churchId }],
+        data: {
+          cycleId: cycle.id,
+          eventId: event.id,
+          eventTitle: event.title,
+          start: resolved.start,
+          churchName: church.name,
+          churchTimezone: church.timezone,
+          shifts: rows.map((row) => ({
+            eventTitle: event.title,
+            roleName: row.roleName,
+            sectorName: row.sectorName,
+            startsAt: row.shiftStart,
+            endsAt: row.shiftEnd,
+          })),
+        },
+      });
+    }
+
+    const { ministries } = impact;
+    if (ministries.length === 0) return;
+    const adminName =
+      (await this.churchRepository.findUserName({ userId: actingUserId })) ??
+      '';
+    const recipients = await this.recipients.eventChangedRecipients({
+      tx,
+      churchId,
+      ministryIds: ministries.map(({ ministryId }) => ministryId),
+      actingUserId,
+    });
+    for (const { ministryIds, ...recipient } of recipients) {
+      const impacts = ministries.filter(({ ministryId }) =>
+        ministryIds.includes(ministryId),
+      );
+      await this.notifications.enqueue({
+        tx,
+        kind: 'event_changed',
+        to: [recipient],
+        data: {
+          cycleId: cycle.id,
+          cycleName: cycle.name,
+          eventId: event.id,
+          eventTitle: event.title,
+          adminName,
+          churchName: church.name,
+          churchTimezone: church.timezone,
+          ministries: impacts.map(({ ministryId, ministryName }) => ({
+            id: ministryId,
+            name: ministryName,
+          })),
+          change: {
+            kind: 'cancel',
+            start: resolved.start,
+            end: resolved.end,
+            impacts,
+          },
+        },
+      });
+    }
+  }
+
+  /**
+   * The shared cancellation computation for one scope: lifecycle, isolation
+   * and window refusals, the scope's active Assignments and participating
+   * Ministries, and the impact. Reads only; confirm calls it again under its
+   * locks to get the fresh result.
+   */
+  private async computeCancellation({
+    input,
+    church,
+    tx,
+  }: ComputeCancellationInput): Promise<ComputedCancellation> {
+    const { churchId, eventId, scope } = input;
+    const stored = await this.cycleRepository.getById({ ...input, tx });
+    const cycle = await this.ensureCycleWritable({
+      cycle: stored,
+      churchTimeZone: church.timezone,
+    });
+    const event = await this.getCycleEvent({ input, tx });
+    // Only a scheduled Event of a Sent Cycle cancels; Draft deletes instead.
+    if (cycle.state !== 'sent' || event.status !== 'scheduled') {
+      throw new IllegalStateTransitionError({
+        from: cycle.state === 'sent' ? event.status : cycle.state,
+        to: 'cancel',
+      });
+    }
+
+    const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+      churchId,
+      eventId,
+      tx,
+    });
+    const currentInstant = now();
+    const resolved = resolveCancellationScope({
+      scope,
+      event,
+      eventTimeBlocks,
+      now: currentInstant,
+    });
+    const eventTimeBlockId =
+      scope.kind === 'eventTimeBlock' ? scope.eventTimeBlockId : undefined;
+    const scopeAssignments =
+      await this.eventRepository.listCancellationScopeAssignments({
+        churchId,
+        eventId,
+        eventTimeBlockId,
+        tx,
+      });
+    const ministries =
+      await this.eventRepository.listScopeParticipatingMinistries({
+        churchId,
+        cycleId: cycle.id,
+        eventId,
+        eventTimeBlockIds: resolved.eventTimeBlockIds,
+        tx,
+      });
+    const impact = summarizeCancellationImpact({
+      scope,
+      event,
+      resolved,
+      assignments: scopeAssignments,
+      ministries,
+    });
+    return { impact, cycle, event, resolved, scopeAssignments };
   }
 
   private async ensureCycleWritable({

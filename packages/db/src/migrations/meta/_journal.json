@@ -344,6 +344,20 @@
       "when": 1794346788189,
       "tag": "0048_assignment_audit_outlives_assignment",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794365576265,
+      "tag": "0049_event_time_block_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794366456441,
+      "tag": "0050_audit_action_event_cancelled",
+      "breakpoints": true
     }
   ]
 }

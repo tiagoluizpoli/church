@@ -53,6 +53,7 @@ export interface CycleCalendarEventTimeBlockRow {
   label: string;
   startTime: string;
   endTime: string;
+  status: 'active' | 'cancelled';
   isOnlyEventTimeBlockInEvent: boolean;
 }
 

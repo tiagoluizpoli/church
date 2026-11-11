@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { parseInstant, setTestClock } from '@church/time';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
@@ -479,6 +480,27 @@ describe('Edit Sent Event details', () => {
     getCycle.mockResolvedValue(
       cycleResponse({ state: 'sent', eventStatus: 'scheduled' }),
     );
+  });
+
+  it('offers Cancel event in the header until the Event starts', async () => {
+    setTestClock({ instant: parseInstant({ value: '2026-10-01T12:00:00Z' }) });
+    const { unmount } = renderPage();
+    await screen.findByTestId('event-details-form');
+    expect(
+      screen.getByRole('button', {
+        name: m.event_cancel_action_label({ title: 'Sunday' }),
+      }),
+    ).toBeInTheDocument();
+    unmount();
+
+    setTestClock({ instant: parseInstant({ value: '2026-10-18T12:00:00Z' }) });
+    renderPage();
+    await screen.findByTestId('event-details-form');
+    expect(
+      screen.queryByRole('button', {
+        name: m.event_cancel_action_label({ title: 'Sunday' }),
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps the Draft times-and-blocks instructions out of the header', async () => {

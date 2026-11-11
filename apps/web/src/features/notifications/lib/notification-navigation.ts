@@ -72,6 +72,7 @@ export function resolveNotificationDestination(
     }
     case 'schedule_published':
     case 'schedule_updated':
+    case 'event_cancelled':
       return { target: { to: '/my-schedule' }, isFallback: false };
     case 'swap_request': {
       const { ministryId, cycleId, swapRequestId } = item.data;

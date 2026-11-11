@@ -49,14 +49,8 @@ export class DrizzleAssignmentAuditRepository
         churchId,
         assignmentId: input.assignmentId,
         actorId: input.actorId,
-        action: (input.action === 'event_published' ||
-        input.action === 'event_cancelled'
-          ? 'status_change'
-          : input.action) as
-          | 'created'
-          | 'updated'
-          | 'deleted'
-          | 'status_change',
+        action:
+          input.action === 'event_published' ? 'status_change' : input.action,
         reason: input.reason ?? null,
         timestamp: nowAsDate(),
       })

@@ -177,6 +177,21 @@ export function renderNotification(
         kindLabel: m.notification_kind_cycle_ready_to_prepare(),
         actionLabel: m.notification_cycle_ready_to_prepare_action(),
       };
+    case 'event_cancelled': {
+      const { data } = item;
+      const locale = getLocale();
+      return {
+        title: eventCancelledTitle({ ...data, timeZone: data.churchTimezone }),
+        body: [
+          m.notification_event_cancelled_body(),
+          ...data.shifts.map((shift) =>
+            formatShiftLine({ shift, timeZone: data.churchTimezone, locale }),
+          ),
+        ].join('\n'),
+        kindLabel: m.notification_kind_event_cancelled(),
+        actionLabel: m.notification_event_cancelled_action(),
+      };
+    }
     case 'event_changed':
       return {
         ...eventChangedWords(item.data),
@@ -362,6 +377,34 @@ function eventChangedWords(data: EventChangedData) {
   const { cycleName, eventTitle, ministries, change, churchTimezone } = data;
   const { adminName } = data;
   const when = eventWhen({ ...change, timeZone: churchTimezone });
+  if (change.kind === 'cancel') {
+    return {
+      title: eventCancelledTitle({
+        eventTitle,
+        start: change.start,
+        timeZone: churchTimezone,
+      }),
+      body: [
+        when,
+        ...change.impacts.map(({ ministryName, volunteerCount: count }) =>
+          pluralMessage({
+            count,
+            one: () =>
+              m.notification_event_changed_cancel_ministry_one({
+                ministryName,
+                adminName,
+              }),
+            other: () =>
+              m.notification_event_changed_cancel_ministry_other({
+                ministryName,
+                adminName,
+                count,
+              }),
+          }),
+        ),
+      ].join('\n'),
+    };
+  }
   if (change.kind === 'move') {
     const previous = eventWhen({
       start: change.previousStart,
@@ -422,6 +465,25 @@ function eventMoveImpactLine({
       m.notification_event_changed_move_ministry_other({ ministryName, count }),
   });
   return answersGiven ? `${line} · ${m.prepare_answers_coverage_note()}` : line;
+}
+
+interface EventCancelledTitleInput {
+  eventTitle: string;
+  start: string;
+  timeZone: string;
+}
+
+/** N9 and N10 cancel share it: the scope's Church-Timezone day. */
+function eventCancelledTitle({
+  eventTitle,
+  start,
+  timeZone,
+}: EventCancelledTitleInput): string {
+  const startInstant = parseInstant({ value: start });
+  const startDay = today({ instant: startInstant, timeZone });
+  const locale = getLocale();
+  const day = formatDayLabel({ day: startDay, locale });
+  return m.notification_event_cancelled_title({ eventTitle, day });
 }
 
 interface EventWhenInput {

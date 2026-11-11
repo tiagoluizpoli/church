@@ -272,6 +272,10 @@ describe('volunteer dashboard', () => {
         eventTimeBlocks: [block],
       });
       f.eventRepo.getById.mockResolvedValue(event);
+      f.eventRepo.getWithEventTimeBlocks.mockResolvedValue({
+        event: event,
+        eventTimeBlocks: [],
+      });
       f.unavailableShiftRepo.listByVolunteerForEvent.mockResolvedValue([]);
       f.assignmentRepo.listByVolunteer.mockResolvedValue([assignment]);
       f.participationRepo.listByIds.mockResolvedValue([participation]);
@@ -365,6 +369,10 @@ describe('volunteer dashboard', () => {
       );
       f.participationRepo.listByIds.mockResolvedValue([participation]);
       f.eventRepo.getById.mockResolvedValue(event);
+      f.eventRepo.getWithEventTimeBlocks.mockResolvedValue({
+        event: event,
+        eventTimeBlocks: [],
+      });
       f.cycleRepo.getById.mockResolvedValue(
         new Cycle({
           id: cycleId,

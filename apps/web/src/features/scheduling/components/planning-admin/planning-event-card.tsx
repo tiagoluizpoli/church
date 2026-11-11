@@ -4,9 +4,11 @@ import { Link } from '@tanstack/react-router';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ConfirmDeleteEventTimeBlockInput } from './calendar-row';
+import { EventCancelDialog } from './event-cancel-dialog';
 import { EventMovePreview } from './event-move-preview';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
+  canCancelEventTimeBlock,
   eventStatusBadgeVariant,
   eventStatusLabel,
   timeBlockCountLabel,
@@ -24,6 +26,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
@@ -34,6 +37,10 @@ export interface PlanningEventCardProps {
   isReadOnly: boolean;
   /** A scheduled Event of a Sent Cycle can be previewed for a move. */
   canPreviewMove?: boolean;
+  /** A future scheduled Event of a Sent Cycle can be cancelled. */
+  canCancel?: boolean;
+  /** The Event's blocks can be cancelled (Sent Cycle, scheduled Event). */
+  canCancelBlocks?: boolean;
   deleteEventTimeBlockPending: boolean;
   onDeleteEventTimeBlockConfirm: (
     input: ConfirmDeleteEventTimeBlockInput,
@@ -53,6 +60,8 @@ export function PlanningEventCard({
   cycleId,
   isReadOnly,
   canPreviewMove = false,
+  canCancel = false,
+  canCancelBlocks = false,
   deleteEventTimeBlockPending,
   onDeleteEventTimeBlockConfirm,
 }: PlanningEventCardProps) {
@@ -60,6 +69,7 @@ export function PlanningEventCard({
     kind: 'none',
   });
   const { churchTimezone } = useTimezone();
+  const isCancelled = row.status === 'cancelled';
 
   /** Auto-close the confirm dialog on the falling edge of pending (mutation
    * settled) instead of synchronously in the click handler — otherwise the
@@ -82,12 +92,22 @@ export function PlanningEventCard({
 
   return (
     <div
-      className="surface-subtle workspace-panel"
+      className={cn(
+        'surface-subtle workspace-panel',
+        isCancelled && 'opacity-60',
+      )}
       data-testid="planning-event-card"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <div className="font-medium text-base">{row.title}</div>
+          <div
+            className={cn(
+              'font-medium text-base',
+              isCancelled && 'line-through',
+            )}
+          >
+            {row.title}
+          </div>
           {row.location ? (
             <div className="text-muted-foreground text-xs">
               {m.cycle_review_location({ location: row.location })}
@@ -122,14 +142,23 @@ export function PlanningEventCard({
         </div>
       ) : null}
 
-      {canPreviewMove ? (
+      {canPreviewMove || canCancel ? (
         <div className="mt-3 flex items-center gap-1">
-          <EventMovePreview
-            cycleId={cycleId}
-            eventId={row.eventId}
-            title={row.title}
-            start={row.start as Instant}
-          />
+          {canPreviewMove ? (
+            <EventMovePreview
+              cycleId={cycleId}
+              eventId={row.eventId}
+              title={row.title}
+              start={row.start as Instant}
+            />
+          ) : null}
+          {canCancel ? (
+            <EventCancelDialog
+              cycleId={cycleId}
+              eventId={row.eventId}
+              title={row.title}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -141,7 +170,11 @@ export function PlanningEventCard({
               data-testid="planning-event-time-block-item"
               className="flex items-center justify-between gap-2"
             >
-              <span>
+              <span
+                className={cn(
+                  eventTimeBlock.status === 'cancelled' && 'line-through',
+                )}
+              >
                 <span>{eventTimeBlock.label}</span> ·{' '}
                 <span>
                   {formatInstantRangeOf({
@@ -161,7 +194,20 @@ export function PlanningEventCard({
                   size="icon-xs"
                 />
               ) : null}
-              {!isReadOnly ? (
+              {canCancelEventTimeBlock({
+                eventAllows: canCancelBlocks,
+                status: eventTimeBlock.status,
+                start: eventTimeBlock.startTime,
+              }) ? (
+                <EventCancelDialog
+                  cycleId={cycleId}
+                  eventId={row.eventId}
+                  eventTimeBlockId={eventTimeBlock.eventTimeBlockId}
+                  title={`${row.title} · ${eventTimeBlock.label}`}
+                  size="icon-xs"
+                />
+              ) : null}
+              {!isReadOnly && eventTimeBlock.status === 'active' ? (
                 <span className="flex items-center gap-1">
                   {eventTimeBlock.isOnlyEventTimeBlockInEvent ? (
                     <Button

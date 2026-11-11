@@ -11,7 +11,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { church } from './church';
 import { role, sector } from './core';
-import { eventStatusEnum } from './enums';
+import { eventStatusEnum, eventTimeBlockStatusEnum } from './enums';
 import { ministryParticipation } from './participation';
 import { cycle, eventTemplate, templateTimeBlock } from './planning';
 
@@ -78,6 +78,8 @@ export const eventTimeBlock = pgTable(
       mode: 'date',
     }).notNull(),
     label: varchar('label', { length: 255 }),
+    // Cancelling one block; its Shifts are cancelled through it (no Shift status).
+    status: eventTimeBlockStatusEnum('status').default('active').notNull(),
     createdAt: timestamp('created_at', {
       withTimezone: true,
       mode: 'date',

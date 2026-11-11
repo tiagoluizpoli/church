@@ -1,10 +1,12 @@
 import { m } from '@church/i18n/messages';
 import {
   addCalendarDays,
+  compareInstants,
   formatMonthYear,
   formatWeekdayOfIndex,
   instantSpan,
   type Locale,
+  now,
   parseCalendarDay,
   parseInstant,
   parseTimeOfDay,
@@ -612,8 +614,60 @@ export function toCycleCalendarTableRow({
         label: eventTimeBlock.label ?? m.cycle_review_time_block_fallback(),
         startTime: eventTimeBlock.startTime,
         endTime: eventTimeBlock.endTime,
+        status: eventTimeBlock.status,
         isOnlyEventTimeBlockInEvent,
       }),
     ),
   };
+}
+
+interface CanCancelEventTimeBlockInput {
+  /** The Event allows block cancellation: Sent Cycle, scheduled Event. */
+  eventAllows: boolean;
+  status: string;
+  start: string;
+}
+
+interface HasStartedInput {
+  start: string;
+}
+
+/** Admin cancellation's window closes at the scope's start. */
+function hasStarted({ start }: HasStartedInput): boolean {
+  const currentInstant = now();
+  const startInstant = parseInstant({ value: start });
+  return compareInstants({ left: currentInstant, right: startInstant }) >= 0;
+}
+
+/** An active block that has not started; a started sibling does not matter. */
+export function canCancelEventTimeBlock({
+  eventAllows,
+  status,
+  start,
+}: CanCancelEventTimeBlockInput): boolean {
+  return eventAllows && status === 'active' && !hasStarted({ start });
+}
+
+/** A scheduled Event of a Sent Cycle; each block is judged on its own start. */
+export function canCancelEventBlocks({
+  cycleState,
+  eventStatus,
+}: Omit<CanCancelEventInput, 'start'>): boolean {
+  return cycleState === 'sent' && eventStatus === 'scheduled';
+}
+
+interface CanCancelEventInput {
+  cycleState: string;
+  eventStatus: string;
+  start: string;
+}
+
+/** A scheduled Event of a Sent Cycle that has not started; the server decides. */
+export function canCancelEvent({
+  cycleState,
+  eventStatus,
+  start,
+}: CanCancelEventInput): boolean {
+  const lifecycleAllows = canCancelEventBlocks({ cycleState, eventStatus });
+  return lifecycleAllows && !hasStarted({ start });
 }

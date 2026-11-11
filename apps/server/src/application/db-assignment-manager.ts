@@ -14,6 +14,8 @@ import type {
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
+import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
+import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
@@ -24,6 +26,7 @@ import type { VolunteerRepository } from '../domain/contracts/infrastructure/vol
 import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
+import { IllegalStateTransitionError } from '../domain/errors/illegal-state-transition';
 import { removeAssignment } from './remove-assignment';
 
 interface CreateParticipationAssignmentTransactionInput {
@@ -40,6 +43,8 @@ interface DbAssignmentManagerDependencies {
   volunteerRepository: VolunteerRepository;
   unavailableShiftRepository: UnavailableShiftRepository;
   cycleRepository: CycleRepository;
+  eventRepository: EventRepository;
+  eventTimeBlockRepository: EventTimeBlockRepository;
   swapRequestRepo: SwapRequestRepository;
   unitOfWork: UnitOfWork;
 }
@@ -52,6 +57,8 @@ export class DbAssignmentManager implements IAssignmentManager {
   private readonly volunteerRepository: VolunteerRepository;
   private readonly unavailableShiftRepository: UnavailableShiftRepository;
   private readonly cycleRepository: CycleRepository;
+  private readonly eventRepository: EventRepository;
+  private readonly eventTimeBlockRepository: EventTimeBlockRepository;
   private readonly swapRequestRepo: SwapRequestRepository;
   private readonly unitOfWork: UnitOfWork;
 
@@ -63,6 +70,8 @@ export class DbAssignmentManager implements IAssignmentManager {
     volunteerRepository,
     unavailableShiftRepository,
     cycleRepository,
+    eventRepository,
+    eventTimeBlockRepository,
     swapRequestRepo,
     unitOfWork,
   }: DbAssignmentManagerDependencies) {
@@ -73,6 +82,8 @@ export class DbAssignmentManager implements IAssignmentManager {
     this.volunteerRepository = volunteerRepository;
     this.unavailableShiftRepository = unavailableShiftRepository;
     this.cycleRepository = cycleRepository;
+    this.eventRepository = eventRepository;
+    this.eventTimeBlockRepository = eventTimeBlockRepository;
     this.swapRequestRepo = swapRequestRepo;
     this.unitOfWork = unitOfWork;
   }
@@ -346,6 +357,23 @@ export class DbAssignmentManager implements IAssignmentManager {
     });
     const currentInstant = now();
     assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
+    // Read under the caller's Church lock, after any cancellation committed.
+    const event = await this.eventRepository.getById({
+      churchId: input.churchId,
+      eventId: participation.eventId,
+      tx,
+    });
+    const block = await this.eventTimeBlockRepository.getById({
+      churchId: input.churchId,
+      eventTimeBlockId: shift.eventTimeBlockId,
+      tx,
+    });
+    if (event.status === 'cancelled' || block.status === 'cancelled') {
+      throw new IllegalStateTransitionError({
+        from: 'cancelled',
+        to: 'assign',
+      });
+    }
     const requirement = await this.shiftRepository.getRequirementForShift({
       churchId: input.churchId,
       shiftId: shift.id,

@@ -252,10 +252,18 @@ export function createPlanningEventRepositoryFake() {
     listMoveClashCandidates:
       vi.fn<PlanningEventRepository['listMoveClashCandidates']>(),
     lockParticipations: vi.fn<PlanningEventRepository['lockParticipations']>(),
-    listMoveAffectedMinistries:
-      vi.fn<PlanningEventRepository['listMoveAffectedMinistries']>(),
+    listScopeParticipatingMinistries:
+      vi.fn<PlanningEventRepository['listScopeParticipatingMinistries']>(),
     moveEventTimeBlocks:
       vi.fn<PlanningEventRepository['moveEventTimeBlocks']>(),
+    listCancellationScopeAssignments:
+      vi.fn<PlanningEventRepository['listCancellationScopeAssignments']>(),
+    cancelEventTimeBlock:
+      vi.fn<PlanningEventRepository['cancelEventTimeBlock']>(),
+    deleteScopeUnavailableShifts:
+      vi.fn<PlanningEventRepository['deleteScopeUnavailableShifts']>(),
+    removeLastToldAssignments:
+      vi.fn<PlanningEventRepository['removeLastToldAssignments']>(),
   } satisfies PlanningEventRepository;
 }
 

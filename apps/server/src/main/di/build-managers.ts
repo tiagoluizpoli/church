@@ -125,6 +125,8 @@ export function buildManagers({
       volunteerRepository,
       unavailableShiftRepository,
       cycleRepository,
+      eventRepository,
+      eventTimeBlockRepository,
       swapRequestRepo: swapRequestRepository,
       unitOfWork,
     });

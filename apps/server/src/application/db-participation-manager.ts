@@ -141,22 +141,29 @@ function compareScheduleAssignments({
       .filter(({ event }) => event.status === 'cancelled')
       .map(({ event }) => event.id),
   );
+  // A cancelled block's Shifts are named by its requirements.
+  const cancelledShiftIds = new Set(
+    events
+      .flatMap(({ eventTimeBlocks }) => eventTimeBlocks)
+      .filter(({ status }) => status === 'cancelled')
+      .flatMap(({ requirements }) => requirements)
+      .map(({ shiftId }) => shiftId),
+  );
+  const live = (items: ScheduleAssignmentSnapshot[]) =>
+    items.filter(
+      ({ eventId, shiftId }) =>
+        !cancelled.has(eventId) && !cancelledShiftIds.has(shiftId),
+    );
   const old = new Map(
-    baseline.map((row) => [
-      row.volunteerId,
-      row.assignments.filter((item) => !cancelled.has(item.eventId)),
-    ]),
+    baseline.map((row) => [row.volunteerId, live(row.assignments)]),
   );
   const ids = new Set([...old.keys(), ...current.keys()]);
   return [...ids]
-    .map((id) => ({
-      id,
-      changes: scheduleChanges({
-        before: old.get(id) ?? [],
-        after: current.get(id) ?? [],
-        at,
-      }),
-    }))
+    .map((id) => {
+      const before = old.get(id) ?? [];
+      const after = live(current.get(id) ?? []);
+      return { id, changes: scheduleChanges({ before, after, at }) };
+    })
     .filter(({ changes }) => changes.length > 0);
 }
 

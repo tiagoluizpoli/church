@@ -28,6 +28,11 @@ export const eventStatusEnum = pgEnum('event_status', [
   'past',
 ]);
 
+export const eventTimeBlockStatusEnum = pgEnum('event_time_block_status', [
+  'active',
+  'cancelled',
+]);
+
 export const cycleStateEnum = pgEnum('cycle_state', ['draft', 'sent', 'past']);
 
 export const participationStateEnum = pgEnum('participation_state', [
@@ -60,6 +65,7 @@ export const auditActionEnum = pgEnum('audit_action', [
   'updated',
   'deleted',
   'status_change',
+  'event_cancelled',
 ]);
 
 export const ministryInvitationStatusEnum = pgEnum(

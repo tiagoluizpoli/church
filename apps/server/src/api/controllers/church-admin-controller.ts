@@ -50,7 +50,10 @@ import {
 } from '../dtos/event-time-block.dto';
 import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
 import {
+  type CancelPlanningEventBody,
   type CreatePlanningEventBody,
+  cancellationImpactResponseSchema,
+  cancelPlanningEventBodySchema,
   createPlanningEventBodySchema,
   eventGraphMapper,
   eventGraphResponseSchema,
@@ -70,6 +73,7 @@ import {
   setDefaultDirectionBodySchema,
 } from '../dtos/usual-setup.dto';
 import { validationErrorResponseSchema } from '../dtos/validation-error.dto';
+import { assertCancelConfirmation } from '../utils/cancel-confirmation';
 import { refuse } from '../utils/refuse';
 import {
   dateFromCalendarDayString,
@@ -662,23 +666,60 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
+      '/cycles/:cycleId/events/:eventId/cancel/preview',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'previewPlanningEventCancellation',
+          summary: 'Preview cancelling an Event',
+          description:
+            'Preview cancelling a scheduled Event of a Sent Cycle, writing and sending nothing. Returns the scope bounds, the distinct published Volunteers who would be told (N9) and the Ministries they span, one told-count row per participating Ministry, and the open SwapRequests that would close. Advisory only: confirm recalculates. Refuses a Draft or Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION) and an Event that has started (ADMIN_CANCELLATION_WINDOW_CLOSED).',
+          response: {
+            200: cancellationImpactResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const impact = await this.planningEventManager.previewCancellation({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: { kind: 'event' },
+        });
+        return reply.send(impact);
+      },
+    );
+
+    app.post(
       '/cycles/:cycleId/events/:eventId/cancel',
       {
         schema: {
           tags: ['planning'],
           operationId: 'cancelPlanningEvent',
           summary: 'Cancel an Event',
-          description: 'Cancel an Event within its Cycle.',
+          description:
+            "Irreversibly cancel a scheduled Event of a Sent Cycle. The confirmation must be the request locale's fixed word (cancel / cancelar), trimmed and case-insensitive, else 422 VALIDATION_ERROR reason CANCEL_CONFIRMATION. Recalculates the impact under the Church and Event Participation locks, then in one transaction: soft-cancels and audits (event_cancelled, acting User) every active Assignment, closes their open SwapRequests as covered without N8, deletes their UnavailableShifts, drops only their last-told entries, enqueues N9 per published Volunteer and N10 per leader, and cancels the Event. Returns the actual impact. Refuses as preview does; a racing confirm gets ILLEGAL_STATE_TRANSITION.",
+          body: cancelPlanningEventBodySchema,
+          response: {
+            200: cancellationImpactResponseSchema,
+            422: validationErrorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params as PlanningEventRouteParams;
-        await this.planningEventManager.cancelEvent({
+        const { confirmation } = request.body as CancelPlanningEventBody;
+        assertCancelConfirmation({ confirmation, locale: request.locale });
+        const impact = await this.planningEventManager.confirmCancellation({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
+          scope: { kind: 'event' },
+          actingUserId: UserId.from(request.userId),
         });
-        return reply.status(204).send();
+        return reply.send(impact);
       },
     );
 
@@ -869,6 +910,86 @@ export class ChurchAdminController implements FastifyController {
         if (!result) return;
         const response = eventMoveMapper.toResponse(result);
         return reply.send(response);
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId/cancel/preview',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'previewPlanningEventTimeBlockCancellation',
+          summary: 'Preview cancelling an EventTimeBlock',
+          description:
+            'Preview cancelling one future EventTimeBlock of a scheduled Event in a Sent Cycle, writing and sending nothing. Same impact shape as the Event preview, limited to that block. Refuses as the Event preview does; a block that has started is ADMIN_CANCELLATION_WINDOW_CLOSED, a cancelled block is ILLEGAL_STATE_TRANSITION, an unknown or foreign block is 404.',
+          response: {
+            200: cancellationImpactResponseSchema,
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId, eventTimeBlockId } =
+          request.params as PlanningEventTimeBlockRouteParams;
+        const impact = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.planningEventManager.previewCancellation({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              scope: {
+                kind: 'eventTimeBlock',
+                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+              },
+            }),
+        });
+        if (!impact) return;
+        return reply.send(impact);
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId/cancel',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'cancelPlanningEventTimeBlock',
+          summary: 'Cancel an EventTimeBlock',
+          description:
+            'Irreversibly cancel one future EventTimeBlock of a scheduled Event in a Sent Cycle, under the same confirmation word, locks and single transaction as an Event cancellation but limited to that block: only its Assignments, SwapRequests, UnavailableShifts and last-told entries are touched, N9 lists only its published Shifts and N10 carries the block bounds. The Event and sibling blocks are untouched. Returns the actual impact.',
+          body: cancelPlanningEventBodySchema,
+          response: {
+            200: cancellationImpactResponseSchema,
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId, eventTimeBlockId } =
+          request.params as PlanningEventTimeBlockRouteParams;
+        const { confirmation } = request.body as CancelPlanningEventBody;
+        assertCancelConfirmation({ confirmation, locale: request.locale });
+        const impact = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.planningEventManager.confirmCancellation({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              scope: {
+                kind: 'eventTimeBlock',
+                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+              },
+              actingUserId: UserId.from(request.userId),
+            }),
+        });
+        if (!impact) return;
+        return reply.send(impact);
       },
     );
 

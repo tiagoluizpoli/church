@@ -60,6 +60,7 @@
   "error_invalid_cycle_events": "Some Events need repair before this Cycle can be sent: open each one listed and fix its dates or Time blocks. Nothing was changed.",
   "error_event_outside_cycle": "The Event must start on a day within the Cycle. It may end after the Cycle's last day.",
   "error_move_window_closed": "This can only be moved while it has not started, and only to a start in the future.",
+  "error_admin_cancellation_window_closed": "This can only be cancelled before it starts.",
   "error_last_remaining_event_time_block": "An Event needs at least one Time block. Add another Time block before removing this one.",
   "error_last_church_admin": "The Church needs at least one admin. Make someone else an admin first.",
   "error_shift_out_of_bounds": "The Shift must fall within its time block.",

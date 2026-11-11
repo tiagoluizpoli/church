@@ -60,6 +60,7 @@
   "error_invalid_cycle_events": "Alguns eventos precisam ser corrigidos antes de enviar este ciclo: abra cada um listado e corrija as datas ou os blocos de horário. Nada foi alterado.",
   "error_event_outside_cycle": "O evento deve começar em um dia dentro do ciclo. Ele pode terminar depois do último dia do ciclo.",
   "error_move_window_closed": "Só é possível alterar o horário antes do início, e apenas para um início no futuro.",
+  "error_admin_cancellation_window_closed": "Só é possível cancelar antes do início.",
   "error_last_remaining_event_time_block": "Um evento precisa de pelo menos um horário. Adicione outro horário antes de remover este.",
   "error_last_church_admin": "A Igreja precisa de pelo menos um Administrador. Torne outra pessoa Administrador primeiro.",
   "error_shift_out_of_bounds": "O turno deve estar dentro do seu bloco de horário.",

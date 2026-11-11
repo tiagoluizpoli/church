@@ -94,14 +94,15 @@ those files. It runs as the last step of `bun run lint`, so a finding fails
 lint and every `validate:affected`.
 
 **Scope.** All of `apps/web/src` (shared `components/ui` included) and
-`apps/desktop/src`; in `apps/server/src` only the email and response
-boundaries below. Skipped: `tests/`, Paraglide output, `*.gen.*`, `*.d.ts`,
+`apps/desktop/src`; in `apps/server/src` only the email, notification and
+response boundaries below. Skipped: `tests/`, Paraglide output, `*.gen.*`, `*.d.ts`,
 files with a generated header, seeds, catalogs, `packages/*` (generic code
 with no presentation), `apps/fumadocs` and `tooling/`.
 
-**Copy** is a literal whose authored text holds a letter once markup tags,
-HTML entities, URLs and email addresses are removed; template interpolations
-are runtime data. Punctuation, separators, symbols and digits alone are fine.
+**Copy** is a literal whose authored text holds a letter once markup tags
+(and `<!doctype>`), HTML entities, URLs and email addresses are removed. An
+interpolated value is runtime data, but a literal inside an interpolation is
+copy of its own (`` `${ready ? 'Ready' : name}` `` reports `Ready`). Punctuation, separators, symbols and digits alone are fine.
 Capitalization and spaces prove nothing: `'Close'` and a lower-case
 `aria-label="breadcrumb"` are copy; the context decides, not the wording.
 
@@ -116,6 +117,8 @@ a call result, identifier or property read is runtime data.
 | Copy attribute: `aria-label`, `aria-description`, `aria-roledescription`, `aria-valuetext`, `aria-placeholder`, `alt`, and copy names (below) | `placeholder="Search"`, `submitLabel="Save"` |
 | Property, variable or parameter default with a copy name | `{ label: 'Draft' }`, `const emptyText = 'None'`, `({ closeLabel = 'Close' })` |
 | Every value of a map or list variable with a copy name | `const STATUS_LABELS = { open: 'Open' }` |
+| Notification content: `title`, `body`, `actionLabel`, `kindLabel` of an object literal that has both `title` and `body` | `{ title: m.title(), body: 'Please join' }` |
+| `name`/`header` of each column of a `columns` attribute given inline, as a same-file constant, or as a call to a same-file function returning an array literal | `<DataTable columns={COLUMNS} />` with `const COLUMNS = [{ id: 'name', name: 'Name' }]` |
 | Return of a function with a copy name | `function statusLabel() { return 'Open'; }` |
 | First argument of `toast`, `toast.success/error/info/warning/message/loading`, `alert`, `confirm`, `prompt` (`window.` too) | `toast.error('Failed')` |
 | Zod check message (call chain rooted at `z`) | `z.string().min(2, 'Too short')`, `.refine(f, { message: '…' })` |
@@ -125,11 +128,18 @@ A copy name is `label`, `title`, `message`, `description`, `placeholder`,
 `heading`, `subheading`, `subtitle`, `caption`, `tooltip`, `hint` or `copy`
 (optionally plural), the camelCase suffix of one of these or `Text`
 (`submitLabel`, `emptyText`), or the SCREAMING_CASE suffix (`STATUS_LABELS`).
-A bare `text` is not one: it is too often a CSS or data key.
+A bare `text` is not one: it is too often a CSS or data key. In a map or
+list, an object with a copy-named field (`{ value: 'draft', label: m.draft() }`)
+is a record: only its copy-named fields are checked, so ids, values and
+tones beside them stay technical; an object without one is a nested map and
+its values are checked.
 
-**Server boundaries.** Literal values of the `EmailContent` fields `subject`,
-`greeting`, `heading`, `facts` and `footer`, of `label` inside an `action`
-object, and of `message` in an object passed to `.send(…)`. Other server
+**Server boundaries.** Literal values of the `EmailContent`/`RenderedEmail`
+fields `subject`, `greeting`, `heading`, `footer`, `html`, `text`, each
+element of `facts` and `list`, `label` inside an `action` object; the
+notification content fields above; and `message` in an object passed to
+`.send(…)`. Server `title` and `body` count only together, so OpenAPI
+`info.title` and Fastify schema `body` stay technical. Other server
 strings (OpenAPI descriptions, domain-error messages, Zod DTO issues) are
 English diagnostics.
 
@@ -141,9 +151,10 @@ since it returns keys.
 
 **Not followed** (review these by hand): copy that reaches a presentation
 context through a call, an import or a differently named variable or
-property (`{ id: 'name', name: 'Ministry' }` column definitions, a thrown
-message later shown with `toast.error(error.message)`), JSX built with
-`createElement`, and `toast.promise` options.
+property (imported or parameter-supplied `columns`, a column `name` passed
+anywhere but a `columns` attribute, a thrown message later shown with
+`toast.error(error.message)`), JSX built with `createElement`, and
+`toast.promise` options.
 
 **Suppression.** Put
 `// presentation-text-ignore: <why this text is not translatable copy>`

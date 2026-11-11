@@ -6,7 +6,7 @@ const FIX = 'use a catalog message (m.*) or pass translated content';
 const LETTER = /\p{L}/u;
 // Technical content that may sit inside presentation text without being copy.
 const NON_LINGUISTIC = [
-  /<\/?[a-zA-Z][^<>]*>/g, // markup tags
+  /<[!/]?[a-zA-Z][^<>]*>/g, // markup tags and doctype
   /&(?:[a-zA-Z]+|#\d+|#x[\da-fA-F]+);/g, // HTML entities
   /\b(?:https?|mailto|tel):[^\s"'<>]+/g, // URLs
   /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, // email addresses
@@ -28,14 +28,27 @@ const SUPPRESSION_PATTERN =
   /^\s*(?:\/\/|\{?\/\*)\s*presentation-text-ignore\b(?::([^*]*))?(?:\*\/\}?)?\s*$/;
 const SUPPRESSION_FORM =
   '// presentation-text-ignore: <why this text is not translatable copy>';
-// EmailContent fields (email-layout.ts) a server email fills with copy.
+// EmailContent and RenderedEmail fields (email-layout.ts) holding copy; the
+// list fields hold one copy line per element.
 const EMAIL_FIELDS = new Set([
   'subject',
   'greeting',
   'heading',
-  'facts',
   'footer',
+  'html',
+  'text',
 ]);
+const EMAIL_LIST_FIELDS = new Set(['facts', 'list']);
+// A rendered notification: an object literal with both `title` and `body`
+// (notification-render.ts); these of its fields hold copy.
+const NOTIFICATION_FIELDS = new Set([
+  'title',
+  'body',
+  'actionLabel',
+  'kindLabel',
+]);
+// Column fields a table renders as header copy (DataTable `columns`).
+const COLUMN_FIELDS = new Set(['name', 'header']);
 // Attribute, property, variable and parameter names that carry copy: the
 // ARIA text attributes, alt, and label/title/message-like names or suffixes.
 const COPY_WORDS = [
@@ -137,10 +150,17 @@ function textTerminals(expression: ts.Expression): ts.Node[] {
     }
     return [];
   }
-  return ts.isStringLiteralLike(expression) ||
-    ts.isTemplateExpression(expression)
-    ? [expression]
-    : [];
+  if (ts.isTemplateExpression(expression)) {
+    // The authored parts count as one text; literals inside interpolations
+    // (`${ready ? 'Ready' : name}`) are copy of their own.
+    return [
+      expression,
+      ...expression.templateSpans.flatMap((span) =>
+        textTerminals(span.expression),
+      ),
+    ];
+  }
+  return ts.isStringLiteralLike(expression) ? [expression] : [];
 }
 
 function unwrap(expression: ts.Expression): ts.Expression {
@@ -151,10 +171,20 @@ function unwrap(expression: ts.Expression): ts.Expression {
     : expression;
 }
 
+/** An object with a copy-named field (`{ value, label }`) is a record whose
+ * other fields are metadata; the copy-named ones are checked by name. */
+function isRecord(object: ts.ObjectLiteralExpression): boolean {
+  return object.properties.some((property) => {
+    const name = property.name && propertyName(property.name);
+    return name !== undefined && PRESENTATION_NAME.test(name);
+  });
+}
+
 /** Text terminals of a map or list's values (never its keys). */
 function valueTerminals(expression: ts.Expression): ts.Node[] {
   const value = unwrap(expression);
   if (ts.isObjectLiteralExpression(value)) {
+    if (isRecord(value)) return [];
     return value.properties.flatMap((property) =>
       ts.isPropertyAssignment(property)
         ? valueTerminals(property.initializer)
@@ -292,22 +322,45 @@ function isSentResponse(object: ts.ObjectLiteralExpression): boolean {
   );
 }
 
+/** The copy fields of a rendered notification (`{ title, body, … }`). */
+function notificationFields(
+  object: ts.ObjectLiteralExpression,
+): ts.PropertyAssignment[] {
+  const assignments = object.properties.filter(ts.isPropertyAssignment);
+  const names = new Set(assignments.map(({ name }) => propertyName(name)));
+  if (!names.has('title') || !names.has('body')) return [];
+  return assignments.filter(({ name }) => {
+    const field = propertyName(name);
+    return field !== undefined && NOTIFICATION_FIELDS.has(field);
+  });
+}
+
 function serverFindingsIn(sourceFile: ts.SourceFile): Finding[] {
   const findings: Finding[] = [];
+  const reported = new Set<ts.Node>();
   const report = ({
     expression,
     context,
+    terminals = textTerminals,
   }: {
     expression: ts.Expression;
     context: string;
+    terminals?: (expression: ts.Expression) => ts.Node[];
   }) => {
-    for (const node of valueTerminals(expression)) {
-      if (isCopy(authoredText(node))) {
-        findings.push({ node, context, text: literalText(node) });
-      }
+    for (const node of terminals(expression)) {
+      const authored = authoredText(node);
+      if (reported.has(node) || !isCopy(authored)) continue;
+      reported.add(node);
+      findings.push({ node, context, text: literalText(node) });
     }
   };
   const visit = (node: ts.Node) => {
+    if (ts.isObjectLiteralExpression(node)) {
+      for (const { name, initializer } of notificationFields(node)) {
+        const field = propertyName(name);
+        report({ expression: initializer, context: `notification "${field}"` });
+      }
+    }
     const name = ts.isPropertyAssignment(node)
       ? propertyName(node.name)
       : undefined;
@@ -315,6 +368,12 @@ function serverFindingsIn(sourceFile: ts.SourceFile): Finding[] {
       const { initializer, parent } = node;
       if (EMAIL_FIELDS.has(name)) {
         report({ expression: initializer, context: `email "${name}"` });
+      } else if (EMAIL_LIST_FIELDS.has(name)) {
+        report({
+          expression: initializer,
+          context: `email "${name}"`,
+          terminals: valueTerminals,
+        });
       } else if (name === 'label' && ownerProperty(parent) === 'action') {
         report({ expression: initializer, context: 'email "action.label"' });
       } else if (name === 'message' && isSentResponse(parent)) {
@@ -377,6 +436,59 @@ function returnedExpressions(node: FunctionWithBody): ts.Expression[] {
   return returned;
 }
 
+type LocalDeclaration = ts.VariableDeclaration | ts.FunctionDeclaration;
+
+/** Same-file variables and functions by name (first one wins). */
+function localDeclarations(
+  sourceFile: ts.SourceFile,
+): Map<string, LocalDeclaration> {
+  const declarations = new Map<string, LocalDeclaration>();
+  const visit = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) || ts.isFunctionDeclaration(node)) {
+      const { name } = node;
+      if (name && ts.isIdentifier(name) && !declarations.has(name.text)) {
+        declarations.set(name.text, node);
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return declarations;
+}
+
+interface ColumnArraysInput {
+  expression: ts.Expression;
+  declarations: Map<string, LocalDeclaration>;
+}
+
+/** The array literals a `columns` value is: inline, a same-file constant, or
+ * returned by a same-file function it calls. Anything else is not followed. */
+function columnArrays({
+  expression,
+  declarations,
+}: ColumnArraysInput): ts.ArrayLiteralExpression[] {
+  const value = unwrap(expression);
+  if (ts.isArrayLiteralExpression(value)) return [value];
+  const call = ts.isCallExpression(value) ? value : undefined;
+  const target = call ? call.expression : value;
+  const declaration = ts.isIdentifier(target)
+    ? declarations.get(target.text)
+    : undefined;
+  if (!declaration) return [];
+  const initializer = ts.isVariableDeclaration(declaration)
+    ? declaration.initializer
+    : undefined;
+  if (!call) {
+    const array = initializer && unwrap(initializer);
+    return array && ts.isArrayLiteralExpression(array) ? [array] : [];
+  }
+  const fn = ts.isFunctionDeclaration(declaration) ? declaration : initializer;
+  if (!fn || !isFunctionWithBody(fn)) return [];
+  return returnedExpressions(fn)
+    .map(unwrap)
+    .filter(ts.isArrayLiteralExpression);
+}
+
 function uiFindingsIn(sourceFile: ts.SourceFile): Finding[] {
   const findings: Finding[] = [];
   const reported = new Set<ts.Node>();
@@ -390,9 +502,31 @@ function uiFindingsIn(sourceFile: ts.SourceFile): Finding[] {
     terminals?: (expression: ts.Expression) => ts.Node[];
   }) => {
     for (const node of terminals(expression)) {
-      if (reported.has(node) || !isCopy(authoredText(node))) continue;
+      const authored = authoredText(node);
+      if (reported.has(node) || !isCopy(authored)) continue;
       reported.add(node);
       findings.push({ node, context, text: literalText(node) });
+    }
+  };
+  const declarations = localDeclarations(sourceFile);
+  const reportColumns = (expression: ts.Expression) => {
+    const arrays = columnArrays({ expression, declarations });
+    for (const column of arrays.flatMap(({ elements }) => elements)) {
+      if (!ts.isObjectLiteralExpression(column)) continue;
+      for (const property of column.properties) {
+        const field =
+          ts.isPropertyAssignment(property) && propertyName(property.name);
+        if (
+          field &&
+          ts.isPropertyAssignment(property) &&
+          COLUMN_FIELDS.has(field)
+        ) {
+          report({
+            expression: property.initializer,
+            context: `column "${field}"`,
+          });
+        }
+      }
     }
   };
   const reportNamed = ({
@@ -462,6 +596,13 @@ function uiFindingsIn(sourceFile: ts.SourceFile): Finding[] {
         : initializer;
       if (expression && PRESENTATION_NAME.test(name)) {
         report({ expression, context: `attribute "${name}"` });
+      }
+      if (expression && name === 'columns') reportColumns(expression);
+    }
+    if (ts.isObjectLiteralExpression(node)) {
+      for (const { name, initializer } of notificationFields(node)) {
+        const field = propertyName(name);
+        report({ expression: initializer, context: `notification "${field}"` });
       }
     }
     if (ts.isCallExpression(node)) reportCall(node);

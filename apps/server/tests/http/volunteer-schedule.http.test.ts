@@ -5,6 +5,7 @@ import {
   ministryParticipation,
   swapRequest,
 } from '@church/db';
+import type { Instant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -569,8 +570,8 @@ describe('Volunteer reads after an admin cancellation', () => {
       db,
       churchId,
       eventId: first.graph.event.id,
-      start: siblingStart,
-      end: siblingEnd,
+      start: siblingStart.toISOString() as Instant,
+      end: siblingEnd.toISOString() as Instant,
       label: 'Sibling',
     });
     const sibling = {

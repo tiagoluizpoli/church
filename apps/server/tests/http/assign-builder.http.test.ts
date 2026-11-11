@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { appConfig } from '@church/app-config';
 import { eventTimeBlock } from '@church/db';
+import { parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
 import {
@@ -196,8 +197,8 @@ describe('builder read', () => {
       db,
       churchId: seed.churchAId,
       eventId: graph.event.id,
-      start: new Date('2026-08-02T09:00:00Z'),
-      end: new Date('2026-08-02T11:00:00Z'),
+      start: parseInstant({ value: '2026-08-02T09:00:00Z' }),
+      end: parseInstant({ value: '2026-08-02T11:00:00Z' }),
       label: 'Sibling',
     });
     await db

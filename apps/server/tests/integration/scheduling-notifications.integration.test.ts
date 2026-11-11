@@ -1800,8 +1800,8 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       db: schedulingTestDb,
       churchId: ids.churchId,
       eventId,
-      start: new Date('2026-12-25T04:00:00.000Z'),
-      end: new Date('2026-12-25T06:00:00.000Z'),
+      start: parseInstant({ value: '2026-12-25T04:00:00.000Z' }),
+      end: parseInstant({ value: '2026-12-25T06:00:00.000Z' }),
       label: 'Sibling',
     });
     const book = async (block: string, volunteerId: string, hour: number) => {

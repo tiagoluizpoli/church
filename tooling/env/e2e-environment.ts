@@ -87,6 +87,8 @@ export function serverProcessEnv(input: E2eProcessEnvInput): E2eProcessEnv {
     PORT: input.urlSet.serverPort,
     CORS_ORIGIN: input.urlSet.webUrl,
     BETTER_AUTH_URL: input.urlSet.serverUrl,
+    // Specs read verification codes from the capture sender, not a mailbox.
+    DEV_EMAIL_SENDER: 'capture',
   };
 }
 

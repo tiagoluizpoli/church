@@ -24,6 +24,21 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local SMTP inbox for development email (DEV_EMAIL_SENDER=smtp, the default).
+  # SMTP on 1025, web inbox on 8025 of every host interface (reach it at the
+  # machine's IP). Messages persist in the volume; nothing is relayed.
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: church-mailpit
+    restart: unless-stopped
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    volumes:
+      - mailpit-data:/data
+
   # Answers only `*.<CHURCH_DEV_DOMAIN>` for this machine's worktree URLs.
   # The profile keeps db:start (and bootstrap), CI and E2E from starting it;
   # `bun run dns:start` renders its config and supplies both values below.
@@ -46,3 +61,4 @@ services:
 
 volumes:
   postgres-data:
+  mailpit-data:

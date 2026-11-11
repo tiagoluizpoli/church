@@ -10,6 +10,15 @@ export const env = createEnv({
     CORS_ORIGIN: z.url(),
     RESEND_API_KEY: z.string().optional(),
     RESEND_FROM_EMAIL: z.string().default('Church <onboarding@resend.dev>'),
+    /** Development sender; unset is SMTP. Test is always capture, production
+     * always Resend, whatever this says. */
+    DEV_EMAIL_SENDER: z.enum(['smtp', 'resend', 'capture']).optional(),
+    SMTP_HOST: z.string().default('localhost'),
+    SMTP_PORT: z.coerce.number().int().min(1).default(1025),
+    SMTP_SECURE: z.stringbool().default(false),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASSWORD: z.string().optional(),
+    SMTP_FROM_EMAIL: z.string().default('Church <noreply@church.test>'),
     OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
     OUTBOX_DRAIN_BATCH_SIZE: z.coerce.number().int().min(1).default(10),
     NODE_ENV: z

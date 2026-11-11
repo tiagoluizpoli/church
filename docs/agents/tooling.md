@@ -246,6 +246,33 @@ change takes effect once it is in the primary checkout.
   loads it beneath `.env.local`, so delete it once `church-shared.env` holds
   its machine-shared values.
 
+## Development email
+
+One server setting, `DEV_EMAIL_SENDER`, selects who sends email (Transactional
+and Notification alike, content and recipients unchanged): `smtp` (default when
+unset), `resend` or `capture`. An invalid value fails configuration. `NODE_ENV=test`
+(and the E2E server) always use capture; production always uses Resend.
+Selection is exclusive: nothing falls back to another sender, and a failed
+send surfaces through the existing error handling and outbox retries. The
+server starts even when SMTP is down. Restart the server to change the setting.
+
+- **smtp**: Mailpit from the root Compose (`bun run db:start`). SMTP is
+  `localhost:1025`; the inbox is `http://<machine IP>:8025`. Messages persist in
+  the `mailpit-data` volume across restarts; nothing is relayed. Read
+  verification codes and links in that inbox. Another server: set `SMTP_HOST`,
+  `SMTP_PORT`, `SMTP_SECURE` (implicit TLS), `SMTP_USER`/`SMTP_PASSWORD` and
+  `SMTP_FROM_EMAIL` in `church-shared.env`. A real relay delivers to original
+  recipients. SMTP has no provider-backed idempotency: an uncertain send that is
+  retried can arrive twice.
+- **resend**: needs `RESEND_API_KEY`; real recipients. Resend's default
+  `onboarding@resend.dev` sender only reaches the account owner's address; use a
+  verified domain in `RESEND_FROM_EMAIL` for others.
+- **capture**: in-memory; the debug readback of codes works only in this mode.
+
+Pending outbox rows use the sender selected when they are processed, including
+after a restart. Switching to `resend` or a real SMTP relay can send existing
+pending rows to their original recipients; review them first.
+
 ## Private worktree URLs
 
 `env:local` puts each worktree's manual URL set (`BETTER_AUTH_URL`,

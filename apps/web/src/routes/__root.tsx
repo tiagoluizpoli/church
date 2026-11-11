@@ -20,6 +20,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
+        // presentation-text-ignore: product name, not translatable copy
         title: 'church',
       },
       {

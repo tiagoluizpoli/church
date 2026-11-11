@@ -183,8 +183,9 @@ describe('EventCancelDialog', () => {
       screen.queryByRole('button', { name: m.event_cancel_confirm() }),
     ).not.toBeInTheDocument();
     expect(queryClient.getQueryState(['cycles'])?.isInvalidated).toBe(false);
+    // The corner X shares the pt-BR name; the footer button comes first.
     await user.click(
-      screen.getByRole('button', { name: m.event_cancel_done_close() }),
+      screen.getAllByRole('button', { name: m.event_cancel_done_close() })[0],
     );
     for (const queryKey of READERS) {
       expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true);

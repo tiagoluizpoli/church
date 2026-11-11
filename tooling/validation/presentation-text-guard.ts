@@ -509,12 +509,12 @@ function locationOf({
   sourceFile: ts.SourceFile;
   node: ts.Node;
 }): ts.LineAndCharacter {
-  const leading = ts.isJsxText(node)
-    ? node.text.length - node.text.trimStart().length
-    : 0;
-  return sourceFile.getLineAndCharacterOfPosition(
-    node.getStart(sourceFile) + leading,
-  );
+  // A JSX text's `text` starts at `pos` with its leading whitespace; offset
+  // from there (getStart() already skips that whitespace).
+  const start = ts.isJsxText(node)
+    ? node.pos + node.text.length - node.text.trimStart().length
+    : node.getStart(sourceFile);
+  return sourceFile.getLineAndCharacterOfPosition(start);
 }
 
 function failuresIn({

@@ -1,3 +1,5 @@
+import { outboxMessage } from '@church/db';
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { testDb, truncateAll } from './setup';
 import {
@@ -155,6 +157,34 @@ describe('DrizzleOutboxRepository', () => {
     const totalClaimed = first.length + second.length;
 
     expect(totalClaimed).toBe(1);
+  });
+
+  it('returns claimed rows oldest-scheduled first, whatever their storage order', async () => {
+    const enqueue = (id: string, scheduledFor: Date) =>
+      testDb.insert(outboxMessage).values({
+        id,
+        churchId: fixture.churchA.id,
+        kind: 'notification',
+        payload: {},
+        scheduledFor,
+        correlationId: id,
+      });
+    const earlier = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+    const later = '00000000-0000-4000-8000-000000000000';
+    await enqueue(earlier, new Date('2026-01-01T00:00:00.000Z'));
+    await enqueue(later, new Date('2026-01-01T00:00:01.000Z'));
+    // A rewritten row's new tuple lands after `later`, and its id sorts after
+    // it too, so neither heap nor primary-key order is schedule order.
+    await testDb
+      .update(outboxMessage)
+      .set({ attempts: 0 })
+      .where(eq(outboxMessage.id, earlier));
+
+    const claimed = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+
+    expect(claimed.map(({ id }) => id)).toEqual([earlier, later]);
   });
 });
 

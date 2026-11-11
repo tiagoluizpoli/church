@@ -13,6 +13,9 @@ export const isAdminOrLeader = (capabilities: CallerCapabilities) =>
 
 export interface CallerCapabilitiesState extends CallerCapabilities {
   isResolving: boolean;
+  /** The read failed (or answered for another Church): all capabilities are false, but this is not a "no capacity" result. */
+  isError: boolean;
+  retry: () => void;
 }
 
 /** Root of every caller-capabilities read; reset it when the caller's own authority changes. */
@@ -28,6 +31,7 @@ const NO_CAPABILITIES: CallerCapabilities = {
  * Resolves what the caller may do in the Active Church from the server's
  * capability projection. Loading, error and a projection for another Church
  * all read as no capability: a failed read never becomes an implicit grant.
+ * `isError` tells a failed read apart from a successful no-capacity result.
  */
 export function useCallerCapabilities(): CallerCapabilitiesState {
   const scope = useCallerCapabilitiesScope();
@@ -42,8 +46,12 @@ export function useCallerCapabilities(): CallerCapabilitiesState {
     retry: false,
   });
 
+  const retry = () => {
+    callerCapabilitiesQuery.refetch();
+  };
+
   if (!scope || callerCapabilitiesQuery.isLoading) {
-    return { ...NO_CAPABILITIES, isResolving: true };
+    return { ...NO_CAPABILITIES, isResolving: true, isError: false, retry };
   }
 
   const capabilities = callerCapabilitiesQuery.data;
@@ -51,7 +59,7 @@ export function useCallerCapabilities(): CallerCapabilitiesState {
     callerCapabilitiesQuery.isError ||
     capabilities?.churchId !== scope.churchId
   ) {
-    return { ...NO_CAPABILITIES, isResolving: false };
+    return { ...NO_CAPABILITIES, isResolving: false, isError: true, retry };
   }
 
   return {
@@ -59,5 +67,7 @@ export function useCallerCapabilities(): CallerCapabilitiesState {
     leadsMinistries: capabilities.ledMinistries.length > 0,
     hasVolunteerMembership: capabilities.hasVolunteerMembership,
     isResolving: false,
+    isError: false,
+    retry,
   };
 }

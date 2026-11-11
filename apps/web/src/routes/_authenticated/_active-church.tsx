@@ -116,7 +116,7 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
         // Keep the current Active Church; a generic denial never reveals
         // whether the linked resource exists in the target Church.
         throw redirect({
-          to: '/dashboard',
+          to: '/',
           search: { accessDenied: true },
         });
       }
@@ -136,10 +136,10 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
     }
     if (membershipRemovedFrom) {
       // The one remaining Membership just auto-selected silently — land on
-      // the dashboard specifically (not whatever route was in flight) so the
+      // Home specifically (not whatever route was in flight) so the
       // explanation has a stable, always-reachable place to show.
       throw redirect({
-        to: '/dashboard',
+        to: '/',
         search: removalSearch,
       });
     }

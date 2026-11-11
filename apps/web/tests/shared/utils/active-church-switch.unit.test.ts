@@ -42,17 +42,17 @@ describe('active Church route policy', () => {
       '/dashboard?section=availability#today',
       '/dashboard?section=availability#today',
     ],
-    ['/notifications', '/dashboard'],
+    ['/notifications', '/'],
     ['/cycles', '/cycles'],
     ['/cycles/', '/cycles/'],
     ['/schedules/', '/schedules/'],
     ['/event-templates', '/event-templates'],
-    ['/schedules/ministry-1/cycle-1/assign', '/dashboard'],
-    ['/cycles/cycle-1', '/dashboard'],
-    ['/scheduling/', '/dashboard'],
-    ['/schedules/ministry-1', '/dashboard'],
-    ['/unrecognized-route', '/dashboard'],
-    ['https://untrusted.example/dashboard', '/dashboard'],
+    ['/schedules/ministry-1/cycle-1/assign', '/'],
+    ['/cycles/cycle-1', '/'],
+    ['/scheduling/', '/'],
+    ['/schedules/ministry-1', '/'],
+    ['/unrecognized-route', '/'],
+    ['https://untrusted.example/dashboard', '/'],
   ])('resolves %s to %s', (destination, expectedDestination) => {
     expect(
       getActiveChurchDestination({
@@ -68,7 +68,7 @@ describe('active Church route policy', () => {
         availableAreas: ['dashboard'],
         destination: '/cycles?view=board#upcoming',
       }),
-    ).toBe('/dashboard');
+    ).toBe('/');
   });
 
   it('preserves /dashboard with its query and hash when the target has the dashboard area', () => {
@@ -86,7 +86,7 @@ describe('active Church route policy', () => {
         availableAreas: ['scheduling'],
         destination: '/dashboard?section=availability#today',
       }),
-    ).toBe('/dashboard');
+    ).toBe('/');
   });
 
   it('preserves a scheduling collection route when the target has only the scheduling area', () => {
@@ -104,7 +104,7 @@ describe('active Church route policy', () => {
         availableAreas: [],
         destination: '/schedules/',
       }),
-    ).toBe('/dashboard');
+    ).toBe('/');
   });
 });
 
@@ -163,13 +163,14 @@ describe('switchActiveChurch', () => {
       selectActiveChurch,
     });
 
-    expect(navigate).toHaveBeenCalledWith({ destination: '/dashboard' });
+    expect(navigate).toHaveBeenCalledWith({ destination: '/' });
   });
 
   it('removes Church-scoped data without removing selector data', async () => {
     const { queryClient, selectActiveChurch, navigate } =
       createSwitchTestDependencies();
     queryClient.setQueryData(['cycles'], { church: 'church-a' });
+    queryClient.setQueryData(['home', 'church', 'church-a', 'u1'], { a: 1 });
     queryClient.setQueryData(['active-church', 'options'], {
       churches: ['church-a', 'church-b'],
     });
@@ -185,6 +186,9 @@ describe('switchActiveChurch', () => {
     });
 
     expect(queryClient.getQueryData(['cycles'])).toBeUndefined();
+    expect(
+      queryClient.getQueryData(['home', 'church', 'church-a', 'u1']),
+    ).toBeUndefined();
     expect(queryClient.getQueryData(['active-church', 'options'])).toEqual({
       churches: ['church-a', 'church-b'],
     });

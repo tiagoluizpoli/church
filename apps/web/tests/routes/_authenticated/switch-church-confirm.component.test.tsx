@@ -151,7 +151,7 @@ describe('switch-church-confirm route', () => {
       expect(selectActiveChurch).toHaveBeenCalledWith({ churchId: 'church-b' });
     });
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
   });
 
@@ -214,7 +214,7 @@ describe('switch-church-confirm route', () => {
     );
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
     expect(selectActiveChurch).not.toHaveBeenCalled();
   });
@@ -229,7 +229,7 @@ describe('switch-church-confirm route', () => {
     );
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/dashboard');
+      expect(router.state.location.pathname).toBe('/');
     });
     expect(router.state.location.search).toEqual({ accessDenied: true });
   });

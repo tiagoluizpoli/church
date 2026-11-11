@@ -1,11 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import {
-  CalendarClock,
-  Clock,
-  Home,
-  LayoutDashboard,
-  Search,
-} from 'lucide-react';
+import { CalendarClock, Clock, Home, Search } from 'lucide-react';
 import * as React from 'react';
 import { MobileDrawer } from './mobile-drawer';
 import { useMediaQuery } from '@/hooks/use-media-query';
@@ -27,7 +21,6 @@ interface CommandItem {
 
 const BASE_COMMANDS: CommandItem[] = [
   { label: 'Home', to: '/', icon: Home },
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Availability', to: '/availability', icon: Clock },
 ];
 

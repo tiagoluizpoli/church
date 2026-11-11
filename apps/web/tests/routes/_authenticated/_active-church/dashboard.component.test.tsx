@@ -1,14 +1,17 @@
 import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { callerCapabilitiesApiMock } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
-const getSession = vi.fn();
+// `/dashboard` is only a compatibility redirect to Home (`/`).
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
-    getSession: (...args: unknown[]) => getSession(...args),
+    getSession: vi.fn().mockResolvedValue({
+      data: { user: { id: 'u1', name: 'Dual Member' }, session: {} },
+    }),
     signOut: vi.fn(),
   },
 }));
@@ -16,6 +19,8 @@ vi.mock('@/lib/auth-client', () => ({
 vi.mock('@/utils/api-instances', async () => ({
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
+  callerCapabilitiesApi: (await import('@/tests/setup/caller-capabilities'))
+    .callerCapabilitiesApiMock,
 }));
 
 vi.mock('@/components/app-shell', () => ({
@@ -30,47 +35,31 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-const toastInfo = vi.fn();
-vi.mock('sonner', () => ({
-  toast: { info: (...args: unknown[]) => toastInfo(...args) },
-}));
-
-function renderDashboard(initialPath = '/dashboard') {
-  return renderRoute({ initialPath, churchTimezone: 'UTC' });
-}
-
 describe('dashboard route', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    getSession.mockResolvedValue({
-      data: { user: { id: 'u1', name: 'Dual Member' }, session: {} },
-    });
+    callerCapabilitiesApiMock.getCallerCapabilities.mockReturnValue(
+      new Promise(() => {}),
+    );
   });
 
-  it('toasts a removal notice naming the former Church when redirected here with removedFrom', async () => {
-    renderDashboard('/dashboard?removedFrom=Old+Church');
+  it('redirects to Home, carrying the supported search context', async () => {
+    const { router } = renderRoute({
+      initialPath:
+        '/dashboard?removedFrom=Old+Church&accessDenied=true&joinedChurch=St.+Peter&invitedMinistry=Youth',
+      churchTimezone: 'UTC',
+    });
 
-    await screen.findByText(m.dashboard_entry_title());
-    await waitFor(() => {
-      expect(toastInfo).toHaveBeenCalledWith(
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(router.state.location.search).toEqual({
+      removedFrom: 'Old Church',
+      accessDenied: true,
+      joinedChurch: 'St. Peter',
+      invitedMinistry: 'Youth',
+    });
+    expect(
+      await screen.findByText(
         m.no_access_removed_from({ churchName: 'Old Church' }),
-      );
-    });
-  });
-
-  it('does not toast on a plain, unprompted visit', async () => {
-    renderDashboard();
-
-    await screen.findByText(m.dashboard_entry_title());
-    expect(toastInfo).not.toHaveBeenCalled();
-  });
-
-  it('toasts a generic access-denied notice, naming no Church, when redirected here with accessDenied', async () => {
-    renderDashboard('/dashboard?accessDenied=true');
-
-    await screen.findByText(m.dashboard_entry_title());
-    await waitFor(() => {
-      expect(toastInfo).toHaveBeenCalledWith(m.switch_church_access_denied());
-    });
+      ),
+    ).toBeVisible();
   });
 });

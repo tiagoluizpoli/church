@@ -293,7 +293,12 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
       ],
     });
     applyPlanningTemplates.mockRejectedValue(
-      new Error('Apply templates failed due to conflict'),
+      Object.assign(new AxiosError('Conflict'), {
+        response: {
+          status: 409,
+          data: { message: 'Apply templates failed due to conflict' },
+        } as AxiosResponse,
+      }),
     );
 
     const user = userEvent.setup();

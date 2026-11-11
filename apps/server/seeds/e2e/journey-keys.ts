@@ -14,6 +14,7 @@ export const E2E_JOURNEY_RECIPE_NAMES = {
   volunteerAssignments: 'volunteer-assignments',
   schedulePublish: 'schedule-publish',
   swapRequest: 'swap-request',
+  adminCancel: 'admin-cancel',
   volunteerDashboard: 'volunteer-dashboard',
   leaderPrepare: 'leader-prepare',
   volunteerAvailability: 'volunteer-availability',

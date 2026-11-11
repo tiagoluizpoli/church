@@ -66,6 +66,28 @@ describe('createEmailSenders', () => {
     ).toThrow(/RESEND_API_KEY/);
   });
 
+  it.each([
+    { user: 'mailer' },
+    { password: 'secret' },
+  ])('rejects incomplete SMTP credentials %o', (credentials) => {
+    expect(() =>
+      createEmailSenders(
+        config({ smtp: { ...config({}).smtp, ...credentials } }),
+      ),
+    ).toThrow(/SMTP_USER and SMTP_PASSWORD/);
+  });
+
+  it('ignores SMTP settings when SMTP is not selected', () => {
+    expect(() =>
+      createEmailSenders(
+        config({
+          devSender: 'capture',
+          smtp: { ...config({}).smtp, user: 'mailer' },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
   it('starts when SMTP is unreachable and reports failure on send', async () => {
     const { serverEmailSender } = createEmailSenders(config({}));
     const email = serverEmailSender.prepare({

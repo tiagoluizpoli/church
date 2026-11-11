@@ -16,6 +16,7 @@ export const env = createEnv({
     SMTP_HOST: z.string().default('localhost'),
     SMTP_PORT: z.coerce.number().int().min(1).default(1025),
     SMTP_SECURE: z.stringbool().default(false),
+    SMTP_REQUIRE_TLS: z.stringbool().default(false),
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     SMTP_FROM_EMAIL: z.string().default('Church <noreply@church.test>'),

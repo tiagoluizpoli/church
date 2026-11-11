@@ -260,8 +260,13 @@ server starts even when SMTP is down. Restart the server to change the setting.
   `localhost:1025`; the inbox is `http://<machine IP>:8025`. Messages persist in
   the `mailpit-data` volume across restarts; nothing is relayed. Read
   verification codes and links in that inbox. Another server: set `SMTP_HOST`,
-  `SMTP_PORT`, `SMTP_SECURE` (implicit TLS), `SMTP_USER`/`SMTP_PASSWORD` and
-  `SMTP_FROM_EMAIL` in `church-shared.env`. A real relay delivers to original
+  `SMTP_PORT`, `SMTP_SECURE` (implicit TLS, usually 465), `SMTP_REQUIRE_TLS`
+  (insist on STARTTLS, usually 587; otherwise it is used only when offered),
+  `SMTP_USER`/`SMTP_PASSWORD` (set together; credentials are sensitive, keep
+  them in `church-shared.env`, never committed) and `SMTP_FROM_EMAIL` in
+  `church-shared.env`. Bad credentials or TLS failures surface as send errors
+  (a rejected login is permanent, connection errors retry); they never switch
+  sender, and an incomplete credential pair fails configuration at startup. A real relay delivers to original
   recipients. SMTP has no provider-backed idempotency: an uncertain send that is
   retried can arrive twice.
 - **resend**: needs `RESEND_API_KEY`; real recipients. Resend's default

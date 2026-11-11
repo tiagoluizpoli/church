@@ -12,12 +12,22 @@ interface Received {
 let server: SMTPServer;
 let received: Received[];
 let rejectWith: number | undefined;
+let authRequired = false;
 
 beforeEach(async () => {
   received = [];
   rejectWith = undefined;
+  authRequired = false;
   server = new SMTPServer({
-    authOptional: true,
+    get authOptional() {
+      return !authRequired;
+    },
+    onAuth(auth, _session, callback) {
+      if (auth.username === 'mailer' && auth.password === 'secret') {
+        return callback(null, { user: 'mailer' });
+      }
+      callback(new Error('Invalid login'));
+    },
     disabledCommands: ['STARTTLS'],
     onRcptTo(_address, _session, callback) {
       if (rejectWith) {
@@ -50,12 +60,15 @@ afterEach(async () => {
   await new Promise<void>((done) => server.close(() => done()));
 });
 
-function sender() {
+function sender(
+  extra: { user?: string; password?: string; requireTls?: boolean } = {},
+) {
   const { port } = server.server.address() as AddressInfo;
   return new SmtpEmailSender({
     host: '127.0.0.1',
     port,
     secure: false,
+    ...extra,
     from: 'Church <noreply@church.test>',
     appName: 'Church',
   });
@@ -133,5 +146,29 @@ describe('SmtpEmailSender', () => {
     await expect(down.deliver({ email })).rejects.toMatchObject({
       retryable: true,
     });
+  });
+
+  it('authenticates with the configured credentials', async () => {
+    authRequired = true;
+    const smtp = sender({ user: 'mailer', password: 'secret' });
+    await smtp.deliver({ email: smtp.prepare({ payload, locale: 'en' }) });
+    expect(received).toHaveLength(1);
+  });
+
+  it('reports rejected credentials as a permanent failure, never delivering', async () => {
+    authRequired = true;
+    const smtp = sender({ user: 'mailer', password: 'wrong' });
+    await expect(
+      smtp.deliver({ email: smtp.prepare({ payload, locale: 'en' }) }),
+    ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED', retryable: false });
+    expect(received).toHaveLength(0);
+  });
+
+  it('refuses to send in plaintext when TLS is required', async () => {
+    const smtp = sender({ requireTls: true });
+    await expect(
+      smtp.deliver({ email: smtp.prepare({ payload, locale: 'en' }) }),
+    ).rejects.toMatchObject({ code: 'EMAIL_SEND_FAILED' });
+    expect(received).toHaveLength(0);
   });
 });

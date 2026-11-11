@@ -11,6 +11,7 @@ const senders = createEmailSenders({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
     secure: env.SMTP_SECURE,
+    requireTls: env.SMTP_REQUIRE_TLS,
     user: env.SMTP_USER,
     password: env.SMTP_PASSWORD,
     from: env.SMTP_FROM_EMAIL,

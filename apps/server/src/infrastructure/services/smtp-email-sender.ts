@@ -15,6 +15,8 @@ export interface SmtpEmailSenderOptions {
   port: number;
   /** Implicit TLS (port 465); otherwise STARTTLS is used when offered. */
   secure: boolean;
+  /** Fail instead of sending in plaintext when STARTTLS is not offered. */
+  requireTls?: boolean;
   user?: string;
   password?: string;
   from: string;
@@ -40,6 +42,7 @@ export class SmtpEmailSender implements EmailSender {
     host,
     port,
     secure,
+    requireTls,
     user,
     password,
     from,
@@ -49,6 +52,7 @@ export class SmtpEmailSender implements EmailSender {
       host,
       port,
       secure,
+      requireTLS: requireTls,
       auth: user ? { user, pass: password } : undefined,
       connectionTimeout: 5000,
       greetingTimeout: 5000,

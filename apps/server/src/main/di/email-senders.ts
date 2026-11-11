@@ -15,6 +15,7 @@ export interface EmailSenderConfig {
     host: string;
     port: number;
     secure: boolean;
+    requireTls?: boolean;
     user?: string;
     password?: string;
     from: string;
@@ -42,6 +43,12 @@ export function createEmailSenders(config: EmailSenderConfig): EmailSenders {
   if (choice === 'capture') {
     const capture = new CaptureEmailSender(config.appName);
     return { serverEmailSender: capture, captureEmailSender: capture };
+  }
+  if (
+    choice === 'smtp' &&
+    Boolean(config.smtp.user) !== Boolean(config.smtp.password)
+  ) {
+    throw new Error('SMTP_USER and SMTP_PASSWORD must be set together.');
   }
   const serverEmailSender =
     choice === 'resend'

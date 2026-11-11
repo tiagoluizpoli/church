@@ -98,6 +98,19 @@ function useClearUnheldSections(capacities: HomeCapacities | null) {
   }, [capacities, queryClient]);
 }
 
+/** Drop leadership reads cached under a broader (or any other) authority scope. */
+function useClearStaleLeadershipScope(capacities: HomeCapacities | null) {
+  const queryClient = useQueryClient();
+  const leadershipScope = capacities?.leadershipScope;
+  useEffect(() => {
+    if (!leadershipScope) return;
+    queryClient.removeQueries({
+      queryKey: homeSectionQueryPrefix({ section: 'leadership' }),
+      predicate: ({ queryKey }) => queryKey.at(-1) !== leadershipScope,
+    });
+  }, [leadershipScope, queryClient]);
+}
+
 /**
  * Home (`/`): the common entry. Sections mount by additive capacity in the
  * order Church → Ministries I lead → My serving; a plain Church Member sees a
@@ -108,6 +121,7 @@ export function HomePage({ search }: HomePageProps) {
   const state = useHomeCapacities();
   const capacities = state.status === 'ready' ? state.capacities : null;
   useClearUnheldSections(capacities);
+  useClearStaleLeadershipScope(capacities);
 
   useEffect(() => {
     if (search.joinedMinistry) {
@@ -143,7 +157,10 @@ export function HomePage({ search }: HomePageProps) {
         <>
           {capacities.church ? <ChurchSection {...sectionProps} /> : null}
           {capacities.leadership ? (
-            <LeadershipSection {...sectionProps} />
+            <LeadershipSection
+              {...sectionProps}
+              scope={capacities.leadershipScope}
+            />
           ) : null}
           {capacities.serving ? <MyServingSection {...sectionProps} /> : null}
         </>

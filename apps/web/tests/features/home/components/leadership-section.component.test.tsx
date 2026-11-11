@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { screen } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -128,19 +129,14 @@ describe('LeadershipSection', () => {
     expect(screen.getByText(/Beta · October/)).toBeVisible();
   });
 
-  it('hides done, closed, Past and not-serving rows and shows the empty state', async () => {
+  it('hides published without open requests, Past and not-serving rows and shows the empty state', async () => {
     givenSchedules([
       schedule({ name: 'Done', stage: 'published' }),
-      schedule({
-        name: 'Answered',
-        stage: 'asking',
-        asking: { asked: 2, confirmed: 2 },
-      }),
-      schedule({ name: 'Full', stage: 'assigning', gapCount: 0 }),
       schedule({ name: 'Away', stage: 'not_serving', gapCount: 3 }),
       schedule({
         name: 'Old',
         gapCount: 3,
+        openSwapRequestCount: 1,
         cycle: {
           id: 'c-old',
           name: 'September',
@@ -154,6 +150,61 @@ describe('LeadershipSection', () => {
 
     expect(await screen.findByText(m.home_leadership_empty())).toBeVisible();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('keeps Asking and Assigning rows with a zero outstanding count', async () => {
+    givenSchedules([
+      schedule({
+        name: 'Answered',
+        stage: 'asking',
+        asking: { asked: 2, confirmed: 2 },
+      }),
+      schedule({ name: 'Full', stage: 'assigning', gapCount: 0 }),
+    ]);
+    renderHomePage();
+
+    expect(
+      await screen.findByText(m.schedules_asking_outstanding({ count: 0 })),
+    ).toBeVisible();
+    expect(
+      screen.getByText(m.schedules_assigning_gaps({ count: 0 })),
+    ).toBeVisible();
+  });
+
+  it('shows an open Swap request count on a non-published row', async () => {
+    givenSchedules([
+      schedule({ name: 'Full', stage: 'assigning', openSwapRequestCount: 2 }),
+    ]);
+    renderHomePage();
+
+    expect(
+      await screen.findByText(
+        `${m.schedules_assigning_gaps({ count: 0 })} · ${m.schedules_swap_requests_other({ count: 2 })}`,
+      ),
+    ).toBeVisible();
+  });
+
+  it('does not render the former all-Ministry rows after an admin becomes a leader', async () => {
+    givenCapabilities({ isChurchAdmin: true });
+    givenSchedules([schedule({ name: 'Alpha' }), schedule({ name: 'Beta' })]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    renderHomePage({ queryClient });
+    expect(await screen.findByText(/Beta · October/)).toBeVisible();
+
+    givenCapabilities({ ledMinistries: 1 });
+    givenSchedules([schedule({ name: 'Alpha' })]);
+    await queryClient.invalidateQueries({ queryKey: ['caller-capabilities'] });
+
+    await waitFor(() =>
+      expect(screen.queryByText(/Beta · October/)).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText(/Alpha · October/)).toBeVisible();
+    const cached = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ['home', 'leadership'] });
+    expect(cached).toHaveLength(1);
   });
 
   it('distinguishes loading and error from empty, and retries', async () => {

@@ -21,32 +21,37 @@ interface StageLabelInput {
 }
 
 function stageLabel({ row, showOutstanding }: StageLabelInput): string {
-  switch (row.stage) {
+  const { stage, asking, gapCount, affectedVolunteerCount } = row;
+  switch (stage) {
     case 'to_prepare':
       return m.schedules_to_prepare();
-    case 'asking':
-      if (!row.asking) return m.schedules_asking_stage();
-      return showOutstanding
-        ? m.schedules_asking_outstanding({
-            count: row.asking.asked - row.asking.confirmed,
-          })
-        : m.schedules_asking(row.asking);
+    case 'asking': {
+      if (!asking) return m.schedules_asking_stage();
+      if (!showOutstanding) return m.schedules_asking(asking);
+      const unanswered = asking.asked - asking.confirmed;
+      return m.schedules_asking_outstanding({ count: unanswered });
+    }
     case 'assigning':
       return showOutstanding
-        ? m.schedules_assigning_gaps({ count: row.gapCount })
+        ? m.schedules_assigning_gaps({ count: gapCount })
         : m.schedules_assigning();
-    case 'published': {
-      const published =
-        row.affectedVolunteerCount > 0
-          ? m.schedules_unsent({ count: row.affectedVolunteerCount })
-          : m.schedules_published();
-      return row.openSwapRequestCount > 0
-        ? `${published} · ${swapRequestCountLabel(row.openSwapRequestCount)}`
-        : published;
-    }
+    case 'published':
+      return affectedVolunteerCount > 0
+        ? m.schedules_unsent({ count: affectedVolunteerCount })
+        : m.schedules_published();
     case 'not_serving':
       return m.schedules_not_serving();
   }
+}
+
+/** Stage label; Home also shows the open Swap request count on any stage, the Schedules list only on published rows. */
+function rowLabel({ row, showOutstanding }: StageLabelInput): string {
+  const label = stageLabel({ row, showOutstanding });
+  const { openSwapRequestCount, stage } = row;
+  const showsSwapCount = showOutstanding || stage === 'published';
+  return showsSwapCount && openSwapRequestCount > 0
+    ? `${label} · ${swapRequestCountLabel(openSwapRequestCount)}`
+    : label;
 }
 
 export function ScheduleRows({
@@ -77,7 +82,7 @@ export function ScheduleRows({
                 </Badge>
               ) : null}
               <Badge variant="secondary">
-                {stageLabel({ row, showOutstanding })}
+                {rowLabel({ row, showOutstanding })}
               </Badge>
             </span>
           </Link>

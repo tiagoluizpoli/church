@@ -1,40 +1,41 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HomeError } from '@/features/home/components/home-error';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
 import { ScheduleRows } from '@/features/scheduling/components/prepare/schedule-rows';
 import type { ListSchedules200SchedulesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
 
-/** A current Schedule that waits on the leader: unanswered, unfilled, or open swap requests. */
+/** A current Schedule that waits on the leader: unfinished, or with an open Swap request. */
 function needsAttention(row: ListSchedules200SchedulesItem): boolean {
-  if (row.cycle.state === 'past') return false;
-  switch (row.stage) {
-    case 'to_prepare':
-      return true;
-    case 'asking':
-      return !!row.asking && row.asking.asked > row.asking.confirmed;
-    case 'assigning':
-      return row.gapCount > 0;
-    case 'published':
-      return row.openSwapRequestCount > 0;
-    case 'not_serving':
-      return false;
-  }
+  const { stage, openSwapRequestCount } = row;
+  const { state: cycleState } = row.cycle;
+  if (cycleState === 'past' || stage === 'not_serving') return false;
+  if (stage === 'published') return openSwapRequestCount > 0;
+  return true;
+}
+
+interface LeadershipSectionProps extends HomeSectionProps {
+  /** The caller's leadership authority; cached rows are keyed by it so a narrower scope never reads a broader one. */
+  scope: string;
 }
 
 /** Home slot: mounted by `HomePage` only when the `leadership` capacity is held. */
-export function LeadershipSection({ churchId, userId }: HomeSectionProps) {
+export function LeadershipSection({
+  churchId,
+  userId,
+  scope,
+}: LeadershipSectionProps) {
+  const queryKey = homeSectionQueryKey({
+    section: 'leadership',
+    churchId,
+    userId,
+    parts: ['schedules', scope],
+  });
   const query = useQuery({
-    queryKey: homeSectionQueryKey({
-      section: 'leadership',
-      churchId,
-      userId,
-      parts: ['schedules'],
-    }),
+    queryKey,
     queryFn: () => adminApi.listSchedules(),
     retry: false,
   });
@@ -50,14 +51,10 @@ export function LeadershipSection({ churchId, userId }: HomeSectionProps) {
         {m.home_section_leadership()}
       </h2>
       {query.isError ? (
-        <Alert variant="destructive">
-          <AlertDescription>
-            <span>{m.schedules_error()}</span>
-            <Button variant="outline" onClick={() => query.refetch()}>
-              {m.schedules_retry()}
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <HomeError
+          message={m.schedules_error()}
+          onRetry={() => query.refetch()}
+        />
       ) : query.isPending ? (
         <output className="grid gap-2">
           <span className="sr-only">{m.schedules_loading()}</span>

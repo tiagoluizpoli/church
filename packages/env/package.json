@@ -20,6 +20,12 @@
   "devDependencies": {
     "@church/config": "workspace:*",
     "@types/bun": "catalog:",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "catalog:"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test": "bun run test:unit"
   }
 }

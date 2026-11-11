@@ -12,7 +12,12 @@ import {
   today,
   toTimeOfDay,
 } from '@church/time';
-import { CycleId, type MinistryId, type ShiftId } from '../domain/branded-ids';
+import {
+  CycleId,
+  type EventTimeBlockId,
+  type MinistryId,
+  type ShiftId,
+} from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
   AnswerAvailabilityCheckInput,
@@ -60,6 +65,7 @@ import type {
   Assignment,
   AssignmentStatus,
 } from '../domain/entities/assignment';
+import type { EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import { isSwapRequestExpired } from '../domain/entities/swap-request';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
@@ -84,6 +90,25 @@ interface DashboardAssignmentGroupDraft {
   ministryName: string;
   eventStart: string;
   items: DashboardAssignmentItem[];
+}
+
+interface InCancelledScopeInput {
+  /** The Assignment's or Shift's Event with its blocks; absent reads as live. */
+  group: EventWithEventTimeBlocks | undefined;
+  eventTimeBlockId: EventTimeBlockId;
+}
+
+/** Cancelled work: its Event or its own EventTimeBlock is cancelled. */
+function inCancelledScope({
+  group,
+  eventTimeBlockId,
+}: InCancelledScopeInput): boolean {
+  if (!group) return false;
+  const { event, eventTimeBlocks } = group;
+  const blockCancelled = eventTimeBlocks.some(
+    ({ id, status }) => id === eventTimeBlockId && status === 'cancelled',
+  );
+  return event.status === 'cancelled' || blockCancelled;
 }
 
 function isPublishedStatus(
@@ -620,8 +645,8 @@ export class DbVolunteerManager implements IVolunteerManager {
     const allEventData = await Promise.all(
       participations.map(async (participation) => {
         const { id: participationId, eventId } = participation;
-        const [event, shifts, requirements, assignments] = await Promise.all([
-          this.eventRepo.getById({ churchId, eventId }),
+        const [group, shifts, requirements, assignments] = await Promise.all([
+          this.eventRepo.getWithEventTimeBlocks({ churchId, eventId }),
           this.shiftRepo.listByParticipation({ churchId, participationId }),
           this.shiftRepo.listRequirementsByParticipation({
             churchId,
@@ -632,11 +657,30 @@ export class DbVolunteerManager implements IVolunteerManager {
             participationId,
           }),
         ]);
-        return { event, shifts, requirements, assignments };
+        // Cancelled work leaves the Volunteer's Schedule: a cancelled
+        // Event drops out below, a cancelled block's Shifts drop out here.
+        const liveShifts = shifts.filter(
+          ({ eventTimeBlockId }) =>
+            !inCancelledScope({ group, eventTimeBlockId }),
+        );
+        const liveIds = new Set(liveShifts.map(({ id }) => id as string));
+        return {
+          event: group.event,
+          shifts: liveShifts,
+          requirements: requirements.filter(({ shiftId }) =>
+            liveIds.has(shiftId as string),
+          ),
+          assignments: assignments.filter(({ shiftId }) =>
+            liveIds.has(shiftId as string),
+          ),
+        };
       }),
     );
-    const eventData = allEventData.filter(
+    const cycleEventData = allEventData.filter(
       (item) => item.event.cycleId === cycleId,
+    );
+    const eventData = cycleEventData.filter(
+      ({ event }) => event.status !== 'cancelled',
     );
     const assignments = eventData
       .flatMap((item) => item.assignments)
@@ -714,7 +758,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       cycleId: cycle.id as string,
       cycleName: cycle.name,
       // No published MinistryParticipation in the Cycle yet: "not published".
-      published: eventData.length > 0,
+      published: cycleEventData.length > 0,
       events,
     };
   }
@@ -755,10 +799,10 @@ export class DbVolunteerManager implements IVolunteerManager {
     }
     const { ministryId, eventId } = participation;
 
-    const [shift, event, ministry, roles, requirements, shiftAssignments] =
+    const [shift, group, ministry, roles, requirements, shiftAssignments] =
       await Promise.all([
         this.shiftRepo.getById({ churchId, shiftId }),
-        this.eventRepo.getById({ churchId, eventId }),
+        this.eventRepo.getWithEventTimeBlocks({ churchId, eventId }),
         this.ministryRepo.getById({ churchId, id: ministryId }),
         this.roleRepo.listByMinistry({ churchId, ministryId }),
         this.shiftRepo.listRequirementsByParticipation({
@@ -767,6 +811,12 @@ export class DbVolunteerManager implements IVolunteerManager {
         }),
         this.assignmentRepo.listByShift({ churchId, shiftId }),
       ]);
+    // A stale link to cancelled work reads as gone, like any other.
+    const { eventTimeBlockId } = shift;
+    if (inCancelledScope({ group, eventTimeBlockId })) {
+      throw new NotFoundError(`Assignment not found: ${assignmentId}`);
+    }
+    const { event } = group;
     const memberships = await this.volunteerRepo.listMinistryMemberships({
       churchId,
       ministryId,
@@ -1162,16 +1212,33 @@ export class DbVolunteerManager implements IVolunteerManager {
       churchId,
       participationIds,
     });
-    const publishedParticipationIds = new Set(
-      participations
-        .filter((participation) => participation.state === 'published')
-        .map((participation) => participation.id as string),
+    const published = participations.filter(
+      (participation) => participation.state === 'published',
+    );
+    const eventIds = [...new Set(published.map(({ eventId }) => eventId))];
+    const groups = await Promise.all(
+      eventIds.map((eventId) =>
+        this.eventRepo.getWithEventTimeBlocks({ churchId, eventId }),
+      ),
+    );
+    const groupsByEvent = new Map(
+      groups.map((group) => [group.event.id as string, group]),
+    );
+    const groupsByParticipation = new Map(
+      published.map(({ id, eventId }) => [
+        id as string,
+        groupsByEvent.get(eventId as string),
+      ]),
     );
 
     return assignments.filter(
-      (assignment) =>
-        isPublishedStatus(assignment.status) &&
-        publishedParticipationIds.has(assignment.participationId as string),
+      ({ status, participationId, eventTimeBlockId }) =>
+        isPublishedStatus(status) &&
+        groupsByParticipation.has(participationId as string) &&
+        !inCancelledScope({
+          group: groupsByParticipation.get(participationId as string),
+          eventTimeBlockId,
+        }),
     );
   }
 }

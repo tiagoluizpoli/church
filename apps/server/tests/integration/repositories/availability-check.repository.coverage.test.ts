@@ -1,4 +1,5 @@
 import { NotFoundError } from '@church/core';
+import { eventTimeBlock } from '@church/db';
 import { fromDate } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -123,6 +124,35 @@ describe('DrizzleAvailabilityCheckRepository (extra coverage)', () => {
       end: fromDate({ date: new Date('2026-08-02T11:00:00.000Z') }),
       label: 'Later',
     });
+    // Cancelled work never reaches the check: a cancelled Event, a cancelled block.
+    for (const [day, cancel] of [
+      ['2026-08-09', 'event'],
+      ['2026-08-16', 'block'],
+    ] as const) {
+      const cancelledGraph = await createSchedulingPhase3EventGraph({
+        churchId: seed.churchAId,
+        cycleId: cycle.id,
+        ministryId: seed.ministryAId,
+        title: `Cancelled ${cancel}`,
+        start: new Date(`${day}T09:00:00.000Z`),
+        end: new Date(`${day}T11:00:00.000Z`),
+        status: cancel === 'event' ? 'cancelled' : 'scheduled',
+      });
+      if (cancel === 'block') {
+        await schedulingTestDb
+          .update(eventTimeBlock)
+          .set({ status: 'cancelled' })
+          .where(eq(eventTimeBlock.id, cancelledGraph.eventTimeBlock.id));
+      }
+      await buildShift({
+        db: schedulingTestDb,
+        churchId: seed.churchAId,
+        participationId: cancelledGraph.participation.id,
+        eventTimeBlockId: cancelledGraph.eventTimeBlock.id,
+        start: fromDate({ date: cancelledGraph.eventTimeBlock.startTime }),
+        end: fromDate({ date: cancelledGraph.eventTimeBlock.endTime }),
+      });
+    }
     const repo = new DrizzleAvailabilityCheckRepository({
       db: schedulingTestDb,
     });

@@ -527,6 +527,10 @@ describe('Assignment and publication managers', () => {
     f.volunteerRepository.listMemberMinistryIds.mockResolvedValue([]);
     f.ministryRepository.listByChurch.mockResolvedValue([]);
     f.eventRepository.getById.mockResolvedValue(f.event);
+    f.eventRepository.getWithEventTimeBlocks.mockResolvedValue({
+      event: f.event,
+      eventTimeBlocks: [],
+    });
     f.shiftRepository.getById.mockResolvedValue(
       new Shift({
         id: shiftId,
@@ -707,6 +711,10 @@ describe('Assignment and publication managers', () => {
       f.participation,
     ]);
     f.eventRepository.getById.mockResolvedValue(f.event);
+    f.eventRepository.getWithEventTimeBlocks.mockResolvedValue({
+      event: f.event,
+      eventTimeBlocks: [],
+    });
     f.shiftRepository.listByParticipation.mockResolvedValue([f.shift]);
     f.shiftRepository.listRequirementsByParticipation.mockResolvedValue([
       f.requirement,

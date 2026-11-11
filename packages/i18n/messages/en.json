@@ -1403,5 +1403,6 @@
   "home_welcome": "Welcome to {churchName}. Nothing needs you right now.",
   "home_load_error": "We couldn’t load your Home. Try again.",
   "home_retry": "Try again",
+  "home_serving_see_all": "See all",
   "home_loading": "Loading Home"
 }

@@ -1403,5 +1403,6 @@
   "home_welcome": "Boas-vindas a {churchName}. Nada precisa de você agora.",
   "home_load_error": "Não conseguimos carregar seu Início. Tente novamente.",
   "home_retry": "Tentar novamente",
+  "home_serving_see_all": "Ver tudo",
   "home_loading": "Carregando Início"
 }

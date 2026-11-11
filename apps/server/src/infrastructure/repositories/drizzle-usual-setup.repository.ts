@@ -1,5 +1,5 @@
-import { usualSetup } from '@church/db';
-import { and, eq } from 'drizzle-orm';
+import { templateTimeBlock, usualSetup } from '@church/db';
+import { and, asc, eq, getTableColumns } from 'drizzle-orm';
 import type {
   ListUsualSetupByMinistryInput,
   ListUsualSetupsByChurchInput,
@@ -27,13 +27,22 @@ export class DrizzleUsualSetupRepository implements UsualSetupRepository {
   ): Promise<UsualSetup[]> {
     const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
-      .select()
+      .select(getTableColumns(usualSetup))
       .from(usualSetup)
+      .innerJoin(
+        templateTimeBlock,
+        eq(templateTimeBlock.id, usualSetup.sourceTemplateTimeBlockId),
+      )
       .where(
         and(
           eq(usualSetup.ministryId, input.ministryId),
           withChurchIsolation({ table: usualSetup, churchId: input.churchId }),
         ),
+      )
+      .orderBy(
+        asc(templateTimeBlock.templateId),
+        asc(templateTimeBlock.order),
+        asc(usualSetup.id),
       );
 
     return rows.map(mapUsualSetup);
@@ -44,10 +53,19 @@ export class DrizzleUsualSetupRepository implements UsualSetupRepository {
   ): Promise<UsualSetup[]> {
     const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
-      .select()
+      .select(getTableColumns(usualSetup))
       .from(usualSetup)
+      .innerJoin(
+        templateTimeBlock,
+        eq(templateTimeBlock.id, usualSetup.sourceTemplateTimeBlockId),
+      )
       .where(
         withChurchIsolation({ table: usualSetup, churchId: input.churchId }),
+      )
+      .orderBy(
+        asc(templateTimeBlock.templateId),
+        asc(templateTimeBlock.order),
+        asc(usualSetup.id),
       );
 
     return rows.map(mapUsualSetup);

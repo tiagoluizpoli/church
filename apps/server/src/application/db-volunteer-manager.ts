@@ -729,12 +729,24 @@ export class DbVolunteerManager implements IVolunteerManager {
               sectorName: requirement.sectorName,
               roleName,
             };
-            const assignmentRows = bound.map((assignment) => ({
-              ...place,
-              volunteerDisplayName: scheduleVolunteerName(
-                volunteerNames.get(assignment.volunteerId as string),
-              ),
-            }));
+            const assignmentRows = bound
+              .map((assignment) => ({
+                id: assignment.volunteerId as string,
+                volunteerDisplayName: scheduleVolunteerName(
+                  volunteerNames.get(assignment.volunteerId as string),
+                ),
+              }))
+              // Alphabetical, as on the Assignment detail roster.
+              .sort(
+                (a, b) =>
+                  (a.volunteerDisplayName ?? '').localeCompare(
+                    b.volunteerDisplayName ?? '',
+                  ) || a.id.localeCompare(b.id),
+              )
+              .map(({ volunteerDisplayName }) => ({
+                ...place,
+                volunteerDisplayName,
+              }));
             const openRows = Array.from({ length: openCount }, () => ({
               ...place,
             }));
@@ -853,13 +865,21 @@ export class DbVolunteerManager implements IVolunteerManager {
         return {
           sectorName: requirement.sectorName,
           roleName: roleNameOf(requirement.roleId as string),
-          people: bound.map((item) => ({
-            name:
-              scheduleVolunteerName(
-                namesById.get(item.volunteerId as string),
-              ) ?? '',
-            isYou: item.volunteerId === volunteerId,
-          })),
+          people: bound
+            .map((item) => ({
+              name:
+                scheduleVolunteerName(
+                  namesById.get(item.volunteerId as string),
+                ) ?? '',
+              isYou: item.volunteerId === volunteerId,
+              id: item.volunteerId as string,
+            }))
+            // Alphabetical for every viewer; the caller is flagged, not moved first.
+            .sort(
+              (a, b) =>
+                a.name.localeCompare(b.name) || a.id.localeCompare(b.id),
+            )
+            .map(({ name, isYou }) => ({ name, isYou })),
           openCount,
         };
       })

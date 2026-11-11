@@ -7,7 +7,7 @@ import {
   shift,
   shiftRequirement,
 } from '@church/db';
-import { and, count, eq, gt, inArray, lt, ne } from 'drizzle-orm';
+import { and, asc, count, eq, gt, inArray, lt, ne } from 'drizzle-orm';
 import type {
   CountActiveAssignmentsInput,
   CreateEventTimeBlockRepositoryInput,
@@ -100,7 +100,8 @@ export class DrizzleEventTimeBlockRepository
           eq(eventTimeBlock.eventId, eventId),
           withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
-      );
+      )
+      .orderBy(asc(eventTimeBlock.startTime), asc(eventTimeBlock.id));
     return Promise.all(
       rows.map((r) => this.fetchWithRequirements({ db, eventTimeBlockRow: r })),
     );
@@ -211,7 +212,8 @@ export class DrizzleEventTimeBlockRepository
     const rows = await db
       .select()
       .from(eventTimeBlock)
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(asc(eventTimeBlock.startTime), asc(eventTimeBlock.id));
     return rows.map((r) => mapEventTimeBlock({ row: r, requirements: [] }));
   }
 

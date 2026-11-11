@@ -137,7 +137,7 @@ export class DrizzleEventRepository implements EventRepository {
         eq(ministryParticipation.eventId, event.id),
       )
       .where(and(...conditions))
-      .orderBy(asc(event.start));
+      .orderBy(asc(event.start), asc(event.id));
     return rows.map(({ event: row }) => mapEvent(row));
   }
 

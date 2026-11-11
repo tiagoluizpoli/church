@@ -302,6 +302,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
           isNull(ministry.deletedAt),
         ),
       )
+      .orderBy(asc(sql`lower(${ministry.name})`), asc(ministry.id))
       // Serializes with a concurrent archive (see `MinistryRepository.lockActive`).
       .for('share');
 
@@ -334,6 +335,10 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
           eq(event.cycleId, input.cycleId),
           ne(event.status, 'cancelled'),
         ),
+      )
+      .orderBy(
+        asc(ministryParticipation.ministryId),
+        asc(ministryParticipation.state),
       );
 
     await db.insert(ministryParticipation).values(
@@ -436,7 +441,8 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(asc(shift.startTime), asc(assignment.id));
 
     return rows.map((row) => ({
       volunteerId: VolunteerId.from(row.volunteerId),

@@ -30,6 +30,7 @@ import {
   ne,
   not,
   type SQL,
+  sql,
 } from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
 import type {
@@ -261,7 +262,8 @@ export class DrizzleAvailabilityCheckRepository
           isNull(availabilityCheck.withdrawnAt),
         ),
       )
-      .groupBy(availabilityCheck.id);
+      .groupBy(availabilityCheck.id)
+      .orderBy(asc(availabilityCheck.id));
 
     return rows.map((row) => ({
       availabilityCheckId: row.availabilityCheckId as AvailabilityCheckId,
@@ -300,7 +302,8 @@ export class DrizzleAvailabilityCheckRepository
           eq(ministryMembership.status, 'active'),
         ),
       )
-      .groupBy(ministryMembership.id);
+      .groupBy(ministryMembership.id)
+      .orderBy(asc(ministryMembership.id));
   }
 
   async findAnswerBy(input: ScheduleScopeInput): Promise<CalendarDay | null> {
@@ -342,7 +345,7 @@ export class DrizzleAvailabilityCheckRepository
         ),
       )
       .groupBy(shift.id, event.id, eventTimeBlock.id)
-      .orderBy(asc(eventTimeBlock.startTime));
+      .orderBy(asc(eventTimeBlock.startTime), asc(shift.id));
 
     return rows.map((row) => ({
       eventId: row.eventId as EventId,
@@ -388,7 +391,7 @@ export class DrizzleAvailabilityCheckRepository
       .innerJoin(role, eq(role.id, served.roleId))
       .where(not(held))
       .groupBy(role.id)
-      .orderBy(asc(role.name));
+      .orderBy(asc(role.name), asc(role.id));
 
     return rows.map((row) => ({ ...row, roleId: row.roleId as RoleId }));
   }
@@ -424,6 +427,7 @@ export class DrizzleAvailabilityCheckRepository
           filter,
         ),
       )
+      .orderBy(asc(sql`lower(${user.name})`), asc(ministryMembership.id))
       .$dynamic();
     // Ask waits out a concurrent removal.
     const rows = await shareLockMembershipsInTx({ query, tx });
@@ -461,7 +465,8 @@ export class DrizzleAvailabilityCheckRepository
     const rows = await db
       .select()
       .from(availabilityCheck)
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(asc(availabilityCheck.createdAt), asc(availabilityCheck.id));
 
     return rows.map(mapAvailabilityCheck);
   }
@@ -682,7 +687,7 @@ export class DrizzleAvailabilityCheckRepository
           }),
         ),
       )
-      .orderBy(shift.startTime);
+      .orderBy(asc(shift.startTime), asc(shift.id));
 
     return rows.map((row) => ({
       shiftId: row.shiftId as ShiftId,
@@ -717,6 +722,10 @@ export class DrizzleAvailabilityCheckRepository
             churchId: input.churchId,
           }),
         ),
+      )
+      .orderBy(
+        asc(ministryMembership.ministryId),
+        asc(ministryMembership.volunteerId),
       );
 
     return rows.map((row) => ({

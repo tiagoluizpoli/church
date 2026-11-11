@@ -164,7 +164,7 @@ export class DrizzleMinistryInvitationRepository
           ),
         ),
       )
-      .orderBy(asc(ministryInvitation.createdAt))
+      .orderBy(asc(ministryInvitation.createdAt), asc(ministryInvitation.id))
       .limit(1);
     return row
       ? { id: row.id, createdAt: fromDate({ date: row.createdAt }) }
@@ -453,7 +453,12 @@ export class DrizzleMinistryInvitationRepository
           gt(ministryInvitation.expiresAt, now),
         ),
       )
-      .orderBy(desc(ministryInvitation.createdAt), asc(role.name));
+      .orderBy(
+        desc(ministryInvitation.createdAt),
+        asc(ministryInvitation.id),
+        asc(role.name),
+        asc(role.id),
+      );
     const halves = new Map<string, PublicRedemptionMinistry>();
     for (const row of rows) {
       const half = halves.get(row.ministryInvitationId) ?? {

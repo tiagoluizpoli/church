@@ -242,7 +242,7 @@ export class DrizzleSectorRepository implements SectorRepository {
           sql`${usualSetup.headcounts} @> ${JSON.stringify([{ sectorId }])}::jsonb`,
         ),
       )
-      .orderBy(asc(usualSetup.sourceTemplateTimeBlockId));
+      .orderBy(asc(usualSetup.sourceTemplateTimeBlockId), asc(usualSetup.id));
     return [
       ...requirementRows.map(
         ({ eventStart: _start, blockStart: _block, ...location }) => ({

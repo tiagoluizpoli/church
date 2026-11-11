@@ -7,6 +7,7 @@ import {
 } from '@church/db';
 import {
   and,
+  asc,
   between,
   count,
   eq,
@@ -77,7 +78,8 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
           withChurchIsolation({ table: assignment, churchId }),
           ...conditions,
         ),
-      );
+      )
+      .orderBy(asc(shift.startTime), asc(assignment.id));
     return rows.map((row) =>
       mapAssignment({
         row: row.assignment,
@@ -222,7 +224,8 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
           withChurchIsolation({ table: assignment, churchId }),
           eq(eventTimeBlock.eventId, eventId),
         ),
-      );
+      )
+      .orderBy(asc(shift.startTime), asc(assignment.id));
     return rows.map((row) =>
       mapAssignment({
         row: row.assignment,
@@ -327,7 +330,8 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(asc(shift.startTime), asc(assignment.id));
     return rows.map((row) =>
       mapAssignment({
         row: row.assignment,

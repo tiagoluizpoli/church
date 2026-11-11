@@ -5,6 +5,7 @@ import {
   cycle,
   event,
   eventTimeBlock,
+  ministry,
   ministryMembership,
   ministryParticipation,
   participationEventTimeBlockInclusion,
@@ -22,6 +23,7 @@ import {
   asc,
   count,
   eq,
+  getTableColumns,
   gt,
   inArray,
   isNull,
@@ -92,7 +94,8 @@ export class DrizzleMinistryParticipationRepository
           eq(scheduleLastTold.ministryId, input.ministryId),
           eq(scheduleLastTold.cycleId, input.cycleId),
         ),
-      );
+      )
+      .orderBy(asc(scheduleLastTold.volunteerId));
     return rows.map((row) => ({
       volunteerId: row.volunteerId as ScheduleLastToldRow['volunteerId'],
       assignments: row.assignments as ScheduleLastToldRow['assignments'],
@@ -249,8 +252,9 @@ export class DrizzleMinistryParticipationRepository
   ): Promise<MinistryParticipation[]> {
     const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
-      .select()
+      .select(getTableColumns(ministryParticipation))
       .from(ministryParticipation)
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
       .where(
         and(
           eq(ministryParticipation.eventId, input.eventId),
@@ -259,6 +263,11 @@ export class DrizzleMinistryParticipationRepository
             churchId: input.churchId,
           }),
         ),
+      )
+      .orderBy(
+        asc(sql`lower(${ministry.name})`),
+        asc(ministry.id),
+        asc(ministryParticipation.id),
       );
 
     return rows.map(mapMinistryParticipation);
@@ -281,9 +290,11 @@ export class DrizzleMinistryParticipationRepository
     }
 
     const rows = await db
-      .select()
+      .select(getTableColumns(ministryParticipation))
       .from(ministryParticipation)
-      .where(and(...conditions));
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(and(...conditions))
+      .orderBy(asc(event.start), asc(ministryParticipation.id));
 
     return rows.map(mapMinistryParticipation);
   }
@@ -297,8 +308,9 @@ export class DrizzleMinistryParticipationRepository
 
     const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
-      .select()
+      .select(getTableColumns(ministryParticipation))
       .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
       .where(
         and(
           inArray(ministryParticipation.id, input.participationIds),
@@ -307,7 +319,8 @@ export class DrizzleMinistryParticipationRepository
             churchId: input.churchId,
           }),
         ),
-      );
+      )
+      .orderBy(asc(event.start), asc(ministryParticipation.id));
 
     return rows.map(mapMinistryParticipation);
   }
@@ -447,6 +460,10 @@ export class DrizzleMinistryParticipationRepository
             churchId: input.churchId,
           }),
         ),
+      )
+      .orderBy(
+        asc(participationEventTimeBlockInclusion.participationId),
+        asc(participationEventTimeBlockInclusion.eventTimeBlockId),
       );
 
     return rows.map(mapParticipationEventTimeBlockInclusion);
@@ -526,7 +543,7 @@ export class DrizzleMinistryParticipationRepository
           eq(cycle.state, 'sent'),
         ),
       )
-      .orderBy(asc(cycle.startDate));
+      .orderBy(asc(cycle.startDate), asc(cycle.id));
 
     if (sentCycles.length === 0) {
       return [];
@@ -590,7 +607,8 @@ export class DrizzleMinistryParticipationRepository
                 ),
               ),
             )
-            .groupBy(participationEventTimeBlockInclusion.participationId);
+            .groupBy(participationEventTimeBlockInclusion.participationId)
+            .orderBy(asc(participationEventTimeBlockInclusion.participationId));
 
     const eventTimeBlockCountByParticipationId = new Map(
       eventTimeBlockCounts.map((row) => [
@@ -684,6 +702,11 @@ export class DrizzleMinistryParticipationRepository
           inArray(event.cycleId, cycleIds),
           ne(event.status, 'cancelled'),
         ),
+      )
+      .orderBy(
+        asc(ministryParticipation.ministryId),
+        asc(event.cycleId),
+        asc(ministryParticipation.state),
       );
   }
 
@@ -731,7 +754,8 @@ export class DrizzleMinistryParticipationRepository
           inArray(event.cycleId, cycleIds),
         ),
       )
-      .groupBy(ministryParticipation.ministryId, event.cycleId);
+      .groupBy(ministryParticipation.ministryId, event.cycleId)
+      .orderBy(asc(ministryParticipation.ministryId), asc(event.cycleId));
   }
 
   async countScheduleOpenSwapRequests({
@@ -764,7 +788,8 @@ export class DrizzleMinistryParticipationRepository
           inArray(event.cycleId, cycleIds),
         ),
       )
-      .groupBy(ministryParticipation.ministryId, event.cycleId);
+      .groupBy(ministryParticipation.ministryId, event.cycleId)
+      .orderBy(asc(ministryParticipation.ministryId), asc(event.cycleId));
   }
 
   async countScheduleGaps({
@@ -806,7 +831,8 @@ export class DrizzleMinistryParticipationRepository
           inArray(event.cycleId, cycleIds),
         ),
       )
-      .groupBy(ministryParticipation.ministryId, event.cycleId);
+      .groupBy(ministryParticipation.ministryId, event.cycleId)
+      .orderBy(asc(ministryParticipation.ministryId), asc(event.cycleId));
   }
 
   async countScheduleChecks({
@@ -840,6 +866,10 @@ export class DrizzleMinistryParticipationRepository
           isNull(availabilityCheck.withdrawnAt),
         ),
       )
-      .groupBy(ministryMembership.ministryId, availabilityCheck.cycleId);
+      .groupBy(ministryMembership.ministryId, availabilityCheck.cycleId)
+      .orderBy(
+        asc(ministryMembership.ministryId),
+        asc(availabilityCheck.cycleId),
+      );
   }
 }

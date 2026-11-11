@@ -50,7 +50,11 @@ export class DrizzleOutboxRepository implements OutboxRepository {
           lte(outboxMessage.scheduledFor, now),
         ),
       )
-      .orderBy(asc(outboxMessage.scheduledFor), asc(outboxMessage.createdAt))
+      .orderBy(
+        asc(outboxMessage.scheduledFor),
+        asc(outboxMessage.createdAt),
+        asc(outboxMessage.id),
+      )
       .limit(limit)
       .for('update', { skipLocked: true });
     if (claimable.length === 0) return [];
@@ -183,7 +187,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
           ),
         ),
       )
-      .orderBy(desc(outboxMessage.createdAt))
+      .orderBy(desc(outboxMessage.createdAt), desc(outboxMessage.id))
       .limit(1);
     return row?.status ?? null;
   }

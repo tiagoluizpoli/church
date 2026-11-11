@@ -27,6 +27,12 @@ export function homeSectionQueryKey({
 }
 
 /** Prefix matching every cached read of `section`, in any Church or for any user. */
-export function homeSectionQueryPrefix({ section }: { section: HomeSection }) {
+interface HomeSectionQueryPrefixInput {
+  section: HomeSection;
+}
+
+export function homeSectionQueryPrefix({
+  section,
+}: HomeSectionQueryPrefixInput) {
   return [...HOME_QUERY_KEY, section] as const;
 }

@@ -170,7 +170,7 @@ export default function SignInForm({
             onClick={onSwitchToSignUp}
             className="text-indigo-600 hover:text-indigo-800"
           >
-            Need an account? Sign Up
+            {m.auth_sign_in_switch_to_sign_up()}
           </Button>
         </div>
       )}

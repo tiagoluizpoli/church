@@ -139,36 +139,6 @@ export function createTemplateFormFromTemplate({
   };
 }
 
-export function getErrorMessage({ error }: ErrorMessageInput): string {
-  if (isAxiosError(error)) {
-    const response = error.response?.data;
-
-    if (
-      response &&
-      typeof response === 'object' &&
-      'message' in response &&
-      typeof response.message === 'string'
-    ) {
-      return response.message;
-    }
-
-    if (
-      response &&
-      typeof response === 'object' &&
-      'error' in response &&
-      typeof response.error === 'string'
-    ) {
-      return response.error;
-    }
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return m.common_generic_error();
-}
-
 export function isForbiddenError({ error }: ForbiddenErrorInput): boolean {
   return isAxiosError(error) && error.response?.status === 403;
 }

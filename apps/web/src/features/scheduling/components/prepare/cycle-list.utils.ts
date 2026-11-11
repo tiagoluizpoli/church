@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { compareCalendarDays, parseCalendarDay } from '@church/time';
 import { toCalendarDateString } from '@/features/scheduling/components/participation-prepare.utils';
 import type {
@@ -5,6 +6,7 @@ import type {
   ListScheduleSummaries200CyclesItemStatus,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
+import { pluralMessage } from '@/shared/utils/plural';
 
 export type CyclePrepareStatus = ListScheduleSummaries200CyclesItemStatus;
 
@@ -160,14 +162,6 @@ export function filterCycleSummaries({
   });
 }
 
-const CYCLE_PREPARE_STATUS_LABELS: Record<CyclePrepareStatus, string> = {
-  // biome-ignore lint/style/useNamingConvention: matches the API's status enum value verbatim
-  not_started: 'Not started',
-  // biome-ignore lint/style/useNamingConvention: matches the API's status enum value verbatim
-  in_progress: 'In progress',
-  published: 'Published',
-};
-
 export interface CyclePrepareStatusLabelInput {
   status: CyclePrepareStatus;
 }
@@ -178,7 +172,13 @@ export interface CyclePrepareStatusLabelInput {
 export function cyclePrepareStatusLabel({
   status,
 }: CyclePrepareStatusLabelInput): string {
-  return CYCLE_PREPARE_STATUS_LABELS[status];
+  if (status === 'not_started') {
+    return m.prepare_cycle_status_not_started();
+  }
+  if (status === 'in_progress') {
+    return m.prepare_cycle_status_in_progress();
+  }
+  return m.schedules_published();
 }
 
 export interface CyclePrepareStatusBadgeVariantInput {
@@ -197,4 +197,28 @@ export function cyclePrepareStatusBadgeVariant({
   if (status === 'published') return 'default';
   if (status === 'not_started') return 'outline';
   return 'secondary';
+}
+
+export interface PrepareCountsSummaryInput {
+  eventCount: number;
+  eventTimeBlockCount: number;
+}
+
+/** "3 Events · 9 Time blocks" with zero/one/many wording per count. */
+export function prepareCountsSummary({
+  eventCount,
+  eventTimeBlockCount,
+}: PrepareCountsSummaryInput): string {
+  const events = pluralMessage({
+    count: eventCount,
+    one: () => m.prepare_ask_events_one(),
+    other: () => m.prepare_ask_events_other({ count: eventCount }),
+  });
+  const timeBlocks = pluralMessage({
+    count: eventTimeBlockCount,
+    one: () => m.prepare_time_blocks_count_one(),
+    other: () =>
+      m.prepare_time_blocks_count_other({ count: eventTimeBlockCount }),
+  });
+  return m.prepare_counts_summary({ events, timeBlocks });
 }

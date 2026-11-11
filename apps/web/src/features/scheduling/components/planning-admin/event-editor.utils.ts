@@ -10,12 +10,12 @@ import {
   toInstant,
 } from '@church/time';
 import { isAxiosError } from 'axios';
-import { getErrorMessage } from './planning-admin.utils';
 import type {
   CreatePlanningEventBody,
   GetCycle200EventsItem,
   UpdatePlanningEventBody,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 
 /** One labelled Time block row; `id` is set only for a persisted block. */
 export interface EventEditorBlock {
@@ -361,7 +361,7 @@ export function toEventSaveRefusal({
   const body = isAxiosError<EventRefusalBody>(error)
     ? error.response?.data
     : undefined;
-  const message = getErrorMessage({ error });
+  const message = requestErrorMessage(error);
   if (body?.error === 'EVENT_OUTSIDE_CYCLE') {
     return { target: { kind: 'start' }, message, stateConflict: false };
   }

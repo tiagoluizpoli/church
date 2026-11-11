@@ -527,7 +527,7 @@ export function AppShell({
               type="button"
               onClick={() => setIsPaletteOpen(true)}
               className="radius-icon flex h-11 w-11 items-center justify-center border border-sidebar-border bg-background/80 p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-              aria-label="Search"
+              aria-label={m.shell_search()}
             >
               <Search className="h-5 w-5" />
             </button>
@@ -659,11 +659,12 @@ export function AppShell({
                 type="button"
                 onClick={() => setIsPaletteOpen(true)}
                 className="radius-surface inline-flex h-8 items-center gap-2 border border-border bg-card/88 px-3 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                aria-label="Search"
+                aria-label={m.shell_search()}
               >
                 <Search className="h-4 w-4" />
-                <span className="text-sm">Search</span>
+                <span className="text-sm">{m.shell_search()}</span>
                 <span className="hidden rounded-sm border border-border/70 bg-background/90 px-1.5 py-0.5 font-mono text-[0.65rem] text-muted-foreground lg:inline">
+                  {/* presentation-text-ignore: keyboard key names, not translatable copy */}
                   Ctrl K
                 </span>
               </button>

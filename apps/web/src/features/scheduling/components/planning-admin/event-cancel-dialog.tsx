@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { Ban } from 'lucide-react';
 import { useState } from 'react';
-import { getErrorMessage } from './planning-admin.utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,6 +19,7 @@ import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-b
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
 /** Every read a cancellation changes: planning, Schedules, notices, Volunteer reads. */
@@ -166,7 +166,7 @@ export function EventCancelDialog({
           </DialogHeader>
           {error ? (
             <p role="alert" className="text-destructive text-sm">
-              {getErrorMessage({ error })}
+              {requestErrorMessage(error)}
             </p>
           ) : null}
           {done ? (

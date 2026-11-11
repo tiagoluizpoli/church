@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
@@ -66,7 +67,7 @@ export function ResponsiveFormSurface({
     <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
       <DrawerContent>
         <DrawerClose
-          aria-label="Close"
+          aria-label={m.shell_close()}
           className="radius-icon absolute top-2 right-2 flex h-11 w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           <X className="h-5 w-5" />

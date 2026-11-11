@@ -36,7 +36,9 @@ test('breadcrumb marks the exact-match page as current, not every ancestor link'
   // On /cycles exactly, that crumb *is* the current
   // page (BreadcrumbPage swap, isLast: true).
   await page.goto('/cycles');
-  const nav = page.getByRole('navigation', { name: 'breadcrumb' });
+  const nav = page.getByRole('navigation', {
+    name: m.shell_breadcrumb({}, { locale: 'pt-BR' }),
+  });
   await expect(nav).toBeVisible();
   await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
   await expect(nav.locator('[aria-current="page"]')).toHaveText(
@@ -57,7 +59,9 @@ test('breadcrumb never marks an ancestor link as the current page (regression: T
   // single correct one. `activeOptions={{ exact: true }}` closes that gap:
   // an ancestor breadcrumb link should never claim to be the current page.
   await page.goto(`/cycles/${journey.cycle.id}`);
-  const nav = page.getByRole('navigation', { name: 'breadcrumb' });
+  const nav = page.getByRole('navigation', {
+    name: m.shell_breadcrumb({}, { locale: 'pt-BR' }),
+  });
   await expect(nav).toBeVisible();
   await expect(nav.locator('a[aria-current="page"]')).toHaveCount(0);
 

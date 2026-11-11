@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { QueryClient } from '@tanstack/react-query';
 import {
   createMemoryHistory,
@@ -71,7 +72,7 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
       />,
     );
 
-    const table = screen.getByRole('grid', { name: 'Cycles' });
+    const table = screen.getByRole('grid', { name: m.nav_cycles() });
     expect(within(table).getAllByRole('row')).toHaveLength(3); // header + 2 cycles
     expect(table).toHaveTextContent('August');
     expect(table).toHaveTextContent('September');
@@ -87,7 +88,7 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
       />,
     );
 
-    const table = screen.getByRole('grid', { name: 'Cycles' });
+    const table = screen.getByRole('grid', { name: m.nav_cycles() });
     const augustRow = within(table).getByRole('row', { name: /August/ });
     expect(augustRow).toHaveTextContent('4');
     expect(augustRow).toHaveTextContent('6');
@@ -102,10 +103,10 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
       />,
     );
 
-    const table = screen.getByRole('grid', { name: 'Cycles' });
+    const table = screen.getByRole('grid', { name: m.nav_cycles() });
     const rows = within(table).getAllByRole('row');
-    expect(rows[1]).toHaveTextContent('In progress');
-    expect(rows[2]).toHaveTextContent('Published');
+    expect(rows[1]).toHaveTextContent(m.prepare_cycle_status_in_progress());
+    expect(rows[2]).toHaveTextContent(m.schedules_published());
     expect(table).not.toHaveTextContent('sent');
   });
 
@@ -120,7 +121,7 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
       />,
     );
 
-    const table = screen.getByRole('grid', { name: 'Cycles' });
+    const table = screen.getByRole('grid', { name: m.nav_cycles() });
     await user.click(within(table).getByRole('row', { name: /August/ }));
     expect(onSelectCycle).not.toHaveBeenCalled();
 
@@ -141,7 +142,7 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
       />,
     );
 
-    const table = screen.getByRole('grid', { name: 'Cycles' });
+    const table = screen.getByRole('grid', { name: m.nav_cycles() });
     const card = table.closest('.surface-panel');
     const panel = screen.getByTestId('schedule-list-panel');
     expect(card).toHaveClass('py-0');
@@ -167,7 +168,7 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
         />,
       );
 
-      const table = screen.getByRole('grid', { name: 'Cycles' });
+      const table = screen.getByRole('grid', { name: m.nav_cycles() });
       // Default sort is by window ascending: August (cycle-1) then September (cycle-2).
       expect(
         within(table)
@@ -178,7 +179,9 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
       // cycle-1 has 4 events, cycle-2 has 2 — sorting by Events ascending
       // should put cycle-2 first.
       await user.click(
-        within(table).getByRole('columnheader', { name: 'Events' }),
+        within(table).getByRole('columnheader', {
+          name: m.cycle_header_events(),
+        }),
       );
       expect(
         within(table)
@@ -187,7 +190,9 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
       ).toEqual(['schedule-row-cycle-2', 'schedule-row-cycle-1']);
 
       await user.click(
-        within(table).getByRole('columnheader', { name: 'Events' }),
+        within(table).getByRole('columnheader', {
+          name: m.cycle_header_events(),
+        }),
       );
       expect(
         within(table)
@@ -244,9 +249,7 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
       // the row doesn't grow to fit copy every leader hits repeatedly.
       for (const button of buttons) {
         expect(button).toHaveAccessibleName(
-          expect.stringContaining(
-            'Unlocks once availability is requested for this cycle',
-          ),
+          expect.stringContaining(m.prepare_cycle_assign_locked()),
         );
       }
     });
@@ -296,11 +299,13 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
 
       const links = screen.getAllByTestId('schedule-assign-link-cycle-2');
       expect(links).toHaveLength(2);
+      const assignLabel = m.prepare_cycle_action_assign();
       for (const link of links) {
         expect(link).toHaveAttribute(
           'href',
           expect.stringContaining('/schedules/ministry-1/cycle-2/assign'),
         );
+        expect(link).toHaveTextContent(assignLabel);
       }
 
       await user.click(links[0] as HTMLElement);

@@ -1,10 +1,9 @@
+import { m } from '@church/i18n/messages';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  getErrorMessage,
-  getSelectedCycleIdOrThrow,
-} from './planning-admin.utils';
+import { getSelectedCycleIdOrThrow } from './planning-admin.utils';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
 export interface UsePlanningAdminMutationsProps {
@@ -61,7 +60,8 @@ function usePlanningMutation<TVariables, TResult>({
       if (onError) {
         onError(error as Error);
       } else {
-        toast.error(getErrorMessage({ error }));
+        const message = requestErrorMessage(error);
+        toast.error(message);
       }
     },
   });
@@ -84,7 +84,7 @@ export function usePlanningAdminMutations({
         eventTimeBlockId,
       ),
     invalidateQueryKeys: [['cycle-details', selectedCycleId]],
-    successMessage: 'Time block deleted',
+    successMessage: m.event_time_block_deleted_toast(),
     queryClient,
   });
 

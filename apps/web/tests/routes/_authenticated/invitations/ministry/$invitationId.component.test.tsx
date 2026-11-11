@@ -117,7 +117,9 @@ describe('the existing-member Ministry Invitation redemption route', () => {
     expect(screen.getByText('Host')).toBeVisible();
     expect(screen.queryByLabelText('Email')).toBeNull();
     // Home › Ministry invitation, not the raw path segments.
-    const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i });
+    const breadcrumb = screen.getByRole('navigation', {
+      name: m.shell_breadcrumb(),
+    });
     expect(within(breadcrumb).getByText(m.nav_home())).toBeVisible();
     expect(
       within(breadcrumb).getByText(m.breadcrumb_ministry_invitation()),

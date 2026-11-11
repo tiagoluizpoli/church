@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import { type ReactNode, useMemo, useState } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
@@ -5,6 +6,7 @@ import {
   cyclePrepareStatusBadgeVariant,
   cyclePrepareStatusLabel,
   type PrepareCycleSummary,
+  prepareCountsSummary,
 } from './cycle-list.utils';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -36,13 +38,26 @@ export interface ScheduleListProps {
   filters?: ReactNode;
 }
 
-const CYCLE_TABLE_COLUMNS: DataTableColumn[] = [
-  { id: 'name', name: 'Name', allowsSorting: true, isRowHeader: true },
-  { id: 'window', name: 'Window', allowsSorting: true },
-  { id: 'events', name: 'Events', allowsSorting: true },
-  { id: 'eventTimeBlocks', name: 'Time blocks', allowsSorting: true },
-  { id: 'status', name: 'Status', allowsSorting: true },
-  { id: 'actions', name: 'Actions', allowsSorting: false },
+const cycleTableColumns = (): DataTableColumn[] => [
+  {
+    id: 'name',
+    name: m.cycles_column_name(),
+    allowsSorting: true,
+    isRowHeader: true,
+  },
+  { id: 'window', name: m.cycles_column_window(), allowsSorting: true },
+  { id: 'events', name: m.cycle_header_events(), allowsSorting: true },
+  {
+    id: 'eventTimeBlocks',
+    name: m.cycle_review_column_time_blocks(),
+    allowsSorting: true,
+  },
+  { id: 'status', name: m.cycles_column_status(), allowsSorting: true },
+  {
+    id: 'actions',
+    name: m.cycle_review_column_actions(),
+    allowsSorting: false,
+  },
 ];
 
 const DEFAULT_SORT_DESCRIPTOR: SortDescriptor = {
@@ -95,7 +110,7 @@ export function ScheduleList({
   ministryId,
   cycles,
   onSelectCycle,
-  emptyMessage = 'No sent cycles are available for this ministry to prepare right now.',
+  emptyMessage = m.prepare_cycle_list_empty(),
   filters,
 }: ScheduleListProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -153,8 +168,8 @@ export function ScheduleList({
            * `WorkspaceIntroPanel` avoids the same trap. */
           <div className="workspace-panel-lg" data-testid="schedule-list-panel">
             <DataTable<PrepareCycleSummary>
-              aria-label="Cycles"
-              columns={CYCLE_TABLE_COLUMNS}
+              aria-label={m.nav_cycles()}
+              columns={cycleTableColumns()}
               items={sortedCycles}
               rowId={({ item }) => item.id}
               rowTestId={({ item }) => `schedule-row-${item.id}`}
@@ -198,8 +213,10 @@ export function ScheduleList({
                         {item.window}
                       </div>
                       <div className="text-muted-foreground text-xs">
-                        {item.eventCount} events · {item.eventTimeBlockCount}{' '}
-                        time blocks
+                        {prepareCountsSummary({
+                          eventCount: item.eventCount,
+                          eventTimeBlockCount: item.eventTimeBlockCount,
+                        })}
                       </div>
                     </div>
                     <Badge
@@ -251,7 +268,7 @@ function CycleRowActions({
         data-testid={`schedule-prepare-button-${cycle.id}`}
         onClick={() => onSelectCycle({ cycleId: cycle.id })}
       >
-        Schedule
+        {m.prepare_cycle_action_schedule()}
       </Button>
       {cycle.availabilityRequestedForAny ? (
         <Link
@@ -260,7 +277,7 @@ function CycleRowActions({
           data-testid={`schedule-assign-link-${cycle.id}`}
           className={buttonVariants({ variant: 'outline', size })}
         >
-          Assign
+          {m.prepare_cycle_action_assign()}
         </Link>
       ) : (
         <Button
@@ -268,11 +285,11 @@ function CycleRowActions({
           size={size}
           variant="outline"
           disabled
-          title="Unlocks once availability is requested for this cycle"
-          aria-label="Unlocks once availability is requested for this cycle"
+          title={m.prepare_cycle_assign_locked()}
+          aria-label={m.prepare_cycle_assign_locked()}
           data-testid={`schedule-assign-button-${cycle.id}`}
         >
-          Assign
+          {m.prepare_cycle_action_assign()}
         </Button>
       )}
     </div>

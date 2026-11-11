@@ -293,7 +293,12 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
       ],
     });
     applyPlanningTemplates.mockRejectedValue(
-      new Error('Apply templates failed due to conflict'),
+      Object.assign(new AxiosError('Conflict'), {
+        response: {
+          status: 409,
+          data: { message: 'Apply templates failed due to conflict' },
+        } as AxiosResponse,
+      }),
     );
 
     const user = userEvent.setup();
@@ -658,7 +663,9 @@ describe('Cycle header visibility (chip-leak fix)', () => {
       '2',
     );
     expect(screen.getByTestId('cycles-draft-chip')).toHaveTextContent('1');
-    expect(screen.getByText('Sent')).toBeInTheDocument();
+    expect(screen.getByTestId('cycles-sent-chip')).toHaveTextContent(
+      m.cycles_state_sent(),
+    );
     expect(screen.getByTestId('cycles-sent-chip')).toHaveTextContent('1');
     expect(screen.queryByTestId('cycle-period-chip')).not.toBeInTheDocument();
     expect(

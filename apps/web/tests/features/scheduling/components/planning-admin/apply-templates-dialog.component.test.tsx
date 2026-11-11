@@ -2,6 +2,7 @@ import { overwriteGetLocale } from '@church/i18n/runtime';
 import { focusManager, QueryClient } from '@tanstack/react-query';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApplyTemplatesDialog } from '@/features/scheduling/components/planning-admin/apply-templates-dialog';
 import { TEMPLATE_LIST_QUERY_KEY } from '@/features/scheduling/components/planning-admin/template-query-keys';
@@ -169,7 +170,13 @@ describe('ApplyTemplatesDialog', () => {
     await user.click(submit());
     expect(applyPlanningTemplates).toHaveBeenCalledTimes(1);
 
-    await act(async () => reject(new Error('Conflict')));
+    await act(async () =>
+      reject(
+        Object.assign(new AxiosError('Conflict'), {
+          response: { status: 409, data: { message: 'Conflict' } },
+        }),
+      ),
+    );
 
     expect(
       await screen.findByTestId('apply-templates-error'),

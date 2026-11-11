@@ -2,7 +2,6 @@ import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { toast } from 'sonner';
-import { getErrorMessage } from './planning-admin.utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { pluralMessage } from '@/shared/utils/plural';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
 export interface CycleDeleteDialogProps {
@@ -83,7 +83,7 @@ export function CycleDeleteDialog({
             data-testid="cycle-delete-error"
           >
             {isAxiosError(remove.error) && remove.error.response
-              ? getErrorMessage({ error: remove.error })
+              ? requestErrorMessage(remove.error)
               : m.cycles_delete_failed()}
           </p>
         ) : null}

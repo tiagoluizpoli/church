@@ -23,6 +23,7 @@ import type {
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatDayOf, formatInstantOf } from '@/shared/utils/church-time';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { notificationsApi } from '@/utils/api-instances';
 
 const { pollIntervalMs } = appConfig.notifications;
@@ -243,7 +244,8 @@ export function useNotificationInbox() {
       });
     },
     onError: (error) => {
-      toast.error(error.message);
+      const message = requestErrorMessage(error);
+      toast.error(message);
     },
   });
 
@@ -258,7 +260,8 @@ export function useNotificationInbox() {
       });
     },
     onError: (error) => {
-      toast.error(error.message);
+      const message = requestErrorMessage(error);
+      toast.error(message);
     },
   });
 

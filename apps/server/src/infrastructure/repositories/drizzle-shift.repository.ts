@@ -3,12 +3,13 @@ import {
   event,
   ministry,
   ministryParticipation,
+  role,
   sector,
   shift,
   shiftRequirement,
 } from '@church/db';
 import { toDate } from '@church/time';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type {
   CreateShiftsInput,
   DeleteShiftInput,
@@ -68,7 +69,8 @@ export class DrizzleShiftRepository implements ShiftRepository {
           withChurchIsolation({ table: event, churchId: input.churchId }),
           withChurchIsolation({ table: ministry, churchId: input.churchId }),
         ),
-      );
+      )
+      .orderBy(asc(shift.startTime), asc(shift.id));
     return rows.map(({ shift: row, ministryName, eventTitle }) => ({
       shift: mapShift(row),
       ministryName,
@@ -136,7 +138,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
           withChurchIsolation({ table: shift, churchId: input.churchId }),
         ),
       )
-      .orderBy(asc(shift.startTime));
+      .orderBy(asc(shift.startTime), asc(shift.id));
 
     return rows.map(mapShift);
   }
@@ -155,7 +157,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
           withChurchIsolation({ table: shift, churchId: input.churchId }),
         ),
       )
-      .orderBy(asc(shift.startTime));
+      .orderBy(asc(shift.startTime), asc(shift.id));
     const rows = await (input.forUpdate ? query.for('update') : query);
 
     return rows.map(mapShift);
@@ -296,6 +298,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
       .select({ requirement: shiftRequirement, sectorName: sector.name })
       .from(shiftRequirement)
       .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
+      .innerJoin(role, eq(role.id, shiftRequirement.roleId))
       .where(
         and(
           eq(shiftRequirement.participationId, input.participationId),
@@ -304,6 +307,11 @@ export class DrizzleShiftRepository implements ShiftRepository {
             churchId: input.churchId,
           }),
         ),
+      )
+      .orderBy(
+        asc(sql`lower(${sector.name})`),
+        asc(sql`lower(${role.name})`),
+        asc(shiftRequirement.id),
       );
 
     return rows.map(({ requirement, sectorName }) =>

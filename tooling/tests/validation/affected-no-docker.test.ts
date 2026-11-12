@@ -56,6 +56,8 @@ describe('the no-docker tier', () => {
       'i18n-parity',
       'named-parameters',
       'journey-map',
+      'presentation-text',
+      'date-time-seam',
       'typecheck',
       'test:unit',
     ]);

@@ -29,6 +29,18 @@ const JOURNEY_MAP_STEP = {
   label: 'journey-map',
 };
 
+const PRESENTATION_TEXT_STEP = {
+  args: ['run', 'validate:presentation-text'],
+  command: 'bun',
+  label: 'presentation-text',
+};
+
+const DATE_TIME_SEAM_STEP = {
+  args: ['run', 'validate:date-time-seam'],
+  command: 'bun',
+  label: 'date-time-seam',
+};
+
 describe('buildValidationSteps', () => {
   it('skips the test-placement guard for an E2E-only run', () => {
     const { checkLane } = buildValidationSteps({
@@ -52,11 +64,15 @@ describe('buildValidationSteps', () => {
       I18N_PARITY_STEP,
       NAMED_PARAMETERS_STEP,
       JOURNEY_MAP_STEP,
+      PRESENTATION_TEXT_STEP,
+      DATE_TIME_SEAM_STEP,
     ]);
     expect(steps.checkedLabels).toContain('test-placement');
     expect(steps.checkedLabels).toContain('i18n-parity');
     expect(steps.checkedLabels).toContain('named-parameters');
     expect(steps.checkedLabels).toContain('journey-map');
+    expect(steps.checkedLabels).toContain('presentation-text');
+    expect(steps.checkedLabels).toContain('date-time-seam');
     expect(steps.integrationLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
   });
@@ -94,6 +110,8 @@ describe('buildValidationSteps', () => {
       I18N_PARITY_STEP,
       NAMED_PARAMETERS_STEP,
       JOURNEY_MAP_STEP,
+      PRESENTATION_TEXT_STEP,
+      DATE_TIME_SEAM_STEP,
       {
         args: [
           'turbo',

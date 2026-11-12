@@ -568,7 +568,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Follow-up [#551](https://github.com/tiagoluizpoli/church/issues/551) |
 | Run commands through root Bun scripts | Tooling | Judgement | — | Review: governs how an agent works, leaves nothing in the repository to check |
 | Tests live in the owning project's `tests/` and import by alias | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:test-placement`, part of `lint` |
-| User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:presentation-text`, part of `lint`. Copy reached only through calls or unrelated names stays with review (see Presentation text) |
+| User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:presentation-text`, part of `lint` and `validate:affected`. Copy reached only through calls or unrelated names stays with review (see Presentation text) |
 | Seed-relevant changes carry a seed decision | Tooling, ADR-0006 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-impact.ts` in `validate:affected` |
 | Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
 | No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
@@ -591,7 +591,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | A `Shift` lies within its `TimeSlot`; requirements, assignments and availability attach to a `Shift` | ADR-0002 | Judgement | — | Review: domain invariant, held by domain code and its tests |
 | Only `@church/time` imports `date-fns`/`date-fns-tz` | ADR-0003 | Mechanical | Biome rule | Enforced: `noRestrictedImports` in `biome.json` |
 | No bare `new Date`, wall-clock accessors, `.toISOString()`, `toLocale*` or `Intl.DateTimeFormat` outside the seam | ADR-0003 | Mechanical | Grit plugin | Enforced: `tooling/biome/date-time-seam.grit`, with its fixture test |
-| No `biome-ignore` of the seam rules; no `p`/`P` format tokens outside the seam | ADR-0003 | Mechanical | Validation guard | Enforced: `bun run validate:date-time-seam` (`test:validation`) |
+| No `biome-ignore` of the seam rules; no `p`/`P` format tokens outside the seam | ADR-0003 | Mechanical | Validation guard | Enforced: `bun run validate:date-time-seam`, part of `lint` and `validate:affected` |
 | CI runs under a non-UTC, non-Brazil `TZ` | ADR-0003 | Mechanical | Validation guard | Enforced: `TZ: Asia/Kolkata` in `.github/workflows/ci.yml` |
 | The seam's format functions take no format string or options bag; `locale` only on word outputs | ADR-0003 | Mechanical | tsc setting | Enforced: the `@church/time` signatures, `bun run typecheck` |
 | `useTimezone()` is the only source of the church timezone on the web | ADR-0003 | Judgement | — | Review: a timezone value can arrive in many shapes |

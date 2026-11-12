@@ -378,6 +378,16 @@ export function buildValidationSteps({
       command: 'bun',
       label: 'journey-map',
     });
+    checkLane.push({
+      args: ['run', 'validate:presentation-text'],
+      command: 'bun',
+      label: 'presentation-text',
+    });
+    checkLane.push({
+      args: ['run', 'validate:date-time-seam'],
+      command: 'bun',
+      label: 'date-time-seam',
+    });
 
     if (plan.workspaceNames.length > 0) {
       const filters = plan.workspaceNames.flatMap((workspaceName) => [
@@ -411,6 +421,8 @@ export function buildValidationSteps({
       'i18n-parity',
       'named-parameters',
       'journey-map',
+      'presentation-text',
+      'date-time-seam',
       'typecheck',
       ...ALL_TEST_LAYERS,
     );

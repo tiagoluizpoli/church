@@ -266,10 +266,14 @@ interface ExpectedMigration {
   label: string;
 }
 
+interface MigrationJournal {
+  entries: { when: number; tag: string }[];
+}
+
 function expectedMigrations(): ExpectedMigration[] {
   const journal = JSON.parse(
     readFileSync(join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
-  ) as { entries: { when: number; tag: string }[] };
+  ) as MigrationJournal;
   const tags = new Map(journal.entries.map((e) => [e.when, e.tag]));
   return readMigrationFiles({ migrationsFolder: MIGRATIONS_FOLDER }).map(
     (migration) => ({

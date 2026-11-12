@@ -339,7 +339,7 @@ describe('classifyChanges', () => {
   it('selects J6, planning handoff and leader-prepare journeys for the N2 Prepare destination', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index.tsx',
+        'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare.tsx',
       ],
     });
 

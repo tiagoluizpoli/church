@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   initialPreparationDraft,
@@ -183,6 +183,9 @@ function PreparationBlockForm({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const saved = useRef(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // Opening or switching a block moves keyboard focus into its editor.
+  useEffect(() => heading.current?.focus(), []);
   const { churchTimezone } = useTimezone();
   const [confirmOptOut, setConfirmOptOut] = useState(false);
   const [serves, setServes] = useState(included);
@@ -350,9 +353,13 @@ function PreparationBlockForm({
       }}
       className="flex max-w-2xl flex-col gap-5"
     >
-      <h1 className="font-semibold text-lg">
+      <h2
+        ref={heading}
+        tabIndex={-1}
+        className="font-semibold text-lg outline-none"
+      >
         {eventTitle} · {blockLabel}
-      </h1>
+      </h2>
       {readOnly && (
         <Alert role="status">
           <AlertDescription>{m.prepare_block_read_only()}</AlertDescription>

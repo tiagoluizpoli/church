@@ -109,7 +109,7 @@ export function PrepareEventTimeBlockList({
                   data-testid={`prepare-event-time-block-row-${id}`}
                   to="/schedules/$ministryId/$cycleId/slots/$timeSlotId"
                   params={{ ministryId, cycleId, timeSlotId: id }}
-                  className="radius-control flex min-h-11 flex-wrap items-center justify-between gap-3 border p-3 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+                  className="radius-control flex min-h-11 flex-wrap items-center justify-between gap-3 border p-3 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:border-primary aria-[current=page]:bg-accent"
                 >
                   <div className="flex min-w-0 flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">

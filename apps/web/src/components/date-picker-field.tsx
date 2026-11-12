@@ -22,13 +22,17 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
-const CALENDAR_START_YEAR =
-  Number(today({ instant: now(), timeZone: 'UTC' }).slice(0, 4)) - 10;
+const CURRENT_YEAR = Number(
+  today({ instant: now(), timeZone: 'UTC' }).slice(0, 4),
+);
+const CALENDAR_START_YEAR = CURRENT_YEAR - 10;
 const CALENDAR_START_MONTH = toPickerDate({
   day: parseCalendarDay({ value: `${CALENDAR_START_YEAR}-01-01` }),
 });
 const CALENDAR_END_MONTH = toPickerDate({
-  day: parseCalendarDay({ value: '3000-12-31' }),
+  // The year dropdown renders one <option> per year in range; a far-off end
+  // (year 3000 was ~1000 options) made every calendar open and month change slow.
+  day: parseCalendarDay({ value: `${CURRENT_YEAR + 30}-12-31` }),
 });
 
 interface PickerDateOfInput {

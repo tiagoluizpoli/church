@@ -54,6 +54,32 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
     }),
   );
 
+  // A long Church name must leave the mobile header actions reachable.
+  await page.setViewportSize({ width: 320, height: 800 });
+  const header = page.getByTestId('mobile-top-header');
+  const churchName = header.locator('span.truncate').first();
+  await churchName.evaluate((element) => {
+    element.textContent = 'A very long Church name for a narrow screen';
+  });
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    for (const fontSize of [100, 125]) {
+      await page.evaluate((size) => {
+        document.documentElement.style.fontSize = `${size}%`;
+      }, fontSize);
+      const menuBox = await page
+        .getByTestId('mobile-drawer-trigger')
+        .boundingBox();
+      if (!menuBox) throw new Error('Mobile menu is not visible');
+      expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(width);
+      expect(menuBox.width).toBeGreaterThanOrEqual(44);
+    }
+  }
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '';
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
+
   const eventRow = page
     .locator('[data-testid^="prepare-event-time-block-row-"]')
     .filter({ hasText: eventTitle })

@@ -10,6 +10,10 @@ import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { PrepareCycleSummary } from '@/features/scheduling/components/prepare/cycle-list.utils';
+import {
+  CycleListFiltersBar,
+  DEFAULT_FILTERS,
+} from '@/features/scheduling/components/prepare/cycle-list-filters-bar';
 import { ScheduleList } from '@/features/scheduling/components/prepare/schedule-list';
 import { routeTree } from '@/routeTree.gen';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
@@ -61,6 +65,27 @@ const CYCLES: PrepareCycleSummary[] = [
     availabilityRequestedForAny: true,
   },
 ];
+
+describe('Cycle list filters', () => {
+  it('shows translated selected labels before the menu is opened', () => {
+    renderCycleList(
+      <CycleListFiltersBar
+        appliedFilters={DEFAULT_FILTERS}
+        onApply={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByTestId('prepare-cycle-date-mode-filter'),
+    ).toHaveTextContent(m.builder_ui_starts());
+    expect(
+      screen.getByTestId('prepare-cycle-involvement-filter'),
+    ).toHaveTextContent(m.prepare_cycle_filter_all());
+    expect(screen.getByTestId('prepare-cycle-status-filter')).toHaveTextContent(
+      m.prepare_cycle_filter_all(),
+    );
+  });
+});
 
 describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
   it('renders only the cycles available to the selected ministry, wrapped in the surface-panel Card pattern', () => {

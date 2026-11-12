@@ -132,6 +132,8 @@ export function DataTable<T extends object>({
   onSelectionChange,
   className,
 }: DataTableProps<T>) {
+  const isSelectable = selectionMode != null && selectionMode !== 'none';
+
   if (isLoading) {
     return <div className={className}>{loadingContent}</div>;
   }
@@ -144,7 +146,7 @@ export function DataTable<T extends object>({
     <div className={cn('space-y-3', className)}>
       <div
         className="space-y-3 md:hidden"
-        role={selectionMode ? 'listbox' : 'list'}
+        role={isSelectable ? 'listbox' : 'list'}
         aria-label={ariaLabel}
         data-testid={mobileListTestId}
       >
@@ -155,7 +157,7 @@ export function DataTable<T extends object>({
           return (
             <div
               key={key}
-              role={selectionMode ? undefined : 'listitem'}
+              role={isSelectable ? undefined : 'listitem'}
               data-testid={rowTestId?.({ item })}
             >
               {renderMobileCard({ item })}

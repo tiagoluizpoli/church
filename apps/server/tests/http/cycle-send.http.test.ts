@@ -452,6 +452,8 @@ describe('GET /admin/cycles/:cycleId/send-summary', () => {
     const seed = await signIn();
     const churchId = seed.churchAId;
     // Ministry A (seeded) is all_out with no setup: not pre-filled.
+    // The all_in Ministries below are deliberate: they cover the dormant
+    // all_in fallback, not the product default (all_out).
     const allIn = await buildMinistry({
       db,
       churchId,
@@ -807,6 +809,7 @@ describe('POST /admin/cycles/:cycleId/send', () => {
   it('rolls back the states, every staffing row and the outbox when the enqueue fails', async () => {
     const seed = await signIn();
     const churchId = seed.churchAId;
+    // Deliberate dormant all_in fallback: it writes staffing rows without setup.
     await buildMinistry({
       db,
       churchId,

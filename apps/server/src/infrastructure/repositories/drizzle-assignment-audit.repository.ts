@@ -52,6 +52,7 @@ export class DrizzleAssignmentAuditRepository
         action:
           input.action === 'event_published' ? 'status_change' : input.action,
         reason: input.reason ?? null,
+        correlationId: input.correlationId ?? null,
         timestamp: nowAsDate(),
       })
       .returning();

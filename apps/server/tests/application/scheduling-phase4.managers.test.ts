@@ -142,6 +142,8 @@ function createParticipationHarness({
     } as never,
     swapRequestRepo: createSwapRequestRepositoryFake(),
     staffingSeeder: {} as never,
+    auditRepository: {} as never,
+    proposalApplicationRepository: {} as never,
     unitOfWork,
     notifications,
   });

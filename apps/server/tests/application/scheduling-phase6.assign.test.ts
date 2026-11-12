@@ -220,6 +220,8 @@ function createHarness() {
     shiftRepository,
     eventRepository: planningEventRepository,
     assignmentRepository,
+    auditRepository: {} as never,
+    proposalApplicationRepository: {} as never,
     unavailableShiftRepository,
     eventTimeBlockRepository,
     volunteerRepository,

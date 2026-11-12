@@ -1,6 +1,7 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import type {
+  AssignmentProposalOutcomeView,
   AssignmentProposalView,
   EligibleVolunteerView,
   ParticipationCompletionView,
@@ -107,6 +108,38 @@ export const assignmentProposalResponseSchema = z.object({
   ),
   excludedUnconfirmedCount: z.number(),
   emptyReason: z.enum(EMPTY_PROPOSAL_REASON_OPTIONS).nullable(),
+  /** Send back unchanged with the same pairs to Apply (ADR 0013). */
+  reviewToken: z.string(),
+});
+
+const reviewedPairSchema = z
+  .object({
+    shiftRequirementId: z.string(),
+    volunteerId: z.string(),
+  })
+  .strict();
+
+export const applyAssignmentProposalBodySchema = z
+  .object({
+    /** One per reviewed preview; resend it on every retry of that preview. */
+    applicationKey: z.uuid(),
+    reviewToken: z.string().min(1),
+    additions: z.array(reviewedPairSchema).min(1),
+  })
+  .strict();
+
+export const assignmentProposalOutcomeResponseSchema = z.object({
+  applicationKey: z.string(),
+  appliedAt: instantSchema,
+  /** True when a retry recovered an already committed Apply. */
+  replayed: z.boolean(),
+  additions: z.array(
+    z.object({
+      assignmentId: z.string(),
+      shiftRequirementId: z.string(),
+      volunteerId: z.string(),
+    }),
+  ),
 });
 
 export const assignMapper = {
@@ -126,6 +159,19 @@ export const assignMapper = {
       })),
       excludedUnconfirmedCount: proposal.excludedUnconfirmedCount,
       emptyReason: proposal.emptyReason,
+      reviewToken: proposal.reviewToken,
+    };
+  },
+  proposalOutcomeToResponse(outcome: AssignmentProposalOutcomeView) {
+    return {
+      applicationKey: outcome.applicationKey,
+      appliedAt: outcome.appliedAt,
+      replayed: outcome.replayed,
+      additions: outcome.additions.map((addition) => ({
+        assignmentId: addition.assignmentId as string,
+        shiftRequirementId: addition.shiftRequirementId as string,
+        volunteerId: addition.volunteerId as string,
+      })),
     };
   },
   eligibleVolunteerToResponse(volunteer: EligibleVolunteerView) {

@@ -1,5 +1,6 @@
 export * from './assignment.repository';
 export * from './assignment-audit.repository';
+export * from './assignment-proposal-application.repository';
 export * from './authority-actor.repository';
 export * from './availability-check.repository';
 export * from './church.repository';

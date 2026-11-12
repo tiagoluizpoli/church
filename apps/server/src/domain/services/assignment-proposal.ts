@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { compareInstants, type Instant } from '@church/time';
 import type {
+  AssignmentId,
   RoleId,
   ShiftId,
   ShiftRequirementId,
@@ -501,6 +502,11 @@ export function proposeAssignments(
 export interface ReviewedAddition {
   volunteerId: VolunteerId;
   shiftRequirementId: ShiftRequirementId;
+}
+
+/** A reviewed pair after Apply created its Assignment. */
+export interface AppliedProposalAddition extends ReviewedAddition {
+  assignmentId: AssignmentId;
 }
 
 export interface FindStaleAdditionsInput {

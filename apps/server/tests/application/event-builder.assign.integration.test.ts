@@ -23,6 +23,7 @@ import { HardConstraintError } from '@/domain/conflict/errors/hard-constraint-er
 import type { HasMembershipInMinistryInput } from '@/domain/contracts/infrastructure/volunteer.repository';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
+import { DrizzleAssignmentProposalApplicationRepository } from '@/infrastructure/repositories/drizzle-assignment-proposal-application.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
@@ -79,6 +80,13 @@ function createParticipationManager(): DbParticipationManager {
     assignmentRepository: new DrizzleAssignmentRepository({
       db: schedulingTestDb,
     }),
+    auditRepository: new DrizzleAssignmentAuditRepository({
+      db: schedulingTestDb,
+    }),
+    proposalApplicationRepository:
+      new DrizzleAssignmentProposalApplicationRepository({
+        db: schedulingTestDb,
+      }),
     unavailableShiftRepository: new DrizzleUnavailableShiftRepository({
       db: schedulingTestDb,
     }),

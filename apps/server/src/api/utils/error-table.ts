@@ -74,6 +74,8 @@ export type MappedDomainCode =
   | 'HEADCOUNT_BELOW_ASSIGNED'
   | 'SCHEDULE_HAS_NO_ASSIGNMENTS'
   | 'SCHEDULE_ALREADY_PUBLISHED'
+  | 'ASSIGNMENT_PROPOSAL_CHANGED'
+  | 'ASSIGNMENT_PROPOSAL_STALE'
   | 'NO_UNSENT_CHANGES'
   | 'SHIFT_STARTED'
   | 'SWAP_REQUEST_UNPUBLISHED'
@@ -224,6 +226,14 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   SCHEDULE_ALREADY_PUBLISHED: {
     status: 409,
     message: m.error_schedule_already_published,
+  },
+  ASSIGNMENT_PROPOSAL_CHANGED: {
+    status: 409,
+    message: m.error_assignment_proposal_changed,
+  },
+  ASSIGNMENT_PROPOSAL_STALE: {
+    status: 409,
+    message: m.error_assignment_proposal_stale,
   },
   NO_UNSENT_CHANGES: { status: 409, message: m.error_no_unsent_changes },
   SHIFT_STARTED: { status: 409, message: m.error_shift_started },

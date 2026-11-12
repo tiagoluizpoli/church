@@ -30,8 +30,10 @@ import type {
   UsualSetupHeadcount,
 } from '../../entities/usual-setup';
 import type {
+  AppliedProposalAddition,
   AssignmentProposal,
   ProposedAddition,
+  ReviewedAddition,
 } from '../../services/assignment-proposal';
 import type { ShiftSplitStrategy } from '../../services/shift-splitter';
 
@@ -289,6 +291,27 @@ export interface ProposedAdditionView extends ProposedAddition {
 export interface AssignmentProposalView
   extends Omit<AssignmentProposal, 'additions'> {
   additions: ProposedAdditionView[];
+  /** Binds Apply to exactly these additions (ADR 0013). */
+  reviewToken: string;
+}
+
+export interface ApplyAssignmentProposalInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  ministryId: MinistryId;
+  actorId: UserId;
+  /** Client-generated per reviewed preview; resent on every retry. */
+  applicationKey: string;
+  reviewToken: string;
+  additions: ReviewedAddition[];
+}
+
+/** The committed outcome; `replayed` when a retry recovered it. */
+export interface AssignmentProposalOutcomeView {
+  applicationKey: string;
+  appliedAt: Instant;
+  replayed: boolean;
+  additions: AppliedProposalAddition[];
 }
 
 export interface IParticipationManager {
@@ -320,6 +343,10 @@ export interface IParticipationManager {
   getAssignmentProposal(
     input: GetAssignmentProposalInput,
   ): Promise<AssignmentProposalView>;
+  /** Creates exactly the reviewed additions once, atomically (ADR 0013). */
+  applyAssignmentProposal(
+    input: ApplyAssignmentProposalInput,
+  ): Promise<AssignmentProposalOutcomeView>;
   publishCycle(input: PublishCycleInput): Promise<PublishCycleView>;
   sendScheduleUpdates(
     input: PublishCycleInput,

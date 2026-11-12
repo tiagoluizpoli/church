@@ -22,7 +22,9 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  applyAssignmentProposalBodySchema,
   assignMapper,
+  assignmentProposalOutcomeResponseSchema,
   assignmentProposalResponseSchema,
   createParticipationAssignmentBodySchema,
   createParticipationAssignmentResponseSchema,
@@ -78,6 +80,9 @@ type CreateParticipationAssignmentBody = z.infer<
   typeof createParticipationAssignmentBodySchema
 >;
 type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
+type ApplyAssignmentProposalBody = z.infer<
+  typeof applyAssignmentProposalBodySchema
+>;
 type MoveAssignmentBody = z.infer<typeof moveAssignmentBodySchema>;
 type ReassignAssignmentBody = z.infer<typeof reassignAssignmentBodySchema>;
 
@@ -292,6 +297,66 @@ export class AssignController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         return reply.send(assignMapper.proposalToResponse(proposal));
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/assignment-proposal/apply',
+      {
+        schema: {
+          tags: ['assign'],
+          operationId: 'applyAssignmentProposal',
+          summary: 'Apply a reviewed Assignment proposal',
+          description:
+            'Create exactly the reviewed additions once, atomically, as pending Assignments. A retry with the same applicationKey returns the committed outcome. Never publishes or notifies.',
+          querystring: cycleMinistryQuerySchema,
+          body: applyAssignmentProposalBodySchema,
+          response: {
+            200: assignmentProposalOutcomeResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+
+        // Checked again on every attempt, recovery included.
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        const { applicationKey, reviewToken, additions } =
+          request.body as ApplyAssignmentProposalBody;
+        const outcome = await this.participationManager.applyAssignmentProposal(
+          {
+            churchId: ChurchId.from(request.churchId),
+            cycleId: CycleId.from(cycleId),
+            ministryId: MinistryId.from(ministryId),
+            actorId: UserId.from(request.userId),
+            applicationKey,
+            reviewToken,
+            additions: additions.map(({ shiftRequirementId, volunteerId }) => ({
+              shiftRequirementId: ShiftRequirementId.from({
+                raw: shiftRequirementId,
+              }),
+              volunteerId: VolunteerId.from(volunteerId),
+            })),
+          },
+        );
+        return reply.send(assignMapper.proposalOutcomeToResponse(outcome));
       },
     );
 

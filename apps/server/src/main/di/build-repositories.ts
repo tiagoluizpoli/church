@@ -1,5 +1,6 @@
 import {
   DrizzleAssignmentAuditRepository,
+  DrizzleAssignmentProposalApplicationRepository,
   DrizzleAssignmentRepository,
   DrizzleAvailabilityCheckRepository,
   DrizzleChurchAccessRepository,
@@ -43,6 +44,7 @@ export type Repositories = Pick<
   | 'assignmentRepository'
   | 'swapRequestRepository'
   | 'assignmentAuditRepository'
+  | 'assignmentProposalApplicationRepository'
   | 'unavailableShiftRepository'
   | 'availabilityCheckRepository'
   | 'ministryParticipationRepository'
@@ -101,6 +103,9 @@ export function buildRepositories({
   const assignmentAuditRepository =
     overrides.assignmentAuditRepository ??
     new DrizzleAssignmentAuditRepository({ db: database });
+  const assignmentProposalApplicationRepository =
+    overrides.assignmentProposalApplicationRepository ??
+    new DrizzleAssignmentProposalApplicationRepository({ db: database });
   const unavailableShiftRepository =
     overrides.unavailableShiftRepository ??
     new DrizzleUnavailableShiftRepository({ db: database });
@@ -175,6 +180,7 @@ export function buildRepositories({
     assignmentRepository,
     swapRequestRepository,
     assignmentAuditRepository,
+    assignmentProposalApplicationRepository,
     unavailableShiftRepository,
     availabilityCheckRepository,
     ministryParticipationRepository,

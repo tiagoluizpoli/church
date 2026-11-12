@@ -68,12 +68,18 @@ const CHURCH_B_PLAN = {
 const MEMBER_ONLY_USER_KIND = 'member-only:user';
 const MEMBER_ONLY_MEMBERSHIP_KIND = 'member-only:church-membership';
 const MEMBER_ONLY_NAME = 'Marta Membro';
+/** A signed-up User with no Church at all: a Church link's existing-login recipient. */
+const ACCOUNT_ONLY_USER_KIND = 'account-only:user';
+const ACCOUNT_ONLY_NAME = 'Caio Conta';
 
 const ROOT_KINDS = mergeRootKinds({
   rootKinds: [
     assignChurchRootKinds({ plan: CHURCH_A_PLAN, scope: CHURCH_A_SCOPE }),
     assignChurchRootKinds({ plan: CHURCH_B_PLAN, scope: CHURCH_B_SCOPE }),
-    { churchKinds: [], userKinds: [MEMBER_ONLY_USER_KIND] },
+    {
+      churchKinds: [],
+      userKinds: [MEMBER_ONLY_USER_KIND, ACCOUNT_ONLY_USER_KIND],
+    },
   ],
 });
 
@@ -91,6 +97,8 @@ export interface MinistryRedemptionJourney {
    * profile. Built by hand rather than from a plan persona, because plan
    * personas always get a Volunteer profile. */
   memberOnly: ChurchMemberWithoutVolunteerProfile;
+  /** Signed up, in no Church: receives Church links as an existing login. */
+  accountOnly: ChurchMemberWithoutVolunteerProfile;
 }
 
 export function createMinistryRedemptionRecipe({
@@ -140,9 +148,23 @@ export function createMinistryRedemptionRecipe({
       id: idOf({ kind: MEMBER_ONLY_MEMBERSHIP_KIND }),
     });
 
+    const accountOnlyUser = await buildAuthenticatableUser({
+      db,
+      id: idOf({ kind: ACCOUNT_ONLY_USER_KIND }),
+      name: ACCOUNT_ONLY_NAME,
+      email: `account-only@${churchAEmailDomain}`,
+      passwordHash: await hashPassword(SEED_PERSONA_PASSWORD),
+    });
+
     return {
       churchA,
       churchB,
+      accountOnly: {
+        userId: accountOnlyUser.id,
+        email: accountOnlyUser.email,
+        password: SEED_PERSONA_PASSWORD,
+        name: accountOnlyUser.name,
+      },
       memberOnly: {
         userId: memberOnlyUser.id,
         email: memberOnlyUser.email,

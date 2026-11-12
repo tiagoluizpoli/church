@@ -33,6 +33,8 @@ export const MINISTRY_REDEMPTION_JOURNEY_SCHEMA = z.object({
     personas: z.object({ admin: ASSIGN_PERSONA_SCHEMA }),
   }),
   memberOnly: CHURCH_MEMBER_WITHOUT_VOLUNTEER_SCHEMA,
+  /** Signed up, in no Church. */
+  accountOnly: CHURCH_MEMBER_WITHOUT_VOLUNTEER_SCHEMA,
 });
 
 export type MinistryRedemptionJourney = z.infer<

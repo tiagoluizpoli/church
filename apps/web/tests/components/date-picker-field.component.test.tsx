@@ -26,6 +26,19 @@ describe('DatePickerField', () => {
     expect(onChange).toHaveBeenCalledWith('2026-08-15');
   });
 
+  it('keeps the year dropdown to a bounded window around today', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <DatePickerField value="" onChange={vi.fn()} data-testid="date-field" />,
+    );
+
+    await user.click(screen.getByTestId('date-field'));
+
+    expect(
+      screen.getByRole('combobox', { name: 'Choose the Year' }).children.length,
+    ).toBeLessThanOrEqual(50);
+  });
+
   it('displays a selected value as a compact dd/MM/yyyy date, not a written-out date', () => {
     renderWithProviders(
       <DatePickerField

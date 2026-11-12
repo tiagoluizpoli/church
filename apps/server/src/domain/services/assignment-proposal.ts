@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { compareInstants, type Instant } from '@church/time';
 import type {
   RoleId,
@@ -11,6 +12,10 @@ import type {
  * over scheduling facts. Pure — it never reads or writes the database; the
  * application loads the facts, authorizes, and (later) persists approved
  * additions after its own transactional validation.
+ *
+ * Apply (ADR 0013) re-runs the same eligibility rules over freshly loaded
+ * facts through `findStaleAdditions`, and binds approval to the reviewed pairs
+ * through `proposalReviewTokenFor`.
  *
  * Organization: eligibility rules decide whether a Volunteer may fill a need
  * at all; the two ranking lists below decide who goes first and where. Change
@@ -490,4 +495,69 @@ export function proposeAssignments(
     emptyReason:
       additions.length === 0 ? explainEmpty({ needs, candidates }) : null,
   };
+}
+
+/** A reviewed pair, as Apply submits it back. */
+export interface ReviewedAddition {
+  volunteerId: VolunteerId;
+  shiftRequirementId: ShiftRequirementId;
+}
+
+export interface FindStaleAdditionsInput {
+  facts: ProposeAssignmentsInput;
+  additions: ReviewedAddition[];
+}
+
+/**
+ * The reviewed pairs that fail a mandatory eligibility rule against current
+ * facts, in submission order; earlier pairs count as bookings and filled
+ * places for later ones. Ranking is not rechecked.
+ */
+export function findStaleAdditions({
+  facts,
+  additions,
+}: FindStaleAdditionsInput): ReviewedAddition[] {
+  const needs = new Map(
+    openNeedsOf({ input: facts }).map((need) => [
+      need.shiftRequirementId,
+      need,
+    ]),
+  );
+  const bookings = bookingsOf({ assignments: facts.assignments });
+  const candidates = new Map(
+    facts.volunteers.map((volunteer): [VolunteerId, Candidate] => [
+      volunteer.volunteerId,
+      { volunteer, bookings: bookings.get(volunteer.volunteerId) ?? [] },
+    ]),
+  );
+  return additions.filter(({ volunteerId, shiftRequirementId }) => {
+    const need = needs.get(shiftRequirementId);
+    const candidate = candidates.get(volunteerId);
+    if (!(need && candidate && isEligible({ candidate, need }))) return true;
+    need.remaining -= 1;
+    candidate.bookings.push({ ...need.shift, inCycle: true });
+    return false;
+  });
+}
+
+export interface ProposalReviewTokenInput {
+  cycleId: string;
+  ministryId: string;
+  additions: ReviewedAddition[];
+}
+
+/** Fingerprint of the reviewed scope and pairs (ADR 0013); order-independent. */
+export function proposalReviewTokenFor({
+  cycleId,
+  ministryId,
+  additions,
+}: ProposalReviewTokenInput): string {
+  const pairs = additions
+    .map(
+      ({ shiftRequirementId, volunteerId }) =>
+        `${shiftRequirementId as string}:${volunteerId as string}`,
+    )
+    .sort();
+  const facts = JSON.stringify([cycleId, ministryId, pairs]);
+  return createHash('sha256').update(facts).digest('base64url');
 }

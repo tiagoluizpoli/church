@@ -7,10 +7,12 @@ import type {
   VolunteerId,
 } from '@/domain/branded-ids';
 import {
+  findStaleAdditions,
   type ProposalAssignment,
   type ProposalNeed,
   type ProposalShift,
   type ProposalVolunteer,
+  proposalReviewTokenFor,
   proposeAssignments,
 } from '@/domain/services/assignment-proposal';
 
@@ -433,5 +435,141 @@ describe('proposeAssignments', () => {
 
     expect(result.additions).toEqual([]);
     expect(result.emptyReason).toBe('no_eligible_placements');
+  });
+});
+
+describe('findStaleAdditions', () => {
+  const S1 = shift({ id: 's1', day: '05', hour: 9 });
+  const S2 = shift({ id: 's2', day: '05', hour: 10 });
+  const SING_S1 = need({ id: 'sing-s1', shiftId: 's1', roleId: SINGER });
+  const SING_S2 = need({ id: 'sing-s2', shiftId: 's2', roleId: SINGER });
+  const pair = (volunteerId: VolunteerId, shiftRequirementId: string) => ({
+    volunteerId,
+    shiftRequirementId: shiftRequirementId as ShiftRequirementId,
+  });
+
+  interface StaleFixtureInput {
+    shifts?: ProposalShift[];
+    needs?: ProposalNeed[];
+    volunteers: ProposalVolunteer[];
+    assignments?: ProposalAssignment[];
+    additions: ReturnType<typeof pair>[];
+  }
+
+  function stale({
+    shifts = [S1, S2],
+    needs = [SING_S1, SING_S2],
+    volunteers,
+    assignments = [],
+    additions,
+  }: StaleFixtureInput) {
+    return findStaleAdditions({
+      facts: { now: NOW, shifts, needs, volunteers, assignments },
+      additions,
+    }).map(
+      ({ volunteerId, shiftRequirementId }) =>
+        `${volunteerId as string}->${shiftRequirementId as string}`,
+    );
+  }
+
+  it('accepts the additions the proposal made from the same facts', () => {
+    const facts = {
+      now: NOW,
+      shifts: [S1, S2],
+      needs: [SING_S1, SING_S2],
+      volunteers: [
+        volunteer({ id: ANA, roleIds: [SINGER] }),
+        volunteer({ id: BRUNO, roleIds: [SINGER] }),
+      ],
+      assignments: [],
+    };
+    const { additions } = proposeAssignments(facts);
+
+    expect(additions).toHaveLength(2);
+    expect(findStaleAdditions({ facts, additions })).toEqual([]);
+  });
+
+  it('flags every mandatory rule the facts no longer pass', () => {
+    expect(
+      stale({
+        shifts: [S1, shift({ id: 's2', day: '05', hour: 10, cancelled: true })],
+        volunteers: [
+          volunteer({ id: ANA, roleIds: [SINGER], confirmed: false }),
+          volunteer({ id: BRUNO, roleIds: [GUITAR] }),
+          volunteer({
+            id: CARLA,
+            roleIds: [SINGER],
+            unavailableShiftIds: ['s1'],
+          }),
+        ],
+        additions: [
+          pair(ANA, 'sing-s1'),
+          pair(BRUNO, 'sing-s1'),
+          pair(CARLA, 'sing-s1'),
+          pair(CARLA, 'sing-s2'),
+          pair('v-removed' as VolunteerId, 'sing-s1'),
+          pair(CARLA, 'removed-need'),
+        ],
+      }),
+    ).toEqual([
+      'v-ana->sing-s1',
+      'v-bruno->sing-s1',
+      'v-carla->sing-s1',
+      'v-carla->sing-s2',
+      'v-removed->sing-s1',
+      'v-carla->removed-need',
+    ]);
+  });
+
+  it('counts existing and earlier reviewed pairs against headcount and overlaps', () => {
+    expect(
+      stale({
+        volunteers: [
+          volunteer({ id: ANA, roleIds: [SINGER] }),
+          volunteer({ id: BRUNO, roleIds: [SINGER] }),
+          volunteer({ id: CARLA, roleIds: [SINGER] }),
+        ],
+        assignments: [
+          {
+            volunteerId: CARLA,
+            shiftId: 'other' as ShiftId,
+            startTime: at('05', 10),
+            endTime: at('05', 11),
+            inCycle: true,
+          },
+        ],
+        additions: [
+          pair(ANA, 'sing-s1'),
+          pair(BRUNO, 'sing-s1'),
+          pair(ANA, 'sing-s2'),
+          pair(CARLA, 'sing-s2'),
+        ],
+      }),
+    ).toEqual(['v-bruno->sing-s1', 'v-ana->sing-s2', 'v-carla->sing-s2']);
+  });
+});
+
+describe('proposalReviewTokenFor', () => {
+  const scope = { cycleId: 'c1', ministryId: 'm1' };
+  const a = {
+    volunteerId: ANA,
+    shiftRequirementId: 'r1' as ShiftRequirementId,
+  };
+  const b = {
+    volunteerId: BRUNO,
+    shiftRequirementId: 'r1' as ShiftRequirementId,
+  };
+
+  it('fingerprints the scope and the pairs whatever their order', () => {
+    const token = proposalReviewTokenFor({ ...scope, additions: [a, b] });
+
+    expect(token).toMatch(/^[\w-]{43}$/);
+    expect(proposalReviewTokenFor({ ...scope, additions: [b, a] })).toBe(token);
+    expect(proposalReviewTokenFor({ ...scope, additions: [a] })).not.toBe(
+      token,
+    );
+    expect(
+      proposalReviewTokenFor({ ...scope, ministryId: 'm2', additions: [a, b] }),
+    ).not.toBe(token);
   });
 });

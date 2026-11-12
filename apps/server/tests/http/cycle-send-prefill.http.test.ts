@@ -232,6 +232,7 @@ async function seed() {
     autoSelected: false,
   });
   const worship = await buildMinistry({ db, churchId, name: 'Worship' });
+  // Deliberate dormant all_in fallback coverage; the product default is all_out.
   const allIn = await buildMinistry({
     db,
     churchId,

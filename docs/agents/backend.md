@@ -32,3 +32,33 @@ Load for backend, API, database, security, tenancy, or infrastructure work.
   and seeds import `@church/app-config` directly.
 - Select backend and test specialist skills when their descriptions fit the
   identified work.
+
+## Deployment preflight: migration 0028
+
+Migration `0028_noisy_gunslinger` creates the unique index
+`template_time_block_template_label_idx` on `(template_id, lower(label))`. It
+does not trim labels, diagnose duplicates or repair data, and the journal
+alone does not show whether a target has it. This applies only to a deployment
+where 0028 is still pending; never rewrite the historical migration. Before
+such a deployment, identify the target and revision, compare the ledger with
+the branch journal, check the index definition and validity, and run this
+read-only check:
+
+```sql
+SELECT template_id, lower(label) AS normalized_label,
+       count(*) AS duplicates, array_agg(id ORDER BY id) AS block_ids
+FROM template_time_block
+GROUP BY template_id, lower(label)
+HAVING count(*) > 1;
+```
+
+- Already recorded with a valid unique index: nothing to do.
+- Pending, no collisions: block writes between preflight and index creation,
+  then verify the migration succeeded.
+- Collisions: stop that deployment and get an owner-approved, row-specific
+  label fix that keeps TemplateTimeBlock identity and UsualSetup references,
+  then repeat the preflight. No blind deletion or deduplication.
+
+Migration `0052_ministry_default_direction_all_out` flips existing `all_in`
+Ministries to `all_out`; it is repeat-safe and leaves Sent staffing alone.
+Running it against a deployment is a separate, authorized step.

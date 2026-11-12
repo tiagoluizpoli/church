@@ -488,7 +488,7 @@ const deletePlanningEventTimeBlock = (
       );
     }
   /**
- * Set a Ministry's defaultDirection (all-in or all-out), deciding whether it starts opted into every EventTimeBlock of a cycle by default.
+ * Set a Ministry's defaultDirection (all_in or all_out) for source-linked EventTimeBlocks with no UsualSetup entry at Send: all_out (the default) excludes them, all_in includes them with one whole-block Shift and no requirements. An explicit UsualSetup entry always wins, and source-less blocks are never auto-included.
  * @summary Set a Ministry's default direction
  */
 const setMinistryDefaultDirection = (

@@ -59,7 +59,7 @@ function TemplateRowActions({
 }: TemplateRowActionsProps) {
   return (
     <div
-      className="flex flex-wrap justify-end gap-2"
+      className="flex w-full flex-wrap justify-end gap-2"
       onKeyDown={moveActionFocus}
     >
       <Link
@@ -162,7 +162,7 @@ export function TemplateManagerCard() {
                 data-testid="saved-template-row"
               >
                 <div className="space-y-1">
-                  <div className="font-medium">{item.name}</div>
+                  <div className="break-words font-medium">{item.name}</div>
                   <div className="text-muted-foreground text-xs">
                     {item.description}
                   </div>

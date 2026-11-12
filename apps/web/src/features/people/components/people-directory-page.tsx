@@ -70,7 +70,7 @@ function personColumns(): DataTableColumn[] {
 
 function PersonAction({ person }: { person: ListPeople200ItemsItem }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex w-full justify-end">
       <Link
         to="/people/$memberId"
         params={{ memberId: person.id }}

@@ -18,7 +18,7 @@ function MinistryAction({
   ministry: { id: string; name: string };
 }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex w-full justify-end">
       <Link
         to="/ministries/$ministryId"
         params={{ ministryId: ministry.id }}

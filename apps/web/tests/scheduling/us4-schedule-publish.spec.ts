@@ -30,7 +30,7 @@ interface ParticipationResponse {
   events: ParticipationEventResponse[];
 }
 
-test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees published slice, sibling ministry stays unpublished', async ({
+test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below full, volunteer sees published slice, sibling ministry stays unpublished', async ({
   browser,
   page,
 }, testInfo) => {
@@ -90,46 +90,48 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   );
   await expect(requirement).toContainText(`0/${peopleNeeded}`);
 
-  // An Assignment proposal is a read: nobody has confirmed availability yet,
-  // so it explains the empty result, offers no Apply, and Discard changes
-  // nothing on the board.
+  // Only the Volunteer persona confirmed availability: the proposal suggests
+  // exactly that persona and leaves one place open. Reviewing and discarding
+  // it writes nothing; Apply adds exactly the reviewed Assignment.
   const ptBR = { locale: 'pt-BR' } as const;
-  await page
-    .getByRole('button', { name: m.builder_proposal_open({}, ptBR) })
-    .click();
   const proposalDialog = page.getByRole('dialog', {
     name: m.builder_proposal_title({}, ptBR),
   });
+  const openProposal = async () => {
+    await page
+      .getByRole('button', { name: m.builder_proposal_open({}, ptBR) })
+      .click();
+    await expect(proposalDialog).toContainText(
+      m.builder_proposal_summary({ additions: 1, places: 1 }, ptBR),
+    );
+  };
+  await openProposal();
+  await expect(proposalDialog.getByText(volunteerName)).toBeVisible();
   await expect(proposalDialog).toContainText(
-    m.builder_proposal_empty_no_confirmed({}, ptBR),
+    m.builder_proposal_gap_one({}, ptBR),
   );
-  await expect(proposalDialog).toContainText(
-    peopleNeeded === 1
-      ? m.builder_proposal_gap_one({}, ptBR)
-      : m.builder_proposal_gap_many({ count: peopleNeeded }, ptBR),
-  );
-  await expect(
-    proposalDialog.getByRole('button', { name: /aplicar/i }),
-  ).toHaveCount(0);
   await proposalDialog
     .getByRole('button', { name: m.builder_proposal_discard({}, ptBR) })
     .click();
   await expect(proposalDialog).toBeHidden();
   await expect(requirement).toContainText(`0/${peopleNeeded}`);
 
-  // Pick by name, not the first picker option — the dashboard asserts this
-  // exact person, and picker order is availability/workload-driven.
-  const volunteerPool = page.getByTestId('volunteer-pool');
-  await volunteerPool
-    .getByLabel('Buscar voluntários por nome')
-    .fill(volunteerName);
-  await volunteerPool.getByTestId('volunteer-select-shift').click();
-
-  await requirement.getByRole('button', { name: /^Escalar / }).click();
+  await openProposal();
+  await proposalDialog
+    .getByRole('button', { name: m.builder_proposal_apply({}, ptBR) })
+    .click();
+  await expect(
+    page.getByText(m.builder_proposal_applied({ count: 1 }, ptBR)),
+  ).toBeVisible();
+  await expect(proposalDialog).toBeHidden();
   await expect(requirement.getByTestId('assignment-chip')).toContainText(
     volunteerName,
   );
   await expect(requirement).toContainText(`1/${peopleNeeded}`);
+  // Apply does not publish: the Schedule is still open for changes.
+  await expect(
+    page.getByRole('button', { name: m.builder_proposal_open({}, ptBR) }),
+  ).toBeVisible();
 
   await page
     .getByRole('button', {

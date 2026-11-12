@@ -365,6 +365,13 @@
       "when": 1794377061226,
       "tag": "0051_cycle_has_been_sent",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1794456669644,
+      "tag": "0052_ministry_default_direction_all_out",
+      "breakpoints": true
     }
   ]
 }

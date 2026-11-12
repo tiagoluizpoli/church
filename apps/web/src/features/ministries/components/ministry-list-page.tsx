@@ -18,7 +18,7 @@ interface MinistryActionProps {
 
 function MinistryAction({ ministry }: MinistryActionProps) {
   return (
-    <div className="flex w-full justify-end">
+    <div className="flex justify-end max-md:ml-auto md:w-full">
       <Link
         to="/ministries/$ministryId"
         params={{ ministryId: ministry.id }}
@@ -89,8 +89,10 @@ export function MinistryListPage() {
             )
           }
           renderMobileCard={({ item }) => (
-            <div className="surface-subtle workspace-panel space-y-2">
-              <p className="break-words font-medium">{item.name}</p>
+            <div className="surface-subtle workspace-panel flex flex-wrap items-center gap-x-3 gap-y-2">
+              <p className="min-w-0 flex-1 basis-40 break-words font-medium">
+                {item.name}
+              </p>
               <MinistryAction ministry={item} />
             </div>
           )}

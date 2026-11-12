@@ -74,7 +74,7 @@ function personColumns(): DataTableColumn[] {
 
 function PersonAction({ person }: PersonProps) {
   return (
-    <div className="flex w-full justify-end">
+    <div className="flex justify-end max-md:ml-auto md:w-full">
       <Link
         to="/people/$memberId"
         params={{ memberId: person.id }}
@@ -277,12 +277,14 @@ export function PeopleDirectoryPage() {
               return null;
             }}
             renderMobileCard={({ item }) => (
-              <div className="surface-subtle workspace-panel space-y-2">
-                <PersonName person={item} />
-                <p className="break-all text-muted-foreground text-sm">
-                  {item.email}
-                </p>
-                <PersonMinistries person={item} />
+              <div className="surface-subtle workspace-panel flex flex-wrap items-end gap-x-3 gap-y-2">
+                <div className="min-w-0 flex-1 basis-40 space-y-2">
+                  <PersonName person={item} />
+                  <p className="break-all text-muted-foreground text-sm">
+                    {item.email}
+                  </p>
+                  <PersonMinistries person={item} />
+                </div>
                 <PersonAction person={item} />
               </div>
             )}

@@ -143,7 +143,9 @@ describe('Schedules list', () => {
       schedules: [schedule({ lateMarkCount: 2 })],
     });
     renderPrepareIndex();
-    const row = await screen.findByRole('link', { name: /Kids · Outubro/ });
+    const row = (
+      await screen.findByRole('link', { name: /Kids · Outubro/ })
+    ).closest('li') as HTMLElement;
     expect(row).toHaveTextContent('⚠ 2');
     expect(
       within(row).getByLabelText(m.schedule_late_mark_count({ count: 2 })),
@@ -160,8 +162,26 @@ describe('Schedules list', () => {
       ],
     });
     renderPrepareIndex();
-    const row = await screen.findByRole('link', { name: /Kids · Outubro/ });
+    const row = (
+      await screen.findByRole('link', { name: /Kids · Outubro/ })
+    ).closest('li') as HTMLElement;
     expect(row).toHaveTextContent(`${m.schedules_published()} · ${label}`);
+  });
+
+  it('opens a Schedule only through its explicit row-end Open link, never from ordinary row text', async () => {
+    listSchedules.mockResolvedValue({ schedules: [schedule()] });
+    const user = userEvent.setup();
+    const { router } = renderPrepareIndex();
+    const open = await screen.findByRole('link', {
+      name: m.schedules_open_label({ name: 'Kids · Outubro 2026' }),
+    });
+    expect(open).toHaveTextContent(m.schedules_open());
+    expect(open).toHaveClass('min-h-11');
+    const item = open.closest('li') as HTMLElement;
+    expect(open.parentElement).toHaveClass('justify-end');
+
+    await user.click(within(item).getByText(/Kids · Outubro 2026/));
+    expect(router.state.location.pathname).toBe('/schedules');
   });
 
   it('opens the selected Schedule directly on row activation', async () => {
@@ -303,17 +323,15 @@ describe('Schedules list', () => {
     const user = userEvent.setup();
     renderPrepareIndex();
     await screen.findByRole('link', { name: /Kids · Outubro/ });
-    expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(
-      [
-        expect.stringContaining(m.schedules_to_prepare()),
-        expect.stringContaining(
-          m.schedules_asking({ confirmed: 32, asked: 40 }),
-        ),
-        expect.stringContaining(m.schedules_assigning()),
-        expect.stringContaining(m.schedules_published()),
-        expect.stringContaining(m.schedules_not_serving()),
-      ],
-    );
+    expect(
+      screen.getAllByRole('listitem').map((item) => item.textContent),
+    ).toEqual([
+      expect.stringContaining(m.schedules_to_prepare()),
+      expect.stringContaining(m.schedules_asking({ confirmed: 32, asked: 40 })),
+      expect.stringContaining(m.schedules_assigning()),
+      expect.stringContaining(m.schedules_published()),
+      expect.stringContaining(m.schedules_not_serving()),
+    ]);
     expect(
       screen.queryByRole('link', { name: /Setembro/ }),
     ).not.toBeInTheDocument();
@@ -344,7 +362,7 @@ describe('Schedules list', () => {
     const row = await screen.findByRole('link', {
       name: /Kids · Outubro 2026/,
     });
-    expect(row).toHaveTextContent('32/40');
+    expect(row.closest('li')).toHaveTextContent('32/40');
     expect(row).toHaveAttribute('href', '/schedules/ministry-1/cycle-1');
     expect(listCycles).not.toHaveBeenCalled();
     expect(listEvents).not.toHaveBeenCalled();

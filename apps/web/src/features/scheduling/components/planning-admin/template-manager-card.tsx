@@ -59,7 +59,7 @@ function TemplateRowActions({
 }: TemplateRowActionsProps) {
   return (
     <div
-      className="flex w-full flex-wrap justify-end gap-2"
+      className="flex flex-wrap justify-end gap-2 max-md:ml-auto md:w-full"
       onKeyDown={moveActionFocus}
     >
       <Link
@@ -158,10 +158,10 @@ export function TemplateManagerCard() {
             )}
             renderMobileCard={({ item }) => (
               <div
-                className="surface-subtle workspace-panel flex flex-col gap-3"
+                className="surface-subtle workspace-panel flex flex-wrap items-center gap-x-3 gap-y-2"
                 data-testid="saved-template-row"
               >
-                <div className="space-y-1">
+                <div className="min-w-0 flex-1 basis-40 space-y-1">
                   <div className="break-words font-medium">{item.name}</div>
                   <div className="text-muted-foreground text-xs">
                     {item.description}

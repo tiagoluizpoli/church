@@ -35,7 +35,9 @@ function render({ churchTimezone }: RenderCycleHeaderInput = {}) {
 
 async function selectTheOnlyCycle() {
   const user = userEvent.setup();
-  await user.click(await screen.findByTestId('cycle-option'));
+  await user.click(
+    (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+  );
   return user;
 }
 
@@ -77,7 +79,9 @@ describe('CycleHeader (T058)', () => {
     const user = userEvent.setup();
     render();
 
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
 
     const nameStatusChip = await screen.findByTestId('cycle-name-status-chip');
     const periodChip = screen.getByTestId('cycle-period-chip');

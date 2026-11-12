@@ -100,8 +100,10 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
 
-    const cycleOption = await screen.findByTestId('cycle-option');
-    expect(cycleOption).toHaveAttribute('aria-selected', 'false');
+    const cycleOption = (
+      await screen.findAllByRole('button', { name: /^Selecionar / })
+    )[0];
+    expect(cycleOption).toHaveAttribute('aria-pressed', 'false');
     await user.click(cycleOption);
 
     expect(await screen.findByText(m.cycle_review_title())).toBeVisible();
@@ -140,7 +142,9 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
 
     expect(await screen.findByTestId('selected-cycle-state')).toHaveTextContent(
       m.cycle_state_sent(),
@@ -304,7 +308,9 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
     await user.click(screen.getByTestId('open-apply-templates-dialog-button'));
 
     expect(
@@ -354,7 +360,9 @@ describe('CyclesActions (US4)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
 
     const actionsRow = await screen.findByTestId('cycles-actions-row');
     const applyTemplateButton = within(actionsRow).getByTestId(
@@ -395,7 +403,9 @@ describe('CyclesActions (US4)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
     await screen.findByText(m.cycle_review_title());
 
     expect(screen.queryByText('Manual exceptions')).not.toBeInTheDocument();
@@ -419,7 +429,9 @@ describe('Cycle deletion', () => {
     mockCycle('draft');
     const user = userEvent.setup();
     renderCycles();
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
 
     await user.click(await screen.findByTestId('delete-cycle-button'));
 
@@ -435,7 +447,9 @@ describe('Cycle deletion', () => {
     mockCycle('sent');
     const user = userEvent.setup();
     renderCycles();
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
 
     await screen.findByTestId('selected-cycle-state');
 
@@ -447,7 +461,9 @@ describe('Cycle deletion', () => {
     deleteCycle.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderCycles();
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
     await user.click(await screen.findByTestId('delete-cycle-button'));
     listCycles.mockResolvedValue({ cycles: [] });
 
@@ -600,7 +616,9 @@ describe('Cycle edit', () => {
     });
     const user = userEvent.setup();
     renderCycles();
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
 
     await user.click(await screen.findByTestId('edit-cycle-button'));
     const name = await screen.findByTestId('cycle-name-input');
@@ -628,7 +646,9 @@ describe('Cycle edit', () => {
     getCycle.mockResolvedValue({ cycle: sent, events: [] });
     const user = userEvent.setup();
     renderCycles();
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
 
     await screen.findByTestId('selected-cycle-state');
 
@@ -699,7 +719,9 @@ describe('Cycle header visibility (chip-leak fix)', () => {
     const user = userEvent.setup();
     const { router } = renderCycles();
 
-    await user.click(await screen.findByTestId('cycle-option'));
+    await user.click(
+      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+    );
     expect(await screen.findByTestId('cycle-period-chip')).toBeInTheDocument();
 
     await router.navigate({ to: '/cycles' });
@@ -761,10 +783,12 @@ describe('CycleListCard selection state', () => {
       </PlanningAdminProvider>,
     );
 
-    const options = await screen.findAllByTestId('cycle-option');
+    const options = await screen.findAllByRole('button', {
+      name: /^Selecionar /,
+    });
     // Newest start first: September, then the selected August.
-    expect(options[0]).toHaveAttribute('aria-selected', 'false');
-    expect(options[1]).toHaveAttribute('aria-selected', 'true');
+    expect(options[0]).toHaveAttribute('aria-pressed', 'false');
+    expect(options[1]).toHaveAttribute('aria-pressed', 'true');
   });
 });
 

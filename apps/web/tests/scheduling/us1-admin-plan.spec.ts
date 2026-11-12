@@ -326,8 +326,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   // dialog's own URL is /new); re-select the original cycle to send it.
   await expect(page).toHaveURL(/\/cycles\/?$/);
   await page
-    .getByTestId('cycle-option')
-    .filter({ hasText: month.cycleName })
+    .getByRole('button', { name: `Selecionar ${month.cycleName}` })
     .click();
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(
     month.cycleName,

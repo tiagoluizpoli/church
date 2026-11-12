@@ -43,6 +43,7 @@ function cycleColumns(): DataTableColumn[] {
     { id: 'name', name: m.cycles_column_name(), isRowHeader: true },
     { id: 'window', name: m.cycles_column_window() },
     { id: 'status', name: m.cycles_column_status() },
+    { id: 'actions', name: m.cycles_column_actions() },
   ];
 }
 
@@ -73,16 +74,6 @@ function CycleTable({
       items={rows}
       rowId={({ item }) => item.id}
       rowTestId={({ item }) => `cycle-row-${item.id}`}
-      selectionMode="single"
-      selectionBehavior="replace"
-      disallowEmptySelection
-      selectedKeys={selectedCycleId ? new Set([selectedCycleId]) : new Set()}
-      onSelectionChange={(keys) => {
-        if (keys === 'all') return;
-        const cycleId = keys.values().next().value;
-        if (typeof cycleId !== 'string') return;
-        onSelect({ cycleId });
-      }}
       renderCell={({ item, column }) => (
         <>
           {column.id === 'name' ? item.name : null}
@@ -90,27 +81,37 @@ function CycleTable({
           {column.id === 'status' ? <StateBadge state={item.state} /> : null}
         </>
       )}
+      rowActions={({ item }) => (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            className="min-h-11 min-w-11 md:min-h-0 md:min-w-0"
+            aria-pressed={selectedCycleId === item.id}
+            aria-label={m.cycles_select_label({ name: item.name })}
+            onClick={() => onSelect({ cycleId: item.id })}
+          >
+            {selectedCycleId === item.id
+              ? m.cycles_selected()
+              : m.cycles_select()}
+          </Button>
+        </div>
+      )}
       renderMobileCard={({ item }) => (
-        <Button
-          type="button"
-          variant="ghost"
-          role="option"
+        <div
           data-testid="cycle-option"
-          aria-selected={selectedCycleId === item.id}
           className={cn(
-            'surface-subtle workspace-panel h-auto w-full items-stretch justify-start whitespace-normal p-0 text-left font-normal',
+            'surface-subtle workspace-panel flex items-start justify-between gap-3',
             selectedCycleId === item.id && 'border-primary/30 bg-accent/45',
           )}
-          onClick={() => onSelect({ cycleId: item.id })}
         >
-          <div className="flex w-full items-start justify-between gap-3">
-            <div className="space-y-1">
-              <div className="font-medium">{item.name}</div>
-              <div className="text-muted-foreground text-xs">{item.window}</div>
-            </div>
-            <StateBadge state={item.state} />
+          <div className="space-y-1">
+            <div className="font-medium">{item.name}</div>
+            <div className="text-muted-foreground text-xs">{item.window}</div>
           </div>
-        </Button>
+          <StateBadge state={item.state} />
+        </div>
       )}
     />
   );
@@ -130,11 +131,14 @@ export function CycleListCard({
     handleSelectCycle,
   } = useCycleListCard();
   const [pastOpen, setPastOpen] = useState(false);
+  const [announcedCycleId, setAnnouncedCycleId] = useState<string | null>(null);
   const selectedCycleId = selectedCycleIdOverride ?? selectedCycleIdFromContext;
+  const announced = cycles.find((cycle) => cycle.id === announcedCycleId);
   const { current, past } = groupCyclesForList({ cycles });
 
   const selectCycle = ({ cycleId }: SelectCycleInput) => {
     handleSelectCycle({ cycleId });
+    setAnnouncedCycleId(cycleId);
     onSelectCycle?.({ cycleId });
   };
   const toRows = (list: typeof cycles) =>
@@ -158,6 +162,11 @@ export function CycleListCard({
         ) : null}
       </CardHeader>
       <CardContent className="space-y-3">
+        {announced ? (
+          <p role="status" className="sr-only">
+            {m.cycles_selected_announcement({ name: announced.name })}
+          </p>
+        ) : null}
         {cyclesLoading ? (
           <p className="text-muted-foreground text-sm">{m.cycles_loading()}</p>
         ) : cyclesError ? (

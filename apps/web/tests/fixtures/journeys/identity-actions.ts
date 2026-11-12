@@ -73,6 +73,57 @@ export async function mintMinistryInvitation({
   return (await res.json()) as MintedMinistryInvitation;
 }
 
+export interface MintAdminInvitationAsInput {
+  /** The Church admin who invites; signed in on its own API context. */
+  persona: AssignPersona;
+  email: string;
+}
+
+/** Invites `email` as ChurchAdmin, raising a pending member offer in place. */
+export async function mintAdminInvitationAs({
+  persona,
+  email,
+}: MintAdminInvitationAsInput): Promise<void> {
+  const request = await newPersonaRequest({ persona });
+  try {
+    const res = await request.post(
+      serverUrl({ path: '/api/v1/invitations/admin' }),
+      { data: { email } },
+    );
+    await assertOk({ res, action: `invite ${email} as ChurchAdmin` });
+  } finally {
+    await request.dispose();
+  }
+}
+
+export interface RevokeMinistryInvitationAsInput {
+  persona: AssignPersona;
+  ministryId: string;
+  invitationId: string;
+}
+
+/** Revokes one Ministry Invitation as `persona`. */
+export async function revokeMinistryInvitationAs({
+  persona,
+  ministryId,
+  invitationId,
+}: RevokeMinistryInvitationAsInput): Promise<void> {
+  const request = await newPersonaRequest({ persona });
+  try {
+    const res = await request.post(
+      serverUrl({
+        path: `/api/v1/ministries/${ministryId}/invitations/${invitationId}/revoke`,
+      }),
+    );
+    await assertOk({
+      res,
+      action: `revoke Ministry invitation ${invitationId}`,
+    });
+  } finally {
+    await request.dispose();
+  }
+}
+
 /** What the `/login` form takes. */
 export type SignInCredentials = Pick<AssignPersona, 'email' | 'password'>;
 

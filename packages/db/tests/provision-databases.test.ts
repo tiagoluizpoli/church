@@ -256,6 +256,57 @@ describe('provisionDatabases', () => {
     );
   });
 
+  it('rejects a stale template before cloning and leaves the template untouched', async () => {
+    await provisionDatabases({
+      databaseUrls: [databaseUrlFor({ database: INT_DATABASE })],
+    });
+    await queryDatabase({
+      database: INT_DATABASE,
+      sql: 'delete from drizzle.__drizzle_migrations where id = (select max(id) from drizzle.__drizzle_migrations)',
+    });
+
+    const failure = await cloneDatabasesFromTemplate({
+      templateUrl: databaseUrlFor({ database: INT_DATABASE }),
+      databaseNames: [WORKER_DATABASE],
+    }).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(DatabaseProvisioningError);
+    const { step, message } = failure as DatabaseProvisioningError;
+    expect(step).toBe('verify');
+    expect(message).toContain(`/${INT_DATABASE}`);
+    expect(message).not.toContain('@');
+    expect(message).toContain(
+      `Expected ${journal.entries.length} migrations, template has applied ${journal.entries.length - 1}`,
+    );
+    expect(message).toContain((journal.entries.at(-1) as { tag: string }).tag);
+    expect(message).toContain('bun run db:bootstrap');
+    expect(await databaseExists({ database: WORKER_DATABASE })).toBe(false);
+    expect(await appliedMigrations({ database: INT_DATABASE })).toBe(
+      journal.entries.length - 1,
+    );
+  });
+
+  it('rejects a template whose ledger has the right count but another branch’s migration', async () => {
+    await provisionDatabases({
+      databaseUrls: [databaseUrlFor({ database: INT_DATABASE })],
+    });
+    await queryDatabase({
+      database: INT_DATABASE,
+      sql: "update drizzle.__drizzle_migrations set hash = 'other-branch' where id = (select max(id) from drizzle.__drizzle_migrations)",
+    });
+
+    const failure = await cloneDatabasesFromTemplate({
+      templateUrl: databaseUrlFor({ database: INT_DATABASE }),
+      databaseNames: [WORKER_DATABASE],
+    }).catch((error: unknown) => error);
+
+    expect((failure as DatabaseProvisioningError).step).toBe('verify');
+    expect((failure as DatabaseProvisioningError).message).toContain(
+      'migrated by another branch',
+    );
+    expect(await databaseExists({ database: WORKER_DATABASE })).toBe(false);
+  });
+
   it('waits for the provisioning lock before cloning', async () => {
     await provisionDatabases({
       databaseUrls: [databaseUrlFor({ database: INT_DATABASE })],

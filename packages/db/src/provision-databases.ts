@@ -1,5 +1,8 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
@@ -23,6 +26,8 @@ const MANAGED_DATABASE_NAME = /^church[a-z0-9_]*$/;
 const OBJECT_IN_USE = '55006';
 const POSTGRES_IDENTIFIER_LIMIT = 63;
 const DUPLICATE_DATABASE = '42P04';
+const UNDEFINED_TABLE = '42P01';
+const INVALID_SCHEMA_NAME = '3F000';
 
 const MIGRATIONS_FOLDER = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -33,6 +38,7 @@ export type ProvisioningStep =
   | 'validate'
   | 'connect'
   | 'lock'
+  | 'verify'
   | 'create'
   | 'migrate';
 
@@ -230,6 +236,11 @@ export async function cloneDatabasesFromTemplate(
       step: 'lock',
       run: () => acquireProvisioningLock({ admin }),
     });
+    await withStep({
+      step: 'verify',
+      run: () =>
+        assertTemplateMatchesBranch({ templateUrl: input.templateUrl }),
+    });
     const clones: ClonedDatabase[] = [];
 
     for (const database of input.databaseNames) {
@@ -247,6 +258,89 @@ export async function cloneDatabasesFromTemplate(
     // Closing the session also releases the advisory lock.
     await admin.end().catch(() => {});
   }
+}
+
+interface ExpectedMigration {
+  /** Ledger identity: drizzle records `created_at` and a content hash. */
+  key: string;
+  label: string;
+}
+
+function expectedMigrations(): ExpectedMigration[] {
+  const journal = JSON.parse(
+    readFileSync(join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
+  ) as { entries: { when: number; tag: string }[] };
+  const tags = new Map(journal.entries.map((e) => [e.when, e.tag]));
+  return readMigrationFiles({ migrationsFolder: MIGRATIONS_FOLDER }).map(
+    (migration) => ({
+      key: `${migration.folderMillis}:${migration.hash}`,
+      label: tags.get(migration.folderMillis) ?? String(migration.folderMillis),
+    }),
+  );
+}
+
+function testedRevision(): string {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
+interface TemplateInput {
+  templateUrl: string;
+}
+
+/** Credentials stripped: host, port and database only. */
+function redactedIdentity(input: TemplateInput): string {
+  const { host, pathname } = new URL(input.templateUrl);
+  return `${host}${pathname}`;
+}
+
+/**
+ * Read-only: compares the template's migration ledger with this branch's
+ * migration files entry by entry (counts alone cannot tell branches apart)
+ * and fails before anything is cloned. It never migrates or downgrades.
+ */
+async function assertTemplateMatchesBranch(
+  input: TemplateInput,
+): Promise<void> {
+  const client = new pg.Client({ connectionString: input.templateUrl });
+  let applied: string[];
+  await client.connect();
+  try {
+    const result = await client.query(
+      'select created_at, hash from drizzle.__drizzle_migrations',
+    );
+    applied = result.rows.map((row) => `${row.created_at}:${row.hash}`);
+  } catch (error) {
+    const code = (error as PostgresError).code;
+    if (code !== UNDEFINED_TABLE && code !== INVALID_SCHEMA_NAME) throw error;
+    applied = [];
+  } finally {
+    // An open session would also make the template uncloneable.
+    await client.end();
+  }
+
+  const expected = expectedMigrations();
+  const appliedSet = new Set(applied);
+  const expectedKeys = new Set(expected.map((migration) => migration.key));
+  const missing = expected.filter((m) => !appliedSet.has(m.key));
+  const unexpected = applied.filter((key) => !expectedKeys.has(key));
+  if (missing.length === 0 && unexpected.length === 0) return;
+
+  throw new Error(
+    [
+      `The template ${redactedIdentity(input)} does not match the migrations of the tested revision ${testedRevision()}.`,
+      `Expected ${expected.length} migrations, template has applied ${applied.length}.`,
+      `Missing from the template: ${missing.map((m) => m.label).join(', ') || 'none'}.`,
+      `Applied but unknown to this branch: ${unexpected.length === 0 ? 'none' : `${unexpected.length} (migrated by another branch)`}.`,
+      'Remediation: run `bun run db:bootstrap` to apply missing migrations; if the template is ahead of or diverged from this branch, recreate it from a branch-matching setup. Shared databases are never downgraded.',
+    ].join('\n'),
+  );
 }
 
 interface AdminInput {

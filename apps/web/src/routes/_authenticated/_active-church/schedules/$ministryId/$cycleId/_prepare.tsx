@@ -118,13 +118,14 @@ function PrepareWorkspaceRoute() {
   const ready = !notFound && !forbidden && !loading && loaded && schedule;
   const rowsReady = Boolean(ready);
   useEffect(() => {
-    if (!rowsReady || !hash) return;
+    // A narrow screen hides the list until the block's match has closed.
+    if (!rowsReady || !hash || selectedBlockId) return;
     // Router hash scrolling runs before query-loaded rows are mounted.
     const row = document.getElementById(hash);
     row?.scrollIntoView?.({ block: 'center' });
     // Closing or saving a block returns focus to its row (its trigger).
     row?.focus({ preventScroll: true });
-  }, [hash, rowsReady]);
+  }, [hash, rowsReady, selectedBlockId]);
   const dateSpan = schedule
     ? `${formatCalendarDateOnly({ value: schedule.cycle.startDate })} – ${formatCalendarDateOnly({ value: schedule.cycle.endDate })}`
     : undefined;

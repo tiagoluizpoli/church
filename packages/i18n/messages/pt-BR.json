@@ -1191,6 +1191,7 @@
   "builder_proposal_empty_no_open_needs": "Todas as vagas já estão preenchidas, então não há o que sugerir.",
   "builder_proposal_empty_no_confirmed": "Nenhum voluntário confirmou a disponibilidade ainda, então não há o que sugerir.",
   "builder_proposal_empty_no_eligible": "Nenhum voluntário com disponibilidade confirmada pode preencher as vagas em aberto. Confira funções, turnos indisponíveis e escalas no mesmo horário.",
+  "builder_proposal_still_open": "Ainda em aberto",
   "builder_proposal_list_label": "Sugestão por turno",
   "builder_proposal_existing": "Escalado",
   "builder_proposal_added": "Sugerido",

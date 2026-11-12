@@ -12,7 +12,7 @@ import type {
   GetAssignmentProposal200AdditionsItemReason,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatInstantRangeOf } from '@/shared/utils/church-time';
+import { formatDayOf, formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export type AssignmentProposal = GetAssignmentProposal200;
 
@@ -200,6 +200,16 @@ export function AssignmentProposalPreview({
 }: AssignmentProposalPreviewProps) {
   const { churchTimezone: timeZone } = useTimezone();
   const groups = groupProposalByShift({ data, proposal });
+  const additionDays = new Map<string, ProposalShiftGroup[]>();
+  for (const group of [...groups].sort((a, b) =>
+    a.startTime.localeCompare(b.startTime),
+  )) {
+    if (!group.needs.some((need) => need.additions.length > 0)) continue;
+    const day = formatDayOf({ value: group.startTime, timeZone });
+    const dayGroups = additionDays.get(day) ?? [];
+    dayGroups.push(group);
+    additionDays.set(day, dayGroups);
+  }
   const openPlaces = proposal.gaps.reduce(
     (total, { remaining }) => total + remaining,
     0,
@@ -220,6 +230,24 @@ export function AssignmentProposalPreview({
       onOpenChange={(open) => !(open || isApplying) && onDiscard()}
       title={m.builder_proposal_title()}
       description={m.builder_proposal_description()}
+      reviewBodyLabel={m.builder_proposal_list_label()}
+      reviewSummary={
+        <div className="mt-2 space-y-1 text-sm">
+          <p className="font-medium">
+            {m.builder_proposal_summary({
+              additions: proposal.additions.length,
+              places: openPlaces,
+            })}
+          </p>
+          <p className="text-muted-foreground">
+            {excludedUnconfirmedCount === 1
+              ? m.builder_proposal_unconfirmed_one()
+              : m.builder_proposal_unconfirmed_many({
+                  count: excludedUnconfirmedCount,
+                })}
+          </p>
+        </div>
+      }
       footer={
         <>
           <Button
@@ -245,93 +273,122 @@ export function AssignmentProposalPreview({
             {applyAlert}
           </p>
         ) : null}
-        <div className="space-y-1 text-sm">
-          {emptyText ? (
-            <p className="font-medium">{emptyText}</p>
-          ) : (
-            <p className="font-medium">
-              {m.builder_proposal_summary({
-                additions: proposal.additions.length,
-                places: openPlaces,
-              })}
-            </p>
-          )}
-          {excludedUnconfirmedCount > 0 ? (
-            <p className="text-muted-foreground">
-              {excludedUnconfirmedCount === 1
-                ? m.builder_proposal_unconfirmed_one()
-                : m.builder_proposal_unconfirmed_many({
-                    count: excludedUnconfirmedCount,
-                  })}
-            </p>
-          ) : null}
-        </div>
+        {emptyText ? <p className="font-medium text-sm">{emptyText}</p> : null}
         {groups.length > 0 ? (
           <ul
             aria-label={m.builder_proposal_list_label()}
             className="space-y-3"
           >
-            {groups.map((group) => (
-              <li
-                key={group.shiftId}
-                className="radius-surface space-y-2 border border-border/70 p-3"
-              >
-                <p className="text-sm">
-                  <span className="font-medium">{group.eventTitle}</span>
-                  <span className="block text-muted-foreground text-xs">
-                    {formatInstantRangeOf({
-                      start: group.startTime,
-                      end: group.endTime,
-                      timeZone,
-                    })}
-                  </span>
-                </p>
-                {group.needs.map((need) => (
-                  <div key={need.requirementId} className="space-y-1">
-                    <p className="font-medium text-xs">{need.label}</p>
-                    <ul className="space-y-1">
-                      {need.existing.map(({ assignmentId, name }) => (
-                        <li
-                          key={assignmentId}
-                          className="flex flex-wrap items-center gap-2 text-sm"
-                        >
-                          <Badge variant="outline">
-                            {m.builder_proposal_existing()}
-                          </Badge>
-                          <span>{name}</span>
-                        </li>
-                      ))}
-                      {need.additions.map((addition) => (
-                        <li
-                          key={addition.volunteerId}
-                          className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
-                        >
-                          <Badge variant="secondary">
-                            {m.builder_proposal_added()}
-                          </Badge>
-                          <span className="font-medium">
-                            {addition.volunteerName}
-                          </span>
-                          <span className="w-full text-muted-foreground text-xs">
-                            {reasonText(addition.reason)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    {need.remaining > 0 ? (
-                      <p className="text-muted-foreground text-xs">
-                        {need.remaining === 1
-                          ? m.builder_proposal_gap_one()
-                          : m.builder_proposal_gap_many({
-                              count: need.remaining,
-                            })}
+            {[...additionDays].map(([day, dayGroups]) => (
+              <li key={day} className="space-y-2">
+                <h3 className="font-medium text-sm">{day}</h3>
+                <ul className="space-y-3">
+                  {dayGroups.map((group) => (
+                    <li
+                      key={group.shiftId}
+                      className="radius-surface space-y-2 border border-border/70 p-3"
+                    >
+                      <p className="text-sm">
+                        <span className="font-medium">{group.eventTitle}</span>
+                        <span className="block text-muted-foreground text-xs">
+                          {formatInstantRangeOf({
+                            start: group.startTime,
+                            end: group.endTime,
+                            timeZone,
+                          })}
+                        </span>
                       </p>
-                    ) : null}
-                  </div>
-                ))}
+                      {group.needs
+                        .filter((need) => need.additions.length > 0)
+                        .map((need) => (
+                          <div key={need.requirementId} className="space-y-1">
+                            <p className="font-medium text-xs">{need.label}</p>
+                            <ul className="space-y-1">
+                              {need.additions.map((addition) => (
+                                <li
+                                  key={addition.volunteerId}
+                                  className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+                                >
+                                  <Badge variant="secondary">
+                                    {m.builder_proposal_added()}
+                                  </Badge>
+                                  <span className="font-medium">
+                                    {addition.volunteerName}
+                                  </span>
+                                  <span className="w-full text-muted-foreground text-xs">
+                                    {reasonText(addition.reason)}
+                                  </span>
+                                </li>
+                              ))}
+                              {need.existing.map(({ assignmentId, name }) => (
+                                <li
+                                  key={assignmentId}
+                                  className="flex flex-wrap items-center gap-2 text-sm"
+                                >
+                                  <Badge variant="outline">
+                                    {m.builder_proposal_existing()}
+                                  </Badge>
+                                  <span>{name}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>
+        ) : null}
+        {openPlaces > 0 ? (
+          <section
+            className="space-y-2"
+            aria-label={m.builder_proposal_still_open()}
+          >
+            <h3 className="font-medium text-sm">
+              {m.builder_proposal_still_open()}
+            </h3>
+            <ul className="divide-y divide-border/70">
+              {groups
+                .filter((group) =>
+                  group.needs.some((need) => need.remaining > 0),
+                )
+                .map((group) => {
+                  const remaining = group.needs.reduce(
+                    (total, need) => total + need.remaining,
+                    0,
+                  );
+                  return (
+                    <li key={group.shiftId} className="py-2 text-sm">
+                      <span className="font-medium">{group.eventTitle}</span>
+                      {' · '}
+                      {formatInstantRangeOf({
+                        start: group.startTime,
+                        end: group.endTime,
+                        timeZone,
+                      })}
+                      {' · '}
+                      <span className="text-muted-foreground">
+                        {remaining === 1
+                          ? m.builder_proposal_gap_one()
+                          : m.builder_proposal_gap_many({ count: remaining })}
+                      </span>
+                      {group.needs.flatMap((need) => need.existing).length >
+                      0 ? (
+                        <span className="block text-muted-foreground text-xs">
+                          {m.builder_proposal_existing()}:{' '}
+                          {group.needs
+                            .flatMap((need) => need.existing)
+                            .map(({ name }) => name)
+                            .join(', ')}
+                        </span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+            </ul>
+          </section>
         ) : null}
       </div>
     </ResponsiveFormSurface>

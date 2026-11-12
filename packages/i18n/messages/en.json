@@ -1191,6 +1191,7 @@
   "builder_proposal_empty_no_open_needs": "Every place is already filled, so there is nothing to propose.",
   "builder_proposal_empty_no_confirmed": "No volunteer has confirmed availability yet, so there is nothing to propose.",
   "builder_proposal_empty_no_eligible": "No volunteer with confirmed availability can fill the open places. Check roles, unavailable shifts and assignments at the same time.",
+  "builder_proposal_still_open": "Still open",
   "builder_proposal_list_label": "Proposal by shift",
   "builder_proposal_existing": "Assigned",
   "builder_proposal_added": "Suggested",

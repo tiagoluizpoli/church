@@ -861,6 +861,12 @@ describe('Assignment proposal preview', () => {
     );
 
     const preview = await screen.findByTestId('assignment-proposal-preview');
+    expect(screen.getByTestId('proposal-scroll-body')).toHaveClass(
+      'overflow-y-auto',
+    );
+    expect(
+      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+    ).toBeVisible();
     expect(getProposal).toHaveBeenCalledWith('cycle-1', {
       ministryId: 'ministry-1',
     });
@@ -868,14 +874,10 @@ describe('Assignment proposal preview', () => {
       screen.getByRole('heading', { name: m.builder_proposal_title() }),
     ).toBeVisible();
     expect(
-      within(preview).getByText(
-        m.builder_proposal_summary({ additions: 1, places: 0 }),
-      ),
+      screen.getByText(m.builder_proposal_summary({ additions: 1, places: 0 })),
     ).toBeVisible();
     expect(
-      within(preview).getByText(
-        m.builder_proposal_unconfirmed_many({ count: 2 }),
-      ),
+      screen.getByText(m.builder_proposal_unconfirmed_many({ count: 2 })),
     ).toBeVisible();
     expect(within(preview).getByText('Sunday Gathering')).toBeVisible();
     expect(within(preview).getByText('Greeter · Main')).toBeVisible();
@@ -1057,10 +1059,13 @@ describe('Assignment proposal preview', () => {
 
     const preview = await screen.findByTestId('assignment-proposal-preview');
     expect(
+      screen.getByText(m.builder_proposal_summary({ additions: 0, places: 1 })),
+    ).toBeVisible();
+    expect(
       within(preview).getByText(m.builder_proposal_empty_no_confirmed()),
     ).toBeVisible();
     expect(
-      within(preview).getByText(m.builder_proposal_unconfirmed_one()),
+      screen.getByText(m.builder_proposal_unconfirmed_one()),
     ).toBeVisible();
     expect(
       within(preview).getByText(m.builder_proposal_gap_one()),

@@ -29,6 +29,9 @@ export interface ResponsiveFormSurfaceProps {
   /** Save/Cancel-style buttons. Rendered by the surface itself, outside the
    * mobile scroll region, so the primary action stays in thumb reach. */
   footer?: ReactNode;
+  /** Optional bounded review layout with a fixed summary and actions. */
+  reviewSummary?: ReactNode;
+  reviewBodyLabel?: string;
   children: ReactNode;
 }
 
@@ -42,6 +45,8 @@ export function ResponsiveFormSurface({
   title,
   description,
   footer,
+  reviewSummary,
+  reviewBodyLabel,
   children,
 }: ResponsiveFormSurfaceProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -49,15 +54,44 @@ export function ResponsiveFormSurface({
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent
+          className={
+            reviewSummary
+              ? 'flex max-h-[85dvh] flex-col gap-0 p-0 sm:max-w-4xl'
+              : undefined
+          }
+        >
+          <DialogHeader
+            className={
+              reviewSummary ? 'shrink-0 px-5 pt-5 pr-12 pb-4' : undefined
+            }
+          >
             <DialogTitle>{title}</DialogTitle>
             {description ? (
               <DialogDescription>{description}</DialogDescription>
             ) : null}
+            {reviewSummary}
           </DialogHeader>
-          {children}
-          {footer ? <DialogFooter>{footer}</DialogFooter> : null}
+          {reviewSummary ? (
+            <section
+              data-testid="proposal-scroll-body"
+              aria-label={reviewBodyLabel}
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: the scroll region must be keyboard scrollable.
+              tabIndex={0}
+              className="min-h-0 overflow-y-auto border-y px-5 py-4"
+            >
+              {children}
+            </section>
+          ) : (
+            children
+          )}
+          {footer ? (
+            <DialogFooter
+              className={reviewSummary ? 'shrink-0 px-5 py-4' : undefined}
+            >
+              {footer}
+            </DialogFooter>
+          ) : null}
         </DialogContent>
       </Dialog>
     );
@@ -77,9 +111,22 @@ export function ResponsiveFormSurface({
           {description ? (
             <DrawerDescription>{description}</DrawerDescription>
           ) : null}
+          {reviewSummary}
         </DrawerHeader>
         <FormControlSizeProvider size="touch">
-          <div className="overflow-auto px-4 pb-4">{children}</div>
+          {reviewSummary ? (
+            <section
+              data-testid="proposal-scroll-body"
+              aria-label={reviewBodyLabel}
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: the scroll region must be keyboard scrollable.
+              tabIndex={0}
+              className="min-h-0 overflow-y-auto px-4 py-4"
+            >
+              {children}
+            </section>
+          ) : (
+            <div className="overflow-auto px-4 pb-4">{children}</div>
+          )}
           {footer ? <DrawerFooter>{footer}</DrawerFooter> : null}
         </FormControlSizeProvider>
       </DrawerContent>

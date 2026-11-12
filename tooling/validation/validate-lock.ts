@@ -65,7 +65,7 @@ function describeHolder({ holder }: { holder: HolderRecord }): string {
 /**
  * Takes the machine-wide validate slot, waiting (with status lines) up to
  * `timeoutMs`. A record whose process died is taken over. The slot is
- * released on exit and on SIGINT/SIGTERM.
+ * released on exit, which a signalled gate reaches only after its steps stop.
  */
 export async function acquireValidateLock({
   dir = DEFAULT_LOCK_DIR,
@@ -125,16 +125,10 @@ export async function acquireValidateLock({
     if (readHolder({ path })?.pid === process.pid)
       rmSync(path, { force: true });
   };
+  // No signal handler here: exiting on a signal would free the slot before the
+  // lane runner stops its steps. A gate killed outright leaves a dead-pid record
+  // that the next run takes over.
   process.once('exit', release);
-  for (const [signal, code] of [
-    ['SIGINT', 130],
-    ['SIGTERM', 143],
-  ] as const) {
-    process.once(signal, () => {
-      release();
-      process.exit(code);
-    });
-  }
   return { release, waitedMs: performance.now() - started };
 }
 

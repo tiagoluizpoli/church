@@ -25,6 +25,7 @@ const api = vi.hoisted(() => ({
   listSectors: vi.fn(),
   listMinistryRoles: vi.fn(),
   saveEventTimeBlockPreparation: vi.fn(),
+  getAskPreview: vi.fn(),
 }));
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: api,
@@ -56,6 +57,13 @@ beforeEach(() => {
   api.listSchedules.mockResolvedValue({ schedules: [SCHEDULE] });
   api.listSectors.mockResolvedValue({ sectors: SECTORS });
   api.listMinistryRoles.mockResolvedValue({ roles: ROLES });
+  api.getAskPreview.mockResolvedValue({
+    eligibleVolunteerCount: 2,
+    shiftCount: 1,
+    eventCount: 1,
+    flaggedBlocks: [],
+    rolesWithoutHolders: [],
+  });
   activeChurchApiMock.listActiveChurchOptions.mockResolvedValue({
     churches: [],
   });
@@ -195,6 +203,30 @@ describe('preparing beside the retained Schedule list', () => {
     );
     expect(router.state.location.pathname).toBe(EDITOR_PATH);
     expect(stage).toHaveValue(29);
+  });
+
+  it('refreshes the retained Ask preview after a successful Save', async () => {
+    api.saveEventTimeBlockPreparation.mockResolvedValue(BLOCK);
+    const user = userEvent.setup();
+    renderRoute({
+      initialPath: EDITOR_PATH,
+      churchTimezone: 'America/Sao_Paulo',
+    });
+    const stage = await screen.findByRole('spinbutton', {
+      name: /Singer.*Stage|Stage.*Singer/,
+    });
+    await waitFor(() => expect(api.getAskPreview).toHaveBeenCalled());
+    const previews = api.getAskPreview.mock.calls.length;
+    await user.type(stage, '9');
+    await user.click(
+      screen.getByRole('button', { name: m.usual_setup_save() }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('prepare-block-panel'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(api.getAskPreview.mock.calls.length).toBeGreaterThan(previews);
   });
 
   it('closes the panel on Cancel and returns focus to the block row in the same list context', async () => {

@@ -309,6 +309,14 @@ function PreparationBlockForm({
           queryKey: ['prepare-cycle-participation', ministryId, cycleId],
         }),
         queryClient.invalidateQueries({ queryKey: ['prepare-schedules'] }),
+        // The retained list's Ask preview and answer status count the
+        // Shifts just saved.
+        queryClient.invalidateQueries({
+          queryKey: ['prepare-ask-preview', ministryId, cycleId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['availability-status', cycleId, ministryId],
+        }),
       ]);
       toast.success(m.prepare_block_saved());
       await backToSchedule();

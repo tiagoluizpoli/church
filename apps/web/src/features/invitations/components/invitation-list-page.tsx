@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -284,62 +285,89 @@ function closureFact({ item, timeZone }: InvitationRowProps): string | null {
     : fact;
 }
 
-function InvitationRow({ item, timeZone }: InvitationRowProps) {
-  const expired = item.displayStatus === 'expired';
-  const expiry = formatInstantOf({ value: item.expiresAt, timeZone });
+function ExpiredBadge({ item }: { item: ListInvitations200ItemsItem }) {
+  return item.displayStatus === 'expired' ? (
+    <Badge variant="destructive">{m.invitations_expired_badge()}</Badge>
+  ) : null;
+}
+
+function Grants({ item }: { item: ListInvitations200ItemsItem }) {
   const access = accessLabel(item);
   return (
-    <li className="space-y-2 px-4 py-3">
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      {item.status !== 'pending' ? (
+        <Badge variant="outline">{statusLabel(item.displayStatus)}</Badge>
+      ) : null}
+      {item.churchAccessLevel ? (
+        <Badge variant="secondary">
+          {m.invitations_church_access()}: {m.join_church_access_admin()}
+        </Badge>
+      ) : null}
+      {item.ministryName ? (
+        <Badge variant="outline">
+          {item.ministryName}
+          {access ? ` · ${access}` : ''}
+        </Badge>
+      ) : null}
+      {item.ministryName ? (
+        <span className="min-w-0 break-words text-muted-foreground">
+          {m.ministry_invitation_roles_label()}:{' '}
+          {item.roles.length > 0
+            ? item.roles.map((role) => role.name).join(', ')
+            : m.ministry_invitation_roles_none()}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function Facts({ item, timeZone }: InvitationRowProps) {
+  const expiry = formatInstantOf({ value: item.expiresAt, timeZone });
+  return (
+    <p className="break-words text-muted-foreground text-sm">
+      {[
+        m.invitations_invited_by({ name: item.invitedBy.name }),
+        m.invitations_created({
+          date: formatInstantOf({ value: item.createdAt, timeZone }),
+        }),
+        item.displayStatus === 'expired'
+          ? m.invitations_expired_on({ date: expiry })
+          : m.invitations_expires({ date: expiry }),
+        emailFact({ item, timeZone }),
+        closureFact({ item, timeZone }),
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+    </p>
+  );
+}
+
+/** Direct, wrapping, right-aligned actions the server allows; nothing when none. */
+function RowActions({ item }: RowActionProps) {
+  if (!item.canResend && !item.canRevoke) return null;
+  return (
+    <div className="flex flex-wrap justify-end gap-2 pt-2 md:pt-0 [&_button]:min-h-11 md:[&_button]:min-h-0">
+      <ResendButton item={item} />
+      <RevokeButton item={item} />
+    </div>
+  );
+}
+
+function InvitationCard({ item, timeZone }: InvitationRowProps) {
+  return (
+    <div className="surface-subtle workspace-panel space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className="min-w-0 break-all font-medium">{item.email}</span>
-        {expired ? (
-          <Badge variant="destructive">{m.invitations_expired_badge()}</Badge>
-        ) : null}
-        <div className="ms-auto flex gap-2">
-          <ResendButton item={item} />
-          <RevokeButton item={item} />
-        </div>
+        <ExpiredBadge item={item} />
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        {item.status !== 'pending' ? (
-          <Badge variant="outline">{statusLabel(item.displayStatus)}</Badge>
-        ) : null}
-        {item.churchAccessLevel ? (
-          <Badge variant="secondary">
-            {m.invitations_church_access()}: {m.join_church_access_admin()}
-          </Badge>
-        ) : null}
-        {item.ministryName ? (
-          <Badge variant="outline">
-            {item.ministryName}
-            {access ? ` · ${access}` : ''}
-          </Badge>
-        ) : null}
-        {item.ministryName ? (
-          <span className="min-w-0 break-words text-muted-foreground">
-            {m.ministry_invitation_roles_label()}:{' '}
-            {item.roles.length > 0
-              ? item.roles.map((role) => role.name).join(', ')
-              : m.ministry_invitation_roles_none()}
-          </span>
-        ) : null}
-      </div>
-      <p className="text-muted-foreground text-sm">
-        {[
-          m.invitations_invited_by({ name: item.invitedBy.name }),
-          m.invitations_created({
-            date: formatInstantOf({ value: item.createdAt, timeZone }),
-          }),
-          expired
-            ? m.invitations_expired_on({ date: expiry })
-            : m.invitations_expires({ date: expiry }),
-          emailFact({ item, timeZone }),
-          closureFact({ item, timeZone }),
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-      </p>
-    </li>
+      <Grants item={item} />
+      <details className="text-sm">
+        <summary className="min-h-11 cursor-pointer py-2 font-medium">
+          {m.invitations_details()}
+        </summary>
+        <Facts item={item} timeZone={timeZone} />
+      </details>
+    </div>
   );
 }
 
@@ -544,18 +572,37 @@ export function InvitationListPage() {
         </div>
       ) : (
         <>
-          <ul
+          <DataTable
             aria-label={m.invitations_list_label()}
-            className="surface-panel divide-y divide-border"
-          >
-            {items.map((item) => (
-              <InvitationRow
-                key={`${item.kind}:${item.id}`}
-                item={item}
-                timeZone={churchTimezone}
-              />
-            ))}
-          </ul>
+            columns={[
+              {
+                id: 'invitation',
+                name: m.invitations_column_invitation(),
+                isRowHeader: true,
+              },
+              { id: 'grants', name: m.invitations_column_grants() },
+              { id: 'details', name: m.invitations_details() },
+              { id: 'actions', name: m.people_column_actions() },
+            ]}
+            items={items}
+            rowId={({ item }) => `${item.kind}:${item.id}`}
+            renderCell={({ item, column }) => {
+              if (column.id === 'grants') return <Grants item={item} />;
+              if (column.id === 'details') {
+                return <Facts item={item} timeZone={churchTimezone} />;
+              }
+              return (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="break-all font-medium">{item.email}</span>
+                  <ExpiredBadge item={item} />
+                </div>
+              );
+            }}
+            renderMobileCard={({ item }) => (
+              <InvitationCard item={item} timeZone={churchTimezone} />
+            )}
+            rowActions={({ item }) => <RowActions item={item} />}
+          />
           {query.isFetchNextPageError ? (
             <Alert variant="destructive">
               <AlertDescription>{m.invitations_load_failed()}</AlertDescription>

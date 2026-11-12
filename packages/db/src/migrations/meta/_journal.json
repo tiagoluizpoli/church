@@ -372,6 +372,13 @@
       "when": 1794456669644,
       "tag": "0052_ministry_default_direction_all_out",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1794475749865,
+      "tag": "0053_assignment_proposal_application",
+      "breakpoints": true
     }
   ]
 }

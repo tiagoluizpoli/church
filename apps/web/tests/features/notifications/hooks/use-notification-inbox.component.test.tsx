@@ -18,6 +18,7 @@ import { useNotificationInbox } from '@/features/notifications/hooks/use-notific
 import {
   notificationQueryKey,
   readCachedNotificationInbox,
+  writeCachedNotificationInbox,
 } from '@/features/notifications/lib/notification-cache';
 import type { GetNotifications200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
@@ -157,6 +158,71 @@ describe('useNotificationInbox', () => {
     expect(reads).toHaveBeenCalledTimes(readCount);
     expect(writes).toHaveBeenCalledTimes(writeCount);
     reads.mockRestore();
+    writes.mockRestore();
+  });
+
+  it('persists loaded pages and read changes without writes on unrelated renders', async () => {
+    getNotifications
+      .mockResolvedValueOnce({
+        items: [invitation({ id: 'a' })],
+        nextCursor: 'next',
+        unreadCount: 2,
+      })
+      .mockResolvedValueOnce({
+        items: [invitation({ id: 'b' })],
+        unreadCount: 2,
+      });
+    const writes = vi.spyOn(window.localStorage, 'setItem');
+    const { result, rerender } = renderInbox();
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    const firstWrites = writes.mock.calls.length;
+    expect(firstWrites).toBeGreaterThan(0);
+    await act(() => result.current.loadMore());
+    await waitFor(() =>
+      expect(writes.mock.calls.length).toBeGreaterThan(firstWrites),
+    );
+    expect(
+      readCachedNotificationInbox({
+        userId: 'user-1',
+        churchId: 'church-1',
+      })?.pages.map((page) => page.map((item) => item.id)),
+    ).toEqual([['a'], ['b']]);
+    const pageWrites = writes.mock.calls.length;
+    act(() => result.current.markRead('b'));
+    await waitFor(() => expect(result.current.items[1]?.isUnread).toBe(false));
+    await waitFor(() =>
+      expect(writes.mock.calls.length).toBeGreaterThan(pageWrites),
+    );
+    const cached = readCachedNotificationInbox({
+      userId: 'user-1',
+      churchId: 'church-1',
+    });
+    expect(cached?.pages[1]?.[0]?.readAt).toBeTruthy();
+    expect(cached?.unreadCount).toBe(1);
+    const readWrites = writes.mock.calls.length;
+    rerender();
+    expect(writes).toHaveBeenCalledTimes(readWrites);
+    writes.mockRestore();
+  });
+
+  it('continues serving the network inbox when storage writes fail', async () => {
+    const writes = vi
+      .spyOn(window.localStorage, 'setItem')
+      .mockImplementation(() => {
+        throw new Error('storage unavailable');
+      });
+    getNotifications.mockResolvedValue({
+      items: [invitation({ id: 'a' })],
+      unreadCount: 1,
+    });
+    const { result } = renderInbox();
+    await waitFor(() =>
+      expect(result.current.items.map((item) => item.id)).toEqual(['a']),
+    );
+    expect(writes).toHaveBeenCalled();
+    act(() => result.current.markRead('a'));
+    await waitFor(() => expect(result.current.unreadCount).toBe(0));
+    expect(result.current.items[0]?.isUnread).toBe(false);
     writes.mockRestore();
   });
 
@@ -404,6 +470,37 @@ describe('useNotificationInbox', () => {
 
     expect(result.current.items).toEqual([]);
     expect(result.current.selectedNotification).toBeUndefined();
+  });
+
+  it('restores only the cached inbox belonging to each User and Church', async () => {
+    const scopes = [
+      { userId: 'user-1', churchId: 'church-1' },
+      { userId: 'user-1', churchId: 'church-2' },
+      { userId: 'user-2', churchId: 'church-1' },
+    ] as const;
+    for (const [index, scope] of scopes.entries()) {
+      writeCachedNotificationInbox({
+        scope,
+        inbox: {
+          pages: [[invitation({ id: `row-${index}` })]],
+          unreadCount: index + 1,
+        },
+      });
+    }
+    getNotifications.mockImplementation(
+      () => new Promise<GetNotifications200>(() => {}),
+    );
+    const { result, rerender } = renderInbox();
+    expect(result.current.items.map((item) => item.id)).toEqual(['row-0']);
+    currentScope = scopes[1];
+    rerender();
+    expect(result.current.items.map((item) => item.id)).toEqual(['row-1']);
+    currentScope = scopes[2];
+    rerender();
+    expect(result.current.items.map((item) => item.id)).toEqual(['row-2']);
+    currentScope = scopes[0];
+    rerender();
+    expect(result.current.items.map((item) => item.id)).toEqual(['row-0']);
   });
 
   it('stores semantic data under a User/Church key and drops the old unscoped cache', async () => {

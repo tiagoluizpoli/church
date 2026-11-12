@@ -42,6 +42,34 @@ vi.mock('@church/app-config', async (importOriginal) => {
   };
 });
 
+const swapContextConsumer = vi.hoisted(() => vi.fn());
+
+vi.mock(
+  '@/features/scheduling/components/builder/swap-request/swap-request-context',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/features/scheduling/components/builder/swap-request/swap-request-context')
+      >();
+    const React = await import('react');
+    const Consumer = React.memo(() => {
+      swapContextConsumer(actual.useSwapRequestBoard());
+      return null;
+    });
+    const Provider: typeof actual.SwapRequestBoardProvider = ({
+      value,
+      children,
+    }) =>
+      React.createElement(
+        actual.SwapRequestBoardProvider,
+        { value },
+        children,
+        React.createElement(Consumer),
+      );
+    return { ...actual, SwapRequestBoardProvider: Provider };
+  },
+);
+
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
@@ -715,6 +743,45 @@ describe('Swap requests on the board', () => {
     status: 'open',
   };
   const data = boardData({ state: 'published' });
+
+  it('keeps context-only consumers quiet on unrelated renders and updates them for swap changes', () => {
+    const requests = [request];
+    const onSelectSwapRequest = vi.fn();
+    const mutateAsync = vi.fn();
+    const mutation = { isPending: false, mutateAsync };
+    const renderTree = (swapRequests: LeaderSwapRequest[]) => (
+      <CycleBuilder
+        data={data}
+        onPublish={vi.fn()}
+        isPublishing={false}
+        cycleId="cycle-1"
+        ministryId="ministry-1"
+        createAssignment={mutation}
+        deleteAssignment={mutation}
+        reassignAssignment={mutation}
+        swapRequests={swapRequests}
+        onSelectSwapRequest={onSelectSwapRequest}
+      />
+    );
+    swapContextConsumer.mockClear();
+    const { rerender } = renderWithProviders(renderTree(requests));
+    const count = swapContextConsumer.mock.calls.length;
+    expect(count).toBeGreaterThan(0);
+    expect(
+      swapContextConsumer.mock.lastCall?.[0].openRequestByAssignment.get(
+        'assignment-1',
+      ),
+    ).toBe('request-1');
+    rerender(renderTree(requests));
+    expect(swapContextConsumer).toHaveBeenCalledTimes(count);
+    rerender(renderTree([{ ...request, status: 'expired' }]));
+    expect(swapContextConsumer).toHaveBeenCalledTimes(count + 1);
+    expect(
+      swapContextConsumer.mock.lastCall?.[0].openRequestByAssignment.has(
+        'assignment-1',
+      ),
+    ).toBe(false);
+  });
 
   it('warns on an open request and opens its sheet from the warning', async () => {
     const onSelectSwapRequest = vi.fn();

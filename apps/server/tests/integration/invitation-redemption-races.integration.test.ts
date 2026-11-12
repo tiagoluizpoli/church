@@ -318,6 +318,54 @@ describe('acceptance versus Ministry revoke', () => {
   });
 });
 
+describe('acceptance versus a duplicate acceptance', () => {
+  it('answers a duplicate submit that waited on the first as already accepted, granting once', async () => {
+    const offer = await sharedOffer({ halves: 2 });
+    const invitee = await signedInInvitee();
+    const reviewed = await reviewedToken({
+      redemptionManager,
+      ministryInvitationId: offer.worshipId,
+      userId: invitee.userId,
+    });
+    // The first acceptance parks holding the Church row it has just accepted.
+    const churchAccepted = gate();
+    const recordAcceptance =
+      redemptionRepository.recordChurchInvitationAcceptance.bind(
+        redemptionRepository,
+      );
+    vi.spyOn(
+      redemptionRepository,
+      'recordChurchInvitationAcceptance',
+    ).mockImplementationOnce(async (input) => {
+      await recordAcceptance(input);
+      await churchAccepted.park();
+    });
+    const submit = () =>
+      redemptionManager.acceptExistingMember({
+        ministryInvitationId: offer.worshipId,
+        userId: invitee.userId,
+        sessionCookie: invitee.sessionCookie,
+        idempotencyKey: crypto.randomUUID(),
+        reviewToken: reviewed,
+      });
+
+    const first = submit();
+    await parked({ gate: churchAccepted.entered, work: first });
+    const duplicate = submit();
+    await untilLockWait();
+    churchAccepted.open();
+
+    await expect(first).resolves.toMatchObject({ kind: 'full-success' });
+    await expect(duplicate).resolves.toEqual({
+      kind: 'already-accepted',
+      churchId,
+    });
+    expect((await membershipMinistries(invitee.userId)).sort()).toEqual(
+      [fixture.ministryOneA, fixture.ministryTwoA].sort(),
+    );
+  });
+});
+
 describe('decline versus Ministry revoke', () => {
   it('never overwrites a Church revocation that commits while the decline waits', async () => {
     const offer = await sharedOffer({ halves: 1 });

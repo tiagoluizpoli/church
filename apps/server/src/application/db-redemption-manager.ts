@@ -619,8 +619,16 @@ export class DbRedemptionManager implements RedemptionManager {
         ministryName: resolved.context.ministryName,
       });
     } catch (error) {
-      if (error instanceof ReviewedOfferChanged)
-        return { kind: 'offer-changed' };
+      if (error instanceof ReviewedOfferChanged) {
+        // A duplicate submit that waited on the first one finds it consumed.
+        const latest =
+          await this.invitationRepository.findMinistryInvitationContext({
+            ministryInvitationId,
+          });
+        return latest?.ministryInvitation.status === 'accepted'
+          ? { kind: 'already-accepted', churchId: ministryInvitation.churchId }
+          : { kind: 'offer-changed' };
+      }
       if (error instanceof IdentityAcceptFailure)
         return { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' };
       return {

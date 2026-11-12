@@ -49,6 +49,7 @@ import { InvitationNotPendingError } from '../domain/errors/invitation-not-pendi
 import { PendingMinistryInvitationNotFoundError } from '../domain/errors/pending-ministry-invitation-not-found';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 import { maskEmail } from '../domain/services/mask-email';
+import { reviewTokenFor } from '../domain/services/redemption-review-token';
 
 interface DbRedemptionManagerDependencies {
   churchRepository: ChurchRepository;
@@ -650,7 +651,13 @@ export class DbRedemptionManager implements RedemptionManager {
     if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'unavailable' };
     }
+    const bundle = await this.invitationRepository.findRedemptionBundle({
+      ministryInvitation,
+      now,
+    });
     return {
+      ...bundle,
+      reviewToken: reviewTokenFor({ bundle }),
       kind: 'redeemable',
       invitationKind: ministryInvitation.kind,
       email: resolved.context.email,

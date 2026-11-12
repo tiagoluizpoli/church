@@ -12,6 +12,7 @@ import type {
   RedemptionManager,
 } from '../../domain/contracts/application/redemption-manager';
 import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
+import type { RedemptionBundleMinistry } from '../../domain/entities/redemption-bundle';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import { auth } from '../../main/di/server-auth';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
@@ -281,6 +282,9 @@ export class RedemptionController implements FastifyController {
             kind: status.kind,
             invitationKind: status.invitationKind,
             ...toInvitationPreviewFields(status),
+            churchAccessLevel: status.churchAccessLevel,
+            ministries: status.ministries.map(toReviewedMinistry),
+            reviewToken: status.reviewToken,
           });
         }
         return reply.send(status);
@@ -548,6 +552,18 @@ function toPublicPreview(preview: PublicRedemptionPreview) {
     expiresAt: fromDate({ date: preview.expiresAt }),
     ...(ministries[0] ? { ministry: ministries[0] } : {}),
     ministries,
+  };
+}
+
+/** One Ministry grant of the signed-in review; internal ids stay server-side. */
+function toReviewedMinistry(half: RedemptionBundleMinistry) {
+  return {
+    invitationId: half.ministryInvitationId,
+    ministryName: half.ministryName,
+    ministryAccessLevel: half.ministryAccessLevel,
+    roleNames: half.roleNames,
+    inviterName: half.inviterName,
+    expiresAt: fromDate({ date: half.expiresAt }),
   };
 }
 

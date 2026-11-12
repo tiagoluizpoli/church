@@ -1,3 +1,4 @@
+import type { ChurchAccessLevel } from '../../authority/types';
 import type {
   ChurchId,
   ChurchInvitationId,
@@ -9,6 +10,7 @@ import type {
   PublicRedemptionMinistry,
   PublicRedemptionPreview,
 } from '../../entities/public-redemption-preview';
+import type { RedemptionBundleMinistry } from '../../entities/redemption-bundle';
 
 export interface AcceptPendingMinistryInvitationInput {
   churchId: ChurchId;
@@ -134,6 +136,12 @@ export interface RedeemableInvitationStatus {
   ministryAccessLevel: 'volunteer' | 'leader';
   roleNames: string[];
   expiresAt: Date;
+  /** Null when the Church Membership already exists: no new Church grant. */
+  churchAccessLevel: ChurchAccessLevel | null;
+  /** Every Ministry this one acceptance joins, oldest first. */
+  ministries: RedemptionBundleMinistry[];
+  /** Echoed on accept; see `reviewTokenFor`. */
+  reviewToken: string;
 }
 
 export interface AlreadyAcceptedInvitationStatus {

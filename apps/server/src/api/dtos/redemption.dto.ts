@@ -112,6 +112,16 @@ export const unauthorizedResponseSchema = z.object({
 });
 
 /** Post-authentication lifecycle for an existing Church Member's Ministry Invitation (spec §7.3). */
+/** One Ministry grant of the signed-in review. */
+export const reviewedMinistrySchema = z.object({
+  invitationId: z.string(),
+  ministryName: z.string(),
+  ministryAccessLevel: z.enum(ministryAccessLevelValues),
+  roleNames: z.array(z.string()),
+  inviterName: z.string(),
+  expiresAt: instantSchema,
+});
+
 export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
   'kind',
   [
@@ -124,6 +134,12 @@ export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
       ministryAccessLevel: z.enum(ministryAccessLevelValues),
       roleNames: z.array(z.string()),
       expiresAt: instantSchema,
+      /** The Church Access Level this acceptance grants; null when the Church Membership already exists. */
+      churchAccessLevel: z.enum(CHURCH_ACCESS_LEVEL_OPTIONS).nullable(),
+      /** Every Ministry this one acceptance joins, oldest first. */
+      ministries: z.array(reviewedMinistrySchema),
+      /** Echo it on accept: a changed offer is refused without any grant. */
+      reviewToken: z.string(),
     }),
     z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
     z.object({

@@ -168,6 +168,58 @@ async function mintExistingMemberInvitation() {
   });
 }
 
+async function ministryNameOf(id: string): Promise<string> {
+  const [row] = await testDb
+    .select({ name: ministry.name })
+    .from(ministry)
+    .where(eq(ministry.id, id));
+  return row?.name ?? '';
+}
+
+async function roleNameOf(id: string): Promise<string> {
+  const [row] = await testDb
+    .select({ name: role.name })
+    .from(role)
+    .where(eq(role.id, id));
+  return row?.name ?? '';
+}
+
+/**
+ * adminB (a User of Church B, no Church A membership) is offered Church A as
+ * ChurchAdmin, Worship as a Volunteer with one Role and Kids as a leader with
+ * no Roles — one Church Invitation with two Ministry halves.
+ */
+async function mintAdminBundleForAdminB() {
+  const email = `${fixture.adminB}@fixture.test`;
+  const worship = await invitationManager.mint({
+    churchId: ChurchId.from(fixture.churchA.id),
+    ministryId: MinistryId.from(fixture.ministryOneA),
+    inviterId: UserId.from(fixture.adminA),
+    email,
+    ministryAccessLevel: 'volunteer',
+    roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+  });
+  const kids = await invitationManager.mint({
+    churchId: ChurchId.from(fixture.churchA.id),
+    ministryId: MinistryId.from(fixture.ministryTwoA),
+    inviterId: UserId.from(fixture.adminA),
+    email,
+    ministryAccessLevel: 'leader',
+    roleIds: [],
+  });
+  await invitationManager.mintAdmin({
+    churchId: ChurchId.from(fixture.churchA.id),
+    inviterId: UserId.from(fixture.adminA),
+    email,
+  });
+  return {
+    email,
+    churchInvitationId: worship.churchInvitationId as string,
+    worshipId: worship.id,
+    kidsId: kids.id,
+  };
+}
+
 interface CreateUserSessionInput {
   email: string;
 }
@@ -218,6 +270,79 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         churchName: fixture.churchA.name,
         ministryAccessLevel: 'volunteer',
       });
+    });
+
+    it('discloses a standalone Ministry offer alone, with the Church as existing access', async () => {
+      const invitation = await mintExistingMemberInvitation();
+      const cookie = await createSessionCookie({
+        userId: fixture.existingChurchMemberA,
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/redemption/ministry/${invitation.id}`,
+        headers: { cookie },
+      });
+
+      const body = response.json();
+      expect(body).toMatchObject({
+        invitationKind: 'ministry-only',
+        churchAccessLevel: null,
+        ministries: [
+          {
+            invitationId: invitation.id,
+            ministryName: await ministryNameOf(fixture.ministryOneA),
+            ministryAccessLevel: 'volunteer',
+            roleNames: [await roleNameOf(fixture.roleInMinistryOneA)],
+            inviterName: 'Fixture Admin A',
+          },
+        ],
+      });
+      expect(body.reviewToken).toEqual(expect.any(String));
+    });
+
+    it('discloses the whole Church offer from any of its halves: the new Church Access Level and every Ministry grant', async () => {
+      const bundle = await mintAdminBundleForAdminB();
+      const cookie = await createSessionCookie({ userId: fixture.adminB });
+
+      const fromWorship = await app.inject({
+        method: 'GET',
+        url: `/api/v1/redemption/ministry/${bundle.worshipId}`,
+        headers: { cookie },
+      });
+      const fromKids = await app.inject({
+        method: 'GET',
+        url: `/api/v1/redemption/ministry/${bundle.kidsId}`,
+        headers: { cookie },
+      });
+
+      const disclosed = fromWorship.json();
+      expect(disclosed).toMatchObject({
+        kind: 'redeemable',
+        invitationKind: 'chained',
+        churchName: fixture.churchA.name,
+        churchAccessLevel: 'admin',
+        ministries: [
+          {
+            invitationId: bundle.worshipId,
+            ministryName: await ministryNameOf(fixture.ministryOneA),
+            ministryAccessLevel: 'volunteer',
+            roleNames: [await roleNameOf(fixture.roleInMinistryOneA)],
+            inviterName: 'Fixture Admin A',
+            expiresAt: expect.any(String),
+          },
+          {
+            invitationId: bundle.kidsId,
+            ministryName: await ministryNameOf(fixture.ministryTwoA),
+            ministryAccessLevel: 'leader',
+            roleNames: [],
+            inviterName: 'Fixture Admin A',
+            expiresAt: expect.any(String),
+          },
+        ],
+      });
+      expect(fromKids.json().ministries).toEqual(disclosed.ministries);
+      expect(fromKids.json().reviewToken).toBe(disclosed.reviewToken);
     });
   });
 

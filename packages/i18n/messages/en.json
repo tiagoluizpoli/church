@@ -1038,6 +1038,8 @@
   "schedules_swap_requests_link": "Swap requests ({count})",
   "schedules_not_serving": "Not serving this cycle",
   "schedules_back": "All Schedules",
+  "schedules_open": "Open",
+  "schedules_open_label": "Open {name}",
   "schedules_asking_stage": "Asking",
   "prepare_block_saved": "Time block preparation saved.",
   "prepare_block_load_failed": "Could not load this Time block. Try again.",

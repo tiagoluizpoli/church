@@ -1038,6 +1038,8 @@
   "schedules_swap_requests_link": "Pedidos de troca ({count})",
   "schedules_not_serving": "Não serve neste Ciclo",
   "schedules_back": "Todas as Escalas dos ministérios",
+  "schedules_open": "Abrir",
+  "schedules_open_label": "Abrir {name}",
   "schedules_asking_stage": "Consultando",
   "prepare_block_saved": "Preparação do horário salva.",
   "prepare_block_load_failed": "Não foi possível carregar este horário. Tente novamente.",

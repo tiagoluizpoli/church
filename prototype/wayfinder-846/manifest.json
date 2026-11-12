@@ -54,5 +54,57 @@
   {
     "path": "prototype/wayfinder-846/schedule/screenshots/c-desktop.png",
     "sha256": "cfcc2e8a5c879e299906629f05ae455f5715abf209ae28f638618d6e98347f58"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/brief.md",
+    "sha256": "c88598e218fbc3c958fc285c6cc20ed2ac7ab7a87b1293daa454181bb4b4d695"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/comparison.md",
+    "sha256": "513ba2ff879f40fd113bed7089441bcc89a1779bb9c69a3f03757eb4789020a3"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/desktop-comparison.png",
+    "sha256": "a219770965d7926df4adc7e47c203c9cc1683efdd3dac07de4b0c30d0fa87fc7"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/map-update.md",
+    "sha256": "18b21a866304a57aaef0ce6737beefed86cf7d54ee9a77dfc2e2e7bbd92f3d66"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/mobile-320.png",
+    "sha256": "f7637605472e125c5a28d08cfc421253a214f42ccb4593f87975a789ea20a14e"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/mobile-390-a.png",
+    "sha256": "de57429d6248220e5183ab377bf55989ea5e57d29b8589e5ecc3df1869d6d05e"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/mobile-390-b-menu.png",
+    "sha256": "18b9e5e6ef2f73e2ab8f56ca58e4d58739de0ea9560f35e11c4a224a5da23568"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/mobile-list-prototype.html",
+    "sha256": "3aef2289cb7b9a5cc1f477d1ec45f8edbd2e6d947e0aae8cca16676312048bcb"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/owner-direction.md",
+    "sha256": "e4ae55b48fa29f1fb103ee2461cfa0c2da0e00f7a97744de5417e391c7724489"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/prototype-brief.md",
+    "sha256": "69450ce6dfb55375dae2db016cc62a87067a0e92c435d2f29b4cb30defab1c34"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/resolution.md",
+    "sha256": "c064042aebe0d4ecbcaad53cd800514fb4bb0428394944c5fc815b56c3237e9f"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/review-notes.md",
+    "sha256": "8030c4f31f1b8ba93a04ef9280705f4ba947361bc251f4f4d4a1ce855b640b91"
+  },
+  {
+    "path": "prototype/wayfinder-846/lists/run.md",
+    "sha256": "218d41347e9ca9be4b42bc2378b63c52b1f22ffc511a9c2a2925d5cf5dc93947"
   }
 ]

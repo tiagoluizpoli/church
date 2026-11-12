@@ -58,10 +58,10 @@ vi.mock(
       swapContextConsumer(actual.useSwapRequestBoard());
       return null;
     });
-    const Provider: typeof actual.SwapRequestBoardProvider = ({
+    const Provider = ({
       value,
       children,
-    }) =>
+    }: React.ComponentProps<typeof actual.SwapRequestBoardProvider>) =>
       React.createElement(
         actual.SwapRequestBoardProvider,
         { value },

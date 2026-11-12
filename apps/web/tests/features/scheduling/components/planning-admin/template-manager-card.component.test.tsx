@@ -113,6 +113,31 @@ describe('TemplateManagerCard table view (US1)', () => {
     ).toBeInTheDocument();
   });
 
+  it('moves keyboard focus between the actions in a desktop row', async () => {
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+      ],
+    });
+    const user = userEvent.setup();
+    render();
+    const table = await screen.findByRole('grid');
+    const row = within(table).getByRole('row', { name: /Sunday Service/ });
+    const edit = within(row).getByRole('link', {
+      name: 'Editar Sunday Service',
+    });
+    const deleteButton = within(row).getByRole('button', {
+      name: 'Excluir Sunday Service',
+    });
+    row.focus();
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
+    expect(edit).toHaveFocus();
+    await user.keyboard('{ArrowRight}');
+    expect(deleteButton).toHaveFocus();
+    await user.keyboard('{ArrowLeft}');
+    expect(edit).toHaveFocus();
+  });
+
   it('opens a confirmation from the table row action without deleting', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [

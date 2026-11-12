@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { type KeyboardEvent, useState } from 'react';
 import type { TemplateLibraryTableRow } from './planning-admin.types';
 import { toTemplateLibraryTableRow } from './planning-admin.utils';
 import { RetryAlert } from './retry-alert';
@@ -36,6 +36,21 @@ interface TemplateRowActionsProps {
   withTestIds?: boolean;
 }
 
+function moveActionFocus(event: KeyboardEvent<HTMLDivElement>) {
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+  const actions = Array.from(
+    event.currentTarget.querySelectorAll<HTMLElement>('a, button'),
+  );
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return;
+  const current = actions.indexOf(active);
+  const next = event.key === 'ArrowRight' ? current + 1 : current - 1;
+  if (current < 0 || next < 0 || next >= actions.length) return;
+  event.preventDefault();
+  event.stopPropagation();
+  actions[next]?.focus();
+}
+
 function TemplateRowActions({
   templateId,
   templateName,
@@ -43,7 +58,10 @@ function TemplateRowActions({
   withTestIds,
 }: TemplateRowActionsProps) {
   return (
-    <div className="flex flex-wrap justify-end gap-2">
+    <div
+      className="flex flex-wrap justify-end gap-2"
+      onKeyDown={moveActionFocus}
+    >
       <Link
         to="/event-templates/$templateId"
         params={{ templateId }}

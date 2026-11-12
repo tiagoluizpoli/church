@@ -153,6 +153,32 @@ describe('Availability check page', () => {
     expect(api.answerAvailabilityCheck).not.toHaveBeenCalled();
   });
 
+  it('reaches a named Shift switch and confirms using the keyboard', async () => {
+    const user = userEvent.setup();
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    renderPage();
+    const shift = await screen.findByRole('switch', {
+      name: /disponibilidade: culto da manhã.*04\/10\/2026.*bebês/i,
+    });
+    for (let i = 0; i < 20 && document.activeElement !== shift; i++)
+      await user.tab();
+    expect(shift).toHaveFocus();
+    expect(shift).toBeChecked();
+    await user.keyboard(' ');
+    expect(shift).not.toBeChecked();
+    const confirm = screen.getByRole('button', {
+      name: m.availability_detail_confirm(),
+    });
+    for (let i = 0; i < 20 && document.activeElement !== confirm; i++)
+      await user.tab();
+    expect(confirm).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
+      shiftIds: ['morning'],
+      wholeDayDates: [],
+    });
+  });
+
   it('avoids repeated baseline and storage work on unrelated renders and persists edits after clear', () => {
     const baseline = vi.spyOn(
       unavailableShifts,

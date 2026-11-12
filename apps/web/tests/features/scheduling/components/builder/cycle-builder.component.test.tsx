@@ -16,11 +16,13 @@ import {
   it,
   vi,
 } from 'vitest';
+import * as picker from '@/features/scheduling/components/builder/assignment/assignment-picker';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import type { LeaderSwapRequest } from '@/features/scheduling/components/builder/swap-request/swap-request-sheet';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
 import { adminApi } from '@/utils/api-instances';
+import * as volunteerName from '@/utils/format-volunteer-name';
 
 beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
@@ -278,6 +280,7 @@ function setupDragGeometry() {
               ? 300
               : 0;
       const size =
+        id === 'volunteer-card' ||
         id === 'cycle-requirement-side' ||
         id === 'cycle-requirement-wrong-role' ||
         id === 'cycle-requirement-wrong-shift' ||
@@ -301,6 +304,67 @@ function setupDragGeometry() {
 }
 
 describe('moving assignments', () => {
+  it('keeps volunteer presentation flat while its drag moves over one target', async () => {
+    setupDragGeometry();
+    const data = structuredClone(builderData);
+    data.events[0].eventTimeBlocks[0].shifts[0].requirements.push({
+      id: 'side',
+      roleId: 'role-1',
+      sectorName: 'Side',
+      peopleNeeded: 1,
+    });
+    const formatName = vi.spyOn(volunteerName, 'formatVolunteerName');
+    renderBuilder({ data });
+    const grip = screen.getByTestId('volunteer-card-grip');
+    fireEvent.pointerDown(grip, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 20, clientY: 10 });
+    await waitFor(() =>
+      expect(screen.getAllByTestId('volunteer-card')).toHaveLength(2),
+    );
+    fireEvent.pointerMove(document, { clientX: 120, clientY: 10 });
+    await screen.findByText(
+      /was moved over droppable area cycle-requirement:side/,
+    );
+    formatName.mockClear();
+    fireEvent.pointerMove(document, { clientX: 121, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 122, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 123, clientY: 10 });
+    expect(formatName).not.toHaveBeenCalled();
+    fireEvent.pointerUp(document, { clientX: 123, clientY: 10 });
+  });
+
+  it('keeps picker work flat during movement over the same target', async () => {
+    setupDragGeometry();
+    const data = structuredClone(builderData);
+    const shift = data.events[0].eventTimeBlocks[0].shifts[0];
+    shift.requirements.push({
+      id: 'side',
+      roleId: 'role-1',
+      sectorName: 'Side',
+      peopleNeeded: 1,
+    });
+    shift.assignments.push(existingAssignment);
+    data.assignments.push(existingAssignment);
+    const pickerRenders = vi.spyOn(picker, 'AssignmentPicker');
+    renderBuilder({ data });
+    const source = screen.getByRole('button', {
+      name: 'Drag Grace Hopper to another sector',
+    });
+    fireEvent.pointerDown(source, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 20, clientY: 10 });
+    await waitFor(() => expect(source).toHaveAttribute('aria-pressed', 'true'));
+    fireEvent.pointerMove(document, { clientX: 120, clientY: 10 });
+    await screen.findByText(
+      /was moved over droppable area cycle-requirement:side/,
+    );
+    pickerRenders.mockClear();
+    fireEvent.pointerMove(document, { clientX: 121, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 122, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 123, clientY: 10 });
+    expect(pickerRenders).not.toHaveBeenCalled();
+    fireEvent.pointerUp(document, { clientX: 123, clientY: 10 });
+  });
+
   it('moves a dragged assignment to another sector and renders it there', async () => {
     setupDragGeometry();
     const data = structuredClone(builderData);

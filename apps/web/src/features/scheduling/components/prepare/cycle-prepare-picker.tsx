@@ -1,5 +1,4 @@
 import { m } from '@church/i18n/messages';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { classifyPrepareFetchError } from '../participation-prepare.utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,7 +8,7 @@ import {
   WorkspaceIntroPanel,
   WorkspacePage,
 } from '@/components/workspace-page';
-import { adminApi } from '@/utils/api-instances';
+import { useMinistryList } from '@/features/ministries/ministry-queries';
 
 export interface CyclePreparePickerProps {
   cycleId: string;
@@ -26,11 +25,7 @@ export function CyclePreparePicker({
   cycleId,
   ministryIds,
 }: CyclePreparePickerProps) {
-  const ministriesQuery = useQuery({
-    queryKey: ['prepare-ministries'],
-    queryFn: () => adminApi.listMinistries(),
-    retry: false,
-  });
+  const ministriesQuery = useMinistryList({ enabled: true });
   const named = new Set(ministryIds);
   const ministries = (ministriesQuery.data?.ministries ?? []).filter(
     (ministry) => named.has(ministry.id),

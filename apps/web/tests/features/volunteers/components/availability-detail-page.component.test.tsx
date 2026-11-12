@@ -10,11 +10,20 @@ import {
   Outlet,
   RouterProvider,
 } from '@tanstack/react-router';
-import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  renderHook,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AvailabilityDetailPage } from '@/features/volunteers/components/availability-detail-page';
+import { useLocalAvailabilityDraft } from '@/features/volunteers/hooks/use-local-availability-draft';
+import * as unavailableShifts from '@/features/volunteers/lib/unavailable-shifts';
 import type { GetAvailabilityCheck200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
 import { renderWithProviders } from '@/tests/setup/render';
@@ -132,6 +141,101 @@ beforeEach(() => {
 });
 
 describe('Availability check page', () => {
+  it('avoids repeated baseline and storage work on unrelated renders and persists edits after clear', () => {
+    const baseline = vi.spyOn(
+      unavailableShifts,
+      'createInitialUnavailableShiftDraft',
+    );
+    const writes = vi.spyOn(Storage.prototype, 'setItem');
+    const removals = vi.spyOn(Storage.prototype, 'removeItem');
+    const input = {
+      check: CHECK,
+      userId: 'person',
+      timeZone: 'America/Sao_Paulo',
+      hasFreshDetail: true,
+    };
+    const { result, rerender } = renderHook(() =>
+      useLocalAvailabilityDraft(input),
+    );
+    const initialBaseline = baseline.mock.calls.length;
+    const initialStorage =
+      writes.mock.calls.length + removals.mock.calls.length;
+    rerender();
+    rerender();
+    expect(baseline).toHaveBeenCalledTimes(initialBaseline);
+    expect(writes.mock.calls.length + removals.mock.calls.length).toBe(
+      initialStorage,
+    );
+
+    act(() =>
+      result.current.setDraft((draft) =>
+        unavailableShifts.toggleShiftUnavailable({
+          draft,
+          shifts: CHECK.shifts,
+          shiftId: 'morning',
+          timeZone: input.timeZone,
+        }),
+      ),
+    );
+    expect(localStorage.getItem('availability-draft:person:check-1')).toBe(
+      '["morning"]',
+    );
+    act(() => result.current.clear());
+    expect(
+      localStorage.getItem('availability-draft:person:check-1'),
+    ).toBeNull();
+    act(() => result.current.setDraft((draft) => draft));
+    expect(localStorage.getItem('availability-draft:person:check-1')).toBe(
+      '["morning"]',
+    );
+  });
+
+  it('recomputes Church CalendarDays when timezone changes and tolerates storage failures', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('unavailable');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('unavailable');
+    });
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('unavailable');
+    });
+    const check = {
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId !== 'evening',
+      })),
+    };
+    const { result, rerender } = renderHook(
+      ({ timeZone }) =>
+        useLocalAvailabilityDraft({
+          check,
+          userId: 'person',
+          timeZone,
+          hasFreshDetail: true,
+        }),
+      { initialProps: { timeZone: 'America/Sao_Paulo' } },
+    );
+    expect(result.current.draft.wholeDayDates.has('2026-10-04')).toBe(false);
+    rerender({ timeZone: 'UTC' });
+    expect(result.current.draft.wholeDayDates.has('2026-10-05')).toBe(false);
+    act(() =>
+      result.current.setDraft((draft) =>
+        unavailableShifts.toggleShiftUnavailable({
+          draft,
+          shifts: check.shifts,
+          shiftId: 'next-day',
+          timeZone: 'UTC',
+        }),
+      ),
+    );
+    expect(result.current.draft.wholeDayDates.has('2026-10-05')).toBe(true);
+    expect(result.current.hasUnsentChanges).toBe(true);
+    act(() => result.current.discard());
+    expect(result.current.hasUnsentChanges).toBe(false);
+  });
+
   it('preserves a stored mark matching cached unavailable detail until delayed fresh available detail arrives', async () => {
     const storageKey = 'availability-draft:person:check-1';
     localStorage.setItem(storageKey, '["morning"]');

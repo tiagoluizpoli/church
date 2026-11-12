@@ -57,6 +57,10 @@ import {
 } from '../../../utils/builder/cycle-builder-shift-lookup.utils';
 import { VolunteerCard } from '../volunteer-rail/volunteer-card';
 import { VolunteerPoolSidebar } from '../volunteer-rail/volunteer-pool-sidebar';
+import {
+  type BoardDragIdentity,
+  BoardDragIdentityContext,
+} from './board-drag-identity';
 import { CycleBuilderBoardGrid } from './cycle-builder-board-grid';
 import type {
   CycleBuilderCellSelectInput,
@@ -118,9 +122,10 @@ export function CycleBuilderMatrix(props: Props) {
   // The volunteer under an in-flight drag. It drives a DragOverlay portal so the
   // dragged card floats above the whole board instead of translating in place
   // inside the rail's ScrollArea, which clipped it "behind the pane".
-  const [draggingVolunteerId, setDraggingVolunteerId] = useState<string | null>(
+  const [dragIdentity, setDragIdentity] = useState<BoardDragIdentity | null>(
     null,
   );
+  const draggingVolunteerId = dragIdentity?.volunteerId;
   const eventDates = useMemo(
     () =>
       deriveEventDates({ events: props.data.events, timeZone: churchTimezone }),
@@ -268,18 +273,25 @@ export function CycleBuilderMatrix(props: Props) {
     }
     return byCell;
   }, [props.failedWrites]);
-  const focusedShiftContext =
-    focused &&
-    findShiftContextById({ data: props.data, shiftId: focused.shiftId });
-  const focusedShift = focusedShiftContext?.shift;
-  const focusedRanking =
-    focused && focusedShift
-      ? rankVolunteersForShiftRole({
-          shift: focusedShift,
-          roleId: focused.roleId,
-          assignments: props.data.assignments,
-        })
-      : undefined;
+  const focusedShift = useMemo(
+    () =>
+      focused
+        ? findShiftContextById({ data: props.data, shiftId: focused.shiftId })
+            ?.shift
+        : undefined,
+    [focused, props.data],
+  );
+  const focusedRanking = useMemo(
+    () =>
+      focused && focusedShift
+        ? rankVolunteersForShiftRole({
+            shift: focusedShift,
+            roleId: focused.roleId,
+            assignments: props.data.assignments,
+          })
+        : undefined,
+    [focused, focusedShift, props.data.assignments],
+  );
   const volunteers = useMemo(
     () =>
       pool({ data: props.data, shift: focusedShift, timeZone: churchTimezone }),
@@ -292,8 +304,12 @@ export function CycleBuilderMatrix(props: Props) {
         eventTimeBlock.shifts.some((shift) => shift.requirements.length > 0),
     ),
   );
-  const activeAssignments = props.data.assignments.filter((assignment) =>
-    isActiveAssignment({ status: assignment.status }),
+  const activeAssignments = useMemo(
+    () =>
+      props.data.assignments.filter((assignment) =>
+        isActiveAssignment({ status: assignment.status }),
+      ),
+    [props.data.assignments],
   );
   const selectedName = volunteers.find(
     (volunteer) => volunteer.volunteerId === props.selectedVolunteerId,
@@ -336,23 +352,30 @@ export function CycleBuilderMatrix(props: Props) {
   // that pick would land in — so the rail's own button can say what the pick
   // costs instead of presenting a conflict commit as frictionless (B-2).
   // Only Role holders without a conflicting assignment can be offered here.
-  const focusedShiftAssigneeIds = focusedShift
-    ? new Set(
-        focusedShift.assignments
-          .filter((assignment) =>
-            isActiveAssignment({ status: assignment.status }),
+  const focusedShiftAssigneeIds = useMemo(
+    () =>
+      focusedShift
+        ? new Set(
+            focusedShift.assignments
+              .filter((assignment) =>
+                isActiveAssignment({ status: assignment.status }),
+              )
+              .map((assignment) => assignment.volunteerId),
           )
-          .map((assignment) => assignment.volunteerId),
-      )
-    : null;
-  const assignableFocusedVolunteerFits =
-    focused && focusedShift && focusedRoleHasRoom
-      ? assignableFits({
-          shift: focusedShift,
-          roleId: focused.roleId,
-          excludedVolunteerIds: focusedShiftAssigneeIds,
-        })
-      : undefined;
+        : null,
+    [focusedShift],
+  );
+  const assignableFocusedVolunteerFits = useMemo(
+    () =>
+      focused && focusedShift && focusedRoleHasRoom
+        ? assignableFits({
+            shift: focusedShift,
+            roleId: focused.roleId,
+            excludedVolunteerIds: focusedShiftAssigneeIds,
+          })
+        : undefined,
+    [focused, focusedShift, focusedRoleHasRoom, focusedShiftAssigneeIds],
+  );
   const assignFocusedVolunteer = (volunteerId: string) => {
     if (!focused || !focusedShift || !focusedRoleHasRoom) return;
     if (!focusedShiftStart) return;
@@ -422,13 +445,14 @@ export function CycleBuilderMatrix(props: Props) {
         <DndContext
           sensors={sensors}
           onDragStart={(event) =>
-            setDraggingVolunteerId(
-              draggedVolunteerId({ active: event.active }) ?? null,
-            )
+            setDragIdentity({
+              volunteerId: draggedVolunteerId({ active: event.active }),
+              assignment: draggedAssignment({ active: event.active }),
+            })
           }
-          onDragCancel={() => setDraggingVolunteerId(null)}
+          onDragCancel={() => setDragIdentity(null)}
           onDragEnd={(event) => {
-            setDraggingVolunteerId(null);
+            setDragIdentity(null);
             const moving = draggedAssignment({ active: event.active });
             const target = dropTargetData({ over: event.over ?? null });
             if (moving) {
@@ -514,50 +538,58 @@ export function CycleBuilderMatrix(props: Props) {
           {/* 23.75rem = 380px. Widened from 320px so the AE card's three
               columns each keep their own band instead of the roles line and
               the recency block fighting for the same width. */}
-          <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_23.75rem]">
-            <CycleBuilderBoardGrid
-              data={props.data}
-              timeZone={churchTimezone}
-              columns={columns}
-              eventsForDate={eventsForDate}
-              cellDerivedByKey={cellDerivedByKey}
-              failedWritesByCell={failedWritesByCell}
-              selectedVolunteerId={props.selectedVolunteerId}
-              selectedVolunteerName={selectedName}
-              focusedKey={focused?.key}
-              onFocusRequirement={setFocused}
-              onClearFocus={() => setFocused(null)}
-              onSelectAssignment={props.onSelectAssignment}
-              onRemoveAssignment={props.onRemoveAssignment}
-              onMoveAssignment={props.onMoveAssignment}
-              onRetryFailedWrite={props.onRetryFailedWrite}
-              onDismissFailedWrite={props.onDismissFailedWrite}
-              filtersAreDefault={filtersAreDefault}
-              onClearFilters={clearFilters}
-              dragScroll={boardDragScroll}
-            />
-            <fieldset disabled={!canManageAnyRequirement} className="contents">
-              <VolunteerPoolSidebar
-                volunteers={volunteers}
-                assignments={activeAssignments}
-                roles={props.data.roles}
+          <BoardDragIdentityContext.Provider value={dragIdentity}>
+            <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_23.75rem]">
+              <CycleBuilderBoardGrid
+                currentInstant={currentInstant}
+                data={props.data}
+                timeZone={churchTimezone}
+                columns={columns}
+                eventsForDate={eventsForDate}
+                cellDerivedByKey={cellDerivedByKey}
+                failedWritesByCell={failedWritesByCell}
                 selectedVolunteerId={props.selectedVolunteerId}
-                onSelectVolunteer={
-                  canManageAnyRequirement ? props.onSelectVolunteer : undefined
-                }
-                focusedVolunteerIds={focusedRanking?.ids}
-                focusLabel={focused?.label}
-                idealVolunteerId={focusedRanking?.idealVolunteerId}
-                assignableVolunteerFits={assignableFocusedVolunteerFits}
-                onAssignFocusedVolunteer={
-                  focused && focusedRoleHasRoom
-                    ? assignFocusedVolunteer
-                    : undefined
-                }
-                onClearFocus={focused ? () => setFocused(null) : undefined}
+                selectedVolunteerName={selectedName}
+                focusedKey={focused?.key}
+                onFocusRequirement={setFocused}
+                onClearFocus={() => setFocused(null)}
+                onSelectAssignment={props.onSelectAssignment}
+                onRemoveAssignment={props.onRemoveAssignment}
+                onMoveAssignment={props.onMoveAssignment}
+                onRetryFailedWrite={props.onRetryFailedWrite}
+                onDismissFailedWrite={props.onDismissFailedWrite}
+                filtersAreDefault={filtersAreDefault}
+                onClearFilters={clearFilters}
+                dragScroll={boardDragScroll}
               />
-            </fieldset>
-          </div>
+              <fieldset
+                disabled={!canManageAnyRequirement}
+                className="contents"
+              >
+                <VolunteerPoolSidebar
+                  volunteers={volunteers}
+                  assignments={activeAssignments}
+                  roles={props.data.roles}
+                  selectedVolunteerId={props.selectedVolunteerId}
+                  onSelectVolunteer={
+                    canManageAnyRequirement
+                      ? props.onSelectVolunteer
+                      : undefined
+                  }
+                  focusedVolunteerIds={focusedRanking?.ids}
+                  focusLabel={focused?.label}
+                  idealVolunteerId={focusedRanking?.idealVolunteerId}
+                  assignableVolunteerFits={assignableFocusedVolunteerFits}
+                  onAssignFocusedVolunteer={
+                    focused && focusedRoleHasRoom
+                      ? assignFocusedVolunteer
+                      : undefined
+                  }
+                  onClearFocus={focused ? () => setFocused(null) : undefined}
+                />
+              </fieldset>
+            </div>
+          </BoardDragIdentityContext.Provider>
           {/* The drag ghost lives in a portal above the whole layout, so it
               floats over the board instead of being clipped by the rail's
               scroll container. */}

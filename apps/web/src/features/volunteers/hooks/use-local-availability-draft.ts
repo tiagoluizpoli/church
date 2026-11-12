@@ -2,6 +2,7 @@ import {
   type Dispatch,
   type SetStateAction,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -40,11 +41,15 @@ export function useLocalAvailabilityDraft({
   hasFreshDetail,
 }: LocalAvailabilityDraftInput) {
   const storageKey = `availability-draft:${userId}:${check.id}`;
-  const editableShifts = check.shifts.filter((shift) => !shift.published);
-  const serverDraft = createInitialUnavailableShiftDraft({
-    shifts: editableShifts,
-    timeZone,
-  });
+  const editableShifts = useMemo(
+    () => check.shifts.filter((shift) => !shift.published),
+    [check.shifts],
+  );
+  const serverDraft = useMemo(
+    () =>
+      createInitialUnavailableShiftDraft({ shifts: editableShifts, timeZone }),
+    [editableShifts, timeZone],
+  );
   const [initial] = useState<InitialDraft>(() => {
     if (check.readOnly) return { draft: serverDraft, fromStorage: false };
     try {
@@ -132,7 +137,7 @@ export function useLocalAvailabilityDraft({
         localStorage.removeItem(storageKey);
       } else {
         const marks = editableShifts
-          .filter((shift) => draft.markedShiftIds.has(shift.shiftId))
+          .filter((shift) => snapshot.draft.markedShiftIds.has(shift.shiftId))
           .map((shift) => shift.shiftId);
         const serializedMarks = JSON.stringify(marks);
         localStorage.setItem(storageKey, serializedMarks);
@@ -140,7 +145,7 @@ export function useLocalAvailabilityDraft({
     } catch {
       // A storage failure must not prevent answering the check.
     }
-  });
+  }, [snapshot, editableShifts, storageKey, hasUnsentChanges]);
 
   const clear = () => {
     cleared.current = true;

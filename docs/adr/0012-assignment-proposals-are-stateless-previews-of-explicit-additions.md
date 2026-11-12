@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted (preview, [#872](https://github.com/tiagoluizpoli/church/issues/872)); application is decided by [#873](https://github.com/tiagoluizpoli/church/issues/873) within the constraints below
+accepted (preview, [#872](https://github.com/tiagoluizpoli/church/issues/872)); application is decided by [ADR 0013](0013-assignment-proposal-apply-binds-reviewed-pairs-with-a-stored-outcome.md) ([#873](https://github.com/tiagoluizpoli/church/issues/873)) within the constraints below
 
 ## Context
 
@@ -13,7 +13,7 @@ A leader may ask for an Assignment proposal for one Schedule between asking for 
 - **Computation.** `proposeAssignments` (`apps/server/src/domain/services/assignment-proposal.ts`) is a pure function over scheduling facts: named eligibility rules, then the `VOLUNTEER_RANKING` and `NEED_RANKING` lists, recomputed after every addition. Ids order ties by code unit, so the result does not depend on database row order.
 - **Preview read.** `GET /assign/cycles/:cycleId/assignment-proposal?ministryId=` loads the facts, takes no locks, and stores nothing. It needs the builder's `decideManageMinistry` authority and refuses outside availability requested/assigning (`ILLEGAL_STATE_TRANSITION`, or `SCHEDULE_ALREADY_PUBLISHED`).
 - **Explicit additions.** The response lists every addition as a `(shiftRequirementId, volunteerId)` pair, plus `shiftId`, the volunteer's name and a reason. Reasons are counts and the name of the deciding ranking rule. They never name another Ministry, Event or Assignment, even though conflicts and Cycle workload use them.
-- **No proposal identity yet.** There is no proposal id, token or stored row. The web keeps the response in memory, and Discard drops it.
+- **No stored proposal.** There is no proposal id or stored row. The response carries a `reviewToken` fingerprint of its pairs (ADR 0013). The web keeps the response in memory, and Discard drops it.
 
 ## Constraints for application (#873)
 
@@ -27,4 +27,4 @@ A leader may ask for an Assignment proposal for one Schedule between asking for 
 
 ## Consequences
 
-- Two previews of the same inputs are identical. A preview can still go stale once facts change or a Shift starts. Until Apply exists, it is advisory, and the leader assigns on the board.
+- Two previews of the same inputs are identical. A preview can still go stale once facts change or a Shift starts; Apply then refuses it and asks for a fresh review (ADR 0013).

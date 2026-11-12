@@ -133,7 +133,7 @@ function PrepareWorkspaceRoute() {
         autoFocusTitle
         aside={
           ready ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-end gap-2 [&_a]:min-h-11 md:[&_a]:min-h-0 [&_button]:min-h-11 md:[&_button]:min-h-0">
               <Link
                 to="/schedules"
                 data-testid="browse-all-cycles-link"

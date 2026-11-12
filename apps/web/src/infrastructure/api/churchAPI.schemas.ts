@@ -4113,6 +4113,7 @@ export type GetAssignmentProposal200 = {
   excludedUnconfirmedCount: number;
   /** @nullable */
   emptyReason: GetAssignmentProposal200EmptyReason;
+  reviewToken: string;
 };
 
 export type GetAssignmentProposal403 = {
@@ -4126,6 +4127,53 @@ export type GetAssignmentProposal404 = {
 };
 
 export type GetAssignmentProposal409 = {
+  error: string;
+  message: string;
+};
+
+export type ApplyAssignmentProposalParams = {
+ministryId: string;
+};
+
+export type ApplyAssignmentProposalBodyAdditionsItem = {
+  shiftRequirementId: string;
+  volunteerId: string;
+};
+
+export type ApplyAssignmentProposalBody = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  applicationKey: string;
+  /** @minLength 1 */
+  reviewToken: string;
+  /** @minItems 1 */
+  additions: ApplyAssignmentProposalBodyAdditionsItem[];
+};
+
+export type ApplyAssignmentProposal200AdditionsItem = {
+  assignmentId: string;
+  shiftRequirementId: string;
+  volunteerId: string;
+};
+
+export type ApplyAssignmentProposal200 = {
+  applicationKey: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  appliedAt: string;
+  replayed: boolean;
+  additions: ApplyAssignmentProposal200AdditionsItem[];
+};
+
+export type ApplyAssignmentProposal403 = {
+  error: string;
+  message: string;
+};
+
+export type ApplyAssignmentProposal404 = {
+  error: string;
+  message: string;
+};
+
+export type ApplyAssignmentProposal409 = {
   error: string;
   message: string;
 };

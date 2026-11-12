@@ -92,7 +92,7 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
       pickMinistry: true,
     });
     await expect(
-      page.getByText(journey.leaderEmail, { exact: true }),
+      page.getByRole('row').filter({ hasText: journey.leaderEmail }),
     ).toBeVisible();
 
     // The joining link is the one the leader's captured T1 carries, and it
@@ -177,7 +177,7 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
       await leaderPage
         .getByRole('option', { name: m.invitations_status_accepted({}, PT) })
         .click();
-      const row = leaderPage.getByRole('listitem').filter({
+      const row = leaderPage.getByRole('row').filter({
         hasText: journey.volunteerEmail,
       });
       await expect(row).toContainText(worship.roles.usher.name);

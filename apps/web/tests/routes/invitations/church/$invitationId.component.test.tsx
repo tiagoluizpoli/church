@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChildrenProps } from '@/tests/setup/children-props';
@@ -279,6 +279,29 @@ describe('the public Church Invitation join route', () => {
     ).toBeVisible();
   });
 
+  it('offers a recipient who already has a login the signed-in review of the whole offer', async () => {
+    previewChurchInvitation.mockResolvedValue(PAIRED_PREVIEW);
+
+    renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
+
+    expect(
+      await screen.findByRole('link', { name: m.join_sign_in_to_review() }),
+    ).toHaveAttribute('href', '/invitations/ministry/ministry-invitation-1');
+  });
+
+  it('offers no signed-in review for a plain Church invitation', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
+
+    renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
+
+    expect(
+      await screen.findByRole('button', { name: m.join_send_code() }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('link', { name: m.join_sign_in_to_review() }),
+    ).toBeNull();
+  });
+
   it('shows every pending Ministry half of the offer', async () => {
     previewChurchInvitation.mockResolvedValue({
       ...PAIRED_PREVIEW,
@@ -487,6 +510,27 @@ describe('the public Church Invitation join route', () => {
     expect(
       screen.getByRole('button', { name: m.join_submit() }),
     ).toBeDisabled();
+  });
+
+  it('sends a paired recipient whose email already has a login to the signed-in review', async () => {
+    previewChurchInvitation.mockResolvedValue(PAIRED_PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'terminal-failure',
+      reason: 'EMAIL_ALREADY_REGISTERED',
+    });
+    const { user } = await openStepTwo();
+
+    await fillAndJoin({ user });
+
+    const notice = await screen.findByRole('alert');
+    expect(
+      within(notice).getByText(
+        m.redemption_failure_registered_paired_description(),
+      ),
+    ).toBeVisible();
+    expect(
+      within(notice).getByRole('link', { name: m.join_sign_in_to_review() }),
+    ).toHaveAttribute('href', '/invitations/ministry/ministry-invitation-1');
   });
 
   it('disables Join when the invitation became unavailable mid-join', async () => {

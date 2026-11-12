@@ -75,6 +75,20 @@ beforeEach(() => {
   });
 });
 
+it('groups the Schedule header actions at the row end with 44px touch targets', async () => {
+  renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const builder = await screen.findByRole('link', {
+    name: m.prepare_open_builder(),
+  });
+  const actions = builder.parentElement as HTMLElement;
+  expect(actions).toHaveClass('justify-end', 'flex-wrap');
+  expect(actions).toHaveClass('[&_a]:min-h-11', '[&_button]:min-h-11');
+  expect(actions).toHaveClass('md:[&_a]:min-h-0', 'md:[&_button]:min-h-0');
+});
+
 it('shows a leader-callable Schedule with a link to edit one Time block and no inline or batched controls', async () => {
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,

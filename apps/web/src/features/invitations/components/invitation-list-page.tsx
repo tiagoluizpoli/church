@@ -294,7 +294,7 @@ function ExpiredBadge({ item }: RowActionProps) {
 function Grants({ item }: RowActionProps) {
   const access = accessLabel(item);
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
+    <div className="flex flex-wrap items-center gap-2 whitespace-normal text-sm">
       {item.status !== 'pending' ? (
         <Badge variant="outline">{statusLabel(item.displayStatus)}</Badge>
       ) : null}
@@ -324,7 +324,7 @@ function Grants({ item }: RowActionProps) {
 function Facts({ item, timeZone }: InvitationRowProps) {
   const expiry = formatInstantOf({ value: item.expiresAt, timeZone });
   return (
-    <p className="break-words text-muted-foreground text-sm">
+    <p className="min-w-56 whitespace-normal break-words text-muted-foreground text-sm">
       {[
         m.invitations_invited_by({ name: item.invitedBy.name }),
         m.invitations_created({
@@ -346,7 +346,7 @@ function Facts({ item, timeZone }: InvitationRowProps) {
 function RowActions({ item }: RowActionProps) {
   if (!item.canResend && !item.canRevoke) return null;
   return (
-    <div className="flex flex-wrap justify-end gap-2 pt-2 md:pt-0 [&_button]:min-h-11 md:[&_button]:min-h-0">
+    <div className="flex flex-wrap justify-end gap-2 max-md:ml-auto [&_button]:min-h-11 md:[&_button]:min-h-0">
       <ResendButton item={item} />
       <RevokeButton item={item} />
     </div>
@@ -367,6 +367,7 @@ function InvitationCard({ item, timeZone }: InvitationRowProps) {
         </summary>
         <Facts item={item} timeZone={timeZone} />
       </details>
+      <RowActions item={item} />
     </div>
   );
 }
@@ -588,11 +589,12 @@ export function InvitationListPage() {
             rowId={({ item }) => `${item.kind}:${item.id}`}
             renderCell={({ item, column }) => {
               if (column.id === 'grants') return <Grants item={item} />;
+              if (column.id === 'actions') return <RowActions item={item} />;
               if (column.id === 'details') {
                 return <Facts item={item} timeZone={churchTimezone} />;
               }
               return (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 whitespace-normal">
                   <span className="break-all font-medium">{item.email}</span>
                   <ExpiredBadge item={item} />
                 </div>
@@ -601,7 +603,6 @@ export function InvitationListPage() {
             renderMobileCard={({ item }) => (
               <InvitationCard item={item} timeZone={churchTimezone} />
             )}
-            rowActions={({ item }) => <RowActions item={item} />}
           />
           {query.isFetchNextPageError ? (
             <Alert variant="destructive">

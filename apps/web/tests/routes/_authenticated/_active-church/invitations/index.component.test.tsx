@@ -198,6 +198,28 @@ describe('Invitations page', () => {
     expect(within(card).getAllByRole('button')).toHaveLength(1);
   });
 
+  it('puts the allowed actions in the desktop row and wraps long text there', async () => {
+    listInvitations.mockResolvedValue(page([row({ canResend: true })]));
+
+    renderInvitations();
+
+    await rows();
+    const desktopRow = screen
+      .getAllByRole('row')
+      .find((r) => r.textContent?.includes('ana@example.com'));
+    expect(
+      within(desktopRow as HTMLElement).getByRole('button', {
+        name: m.invitations_resend_label({ email: 'ana@example.com' }),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(desktopRow as HTMLElement).getByText(
+        m.invitations_invited_by({ name: 'Pastor Paulo' }),
+        { exact: false },
+      ),
+    ).toHaveClass('whitespace-normal');
+  });
+
   it('badges an expired offer, and never calls an unknown delivery sent', async () => {
     listInvitations.mockResolvedValue({
       options: ADMIN_OPTIONS,

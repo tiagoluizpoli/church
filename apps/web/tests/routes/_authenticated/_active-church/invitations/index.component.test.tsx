@@ -122,6 +122,11 @@ function renderInvitations() {
   return renderRoute({ initialPath: '/invitations', churchTimezone: 'UTC' });
 }
 
+// Both layouts render in jsdom; the card list is the one with list semantics.
+async function cardList() {
+  return screen.findByRole('list', { name: m.invitations_list_label() });
+}
+
 async function rows() {
   const list = await screen.findByRole('list', {
     name: m.invitations_list_label(),
@@ -177,6 +182,42 @@ describe('Invitations page', () => {
     expect(second).toHaveTextContent(m.join_church_access_admin());
     expect(second).toHaveTextContent(m.invitations_email_failed());
     expect(listInvitations).toHaveBeenCalledWith({});
+  });
+
+  it('keeps secondary facts behind a labelled disclosure and leaves ordinary text without actions', async () => {
+    listInvitations.mockResolvedValue(page([row({ canResend: true })]));
+
+    renderInvitations();
+
+    const [card] = await rows();
+    const summary = within(card).getByText(m.invitations_details());
+    expect(summary.tagName).toBe('SUMMARY');
+    expect(summary.closest('details')).toHaveTextContent(
+      m.invitations_invited_by({ name: 'Pastor Paulo' }),
+    );
+    expect(within(card).getAllByRole('button')).toHaveLength(1);
+  });
+
+  it('puts the allowed actions in the desktop row and wraps long text there', async () => {
+    listInvitations.mockResolvedValue(page([row({ canResend: true })]));
+
+    renderInvitations();
+
+    await rows();
+    const desktopRow = screen
+      .getAllByRole('row')
+      .find((r) => r.textContent?.includes('ana@example.com'));
+    expect(
+      within(desktopRow as HTMLElement).getByRole('button', {
+        name: m.invitations_resend_label({ email: 'ana@example.com' }),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(desktopRow as HTMLElement).getByText(
+        m.invitations_invited_by({ name: 'Pastor Paulo' }),
+        { exact: false },
+      ),
+    ).toHaveClass('whitespace-normal');
   });
 
   it('badges an expired offer, and never calls an unknown delivery sent', async () => {
@@ -267,7 +308,9 @@ describe('Invitations page', () => {
       screen.getByRole('button', { name: m.invitations_load_more() }),
     );
 
-    expect(await screen.findByText('bia@example.com')).toBeVisible();
+    expect(
+      await within(await cardList()).findByText('bia@example.com'),
+    ).toBeVisible();
     expect(listInvitations).toHaveBeenLastCalledWith({ cursor: 'cursor-2' });
     expect(await rows()).toHaveLength(2);
     expect(
@@ -442,8 +485,8 @@ function refusal(status: number, error: string) {
 }
 
 describe('Invitations resend', () => {
-  const resendButton = (email: string) =>
-    screen.findByRole('button', {
+  const resendButton = async (email: string) =>
+    within(await cardList()).findByRole('button', {
       name: m.invitations_resend_label({ email }),
     });
 
@@ -573,8 +616,8 @@ describe('Invitations resend', () => {
 });
 
 describe('Invitations revoke', () => {
-  const revokeButton = (email: string) =>
-    screen.findByRole('button', {
+  const revokeButton = async (email: string) =>
+    within(await cardList()).findByRole('button', {
       name: m.invitations_revoke_label({ email }),
     });
 

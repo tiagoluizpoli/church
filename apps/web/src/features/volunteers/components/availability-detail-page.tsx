@@ -17,7 +17,6 @@ import {
   createInitialUnavailableShiftDraft,
   getShiftDate,
   toggleShiftUnavailable,
-  toggleWholeDayUnavailable,
 } from '../lib/unavailable-shifts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -147,8 +146,6 @@ function AvailabilityAnswer({
       await onAnswered();
     },
   });
-  const unavailable = draft.markedShiftIds.size;
-  const total = check.shifts.length;
   const locale = getLocale();
   const confirmationDate = check.confirmedAt
     ? formatDayOf({ value: check.confirmedAt, timeZone: churchTimezone })
@@ -156,11 +153,7 @@ function AvailabilityAnswer({
   const confirmed = check.state === 'confirmed';
   const label = confirmed
     ? m.availability_detail_save_changes()
-    : unavailable === 0
-      ? m.availability_detail_confirm_all()
-      : total === 1
-        ? m.availability_detail_confirm_count_one({ unavailable, total })
-        : m.availability_detail_confirm_count({ unavailable, total });
+    : m.availability_detail_confirm();
   const currentInstant = now();
   const churchDay = today({
     instant: currentInstant,
@@ -211,6 +204,14 @@ function AvailabilityAnswer({
               </time>
             ) : null}
           </div>
+        ) : (
+          <Badge variant="outline">{m.availability_detail_unconfirmed()}</Badge>
+        )}
+        {check.readOnly ? <p>{m.availability_detail_read_only()}</p> : null}
+        {confirmed && hasUnsentChanges ? (
+          <p role="status" className="text-sm">
+            {m.availability_detail_unsaved()}
+          </p>
         ) : null}
       </header>
       {restored ? (
@@ -238,31 +239,60 @@ function AvailabilityAnswer({
           <section key={day} aria-label={dayLabel} className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
               <h2 className="font-semibold text-base">{dayLabel}</h2>
-              <label
-                htmlFor={`${switchPrefix}-day-${day}`}
-                className="flex min-h-11 cursor-pointer items-center gap-3 text-sm"
-              >
-                {m.availability_detail_whole_day()}
-                <Switch
-                  id={`${switchPrefix}-day-${day}`}
-                  disabled={
+              <p className="text-muted-foreground text-sm">
+                {m.availability_detail_day_count({
+                  available: shifts.filter((shift) =>
+                    shift.published
+                      ? shift.available
+                      : !draft.markedShiftIds.has(shift.shiftId),
+                  ).length,
+                  total: shifts.length,
+                })}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[true, false].map((available) => {
+                  const dayShifts = shifts.filter((shift) => !shift.published);
+                  const disabled =
                     check.readOnly ||
                     answer.isPending ||
-                    !shifts.some((shift) => !shift.published)
-                  }
-                  checked={draft.wholeDayDates.has(day)}
-                  onCheckedChange={() =>
-                    setDraft((current) =>
-                      toggleWholeDayUnavailable({
-                        draft: current,
-                        shifts: editableShifts,
-                        date: day,
-                        timeZone: churchTimezone,
-                      }),
-                    )
-                  }
-                />
-              </label>
+                    dayShifts.length === 0 ||
+                    dayShifts.every(
+                      (shift) =>
+                        !draft.markedShiftIds.has(shift.shiftId) === available,
+                    );
+                  return (
+                    <Button
+                      key={String(available)}
+                      variant="outline"
+                      size="touch"
+                      disabled={disabled}
+                      onClick={() => {
+                        setDraft((current) => {
+                          let next = current;
+                          for (const shift of dayShifts) {
+                            if (
+                              !next.markedShiftIds.has(shift.shiftId) !==
+                              available
+                            ) {
+                              next = toggleShiftUnavailable({
+                                draft: next,
+                                shifts: editableShifts,
+                                shiftId: shift.shiftId,
+                                timeZone: churchTimezone,
+                              });
+                            }
+                          }
+                          return next;
+                        });
+                      }}
+                    >
+                      {available
+                        ? m.availability_detail_all_available()
+                        : m.availability_detail_all_unavailable()}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
             <ul className="divide-y">
               {shifts.map((shift) => (
@@ -294,16 +324,25 @@ function AvailabilityAnswer({
                     htmlFor={`${switchPrefix}-shift-${shift.shiftId}`}
                     className="flex min-h-11 cursor-pointer items-center gap-3 text-sm"
                   >
-                    {m.availability_detail_unavailable()}
+                    {m.availability_detail_available()}
                     <Switch
+                      aria-label={m.availability_detail_switch_name({
+                        shift: shift.eventTitle,
+                        time: formatInstantRangeOf({
+                          start: shift.startTime,
+                          end: shift.endTime,
+                          timeZone: churchTimezone,
+                        }),
+                        label: shift.label ?? '',
+                      })}
                       id={`${switchPrefix}-shift-${shift.shiftId}`}
                       disabled={
                         check.readOnly || answer.isPending || shift.published
                       }
                       checked={
                         shift.published
-                          ? !shift.available
-                          : draft.markedShiftIds.has(shift.shiftId)
+                          ? shift.available
+                          : !draft.markedShiftIds.has(shift.shiftId)
                       }
                       onCheckedChange={() =>
                         setDraft((current) =>
@@ -345,7 +384,9 @@ function AvailabilityAnswer({
             <p role="alert" className="pt-2 text-destructive text-sm">
               {publishedRefusal
                 ? m.availability_detail_published_retry()
-                : label}
+                : confirmed
+                  ? m.availability_detail_save_error()
+                  : m.availability_detail_answer_error()}
             </p>
           ) : null}
         </div>

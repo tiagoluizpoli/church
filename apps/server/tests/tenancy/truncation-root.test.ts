@@ -3,6 +3,7 @@ import {
   addChurchMember,
   assignment,
   assignmentAudit,
+  assignmentProposalApplication,
   availabilityAsk,
   availabilityCheck,
   createChurch,
@@ -367,6 +368,16 @@ async function seedEveryTenantedTable(): Promise<void> {
     assignmentId: IDS.assignment,
     actorId: IDS.user,
     action: 'created',
+  });
+
+  await testDb.insert(assignmentProposalApplication).values({
+    churchId: IDS.church,
+    applicationKey: IDS.assignment,
+    cycleId: IDS.cycle,
+    ministryId: IDS.ministry,
+    reviewToken: 'truncation-root-token',
+    additions: [],
+    appliedBy: IDS.user,
   });
 
   await testDb.insert(swapRequest).values({

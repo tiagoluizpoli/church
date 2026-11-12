@@ -12,8 +12,6 @@ export const MINISTRIES_QUERY_KEY = ['ministries'] as const;
  */
 const MINISTRY_NAME_READERS = [
   MINISTRIES_QUERY_KEY,
-  ['breadcrumb-ministries'],
-  ['prepare-ministries'],
   CALLER_CAPABILITIES_QUERY_KEY,
 ] as const;
 

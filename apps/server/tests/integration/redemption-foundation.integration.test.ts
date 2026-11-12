@@ -193,6 +193,28 @@ function pairedChurchInvitationId({
   return ChurchInvitationId.from(invitation.churchInvitationId);
 }
 
+interface ReviewedTokenInput {
+  redemptionManager: DbRedemptionManager;
+  ministryInvitationId: MinistryInvitationId;
+  userId: UserId;
+  now?: Date;
+}
+
+/** The review token the recipient would echo after reviewing the offer. */
+async function reviewedToken({
+  redemptionManager,
+  ministryInvitationId,
+  userId,
+  now,
+}: ReviewedTokenInput): Promise<string> {
+  const status = await redemptionManager.getAuthenticatedInvitationStatus({
+    ministryInvitationId,
+    userId,
+    now,
+  });
+  return status.kind === 'redeemable' ? status.reviewToken : 'never-reviewed';
+}
+
 describe('verification code persistence', () => {
   it('allows only one concurrent correct submission to consume a code', async () => {
     const invitation = await mintInvitation();
@@ -477,6 +499,11 @@ describe('existing-member and lifecycle branches (#105)', () => {
       sessionCookie: 'unused',
       idempotencyKey: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       now,
+      reviewToken: await reviewedToken({
+        redemptionManager,
+        ministryInvitationId: invitation.id,
+        userId: UserId.from(fixture.memberNoVolunteerA),
+      }),
     });
 
     expect(outcome.kind).toBe('full-success');
@@ -545,6 +572,11 @@ describe('existing-member and lifecycle branches (#105)', () => {
       sessionCookie: 'unused',
       idempotencyKey: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
       now: new Date('2026-01-01T00:00:00.000Z'),
+      reviewToken: await reviewedToken({
+        redemptionManager,
+        ministryInvitationId: invitation.id,
+        userId: UserId.from(fixture.memberNoVolunteerA),
+      }),
     });
 
     expect(outcome).toMatchObject({ kind: 'full-success' });
@@ -584,6 +616,8 @@ describe('existing-member and lifecycle branches (#105)', () => {
       sessionCookie: 'unused',
       idempotencyKey: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       now: new Date('2026-01-01T00:00:00.000Z'),
+      // A wrong login never sees a review; the mismatch is checked first.
+      reviewToken: 'never-reviewed',
     });
 
     expect(outcome).toEqual({ kind: 'identity-mismatch' });
@@ -663,6 +697,11 @@ describe('existing-member and lifecycle branches (#105)', () => {
       sessionCookie: 'unused',
       idempotencyKey: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       now: new Date('2026-01-01T00:00:00.000Z'),
+      reviewToken: await reviewedToken({
+        redemptionManager,
+        ministryInvitationId: invitation.id,
+        userId: UserId.from(fixture.memberNoVolunteerA),
+      }),
     };
     await redemptionManager.acceptExistingMember(acceptInput);
 

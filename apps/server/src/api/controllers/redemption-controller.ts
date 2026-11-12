@@ -318,6 +318,7 @@ export class RedemptionController implements FastifyController {
           userId: redeemer.userId,
           sessionCookie: redeemer.sessionCookie,
           idempotencyKey: body.idempotencyKey,
+          reviewToken: body.reviewToken,
         });
         return reply.send(outcome);
       },

@@ -152,12 +152,15 @@ export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
 
 export const acceptExistingMemberBodySchema = z.object({
   idempotencyKey: z.string().uuid(),
+  /** The `reviewToken` of the reviewed status; a changed offer is refused. */
+  reviewToken: z.string().min(1),
 });
 
 export const existingMemberOutcomeResponseSchema = z.discriminatedUnion(
   'kind',
   [
     z.object({ kind: z.literal('full-success'), volunteerId: z.string() }),
+    z.object({ kind: z.literal('offer-changed') }),
     churchOnlyOutcomeSchema,
     z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
     z.object({ kind: z.literal('identity-mismatch') }),

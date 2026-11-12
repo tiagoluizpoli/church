@@ -472,7 +472,10 @@ describe('POST /redemption/ministry/:invitationId/accept', () => {
     const response = await app.inject({
       method: 'POST',
       url: `/api/v1/redemption/ministry/${INVITATION_ID}/accept`,
-      payload: { idempotencyKey: '55555555-5555-4555-8555-555555555555' },
+      payload: {
+        idempotencyKey: '55555555-5555-4555-8555-555555555555',
+        reviewToken: 'reviewed-token',
+      },
     });
 
     expect(response.statusCode).toBe(401);
@@ -493,7 +496,10 @@ describe('POST /redemption/ministry/:invitationId/accept', () => {
       method: 'POST',
       url: `/api/v1/redemption/ministry/${INVITATION_ID}/accept`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { idempotencyKey: '55555555-5555-4555-8555-555555555555' },
+      payload: {
+        idempotencyKey: '55555555-5555-4555-8555-555555555555',
+        reviewToken: 'reviewed-token',
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -506,6 +512,7 @@ describe('POST /redemption/ministry/:invitationId/accept', () => {
       userId: USER_ID,
       sessionCookie: AUTH_COOKIE,
       idempotencyKey: '55555555-5555-4555-8555-555555555555',
+      reviewToken: 'reviewed-token',
     });
   });
 
@@ -523,7 +530,10 @@ describe('POST /redemption/ministry/:invitationId/accept', () => {
       method: 'POST',
       url: `/api/v1/redemption/ministry/${INVITATION_ID}/accept`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { idempotencyKey: '55555555-5555-4555-8555-555555555555' },
+      payload: {
+        idempotencyKey: '55555555-5555-4555-8555-555555555555',
+        reviewToken: 'reviewed-token',
+      },
     });
 
     expect(response.statusCode).toBe(200);

@@ -205,7 +205,7 @@ interface PlanKeyInput {
   key: string;
 }
 
-function personaUserKind({ key }: PlanKeyInput): string {
+export function personaUserKind({ key }: PlanKeyInput): string {
   return `persona-user:${key}`;
 }
 

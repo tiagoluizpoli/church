@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
  * Guards the naming boundary between runners: Playwright owns `.spec.ts`,
@@ -74,10 +74,19 @@ function findNonSpecTestFiles({
   return matches;
 }
 
-describe('playwright e2e discovery boundary', () => {
-  it('discovers only spec-suffixed files', () => {
-    const discoveredFiles = discoverPlaywrightFiles();
+// `playwright test --list` loads the config and transforms every spec (~1s
+// alone, 3x+ under CPU contention), so it runs once for both tests with a
+// budget sized for a loaded validate gate instead of the 5s per-test default.
+const DISCOVERY_TIMEOUT_MS = 60_000;
 
+describe('playwright e2e discovery boundary', () => {
+  let discoveredFiles: Set<string>;
+
+  beforeAll(() => {
+    discoveredFiles = discoverPlaywrightFiles();
+  }, DISCOVERY_TIMEOUT_MS);
+
+  it('discovers only spec-suffixed files', () => {
     expect(discoveredFiles.size).toBeGreaterThan(0);
     for (const file of discoveredFiles) {
       expect(file).toMatch(/\.spec\.ts$/);
@@ -85,7 +94,6 @@ describe('playwright e2e discovery boundary', () => {
   });
 
   it('never discovers Vitest test files or bare helpers under tests/', () => {
-    const discoveredFiles = discoverPlaywrightFiles();
     const nonSpecTestFiles = findNonSpecTestFiles({ directory: TESTS_DIR });
 
     // Proves the assertion below is meaningful: there is real Vitest/helper

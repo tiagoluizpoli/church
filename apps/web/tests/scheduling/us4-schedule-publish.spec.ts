@@ -90,6 +90,33 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   );
   await expect(requirement).toContainText(`0/${peopleNeeded}`);
 
+  // An Assignment proposal is a read: nobody has confirmed availability yet,
+  // so it explains the empty result, offers no Apply, and Discard changes
+  // nothing on the board.
+  const ptBR = { locale: 'pt-BR' } as const;
+  await page
+    .getByRole('button', { name: m.builder_proposal_open({}, ptBR) })
+    .click();
+  const proposalDialog = page.getByRole('dialog', {
+    name: m.builder_proposal_title({}, ptBR),
+  });
+  await expect(proposalDialog).toContainText(
+    m.builder_proposal_empty_no_confirmed({}, ptBR),
+  );
+  await expect(proposalDialog).toContainText(
+    peopleNeeded === 1
+      ? m.builder_proposal_gap_one({}, ptBR)
+      : m.builder_proposal_gap_many({ count: peopleNeeded }, ptBR),
+  );
+  await expect(
+    proposalDialog.getByRole('button', { name: /aplicar/i }),
+  ).toHaveCount(0);
+  await proposalDialog
+    .getByRole('button', { name: m.builder_proposal_discard({}, ptBR) })
+    .click();
+  await expect(proposalDialog).toBeHidden();
+  await expect(requirement).toContainText(`0/${peopleNeeded}`);
+
   // Pick by name, not the first picker option — the dashboard asserts this
   // exact person, and picker order is availability/workload-driven.
   const volunteerPool = page.getByTestId('volunteer-pool');
@@ -125,6 +152,10 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   await expect(
     page.getByText(m.builder_logic_cycle_published({}, { locale: 'pt-BR' })),
   ).toBeVisible();
+  // Assistance is not offered for an already-published Schedule.
+  await expect(
+    page.getByRole('button', { name: m.builder_proposal_open({}, ptBR) }),
+  ).toHaveCount(0);
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(

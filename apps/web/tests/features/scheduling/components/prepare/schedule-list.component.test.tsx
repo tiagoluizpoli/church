@@ -244,13 +244,32 @@ describe('ScheduleList (US2/T014, amended Iteration 3/T066/T067/T071)', () => {
         screen.queryByTestId('schedule-assign-link-cycle-1'),
       ).not.toBeInTheDocument();
 
-      // Compact by design (design-critique follow-up): the explanation
-      // lives in `title`/`aria-label`, not a persistent visible line, so
-      // the row doesn't grow to fit copy every leader hits repeatedly.
+      // The reason is real text (not hover-only) so touch users can read it.
+      const reasons = screen.getAllByTestId('schedule-assign-reason-cycle-1');
+      expect(reasons).toHaveLength(2);
+      for (const reason of reasons) {
+        expect(reason).toHaveTextContent(m.prepare_cycle_assign_locked());
+      }
       for (const button of buttons) {
-        expect(button).toHaveAccessibleName(
-          expect.stringContaining(m.prepare_cycle_assign_locked()),
+        expect(button).toHaveAccessibleDescription(
+          m.prepare_cycle_assign_locked(),
         );
+      }
+    });
+
+    it('right-aligns the row actions', () => {
+      renderCycleList(
+        <ScheduleList
+          ministryId="ministry-1"
+          cycles={CYCLES}
+          onSelectCycle={vi.fn()}
+        />,
+      );
+
+      for (const button of screen.getAllByTestId(
+        'schedule-prepare-button-cycle-1',
+      )) {
+        expect(button.parentElement).toHaveClass('justify-end');
       }
     });
 

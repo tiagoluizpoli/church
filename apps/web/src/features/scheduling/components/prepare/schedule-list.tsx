@@ -197,6 +197,7 @@ export function ScheduleList({
                       ministryId={ministryId}
                       cycle={item}
                       onSelectCycle={onSelectCycle}
+                      layout="table"
                     />
                   ) : null}
                 </>
@@ -231,6 +232,7 @@ export function ScheduleList({
                     ministryId={ministryId}
                     cycle={item}
                     onSelectCycle={onSelectCycle}
+                    layout="card"
                   />
                 </div>
               )}
@@ -246,6 +248,7 @@ interface CycleRowActionsProps {
   ministryId: string;
   cycle: PrepareCycleSummary;
   onSelectCycle: (input: OnSelectCycleInput) => void;
+  layout: 'table' | 'card';
 }
 
 /** FR-035: Schedule is always enabled and formalizes what row-click already
@@ -255,42 +258,56 @@ function CycleRowActions({
   ministryId,
   cycle,
   onSelectCycle,
+  layout,
 }: CycleRowActionsProps) {
   const isMobile = useFormControlSize() === 'touch';
   const size = isMobile ? 'touch' : 'sm';
+  // Table and card copies are both in the DOM, so each needs its own id.
+  const reasonId = `schedule-assign-reason-${cycle.id}-${layout}`;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button
-        type="button"
-        size={size}
-        variant="outline"
-        data-testid={`schedule-prepare-button-${cycle.id}`}
-        onClick={() => onSelectCycle({ cycleId: cycle.id })}
-      >
-        {m.prepare_cycle_action_schedule()}
-      </Button>
-      {cycle.availabilityRequestedForAny ? (
-        <Link
-          to="/schedules/$ministryId/$cycleId/assign"
-          params={{ ministryId, cycleId: cycle.id }}
-          data-testid={`schedule-assign-link-${cycle.id}`}
-          className={buttonVariants({ variant: 'outline', size })}
-        >
-          {m.prepare_cycle_action_assign()}
-        </Link>
-      ) : (
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
           type="button"
           size={size}
           variant="outline"
-          disabled
-          title={m.prepare_cycle_assign_locked()}
-          aria-label={m.prepare_cycle_assign_locked()}
-          data-testid={`schedule-assign-button-${cycle.id}`}
+          data-testid={`schedule-prepare-button-${cycle.id}`}
+          onClick={() => onSelectCycle({ cycleId: cycle.id })}
         >
-          {m.prepare_cycle_action_assign()}
+          {m.prepare_cycle_action_schedule()}
         </Button>
+        {cycle.availabilityRequestedForAny ? (
+          <Link
+            to="/schedules/$ministryId/$cycleId/assign"
+            params={{ ministryId, cycleId: cycle.id }}
+            data-testid={`schedule-assign-link-${cycle.id}`}
+            className={buttonVariants({ variant: 'outline', size })}
+          >
+            {m.prepare_cycle_action_assign()}
+          </Link>
+        ) : (
+          <Button
+            type="button"
+            size={size}
+            variant="outline"
+            disabled
+            aria-describedby={reasonId}
+            data-testid={`schedule-assign-button-${cycle.id}`}
+          >
+            {m.prepare_cycle_action_assign()}
+          </Button>
+        )}
+      </div>
+      {cycle.availabilityRequestedForAny ? null : (
+        // Visible on touch; desktop keeps it as the accessible description.
+        <p
+          id={reasonId}
+          data-testid={`schedule-assign-reason-${cycle.id}`}
+          className="text-right text-muted-foreground text-xs md:sr-only"
+        >
+          {m.prepare_cycle_assign_locked()}
+        </p>
       )}
     </div>
   );

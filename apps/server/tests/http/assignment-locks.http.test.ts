@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { appConfig } from '@church/app-config';
 import {
   assignment,
+  assignmentProposalApplication,
+  ministryMembership,
   ministryParticipation,
   outboxMessage,
   scheduleLastTold,
@@ -44,6 +46,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildSector } from '@/seeds/builders/ministry';
 import { buildAssignment } from '@/seeds/builders/scheduling';
+import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import { buildVolunteerWithMembership } from '@/seeds/builders/volunteer';
 import {
   createSchedulingManagers,
@@ -757,3 +760,276 @@ for (const scope of ['event', 'eventTimeBlock'] as const) {
     }
   });
 }
+
+// ── Assignment proposal Apply (ADR 0013) ────────────────────────────────────
+
+interface ReviewedPair {
+  shiftRequirementId: string;
+  volunteerId: string;
+}
+
+type LockedSeed = Awaited<ReturnType<typeof seedLockedAssignment>>;
+
+interface ConfirmInput {
+  seed: LockedSeed;
+  volunteerId: string;
+}
+
+async function confirmAvailability({ seed, volunteerId }: ConfirmInput) {
+  const [membership] = await db
+    .select()
+    .from(ministryMembership)
+    .where(
+      and(
+        eq(ministryMembership.volunteerId, volunteerId),
+        eq(ministryMembership.ministryId, seed.ministryAId),
+      ),
+    );
+  if (!membership) throw new Error('Missing membership fixture');
+  await buildAvailabilityCheck({
+    db,
+    churchId: seed.churchAId,
+    cycleId: seed.cycle.id,
+    ministryMembershipId: membership.id,
+    state: 'confirmed',
+  });
+}
+
+/** A reviewed proposal adding the confirmed Volunteers to the locked Shift. */
+async function seedReviewedApply({ volunteers = 1 } = {}) {
+  const seed = await seedLockedAssignment();
+  await db
+    .update(ministryParticipation)
+    .set({ state: 'assigning' })
+    .where(eq(ministryParticipation.id, seed.graph.participation.id));
+  await confirmAvailability({ seed, volunteerId: seed.replacementId });
+  if (volunteers > 1) {
+    const third = await buildVolunteerWithMembership({
+      db,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Third',
+      email: `${randomUUID()}@test.com`,
+      roleIds: [seed.source.roleId],
+    });
+    await confirmAvailability({ seed, volunteerId: third.volunteer.id });
+  }
+  const preview = await app.inject({
+    method: 'GET',
+    headers: seed.headers,
+    url: `/api/v1/assign/cycles/${seed.cycle.id}/assignment-proposal?ministryId=${seed.ministryAId}`,
+  });
+  const { reviewToken, additions } = preview.json() as {
+    reviewToken: string;
+    additions: ReviewedPair[];
+  };
+  const pairs = additions.map(({ shiftRequirementId, volunteerId }) => ({
+    shiftRequirementId,
+    volunteerId,
+  }));
+  if (pairs.length !== volunteers) throw new Error('Unexpected proposal');
+  const apply = (applicationKey: string) =>
+    app
+      .inject({
+        method: 'POST',
+        headers: seed.headers,
+        url: `/api/v1/assign/cycles/${seed.cycle.id}/assignment-proposal/apply?ministryId=${seed.ministryAId}`,
+        payload: { applicationKey, reviewToken, additions: pairs },
+      })
+      .then((result) => result);
+  const createManually = (pair: ReviewedPair) =>
+    app
+      .inject({
+        method: 'POST',
+        headers: seed.headers,
+        url: `/api/v1/assign/shifts/${seed.shift.id}/assignments`,
+        payload: pair,
+      })
+      .then((result) => result);
+  return { ...seed, pairs, apply, createManually };
+}
+
+async function activeShiftVolunteers(shiftId: string) {
+  const rows = await db
+    .select({ volunteerId: assignment.volunteerId })
+    .from(assignment)
+    .where(
+      and(
+        eq(assignment.shiftId, shiftId),
+        inArray(assignment.status, ['draft', 'pending', 'confirmed']),
+      ),
+    );
+  return rows.map(({ volunteerId }) => volunteerId).sort();
+}
+
+async function waitForBlockedCount(
+  client: pg.Client,
+  blockerPid: number,
+  count: number,
+): Promise<void> {
+  const deadline = performance.now() + 10_000;
+  while (performance.now() < deadline) {
+    await client.query('SELECT pg_stat_clear_snapshot()');
+    const result = await client.query<{ blocked: number }>(
+      `SELECT count(*)::int AS blocked FROM pg_stat_activity
+       WHERE wait_event_type = 'Lock' AND $1 = ANY(pg_blocking_pids(pid))`,
+      [blockerPid],
+    );
+    if ((result.rows[0]?.blocked ?? 0) >= count) return;
+  }
+  throw new Error('Requests did not queue on the held Church lock');
+}
+
+interface ChurchLockRaceInput<T> {
+  churchId: string;
+  /** Started in order; each queues on the held Church lock before the next. */
+  requests: (() => Promise<T>)[];
+}
+
+/** Holds the shared Church lock until every request queued, in order, behind it. */
+async function raceBehindChurchLock<T>({
+  churchId,
+  requests,
+}: ChurchLockRaceInput<T>): Promise<T[]> {
+  const blocker = new pg.Client({
+    connectionString: getIntegrationDatabaseUrl(),
+  });
+  await blocker.connect();
+  const pending: Promise<T>[] = [];
+  try {
+    await blocker.query('BEGIN');
+    const blockerPid = await readBackendPid(blocker);
+    await blocker.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      churchId,
+    ]);
+    for (const request of requests) {
+      pending.push(request());
+      await waitForBlockedCount(blocker, blockerPid, pending.length);
+    }
+    await blocker.query('COMMIT');
+    return await Promise.all(pending);
+  } finally {
+    await blocker.query('ROLLBACK');
+    await Promise.allSettled(pending);
+    await blocker.end();
+  }
+}
+
+it('a double click queued behind the first Apply recovers its outcome instead of adding twice', async () => {
+  const seed = await seedReviewedApply();
+  const key = randomUUID();
+
+  const [first, second] = await raceBehindChurchLock({
+    churchId: seed.churchAId,
+    requests: [() => seed.apply(key), () => seed.apply(key)],
+  });
+
+  expect(first?.statusCode).toBe(200);
+  expect(first?.json().replayed).toBe(false);
+  expect(second?.statusCode).toBe(200);
+  expect(second?.json()).toEqual({ ...first?.json(), replayed: true });
+  expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
+    [seed.current.volunteerId, seed.replacementId].sort(),
+  );
+});
+
+it('two Applies of one reviewed proposal under different keys add it once', async () => {
+  const seed = await seedReviewedApply();
+
+  const [first, second] = await raceBehindChurchLock({
+    churchId: seed.churchAId,
+    requests: [() => seed.apply(randomUUID()), () => seed.apply(randomUUID())],
+  });
+
+  expect(first?.statusCode).toBe(200);
+  expect(second?.statusCode).toBe(409);
+  expect(second?.json()).toMatchObject({ error: 'ASSIGNMENT_PROPOSAL_STALE' });
+  expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
+    [seed.current.volunteerId, seed.replacementId].sort(),
+  );
+});
+
+for (const first of ['apply', 'manual'] as const) {
+  it(`Apply and a competing manual Assignment never double-book when ${first} goes first`, async () => {
+    const seed = await seedReviewedApply();
+    const [pair] = seed.pairs;
+    if (!pair) throw new Error('Missing reviewed pair');
+    const apply = () => seed.apply(randomUUID());
+    const manual = () => seed.createManually(pair);
+
+    const [firstResult, secondResult] = await raceBehindChurchLock({
+      churchId: seed.churchAId,
+      requests: first === 'apply' ? [apply, manual] : [manual, apply],
+    });
+
+    if (first === 'apply') {
+      expect(firstResult?.statusCode).toBe(200);
+      expect(secondResult?.statusCode).toBe(409);
+      expect(secondResult?.json()).toMatchObject({
+        reason: 'DUPLICATE_ASSIGNMENT',
+      });
+    } else {
+      expect(firstResult?.statusCode).toBe(201);
+      expect(secondResult?.statusCode).toBe(409);
+      expect(secondResult?.json()).toMatchObject({
+        error: 'ASSIGNMENT_PROPOSAL_STALE',
+      });
+    }
+    expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
+      [seed.current.volunteerId, seed.replacementId].sort(),
+    );
+  });
+}
+
+it('rolls back every addition when a later write fails, and a retry then reports it stale', async () => {
+  const seed = await seedReviewedApply({ volunteers: 2 });
+  const [, laterPair] = seed.pairs;
+  if (!laterPair) throw new Error('Missing second reviewed pair');
+  const key = randomUUID();
+  const blocker = new pg.Client({
+    connectionString: getIntegrationDatabaseUrl(),
+  });
+  await blocker.connect();
+  const pending: Promise<unknown>[] = [];
+  try {
+    await blocker.query('BEGIN');
+    const blockerPid = await readBackendPid(blocker);
+    // A writer outside the locks books the later Volunteer, uncommitted, so
+    // Apply validates without it and then waits on the unique index while
+    // inserting that pair, after its first addition is written.
+    await blocker.query(
+      `INSERT INTO assignment (church_id, participation_id, shift_id, volunteer_id, role_id, shift_requirement_id, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending')`,
+      [
+        seed.churchAId,
+        seed.graph.participation.id,
+        seed.shift.id,
+        laterPair.volunteerId,
+        seed.source.roleId,
+        laterPair.shiftRequirementId,
+      ],
+    );
+    const applying = seed.apply(key);
+    pending.push(applying);
+    await waitForBlockedRequest(blocker, blockerPid);
+    await blocker.query('COMMIT');
+
+    expect((await applying).statusCode).toBeGreaterThanOrEqual(400);
+    expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
+      [seed.current.volunteerId, laterPair.volunteerId].sort(),
+    );
+    expect(
+      await db
+        .select()
+        .from(assignmentProposalApplication)
+        .where(eq(assignmentProposalApplication.applicationKey, key)),
+    ).toEqual([]);
+    const retry = await seed.apply(key);
+    expect(retry.statusCode).toBe(409);
+    expect(retry.json()).toMatchObject({ error: 'ASSIGNMENT_PROPOSAL_STALE' });
+  } finally {
+    await blocker.query('ROLLBACK');
+    await Promise.allSettled(pending);
+    await blocker.end();
+  }
+});

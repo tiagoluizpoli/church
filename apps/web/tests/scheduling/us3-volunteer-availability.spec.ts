@@ -228,8 +228,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   await worshipCard.click();
 
   const shifts = page.getByRole('switch', {
-    name: 'Indisponível',
-    exact: true,
+    name: /Disponibilidade:/,
   });
   await expect(shifts.first()).toBeVisible();
   expect(await shifts.count()).toBeGreaterThanOrEqual(2);
@@ -251,9 +250,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
       response.url().endsWith('/answer') &&
       response.request().method() === 'PUT',
   );
-  await page
-    .getByRole('button', { name: /Confirmar: indisponível para 1 de/ })
-    .click();
+  await page.getByRole('button', { name: 'Confirmar disponibilidade' }).click();
   expect((await answerResponse).status()).toBe(200);
   await expect(worshipCard).toContainText(
     'Confirmada · indisponível para 1 de',
@@ -267,9 +264,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
       response.url().endsWith('/answer') &&
       response.request().method() === 'PUT',
   );
-  await page
-    .getByRole('button', { name: 'Confirmar: disponível para tudo' })
-    .click();
+  await page.getByRole('button', { name: 'Confirmar disponibilidade' }).click();
   expect((await overlapResponse).status()).toBe(200);
   await expect(careCard).toContainText('Confirmada, disponível para tudo');
   expect(answerRequests).toHaveLength(2);
@@ -294,7 +289,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
       response.request().method() === 'PUT',
   );
   await volunteerPage
-    .getByRole('button', { name: 'Confirmar: disponível para tudo' })
+    .getByRole('button', { name: 'Confirmar disponibilidade' })
     .click();
   expect((await cleanResponse).status()).toBe(200);
   await expect(volunteerCard).toContainText('Confirmada, disponível para tudo');

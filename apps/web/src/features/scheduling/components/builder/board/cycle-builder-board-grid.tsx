@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
+import type { now } from '@church/time';
 import { CalendarDays } from 'lucide-react';
 import type { useBoardDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
 import {
@@ -71,6 +72,7 @@ function BoardEmptyState({ isFiltered, onClearFilters }: BoardEmptyStateProps) {
 }
 
 interface CycleBuilderBoardGridProps {
+  currentInstant: ReturnType<typeof now>;
   data: CycleBuilderData;
   /** Church Timezone from the active-church status — never the browser's. */
   timeZone: string;
@@ -102,6 +104,7 @@ interface CycleBuilderBoardGridProps {
  * the same DnD tree regardless of this component boundary.
  */
 export function CycleBuilderBoardGrid({
+  currentInstant,
   data,
   timeZone,
   columns,
@@ -304,6 +307,9 @@ export function CycleBuilderBoardGrid({
                                                 });
                                               return (
                                                 <CycleBuilderCell
+                                                  currentInstant={
+                                                    currentInstant
+                                                  }
                                                   key={requirement.id}
                                                   shift={shift}
                                                   shiftRequirementId={

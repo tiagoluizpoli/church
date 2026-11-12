@@ -1,8 +1,8 @@
 import { m } from '@church/i18n/messages';
 import { compareInstants, now, parseInstant } from '@church/time';
-import { useDndContext, useDroppable } from '@dnd-kit/core';
+import { useDroppable } from '@dnd-kit/core';
 import { PlusIcon, TriangleAlertIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import {
   type CycleBuilderAssignment,
   type CycleBuilderShiftSummary,
@@ -14,15 +14,12 @@ import type {
 } from '../../../utils/builder/cycle-builder-candidate.types';
 import { timeLabel } from '../../../utils/builder/cycle-builder-date.utils';
 import {
-  draggedAssignment,
-  draggedVolunteerId,
-} from '../../../utils/builder/cycle-builder-dnd.utils';
-import {
   isAssignableFit,
   type ShiftRoleFit,
   volunteerFitForShiftRole,
 } from '../../../utils/builder/cycle-builder-fit.utils';
 import { AssignmentPicker } from '../assignment/assignment-picker';
+import { useBoardDragIdentity } from './board-drag-identity';
 import {
   AssignmentButton,
   type AssignmentButtonSelectInput,
@@ -46,6 +43,7 @@ export interface MoveAssignmentInput {
 }
 
 interface CycleBuilderCellProps {
+  currentInstant?: ReturnType<typeof now>;
   shift: CycleBuilderShiftSummary;
   shiftRequirementId: string;
   roleId: string;
@@ -109,6 +107,7 @@ export interface CycleBuilderCellSelectInput {
 }
 
 export function CycleBuilderCell({
+  currentInstant = now(),
   shift,
   shiftRequirementId,
   roleId,
@@ -134,11 +133,6 @@ export function CycleBuilderCell({
   onRetryFailedWrite,
   onDismissFailedWrite,
 }: CycleBuilderCellProps) {
-  const [currentInstant, setCurrentInstant] = useState(now);
-  useEffect(() => {
-    const timer = window.setInterval(() => setCurrentInstant(now()), 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
   const isStarted =
     compareInstants({
       left: parseInstant({ value: shift.startTime }),
@@ -163,9 +157,9 @@ export function CycleBuilderCell({
   // A drag in flight is tiered exactly like a selection: a cell that would
   // offer nothing to this person must not accept them by drop either, or the
   // board's highlight and its drop targets tell the leader different stories.
-  const { active } = useDndContext();
-  const draggedId = draggedVolunteerId({ active });
-  const movingAssignment = draggedAssignment({ active });
+  const identity = useBoardDragIdentity();
+  const draggedId = identity?.volunteerId;
+  const movingAssignment = identity?.assignment;
   const validMoveTarget = Boolean(
     movingAssignment &&
       movingAssignment.shiftId === shift.shiftId &&
@@ -175,14 +169,10 @@ export function CycleBuilderCell({
   const draggedFit = draggedId
     ? volunteerFitForShiftRole({ shift, roleId, volunteerId: draggedId })
     : null;
-  const roleDropTarget = useDroppable({
-    id: `cycle-requirement:${shiftRequirementId}`,
-    data: { shiftId: shift.shiftId, shiftRequirementId },
-    disabled:
-      !isEditable ||
-      (movingAssignment ? !validMoveTarget : !canAdd) ||
-      Boolean(draggedFit && !isAssignableFit({ fit: draggedFit })),
-  });
+  const dropDisabled =
+    !isEditable ||
+    (movingAssignment ? !validMoveTarget : !canAdd) ||
+    Boolean(draggedFit && !isAssignableFit({ fit: draggedFit }));
   // Reverse highlight: selecting someone in the rail paints the board with
   // where they actually fit. Before this every under-filled cell offered an
   // identical "Assign X", which said nothing — the board looked the same for a
@@ -224,6 +214,10 @@ export function CycleBuilderCell({
         }).tier === 'unavailable',
     });
   };
+  const pickerSuggestions = useMemo(
+    () => ({ safe: suggestions, needsResponse: needsResponseSuggestions }),
+    [suggestions, needsResponseSuggestions],
+  );
   const selectSuggestion = (suggestion: SuggestedVolunteer) =>
     commit({ volunteerId: suggestion.id, volunteerName: suggestion.name });
 
@@ -267,8 +261,10 @@ export function CycleBuilderCell({
     ) : null;
 
   return (
-    <div
-      ref={roleDropTarget.setNodeRef}
+    <RoleDropTarget
+      shiftId={shift.shiftId}
+      shiftRequirementId={shiftRequirementId}
+      disabled={dropDisabled}
       className={cn(
         'min-w-0 rounded-md border border-border/70 bg-background/40 p-2 transition-colors',
         // Ring/outline rather than border, so the selection tier and the focus
@@ -284,7 +280,6 @@ export function CycleBuilderCell({
         selectedFit.tier === 'unqualified' &&
           'outline-dotted outline-2 outline-yellow-700 dark:outline-yellow-400',
         isFocused && 'border-primary/70 bg-primary/5',
-        roleDropTarget.isOver && 'border-primary bg-primary/5',
       )}
       data-selected-fit={selectedFit.tier}
       data-drop-target={
@@ -418,15 +413,47 @@ export function CycleBuilderCell({
               </Button>
             }
             volunteers={pickerVolunteers}
-            suggestions={{
-              safe: suggestions,
-              needsResponse: needsResponseSuggestions,
-            }}
+            suggestions={pickerSuggestions}
             onSelectSuggestion={selectSuggestion}
             onSelect={(volunteerId) => commit({ volunteerId })}
           />
         ) : null}
       </div>
+    </RoleDropTarget>
+  );
+}
+
+interface RoleDropTargetProps {
+  shiftId: string;
+  shiftRequirementId: string;
+  disabled: boolean;
+  className: string;
+  children: ReactNode;
+  'data-selected-fit': string;
+  'data-drop-target': string | undefined;
+  'data-testid': string;
+}
+
+function RoleDropTarget({
+  shiftId,
+  shiftRequirementId,
+  disabled,
+  className,
+  children,
+  ...attributes
+}: RoleDropTargetProps) {
+  const target = useDroppable({
+    id: `cycle-requirement:${shiftRequirementId}`,
+    data: { shiftId, shiftRequirementId },
+    disabled,
+  });
+  return (
+    <div
+      ref={target.setNodeRef}
+      className={cn(className, target.isOver && 'border-primary bg-primary/5')}
+      {...attributes}
+    >
+      {children}
     </div>
   );
 }

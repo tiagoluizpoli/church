@@ -454,6 +454,33 @@ describe('PlanningEventCard cancellation', () => {
     ).toBeInTheDocument();
   });
 
+  it('groups the Event actions in one right-aligned, wrapping row', () => {
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="UTC">
+        <PlanningEventCard
+          row={rowWithTwoEventTimeBlocks()}
+          isReadOnly={false}
+          canPreviewMove
+          canCancel
+          {...baseProps()}
+        />
+      </TimezoneProvider>,
+    );
+
+    const actions = screen.getByTestId('planning-event-actions');
+    expect(actions).toHaveClass('justify-end', 'flex-wrap');
+    expect(
+      within(actions).getByRole('link', {
+        name: m.cycle_review_edit_day({ title: 'Sunday Service' }),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(actions).getByRole('button', {
+        name: m.event_cancel_action_label({ title: 'Sunday Service' }),
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('keeps a cancelled Event visible, greyed and struck through with its badge and no actions', () => {
     render(
       <PlanningEventCard

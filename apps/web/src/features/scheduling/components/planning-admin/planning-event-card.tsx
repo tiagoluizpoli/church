@@ -129,21 +129,21 @@ export function PlanningEventCard({
         </Badge>
       </div>
 
-      {!isReadOnly ? (
-        <div className="mt-3 flex items-center gap-1">
-          <Link
-            to="/cycles/$cycleId/events/$eventId"
-            params={{ cycleId, eventId: row.eventId }}
-            className={buttonVariants({ size: 'touch', variant: 'ghost' })}
-            aria-label={m.cycle_review_edit_day({ title: row.title })}
-          >
-            <Pencil className="size-3.5" /> {m.cycle_review_edit()}
-          </Link>
-        </div>
-      ) : null}
-
-      {canPreviewMove || canCancel ? (
-        <div className="mt-3 flex items-center gap-1">
+      {!isReadOnly || canPreviewMove || canCancel ? (
+        <div
+          data-testid="planning-event-actions"
+          className="mt-3 flex flex-wrap items-center justify-end gap-2"
+        >
+          {!isReadOnly ? (
+            <Link
+              to="/cycles/$cycleId/events/$eventId"
+              params={{ cycleId, eventId: row.eventId }}
+              className={buttonVariants({ size: 'touch', variant: 'ghost' })}
+              aria-label={m.cycle_review_edit_day({ title: row.title })}
+            >
+              <Pencil className="size-3.5" /> {m.cycle_review_edit()}
+            </Link>
+          ) : null}
           {canPreviewMove ? (
             <EventMovePreview
               cycleId={cycleId}
@@ -168,7 +168,7 @@ export function PlanningEventCard({
             <li
               key={eventTimeBlock.eventTimeBlockId}
               data-testid="planning-event-time-block-item"
-              className="flex items-center justify-between gap-2"
+              className="flex flex-wrap items-center justify-between gap-2"
             >
               <span
                 className={cn(
@@ -191,7 +191,6 @@ export function PlanningEventCard({
                   eventTimeBlockId={eventTimeBlock.eventTimeBlockId}
                   title={`${row.title} · ${eventTimeBlock.label}`}
                   start={eventTimeBlock.startTime as Instant}
-                  size="icon-xs"
                 />
               ) : null}
               {canCancelEventTimeBlock({
@@ -204,7 +203,6 @@ export function PlanningEventCard({
                   eventId={row.eventId}
                   eventTimeBlockId={eventTimeBlock.eventTimeBlockId}
                   title={`${row.title} · ${eventTimeBlock.label}`}
-                  size="icon-xs"
                 />
               ) : null}
               {!isReadOnly && eventTimeBlock.status === 'active' ? (

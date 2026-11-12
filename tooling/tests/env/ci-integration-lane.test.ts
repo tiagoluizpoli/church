@@ -132,7 +132,10 @@ describe('CI integration lane', () => {
     const steps = workflow.jobs['release-gate']?.steps ?? [];
     const gateScripts = steps
       .map((step) => step.run?.trim().match(BARE_SCRIPT_RUN)?.[1])
-      .filter((script) => script !== undefined);
+      // CI-only (rewrites the working tree), so `bun run validate` omits it.
+      .filter(
+        (script) => script !== undefined && script !== 'validate:api-generated',
+      );
 
     expect(gateScripts).toEqual(VALIDATE_SCRIPTS);
   });

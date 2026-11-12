@@ -64,41 +64,7 @@ describe('CycleListCard table view (US1)', () => {
     expect(row).toHaveTextContent(m.cycles_state_sent());
   });
 
-  it('selects the cycle when a table row is clicked', async () => {
-    listCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01',
-          endDate: '2026-08-31',
-          state: 'draft',
-        },
-      ],
-    });
-    getCycle.mockResolvedValue({
-      cycle: {
-        id: 'cycle-1',
-        name: 'August 2026',
-        startDate: '2026-08-01',
-        endDate: '2026-08-31',
-        state: 'draft',
-      },
-      events: [],
-    });
-
-    const user = userEvent.setup();
-    render();
-
-    const table = await screen.findByRole('grid');
-    const row = within(table).getByRole('row', { name: /August 2026/ });
-
-    await user.click(row);
-
-    expect(getCycle).toHaveBeenCalled();
-  });
-
-  it('keeps a single selection across clicks and keyboard navigation', async () => {
+  it('selects a cycle only through its explicit Select control and announces it', async () => {
     listCycles.mockResolvedValue({
       cycles: ['cycle-1', 'cycle-2'].map((id) => ({
         id,
@@ -115,33 +81,54 @@ describe('CycleListCard table view (US1)', () => {
 
     const table = await screen.findByRole('grid');
     const first = within(table).getByTestId('cycle-row-cycle-1');
-    const second = within(table).getByTestId('cycle-row-cycle-2');
-    expect(first).toHaveAttribute('aria-selected', 'false');
-    expect(second).toHaveAttribute('aria-selected', 'false');
 
-    await user.click(first);
-    expect(first).toHaveAttribute('aria-selected', 'true');
-    expect(first).toHaveAttribute('data-selected', 'true');
-    expect(first).not.toHaveClass('bg-accent/45');
+    await user.click(within(first).getByText('cycle-1'));
+    expect(onSelectCycle).not.toHaveBeenCalled();
+    expect(screen.queryByRole('status')).toBeNull();
+
+    const select = within(first).getByRole('button', {
+      name: m.cycles_select_label({ name: 'cycle-1' }),
+    });
+    expect(select).toHaveAttribute('aria-pressed', 'false');
+    await user.click(select);
     expect(onSelectCycle).toHaveBeenLastCalledWith({ cycleId: 'cycle-1' });
     expect(getCycle).toHaveBeenLastCalledWith('cycle-1');
-
-    await user.click(first);
-    expect(first).toHaveAttribute('aria-selected', 'true');
-
-    await user.keyboard('{ArrowDown}');
-    expect(first).toHaveAttribute('aria-selected', 'false');
-    expect(second).toHaveAttribute('aria-selected', 'true');
-    expect(onSelectCycle).toHaveBeenLastCalledWith({ cycleId: 'cycle-2' });
-    expect(getCycle).toHaveBeenLastCalledWith('cycle-2');
-
-    await user.click(first);
-    expect(first).toHaveAttribute('aria-selected', 'true');
-    expect(second).toHaveAttribute('aria-selected', 'false');
-    expect(screen.getAllByTestId('cycle-option')[0]).toHaveAttribute(
-      'aria-selected',
-      'true',
+    expect(select).toHaveAttribute('aria-pressed', 'true');
+    expect(select).toHaveTextContent(m.cycles_selected());
+    expect(screen.getByRole('status')).toHaveTextContent(
+      m.cycles_selected_announcement({ name: 'cycle-1' }),
     );
+
+    await user.click(
+      within(table).getByRole('button', {
+        name: m.cycles_select_label({ name: 'cycle-2' }),
+      }),
+    );
+    expect(select).toHaveAttribute('aria-pressed', 'false');
+    expect(onSelectCycle).toHaveBeenLastCalledWith({ cycleId: 'cycle-2' });
+  });
+
+  it('keeps the mobile card inert with a 44px right-aligned Select action', async () => {
+    listCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'cycle-1',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'draft',
+        },
+      ],
+    });
+    render();
+
+    const list = await screen.findByTestId('data-table-mobile-list');
+    expect(within(list).queryByRole('option')).toBeNull();
+    const select = within(list).getByRole('button', {
+      name: m.cycles_select_label({ name: 'cycle-1' }),
+    });
+    expect(select).toHaveClass('min-h-11');
+    expect(select.parentElement).toHaveClass('justify-end');
   });
 
   it('reflects selection changes supplied by the master-detail pane', async () => {
@@ -160,18 +147,20 @@ describe('CycleListCard table view (US1)', () => {
       </PlanningAdminProvider>,
     );
     const table = await screen.findByRole('grid');
-    const first = within(table).getByTestId('cycle-row-cycle-1');
-    const second = within(table).getByTestId('cycle-row-cycle-2');
-    expect(first).toHaveAttribute('aria-selected', 'true');
-    expect(second).toHaveAttribute('aria-selected', 'false');
+    const pressed = (id: string) =>
+      within(table)
+        .getByRole('button', { name: m.cycles_select_label({ name: id }) })
+        .getAttribute('aria-pressed');
+    expect(pressed('cycle-1')).toBe('true');
+    expect(pressed('cycle-2')).toBe('false');
 
     view.rerender(
       <PlanningAdminProvider>
         <CycleListCard selectedCycleId="cycle-2" />
       </PlanningAdminProvider>,
     );
-    expect(first).toHaveAttribute('aria-selected', 'false');
-    expect(second).toHaveAttribute('aria-selected', 'true');
+    expect(pressed('cycle-1')).toBe('false');
+    expect(pressed('cycle-2')).toBe('true');
   });
 
   it('shows the empty state with New cycle instead of an empty table', async () => {

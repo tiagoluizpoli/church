@@ -30,7 +30,7 @@ interface ParticipationResponse {
   events: ParticipationEventResponse[];
 }
 
-test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees published slice, sibling ministry stays unpublished', async ({
+test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below full, volunteer sees published slice, sibling ministry stays unpublished', async ({
   browser,
   page,
 }, testInfo) => {
@@ -53,6 +53,32 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
       cycleId: cycleId,
     }),
   );
+
+  // A long Church name must leave the mobile header actions reachable.
+  await page.setViewportSize({ width: 320, height: 800 });
+  const header = page.getByTestId('mobile-top-header');
+  const churchName = header.locator('span.truncate').first();
+  await churchName.evaluate((element) => {
+    element.textContent = 'A very long Church name for a narrow screen';
+  });
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    for (const fontSize of [100, 125]) {
+      await page.evaluate((size) => {
+        document.documentElement.style.fontSize = `${size}%`;
+      }, fontSize);
+      const menuBox = await page
+        .getByTestId('mobile-drawer-trigger')
+        .boundingBox();
+      if (!menuBox) throw new Error('Mobile menu is not visible');
+      expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(width);
+      expect(menuBox.width).toBeGreaterThanOrEqual(44);
+    }
+  }
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '';
+  });
+  await page.setViewportSize({ width: 1280, height: 800 });
 
   const eventRow = page
     .locator('[data-testid^="prepare-event-time-block-row-"]')
@@ -90,19 +116,48 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   );
   await expect(requirement).toContainText(`0/${peopleNeeded}`);
 
-  // Pick by name, not the first picker option — the dashboard asserts this
-  // exact person, and picker order is availability/workload-driven.
-  const volunteerPool = page.getByTestId('volunteer-pool');
-  await volunteerPool
-    .getByLabel('Buscar voluntários por nome')
-    .fill(volunteerName);
-  await volunteerPool.getByTestId('volunteer-select-shift').click();
+  // Only the Volunteer persona confirmed availability: the proposal suggests
+  // exactly that persona and leaves one place open. Reviewing and discarding
+  // it writes nothing; Apply adds exactly the reviewed Assignment.
+  const ptBR = { locale: 'pt-BR' } as const;
+  const proposalDialog = page.getByRole('dialog', {
+    name: m.builder_proposal_title({}, ptBR),
+  });
+  const openProposal = async () => {
+    await page
+      .getByRole('button', { name: m.builder_proposal_open({}, ptBR) })
+      .click();
+    await expect(proposalDialog).toContainText(
+      m.builder_proposal_summary({ additions: 1, places: 1 }, ptBR),
+    );
+  };
+  await openProposal();
+  await expect(proposalDialog.getByText(volunteerName)).toBeVisible();
+  await expect(proposalDialog).toContainText(
+    m.builder_proposal_gap_one({}, ptBR),
+  );
+  await proposalDialog
+    .getByRole('button', { name: m.builder_proposal_discard({}, ptBR) })
+    .click();
+  await expect(proposalDialog).toBeHidden();
+  await expect(requirement).toContainText(`0/${peopleNeeded}`);
 
-  await requirement.getByRole('button', { name: /^Escalar / }).click();
+  await openProposal();
+  await proposalDialog
+    .getByRole('button', { name: m.builder_proposal_apply({}, ptBR) })
+    .click();
+  await expect(
+    page.getByText(m.builder_proposal_applied({ count: 1 }, ptBR)),
+  ).toBeVisible();
+  await expect(proposalDialog).toBeHidden();
   await expect(requirement.getByTestId('assignment-chip')).toContainText(
     volunteerName,
   );
   await expect(requirement).toContainText(`1/${peopleNeeded}`);
+  // Apply does not publish: the Schedule is still open for changes.
+  await expect(
+    page.getByRole('button', { name: m.builder_proposal_open({}, ptBR) }),
+  ).toBeVisible();
 
   await page
     .getByRole('button', {
@@ -125,6 +180,10 @@ test('DL4-US4 leader assigns one volunteer, publishes below full, volunteer sees
   await expect(
     page.getByText(m.builder_logic_cycle_published({}, { locale: 'pt-BR' })),
   ).toBeVisible();
+  // Assistance is not offered for an already-published Schedule.
+  await expect(
+    page.getByRole('button', { name: m.builder_proposal_open({}, ptBR) }),
+  ).toHaveCount(0);
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(

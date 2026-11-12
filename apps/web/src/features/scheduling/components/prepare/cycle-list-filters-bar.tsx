@@ -120,7 +120,15 @@ export function CycleListFiltersBar({
                 isMobile && 'px-3 text-sm data-[size=default]:h-11',
               )}
             >
-              <SelectValue />
+              <SelectValue>
+                {
+                  {
+                    starts: m.builder_ui_starts(),
+                    ends: m.builder_ui_ends(),
+                    within: m.builder_ui_within(),
+                  }[draft.dateMode]
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="starts">{m.builder_ui_starts()}</SelectItem>
@@ -176,7 +184,15 @@ export function CycleListFiltersBar({
                 isMobile && 'px-3 text-sm data-[size=default]:h-11',
               )}
             >
-              <SelectValue />
+              <SelectValue>
+                {
+                  {
+                    all: m.prepare_cycle_filter_all(),
+                    ['part_of']: m.prepare_cycle_filter_part_of(),
+                    ['not_part_of']: m.prepare_cycle_filter_not_part_of(),
+                  }[draft.involvement]
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">
@@ -214,7 +230,16 @@ export function CycleListFiltersBar({
                 isMobile && 'px-3 text-sm data-[size=default]:h-11',
               )}
             >
-              <SelectValue />
+              <SelectValue>
+                {
+                  {
+                    all: m.prepare_cycle_filter_all(),
+                    ['not_started']: m.prepare_cycle_status_not_started(),
+                    ['in_progress']: m.prepare_cycle_status_in_progress(),
+                    published: m.schedules_published(),
+                  }[draft.status]
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">

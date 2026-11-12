@@ -4207,8 +4207,11 @@ paths:
       summary: Set a Ministry's default direction
       tags:
         - planning
-      description: Set a Ministry's defaultDirection (all-in or all-out), deciding
-        whether it starts opted into every EventTimeBlock of a cycle by default.
+      description: "Set a Ministry's defaultDirection (all_in or all_out) for
+        source-linked EventTimeBlocks with no UsualSetup entry at Send: all_out
+        (the default) excludes them, all_in includes them with one whole-block
+        Shift and no requirements. An explicit UsualSetup entry always wins, and
+        source-less blocks are never auto-included."
       requestBody:
         required: true
         content:
@@ -9288,6 +9291,287 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/assign/cycles/{cycleId}/assignment-proposal:
+    get:
+      operationId: getAssignmentProposal
+      summary: Propose Assignments for a Ministry's Schedule
+      tags:
+        - assign
+      description: Compute a deterministic Assignment proposal for one Schedule
+        between asking for availability and publishing. Writes nothing.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  additions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        volunteerId:
+                          type: string
+                        volunteerName:
+                          type: string
+                        shiftRequirementId:
+                          type: string
+                        shiftId:
+                          type: string
+                        reason:
+                          type: object
+                          properties:
+                            eligibleShiftCount:
+                              type: number
+                            needCandidateCount:
+                              type: number
+                            decidedBy:
+                              type: string
+                              enum:
+                                - only_candidate
+                                - fewest_eligible_shifts
+                                - fewest_cycle_assignments
+                                - stable_order
+                          required:
+                            - eligibleShiftCount
+                            - needCandidateCount
+                            - decidedBy
+                          additionalProperties: false
+                      required:
+                        - volunteerId
+                        - volunteerName
+                        - shiftRequirementId
+                        - shiftId
+                        - reason
+                      additionalProperties: false
+                  gaps:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        shiftRequirementId:
+                          type: string
+                        shiftId:
+                          type: string
+                        remaining:
+                          type: number
+                      required:
+                        - shiftRequirementId
+                        - shiftId
+                        - remaining
+                      additionalProperties: false
+                  excludedUnconfirmedCount:
+                    type: number
+                  emptyReason:
+                    nullable: true
+                    type: string
+                    enum:
+                      - no_open_needs
+                      - no_confirmed_responses
+                      - no_eligible_placements
+                  reviewToken:
+                    type: string
+                required:
+                  - additions
+                  - gaps
+                  - excludedUnconfirmedCount
+                  - emptyReason
+                  - reviewToken
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/assign/cycles/{cycleId}/assignment-proposal/apply:
+    post:
+      operationId: applyAssignmentProposal
+      summary: Apply a reviewed Assignment proposal
+      tags:
+        - assign
+      description: Create exactly the reviewed additions once, atomically, as pending
+        Assignments. A retry with the same applicationKey returns the committed
+        outcome. Never publishes or notifies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                applicationKey:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                reviewToken:
+                  type: string
+                  minLength: 1
+                additions:
+                  minItems: 1
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      shiftRequirementId:
+                        type: string
+                      volunteerId:
+                        type: string
+                    required:
+                      - shiftRequirementId
+                      - volunteerId
+                    additionalProperties: false
+              required:
+                - applicationKey
+                - reviewToken
+                - additions
+              additionalProperties: false
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applicationKey:
+                    type: string
+                  appliedAt:
+                    type: string
+                    format: date-time
+                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  replayed:
+                    type: boolean
+                  additions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        assignmentId:
+                          type: string
+                        shiftRequirementId:
+                          type: string
+                        volunteerId:
+                          type: string
+                      required:
+                        - assignmentId
+                        - shiftRequirementId
+                        - volunteerId
+                      additionalProperties: false
+                required:
+                  - applicationKey
+                  - appliedAt
+                  - replayed
+                  - additions
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/cycles/{cycleId}/publish:
     post:
       operationId: publishCycle
@@ -13520,6 +13804,46 @@ paths:
                         type: string
                         format: date-time
                         pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      churchAccessLevel:
+                        nullable: true
+                        type: string
+                        enum:
+                          - member
+                          - admin
+                      ministries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            invitationId:
+                              type: string
+                            ministryName:
+                              type: string
+                            ministryAccessLevel:
+                              type: string
+                              enum:
+                                - volunteer
+                                - leader
+                            roleNames:
+                              type: array
+                              items:
+                                type: string
+                            inviterName:
+                              type: string
+                            expiresAt:
+                              type: string
+                              format: date-time
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                          required:
+                            - invitationId
+                            - ministryName
+                            - ministryAccessLevel
+                            - roleNames
+                            - inviterName
+                            - expiresAt
+                          additionalProperties: false
+                      reviewToken:
+                        type: string
                     required:
                       - kind
                       - invitationKind
@@ -13529,6 +13853,9 @@ paths:
                       - ministryAccessLevel
                       - roleNames
                       - expiresAt
+                      - churchAccessLevel
+                      - ministries
+                      - reviewToken
                     additionalProperties: false
                   - type: object
                     properties:
@@ -13599,8 +13926,12 @@ paths:
                   type: string
                   format: uuid
                   pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                reviewToken:
+                  type: string
+                  minLength: 1
               required:
                 - idempotencyKey
+                - reviewToken
       parameters:
         - schema:
             type: string
@@ -13627,6 +13958,15 @@ paths:
                     required:
                       - kind
                       - volunteerId
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - offer-changed
+                    required:
+                      - kind
                     additionalProperties: false
                   - type: object
                     properties:

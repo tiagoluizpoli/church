@@ -106,7 +106,7 @@ describe('MinistryPrepareList mobile card list (US1/T011)', () => {
       <MinistryPrepareList rows={ROWS} onSelectMinistry={vi.fn()} />,
     );
 
-    const list = screen.getByRole('listbox');
+    const list = screen.getByRole('list', { name: m.nav_ministries() });
     const cards = within(list).getAllByTestId(/^ministry-prepare-card-/);
     expect(cards).toHaveLength(2);
     expect(cards[0]).toHaveTextContent('Greeters');
@@ -132,12 +132,25 @@ describe('MinistryPrepareList mobile card list (US1/T011)', () => {
       <MinistryPrepareList rows={ROWS} onSelectMinistry={onSelectMinistry} />,
     );
 
-    const list = screen.getByRole('listbox');
+    const list = screen.getByRole('list', { name: m.nav_ministries() });
     const row = within(list).getByTestId('ministry-prepare-row-ministry-2');
     await user.click(
       within(row).getByTestId('ministry-prepare-button-ministry-2'),
     );
 
     expect(onSelectMinistry).toHaveBeenCalledWith({ ministryId: 'ministry-2' });
+  });
+
+  it('right-aligns the Prepare action with a 44px touch target', () => {
+    renderWithProviders(
+      <MinistryPrepareList rows={ROWS} onSelectMinistry={vi.fn()} />,
+    );
+
+    const list = screen.getByRole('list', { name: m.nav_ministries() });
+    const button = within(list).getByTestId(
+      'ministry-prepare-button-ministry-2',
+    );
+    expect(button).toHaveClass('min-h-11');
+    expect(button.parentElement).toHaveClass('justify-end');
   });
 });

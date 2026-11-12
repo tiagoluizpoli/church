@@ -1,6 +1,8 @@
 import {
   assignment,
+  availabilityCheck,
   cycle,
+  ministryMembership,
   ministryParticipation,
   shiftRequirement,
 } from '@church/db';
@@ -89,6 +91,30 @@ describe('schedule-publish E2E journey recipe', () => {
     expect(journey.personas.volunteer.name).not.toBe(
       journey.personas.other.name,
     );
+  });
+
+  it('confirms availability for the Volunteer persona only, so a proposal suggests exactly that persona', async () => {
+    const journey = await load({ anchor: ANCHOR });
+
+    const checks = await testDb
+      .select({
+        state: availabilityCheck.state,
+        cycleId: availabilityCheck.cycleId,
+        volunteerId: ministryMembership.volunteerId,
+      })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(availabilityCheck.ministryMembershipId, ministryMembership.id),
+      )
+      .where(eq(availabilityCheck.churchId, journey.church.id));
+    expect(checks).toEqual([
+      {
+        state: 'confirmed',
+        cycleId: journey.cycle.id,
+        volunteerId: journey.personas.volunteer.volunteerId,
+      },
+    ]);
   });
 
   it('follows the anchor past the legacy seed dates', async () => {

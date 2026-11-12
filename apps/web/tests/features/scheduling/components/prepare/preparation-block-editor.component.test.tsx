@@ -1,6 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { focusManager } from '@tanstack/react-query';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -524,7 +524,7 @@ it('renders past preparation read-only', async () => {
     screen.getByRole('button', { name: m.usual_setup_cancel() }),
   ).toBeEnabled();
   expect(
-    screen
+    within(screen.getByTestId('prepare-block-panel'))
       .getAllByRole('spinbutton')
       .every((input) => input.hasAttribute('disabled')),
   ).toBe(true);
@@ -537,7 +537,7 @@ it('renders past preparation read-only', async () => {
 it.each([
   [403, () => m.shell_no_access()],
   [404, () => m.error_not_found()],
-  [500, () => m.prepare_block_load_failed()],
+  [500, () => m.prepare_schedule_error()],
 ] as const)('shows a scoped read failure (%s) instead of an empty or editable form', async (status, message) => {
   api.getCycleParticipation.mockRejectedValueOnce(
     refusal(status, { error: 'READ_FAILED', message: 'failed' }),
@@ -590,7 +590,9 @@ it('saves an untouched first opt-in through the server Usual setup re-seed contr
   });
   const toggle = await screen.findByRole('checkbox');
   expect(toggle).not.toBeChecked();
-  expect(screen.queryByRole('spinbutton')).toBeNull();
+  expect(
+    within(screen.getByTestId('prepare-block-panel')).queryByRole('spinbutton'),
+  ).toBeNull();
   await user.click(toggle);
   expect(screen.getByText(m.prepare_block_initial_opt_in())).toBeVisible();
   await user.click(screen.getByRole('button', { name: m.usual_setup_save() }));
@@ -848,12 +850,13 @@ it('uses fresh assigned floors after refocus instead of retaining an obsolete re
   await user.type(stage, '4');
   await user.click(screen.getByRole('button', { name: m.usual_setup_save() }));
   await screen.findByText(m.headcount_grid_below_minimum({ minimum: 5 }));
+  const reads = api.getCycleParticipation.mock.calls.length;
   await act(async () => {
     focusManager.setFocused(false);
     focusManager.setFocused(true);
   });
   await waitFor(() =>
-    expect(api.getCycleParticipation).toHaveBeenCalledTimes(2),
+    expect(api.getCycleParticipation).toHaveBeenCalledTimes(reads + 1),
   );
   await waitFor(() =>
     expect(
@@ -913,18 +916,21 @@ it('treats an id outside the scoped prepare read as not found', async () => {
 
 it('keeps loading distinct from an empty or editable block', async () => {
   api.getCycleParticipation.mockReturnValueOnce(new Promise(() => {}));
-  const { container } = renderRoute({
+  renderRoute({
     initialPath: EDITOR_PATH,
     churchTimezone: 'America/Sao_Paulo',
   });
-  await waitFor(() =>
-    expect(container.querySelector('[aria-busy="true"]')).toBeVisible(),
-  );
+  expect(
+    await screen.findByRole('status', { name: m.schedules_loading() }),
+  ).toBeVisible();
   expect(screen.queryByRole('checkbox')).toBeNull();
   expect(screen.queryByText(m.usual_setup_missing_sectors())).toBeNull();
 });
 
-it('retains a dirty form when a focus refetch fails', async () => {
+it.each([
+  'listSectors',
+  'getCycleParticipation',
+] as const)('retains a dirty form when a focus refetch of %s fails', async (read) => {
   const user = userEvent.setup();
   const { queryClient } = renderRoute({
     initialPath: EDITOR_PATH,
@@ -936,7 +942,7 @@ it('retains a dirty form when a focus refetch fails', async () => {
   });
   await user.clear(stage);
   await user.type(stage, '7');
-  api.listSectors.mockRejectedValueOnce(new Error('offline'));
+  api[read].mockRejectedValueOnce(new Error('offline'));
   await act(async () => {
     await queryClient.refetchQueries();
   });

@@ -207,6 +207,8 @@ function createHarness() {
     participationRepository,
     shiftRepository,
     assignmentRepository: assignmentRepo,
+    auditRepository: {} as never,
+    proposalApplicationRepository: {} as never,
     unavailableShiftRepository,
     volunteerRepository,
     cycleRepository,

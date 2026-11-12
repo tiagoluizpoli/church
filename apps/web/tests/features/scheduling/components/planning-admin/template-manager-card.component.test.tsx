@@ -15,11 +15,13 @@ vi.mock('@tanstack/react-router', () => ({
     params?: { templateId: string };
     className?: string;
     'data-testid'?: string;
+    'aria-label'?: string;
   }) => (
     <a
       href={to.replace('$templateId', params?.templateId ?? '')}
       className={props.className}
       data-testid={props['data-testid']}
+      aria-label={props['aria-label']}
     >
       {children}
     </a>
@@ -103,13 +105,37 @@ describe('TemplateManagerCard table view (US1)', () => {
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
     expect(row).toHaveTextContent('Domingo');
     expect(row).toHaveTextContent('2');
-    expect(within(row).getByRole('link', { name: 'Editar' })).toHaveAttribute(
-      'href',
-      '/event-templates/template-1',
-    );
     expect(
-      within(row).getByRole('button', { name: 'Excluir' }),
+      within(row).getByRole('link', { name: 'Editar Sunday Service' }),
+    ).toHaveAttribute('href', '/event-templates/template-1');
+    expect(
+      within(row).getByRole('button', { name: 'Excluir Sunday Service' }),
     ).toBeInTheDocument();
+  });
+
+  it('moves keyboard focus between the actions in a desktop row', async () => {
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+      ],
+    });
+    const user = userEvent.setup();
+    render();
+    const table = await screen.findByRole('grid');
+    const row = within(table).getByRole('row', { name: /Sunday Service/ });
+    const edit = within(row).getByRole('link', {
+      name: 'Editar Sunday Service',
+    });
+    const deleteButton = within(row).getByRole('button', {
+      name: 'Excluir Sunday Service',
+    });
+    row.focus();
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
+    expect(edit).toHaveFocus();
+    await user.keyboard('{ArrowRight}');
+    expect(deleteButton).toHaveFocus();
+    await user.keyboard('{ArrowLeft}');
+    expect(edit).toHaveFocus();
   });
 
   it('opens a confirmation from the table row action without deleting', async () => {
@@ -130,7 +156,9 @@ describe('TemplateManagerCard table view (US1)', () => {
     const table = await screen.findByRole('grid');
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
 
-    await user.click(within(row).getByRole('button', { name: 'Excluir' }));
+    await user.click(
+      within(row).getByRole('button', { name: 'Excluir Sunday Service' }),
+    );
 
     expect(
       await screen.findByRole('alertdialog', { name: 'Excluir este modelo?' }),
@@ -155,12 +183,12 @@ describe('TemplateManagerCard table view (US1)', () => {
     const table = await screen.findByRole('grid');
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
 
-    expect(within(row).getByRole('button', { name: 'Excluir' })).toHaveClass(
-      'text-destructive',
-    );
-    expect(within(row).getByRole('link', { name: 'Editar' })).not.toHaveClass(
-      'text-destructive',
-    );
+    expect(
+      within(row).getByRole('button', { name: 'Excluir Sunday Service' }),
+    ).toHaveClass('text-destructive');
+    expect(
+      within(row).getByRole('link', { name: 'Editar Sunday Service' }),
+    ).not.toHaveClass('text-destructive');
   });
 
   it('renders the mobile card with the same name, description, and reachable actions as the table row', async () => {
@@ -187,6 +215,12 @@ describe('TemplateManagerCard table view (US1)', () => {
 
     const mobileRow = await screen.findByTestId('saved-template-row');
     expect(mobileRow).toHaveTextContent('Sunday Service');
+    expect(within(mobileRow).getByTestId('edit-template-button')).toHaveClass(
+      'min-h-11',
+    );
+    expect(within(mobileRow).getByTestId('delete-template-button')).toHaveClass(
+      'min-h-11',
+    );
     expect(
       within(mobileRow).getByTestId('edit-template-button'),
     ).toBeInTheDocument();

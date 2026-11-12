@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { useDraggable } from '@dnd-kit/core';
 import { ClockIcon, StarIcon, TriangleAlertIcon } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 import type {
   AvailabilityStatus,
   VolunteerPoolItem,
@@ -220,20 +220,8 @@ interface VolunteerCardProps {
   onAssignToFocused?: (volunteerId: string) => void;
 }
 
-export function VolunteerCard({
-  volunteer,
-  dragId,
-  isSelected = false,
-  isIdeal = false,
-  isOverlay = false,
-  onSelect,
-  assignFit,
-  onAssignToFocused,
-}: VolunteerCardProps) {
-  const { churchTimezone } = useTimezone();
-  const isTouch = useFormControlSize() === 'touch';
-  // `attributes` is deliberately dropped below: it announces dnd-kit's keyboard
-  // instructions, and no `KeyboardSensor` is registered.
+export function VolunteerCard(props: VolunteerCardProps) {
+  const { volunteer, dragId, isOverlay = false } = props;
   const { listeners, setNodeRef, setActivatorNodeRef, isDragging } =
     useDraggable({
       id: dragId ?? `volunteer-${volunteer.volunteerId}`,
@@ -247,6 +235,39 @@ export function VolunteerCard({
       },
       disabled: isOverlay || Boolean(volunteer.conflictReason),
     });
+  return (
+    <VolunteerCardPresentation
+      {...props}
+      listeners={listeners}
+      setNodeRef={setNodeRef}
+      setActivatorNodeRef={setActivatorNodeRef}
+      isDragging={isDragging}
+    />
+  );
+}
+
+interface VolunteerCardPresentationProps extends VolunteerCardProps {
+  listeners: ReturnType<typeof useDraggable>['listeners'];
+  setNodeRef: ReturnType<typeof useDraggable>['setNodeRef'];
+  setActivatorNodeRef: ReturnType<typeof useDraggable>['setActivatorNodeRef'];
+  isDragging: boolean;
+}
+
+const VolunteerCardPresentation = memo(function VolunteerCardPresentation({
+  volunteer,
+  isSelected = false,
+  isIdeal = false,
+  isOverlay = false,
+  onSelect,
+  assignFit,
+  onAssignToFocused,
+  listeners,
+  setNodeRef,
+  setActivatorNodeRef,
+  isDragging,
+}: VolunteerCardPresentationProps) {
+  const { churchTimezone } = useTimezone();
+  const isTouch = useFormControlSize() === 'touch';
 
   const roleLabel = formatAssigneeRoleLabel({
     membership: volunteer.membership,
@@ -473,4 +494,4 @@ export function VolunteerCard({
       </div>
     </div>
   );
-}
+});

@@ -73,7 +73,9 @@ function render({
 
 async function selectTheOnlyCycle() {
   const user = userEvent.setup();
-  await user.click(await screen.findByTestId('cycle-option'));
+  await user.click(
+    (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+  );
   return user;
 }
 

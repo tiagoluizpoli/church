@@ -390,7 +390,11 @@ describe('Member detail', () => {
     const list = await screen.findByRole('list', {
       name: m.people_list_label(),
     });
-    await user.click(within(list).getByRole('link', { name: 'Bia Lima' }));
+    await user.click(
+      within(list).getByRole('link', {
+        name: m.people_view_label({ name: 'Bia Lima' }),
+      }),
+    );
 
     expect(
       await screen.findByRole('heading', { name: 'Bia Lima', level: 1 }),

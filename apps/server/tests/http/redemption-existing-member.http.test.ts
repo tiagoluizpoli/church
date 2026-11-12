@@ -168,6 +168,84 @@ async function mintExistingMemberInvitation() {
   });
 }
 
+async function ministryNameOf(id: string): Promise<string> {
+  const [row] = await testDb
+    .select({ name: ministry.name })
+    .from(ministry)
+    .where(eq(ministry.id, id));
+  return row?.name ?? '';
+}
+
+async function roleNameOf(id: string): Promise<string> {
+  const [row] = await testDb
+    .select({ name: role.name })
+    .from(role)
+    .where(eq(role.id, id));
+  return row?.name ?? '';
+}
+
+/**
+ * adminB (a User of Church B, no Church A membership) is offered Church A as
+ * ChurchAdmin, Worship as a Volunteer with one Role and Kids as a leader with
+ * no Roles — one Church Invitation with two Ministry halves.
+ */
+async function mintAdminBundleForAdminB() {
+  const email = `${fixture.adminB}@fixture.test`;
+  const worship = await invitationManager.mint({
+    churchId: ChurchId.from(fixture.churchA.id),
+    ministryId: MinistryId.from(fixture.ministryOneA),
+    inviterId: UserId.from(fixture.adminA),
+    email,
+    ministryAccessLevel: 'volunteer',
+    roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+  });
+  const kids = await invitationManager.mint({
+    churchId: ChurchId.from(fixture.churchA.id),
+    ministryId: MinistryId.from(fixture.ministryTwoA),
+    inviterId: UserId.from(fixture.adminA),
+    email,
+    ministryAccessLevel: 'leader',
+    roleIds: [],
+  });
+  await invitationManager.mintAdmin({
+    churchId: ChurchId.from(fixture.churchA.id),
+    inviterId: UserId.from(fixture.adminA),
+    email,
+  });
+  return {
+    email,
+    churchInvitationId: worship.churchInvitationId as string,
+    worshipId: worship.id,
+    kidsId: kids.id,
+  };
+}
+
+interface StaleBundle {
+  kidsId: string | undefined;
+}
+
+interface ReviewedAcceptanceInput {
+  invitationId: string;
+  cookie: string | undefined;
+}
+
+/** Reviews the offer as the caller (GET status), then echoes its review token on accept. */
+async function reviewedAcceptance({
+  invitationId,
+  cookie,
+}: ReviewedAcceptanceInput) {
+  const status = await app.inject({
+    method: 'GET',
+    url: `/api/v1/redemption/ministry/${invitationId}`,
+    headers: cookie ? { cookie } : {},
+  });
+  const reviewed = status.statusCode === 200 ? status.json() : {};
+  return {
+    idempotencyKey: crypto.randomUUID(),
+    reviewToken: reviewed.reviewToken ?? 'never-reviewed',
+  };
+}
+
 interface CreateUserSessionInput {
   email: string;
 }
@@ -219,6 +297,79 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         ministryAccessLevel: 'volunteer',
       });
     });
+
+    it('discloses a standalone Ministry offer alone, with the Church as existing access', async () => {
+      const invitation = await mintExistingMemberInvitation();
+      const cookie = await createSessionCookie({
+        userId: fixture.existingChurchMemberA,
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/redemption/ministry/${invitation.id}`,
+        headers: { cookie },
+      });
+
+      const body = response.json();
+      expect(body).toMatchObject({
+        invitationKind: 'ministry-only',
+        churchAccessLevel: null,
+        ministries: [
+          {
+            invitationId: invitation.id,
+            ministryName: await ministryNameOf(fixture.ministryOneA),
+            ministryAccessLevel: 'volunteer',
+            roleNames: [await roleNameOf(fixture.roleInMinistryOneA)],
+            inviterName: 'Fixture Admin A',
+          },
+        ],
+      });
+      expect(body.reviewToken).toEqual(expect.any(String));
+    });
+
+    it('discloses the whole Church offer from any of its halves: the new Church Access Level and every Ministry grant', async () => {
+      const bundle = await mintAdminBundleForAdminB();
+      const cookie = await createSessionCookie({ userId: fixture.adminB });
+
+      const fromWorship = await app.inject({
+        method: 'GET',
+        url: `/api/v1/redemption/ministry/${bundle.worshipId}`,
+        headers: { cookie },
+      });
+      const fromKids = await app.inject({
+        method: 'GET',
+        url: `/api/v1/redemption/ministry/${bundle.kidsId}`,
+        headers: { cookie },
+      });
+
+      const disclosed = fromWorship.json();
+      expect(disclosed).toMatchObject({
+        kind: 'redeemable',
+        invitationKind: 'chained',
+        churchName: fixture.churchA.name,
+        churchAccessLevel: 'admin',
+        ministries: [
+          {
+            invitationId: bundle.worshipId,
+            ministryName: await ministryNameOf(fixture.ministryOneA),
+            ministryAccessLevel: 'volunteer',
+            roleNames: [await roleNameOf(fixture.roleInMinistryOneA)],
+            inviterName: 'Fixture Admin A',
+            expiresAt: expect.any(String),
+          },
+          {
+            invitationId: bundle.kidsId,
+            ministryName: await ministryNameOf(fixture.ministryTwoA),
+            ministryAccessLevel: 'leader',
+            roleNames: [],
+            inviterName: 'Fixture Admin A',
+            expiresAt: expect.any(String),
+          },
+        ],
+      });
+      expect(fromKids.json().ministries).toEqual(disclosed.ministries);
+      expect(fromKids.json().reviewToken).toBe(disclosed.reviewToken);
+    });
   });
 
   describe('POST /redemption/ministry/:invitationId/accept', () => {
@@ -228,7 +379,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       const response = await app.inject({
         method: 'POST',
         url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie: undefined,
+        }),
       });
 
       expect(response.statusCode).toBe(401);
@@ -244,7 +398,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         method: 'POST',
         url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
         headers: { cookie },
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie: cookie,
+        }),
       });
 
       expect(response.statusCode).toBe(200);
@@ -308,7 +465,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         method: 'POST',
         url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
         headers: { cookie },
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie: cookie,
+        }),
       });
 
       expect(response.statusCode).toBe(200);
@@ -386,7 +546,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         method: 'POST',
         url: `/api/v1/redemption/ministry/${first.id}/accept`,
         headers: { cookie },
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: first.id,
+          cookie: cookie,
+        }),
       });
 
       expect(response.json()).toMatchObject({ kind: 'full-success' });
@@ -454,7 +617,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         method: 'POST',
         url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
         headers: { cookie },
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie: cookie,
+        }),
       });
 
       expect(response.json().kind).not.toBe('full-success');
@@ -480,7 +646,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         method: 'POST',
         url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
         headers: { cookie },
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie: cookie,
+        }),
       });
 
       expect(response.json().kind).not.toBe('full-success');
@@ -515,7 +684,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         method: 'POST',
         url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
         headers: { cookie },
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie: cookie,
+        }),
       });
 
       expect(response.statusCode).toBe(200);
@@ -553,6 +725,185 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .from(outboxMessage)
         .where(eq(outboxMessage.churchId, fixture.churchA.id));
       expect(outboxKinds).toEqual([{ kind: 'notification' }]);
+    });
+  });
+
+  describe('reviewed bundle consistency', () => {
+    async function churchAAccessOf(userId: string) {
+      return testDb
+        .select({ role: member.role })
+        .from(member)
+        .where(
+          and(
+            eq(member.userId, userId),
+            eq(member.organizationId, fixture.churchA.id),
+          ),
+        );
+    }
+
+    async function grantedMinistriesOf(userId: string) {
+      const rows = await testDb
+        .select({
+          ministryId: ministryMembership.ministryId,
+          ministryAccessLevel: ministryMembership.ministryAccessLevel,
+        })
+        .from(ministryMembership)
+        .innerJoin(volunteer, eq(volunteer.id, ministryMembership.volunteerId))
+        .where(
+          and(
+            eq(volunteer.userId, userId),
+            eq(volunteer.churchId, fixture.churchA.id),
+          ),
+        )
+        .orderBy(ministryMembership.ministryId);
+      return rows;
+    }
+
+    async function invitationStatusOf(id: string) {
+      const [row] = await testDb
+        .select({ status: ministryInvitation.status })
+        .from(ministryInvitation)
+        .where(eq(ministryInvitation.id, id));
+      return row?.status;
+    }
+
+    it('one acceptance grants exactly the reviewed bundle: the Church Access Level and every Ministry', async () => {
+      const bundle = await mintAdminBundleForAdminB();
+      const cookie = await createSessionCookie({ userId: fixture.adminB });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${bundle.kidsId}/accept`,
+        headers: { cookie },
+        payload: await reviewedAcceptance({
+          invitationId: bundle.kidsId,
+          cookie,
+        }),
+      });
+
+      expect(response.json()).toMatchObject({ kind: 'full-success' });
+      expect(await churchAAccessOf(fixture.adminB)).toEqual([
+        { role: 'admin' },
+      ]);
+      expect(await grantedMinistriesOf(fixture.adminB)).toEqual(
+        [
+          {
+            ministryId: fixture.ministryOneA,
+            ministryAccessLevel: 'volunteer',
+          },
+          { ministryId: fixture.ministryTwoA, ministryAccessLevel: 'leader' },
+        ].sort((left, right) =>
+          left.ministryId.localeCompare(right.ministryId),
+        ),
+      );
+    });
+
+    const staleChanges = [
+      {
+        change: 'a Ministry invitation is added',
+        apply: async () => {
+          await invitationManager.mint({
+            churchId: ChurchId.from(fixture.churchA.id),
+            ministryId: MinistryId.from(fixture.ministryTwoA),
+            inviterId: UserId.from(fixture.adminA),
+            email: `${fixture.adminB}@fixture.test`,
+            ministryAccessLevel: 'leader',
+            roleIds: [],
+          });
+        },
+        reviewedHalves: 1,
+      },
+      {
+        change: 'a Ministry invitation is revoked',
+        apply: async (bundle: StaleBundle) => {
+          await invitationManager.revoke({
+            churchId: ChurchId.from(fixture.churchA.id),
+            ministryId: MinistryId.from(fixture.ministryTwoA),
+            ministryInvitationId: bundle.kidsId as never,
+            callerId: UserId.from(fixture.adminA),
+          });
+        },
+        reviewedHalves: 2,
+      },
+      {
+        change: 'a Ministry invitation expires',
+        apply: async (bundle: StaleBundle) => {
+          await testDb
+            .update(ministryInvitation)
+            .set({ expiresAt: new Date(Date.now() - 60_000) })
+            .where(eq(ministryInvitation.id, bundle.kidsId as string));
+        },
+        reviewedHalves: 2,
+      },
+      {
+        change: 'the Church Access Level changes',
+        apply: async () => {
+          await invitationManager.mintAdmin({
+            churchId: ChurchId.from(fixture.churchA.id),
+            inviterId: UserId.from(fixture.adminA),
+            email: `${fixture.adminB}@fixture.test`,
+          });
+        },
+        reviewedHalves: 2,
+      },
+    ];
+
+    it.each(
+      staleChanges,
+    )('refuses a stale review without any grant when $change, then accepts the refreshed offer', async ({
+      apply,
+      reviewedHalves,
+    }) => {
+      const email = `${fixture.adminB}@fixture.test`;
+      const worship = await invitationManager.mint({
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryId: MinistryId.from(fixture.ministryOneA),
+        inviterId: UserId.from(fixture.adminA),
+        email,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+      });
+      const kids =
+        reviewedHalves === 2
+          ? await invitationManager.mint({
+              churchId: ChurchId.from(fixture.churchA.id),
+              ministryId: MinistryId.from(fixture.ministryTwoA),
+              inviterId: UserId.from(fixture.adminA),
+              email,
+              ministryAccessLevel: 'leader',
+              roleIds: [],
+            })
+          : undefined;
+      const cookie = await createSessionCookie({ userId: fixture.adminB });
+      const stalePayload = await reviewedAcceptance({
+        invitationId: worship.id,
+        cookie,
+      });
+
+      await apply({ kidsId: kids?.id });
+      const stale = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${worship.id}/accept`,
+        headers: { cookie },
+        payload: stalePayload,
+      });
+
+      expect(stale.json()).toEqual({ kind: 'offer-changed' });
+      expect(await churchAAccessOf(fixture.adminB)).toEqual([]);
+      expect(await grantedMinistriesOf(fixture.adminB)).toEqual([]);
+      expect(await invitationStatusOf(worship.id)).toBe('pending');
+
+      const fresh = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${worship.id}/accept`,
+        headers: { cookie },
+        payload: await reviewedAcceptance({
+          invitationId: worship.id,
+          cookie,
+        }),
+      });
+      expect(fresh.json()).toMatchObject({ kind: 'full-success' });
+      expect(await invitationStatusOf(worship.id)).toBe('accepted');
     });
   });
 
@@ -815,7 +1166,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         method: 'POST',
         url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
         headers: { cookie },
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie: cookie,
+        }),
       });
 
       expect(response.json()).toEqual({ kind: 'identity-mismatch' });
@@ -858,7 +1212,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         method: 'POST',
         url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
         headers: { cookie },
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie: cookie,
+        }),
       });
 
       expect(response.json()).toMatchObject({ kind: 'full-success' });
@@ -896,7 +1253,10 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         method: 'POST',
         url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
         headers: { cookie },
-        payload: { idempotencyKey: crypto.randomUUID() },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie: cookie,
+        }),
       });
 
       expect(response.json()).toMatchObject({ kind: 'full-success' });

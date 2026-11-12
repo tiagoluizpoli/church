@@ -97,6 +97,8 @@ interface RedemptionFailureDescription {
   description: string;
   canRetry: boolean;
   clearCode: boolean;
+  /** The email has a login: the signed-in review is the way on. */
+  offersSignedInReview?: boolean;
 }
 
 interface DescribeRedemptionOutcomeInput {
@@ -104,10 +106,13 @@ interface DescribeRedemptionOutcomeInput {
     RedeemChurchInvitation200,
     { kind: 'full-success' } | { kind: 'church-only' }
   >;
+  /** A paired offer can be reviewed and accepted signed in. */
+  paired: boolean;
 }
 
 function describeRedemptionOutcome({
   outcome,
+  paired,
 }: DescribeRedemptionOutcomeInput): RedemptionFailureDescription {
   // Retryable failures rolled every write back, so the same form can resubmit.
   if (outcome.kind === 'retryable-failure') {
@@ -124,6 +129,15 @@ function describeRedemptionOutcome({
       description: m.redemption_failure_code_description(),
       canRetry: true,
       clearCode: true,
+    };
+  }
+  if (outcome.reason === 'EMAIL_ALREADY_REGISTERED' && paired) {
+    return {
+      title: m.redemption_failure_registered_title(),
+      description: m.redemption_failure_registered_paired_description(),
+      canRetry: false,
+      clearCode: false,
+      offersSignedInReview: true,
     };
   }
   if (outcome.reason === 'EMAIL_ALREADY_REGISTERED') {
@@ -213,7 +227,8 @@ function ChurchInvitationJoinRoute() {
         });
         return;
       }
-      if (describeRedemptionOutcome({ outcome }).clearCode) {
+      const paired = (previewQuery.data?.ministries.length ?? 0) > 0;
+      if (describeRedemptionOutcome({ outcome, paired }).clearCode) {
         form.setFieldValue('code', '');
       }
     },
@@ -285,7 +300,14 @@ function ChurchInvitationJoinRoute() {
     );
   }
 
-  const failure = outcome ? describeRedemptionOutcome({ outcome }) : null;
+  // A paired offer is reviewed signed in through any of its Ministry halves.
+  const reviewInvitationId = preview.ministries[0]?.invitationId;
+  const failure = outcome
+    ? describeRedemptionOutcome({
+        outcome,
+        paired: reviewInvitationId !== undefined,
+      })
+    : null;
   const cooldownSeconds = remainingCooldownSeconds({ codeSentAt, now });
   const declineThrottled = declineMutation.isError;
   const codeRequestThrottled =
@@ -336,6 +358,9 @@ function ChurchInvitationJoinRoute() {
           >
             {m.join_decline()}
           </Button>
+          {reviewInvitationId ? (
+            <SignedInReviewPrompt invitationId={reviewInvitationId} />
+          ) : null}
           <AlertDialog
             open={confirmingDecline}
             onOpenChange={setConfirmingDecline}
@@ -378,7 +403,11 @@ function ChurchInvitationJoinRoute() {
           </p>
 
           {failure ? (
-            <Notice title={failure.title} description={failure.description} />
+            <Notice title={failure.title} description={failure.description}>
+              {failure.offersSignedInReview && reviewInvitationId ? (
+                <SignedInReviewLink invitationId={reviewInvitationId} />
+              ) : null}
+            </Notice>
           ) : null}
 
           <form.Field name="code">
@@ -476,6 +505,31 @@ function ChurchInvitationJoinRoute() {
         </form>
       )}
     </RedemptionShell>
+  );
+}
+
+interface SignedInReviewLinkProps {
+  invitationId: string;
+}
+
+/** The authenticated review of the whole offer; signing in returns to it. */
+function SignedInReviewLink({ invitationId }: SignedInReviewLinkProps) {
+  return (
+    <Link
+      to="/invitations/ministry/$invitationId"
+      params={{ invitationId }}
+      className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+    >
+      {m.join_sign_in_to_review()}
+    </Link>
+  );
+}
+
+function SignedInReviewPrompt({ invitationId }: SignedInReviewLinkProps) {
+  return (
+    <p className="text-center text-muted-foreground text-sm">
+      {m.join_has_account()} <SignedInReviewLink invitationId={invitationId} />
+    </p>
   );
 }
 

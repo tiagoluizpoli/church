@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
@@ -101,6 +101,50 @@ describe('validate lock', () => {
     } finally {
       holder.kill();
     }
+  });
+
+  // Regression: the slot's own signal handler exited before the lane runner
+  // could stop its steps, so a killed gate left its test runs going while the
+  // next gate started beside them on the same databases.
+  it('keeps the slot until a signalled gate has stopped its running steps', async () => {
+    const validation = join(import.meta.dir, '../../validation');
+    const step =
+      "console.log('step ' + process.pid); setInterval(() => {}, 1000)";
+    const script = `
+      const { acquireValidateLock } = await import(${JSON.stringify(`${validation}/validate-lock`)});
+      const { runLanes } = await import(${JSON.stringify(`${validation}/run-lanes`)});
+      await acquireValidateLock({ dir: ${JSON.stringify(dir)}, tier: 'affected', timeoutMs: 1000, worktree: '/wt/gate' });
+      await runLanes({ lanes: [[{ args: ['-e', ${JSON.stringify(step)}], command: 'bun', label: 'step' }]] });
+    `;
+    const gate = Bun.spawn(['bun', '-e', script], {
+      stderr: 'inherit',
+      stdout: 'pipe',
+    });
+    children.push(gate);
+    const reader = gate.stdout.getReader();
+    const decoder = new TextDecoder();
+    let printed = '';
+    while (!/step (\d+)/.test(printed)) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      printed += decoder.decode(value);
+    }
+    const stepPid = Number(printed.match(/step (\d+)/)?.[1]);
+    children.push({
+      kill: () => {
+        try {
+          process.kill(stepPid, 'SIGKILL');
+        } catch {
+          // Already stopped: the expected outcome.
+        }
+      },
+    });
+
+    gate.kill('SIGTERM');
+    await gate.exited;
+
+    expect(() => process.kill(stepPid, 0)).toThrow();
+    expect(existsSync(validateLockPath({ dir }))).toBe(false);
   });
 
   it('frees the slot when the gate fails or release is called twice', async () => {

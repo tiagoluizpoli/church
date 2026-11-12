@@ -120,15 +120,20 @@ export function MinistryPrepareList({
             </>
           )}
           rowActions={({ item }) => (
-            <Button
-              type="button"
-              size={isMobile ? 'touch' : 'sm'}
-              variant="outline"
-              data-testid={`ministry-prepare-button-${item.ministryId}`}
-              onClick={() => onSelectMinistry({ ministryId: item.ministryId })}
-            >
-              {m.prepare_ministry_view_cycles()}
-            </Button>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                size={isMobile ? 'touch' : 'sm'}
+                variant="outline"
+                className="min-h-11 md:min-h-0"
+                data-testid={`ministry-prepare-button-${item.ministryId}`}
+                onClick={() =>
+                  onSelectMinistry({ ministryId: item.ministryId })
+                }
+              >
+                {m.prepare_ministry_view_cycles()}
+              </Button>
+            </div>
           )}
           renderMobileCard={({ item }) => (
             <div

@@ -7,7 +7,7 @@ import {
   useRouter,
 } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,8 +53,9 @@ function EventBuilderRoute() {
     queryFn: () => adminApi.listMinistrySwapRequests(ministryId, { cycleId }),
     retry: false,
   });
-  const swapRequests = swapRequestList.data?.schedules.flatMap(
-    ({ requests }) => requests,
+  const swapRequests = useMemo(
+    () => swapRequestList.data?.schedules.flatMap(({ requests }) => requests),
+    [swapRequestList.data],
   );
   const [selectedSwapRequestId, setSelectedSwapRequestId] = useState<string>();
   // Open the linked request only once the list has settled, so a slow list

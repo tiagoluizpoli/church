@@ -117,14 +117,14 @@ export function SchedulesListPage() {
               </SelectContent>
             </Select>
           )}
-          <ScheduleRows schedules={current} />
+          <ScheduleRows schedules={current} explicitAction />
           {past.length > 0 && (
             <Collapsible>
               <CollapsibleTrigger render={<Button variant="ghost" />}>
                 {m.schedules_past()}
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <ScheduleRows schedules={past} />
+                <ScheduleRows schedules={past} explicitAction />
               </CollapsibleContent>
             </Collapsible>
           )}

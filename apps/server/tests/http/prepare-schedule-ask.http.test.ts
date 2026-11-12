@@ -8,9 +8,11 @@ import {
   ministryMembership,
   ministryParticipation,
   outboxMessage,
+  sector,
+  shiftRequirement,
 } from '@church/db';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   afterAll,
   afterEach,
@@ -27,8 +29,22 @@ import { ChurchNotifications } from '@/application/church-notifications';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbAvailabilityCheckManager } from '@/application/db-availability-check-manager';
+import {
+  ChurchId,
+  CycleId,
+  EventTimeBlockId,
+  MinistryId,
+  MinistryParticipationId,
+  RoleId,
+  SectorId,
+  ShiftId,
+  ShiftRequirementId,
+  UserId,
+  VolunteerId,
+} from '@/domain/branded-ids';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
@@ -41,6 +57,7 @@ import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry } from '@/seeds/builders/ministry';
+import { buildAssignment } from '@/seeds/builders/scheduling';
 import { buildAvailabilityCheck } from '@/seeds/builders/unavailable-shift';
 import {
   buildMinistryMembership,
@@ -62,6 +79,11 @@ import {
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import {
+  pauseCall,
+  releasePausedCalls,
+  waitForLockWaiter,
+} from '@/tests/test-support/paused-calls';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -81,6 +103,8 @@ const SECOND_START = new Date('2026-09-13T12:00:00.000Z');
 const SECOND_END = new Date('2026-09-13T14:00:00.000Z');
 
 let app: FastifyTypedInstance;
+// Save, Publish and Assignment race the Ask route through their managers.
+const { participationManager, assignmentManager } = createSchedulingManagers();
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
@@ -88,7 +112,7 @@ beforeAll(async () => {
   // Better Auth session is a seam.
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
-    participationManager: createSchedulingManagers().participationManager,
+    participationManager,
     availabilityCheckManager: new DbAvailabilityCheckManager({
       participationRepository: new DrizzleMinistryParticipationRepository({
         db,
@@ -144,6 +168,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  releasePausedCalls();
   vi.restoreAllMocks();
   resetClock();
 });
@@ -381,7 +406,7 @@ async function seedAskable() {
   });
   const admin = await seedPerson({ churchId, accessLevel: 'admin' });
   signIn({ userId: admin, churchId });
-  return { ...schedule, holder };
+  return { ...schedule, holder, adminUserId: admin };
 }
 
 describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
@@ -746,6 +771,304 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
 
     expect(response.statusCode).toBe(422);
     await expectNothingWritten({ ministryId });
+  });
+
+  describe('racing Save, Publish and the first Assignment', () => {
+    type Askable = Awaited<ReturnType<typeof seedAskable>>;
+
+    /** Ask holds the Schedule lock, its stages moved, until released. */
+    function pauseAskRecord() {
+      return pauseCall(
+        DrizzleAvailabilityCheckRepository.prototype,
+        'createAskRecord',
+      );
+    }
+
+    /** A holder of Usher alone: asked only once a Save makes the Schedule need Usher. */
+    function seedUsherHolder(askable: Askable) {
+      return seedServingPerson({
+        churchId: askable.churchId,
+        ministryId: askable.ministryId,
+        roleIds: [askable.usher.id],
+      });
+    }
+
+    /** Re-saves the first Event's block so it needs Usher beside Teacher. */
+    async function saveFirstBlockNeedingUsher(askable: Askable) {
+      const [geral] = await db
+        .select({ id: sector.id })
+        .from(sector)
+        .where(
+          and(
+            eq(sector.ministryId, askable.ministryId),
+            eq(sector.name, 'Geral'),
+          ),
+        );
+      if (!geral) throw new Error('Missing Geral Sector');
+      const need = (roleId: string) => ({
+        shiftIndex: 0,
+        sectorId: SectorId.from(geral.id),
+        roleId: RoleId.from(roleId),
+        peopleNeeded: 1,
+      });
+      return participationManager.savePreparation({
+        churchId: ChurchId.from(askable.churchId),
+        participationId: MinistryParticipationId.from(
+          askable.first.participation.id,
+        ),
+        eventTimeBlockId: EventTimeBlockId.from(
+          askable.first.eventTimeBlock.id,
+        ),
+        serves: true,
+        shiftSplit: { kind: 'equal-n', n: 1 },
+        headcounts: [need(askable.teacher.id), need(askable.usher.id)],
+      });
+    }
+
+    function publishSchedule(askable: Askable) {
+      return participationManager.publishCycle({
+        churchId: ChurchId.from(askable.churchId),
+        cycleId: CycleId.from(askable.cycleId),
+        ministryId: MinistryId.from(askable.ministryId),
+        userId: UserId.from(askable.adminUserId),
+        confirmBelowFull: true,
+      });
+    }
+
+    async function holderVolunteerId(askable: Askable) {
+      const [row] = await db
+        .select({ volunteerId: ministryMembership.volunteerId })
+        .from(ministryMembership)
+        .where(eq(ministryMembership.id, askable.holder.membershipId));
+      if (!row) throw new Error('Missing holder fixture');
+      return row.volunteerId;
+    }
+
+    async function firstTeacherRequirementId(askable: Askable) {
+      const [row] = await db
+        .select({ id: shiftRequirement.id })
+        .from(shiftRequirement)
+        .where(
+          and(
+            eq(shiftRequirement.shiftId, askable.first.shift.id),
+            eq(shiftRequirement.roleId, askable.teacher.id),
+          ),
+        );
+      if (!row) throw new Error('Missing Teacher requirement');
+      return row.id;
+    }
+
+    async function assignHolderToFirst(askable: Askable) {
+      return assignmentManager.createParticipationAssignment({
+        churchId: ChurchId.from(askable.churchId),
+        shiftId: ShiftId.from(askable.first.shift.id),
+        volunteerId: VolunteerId.from(await holderVolunteerId(askable)),
+        actorId: UserId.from(askable.adminUserId),
+        shiftRequirementId: ShiftRequirementId.from({
+          raw: await firstTeacherRequirementId(askable),
+        }),
+      });
+    }
+
+    async function stateOf(participationId: string) {
+      const [row] = await db
+        .select({ state: ministryParticipation.state })
+        .from(ministryParticipation)
+        .where(eq(ministryParticipation.id, participationId));
+      return row?.state;
+    }
+
+    /** One Ask: a check and one notice per asked user, the Teacher holder by default. */
+    async function expectAsked(
+      askable: Askable,
+      askedUserIds = [askable.holder.userId],
+    ) {
+      expect(await listChecks()).toHaveLength(askedUserIds.length);
+      expect(await listAskRecords()).toHaveLength(1);
+      const queued = await listOutbox();
+      expect(
+        queued
+          .map(({ payload }) => (payload as QueuedPayload).to.userId)
+          .sort(),
+      ).toEqual([...askedUserIds].sort());
+    }
+
+    async function expectNotAsked() {
+      expect(await listChecks()).toEqual([]);
+      expect(await listAskRecords()).toEqual([]);
+      expect(await listOutbox()).toEqual([]);
+    }
+
+    it('a Save waiting on the Ask lands on the asked Schedule without moving its stage', async () => {
+      const askable = await seedAskable();
+      await seedUsherHolder(askable);
+      const { paused, release } = pauseAskRecord();
+
+      const asking = ask(askable);
+      await paused;
+      const saving = saveFirstBlockNeedingUsher(askable);
+      await waitForLockWaiter();
+      release();
+      const [asked, saved] = await Promise.allSettled([asking, saving]);
+
+      expect(asked).toMatchObject({
+        status: 'fulfilled',
+        value: { statusCode: 200 },
+      });
+      expect(saved.status).toBe('fulfilled');
+      expect(await listParticipationStates(askable.ministryId)).toEqual([
+        'availability_requested',
+        'availability_requested',
+      ]);
+      await expectAsked(askable);
+    });
+
+    it('an Ask waiting on a Save asks for the Role the Save added', async () => {
+      const askable = await seedAskable();
+      const usherHolder = await seedUsherHolder(askable);
+      const { paused, release } = pauseCall(
+        DrizzleMinistryParticipationRepository.prototype,
+        'touch',
+      );
+
+      const saving = saveFirstBlockNeedingUsher(askable);
+      await paused;
+      const asking = ask(askable);
+      await waitForLockWaiter();
+      release();
+      const [saved, asked] = await Promise.allSettled([saving, asking]);
+
+      expect(saved.status).toBe('fulfilled');
+      expect(asked).toMatchObject({
+        status: 'fulfilled',
+        value: { statusCode: 200 },
+      });
+      expect(await listParticipationStates(askable.ministryId)).toEqual([
+        'availability_requested',
+        'availability_requested',
+      ]);
+      await expectAsked(askable, [askable.holder.userId, usherHolder.userId]);
+    });
+
+    it('a Publish waiting on the Ask finds no Assignments and leaves it asked', async () => {
+      const askable = await seedAskable();
+      const { paused, release } = pauseAskRecord();
+
+      const asking = ask(askable);
+      await paused;
+      const publishing = publishSchedule(askable);
+      await waitForLockWaiter();
+      release();
+      const [asked, published] = await Promise.allSettled([asking, publishing]);
+
+      expect(asked).toMatchObject({
+        status: 'fulfilled',
+        value: { statusCode: 200 },
+      });
+      expect(published).toMatchObject({
+        status: 'rejected',
+        reason: { code: 'SCHEDULE_HAS_NO_ASSIGNMENTS' },
+      });
+      expect(await listParticipationStates(askable.ministryId)).toEqual([
+        'availability_requested',
+        'availability_requested',
+      ]);
+      await expectAsked(askable);
+    });
+
+    it('a repeat Ask waiting on a Publish refuses the published Schedule and writes nothing', async () => {
+      const askable = await seedAskable();
+      await db
+        .update(ministryParticipation)
+        .set({ state: 'assigning' })
+        .where(eq(ministryParticipation.ministryId, askable.ministryId));
+      await buildAssignment({
+        db,
+        churchId: askable.churchId,
+        participationId: askable.first.participation.id,
+        shiftId: askable.first.shift.id,
+        volunteerId: await holderVolunteerId(askable),
+        roleId: askable.teacher.id,
+        shiftRequirementId: await firstTeacherRequirementId(askable),
+        status: 'confirmed',
+      });
+      const { paused, release } = pauseCall(
+        DrizzleMinistryParticipationRepository.prototype,
+        'updateState',
+      );
+
+      const publishing = publishSchedule(askable);
+      await paused;
+      const asking = ask(askable);
+      await waitForLockWaiter();
+      release();
+      const [published, asked] = await Promise.allSettled([publishing, asking]);
+
+      expect(published).toMatchObject({
+        status: 'fulfilled',
+        value: { published: true },
+      });
+      expect(asked).toMatchObject({
+        status: 'fulfilled',
+        value: { statusCode: 409 },
+      });
+      if (asked.status === 'fulfilled')
+        expect(asked.value.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+      expect(await listParticipationStates(askable.ministryId)).toEqual([
+        'published',
+        'published',
+      ]);
+      await expectNotAsked();
+    });
+
+    it('a first Assignment waiting on the Ask moves its participation on to assigning', async () => {
+      const askable = await seedAskable();
+      const { paused, release } = pauseAskRecord();
+
+      const asking = ask(askable);
+      await paused;
+      const assigning = assignHolderToFirst(askable);
+      await waitForLockWaiter();
+      release();
+      const [asked, assigned] = await Promise.allSettled([asking, assigning]);
+
+      expect(asked).toMatchObject({
+        status: 'fulfilled',
+        value: { statusCode: 200 },
+      });
+      expect(assigned.status).toBe('fulfilled');
+      expect(await stateOf(askable.first.participation.id)).toBe('assigning');
+      expect(await stateOf(askable.second.participation.id)).toBe(
+        'availability_requested',
+      );
+      await expectAsked(askable);
+    });
+
+    it('an Ask waiting on a first Assignment still asks the whole Schedule once', async () => {
+      const askable = await seedAskable();
+      const { paused, release } = pauseCall(
+        DrizzleAssignmentAuditRepository.prototype,
+        'create',
+      );
+
+      const assigning = assignHolderToFirst(askable);
+      await paused;
+      const asking = ask(askable);
+      await waitForLockWaiter();
+      release();
+      const [assigned, asked] = await Promise.allSettled([assigning, asking]);
+
+      expect(assigned.status).toBe('fulfilled');
+      expect(asked).toMatchObject({
+        status: 'fulfilled',
+        value: { statusCode: 200 },
+      });
+      expect(await listParticipationStates(askable.ministryId)).toEqual([
+        'availability_requested',
+        'availability_requested',
+      ]);
+      await expectAsked(askable);
+    });
   });
 
   describe('access', () => {

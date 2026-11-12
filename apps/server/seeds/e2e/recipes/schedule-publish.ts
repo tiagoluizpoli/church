@@ -7,6 +7,7 @@ import {
   buildShift,
   buildShiftRequirement,
 } from '../../builders/scheduling';
+import { buildConfirmedAvailabilityCheck } from '../../builders/unavailable-shift';
 import type { SeedRecipeLoadInput } from '../../recipe';
 import {
   type CreateJourneyRecipeInput,
@@ -22,6 +23,7 @@ import {
   buildAssignChurch,
   EVENT_END_TIME,
   EVENT_START_TIME,
+  personaUserKind,
 } from './assign-church';
 import type { AssignCycleSummary } from './assign-event';
 
@@ -31,7 +33,9 @@ import type { AssignCycleSummary } from './assign-event';
  * `availability_requested`. Publishing is cycle-wide, so the cycle (and both
  * Participations) belong to this journey alone. The worship Ministry needs
  * two Ushers; one qualified Volunteer persona and one pool Volunteer are
- * candidates, so assigning "by name" is a real choice.
+ * candidates, so assigning "by name" is a real choice. Only the Volunteer
+ * persona has confirmed availability, so an Assignment proposal suggests
+ * exactly that persona and leaves one Usher place open (#873).
  */
 
 /* Own Event/EventTimeBlock builder, not `buildAssignEvent`: both Ministries take
@@ -223,6 +227,21 @@ export function createSchedulePublishRecipe({
         requirementId: requirement.id,
       };
     }
+
+    await buildConfirmedAvailabilityCheck({
+      db,
+      churchId,
+      cycleId: cycle.id,
+      ministryMembershipId: idOf({
+        kind: `ministry-membership:${personaUserKind({ key: 'volunteer' })}:worship`,
+      }),
+      id: idOf({ kind: 'availability-check:volunteer' }),
+      confirmedAt: anchoredInstant({
+        anchor,
+        dayOffset: 0,
+        time: EVENT_START_TIME,
+      }),
+    });
 
     return {
       anchor,

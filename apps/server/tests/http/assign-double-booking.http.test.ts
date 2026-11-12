@@ -5,6 +5,7 @@ import {
   assignmentAudit,
   availabilityCheck,
   church,
+  ministryMembership,
   ministryParticipation,
   outboxMessage,
   shiftRequirement,
@@ -24,6 +25,10 @@ import {
 import { AssignController } from '@/api/controllers/assign-controller';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
 import type { CycleBuilderResponse } from '@/api/dtos/cycle-builder.dto';
+import {
+  proposalReviewTokenFor,
+  type ReviewedAddition,
+} from '@/domain/services/assignment-proposal';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
@@ -393,6 +398,575 @@ describe('builder eligibility contract', () => {
         startTime: '2026-09-07T09:30:00.000Z',
         endTime: '2026-09-07T10:30:00.000Z',
       },
+    });
+  });
+});
+
+describe('Assignment proposal preview', () => {
+  interface SetScheduleStateInput {
+    participationId: string;
+    state: 'preparing' | 'availability_requested' | 'assigning' | 'published';
+  }
+
+  async function setScheduleState({
+    participationId,
+    state,
+  }: SetScheduleStateInput) {
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state })
+      .where(eq(ministryParticipation.id, participationId));
+  }
+
+  interface AskInput {
+    churchId: string;
+    cycleId: string;
+    ministryId: string;
+    membershipId: string;
+    state: 'pending' | 'confirmed';
+  }
+
+  async function ask({ membershipId, ...input }: AskInput) {
+    return buildAvailabilityCheck({
+      db: schedulingTestDb,
+      ...input,
+      ministryMembershipId: membershipId,
+    });
+  }
+
+  type ProposalSeed = Awaited<ReturnType<typeof seedCrossMinistryOverlap>>;
+
+  async function propose(seed: ProposalSeed) {
+    return app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/assignment-proposal?ministryId=${seed.ministryId}`,
+    });
+  }
+
+  it('proposes from confirmed answers only, keeps existing Assignments, skips cross-Ministry overlaps and writes nothing', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    await setScheduleState({
+      participationId: seed.targetParticipationId,
+      state: 'assigning',
+    });
+    const scope = {
+      churchId: seed.churchId,
+      cycleId: seed.cycleId,
+      ministryId: seed.ministryId,
+    };
+    const memberships = await schedulingTestDb
+      .select()
+      .from(ministryMembership)
+      .where(eq(ministryMembership.ministryId, seed.ministryId));
+    const membershipOf = (volunteerId: string) =>
+      memberships.find((row) => row.volunteerId === volunteerId)?.id ?? '';
+    await ask({
+      ...scope,
+      membershipId: membershipOf(seed.freeVolunteerId),
+      state: 'confirmed',
+    });
+    await ask({
+      ...scope,
+      membershipId: membershipOf(seed.doubleBookedVolunteerId),
+      state: 'confirmed',
+    });
+    const unanswered = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Unanswered',
+      email: 'proposal-unanswered@test.com',
+    });
+    await seedRoleQualification({
+      churchId: seed.churchId,
+      membershipId: unanswered.membership.id,
+      roleId: seed.targetRoleId,
+    });
+    await ask({
+      ...scope,
+      membershipId: unanswered.membership.id,
+      state: 'pending',
+    });
+    const existing = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Already assigned',
+      email: 'proposal-existing@test.com',
+    });
+    await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: existing.volunteer.id,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
+    const assignmentsBefore = await schedulingTestDb.select().from(assignment);
+
+    const response = await propose(seed);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      additions: [
+        {
+          volunteerId: seed.freeVolunteerId,
+          volunteerName: 'Free Volunteer',
+          shiftRequirementId: seed.targetRequirementId,
+          shiftId: seed.targetShiftId,
+          reason: {
+            eligibleShiftCount: 1,
+            needCandidateCount: 1,
+            decidedBy: 'only_candidate',
+          },
+        },
+      ],
+      gaps: [],
+      excludedUnconfirmedCount: 1,
+      emptyReason: null,
+      reviewToken: proposalReviewTokenFor({
+        cycleId: seed.cycleId,
+        ministryId: seed.ministryId,
+        additions: [
+          {
+            shiftRequirementId: seed.targetRequirementId,
+            volunteerId: seed.freeVolunteerId,
+          },
+        ] as ReviewedAddition[],
+      }),
+    });
+    // The overlap is used, never described.
+    expect(response.body).not.toContain('Other ministry');
+    expect(await schedulingTestDb.select().from(assignment)).toEqual(
+      assignmentsBefore,
+    );
+    const [participation] = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.id, seed.targetParticipationId));
+    expect(participation?.state).toBe('assigning');
+  });
+
+  it('explains an empty proposal when nobody has confirmed', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    await setScheduleState({
+      participationId: seed.targetParticipationId,
+      state: 'availability_requested',
+    });
+
+    const response = await propose(seed);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      additions: [],
+      gaps: [
+        {
+          shiftRequirementId: seed.targetRequirementId,
+          shiftId: seed.targetShiftId,
+          remaining: 2,
+        },
+      ],
+      excludedUnconfirmedCount: 0,
+      emptyReason: 'no_confirmed_responses',
+      reviewToken: expect.any(String),
+    });
+  });
+
+  it('is offered only between asking for availability and publishing', async () => {
+    const seed = await seedCrossMinistryOverlap();
+
+    const preparing = await propose(seed);
+    expect(preparing.statusCode).toBe(409);
+    expect(preparing.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+
+    await setScheduleState({
+      participationId: seed.targetParticipationId,
+      state: 'published',
+    });
+    const published = await propose(seed);
+    expect(published.statusCode).toBe(409);
+    expect(published.json().error).toBe('SCHEDULE_ALREADY_PUBLISHED');
+  });
+
+  it('requires manual-assignment authority and stays inside the active Church', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    await setScheduleState({
+      participationId: seed.targetParticipationId,
+      state: 'assigning',
+    });
+    authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: false });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+    });
+    expect((await propose(seed)).statusCode).toBe(403);
+
+    authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: true });
+    const foreign = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/assignment-proposal?ministryId=${seed.foreignMinistryId}`,
+    });
+    expect(foreign.statusCode).toBe(404);
+  });
+
+  describe('apply', () => {
+    interface ReviewedPair {
+      shiftRequirementId: string;
+      volunteerId: string;
+    }
+
+    interface PreviewBody {
+      reviewToken: string;
+      additions: ReviewedPair[];
+    }
+
+    /** Two confirmed, qualified Volunteers for the target need of two. */
+    async function seedReviewedProposal() {
+      const seed = await seedCrossMinistryOverlap();
+      await setScheduleState({
+        participationId: seed.targetParticipationId,
+        state: 'availability_requested',
+      });
+      const scope = {
+        churchId: seed.churchId,
+        cycleId: seed.cycleId,
+        ministryId: seed.ministryId,
+      };
+      const second = await seedVolunteerMembership({
+        churchId: seed.churchId,
+        ministryId: seed.ministryId,
+        name: 'Second Volunteer',
+        email: 'proposal-second@test.com',
+      });
+      await seedRoleQualification({
+        churchId: seed.churchId,
+        membershipId: second.membership.id,
+        roleId: seed.targetRoleId,
+      });
+      const [free] = await schedulingTestDb
+        .select()
+        .from(ministryMembership)
+        .where(eq(ministryMembership.volunteerId, seed.freeVolunteerId));
+      await ask({ ...scope, membershipId: free?.id ?? '', state: 'confirmed' });
+      const secondCheck = await ask({
+        ...scope,
+        membershipId: second.membership.id,
+        state: 'confirmed',
+      });
+      const preview: PreviewBody = (await propose(seed)).json();
+      return {
+        ...seed,
+        preview,
+        secondCheckId: secondCheck.id,
+        secondVolunteerId: second.volunteer.id,
+      };
+    }
+
+    type ReviewedSeed = Awaited<ReturnType<typeof seedReviewedProposal>>;
+
+    interface ReviewedBodyInput {
+      preview: PreviewBody;
+      applicationKey?: string;
+    }
+
+    function reviewedBody({
+      preview,
+      applicationKey = randomUUID(),
+    }: ReviewedBodyInput) {
+      return {
+        applicationKey,
+        reviewToken: preview.reviewToken,
+        additions: preview.additions.map(
+          ({ shiftRequirementId, volunteerId }) => ({
+            shiftRequirementId,
+            volunteerId,
+          }),
+        ),
+      };
+    }
+
+    interface ApplyInput {
+      seed: ReviewedSeed;
+      body: ReturnType<typeof reviewedBody>;
+    }
+
+    async function apply({ seed, body }: ApplyInput) {
+      return app.inject({
+        method: 'POST',
+        url: `/api/v1/assign/cycles/${seed.cycleId}/assignment-proposal/apply?ministryId=${seed.ministryId}`,
+        payload: body,
+      });
+    }
+
+    async function targetAssignments(seed: ReviewedSeed) {
+      return schedulingTestDb
+        .select()
+        .from(assignment)
+        .where(eq(assignment.shiftId, seed.targetShiftId));
+    }
+
+    it('creates exactly the reviewed additions as pending Assignments, starts assigning, and neither publishes nor notifies', async () => {
+      const seed = await seedReviewedProposal();
+      const body = reviewedBody({ preview: seed.preview });
+      expect(body.additions).toHaveLength(2);
+
+      const response = await apply({ seed, body });
+
+      expect(response.statusCode).toBe(200);
+      const outcome = response.json();
+      expect(outcome).toEqual({
+        applicationKey: body.applicationKey,
+        appliedAt: expect.any(String),
+        replayed: false,
+        additions: expect.arrayContaining(
+          body.additions.map((pair) => ({
+            ...pair,
+            assignmentId: expect.any(String),
+          })),
+        ),
+      });
+      const rows = await targetAssignments(seed);
+      expect(
+        rows.map(({ id, volunteerId, status, assignedBy }) => ({
+          id,
+          volunteerId,
+          status,
+          assignedBy,
+        })),
+      ).toEqual(
+        expect.arrayContaining(
+          outcome.additions.map(
+            ({
+              assignmentId,
+              volunteerId,
+            }: {
+              assignmentId: string;
+              volunteerId: string;
+            }) => ({
+              id: assignmentId,
+              volunteerId,
+              status: 'pending',
+              assignedBy: seed.adminUserId,
+            }),
+          ),
+        ),
+      );
+      expect(rows).toHaveLength(2);
+      const audits = await schedulingTestDb
+        .select()
+        .from(assignmentAudit)
+        .where(eq(assignmentAudit.correlationId, body.applicationKey));
+      expect(audits.map(({ action }) => action)).toEqual([
+        'created',
+        'created',
+      ]);
+      const [participation] = await schedulingTestDb
+        .select()
+        .from(ministryParticipation)
+        .where(eq(ministryParticipation.id, seed.targetParticipationId));
+      expect(participation?.state).toBe('assigning');
+      expect(await schedulingTestDb.select().from(outboxMessage)).toEqual([]);
+      const [overlap] = await schedulingTestDb
+        .select()
+        .from(assignment)
+        .where(eq(assignment.id, seed.overlapId));
+      expect(overlap?.status).toBe('confirmed');
+    });
+
+    it('recovers the committed outcome on a replay and after a lost response, even once published', async () => {
+      const seed = await seedReviewedProposal();
+      const body = reviewedBody({ preview: seed.preview });
+      // The response of the committing attempt never reaches the client.
+      const committed = (await apply({ seed, body })).json();
+
+      const retry = await apply({ seed, body });
+      expect(retry.statusCode).toBe(200);
+      expect(retry.json()).toEqual({ ...committed, replayed: true });
+
+      await setScheduleState({
+        participationId: seed.targetParticipationId,
+        state: 'published',
+      });
+      const late = await apply({ seed, body });
+      expect(late.statusCode).toBe(200);
+      expect(late.json()).toEqual({ ...committed, replayed: true });
+      expect(await targetAssignments(seed)).toHaveLength(2);
+    });
+
+    it('refuses altered or unreviewed pairs and a key reused for other pairs, writing nothing', async () => {
+      const seed = await seedReviewedProposal();
+      const body = reviewedBody({ preview: seed.preview });
+      const [first] = body.additions;
+      if (!first) throw new Error('Missing reviewed pair');
+
+      const dropped = await apply({
+        seed,
+        body: { ...body, additions: [first] },
+      });
+      expect(dropped.statusCode).toBe(409);
+      expect(dropped.json().error).toBe('ASSIGNMENT_PROPOSAL_CHANGED');
+      const added = await apply({
+        seed,
+        body: {
+          ...body,
+          additions: [
+            ...body.additions,
+            {
+              shiftRequirementId: seed.otherRequirementId,
+              volunteerId: seed.doubleBookedVolunteerId,
+            },
+          ],
+        },
+      });
+      expect(added.statusCode).toBe(409);
+      expect(added.json().error).toBe('ASSIGNMENT_PROPOSAL_CHANGED');
+      expect(await targetAssignments(seed)).toEqual([]);
+
+      await apply({ seed, body });
+      const replayAltered = await apply({
+        seed,
+        body: { ...body, additions: [first] },
+      });
+      expect(replayAltered.statusCode).toBe(409);
+      expect(replayAltered.json().error).toBe('ASSIGNMENT_PROPOSAL_CHANGED');
+      const reused = await apply({
+        seed,
+        body: {
+          applicationKey: body.applicationKey,
+          reviewToken: proposalReviewTokenFor({
+            cycleId: seed.cycleId,
+            ministryId: seed.ministryId,
+            additions: [first] as ReviewedAddition[],
+          }),
+          additions: [first],
+        },
+      });
+      expect(reused.statusCode).toBe(409);
+      expect(reused.json().error).toBe('ASSIGNMENT_PROPOSAL_CHANGED');
+      expect(await targetAssignments(seed)).toHaveLength(2);
+    });
+
+    const staleChanges: [string, (seed: ReviewedSeed) => Promise<unknown>][] = [
+      [
+        'a reviewed Volunteer withdraws availability',
+        (seed) =>
+          schedulingTestDb
+            .update(availabilityCheck)
+            .set({ state: 'pending' })
+            .where(eq(availabilityCheck.id, seed.secondCheckId)),
+      ],
+      [
+        'the requirement needs fewer people',
+        (seed) =>
+          schedulingTestDb
+            .update(shiftRequirement)
+            .set({ peopleNeeded: 1 })
+            .where(eq(shiftRequirement.id, seed.targetRequirementId)),
+      ],
+      [
+        'a manual Assignment takes a reviewed Volunteer',
+        (seed) =>
+          app.inject({
+            method: 'POST',
+            url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+            payload: {
+              volunteerId: seed.secondVolunteerId,
+              shiftRequirementId: seed.targetRequirementId,
+            },
+          }),
+      ],
+      [
+        'the Shift starts',
+        async () =>
+          setTestClock({
+            instant: parseInstant({ value: '2026-09-07T09:00:00.000Z' }),
+          }),
+      ],
+    ];
+
+    for (const [change, makeChange] of staleChanges) {
+      it(`refuses a stale preview without partial writes when ${change}`, async () => {
+        const seed = await seedReviewedProposal();
+        await makeChange(seed);
+        const before = await targetAssignments(seed);
+
+        const response = await apply({
+          seed,
+          body: reviewedBody({ preview: seed.preview }),
+        });
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json().error).toBe('ASSIGNMENT_PROPOSAL_STALE');
+        expect(await targetAssignments(seed)).toEqual(before);
+      });
+    }
+
+    it('keeps a preview valid across unrelated changes', async () => {
+      const seed = await seedReviewedProposal();
+      const late = await seedVolunteerMembership({
+        churchId: seed.churchId,
+        ministryId: seed.ministryId,
+        name: 'Late Volunteer',
+        email: 'proposal-late@test.com',
+      });
+      await seedRoleQualification({
+        churchId: seed.churchId,
+        membershipId: late.membership.id,
+        roleId: seed.targetRoleId,
+      });
+      await ask({
+        churchId: seed.churchId,
+        cycleId: seed.cycleId,
+        ministryId: seed.ministryId,
+        membershipId: late.membership.id,
+        state: 'confirmed',
+      });
+      await schedulingTestDb
+        .update(shiftRequirement)
+        .set({ peopleNeeded: 3 })
+        .where(eq(shiftRequirement.id, seed.otherRequirementId));
+
+      const response = await apply({
+        seed,
+        body: reviewedBody({ preview: seed.preview }),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(await targetAssignments(seed)).toHaveLength(2);
+    });
+
+    it('rechecks authority, lifecycle and the active Church on every apply', async () => {
+      const seed = await seedReviewedProposal();
+      const body = reviewedBody({ preview: seed.preview });
+
+      authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: false });
+      authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+        allowed: false,
+      });
+      expect((await apply({ seed, body })).statusCode).toBe(403);
+      expect(await targetAssignments(seed)).toEqual([]);
+
+      authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: true });
+      await setScheduleState({
+        participationId: seed.targetParticipationId,
+        state: 'published',
+      });
+      const published = await apply({ seed, body });
+      expect(published.statusCode).toBe(409);
+      expect(published.json().error).toBe('SCHEDULE_ALREADY_PUBLISHED');
+      expect(await targetAssignments(seed)).toEqual([]);
+
+      await setScheduleState({
+        participationId: seed.targetParticipationId,
+        state: 'assigning',
+      });
+      expect((await apply({ seed, body })).statusCode).toBe(200);
+      activeChurchResolver.resolve.mockResolvedValue({
+        status: 'resolved',
+        churchId: seed.foreignChurchId,
+        volunteerId: null,
+        hasVolunteerMembership: false,
+        autoSelected: false,
+      });
+      // Another Church neither finds the Schedule nor recovers the outcome.
+      expect((await apply({ seed, body })).statusCode).toBe(404);
     });
   });
 });

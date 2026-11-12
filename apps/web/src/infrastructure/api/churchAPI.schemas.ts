@@ -4061,6 +4061,123 @@ export type GetCycleAuditLog404 = {
   message: string;
 };
 
+export type GetAssignmentProposalParams = {
+ministryId: string;
+};
+
+export type GetAssignmentProposal200AdditionsItemReasonDecidedBy = typeof GetAssignmentProposal200AdditionsItemReasonDecidedBy[keyof typeof GetAssignmentProposal200AdditionsItemReasonDecidedBy];
+
+
+export const GetAssignmentProposal200AdditionsItemReasonDecidedBy = {
+  only_candidate: 'only_candidate',
+  fewest_eligible_shifts: 'fewest_eligible_shifts',
+  fewest_cycle_assignments: 'fewest_cycle_assignments',
+  stable_order: 'stable_order',
+} as const;
+
+export type GetAssignmentProposal200AdditionsItemReason = {
+  eligibleShiftCount: number;
+  needCandidateCount: number;
+  decidedBy: GetAssignmentProposal200AdditionsItemReasonDecidedBy;
+};
+
+export type GetAssignmentProposal200AdditionsItem = {
+  volunteerId: string;
+  volunteerName: string;
+  shiftRequirementId: string;
+  shiftId: string;
+  reason: GetAssignmentProposal200AdditionsItemReason;
+};
+
+export type GetAssignmentProposal200GapsItem = {
+  shiftRequirementId: string;
+  shiftId: string;
+  remaining: number;
+};
+
+/**
+ * @nullable
+ */
+export type GetAssignmentProposal200EmptyReason = typeof GetAssignmentProposal200EmptyReason[keyof typeof GetAssignmentProposal200EmptyReason] | null;
+
+
+export const GetAssignmentProposal200EmptyReason = {
+  no_open_needs: 'no_open_needs',
+  no_confirmed_responses: 'no_confirmed_responses',
+  no_eligible_placements: 'no_eligible_placements',
+} as const;
+
+export type GetAssignmentProposal200 = {
+  additions: GetAssignmentProposal200AdditionsItem[];
+  gaps: GetAssignmentProposal200GapsItem[];
+  excludedUnconfirmedCount: number;
+  /** @nullable */
+  emptyReason: GetAssignmentProposal200EmptyReason;
+  reviewToken: string;
+};
+
+export type GetAssignmentProposal403 = {
+  error: string;
+  message: string;
+};
+
+export type GetAssignmentProposal404 = {
+  error: string;
+  message: string;
+};
+
+export type GetAssignmentProposal409 = {
+  error: string;
+  message: string;
+};
+
+export type ApplyAssignmentProposalParams = {
+ministryId: string;
+};
+
+export type ApplyAssignmentProposalBodyAdditionsItem = {
+  shiftRequirementId: string;
+  volunteerId: string;
+};
+
+export type ApplyAssignmentProposalBody = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  applicationKey: string;
+  /** @minLength 1 */
+  reviewToken: string;
+  /** @minItems 1 */
+  additions: ApplyAssignmentProposalBodyAdditionsItem[];
+};
+
+export type ApplyAssignmentProposal200AdditionsItem = {
+  assignmentId: string;
+  shiftRequirementId: string;
+  volunteerId: string;
+};
+
+export type ApplyAssignmentProposal200 = {
+  applicationKey: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  appliedAt: string;
+  replayed: boolean;
+  additions: ApplyAssignmentProposal200AdditionsItem[];
+};
+
+export type ApplyAssignmentProposal403 = {
+  error: string;
+  message: string;
+};
+
+export type ApplyAssignmentProposal404 = {
+  error: string;
+  message: string;
+};
+
+export type ApplyAssignmentProposal409 = {
+  error: string;
+  message: string;
+};
+
 export type PublishCycleParams = {
 ministryId: string;
 };
@@ -5812,6 +5929,18 @@ export type GetMinistryInvitationStatus200 = {
   roleNames: string[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   expiresAt: string;
+  /** @nullable */
+  churchAccessLevel: 'member' | 'admin' | null;
+  ministries: ({
+  invitationId: string;
+  ministryName: string;
+  ministryAccessLevel: 'volunteer' | 'leader';
+  roleNames: string[];
+  inviterName: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt: string;
+})[];
+  reviewToken: string;
 } | {
   kind: 'already-accepted';
   churchId: string;
@@ -5837,11 +5966,15 @@ export type GetMinistryInvitationStatus401 = {
 export type AcceptMinistryInvitationBody = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   idempotencyKey: string;
+  /** @minLength 1 */
+  reviewToken: string;
 };
 
 export type AcceptMinistryInvitation200 = {
   kind: 'full-success';
   volunteerId: string;
+} | {
+  kind: 'offer-changed';
 } | {
   kind: 'church-only';
   sourceChurchName: string;

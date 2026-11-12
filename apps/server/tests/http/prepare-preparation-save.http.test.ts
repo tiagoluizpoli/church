@@ -16,7 +16,7 @@ import {
 } from '@church/db';
 import { m } from '@church/i18n/messages';
 import { parseTimeOfDay } from '@church/time';
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import {
   afterAll,
   afterEach,
@@ -32,6 +32,7 @@ import { PrepareController } from '@/api/controllers/prepare-controller';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import {
+  AvailabilityCheckId,
   ChurchId,
   CycleId,
   MinistryId,
@@ -40,6 +41,7 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import { CrossMinistryScopeError } from '@/domain/errors/cross-ministry-scope';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
@@ -48,6 +50,7 @@ import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-c
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -81,6 +84,11 @@ import {
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import {
+  pauseCall,
+  releasePausedCalls,
+  waitForLockWaiter,
+} from '@/tests/test-support/paused-calls';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -93,7 +101,8 @@ const mockSetActiveOrganization = vi.mocked(mockAuth.api.setActiveOrganization);
 const db = schedulingTestDb;
 
 let app: FastifyTypedInstance;
-const { assignmentManager, participationManager } = createSchedulingManagers();
+const { assignmentManager, participationManager, volunteerManager } =
+  createSchedulingManagers();
 
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
@@ -143,8 +152,6 @@ beforeEach(async () => {
 const BLOCK_START = '2099-03-01T09:00:00.000Z';
 const BLOCK_MIDDLE = '2099-03-01T10:00:00.000Z';
 const BLOCK_END = '2099-03-01T11:00:00.000Z';
-const LOCK_WAIT_TIMEOUT_MS = 5_000;
-const LOCK_WAIT_POLL_MS = 20;
 
 interface SignInInput {
   userId: string;
@@ -420,6 +427,17 @@ function typedHeadcount(base: Base, shiftIndex: number, peopleNeeded: number) {
 }
 
 describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
+  // A failed barrier must not strand its open transaction under the next test.
+  afterEach(releasePausedCalls);
+
+  function pauseWrite(method: 'touch' | 'updateState') {
+    return pauseCall(DrizzleMinistryParticipationRepository.prototype, method);
+  }
+
+  function statusOf(saved: PromiseSettledResult<{ statusCode: number }>) {
+    return saved.status === 'fulfilled' ? saved.value.statusCode : 'rejected';
+  }
+
   it('persists a served split with its headcounts and returns the block view', async () => {
     const base = await seedPreparation();
 
@@ -1262,28 +1280,6 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
   });
 
   describe('racing writers', () => {
-    const pausedCalls: Array<() => void> = [];
-
-    // A failed barrier must not strand its open transaction under the next test.
-    afterEach(() => {
-      for (const releaseCall of pausedCalls.splice(0)) releaseCall();
-    });
-
-    /** Another transaction of this worker's database is waiting on a row lock. */
-    async function waitForLockWaiter() {
-      await vi.waitFor(
-        async () => {
-          const { rows } = await db.execute(sql`
-            SELECT count(*)::int AS waiting
-            FROM pg_stat_activity
-            WHERE datname = current_database() AND wait_event_type = 'Lock'
-          `);
-          expect(rows[0]?.waiting).toBeGreaterThan(0);
-        },
-        { timeout: LOCK_WAIT_TIMEOUT_MS, interval: LOCK_WAIT_POLL_MS },
-      );
-    }
-
     function publish(base: Base) {
       return participationManager.publishCycle({
         churchId: ChurchId.from(base.churchId),
@@ -1299,46 +1295,6 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         .from(ministryParticipation)
         .where(eq(ministryParticipation.id, base.participationId));
       return row?.state;
-    }
-
-    /** Pauses the first call of a repository write inside its transaction until the test releases it. */
-    function pauseCall<Repository extends object>(
-      prototype: Repository,
-      method: keyof Repository,
-    ) {
-      const original = prototype[method] as (input: never) => Promise<unknown>;
-      let release = () => {};
-      const released = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      let reached = () => {};
-      const paused = new Promise<void>((resolve) => {
-        reached = resolve;
-      });
-      let isFirstCall = true;
-      const pausedWrite = async function (this: Repository, input: never) {
-        if (isFirstCall) {
-          isFirstCall = false;
-          reached();
-          await released;
-        }
-        return original.call(this, input);
-      };
-      const spy = vi
-        .spyOn(prototype, method as never)
-        .mockImplementation(pausedWrite as never);
-      pausedCalls.push(() => {
-        release();
-        spy.mockRestore();
-      });
-      return { paused, release };
-    }
-
-    function pauseWrite(method: 'touch' | 'updateState') {
-      return pauseCall(
-        DrizzleMinistryParticipationRepository.prototype,
-        method,
-      );
     }
 
     /** The save is mid-transaction, holding its lock, while Publish starts and blocks. */
@@ -1531,10 +1487,6 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
     /** Waits for the overlap, or for the rival to finish without ever blocking. */
     async function waitForLockWaiterOr(rival: Promise<unknown>) {
       await Promise.race([waitForLockWaiter(), rival.catch(() => {})]);
-    }
-
-    function statusOf(saved: PromiseSettledResult<{ statusCode: number }>) {
-      return saved.status === 'fulfilled' ? saved.value.statusCode : 'rejected';
     }
 
     it('commits an Assignment a same-spans save overlapped, with no deadlock', async () => {
@@ -2270,6 +2222,134 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
             ?.shiftsChangedAfterAsk,
         ).toBe(false);
       });
+    });
+
+    describe('racing a two-Shift answer', () => {
+      /** A Volunteer holding the block's Role, with a pending check of this Cycle. */
+      async function seedAnsweringVolunteer(base: Base) {
+        const { volunteer, membership } = await seedVolunteerOf(base);
+        await seedRoleQualification({
+          churchId: base.churchId,
+          membershipId: membership.id,
+          roleId: base.roleId,
+        });
+        const check = await buildAvailabilityCheck({
+          db,
+          churchId: base.churchId,
+          cycleId: base.cycle.id,
+          ministryMembershipId: membership.id,
+        });
+        return { volunteerId: volunteer.id, checkId: check.id };
+      }
+
+      type Halves = Awaited<ReturnType<typeof seedHalves>>;
+      type Answering = Awaited<ReturnType<typeof seedAnsweringVolunteer>>;
+
+      interface AnswerHalvesInput {
+        base: Base;
+        answering: Answering;
+        halves: Halves;
+      }
+
+      /** Marks the second half before the first: the opposite of Save's Shift order. */
+      function answerBothHalves({
+        base,
+        answering,
+        halves,
+      }: AnswerHalvesInput) {
+        return volunteerManager.answerAvailabilityCheck({
+          churchId: ChurchId.from(base.churchId),
+          checkId: AvailabilityCheckId.from(answering.checkId),
+          volunteerId: VolunteerId.from(answering.volunteerId),
+          shiftIds: [
+            ShiftId.from(halves.second.id),
+            ShiftId.from(halves.first.id),
+          ],
+        });
+      }
+
+      async function markedShiftIds(checkId: string) {
+        const rows = await db
+          .select({ shiftId: unavailableShift.shiftId })
+          .from(unavailableShift)
+          .where(eq(unavailableShift.availabilityCheckId, checkId));
+        return rows.map(({ shiftId }) => shiftId).sort();
+      }
+
+      async function seedRace() {
+        const base = await seedPreparation();
+        const halves = await seedHalves(base);
+        await setParticipationState(base, 'availability_requested');
+        const answering = await seedAnsweringVolunteer(base);
+        return { base, halves, answering };
+      }
+
+      const saves = {
+        'a same-spans Save': (base: Base) => manualPayload(base, BOTH_HALVES),
+        'a re-split of the second half': (base: Base) =>
+          manualPayload(base, SPLIT_SECOND_HALF),
+        'an opt-out': () => ({ serves: false }),
+      };
+
+      for (const [saveName, payloadFor] of Object.entries(saves)) {
+        const keepsSpans = saveName === 'a same-spans Save';
+
+        it(`${saveName} waiting on the answer ${keepsSpans ? 'keeps' : 'refuses to drop'} both marks`, async () => {
+          const { base, halves, answering } = await seedRace();
+          const { paused, release } = pauseCall(
+            DrizzleUnavailableShiftRepository.prototype,
+            'replaceUnavailableShiftsForCheck',
+          );
+
+          const answer = answerBothHalves({ base, answering, halves });
+          await paused;
+          const saving = savePreparation({
+            ...base,
+            payload: payloadFor(base),
+          });
+          await waitForLockWaiter();
+          release();
+          const [answered, saved] = await Promise.allSettled([answer, saving]);
+
+          expect(answered.status).toBe('fulfilled');
+          expect(statusOf(saved)).toBe(keepsSpans ? 200 : 409);
+          expect(
+            (await blockShifts(base.eventTimeBlockId)).map(({ id }) => id),
+          ).toEqual([halves.first.id, halves.second.id]);
+          expect(await markedShiftIds(answering.checkId)).toEqual(
+            [halves.first.id, halves.second.id].sort(),
+          );
+        });
+
+        it(`an answer waiting on ${saveName} ${keepsSpans ? 'marks both Shifts' : 'refuses the removed Shift without a partial answer'}`, async () => {
+          const { base, halves, answering } = await seedRace();
+          const { paused, release } = pauseWrite('touch');
+
+          const saving = savePreparation({
+            ...base,
+            payload: payloadFor(base),
+          });
+          await paused;
+          const answer = answerBothHalves({ base, answering, halves });
+          await waitForLockWaiter();
+          release();
+          const [saved, answered] = await Promise.allSettled([saving, answer]);
+
+          expect(statusOf(saved)).toBe(200);
+          if (keepsSpans) {
+            expect(answered.status).toBe('fulfilled');
+            expect(await markedShiftIds(answering.checkId)).toEqual(
+              [halves.first.id, halves.second.id].sort(),
+            );
+          } else {
+            expect(answered.status).toBe('rejected');
+            expect((answered as PromiseRejectedResult).reason).toBeInstanceOf(
+              CrossMinistryScopeError,
+            );
+            expect(await markedShiftIds(answering.checkId)).toEqual([]);
+          }
+        });
+      }
     });
 
     describe('cancelled and declined Assignments', () => {

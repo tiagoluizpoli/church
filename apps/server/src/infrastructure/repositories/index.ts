@@ -1,5 +1,6 @@
 export { DrizzleAssignmentRepository } from './drizzle-assignment.repository';
 export { DrizzleAssignmentAuditRepository } from './drizzle-assignment-audit.repository';
+export { DrizzleAssignmentProposalApplicationRepository } from './drizzle-assignment-proposal-application.repository';
 export { DrizzleAvailabilityCheckRepository } from './drizzle-availability-check.repository';
 export { DrizzleChurchRepository } from './drizzle-church.repository';
 export { DrizzleChurchAccessRepository } from './drizzle-church-access.repository';

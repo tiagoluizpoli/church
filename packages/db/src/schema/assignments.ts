@@ -2,7 +2,9 @@ import { sql } from 'drizzle-orm';
 import {
   check,
   index,
+  jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -11,9 +13,10 @@ import {
 import { user } from './auth';
 import { availabilityCheck } from './availability-checks';
 import { church } from './church';
-import { role, volunteer } from './core';
+import { ministry, role, volunteer } from './core';
 import { assignmentStatusEnum, auditActionEnum } from './enums';
 import { ministryParticipation } from './participation';
+import { cycle } from './planning';
 import { shift, shiftRequirement } from './scheduling';
 
 export const assignment = pgTable(
@@ -115,3 +118,33 @@ export const assignmentAudit = pgTable('assignment_audit', {
     .defaultNow()
     .notNull(),
 });
+
+/**
+ * One committed Assignment proposal Apply (ADR 0013), keyed by the
+ * client's application key per Church so a retry recovers its outcome.
+ */
+export const assignmentProposalApplication = pgTable(
+  'assignment_proposal_application',
+  {
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    applicationKey: uuid('application_key').notNull(),
+    cycleId: uuid('cycle_id')
+      .notNull()
+      .references(() => cycle.id, { onDelete: 'cascade' }),
+    ministryId: uuid('ministry_id')
+      .notNull()
+      .references(() => ministry.id, { onDelete: 'cascade' }),
+    reviewToken: text('review_token').notNull(),
+    /** The created Assignments: `[{ assignmentId, shiftRequirementId, volunteerId }]`. */
+    additions: jsonb('additions').notNull(),
+    appliedBy: text('applied_by').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    appliedAt: timestamp('applied_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.churchId, table.applicationKey] })],
+);

@@ -32,6 +32,7 @@ import type {
 } from '../../domain/contracts/application';
 import type {
   AssignmentAuditRepository,
+  AssignmentProposalApplicationRepository,
   AssignmentRepository,
   AuthorityActorRepository,
   AvailabilityCheckRepository,
@@ -82,6 +83,7 @@ export interface CompositionRootDependencies {
   assignmentRepository: AssignmentRepository;
   swapRequestRepository: SwapRequestRepository;
   assignmentAuditRepository: AssignmentAuditRepository;
+  assignmentProposalApplicationRepository: AssignmentProposalApplicationRepository;
   unavailableShiftRepository: UnavailableShiftRepository;
   availabilityCheckRepository: AvailabilityCheckRepository;
   churchRepository: ChurchRepository;

@@ -1,8 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, waitFor } from '@testing-library/react';
-import { createElement } from 'react';
+import { render, renderHook, waitFor } from '@testing-library/react';
+import { createElement, memo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
+import {
+  CallerCapabilitiesScopeProvider,
+  useCallerCapabilitiesScope,
+} from '@/shared/components/caller-capabilities-scope';
+import {
+  TimezoneProvider,
+  useTimezoneContext,
+} from '@/shared/components/timezone-provider';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { callerCapabilitiesApi } from '@/utils/api-instances';
 
@@ -141,4 +148,37 @@ describe('useCallerCapabilities', () => {
     expect(result.current.hasVolunteerMembership).toBe(false);
     expect(result.current.isError).toBe(true);
   });
+});
+
+it('updates context consumers only when their identity or timezone changes', () => {
+  const consumer = vi.fn();
+  const Consumer = memo(() => {
+    consumer(useCallerCapabilitiesScope(), useTimezoneContext());
+    return null;
+  });
+  const tree = (userId: string, churchId: string, churchTimezone: string) =>
+    createElement(
+      CallerCapabilitiesScopeProvider,
+      { userId, churchId },
+      createElement(TimezoneProvider, {
+        churchTimezone,
+        children: createElement(Consumer),
+      }),
+    );
+  const { rerender } = render(tree('user-1', 'church-1', 'UTC'));
+  expect(consumer).toHaveBeenCalledTimes(1);
+  rerender(tree('user-1', 'church-1', 'UTC'));
+  expect(consumer).toHaveBeenCalledTimes(1);
+  rerender(tree('user-2', 'church-1', 'UTC'));
+  expect(consumer).toHaveBeenCalledTimes(2);
+  expect(consumer).toHaveBeenLastCalledWith(
+    { userId: 'user-2', churchId: 'church-1' },
+    { churchTimezone: 'UTC' },
+  );
+  rerender(tree('user-2', 'church-2', 'America/Sao_Paulo'));
+  expect(consumer).toHaveBeenCalledTimes(3);
+  expect(consumer).toHaveBeenLastCalledWith(
+    { userId: 'user-2', churchId: 'church-2' },
+    { churchTimezone: 'America/Sao_Paulo' },
+  );
 });

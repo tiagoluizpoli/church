@@ -1,7 +1,13 @@
 import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
-import { useState } from 'react';
-import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
+import { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import {
+  CYCLE_BUILDER_QUERY_KEY,
+  type CycleBuilderData,
+} from '../../hooks/use-cycle-builder';
 import {
   type CycleBuilderMutations,
   useCycleBuilderActions,
@@ -11,6 +17,11 @@ import {
   summarizeCycleStaffing,
 } from '../../utils/builder/cycle-builder-staffing.utils';
 import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialog';
+import {
+  type AssignmentProposal,
+  AssignmentProposalPreview,
+  type ProposalApplyState,
+} from './assignment-proposal-preview';
 import { AuditLogPanel } from './audit-log-panel';
 import { CycleBuilderMatrix } from './board/cycle-builder-matrix';
 import { CycleBuilderHeader } from './cycle-builder-header';
@@ -30,6 +41,9 @@ import {
 } from '@/components/ui/dialog';
 import { WorkspacePage } from '@/components/workspace-page';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { randomId } from '@/shared/utils/id';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
+import { adminApi } from '@/utils/api-instances';
 
 interface CycleBuilderProps {
   data: CycleBuilderData;
@@ -54,6 +68,8 @@ interface CycleBuilderProps {
   onSelectSwapRequest?: (swapRequestId: string | undefined) => void;
 }
 
+const EMPTY_SWAP_REQUESTS: LeaderSwapRequest[] = [];
+
 export function CycleBuilder({
   data,
   onPublish,
@@ -71,7 +87,7 @@ export function CycleBuilder({
   moveAssignment,
   syncedAt,
   isRefreshing,
-  swapRequests = [],
+  swapRequests = EMPTY_SWAP_REQUESTS,
   selectedSwapRequestId,
   onSelectSwapRequest,
 }: CycleBuilderProps) {
@@ -96,6 +112,63 @@ export function CycleBuilder({
   });
   const belowFullCount = publishStaffing.shiftsBelowTarget;
   const emptyPlaces = publishStaffing.required - publishStaffing.coveredPlaces;
+  const queryClient = useQueryClient();
+  const refreshBoard = () =>
+    void queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY });
+  // Each reviewed preview gets one key; every retry of it resends that key,
+  // so a lost response is recovered rather than applied twice (ADR 0013).
+  const [applicationKey, setApplicationKey] = useState('');
+  // A read, kept only in memory: discarding it writes nothing.
+  const proposal = useMutation({
+    mutationFn: () => adminApi.getAssignmentProposal(cycleId, { ministryId }),
+    onSuccess: () => setApplicationKey(randomId()),
+    onError: () => {
+      toast.error(m.builder_proposal_error());
+      // The Schedule may have moved on (e.g. published elsewhere).
+      refreshBoard();
+    },
+  });
+  const applyProposal = useMutation({
+    mutationFn: ({ reviewToken, additions }: AssignmentProposal) =>
+      adminApi.applyAssignmentProposal(
+        cycleId,
+        {
+          applicationKey,
+          reviewToken,
+          additions: additions.map(({ shiftRequirementId, volunteerId }) => ({
+            shiftRequirementId,
+            volunteerId,
+          })),
+        },
+        { ministryId },
+      ),
+    onSuccess: ({ additions }) => {
+      toast.success(m.builder_proposal_applied({ count: additions.length }));
+      proposal.reset();
+    },
+    onSettled: refreshBoard,
+  });
+  const discardProposal = () => {
+    applyProposal.reset();
+    proposal.reset();
+  };
+  const reviewNewProposal = () => {
+    applyProposal.reset();
+    proposal.mutate();
+  };
+  const applyError = applyProposal.error;
+  // A 4xx is a definite refusal; anything else may have committed.
+  const refused =
+    isAxiosError(applyError) &&
+    applyError.response !== undefined &&
+    applyError.response.status < 500;
+  const applyState: ProposalApplyState = applyProposal.isPending
+    ? { status: 'pending' }
+    : !applyError
+      ? { status: 'idle' }
+      : refused
+        ? { status: 'refused', message: requestErrorMessage(applyError) }
+        : { status: 'unknown' };
   const actions = useCycleBuilderActions({
     data,
     createAssignment,
@@ -112,11 +185,31 @@ export function CycleBuilder({
     removedAssignment?.volunteerName ?? m.builder_ui_the_volunteer();
 
   const [coverAssignmentId, setCoverAssignmentId] = useState<string>();
-  const openRequests = swapRequests.filter(({ status }) => status === 'open');
-  const openRequestEntries = openRequests.map(
-    ({ assignmentId, id }): [string, string] => [assignmentId, id],
+  const openRequestByAssignment = useMemo(() => {
+    const entries = swapRequests
+      .filter(({ status }) => status === 'open')
+      .map(({ assignmentId, id }): [string, string] => [assignmentId, id]);
+    return new Map(entries);
+  }, [swapRequests]);
+  const onOpenSwapRequest = useCallback(
+    (id: string) => onSelectSwapRequest?.(id),
+    [onSelectSwapRequest],
   );
-  const openRequestByAssignment = new Map(openRequestEntries);
+  const onCoverHandled = useCallback(() => setCoverAssignmentId(undefined), []);
+  const swapRequestContext = useMemo(
+    () => ({
+      openRequestByAssignment,
+      onOpenSwapRequest,
+      coverAssignmentId,
+      onCoverHandled,
+    }),
+    [
+      openRequestByAssignment,
+      onOpenSwapRequest,
+      coverAssignmentId,
+      onCoverHandled,
+    ],
+  );
   const selectedSwapRequest = swapRequests.find(
     ({ id }) => id === selectedSwapRequestId,
   );
@@ -150,6 +243,19 @@ export function CycleBuilder({
         <Button
           type="button"
           size={isMobile ? 'touch' : 'sm'}
+          variant="outline"
+          disabled={proposal.isPending || isPublishing}
+          onClick={() => proposal.mutate()}
+        >
+          {proposal.isPending
+            ? m.builder_proposal_loading()
+            : m.builder_proposal_open()}
+        </Button>
+      ) : null}
+      {publishableEvents.length > 0 ? (
+        <Button
+          type="button"
+          size={isMobile ? 'touch' : 'sm'}
           disabled={isPublishing || actions.isSaving}
           onClick={() => setPublishDialogOpen(true)}
         >
@@ -160,14 +266,7 @@ export function CycleBuilder({
   );
 
   return (
-    <SwapRequestBoardProvider
-      value={{
-        openRequestByAssignment,
-        onOpenSwapRequest: (id) => onSelectSwapRequest?.(id),
-        coverAssignmentId,
-        onCoverHandled: () => setCoverAssignmentId(undefined),
-      }}
-    >
+    <SwapRequestBoardProvider value={swapRequestContext}>
       <WorkspacePage data-testid="cycle-builder">
         <p
           aria-live="polite"
@@ -294,6 +393,17 @@ export function CycleBuilder({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {proposal.data ? (
+          <AssignmentProposalPreview
+            data={data}
+            proposal={proposal.data}
+            applyState={applyState}
+            onApply={applyProposal.mutate}
+            onReviewNew={reviewNewProposal}
+            onDiscard={discardProposal}
+          />
+        ) : null}
 
         <UnavailableConfirmDialog
           open={actions.unavailable !== null}

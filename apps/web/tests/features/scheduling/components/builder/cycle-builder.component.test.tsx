@@ -16,11 +16,13 @@ import {
   it,
   vi,
 } from 'vitest';
+import * as picker from '@/features/scheduling/components/builder/assignment/assignment-picker';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import type { LeaderSwapRequest } from '@/features/scheduling/components/builder/swap-request/swap-request-sheet';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
 import { renderWithProviders } from '@/tests/setup/render';
 import { adminApi } from '@/utils/api-instances';
+import * as volunteerName from '@/utils/format-volunteer-name';
 
 beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
@@ -41,6 +43,34 @@ vi.mock('@church/app-config', async (importOriginal) => {
     } as AppConfig,
   };
 });
+
+const swapContextConsumer = vi.hoisted(() => vi.fn());
+
+vi.mock(
+  '@/features/scheduling/components/builder/swap-request/swap-request-context',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/features/scheduling/components/builder/swap-request/swap-request-context')
+      >();
+    const React = await import('react');
+    const Consumer = React.memo(() => {
+      swapContextConsumer(actual.useSwapRequestBoard());
+      return null;
+    });
+    const Provider = ({
+      value,
+      children,
+    }: React.ComponentProps<typeof actual.SwapRequestBoardProvider>) =>
+      React.createElement(
+        actual.SwapRequestBoardProvider,
+        { value },
+        children,
+        React.createElement(Consumer),
+      );
+    return { ...actual, SwapRequestBoardProvider: Provider };
+  },
+);
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -201,10 +231,11 @@ function renderBuilder({
 }: RenderBuilderInput = {}) {
   const mutateAsync = vi.fn(createAssignment ?? (() => Promise.resolve({})));
   const move = vi.fn(moveAssignment ?? (() => Promise.resolve({})));
+  const onPublish = vi.fn();
   renderWithProviders(
     <CycleBuilder
       data={data}
-      onPublish={vi.fn()}
+      onPublish={onPublish}
       isPublishing={false}
       cycleId="cycle-1"
       ministryId="ministry-1"
@@ -220,7 +251,7 @@ function renderBuilder({
       onSelectSwapRequest={onSelectSwapRequest}
     />,
   );
-  return { mutateAsync, move };
+  return { mutateAsync, move, onPublish };
 }
 
 async function assignGraceHopper() {
@@ -250,6 +281,7 @@ function setupDragGeometry() {
               ? 300
               : 0;
       const size =
+        id === 'volunteer-card' ||
         id === 'cycle-requirement-side' ||
         id === 'cycle-requirement-wrong-role' ||
         id === 'cycle-requirement-wrong-shift' ||
@@ -273,6 +305,67 @@ function setupDragGeometry() {
 }
 
 describe('moving assignments', () => {
+  it('keeps volunteer presentation flat while its drag moves over one target', async () => {
+    setupDragGeometry();
+    const data = structuredClone(builderData);
+    data.events[0].eventTimeBlocks[0].shifts[0].requirements.push({
+      id: 'side',
+      roleId: 'role-1',
+      sectorName: 'Side',
+      peopleNeeded: 1,
+    });
+    const formatName = vi.spyOn(volunteerName, 'formatVolunteerName');
+    renderBuilder({ data });
+    const grip = screen.getByTestId('volunteer-card-grip');
+    fireEvent.pointerDown(grip, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 20, clientY: 10 });
+    await waitFor(() =>
+      expect(screen.getAllByTestId('volunteer-card')).toHaveLength(2),
+    );
+    fireEvent.pointerMove(document, { clientX: 120, clientY: 10 });
+    await screen.findByText(
+      /was moved over droppable area cycle-requirement:side/,
+    );
+    formatName.mockClear();
+    fireEvent.pointerMove(document, { clientX: 121, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 122, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 123, clientY: 10 });
+    expect(formatName).not.toHaveBeenCalled();
+    fireEvent.pointerUp(document, { clientX: 123, clientY: 10 });
+  });
+
+  it('keeps picker work flat during movement over the same target', async () => {
+    setupDragGeometry();
+    const data = structuredClone(builderData);
+    const shift = data.events[0].eventTimeBlocks[0].shifts[0];
+    shift.requirements.push({
+      id: 'side',
+      roleId: 'role-1',
+      sectorName: 'Side',
+      peopleNeeded: 1,
+    });
+    shift.assignments.push(existingAssignment);
+    data.assignments.push(existingAssignment);
+    const pickerRenders = vi.spyOn(picker, 'AssignmentPicker');
+    renderBuilder({ data });
+    const source = screen.getByRole('button', {
+      name: 'Drag Grace Hopper to another sector',
+    });
+    fireEvent.pointerDown(source, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 20, clientY: 10 });
+    await waitFor(() => expect(source).toHaveAttribute('aria-pressed', 'true'));
+    fireEvent.pointerMove(document, { clientX: 120, clientY: 10 });
+    await screen.findByText(
+      /was moved over droppable area cycle-requirement:side/,
+    );
+    pickerRenders.mockClear();
+    fireEvent.pointerMove(document, { clientX: 121, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 122, clientY: 10 });
+    fireEvent.pointerMove(document, { clientX: 123, clientY: 10 });
+    expect(pickerRenders).not.toHaveBeenCalled();
+    fireEvent.pointerUp(document, { clientX: 123, clientY: 10 });
+  });
+
   it('moves a dragged assignment to another sector and renders it there', async () => {
     setupDragGeometry();
     const data = structuredClone(builderData);
@@ -700,6 +793,312 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
   });
 });
 
+describe('Assignment proposal preview', () => {
+  const proposal = {
+    additions: [
+      {
+        volunteerId: 'volunteer-2',
+        volunteerName: 'Ada Lovelace',
+        shiftRequirementId: 'requirement-role-1',
+        shiftId: 'shift-1',
+        reason: {
+          eligibleShiftCount: 1,
+          needCandidateCount: 2,
+          decidedBy: 'fewest_cycle_assignments' as const,
+        },
+      },
+    ],
+    gaps: [],
+    excludedUnconfirmedCount: 2,
+    emptyReason: null,
+    reviewToken: 'review-token-1',
+  };
+
+  const outcome = {
+    applicationKey: 'key',
+    appliedAt: '2026-08-01T10:00:00.000Z',
+    replayed: false,
+    additions: [
+      {
+        assignmentId: 'assignment-new',
+        shiftRequirementId: 'requirement-role-1',
+        volunteerId: 'volunteer-2',
+      },
+    ],
+  };
+
+  function conflict(message: string) {
+    return new AxiosError(
+      'Request failed with status code 409',
+      'ERR_BAD_REQUEST',
+      undefined,
+      undefined,
+      {
+        data: { error: 'ASSIGNMENT_PROPOSAL_STALE', message },
+        status: 409,
+        statusText: 'Conflict',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      },
+    );
+  }
+
+  async function openPreview() {
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+    return screen.findByTestId('assignment-proposal-preview');
+  }
+
+  it('previews additions, existing Assignments and reasons, and discards without writing', async () => {
+    const getProposal = vi
+      .spyOn(adminApi, 'getAssignmentProposal')
+      .mockResolvedValue(proposal);
+    const { mutateAsync } = renderBuilder({ data: boardData({}) });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+
+    const preview = await screen.findByTestId('assignment-proposal-preview');
+    expect(screen.getByTestId('proposal-scroll-body')).toHaveClass(
+      'overflow-y-auto',
+    );
+    expect(
+      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+    ).toBeVisible();
+    expect(getProposal).toHaveBeenCalledWith('cycle-1', {
+      ministryId: 'ministry-1',
+    });
+    expect(
+      screen.getByRole('heading', { name: m.builder_proposal_title() }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(m.builder_proposal_summary({ additions: 1, places: 0 })),
+    ).toBeVisible();
+    expect(
+      screen.getByText(m.builder_proposal_unconfirmed_many({ count: 2 })),
+    ).toBeVisible();
+    expect(within(preview).getByText('Sunday Gathering')).toBeVisible();
+    expect(within(preview).getByText('Greeter · Main')).toBeVisible();
+    const existing = within(preview).getByText('Grace Hopper').closest('li');
+    expect(existing).toHaveTextContent(m.builder_proposal_existing());
+    const added = within(preview).getByText('Ada Lovelace').closest('li');
+    expect(added).toHaveTextContent(m.builder_proposal_added());
+    expect(added).toHaveTextContent(
+      [
+        m.builder_proposal_reason_shifts_one(),
+        m.builder_proposal_reason_need_many({ count: 2 }),
+        m.builder_proposal_reason_workload(),
+      ].join(' · '),
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_discard() }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('assignment-proposal-preview'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('applies exactly the reviewed pairs once and reports the added Assignments without publishing', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(proposal);
+    let resolveApply: (value: typeof outcome) => void = () => {};
+    const apply = vi.spyOn(adminApi, 'applyAssignmentProposal').mockReturnValue(
+      new Promise((resolve) => {
+        resolveApply = resolve;
+      }),
+    );
+    const { onPublish } = renderBuilder({ data: boardData({}) });
+    await openPreview();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+    );
+
+    const pending = screen.getByRole('button', {
+      name: m.builder_proposal_applying(),
+    });
+    expect(pending).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: m.builder_proposal_discard() }),
+    ).toBeDisabled();
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(apply).toHaveBeenCalledWith(
+      'cycle-1',
+      {
+        applicationKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
+        reviewToken: 'review-token-1',
+        additions: [
+          {
+            shiftRequirementId: 'requirement-role-1',
+            volunteerId: 'volunteer-2',
+          },
+        ],
+      },
+      { ministryId: 'ministry-1' },
+    );
+
+    resolveApply(outcome);
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        m.builder_proposal_applied({ count: 1 }),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('assignment-proposal-preview'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(onPublish).not.toHaveBeenCalled();
+  });
+
+  it('retries an unconfirmed Apply with the same key and recovers its outcome', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(proposal);
+    const apply = vi
+      .spyOn(adminApi, 'applyAssignmentProposal')
+      .mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK'))
+      .mockResolvedValueOnce({ ...outcome, replayed: true });
+    renderBuilder({ data: boardData({}) });
+    const preview = await openPreview();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+    );
+
+    expect(await within(preview).findByRole('alert')).toHaveTextContent(
+      m.builder_proposal_apply_unknown(),
+    );
+    expect(
+      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_apply_retry() }),
+    );
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        m.builder_proposal_applied({ count: 1 }),
+      ),
+    );
+    const [[, firstBody], [, retryBody]] = apply.mock.calls;
+    expect(retryBody).toEqual(firstBody);
+  });
+
+  it('shows a stale refusal and offers only a fresh review, with a new key', async () => {
+    const getProposal = vi
+      .spyOn(adminApi, 'getAssignmentProposal')
+      .mockResolvedValue(proposal);
+    const apply = vi
+      .spyOn(adminApi, 'applyAssignmentProposal')
+      .mockRejectedValueOnce(conflict('The proposal is out of date.'))
+      .mockResolvedValueOnce(outcome);
+    renderBuilder({ data: boardData({}) });
+    const preview = await openPreview();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+    );
+
+    expect(await within(preview).findByRole('alert')).toHaveTextContent(
+      'The proposal is out of date.',
+    );
+    expect(
+      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_refresh() }),
+    );
+    await waitFor(() => expect(getProposal).toHaveBeenCalledTimes(2));
+    await userEvent.click(
+      await screen.findByRole('button', { name: m.builder_proposal_apply() }),
+    );
+
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(2));
+    const [[, firstBody], [, secondBody]] = apply.mock.calls;
+    expect(secondBody?.applicationKey).not.toBe(firstBody?.applicationKey);
+  });
+
+  it('offers no Apply for an empty proposal', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue({
+      ...proposal,
+      additions: [],
+      emptyReason: 'no_confirmed_responses',
+    });
+    renderBuilder({ data: boardData({}) });
+    await openPreview();
+
+    expect(
+      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('explains an empty proposal and names the open places', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue({
+      additions: [],
+      gaps: [
+        {
+          shiftRequirementId: 'requirement-role-1',
+          shiftId: 'shift-1',
+          remaining: 1,
+        },
+      ],
+      excludedUnconfirmedCount: 1,
+      emptyReason: 'no_confirmed_responses',
+      reviewToken: 'review-token-empty',
+    });
+    renderBuilder({ data: boardData({}) });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+
+    const preview = await screen.findByTestId('assignment-proposal-preview');
+    expect(
+      screen.getByText(m.builder_proposal_summary({ additions: 0, places: 1 })),
+    ).toBeVisible();
+    expect(
+      within(preview).getByText(m.builder_proposal_empty_no_confirmed()),
+    ).toBeVisible();
+    expect(
+      screen.getByText(m.builder_proposal_unconfirmed_one()),
+    ).toBeVisible();
+    expect(
+      within(preview).getByText(m.builder_proposal_gap_one()),
+    ).toBeVisible();
+  });
+
+  it('reports a failed proposal', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockRejectedValue(
+      new Error('offline'),
+    );
+    renderBuilder({ data: boardData({}) });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(m.builder_proposal_error()),
+    );
+    expect(
+      screen.queryByTestId('assignment-proposal-preview'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('is not offered once the Schedule is published', () => {
+    renderBuilder({ data: boardData({ state: 'published' }) });
+
+    expect(
+      screen.queryByRole('button', { name: m.builder_proposal_open() }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('Swap requests on the board', () => {
   const request: LeaderSwapRequest = {
     id: 'request-1',
@@ -715,6 +1114,45 @@ describe('Swap requests on the board', () => {
     status: 'open',
   };
   const data = boardData({ state: 'published' });
+
+  it('keeps context-only consumers quiet on unrelated renders and updates them for swap changes', () => {
+    const requests = [request];
+    const onSelectSwapRequest = vi.fn();
+    const mutateAsync = vi.fn();
+    const mutation = { isPending: false, mutateAsync };
+    const renderTree = (swapRequests: LeaderSwapRequest[]) => (
+      <CycleBuilder
+        data={data}
+        onPublish={vi.fn()}
+        isPublishing={false}
+        cycleId="cycle-1"
+        ministryId="ministry-1"
+        createAssignment={mutation}
+        deleteAssignment={mutation}
+        reassignAssignment={mutation}
+        swapRequests={swapRequests}
+        onSelectSwapRequest={onSelectSwapRequest}
+      />
+    );
+    swapContextConsumer.mockClear();
+    const { rerender } = renderWithProviders(renderTree(requests));
+    const count = swapContextConsumer.mock.calls.length;
+    expect(count).toBeGreaterThan(0);
+    expect(
+      swapContextConsumer.mock.lastCall?.[0].openRequestByAssignment.get(
+        'assignment-1',
+      ),
+    ).toBe('request-1');
+    rerender(renderTree(requests));
+    expect(swapContextConsumer).toHaveBeenCalledTimes(count);
+    rerender(renderTree([{ ...request, status: 'expired' }]));
+    expect(swapContextConsumer).toHaveBeenCalledTimes(count + 1);
+    expect(
+      swapContextConsumer.mock.lastCall?.[0].openRequestByAssignment.has(
+        'assignment-1',
+      ),
+    ).toBe(false);
+  });
 
   it('warns on an open request and opens its sheet from the warning', async () => {
     const onSelectSwapRequest = vi.fn();

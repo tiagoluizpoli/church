@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { type KeyboardEvent, useState } from 'react';
 import type { TemplateLibraryTableRow } from './planning-admin.types';
 import { toTemplateLibraryTableRow } from './planning-admin.utils';
 import { RetryAlert } from './retry-alert';
@@ -30,30 +30,57 @@ function templateTableColumns(): DataTableColumn[] {
 
 interface TemplateRowActionsProps {
   templateId: string;
+  templateName: string;
   onDelete: () => void;
   /** Only one copy (the mobile card) carries test ids; both are in the DOM. */
   withTestIds?: boolean;
 }
 
+function moveActionFocus(event: KeyboardEvent<HTMLDivElement>) {
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+  const actions = Array.from(
+    event.currentTarget.querySelectorAll<HTMLElement>('a, button'),
+  );
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return;
+  const current = actions.indexOf(active);
+  const next = event.key === 'ArrowRight' ? current + 1 : current - 1;
+  if (current < 0 || next < 0 || next >= actions.length) return;
+  event.preventDefault();
+  event.stopPropagation();
+  actions[next]?.focus();
+}
+
 function TemplateRowActions({
   templateId,
+  templateName,
   onDelete,
   withTestIds,
 }: TemplateRowActionsProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div
+      className="flex flex-wrap justify-end gap-2 max-md:ml-auto md:w-full"
+      onKeyDown={moveActionFocus}
+    >
       <Link
         to="/event-templates/$templateId"
         params={{ templateId }}
+        aria-label={m.event_templates_edit_label({ name: templateName })}
         data-testid={withTestIds ? 'edit-template-button' : undefined}
-        className={buttonVariants({ size: 'xs', variant: 'outline' })}
+        className={buttonVariants({
+          size: 'xs',
+          variant: 'outline',
+          className: 'min-h-11 min-w-11 md:min-h-0 md:min-w-0',
+        })}
       >
         {m.event_templates_edit()}
       </Link>
       <Button
         type="button"
         size="xs"
+        className="min-h-11 min-w-11 md:min-h-0 md:min-w-0"
         variant="destructive"
+        aria-label={m.event_templates_delete_label({ name: templateName })}
         data-testid={withTestIds ? 'delete-template-button' : undefined}
         onClick={onDelete}
       >
@@ -123,6 +150,7 @@ export function TemplateManagerCard() {
                 {column.id === 'actions' ? (
                   <TemplateRowActions
                     templateId={item.id}
+                    templateName={item.name}
                     onDelete={() => setDeleteTargetId(item.id)}
                   />
                 ) : null}
@@ -130,17 +158,18 @@ export function TemplateManagerCard() {
             )}
             renderMobileCard={({ item }) => (
               <div
-                className="surface-subtle workspace-panel flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                className="surface-subtle workspace-panel flex flex-wrap items-center gap-x-3 gap-y-2"
                 data-testid="saved-template-row"
               >
-                <div className="space-y-1">
-                  <div className="font-medium">{item.name}</div>
+                <div className="min-w-0 flex-1 basis-40 space-y-1">
+                  <div className="break-words font-medium">{item.name}</div>
                   <div className="text-muted-foreground text-xs">
                     {item.description}
                   </div>
                 </div>
                 <TemplateRowActions
                   templateId={item.id}
+                  templateName={item.name}
                   onDelete={() => setDeleteTargetId(item.id)}
                   withTestIds
                 />

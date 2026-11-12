@@ -19,6 +19,8 @@ export interface CreateAssignmentAuditInput {
   action: AssignmentAuditAction;
   reason?: string;
   overrideConflictTypes?: SoftConflictType[];
+  /** The wider act that produced this row, such as an Apply's key. */
+  correlationId?: string;
 }
 
 /** Enriched audit entry returned by listByEvent (with joined display fields). */

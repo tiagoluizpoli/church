@@ -507,11 +507,11 @@ export function AppShell({
         data-testid="mobile-top-header"
         className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-sidebar-border border-b bg-sidebar/95 px-4 backdrop-blur md:hidden"
       >
-        <div className="flex items-center gap-3">
-          <div className="radius-icon flex h-10 w-10 items-center justify-center bg-primary/12 text-primary shadow-sm">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="radius-icon flex h-10 w-10 shrink-0 items-center justify-center bg-primary/12 text-primary shadow-sm">
             <CalendarClock className="h-5 w-5" />
           </div>
-          <div className="space-y-0.5">
+          <div className="min-w-0 space-y-0.5">
             <ChurchName name={churchName} />
             {mobileSubtitle ? (
               <span className="block text-muted-foreground text-xs">
@@ -521,7 +521,7 @@ export function AppShell({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {paletteEnabled && (
             <button
               type="button"

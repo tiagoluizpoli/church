@@ -5,9 +5,14 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  ApplyAssignmentProposal200,
+  ApplyAssignmentProposalBody,
+  ApplyAssignmentProposalParams,
   CreateParticipationAssignment201,
   CreateParticipationAssignmentBody,
   DeleteParticipationAssignment204,
+  GetAssignmentProposal200,
+  GetAssignmentProposalParams,
   GetCycleAuditLog200,
   GetCycleAuditLogParams,
   GetCycleBuilderData200,
@@ -55,6 +60,37 @@ const getCycleAuditLog = (
  ) => {
       return apiClient<GetCycleAuditLog200>(
       {url: `/api/v1/assign/cycles/${cycleId}/audit`, method: 'GET',
+        params
+    },
+      );
+    }
+  /**
+ * Compute a deterministic Assignment proposal for one Schedule between asking for availability and publishing. Writes nothing.
+ * @summary Propose Assignments for a Ministry's Schedule
+ */
+const getAssignmentProposal = (
+    cycleId: string,
+    params: GetAssignmentProposalParams,
+ ) => {
+      return apiClient<GetAssignmentProposal200>(
+      {url: `/api/v1/assign/cycles/${cycleId}/assignment-proposal`, method: 'GET',
+        params
+    },
+      );
+    }
+  /**
+ * Create exactly the reviewed additions once, atomically, as pending Assignments. A retry with the same applicationKey returns the committed outcome. Never publishes or notifies.
+ * @summary Apply a reviewed Assignment proposal
+ */
+const applyAssignmentProposal = (
+    cycleId: string,
+    applyAssignmentProposalBody: ApplyAssignmentProposalBody,
+    params: ApplyAssignmentProposalParams,
+ ) => {
+      return apiClient<ApplyAssignmentProposal200>(
+      {url: `/api/v1/assign/cycles/${cycleId}/assignment-proposal/apply`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: applyAssignmentProposalBody,
         params
     },
       );
@@ -169,9 +205,11 @@ const getParticipationCompletion = (
     },
       );
     }
-  return {getCycleBuilderData,getCycleAuditLog,publishCycle,sendScheduleUpdates,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,moveParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
+  return {getCycleBuilderData,getCycleAuditLog,getAssignmentProposal,applyAssignmentProposal,publishCycle,sendScheduleUpdates,listEligibleVolunteers,createParticipationAssignment,deleteParticipationAssignment,moveParticipationAssignment,reassignParticipationAssignment,getParticipationCompletion}};
 export type GetCycleBuilderDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleBuilderData']>>>
 export type GetCycleAuditLogResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getCycleAuditLog']>>>
+export type GetAssignmentProposalResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['getAssignmentProposal']>>>
+export type ApplyAssignmentProposalResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['applyAssignmentProposal']>>>
 export type PublishCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['publishCycle']>>>
 export type SendScheduleUpdatesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['sendScheduleUpdates']>>>
 export type ListEligibleVolunteersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getAssign>['listEligibleVolunteers']>>>

@@ -110,6 +110,12 @@ describe('People directory', () => {
 
     const [first, second] = await rows();
     expect(first).toHaveTextContent('Ana Souza');
+    expect(
+      within(first).getByRole('link', { name: 'Ver Ana Souza' }),
+    ).toHaveAttribute('href', '/people/mem-1');
+    expect(
+      within(first).queryByRole('link', { name: 'Ana Souza' }),
+    ).not.toBeInTheDocument();
     expect(first).toHaveTextContent('ana@example.com');
     expect(first).toHaveTextContent(m.join_church_access_admin());
     expect(first).toHaveTextContent(

@@ -13,6 +13,7 @@ import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-aut
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
+import { DrizzleAssignmentProposalApplicationRepository } from '@/infrastructure/repositories/drizzle-assignment-proposal-application.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
@@ -129,6 +130,13 @@ export function createSchedulingManagers({
       shiftRepository: shiftRepo,
       eventRepository: eventRepo,
       assignmentRepository: assignmentRepo,
+      auditRepository: new DrizzleAssignmentAuditRepository({
+        db: schedulingTestDb,
+      }),
+      proposalApplicationRepository:
+        new DrizzleAssignmentProposalApplicationRepository({
+          db: schedulingTestDb,
+        }),
       unavailableShiftRepository: unavailableShiftRepo,
       eventTimeBlockRepository: eventTimeBlockRepo,
       volunteerRepository: volunteerRepo,

@@ -79,6 +79,26 @@ describe('ministry-redemption E2E journey recipe', () => {
     ).toBe(true);
   });
 
+  it('gives a signed-up account in no Church, signing in with the persona password', async () => {
+    const journey = await load({ journeyKey: 'alpha' });
+    const { accountOnly } = journey;
+
+    expect(
+      await testDb
+        .select({ churchId: member.organizationId })
+        .from(member)
+        .where(eq(member.userId, accountOnly.userId)),
+    ).toEqual([]);
+    expect(await volunteerCount({ userId: accountOnly.userId })).toBe(0);
+    expect(accountOnly.email).not.toBe(journey.memberOnly.email);
+    expect(
+      await verifyPassword({
+        hash: await storedPasswordHash({ userId: accountOnly.userId }),
+        password: accountOnly.password,
+      }),
+    ).toBe(true);
+  });
+
   it('keeps Church B a separate tenant with only its own admin', async () => {
     const journey = await load({ journeyKey: 'alpha' });
 
@@ -116,7 +136,19 @@ describe('ministry-redemption E2E journey recipe', () => {
       accessLevel: 'member',
       id: randomUUID(),
     });
-    for (const userId of [journey.memberOnly.userId, outsiderId]) {
+    // The account-only User joins Church A through a Church link.
+    await addChurchMember({
+      db: testDb,
+      churchId: churchAId,
+      userId: journey.accountOnly.userId,
+      accessLevel: 'admin',
+      id: randomUUID(),
+    });
+    for (const userId of [
+      journey.memberOnly.userId,
+      outsiderId,
+      journey.accountOnly.userId,
+    ]) {
       const redeemed = await buildVolunteer({
         db: testDb,
         churchId: churchAId,

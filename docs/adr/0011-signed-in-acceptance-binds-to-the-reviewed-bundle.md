@@ -14,7 +14,7 @@ A Church offer can carry several Ministry Invitations, and one signed-in accepta
 - **The review token.** The authenticated status (`GET /redemption/ministry/:id`) returns the bundle and a `reviewToken`: a SHA-256 fingerprint (`reviewTokenFor`) of the Church Access Level being granted and, per half, its id, Ministry, Ministry Access Level, Role ids and expiry. Names are display only and stay out of it.
 - **Acceptance.** `POST /redemption/ministry/:id/accept` requires the `reviewToken`. In one transaction it takes the shared invitation lock order (every half's Ministry, then the Church Invitation row, then the halves), re-reads the bundle, and refuses with `{ kind: 'offer-changed' }` when the token differs; nothing is granted. Otherwise it accepts the Church half and grants every Ministry half in that same transaction.
 - **Fresh review.** The client refetches the status after `offer-changed` and needs another explicit acceptance, even when the bundle only shrank. An unusable invitation reads as unavailable.
-- **Kept rules.** The identity check and already-accepted retry run before the token check. A Cross-Church Volunteer conflict still commits the Church half alone (spec §7.5) and leads to Volunteer Transfer. Decline is unchanged.
+- **Kept rules.** The identity check and already-accepted retry run before the token check; a duplicate submit that waited on the first one's locks also answers already-accepted. A Cross-Church Volunteer conflict still commits the Church half alone (spec §7.5) and leads to Volunteer Transfer. Decline is unchanged.
 
 ## Considered Options
 

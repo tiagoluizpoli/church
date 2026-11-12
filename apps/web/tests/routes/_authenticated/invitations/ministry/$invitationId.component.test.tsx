@@ -54,6 +54,46 @@ const REDEEMABLE = {
   ministryAccessLevel: 'volunteer' as const,
   roleNames: ['Host'],
   expiresAt: '2099-01-01T00:00:00.000Z',
+  churchAccessLevel: null,
+  ministries: [
+    {
+      invitationId: 'invitation-1',
+      ministryName: 'Care',
+      ministryAccessLevel: 'volunteer' as const,
+      roleNames: ['Host'],
+      inviterName: 'Ana Admin',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+    },
+  ],
+  reviewToken: 'token-1',
+};
+
+/** A Church offer: ChurchAdmin, Worship as Volunteer with a Role, Kids as leader with no Roles. */
+const BUNDLE = {
+  ...REDEEMABLE,
+  invitationKind: 'chained' as const,
+  ministryName: 'Worship',
+  roleNames: ['Usher'],
+  churchAccessLevel: 'admin' as const,
+  ministries: [
+    {
+      invitationId: 'invitation-1',
+      ministryName: 'Worship',
+      ministryAccessLevel: 'volunteer' as const,
+      roleNames: ['Usher'],
+      inviterName: 'Ana Admin',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+    },
+    {
+      invitationId: 'invitation-2',
+      ministryName: 'Kids',
+      ministryAccessLevel: 'leader' as const,
+      roleNames: [],
+      inviterName: 'Bia Leader',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+    },
+  ],
+  reviewToken: 'token-bundle',
 };
 
 const CHURCH_OPTION = {
@@ -132,6 +172,13 @@ describe('the existing-member Ministry Invitation redemption route', () => {
       ...REDEEMABLE,
       ministryAccessLevel: 'leader',
       roleNames: [],
+      ministries: [
+        {
+          ...REDEEMABLE.ministries[0],
+          ministryAccessLevel: 'leader',
+          roleNames: [],
+        },
+      ],
     });
 
     renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
@@ -140,6 +187,134 @@ describe('the existing-member Ministry Invitation redemption route', () => {
       await screen.findByText(m.ministry_invitation_access_leader()),
     ).toBeVisible();
     expect(screen.getByText(m.ministry_invitation_roles_none())).toBeVisible();
+  });
+
+  it('discloses the whole Church offer before acceptance: the new Church Access Level and every Ministry grant', async () => {
+    getMinistryInvitationStatus.mockResolvedValue(BUNDLE);
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: m.ministry_invitation_bundle_title({ churchName: 'St. Peter' }),
+      }),
+    ).toBeVisible();
+    expect(screen.getByText('St. Peter', { selector: 'dd' })).toBeVisible();
+    expect(screen.getByText(m.join_church_access_admin())).toBeVisible();
+    expect(
+      screen.getByText(m.ministry_invitation_bundle_explainer()),
+    ).toBeVisible();
+    const worship = screen.getByRole('region', { name: 'Worship' });
+    expect(
+      within(worship).getByText(m.ministry_invitation_access_volunteer()),
+    ).toBeVisible();
+    expect(within(worship).getByText('Usher')).toBeVisible();
+    expect(within(worship).getByText('Ana Admin')).toBeVisible();
+    const kids = screen.getByRole('region', { name: 'Kids' });
+    expect(
+      within(kids).getByText(m.ministry_invitation_access_leader()),
+    ).toBeVisible();
+    expect(
+      within(kids).getByText(m.ministry_invitation_roles_none()),
+    ).toBeVisible();
+    expect(within(kids).getByText('Bia Leader')).toBeVisible();
+    expect(
+      within(kids).getByText(m.ministry_invitation_expires_label()),
+    ).toBeVisible();
+  });
+
+  it('shows the Church as existing access, not a grant, for a standalone Ministry offer', async () => {
+    getMinistryInvitationStatus.mockResolvedValue(REDEEMABLE);
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+
+    expect(
+      await screen.findByText(m.ministry_invitation_church_access_existing()),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(m.ministry_invitation_bundle_explainer()),
+    ).toBeNull();
+  });
+
+  it('accepts with the review token of the offer on screen', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    getMinistryInvitationStatus.mockResolvedValue(BUNDLE);
+    acceptMinistryInvitation.mockReturnValue(new Promise(() => {}));
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_accept(),
+      }),
+    );
+
+    expect(acceptMinistryInvitation).toHaveBeenCalledWith('invitation-1', {
+      idempotencyKey: expect.any(String),
+      reviewToken: 'token-bundle',
+    });
+  });
+
+  it('after the offer changed, shows the refreshed offer and needs a fresh acceptance', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const shrunk = {
+      ...BUNDLE,
+      ministries: BUNDLE.ministries.slice(0, 1),
+      reviewToken: 'token-shrunk',
+    };
+    getMinistryInvitationStatus
+      .mockResolvedValueOnce(BUNDLE)
+      .mockResolvedValue(shrunk);
+    acceptMinistryInvitation.mockResolvedValueOnce({ kind: 'offer-changed' });
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_accept(),
+      }),
+    );
+
+    expect(
+      await screen.findByText(m.ministry_invitation_offer_changed_title()),
+    ).toBeVisible();
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Kids' })).toBeNull();
+    });
+    expect(acceptMinistryInvitation).toHaveBeenCalledTimes(1);
+
+    acceptMinistryInvitation.mockReturnValue(new Promise(() => {}));
+    await user.click(
+      screen.getByRole('button', { name: m.ministry_invitation_accept() }),
+    );
+    expect(acceptMinistryInvitation).toHaveBeenLastCalledWith('invitation-1', {
+      idempotencyKey: expect.any(String),
+      reviewToken: 'token-shrunk',
+    });
+  });
+
+  it('after the offer changed into an unusable one, shows the unavailable state', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    getMinistryInvitationStatus
+      .mockResolvedValueOnce(BUNDLE)
+      .mockResolvedValue({ kind: 'unavailable' });
+    acceptMinistryInvitation.mockResolvedValueOnce({ kind: 'offer-changed' });
+
+    renderRoute({ initialPath: '/invitations/ministry/invitation-1' });
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.ministry_invitation_accept(),
+      }),
+    );
+
+    expect(
+      await screen.findByText(m.ministry_invitation_unavailable_title()),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: m.ministry_invitation_accept() }),
+    ).toBeNull();
   });
 
   it('on accept, continues to Home with the destination Church active', async () => {

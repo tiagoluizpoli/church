@@ -245,24 +245,37 @@ const manualBy = (actorId: string) => ({
   cancelReason: 'manual',
 });
 
+interface ReviewedTokenInput {
+  redemptionManager: DbRedemptionManager;
+  ministryInvitationId: MinistryInvitationId;
+  userId: UserId;
+  now?: Date;
+}
+
+/** The review token the recipient would echo after reviewing the offer. */
+async function reviewedToken({
+  redemptionManager,
+  ministryInvitationId,
+  userId,
+  now,
+}: ReviewedTokenInput): Promise<string> {
+  const status = await redemptionManager.getAuthenticatedInvitationStatus({
+    ministryInvitationId,
+    userId,
+    now,
+  });
+  return status.kind === 'redeemable' ? status.reviewToken : 'never-reviewed';
+}
+
 describe('acceptance versus Ministry revoke', () => {
-  it('serializes accepting one half against revoking its sibling after Church admission: no deadlock, the revoked sibling is not granted', async () => {
+  it('refuses an acceptance whose reviewed sibling is revoked while it waits: no deadlock, nothing granted', async () => {
     const offer = await sharedOffer({ halves: 2 });
     const secondId = offer.secondId as MinistryInvitationId;
     const invitee = await signedInInvitee();
-    // Acceptance parks after reading its siblings, Church admission committed.
-    const siblingsRead = gate();
-    const findSiblings =
-      ministryInvitationRepository.findPendingSiblingMinistryInvitationIds.bind(
-        ministryInvitationRepository,
-      );
-    vi.spyOn(
-      ministryInvitationRepository,
-      'findPendingSiblingMinistryInvitationIds',
-    ).mockImplementationOnce(async (input) => {
-      const ids = await findSiblings(input);
-      await siblingsRead.park();
-      return ids;
+    const reviewed = await reviewedToken({
+      redemptionManager,
+      ministryInvitationId: offer.worshipId,
+      userId: invitee.userId,
     });
     // The revoke parks holding the Church row and its canceled target half.
     const targetCanceled = gate();
@@ -277,13 +290,6 @@ describe('acceptance versus Ministry revoke', () => {
       return lockHalves(input);
     });
 
-    const accepting = redemptionManager.acceptExistingMember({
-      ministryInvitationId: offer.worshipId,
-      userId: invitee.userId,
-      sessionCookie: invitee.sessionCookie,
-      idempotencyKey: crypto.randomUUID(),
-    });
-    await parked({ gate: siblingsRead.entered, work: accepting });
     const revoking = invitationManager.revoke({
       churchId,
       ministryId: MinistryId.from(fixture.ministryTwoA),
@@ -291,22 +297,72 @@ describe('acceptance versus Ministry revoke', () => {
       callerId: adminId,
     });
     await parked({ gate: targetCanceled.entered, work: revoking });
-    siblingsRead.open();
+    const accepting = redemptionManager.acceptExistingMember({
+      ministryInvitationId: offer.worshipId,
+      userId: invitee.userId,
+      sessionCookie: invitee.sessionCookie,
+      idempotencyKey: crypto.randomUUID(),
+      reviewToken: reviewed,
+    });
     await untilLockWait();
     targetCanceled.open();
 
     await expect(revoking).resolves.toBeUndefined();
-    await expect(accepting).resolves.toMatchObject({ kind: 'full-success' });
+    await expect(accepting).resolves.toEqual({ kind: 'offer-changed' });
     expect(await ministryRow(offer.worshipId)).toMatchObject({
-      status: 'accepted',
+      status: 'pending',
     });
     expect(await ministryRow(secondId)).toMatchObject(manualBy(adminId));
-    expect((await churchRow(offer.churchInvitationId))?.status).toBe(
-      'accepted',
+    expect((await churchRow(offer.churchInvitationId))?.status).toBe('pending');
+    expect(await membershipMinistries(invitee.userId)).toEqual([]);
+  });
+});
+
+describe('acceptance versus a duplicate acceptance', () => {
+  it('answers a duplicate submit that waited on the first as already accepted, granting once', async () => {
+    const offer = await sharedOffer({ halves: 2 });
+    const invitee = await signedInInvitee();
+    const reviewed = await reviewedToken({
+      redemptionManager,
+      ministryInvitationId: offer.worshipId,
+      userId: invitee.userId,
+    });
+    // The first acceptance parks holding the Church row it has just accepted.
+    const churchAccepted = gate();
+    const recordAcceptance =
+      redemptionRepository.recordChurchInvitationAcceptance.bind(
+        redemptionRepository,
+      );
+    vi.spyOn(
+      redemptionRepository,
+      'recordChurchInvitationAcceptance',
+    ).mockImplementationOnce(async (input) => {
+      await recordAcceptance(input);
+      await churchAccepted.park();
+    });
+    const submit = () =>
+      redemptionManager.acceptExistingMember({
+        ministryInvitationId: offer.worshipId,
+        userId: invitee.userId,
+        sessionCookie: invitee.sessionCookie,
+        idempotencyKey: crypto.randomUUID(),
+        reviewToken: reviewed,
+      });
+
+    const first = submit();
+    await parked({ gate: churchAccepted.entered, work: first });
+    const duplicate = submit();
+    await untilLockWait();
+    churchAccepted.open();
+
+    await expect(first).resolves.toMatchObject({ kind: 'full-success' });
+    await expect(duplicate).resolves.toEqual({
+      kind: 'already-accepted',
+      churchId,
+    });
+    expect((await membershipMinistries(invitee.userId)).sort()).toEqual(
+      [fixture.ministryOneA, fixture.ministryTwoA].sort(),
     );
-    expect(await membershipMinistries(invitee.userId)).toEqual([
-      fixture.ministryOneA,
-    ]);
   });
 });
 
@@ -365,6 +421,11 @@ describe('acceptance versus Church revoke', () => {
       email: INVITEE_EMAIL,
     });
     const invitee = await signedInInvitee();
+    const reviewed = await reviewedToken({
+      redemptionManager,
+      ministryInvitationId: offer.worshipId,
+      userId: invitee.userId,
+    });
     // Acceptance parks holding the Church row it has just accepted.
     const churchAccepted = gate();
     const recordAcceptance =
@@ -384,6 +445,7 @@ describe('acceptance versus Church revoke', () => {
       userId: invitee.userId,
       sessionCookie: invitee.sessionCookie,
       idempotencyKey: crypto.randomUUID(),
+      reviewToken: reviewed,
     });
     await parked({ gate: churchAccepted.entered, work: accepting });
     const revoking = invitationManager.revokeChurch({

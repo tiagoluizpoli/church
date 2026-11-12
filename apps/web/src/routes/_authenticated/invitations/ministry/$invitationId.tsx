@@ -37,7 +37,18 @@ type AcceptFailure = Exclude<
   | { kind: 'full-success' }
   | { kind: 'already-accepted' }
   | { kind: 'church-only' }
+  | { kind: 'offer-changed' }
 >;
+
+type ReviewedMinistry = RedeemableStatus['ministries'][number];
+
+const CHURCH_ACCESS_LABELS: Record<
+  NonNullable<RedeemableStatus['churchAccessLevel']>,
+  () => string
+> = {
+  member: m.join_church_access_member,
+  admin: m.join_church_access_admin,
+};
 
 type DeclineFailure = Exclude<
   DeclineMinistryInvitation200,
@@ -129,11 +140,17 @@ function MinistryInvitationContent({
   const continueToChurch = useContinueToChurch();
 
   const acceptMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (reviewToken: string) =>
       redemptionApi.acceptMinistryInvitation(invitationId, {
         idempotencyKey,
+        reviewToken,
       }),
     onSuccess: async (outcome) => {
+      // Nothing was granted: show the refreshed offer for a fresh acceptance.
+      if (outcome.kind === 'offer-changed') {
+        await statusQuery.refetch();
+        return;
+      }
       if (
         outcome.kind === 'full-success' &&
         statusQuery.data?.kind === 'redeemable'
@@ -240,17 +257,19 @@ function MinistryInvitationContent({
       confirmingDecline={confirmingDecline}
       isAccepting={acceptMutation.isPending}
       isDeclining={declineMutation.isPending}
+      offerChanged={acceptData?.kind === 'offer-changed'}
       acceptOutcome={
         acceptData &&
         acceptData.kind !== 'full-success' &&
-        acceptData.kind !== 'already-accepted'
+        acceptData.kind !== 'already-accepted' &&
+        acceptData.kind !== 'offer-changed'
           ? acceptData
           : null
       }
       declineOutcome={
         declineData && declineData.kind !== 'declined' ? declineData : null
       }
-      onAccept={() => acceptMutation.mutate()}
+      onAccept={() => acceptMutation.mutate(status.reviewToken)}
       onRequestDecline={() => setConfirmingDecline(true)}
       onCancelDecline={() => setConfirmingDecline(false)}
       onConfirmDecline={() => declineMutation.mutate()}
@@ -264,7 +283,10 @@ interface AlertProps {
 
 function Alert({ children }: AlertProps) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3">
+    <div
+      role="alert"
+      className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3"
+    >
       <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
       <div className="text-sm">{children}</div>
     </div>
@@ -372,14 +394,66 @@ interface InvitationFactProps {
 function InvitationFact({ label, value }: InvitationFactProps) {
   return (
     <div className="flex justify-between gap-4 text-sm">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="text-right font-medium">{value}</dd>
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-words text-right font-medium">{value}</dd>
     </div>
+  );
+}
+
+interface ReviewedMinistryGrantProps {
+  ministry: ReviewedMinistry;
+}
+
+/** One Ministry grant of the reviewed offer, as a region named after its Ministry. */
+function ReviewedMinistryGrant({ ministry }: ReviewedMinistryGrantProps) {
+  const accessLevelLabel =
+    ministry.ministryAccessLevel === 'leader'
+      ? m.ministry_invitation_access_leader()
+      : m.ministry_invitation_access_volunteer();
+  const rolesLabel =
+    ministry.roleNames.length > 0
+      ? ministry.roleNames.join(', ')
+      : m.ministry_invitation_roles_none();
+  const expiresIn = formatRelative({
+    instant: parseInstant({ value: ministry.expiresAt }),
+    timeZone: 'UTC',
+    locale: getLocale(),
+  });
+  return (
+    <section
+      aria-label={ministry.ministryName}
+      className="rounded-lg border border-border p-3"
+    >
+      <dl className="space-y-2">
+        <InvitationFact
+          label={m.ministry_invitation_ministry_label()}
+          value={ministry.ministryName}
+        />
+        <InvitationFact
+          label={m.ministry_invitation_access_level_label()}
+          value={accessLevelLabel}
+        />
+        <InvitationFact
+          label={m.ministry_invitation_roles_label()}
+          value={rolesLabel}
+        />
+        <InvitationFact
+          label={m.ministry_invitation_inviter_label()}
+          value={ministry.inviterName}
+        />
+        <InvitationFact
+          label={m.ministry_invitation_expires_label()}
+          value={expiresIn}
+        />
+      </dl>
+    </section>
   );
 }
 
 interface RedeemableInvitationCardProps {
   status: RedeemableStatus;
+  /** The last acceptance was refused because the offer changed after review. */
+  offerChanged: boolean;
   confirmingDecline: boolean;
   isAccepting: boolean;
   isDeclining: boolean;
@@ -393,6 +467,7 @@ interface RedeemableInvitationCardProps {
 
 function RedeemableInvitationCard({
   status,
+  offerChanged,
   confirmingDecline,
   isAccepting,
   isDeclining,
@@ -403,57 +478,70 @@ function RedeemableInvitationCard({
   onCancelDecline,
   onConfirmDecline,
 }: RedeemableInvitationCardProps) {
-  const { ministryName, churchName, roleNames, ministryAccessLevel } = status;
+  const { ministryName, churchName, churchAccessLevel, ministries } = status;
+  const isBundle = status.invitationKind === 'chained';
   const acceptFailure = acceptOutcome
     ? describeAcceptFailure({ outcome: acceptOutcome })
     : null;
-  const accessLevelLabel =
-    ministryAccessLevel === 'leader'
-      ? m.ministry_invitation_access_leader()
-      : m.ministry_invitation_access_volunteer();
-  const rolesLabel =
-    roleNames.length > 0
-      ? roleNames.join(', ')
-      : m.ministry_invitation_roles_none();
-  const declineNotice =
-    status.invitationKind === 'chained'
-      ? m.ministry_invitation_decline_notice_chained()
-      : m.ministry_invitation_decline_notice_ministry_only({ ministryName });
+  const churchAccessLabel = churchAccessLevel
+    ? CHURCH_ACCESS_LABELS[churchAccessLevel]()
+    : m.ministry_invitation_church_access_existing();
+  const declineNotice = isBundle
+    ? m.ministry_invitation_decline_notice_chained()
+    : m.ministry_invitation_decline_notice_ministry_only({ ministryName });
 
   return (
     <div className="space-y-5">
       <div className="space-y-1.5 border-border border-b pb-4">
         <h1 className="text-balance font-semibold text-2xl tracking-tight">
-          {m.ministry_invitation_title({ ministryName })}
+          {isBundle
+            ? m.ministry_invitation_bundle_title({ churchName })
+            : m.ministry_invitation_title({ ministryName })}
         </h1>
         <p className="text-pretty text-muted-foreground text-sm">
           {m.ministry_invitation_intro({ churchName })}
         </p>
-        <p className="text-muted-foreground text-xs">
-          {m.ministry_invitation_expires({
-            when: formatRelative({
-              instant: parseInstant({ value: status.expiresAt }),
-              timeZone: 'UTC',
-              locale: getLocale(),
-            }),
-          })}
-        </p>
       </div>
+
+      {offerChanged ? (
+        <Alert>
+          <p className="font-medium">
+            {m.ministry_invitation_offer_changed_title()}
+          </p>
+          <p className="text-muted-foreground">
+            {m.ministry_invitation_offer_changed_description()}
+          </p>
+        </Alert>
+      ) : null}
 
       <dl className="space-y-2">
         <InvitationFact
-          label={m.ministry_invitation_ministry_label()}
-          value={ministryName}
+          label={m.ministry_invitation_church_label()}
+          value={churchName}
         />
         <InvitationFact
-          label={m.ministry_invitation_access_level_label()}
-          value={accessLevelLabel}
-        />
-        <InvitationFact
-          label={m.ministry_invitation_roles_label()}
-          value={rolesLabel}
+          label={m.ministry_invitation_church_access_label()}
+          value={churchAccessLabel}
         />
       </dl>
+
+      {isBundle ? (
+        <p className="text-pretty text-sm">
+          {m.ministry_invitation_bundle_explainer()}
+        </p>
+      ) : null}
+
+      <div className="space-y-3">
+        <h2 className="font-medium text-sm">
+          {m.ministry_invitation_grants_heading()}
+        </h2>
+        {ministries.map((ministry) => (
+          <ReviewedMinistryGrant
+            key={ministry.invitationId}
+            ministry={ministry}
+          />
+        ))}
+      </div>
 
       {acceptFailure ? (
         <Alert>

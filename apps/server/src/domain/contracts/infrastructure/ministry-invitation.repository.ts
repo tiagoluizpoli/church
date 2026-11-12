@@ -9,6 +9,7 @@ import type {
 import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { PublicRedemptionPreview } from '../../entities/public-redemption-preview';
+import type { RedemptionBundle } from '../../entities/redemption-bundle';
 import type { ResendThrottleState } from '../../services/resend-throttle';
 import type { TransactionContext } from './transaction-context';
 
@@ -253,6 +254,13 @@ export interface MinistryInvitationContext {
   roleNames: string[];
 }
 
+export interface FindRedemptionBundleInput {
+  /** Any half of the offer: a chained one resolves its whole Church offer. */
+  ministryInvitation: MinistryInvitation;
+  now: Date;
+  tx?: TransactionContext;
+}
+
 export interface IsInvitationAddressedToUserInput {
   ministryInvitation: MinistryInvitation;
   userId: UserId;
@@ -391,6 +399,11 @@ export interface MinistryInvitationRepository {
    * chained invitation is addressed to whoever holds its Church Invitation's
    * email, checked without loading that email into the caller.
    */
+  /** What one signed-in acceptance of this invitation grants, read in `tx` when given. */
+  findRedemptionBundle(
+    input: FindRedemptionBundleInput,
+  ): Promise<RedemptionBundle>;
+
   isInvitationAddressedToUser(
     input: IsInvitationAddressedToUserInput,
   ): Promise<boolean>;

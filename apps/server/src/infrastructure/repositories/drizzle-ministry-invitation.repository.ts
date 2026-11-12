@@ -23,6 +23,7 @@ import {
 import { and, asc, desc, eq, gt, ne, or, sql } from 'drizzle-orm';
 import type {
   ChurchId,
+  MinistryId,
   MinistryInvitationId,
   RoleId,
   UserId,
@@ -48,6 +49,7 @@ import type {
   FindPendingForAddressInput,
   FindPendingSiblingMinistryInvitationsInput,
   FindPublicRedemptionPreviewInput,
+  FindRedemptionBundleInput,
   HasActiveMinistryMembershipInput,
   IsInvitationAddressedToUserInput,
   ListPendingInMinistryInput,
@@ -69,6 +71,10 @@ import type {
   PublicRedemptionMinistry,
   PublicRedemptionPreview,
 } from '../../domain/entities/public-redemption-preview';
+import type {
+  RedemptionBundle,
+  RedemptionBundleMinistry,
+} from '../../domain/entities/redemption-bundle';
 import { PendingChurchInvitationExistsError } from '../../domain/errors/pending-church-invitation-exists';
 import { PendingMinistryInvitationExistsError } from '../../domain/errors/pending-ministry-invitation-exists';
 import { resolveInvitationEmail } from '../../domain/services/resolve-invitation-email';
@@ -551,6 +557,87 @@ export class DrizzleMinistryInvitationRepository
       ministryName: first.ministryName,
       roleNames: rows.flatMap((row) => (row.roleName ? [row.roleName] : [])),
     };
+  }
+
+  async findRedemptionBundle({
+    ministryInvitation: invitation,
+    now,
+    tx,
+  }: FindRedemptionBundleInput): Promise<RedemptionBundle> {
+    const db = getClient({ db: this.db, tx });
+    const { churchId, churchInvitationId } = invitation;
+    const [parent] = churchInvitationId
+      ? await db
+          .select({
+            status: churchInvitation.status,
+            role: churchInvitation.role,
+          })
+          .from(churchInvitation)
+          .where(eq(churchInvitation.id, churchInvitationId))
+      : [];
+    const churchAccessLevel =
+      parent?.status === 'pending'
+        ? parent.role === 'admin'
+          ? 'admin'
+          : 'member'
+        : null;
+    // A chained offer is every pending half of its Church Invitation; a
+    // standalone Ministry offer stays alone.
+    const offerScope = churchInvitationId
+      ? eq(ministryInvitation.churchInvitationId, churchInvitationId)
+      : eq(ministryInvitation.id, invitation.id);
+    const rows = await db
+      .select({
+        ministryInvitationId: ministryInvitation.id,
+        ministryId: ministryInvitation.ministryId,
+        ministryName: ministry.name,
+        ministryAccessLevel: ministryInvitation.ministryAccessLevel,
+        expiresAt: ministryInvitation.expiresAt,
+        inviterName: user.name,
+        roleId: role.id,
+        roleName: role.name,
+      })
+      .from(ministryInvitation)
+      .innerJoin(ministry, eq(ministry.id, ministryInvitation.ministryId))
+      .innerJoin(user, eq(user.id, ministryInvitation.inviterId))
+      .leftJoin(
+        ministryInvitationRole,
+        eq(ministryInvitationRole.ministryInvitationId, ministryInvitation.id),
+      )
+      .leftJoin(role, eq(role.id, ministryInvitationRole.roleId))
+      .where(
+        and(
+          withChurchIsolation({ table: ministryInvitation, churchId }),
+          offerScope,
+          eq(ministryInvitation.status, 'pending'),
+          gt(ministryInvitation.expiresAt, now),
+        ),
+      )
+      .orderBy(
+        asc(ministryInvitation.createdAt),
+        asc(ministryInvitation.id),
+        asc(role.name),
+        asc(role.id),
+      );
+    const halves = new Map<string, RedemptionBundleMinistry>();
+    for (const row of rows) {
+      const half = halves.get(row.ministryInvitationId) ?? {
+        ministryInvitationId: row.ministryInvitationId as MinistryInvitationId,
+        ministryId: row.ministryId as MinistryId,
+        ministryName: row.ministryName,
+        ministryAccessLevel: row.ministryAccessLevel,
+        roleIds: [],
+        roleNames: [],
+        inviterName: row.inviterName,
+        expiresAt: row.expiresAt,
+      };
+      if (row.roleId && row.roleName) {
+        half.roleIds.push(row.roleId as RoleId);
+        half.roleNames.push(row.roleName);
+      }
+      halves.set(row.ministryInvitationId, half);
+    }
+    return { churchAccessLevel, ministries: [...halves.values()] };
   }
 
   async isInvitationAddressedToUser({

@@ -12,7 +12,9 @@ import { RedemptionController } from '@/api/controllers/redemption-controller';
 import {
   ChurchId,
   ChurchInvitationId,
+  MinistryId,
   MinistryInvitationId,
+  RoleId,
   VolunteerId,
 } from '@/domain/branded-ids';
 import type { RedemptionManager } from '@/domain/contracts/application/redemption-manager';
@@ -32,6 +34,8 @@ const mockGetSession = vi.mocked(
 
 const INVITATION_ID = '11111111-1111-4111-8111-111111111111';
 const VOLUNTEER_ID = '22222222-2222-4222-8222-222222222222';
+const MINISTRY_ID = '33333333-3333-4333-8333-333333333333';
+const ROLE_ID = '44444444-4444-4444-8444-444444444444';
 const AUTH_COOKIE = 'better-auth.session_token=session-token';
 const USER_ID = 'usr_1';
 
@@ -357,6 +361,20 @@ describe('GET /redemption/ministry/:invitationId', () => {
       ministryAccessLevel: 'volunteer',
       roleNames: ['Singer'],
       expiresAt: new Date('2026-08-03T12:00:00.000Z'),
+      churchAccessLevel: null,
+      ministries: [
+        {
+          ministryInvitationId: MinistryInvitationId.from(INVITATION_ID),
+          ministryId: MinistryId.from(MINISTRY_ID),
+          ministryName: 'Worship',
+          ministryAccessLevel: 'volunteer',
+          roleIds: [RoleId.from(ROLE_ID)],
+          roleNames: ['Singer'],
+          inviterName: 'Ana Admin',
+          expiresAt: new Date('2026-08-03T12:00:00.000Z'),
+        },
+      ],
+      reviewToken: 'reviewed-token',
     });
 
     const response = await app.inject({
@@ -375,6 +393,18 @@ describe('GET /redemption/ministry/:invitationId', () => {
       ministryAccessLevel: 'volunteer',
       roleNames: ['Singer'],
       expiresAt: '2026-08-03T12:00:00.000Z',
+      churchAccessLevel: null,
+      ministries: [
+        {
+          invitationId: INVITATION_ID,
+          ministryName: 'Worship',
+          ministryAccessLevel: 'volunteer',
+          roleNames: ['Singer'],
+          inviterName: 'Ana Admin',
+          expiresAt: '2026-08-03T12:00:00.000Z',
+        },
+      ],
+      reviewToken: 'reviewed-token',
     });
     expect(
       redemptionManager.getAuthenticatedInvitationStatus,
@@ -442,7 +472,10 @@ describe('POST /redemption/ministry/:invitationId/accept', () => {
     const response = await app.inject({
       method: 'POST',
       url: `/api/v1/redemption/ministry/${INVITATION_ID}/accept`,
-      payload: { idempotencyKey: '55555555-5555-4555-8555-555555555555' },
+      payload: {
+        idempotencyKey: '55555555-5555-4555-8555-555555555555',
+        reviewToken: 'reviewed-token',
+      },
     });
 
     expect(response.statusCode).toBe(401);
@@ -463,7 +496,10 @@ describe('POST /redemption/ministry/:invitationId/accept', () => {
       method: 'POST',
       url: `/api/v1/redemption/ministry/${INVITATION_ID}/accept`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { idempotencyKey: '55555555-5555-4555-8555-555555555555' },
+      payload: {
+        idempotencyKey: '55555555-5555-4555-8555-555555555555',
+        reviewToken: 'reviewed-token',
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -476,6 +512,7 @@ describe('POST /redemption/ministry/:invitationId/accept', () => {
       userId: USER_ID,
       sessionCookie: AUTH_COOKIE,
       idempotencyKey: '55555555-5555-4555-8555-555555555555',
+      reviewToken: 'reviewed-token',
     });
   });
 
@@ -493,7 +530,10 @@ describe('POST /redemption/ministry/:invitationId/accept', () => {
       method: 'POST',
       url: `/api/v1/redemption/ministry/${INVITATION_ID}/accept`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { idempotencyKey: '55555555-5555-4555-8555-555555555555' },
+      payload: {
+        idempotencyKey: '55555555-5555-4555-8555-555555555555',
+        reviewToken: 'reviewed-token',
+      },
     });
 
     expect(response.statusCode).toBe(200);

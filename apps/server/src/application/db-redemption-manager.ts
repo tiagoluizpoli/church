@@ -1,9 +1,8 @@
 import { compareInstants, fromDate, nowAsDate, toDate } from '@church/time';
-import type {
-  ChurchId,
+import {
+  type ChurchId,
   ChurchInvitationId,
-  MinistryInvitationId,
-  VolunteerId,
+  type VolunteerId,
 } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
 import type {
@@ -49,6 +48,7 @@ import { InvitationNotPendingError } from '../domain/errors/invitation-not-pendi
 import { PendingMinistryInvitationNotFoundError } from '../domain/errors/pending-ministry-invitation-not-found';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 import { maskEmail } from '../domain/services/mask-email';
+import { reviewTokenFor } from '../domain/services/redemption-review-token';
 
 interface DbRedemptionManagerDependencies {
   churchRepository: ChurchRepository;
@@ -61,18 +61,6 @@ interface DbRedemptionManagerDependencies {
   failureLog: RedemptionFailureLog;
   /** Non-production only — see `getDebugVerificationCode`. */
   verificationCodeInspector?: VerificationCodeInspector;
-}
-
-interface DescribeChurchOnlySplitInput {
-  error: CrossChurchVolunteerConflictError;
-  /** The invitation's Church — where Church Membership was granted. */
-  churchId: AcceptPendingMinistryInvitationInput['churchId'];
-  destinationChurchName: string;
-  ministryInvitationId: AcceptPendingMinistryInvitationInput['ministryInvitationId'];
-  ministryName: string;
-  userId: AcceptPendingMinistryInvitationInput['userId'];
-  correlationId: string;
-  now: Date;
 }
 
 interface AdmitNewPersonInput {
@@ -117,6 +105,34 @@ class MinistryGrantFailure extends Error {
   }
 }
 
+/** Marks a throw from Better Auth's Church-half acceptance, so it reports as identity. */
+class IdentityAcceptFailure extends Error {
+  constructor({ cause }: MinistryGrantFailureInput) {
+    super('Church Invitation acceptance failed.', { cause });
+  }
+}
+
+/** The bundle no longer matches the recipient's review: nothing is granted. */
+class ReviewedOfferChanged extends Error {
+  constructor() {
+    super('The reviewed invitation offer changed before acceptance.');
+  }
+}
+
+interface AcceptReviewedBundleInput {
+  ministryInvitation: MinistryInvitation;
+  userId: AcceptExistingMemberInput['userId'];
+  sessionCookie: string;
+  reviewToken: string;
+  acceptedAt: Date;
+  correlationId: string;
+  tx: TransactionContext;
+}
+
+type AcceptedBundle =
+  | { kind: 'full-success'; volunteerId: VolunteerId }
+  | { kind: 'church-only'; sourceChurchId: ChurchId };
+
 /** Marks a throw from Better Auth's Church-half rejection, so the decline reports it as such. */
 class IdentityRejectFailure extends Error {
   constructor({ cause }: MinistryGrantFailureInput) {
@@ -137,13 +153,6 @@ type ResolvedInvitationContext =
   | { status: 'identity-mismatch'; addressedEmail: string }
   | { status: 'already-accepted'; ministryInvitation: MinistryInvitation }
   | { status: 'redeemable'; context: MinistryInvitationContext };
-
-interface AcceptWithSiblingsInput {
-  ministryInvitation: MinistryInvitation;
-  userId: AcceptExistingMemberInput['userId'];
-  acceptedAt: Date;
-  correlationId: string;
-}
 
 interface IsInvitationRedeemableInput {
   ministryInvitation: MinistryInvitation;
@@ -454,42 +463,6 @@ export class DbRedemptionManager implements RedemptionManager {
     };
   }
 
-  /**
-   * Spec §7.5: Church Membership already committed earlier in the checkpoint
-   * sequence; here we record the `church_only_partial_acceptance` audit act
-   * (§7.6) and name both Churches so the caller can offer a Volunteer
-   * Transfer. Nothing else was written — the Ministry Invitation stays
-   * `pending`.
-   */
-  private async describeChurchOnlySplit({
-    error,
-    churchId,
-    destinationChurchName,
-    ministryInvitationId,
-    ministryName,
-    userId,
-    correlationId,
-    now,
-  }: DescribeChurchOnlySplitInput): Promise<ChurchOnlyRedemptionOutcome> {
-    await this.unitOfWork.run((tx) =>
-      this.redemptionRepository.recordChurchOnlyPartialAcceptance({
-        churchId,
-        ministryInvitationId,
-        userId,
-        correlationId,
-        recordedAt: now,
-        tx,
-      }),
-    );
-    return this.churchOnlyOutcome({
-      sourceChurchId: error.sourceChurchId,
-      destinationChurchId: churchId,
-      destinationChurchName,
-      ministryInvitationId,
-      ministryName,
-    });
-  }
-
   async acceptPendingMinistryInvitation({
     churchId,
     ministryInvitationId,
@@ -509,77 +482,6 @@ export class DbRedemptionManager implements RedemptionManager {
         tx,
       }),
     );
-  }
-
-  /**
-   * A chained Church offer may carry several Ministry halves; accepting one
-   * grants every still-pending sibling in the same transaction, so none is lost.
-   */
-  private async acceptWithSiblings({
-    ministryInvitation,
-    userId,
-    acceptedAt,
-    correlationId,
-  }: AcceptWithSiblingsInput): Promise<VolunteerId> {
-    return this.unitOfWork.run(async (tx) => {
-      const { churchId, churchInvitationId } = ministryInvitation;
-      const siblingQuery = churchInvitationId
-        ? {
-            churchInvitationId,
-            exceptMinistryInvitationId: ministryInvitation.id,
-            now: acceptedAt,
-            tx,
-          }
-        : null;
-      const candidateIds = siblingQuery
-        ? await this.invitationRepository.findPendingSiblingMinistryInvitationIds(
-            siblingQuery,
-          )
-        : [];
-      // Lock order shared with revoke and archive: every half's Ministry,
-      // then the Church Invitation row, then the halves themselves.
-      await this.redemptionRepository.lockInvitedMinistries({
-        churchId,
-        ministryInvitationIds: [
-          ministryInvitation.id,
-          ...candidateIds,
-        ] as MinistryInvitationId[],
-        tx,
-      });
-      let siblingIds = candidateIds;
-      if (siblingQuery && churchInvitationId) {
-        await this.invitationRepository.lockChurchInvitation({
-          churchId,
-          churchInvitationId,
-          tx,
-        });
-        // A sibling revoked while this waited is no longer granted.
-        const stillPending = new Set(
-          await this.invitationRepository.findPendingSiblingMinistryInvitationIds(
-            siblingQuery,
-          ),
-        );
-        siblingIds = candidateIds.filter((id) => stillPending.has(id));
-      }
-      const ids = [
-        ministryInvitation.id,
-        ...siblingIds,
-      ] as MinistryInvitationId[];
-      let volunteerId: VolunteerId | null = null;
-      for (const id of ids) {
-        volunteerId =
-          await this.redemptionRepository.acceptPendingMinistryInvitation({
-            churchId,
-            ministryInvitationId: id,
-            userId,
-            acceptedAt,
-            correlationId,
-            auditAction: 'ministry_acceptance',
-            tx,
-          });
-      }
-      return volunteerId as VolunteerId;
-    });
   }
 
   /**
@@ -650,7 +552,13 @@ export class DbRedemptionManager implements RedemptionManager {
     if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'unavailable' };
     }
+    const bundle = await this.invitationRepository.findRedemptionBundle({
+      ministryInvitation,
+      now,
+    });
     return {
+      ...bundle,
+      reviewToken: reviewTokenFor({ bundle }),
       kind: 'redeemable',
       invitationKind: ministryInvitation.kind,
       email: resolved.context.email,
@@ -667,6 +575,7 @@ export class DbRedemptionManager implements RedemptionManager {
     userId,
     sessionCookie,
     idempotencyKey,
+    reviewToken,
     now = nowAsDate(),
   }: AcceptExistingMemberInput): Promise<AcceptExistingMemberOutcome> {
     const resolved = await this.resolveInvitationContext({
@@ -689,63 +598,135 @@ export class DbRedemptionManager implements RedemptionManager {
     if (!isInvitationRedeemable({ ministryInvitation, now })) {
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
-    if (
-      ministryInvitation.kind === 'chained' &&
-      resolved.context.churchInvitationStatus === 'pending'
-    ) {
-      try {
-        await this.unitOfWork.run(async (tx) => {
-          const churchInvitationId =
-            ministryInvitation.churchInvitationId as ChurchInvitationId;
-          await this.ensureChurchInvitationPending({
-            churchId: ministryInvitation.churchId,
-            churchInvitationId,
-            tx,
-          });
-          await this.identityGateway.acceptChurchInvitation({
-            churchInvitationId,
-            sessionCookie,
-            tx,
-          });
-          await this.redemptionRepository.recordChurchInvitationAcceptance({
-            churchInvitationId,
-            userId,
-            acceptedAt: now,
-            tx,
-          });
-        });
-      } catch (error) {
-        if (error instanceof InvitationNotPendingError)
-          return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
-        return { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' };
-      }
-    }
     try {
-      const volunteerId = await this.acceptWithSiblings({
-        ministryInvitation,
-        userId,
-        acceptedAt: now,
-        correlationId: idempotencyKey,
-      });
-      return { kind: 'full-success', volunteerId };
-    } catch (error) {
-      if (error instanceof CrossChurchVolunteerConflictError) {
-        return this.describeChurchOnlySplit({
-          error,
-          churchId: ministryInvitation.churchId,
-          destinationChurchName: resolved.context.churchName,
-          ministryInvitationId,
-          ministryName: resolved.context.ministryName,
+      const accepted = await this.unitOfWork.run((tx) =>
+        this.acceptReviewedBundle({
+          ministryInvitation,
           userId,
+          sessionCookie,
+          reviewToken,
+          acceptedAt: now,
           correlationId: idempotencyKey,
-          now,
-        });
+          tx,
+        }),
+      );
+      if (accepted.kind === 'full-success') return accepted;
+      return this.churchOnlyOutcome({
+        sourceChurchId: accepted.sourceChurchId,
+        destinationChurchId: ministryInvitation.churchId,
+        destinationChurchName: resolved.context.churchName,
+        ministryInvitationId,
+        ministryName: resolved.context.ministryName,
+      });
+    } catch (error) {
+      if (error instanceof ReviewedOfferChanged) {
+        // A duplicate submit that waited on the first one finds it consumed.
+        const latest =
+          await this.invitationRepository.findMinistryInvitationContext({
+            ministryInvitationId,
+          });
+        return latest?.ministryInvitation.status === 'accepted'
+          ? { kind: 'already-accepted', churchId: ministryInvitation.churchId }
+          : { kind: 'offer-changed' };
       }
+      if (error instanceof IdentityAcceptFailure)
+        return { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' };
       return {
         kind: 'retryable-failure',
         reason: 'MINISTRY_ACCEPTANCE_FAILED',
       };
     }
+  }
+
+  /**
+   * The review-consistency contract (ADR 0011): under the locks every
+   * invitation transition takes, re-read the bundle, refuse it when its
+   * review token differs, then grant the Church half and every Ministry half
+   * in this one transaction, so a stale review grants nothing.
+   */
+  private async acceptReviewedBundle({
+    ministryInvitation,
+    userId,
+    sessionCookie,
+    reviewToken,
+    acceptedAt,
+    correlationId,
+    tx,
+  }: AcceptReviewedBundleInput): Promise<AcceptedBundle> {
+    const { churchId, churchInvitationId } = ministryInvitation;
+    const candidates = await this.invitationRepository.findRedemptionBundle({
+      ministryInvitation,
+      now: acceptedAt,
+      tx,
+    });
+    // Lock order shared with mint, revoke and archive: every half's
+    // Ministry, then the Church Invitation row, then the halves themselves.
+    await this.redemptionRepository.lockInvitedMinistries({
+      churchId,
+      ministryInvitationIds: candidates.ministries.map(
+        (half) => half.ministryInvitationId,
+      ),
+      tx,
+    });
+    if (churchInvitationId) {
+      await this.invitationRepository.lockChurchInvitation({
+        churchId,
+        churchInvitationId,
+        tx,
+      });
+    }
+    const bundle = await this.invitationRepository.findRedemptionBundle({
+      ministryInvitation,
+      now: acceptedAt,
+      tx,
+    });
+    if (reviewTokenFor({ bundle }) !== reviewToken)
+      throw new ReviewedOfferChanged();
+    if (churchInvitationId && bundle.churchAccessLevel) {
+      const reviewedChurchInvitationId =
+        ChurchInvitationId.from(churchInvitationId);
+      try {
+        await this.identityGateway.acceptChurchInvitation({
+          churchInvitationId: reviewedChurchInvitationId,
+          sessionCookie,
+          tx,
+        });
+      } catch (cause) {
+        throw new IdentityAcceptFailure({ cause });
+      }
+      await this.redemptionRepository.recordChurchInvitationAcceptance({
+        churchInvitationId: reviewedChurchInvitationId,
+        userId,
+        acceptedAt,
+        tx,
+      });
+    }
+    const grant = { churchId, userId, acceptedAt, correlationId, tx };
+    let volunteerId: VolunteerId | null = null;
+    try {
+      for (const half of bundle.ministries) {
+        volunteerId =
+          await this.redemptionRepository.acceptPendingMinistryInvitation({
+            ...grant,
+            ministryInvitationId: half.ministryInvitationId,
+            auditAction: 'ministry_acceptance',
+          });
+      }
+    } catch (error) {
+      if (!(error instanceof CrossChurchVolunteerConflictError)) throw error;
+      // Spec §7.5: refused before any grant write; the Church half commits
+      // and every Ministry half stays pending for a Volunteer Transfer.
+      await this.redemptionRepository.recordChurchOnlyPartialAcceptance({
+        churchId,
+        ministryInvitationId: ministryInvitation.id,
+        userId,
+        correlationId,
+        recordedAt: acceptedAt,
+        tx,
+      });
+      return { kind: 'church-only', sourceChurchId: error.sourceChurchId };
+    }
+    return { kind: 'full-success', volunteerId: volunteerId as VolunteerId };
   }
 
   async declineInvitation({

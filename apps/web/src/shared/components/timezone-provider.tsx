@@ -1,5 +1,5 @@
 import type React from 'react';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 
 interface TimezoneContextType {
   churchTimezone: string;
@@ -19,8 +19,9 @@ export function TimezoneProvider({
   children,
   churchTimezone,
 }: TimezoneProviderProps) {
+  const value = useMemo(() => ({ churchTimezone }), [churchTimezone]);
   return (
-    <TimezoneContext.Provider value={{ churchTimezone }}>
+    <TimezoneContext.Provider value={value}>
       {children}
     </TimezoneContext.Provider>
   );

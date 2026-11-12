@@ -1,7 +1,8 @@
 import { appConfig } from '@church/app-config';
+import { getLocale } from '@church/i18n/runtime';
 import { now } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useOnlineState } from '../../volunteers/hooks/use-online-state';
 import type {
@@ -73,7 +74,9 @@ function buildViewPages({
   const grouped = new Map<string, NotificationInboxItem[]>();
   for (const item of items) {
     const key = formatDayOf({ value: item.createdAt, timeZone });
-    grouped.set(key, [...(grouped.get(key) ?? []), item]);
+    const bucket = grouped.get(key);
+    if (bucket) bucket.push(item);
+    else grouped.set(key, [item]);
   }
   return Array.from(grouped, ([dateBucketLabel, items]) => ({
     dateBucketLabel,
@@ -121,14 +124,20 @@ export function useNotificationInbox() {
   const isOnline = useOnlineState();
   const queryClient = useQueryClient();
   const callerScope = useCallerCapabilitiesScope();
-  const scope = callerScope?.userId
-    ? { userId: callerScope.userId, churchId: callerScope.churchId }
-    : undefined;
+  const userId = callerScope?.userId;
+  const churchId = callerScope?.churchId;
+  const scope = useMemo(
+    () => (userId && churchId ? { userId, churchId } : undefined),
+    [userId, churchId],
+  );
   const scopeKey = scope ? `${scope.userId}:${scope.churchId}` : '';
   const queryKey = scope
     ? notificationQueryKey(scope)
     : (['notifications'] as const);
-  const cached = scope ? readCachedNotificationInbox(scope) : undefined;
+  const cached = useMemo(
+    () => (scope ? readCachedNotificationInbox(scope) : undefined),
+    [scope],
+  );
 
   const firstPageQuery = useQuery({
     queryKey,
@@ -171,8 +180,10 @@ export function useNotificationInbox() {
     setIsLoadingMore(false);
   }, [scopeKey]);
 
-  const firstItems = firstPage?.items ?? [];
-  const sourceItems = [...firstItems, ...(activeExtra?.pages.flat() ?? [])];
+  const sourceItems = useMemo(
+    () => [...(firstPage?.items ?? []), ...(activeExtra?.pages.flat() ?? [])],
+    [firstPage?.items, activeExtra?.pages],
+  );
   const nextCursor = activeExtra
     ? activeExtra.nextCursor
     : firstPage?.nextCursor;
@@ -289,8 +300,17 @@ export function useNotificationInbox() {
     }
   };
 
-  const items = sourceItems.map((item) =>
-    mapNotificationItem({ item, timeZone: churchTimezone }),
+  const locale = getLocale();
+  const items = useMemo(
+    () =>
+      sourceItems.map((item) =>
+        mapNotificationItem({ item, timeZone: churchTimezone }),
+      ),
+    [sourceItems, churchTimezone, locale],
+  );
+  const pages = useMemo(
+    () => buildViewPages({ items, timeZone: churchTimezone }),
+    [items, churchTimezone],
   );
   const selectedNotification =
     selected?.scopeKey === scopeKey
@@ -323,7 +343,7 @@ export function useNotificationInbox() {
       }
       setSelectedNotificationId(notificationId);
     },
-    pages: buildViewPages({ items, timeZone: churchTimezone }),
+    pages,
     refresh: () => firstPageQuery.refetch(),
     selectedNotification,
     setSelectedNotificationId,

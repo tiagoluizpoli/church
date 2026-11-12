@@ -1,6 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
   type CycleBuilderMutations,
@@ -54,6 +54,8 @@ interface CycleBuilderProps {
   onSelectSwapRequest?: (swapRequestId: string | undefined) => void;
 }
 
+const EMPTY_SWAP_REQUESTS: LeaderSwapRequest[] = [];
+
 export function CycleBuilder({
   data,
   onPublish,
@@ -71,7 +73,7 @@ export function CycleBuilder({
   moveAssignment,
   syncedAt,
   isRefreshing,
-  swapRequests = [],
+  swapRequests = EMPTY_SWAP_REQUESTS,
   selectedSwapRequestId,
   onSelectSwapRequest,
 }: CycleBuilderProps) {
@@ -112,11 +114,31 @@ export function CycleBuilder({
     removedAssignment?.volunteerName ?? m.builder_ui_the_volunteer();
 
   const [coverAssignmentId, setCoverAssignmentId] = useState<string>();
-  const openRequests = swapRequests.filter(({ status }) => status === 'open');
-  const openRequestEntries = openRequests.map(
-    ({ assignmentId, id }): [string, string] => [assignmentId, id],
+  const openRequestByAssignment = useMemo(() => {
+    const entries = swapRequests
+      .filter(({ status }) => status === 'open')
+      .map(({ assignmentId, id }): [string, string] => [assignmentId, id]);
+    return new Map(entries);
+  }, [swapRequests]);
+  const onOpenSwapRequest = useCallback(
+    (id: string) => onSelectSwapRequest?.(id),
+    [onSelectSwapRequest],
   );
-  const openRequestByAssignment = new Map(openRequestEntries);
+  const onCoverHandled = useCallback(() => setCoverAssignmentId(undefined), []);
+  const swapRequestContext = useMemo(
+    () => ({
+      openRequestByAssignment,
+      onOpenSwapRequest,
+      coverAssignmentId,
+      onCoverHandled,
+    }),
+    [
+      openRequestByAssignment,
+      onOpenSwapRequest,
+      coverAssignmentId,
+      onCoverHandled,
+    ],
+  );
   const selectedSwapRequest = swapRequests.find(
     ({ id }) => id === selectedSwapRequestId,
   );
@@ -160,14 +182,7 @@ export function CycleBuilder({
   );
 
   return (
-    <SwapRequestBoardProvider
-      value={{
-        openRequestByAssignment,
-        onOpenSwapRequest: (id) => onSelectSwapRequest?.(id),
-        coverAssignmentId,
-        onCoverHandled: () => setCoverAssignmentId(undefined),
-      }}
-    >
+    <SwapRequestBoardProvider value={swapRequestContext}>
       <WorkspacePage data-testid="cycle-builder">
         <p
           aria-live="polite"

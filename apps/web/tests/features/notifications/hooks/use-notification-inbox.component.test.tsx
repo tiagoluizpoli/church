@@ -140,6 +140,26 @@ describe('useNotificationInbox', () => {
     ]);
   });
 
+  it('does not reread or rewrite storage on an unrelated render', async () => {
+    getNotifications.mockResolvedValue({
+      items: [invitation({ id: 'a' })],
+      unreadCount: 1,
+    });
+    const reads = vi.spyOn(window.localStorage, 'getItem');
+    const writes = vi.spyOn(window.localStorage, 'setItem');
+    const { result, rerender } = renderInbox();
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(reads.mock.calls.length).toBeGreaterThan(0);
+    expect(writes.mock.calls.length).toBeGreaterThan(0);
+    const readCount = reads.mock.calls.length;
+    const writeCount = writes.mock.calls.length;
+    rerender();
+    expect(reads).toHaveBeenCalledTimes(readCount);
+    expect(writes).toHaveBeenCalledTimes(writeCount);
+    reads.mockRestore();
+    writes.mockRestore();
+  });
+
   it('reports the server unread count of the whole inbox, not the loaded rows', async () => {
     getNotifications.mockResolvedValue({
       items: [invitation({ id: 'a' })],

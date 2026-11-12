@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 interface CallerCapabilitiesScopeValue {
   churchId: string;
@@ -18,8 +18,9 @@ export function CallerCapabilitiesScopeProvider({
   userId,
   children,
 }: CallerCapabilitiesScopeProviderProps) {
+  const value = useMemo(() => ({ churchId, userId }), [churchId, userId]);
   return (
-    <CallerCapabilitiesScope.Provider value={{ churchId, userId }}>
+    <CallerCapabilitiesScope.Provider value={value}>
       {children}
     </CallerCapabilitiesScope.Provider>
   );

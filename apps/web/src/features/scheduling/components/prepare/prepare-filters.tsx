@@ -46,7 +46,7 @@ export function PrepareFilters({
 
   return (
     <FormControlSizeProvider size={isMobile ? 'touch' : 'default'}>
-      <div className="flex flex-col gap-3 md:flex-row md:items-end">
+      <div className="flex @xl:flex-row flex-col @xl:items-end gap-3">
         <div className="min-w-0 flex-1 space-y-1">
           <Label htmlFor="prepare-name-filter">{m.prepare_filter_name()}</Label>
           <Input

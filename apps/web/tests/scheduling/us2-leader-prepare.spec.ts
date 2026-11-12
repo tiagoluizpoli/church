@@ -191,6 +191,12 @@ test('leader prepares one Time block and sees its saved Schedule summary', async
   await welcomeRow.click();
   const blockPath = `${schedulePath}/slots/${welcomeId}`;
   await expect(page).toHaveURL(blockPath);
+  // Desktop opens the editor in a non-modal panel beside the usable list.
+  const panel = page.getByTestId('prepare-block-panel');
+  await expect(panel.getByRole('heading', { name: /Welcome$/ })).toBeFocused();
+  await expect(welcomeRow).toHaveAttribute('aria-current', 'page');
+  await expect(messageRow).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   // Direct navigation must load the same saved block without list-page state.
   await page.reload();
   await expect(
@@ -252,6 +258,9 @@ test('leader prepares one Time block and sees its saved Schedule summary', async
   );
   await expect(welcomeRow).toContainText(savedSummary);
   await expect(welcomeRow).toBeInViewport();
+  // Save closes the panel and returns focus to the block's row.
+  await expect(panel).toHaveCount(0);
+  await expect(welcomeRow).toBeFocused();
   // A reload proves the summary comes from the persisted slot save.
   await page.reload();
   await expect(welcomeRow).toContainText(savedSummary);
@@ -262,4 +271,24 @@ test('leader prepares one Time block and sees its saved Schedule summary', async
   await welcomeRow.click();
   await expect(firstHeadcount).toHaveValue('2');
   await expect(secondHeadcount).toHaveValue('1');
+  // An untouched block switches in place to another block's editor.
+  await messageRow.click();
+  await expect(panel.getByRole('heading', { name: /Message$/ })).toBeFocused();
+  await expect(panel.getByRole('heading', { name: /Welcome$/ })).toHaveCount(0);
+  await expect(messageRow).toHaveAttribute('aria-current', 'page');
+
+  // Narrow screens keep the separate editor and return to the list row.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(messageRow).toBeHidden();
+  await page
+    .getByRole('button', {
+      name: m.usual_setup_cancel({}, { locale: 'pt-BR' }),
+      exact: true,
+    })
+    .click();
+  await expect(page).toHaveURL(
+    `${schedulePath}#event-time-block-${messageEventTimeBlock.eventTimeBlock.id}`,
+  );
+  await expect(messageRow).toBeInViewport();
+  await expect(messageRow).toBeFocused();
 });

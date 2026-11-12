@@ -186,7 +186,7 @@ const BUILDER_SPEC_PATHS = [
 const PREPARE_ROUTE_FILES = [
   'schedules.tsx',
   'schedules/index.tsx',
-  'schedules/$ministryId/$cycleId/index.tsx',
+  'schedules/$ministryId/$cycleId/_prepare',
 ].map((f) => `apps/web/src/routes/_authenticated/_active-church/${f}`);
 
 export const JOURNEY_MAP: JourneyMapping[] = [
@@ -203,8 +203,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: VOLUNTEER_AVAILABILITY_SPEC_PATHS,
   })),
   ...[
-    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index.tsx',
-    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId.tsx',
+    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare',
+    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
     'apps/web/src/features/scheduling/components/prepare/schedule-ask.tsx',
     'apps/web/src/features/scheduling/components/availability-status-section.tsx',
     'apps/web/src/infrastructure/api/prepare.ts',
@@ -402,7 +402,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     ],
   })),
   ...[
-    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/slots/$timeSlotId.tsx',
+    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
     'apps/web/src/features/scheduling/hooks/use-preparation-block-breadcrumbs.ts',
     'apps/web/src/features/scheduling/components/headcount-grid/',
     'apps/web/src/features/scheduling/components/shift-split-editor/',
@@ -415,7 +415,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     // J5 reaches this one-Ministry Prepare route from the N2 bell action.
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/index.tsx',
+      'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare',
     specPaths: CYCLE_HANDOFF_SPEC_PATHS,
   },
   {

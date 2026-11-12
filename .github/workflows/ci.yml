@@ -339,6 +339,9 @@ jobs:
         timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
 
+      - name: Generated API client matches the server
+        run: bun run validate:api-generated
+
       # `bun run validate`'s scripts (tooling/validation/validate.ts), one
       # purpose per step: integration and E2E each resolve their own typed
       # database target (ADR-0005), so integration gets its own

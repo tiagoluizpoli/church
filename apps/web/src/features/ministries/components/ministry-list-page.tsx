@@ -12,11 +12,11 @@ import { CreateMinistryDialog } from '@/features/ministries/components/create-mi
 import { useMinistryList } from '@/features/ministries/ministry-queries';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
-function MinistryAction({
-  ministry,
-}: {
+interface MinistryActionProps {
   ministry: { id: string; name: string };
-}) {
+}
+
+function MinistryAction({ ministry }: MinistryActionProps) {
   return (
     <div className="flex w-full justify-end">
       <Link

@@ -38,7 +38,11 @@ function accessLabel(value: string): string {
     : m.ministry_invitation_access_volunteer();
 }
 
-function PersonMinistries({ person }: { person: ListPeople200ItemsItem }) {
+interface PersonProps {
+  person: ListPeople200ItemsItem;
+}
+
+function PersonMinistries({ person }: PersonProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       {person.ministries.length === 0 ? (
@@ -68,7 +72,7 @@ function personColumns(): DataTableColumn[] {
   ];
 }
 
-function PersonAction({ person }: { person: ListPeople200ItemsItem }) {
+function PersonAction({ person }: PersonProps) {
   return (
     <div className="flex w-full justify-end">
       <Link
@@ -87,7 +91,7 @@ function PersonAction({ person }: { person: ListPeople200ItemsItem }) {
   );
 }
 
-function PersonName({ person }: { person: ListPeople200ItemsItem }) {
+function PersonName({ person }: PersonProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="break-words font-medium">{person.name}</span>

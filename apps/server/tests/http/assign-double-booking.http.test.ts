@@ -820,6 +820,12 @@ describe('Assignment proposal preview', () => {
       expect(await targetAssignments(seed)).toEqual([]);
 
       await apply({ seed, body });
+      const replayAltered = await apply({
+        seed,
+        body: { ...body, additions: [first] },
+      });
+      expect(replayAltered.statusCode).toBe(409);
+      expect(replayAltered.json().error).toBe('ASSIGNMENT_PROPOSAL_CHANGED');
       const reused = await apply({
         seed,
         body: {

@@ -1331,6 +1331,14 @@ export class DbParticipationManager implements IParticipationManager {
     await this.cycleRepository.getById({ churchId, cycleId });
 
     return this.unitOfWork.run(async (tx) => {
+      // The pairs must be the reviewed ones, on first attempts and replays.
+      const submittedToken = proposalReviewTokenFor({
+        cycleId,
+        ministryId,
+        additions,
+      });
+      if (submittedToken !== reviewToken)
+        throw new AssignmentProposalChangedError();
       // Manual creation's Church lock: a double click or retry waits here
       // for the first attempt, then recovers what it committed.
       await this.cycleRepository.acquireChurchLock({ churchId, tx });
@@ -1353,14 +1361,6 @@ export class DbParticipationManager implements IParticipationManager {
           additions: committed.additions,
         };
       }
-      const submittedToken = proposalReviewTokenFor({
-        cycleId,
-        ministryId,
-        additions,
-      });
-      if (submittedToken !== reviewToken)
-        throw new AssignmentProposalChangedError();
-
       await this.participationRepository.lockSchedule({
         churchId,
         ministryId,

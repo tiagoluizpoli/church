@@ -103,7 +103,12 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
     await expect(cycleRow).toBeVisible();
 
-    await cycleRow.click();
+    // Ordinary row text does not select; the explicit Select control does.
+    await cycleRow.getByText(cycleName).click();
+    await expect(page.getByTestId('selected-cycle-name')).toHaveCount(0);
+    await cycleRow
+      .getByRole('button', { name: `Selecionar ${cycleName}` })
+      .click();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
   });
 

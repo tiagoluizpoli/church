@@ -1,7 +1,12 @@
 import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
-import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
+import { toast } from 'sonner';
+import {
+  CYCLE_BUILDER_QUERY_KEY,
+  type CycleBuilderData,
+} from '../../hooks/use-cycle-builder';
 import {
   type CycleBuilderMutations,
   useCycleBuilderActions,
@@ -11,6 +16,7 @@ import {
   summarizeCycleStaffing,
 } from '../../utils/builder/cycle-builder-staffing.utils';
 import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialog';
+import { AssignmentProposalPreview } from './assignment-proposal-preview';
 import { AuditLogPanel } from './audit-log-panel';
 import { CycleBuilderMatrix } from './board/cycle-builder-matrix';
 import { CycleBuilderHeader } from './cycle-builder-header';
@@ -30,6 +36,7 @@ import {
 } from '@/components/ui/dialog';
 import { WorkspacePage } from '@/components/workspace-page';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { adminApi } from '@/utils/api-instances';
 
 interface CycleBuilderProps {
   data: CycleBuilderData;
@@ -98,6 +105,16 @@ export function CycleBuilder({
   });
   const belowFullCount = publishStaffing.shiftsBelowTarget;
   const emptyPlaces = publishStaffing.required - publishStaffing.coveredPlaces;
+  const queryClient = useQueryClient();
+  // A read, kept only in memory: discarding it writes nothing.
+  const proposal = useMutation({
+    mutationFn: () => adminApi.getAssignmentProposal(cycleId, { ministryId }),
+    onError: () => {
+      toast.error(m.builder_proposal_error());
+      // The Schedule may have moved on (e.g. published elsewhere).
+      void queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY });
+    },
+  });
   const actions = useCycleBuilderActions({
     data,
     createAssignment,
@@ -166,6 +183,19 @@ export function CycleBuilder({
           onClick={onSendUpdates}
         >
           {m.builder_send_updates({ count: data.affectedVolunteerCount ?? 0 })}
+        </Button>
+      ) : null}
+      {publishableEvents.length > 0 ? (
+        <Button
+          type="button"
+          size={isMobile ? 'touch' : 'sm'}
+          variant="outline"
+          disabled={proposal.isPending || isPublishing}
+          onClick={() => proposal.mutate()}
+        >
+          {proposal.isPending
+            ? m.builder_proposal_loading()
+            : m.builder_proposal_open()}
         </Button>
       ) : null}
       {publishableEvents.length > 0 ? (
@@ -309,6 +339,14 @@ export function CycleBuilder({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {proposal.data ? (
+          <AssignmentProposalPreview
+            data={data}
+            proposal={proposal.data}
+            onDiscard={proposal.reset}
+          />
+        ) : null}
 
         <UnavailableConfirmDialog
           open={actions.unavailable !== null}

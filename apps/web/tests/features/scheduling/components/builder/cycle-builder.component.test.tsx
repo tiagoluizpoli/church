@@ -792,6 +792,140 @@ describe('CycleBuilder toolbar and requirement affordances', () => {
   });
 });
 
+describe('Assignment proposal preview', () => {
+  const proposal = {
+    additions: [
+      {
+        volunteerId: 'volunteer-2',
+        volunteerName: 'Ada Lovelace',
+        shiftRequirementId: 'requirement-role-1',
+        shiftId: 'shift-1',
+        reason: {
+          eligibleShiftCount: 1,
+          needCandidateCount: 2,
+          decidedBy: 'fewest_cycle_assignments' as const,
+        },
+      },
+    ],
+    gaps: [],
+    excludedUnconfirmedCount: 2,
+    emptyReason: null,
+  };
+
+  it('previews additions, existing Assignments and reasons, and discards without writing', async () => {
+    const getProposal = vi
+      .spyOn(adminApi, 'getAssignmentProposal')
+      .mockResolvedValue(proposal);
+    const { mutateAsync } = renderBuilder({ data: boardData({}) });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+
+    const preview = await screen.findByTestId('assignment-proposal-preview');
+    expect(getProposal).toHaveBeenCalledWith('cycle-1', {
+      ministryId: 'ministry-1',
+    });
+    expect(
+      screen.getByRole('heading', { name: m.builder_proposal_title() }),
+    ).toBeVisible();
+    expect(
+      within(preview).getByText(
+        m.builder_proposal_summary({ additions: 1, places: 0 }),
+      ),
+    ).toBeVisible();
+    expect(
+      within(preview).getByText(
+        m.builder_proposal_unconfirmed_many({ count: 2 }),
+      ),
+    ).toBeVisible();
+    expect(within(preview).getByText('Sunday Gathering')).toBeVisible();
+    expect(within(preview).getByText('Greeter · Main')).toBeVisible();
+    const existing = within(preview).getByText('Grace Hopper').closest('li');
+    expect(existing).toHaveTextContent(m.builder_proposal_existing());
+    const added = within(preview).getByText('Ada Lovelace').closest('li');
+    expect(added).toHaveTextContent(m.builder_proposal_added());
+    expect(added).toHaveTextContent(
+      [
+        m.builder_proposal_reason_shifts_one(),
+        m.builder_proposal_reason_need_many({ count: 2 }),
+        m.builder_proposal_reason_workload(),
+      ].join(' · '),
+    );
+    expect(
+      screen.queryByRole('button', { name: /apply/i }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_discard() }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('assignment-proposal-preview'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('explains an empty proposal and names the open places', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue({
+      additions: [],
+      gaps: [
+        {
+          shiftRequirementId: 'requirement-role-1',
+          shiftId: 'shift-1',
+          remaining: 1,
+        },
+      ],
+      excludedUnconfirmedCount: 1,
+      emptyReason: 'no_confirmed_responses',
+    });
+    renderBuilder({ data: boardData({}) });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+
+    const preview = await screen.findByTestId('assignment-proposal-preview');
+    expect(
+      within(preview).getByText(m.builder_proposal_empty_no_confirmed()),
+    ).toBeVisible();
+    expect(
+      within(preview).getByText(m.builder_proposal_unconfirmed_one()),
+    ).toBeVisible();
+    expect(
+      within(preview).getByText(m.builder_proposal_gap_one()),
+    ).toBeVisible();
+  });
+
+  it('reports a failed proposal', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockRejectedValue(
+      new Error('offline'),
+    );
+    renderBuilder({ data: boardData({}) });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(m.builder_proposal_error()),
+    );
+    expect(
+      screen.queryByTestId('assignment-proposal-preview'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('is not offered once the Schedule is published', () => {
+    renderBuilder({ data: boardData({ state: 'published' }) });
+
+    expect(
+      screen.queryByRole('button', { name: m.builder_proposal_open() }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('Swap requests on the board', () => {
   const request: LeaderSwapRequest = {
     id: 'request-1',

@@ -88,8 +88,8 @@ function renderList() {
 async function rowNames() {
   const list = await screen.findByRole('list', { name: m.nav_ministries() });
   return within(list)
-    .getAllByRole('link')
-    .map((link) => link.textContent);
+    .getAllByRole('listitem')
+    .map((item) => item.textContent?.replace(m.ministries_open(), ''));
 }
 
 describe('/ministries', () => {
@@ -99,10 +99,12 @@ describe('/ministries', () => {
     renderList();
 
     expect(await rowNames()).toEqual(['kids', 'Worship']);
-    expect(screen.getByRole('link', { name: 'kids' })).toHaveAttribute(
-      'href',
-      '/ministries/m-kids',
-    );
+    expect(
+      within(screen.getByRole('list', { name: m.nav_ministries() })).getByRole(
+        'link',
+        { name: 'Abrir kids' },
+      ),
+    ).toHaveAttribute('href', '/ministries/m-kids');
   });
 
   it('keeps the one-row list for a leader of one Ministry, without New Ministry', async () => {

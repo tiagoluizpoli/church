@@ -30,6 +30,7 @@ function templateTableColumns(): DataTableColumn[] {
 
 interface TemplateRowActionsProps {
   templateId: string;
+  templateName: string;
   onDelete: () => void;
   /** Only one copy (the mobile card) carries test ids; both are in the DOM. */
   withTestIds?: boolean;
@@ -37,23 +38,31 @@ interface TemplateRowActionsProps {
 
 function TemplateRowActions({
   templateId,
+  templateName,
   onDelete,
   withTestIds,
 }: TemplateRowActionsProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap justify-end gap-2">
       <Link
         to="/event-templates/$templateId"
         params={{ templateId }}
+        aria-label={m.event_templates_edit_label({ name: templateName })}
         data-testid={withTestIds ? 'edit-template-button' : undefined}
-        className={buttonVariants({ size: 'xs', variant: 'outline' })}
+        className={buttonVariants({
+          size: 'xs',
+          variant: 'outline',
+          className: 'min-h-11 min-w-11 md:min-h-0 md:min-w-0',
+        })}
       >
         {m.event_templates_edit()}
       </Link>
       <Button
         type="button"
         size="xs"
+        className="min-h-11 min-w-11 md:min-h-0 md:min-w-0"
         variant="destructive"
+        aria-label={m.event_templates_delete_label({ name: templateName })}
         data-testid={withTestIds ? 'delete-template-button' : undefined}
         onClick={onDelete}
       >
@@ -123,6 +132,7 @@ export function TemplateManagerCard() {
                 {column.id === 'actions' ? (
                   <TemplateRowActions
                     templateId={item.id}
+                    templateName={item.name}
                     onDelete={() => setDeleteTargetId(item.id)}
                   />
                 ) : null}
@@ -130,7 +140,7 @@ export function TemplateManagerCard() {
             )}
             renderMobileCard={({ item }) => (
               <div
-                className="surface-subtle workspace-panel flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                className="surface-subtle workspace-panel flex flex-col gap-3"
                 data-testid="saved-template-row"
               >
                 <div className="space-y-1">
@@ -141,6 +151,7 @@ export function TemplateManagerCard() {
                 </div>
                 <TemplateRowActions
                   templateId={item.id}
+                  templateName={item.name}
                   onDelete={() => setDeleteTargetId(item.id)}
                   withTestIds
                 />

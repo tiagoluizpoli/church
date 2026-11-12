@@ -15,11 +15,13 @@ vi.mock('@tanstack/react-router', () => ({
     params?: { templateId: string };
     className?: string;
     'data-testid'?: string;
+    'aria-label'?: string;
   }) => (
     <a
       href={to.replace('$templateId', params?.templateId ?? '')}
       className={props.className}
       data-testid={props['data-testid']}
+      aria-label={props['aria-label']}
     >
       {children}
     </a>
@@ -103,12 +105,11 @@ describe('TemplateManagerCard table view (US1)', () => {
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
     expect(row).toHaveTextContent('Domingo');
     expect(row).toHaveTextContent('2');
-    expect(within(row).getByRole('link', { name: 'Editar' })).toHaveAttribute(
-      'href',
-      '/event-templates/template-1',
-    );
     expect(
-      within(row).getByRole('button', { name: 'Excluir' }),
+      within(row).getByRole('link', { name: 'Editar Sunday Service' }),
+    ).toHaveAttribute('href', '/event-templates/template-1');
+    expect(
+      within(row).getByRole('button', { name: 'Excluir Sunday Service' }),
     ).toBeInTheDocument();
   });
 
@@ -130,7 +131,9 @@ describe('TemplateManagerCard table view (US1)', () => {
     const table = await screen.findByRole('grid');
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
 
-    await user.click(within(row).getByRole('button', { name: 'Excluir' }));
+    await user.click(
+      within(row).getByRole('button', { name: 'Excluir Sunday Service' }),
+    );
 
     expect(
       await screen.findByRole('alertdialog', { name: 'Excluir este modelo?' }),
@@ -155,12 +158,12 @@ describe('TemplateManagerCard table view (US1)', () => {
     const table = await screen.findByRole('grid');
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
 
-    expect(within(row).getByRole('button', { name: 'Excluir' })).toHaveClass(
-      'text-destructive',
-    );
-    expect(within(row).getByRole('link', { name: 'Editar' })).not.toHaveClass(
-      'text-destructive',
-    );
+    expect(
+      within(row).getByRole('button', { name: 'Excluir Sunday Service' }),
+    ).toHaveClass('text-destructive');
+    expect(
+      within(row).getByRole('link', { name: 'Editar Sunday Service' }),
+    ).not.toHaveClass('text-destructive');
   });
 
   it('renders the mobile card with the same name, description, and reachable actions as the table row', async () => {
@@ -187,6 +190,12 @@ describe('TemplateManagerCard table view (US1)', () => {
 
     const mobileRow = await screen.findByTestId('saved-template-row');
     expect(mobileRow).toHaveTextContent('Sunday Service');
+    expect(within(mobileRow).getByTestId('edit-template-button')).toHaveClass(
+      'min-h-11',
+    );
+    expect(within(mobileRow).getByTestId('delete-template-button')).toHaveClass(
+      'min-h-11',
+    );
     expect(
       within(mobileRow).getByTestId('edit-template-button'),
     ).toBeInTheDocument();

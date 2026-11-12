@@ -3,7 +3,8 @@ import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -37,43 +38,63 @@ function accessLabel(value: string): string {
     : m.ministry_invitation_access_volunteer();
 }
 
-interface PersonRowProps {
-  person: ListPeople200ItemsItem;
+function PersonMinistries({ person }: { person: ListPeople200ItemsItem }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      {person.ministries.length === 0 ? (
+        <span className="text-muted-foreground">
+          {m.people_no_ministries()}
+        </span>
+      ) : (
+        person.ministries.map((ministry) => (
+          <Badge key={ministry.id} variant="outline">
+            {ministry.name}
+            {ministry.ministryAccessLevel === 'leader'
+              ? ` · ${accessLabel('leader')}`
+              : ''}
+          </Badge>
+        ))
+      )}
+    </div>
+  );
 }
 
-function PersonRow({ person }: PersonRowProps) {
+function personColumns(): DataTableColumn[] {
+  return [
+    { id: 'name', name: m.people_column_name(), isRowHeader: true },
+    { id: 'email', name: m.people_column_email() },
+    { id: 'ministries', name: m.people_column_ministries() },
+    { id: 'actions', name: m.people_column_actions() },
+  ];
+}
+
+function PersonAction({ person }: { person: ListPeople200ItemsItem }) {
   return (
-    <li className="space-y-2 px-4 py-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Link
-          to="/people/$memberId"
-          params={{ memberId: person.id }}
-          className="min-w-0 break-words font-medium underline-offset-2 hover:underline"
-        >
-          {person.name}
-        </Link>
-        {person.isAdmin ? (
-          <Badge variant="secondary">{m.join_church_access_admin()}</Badge>
-        ) : null}
-      </div>
-      <p className="break-all text-muted-foreground text-sm">{person.email}</p>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        {person.ministries.length === 0 ? (
-          <span className="text-muted-foreground">
-            {m.people_no_ministries()}
-          </span>
-        ) : (
-          person.ministries.map((ministry) => (
-            <Badge key={ministry.id} variant="outline">
-              {ministry.name}
-              {ministry.ministryAccessLevel === 'leader'
-                ? ` · ${accessLabel('leader')}`
-                : ''}
-            </Badge>
-          ))
-        )}
-      </div>
-    </li>
+    <div className="flex justify-end">
+      <Link
+        to="/people/$memberId"
+        params={{ memberId: person.id }}
+        aria-label={m.people_view_label({ name: person.name })}
+        className={buttonVariants({
+          variant: 'outline',
+          size: 'xs',
+          className: 'min-h-11 min-w-11 md:min-h-0 md:min-w-0',
+        })}
+      >
+        {m.people_view()}
+      </Link>
+    </div>
+  );
+}
+
+function PersonName({ person }: { person: ListPeople200ItemsItem }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="break-words font-medium">{person.name}</span>
+      {person.isAdmin ? (
+        <Badge variant="secondary">{m.join_church_access_admin()}</Badge>
+      ) : null}
+    </div>
   );
 }
 
@@ -236,14 +257,32 @@ export function PeopleDirectoryPage() {
         </div>
       ) : (
         <>
-          <ul
+          <DataTable
             aria-label={m.people_list_label()}
-            className="surface-panel divide-y divide-border"
-          >
-            {items.map((person) => (
-              <PersonRow key={person.id} person={person} />
-            ))}
-          </ul>
+            columns={personColumns()}
+            items={items}
+            rowId={({ item }) => item.id}
+            renderCell={({ item, column }) => {
+              if (column.id === 'name') return <PersonName person={item} />;
+              if (column.id === 'email')
+                return <span className="break-all">{item.email}</span>;
+              if (column.id === 'ministries')
+                return <PersonMinistries person={item} />;
+              if (column.id === 'actions')
+                return <PersonAction person={item} />;
+              return null;
+            }}
+            renderMobileCard={({ item }) => (
+              <div className="surface-subtle workspace-panel space-y-2">
+                <PersonName person={item} />
+                <p className="break-all text-muted-foreground text-sm">
+                  {item.email}
+                </p>
+                <PersonMinistries person={item} />
+                <PersonAction person={item} />
+              </div>
+            )}
+          />
           {query.isFetchNextPageError ? (
             <Alert variant="destructive">
               <AlertDescription>{m.people_load_failed()}</AlertDescription>

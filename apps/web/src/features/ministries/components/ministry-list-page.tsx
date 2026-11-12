@@ -1,7 +1,8 @@
 import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   WorkspaceIntroPanel,
@@ -10,6 +11,29 @@ import {
 import { CreateMinistryDialog } from '@/features/ministries/components/create-ministry-dialog';
 import { useMinistryList } from '@/features/ministries/ministry-queries';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
+
+function MinistryAction({
+  ministry,
+}: {
+  ministry: { id: string; name: string };
+}) {
+  return (
+    <div className="flex justify-end">
+      <Link
+        to="/ministries/$ministryId"
+        params={{ ministryId: ministry.id }}
+        aria-label={m.ministries_open_label({ name: ministry.name })}
+        className={buttonVariants({
+          variant: 'outline',
+          size: 'xs',
+          className: 'min-h-11 min-w-11 md:min-h-0 md:min-w-0',
+        })}
+      >
+        {m.ministries_open()}
+      </Link>
+    </div>
+  );
+}
 
 /** The caller's active Ministries, as the server orders them; never auto-opens a single row. */
 export function MinistryListPage() {
@@ -49,22 +73,28 @@ export function MinistryListPage() {
           {m.ministries_empty()}
         </p>
       ) : (
-        <ul
+        <DataTable
           aria-label={m.nav_ministries()}
-          className="surface-panel divide-y divide-border"
-        >
-          {ministries.map((ministry) => (
-            <li key={ministry.id}>
-              <Link
-                to="/ministries/$ministryId"
-                params={{ ministryId: ministry.id }}
-                className="block px-4 py-3 font-medium hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-              >
-                {ministry.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
+          columns={[
+            { id: 'name', name: m.ministries_name_label(), isRowHeader: true },
+            { id: 'actions', name: m.people_column_actions() },
+          ]}
+          items={ministries}
+          rowId={({ item }) => item.id}
+          renderCell={({ item, column }) =>
+            column.id === 'name' ? (
+              item.name
+            ) : (
+              <MinistryAction ministry={item} />
+            )
+          }
+          renderMobileCard={({ item }) => (
+            <div className="surface-subtle workspace-panel space-y-2">
+              <p className="break-words font-medium">{item.name}</p>
+              <MinistryAction ministry={item} />
+            </div>
+          )}
+        />
       )}
     </WorkspacePage>
   );

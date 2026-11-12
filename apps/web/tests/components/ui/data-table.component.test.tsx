@@ -59,6 +59,22 @@ describe('DataTable', () => {
     expect(screen.getByTestId('mobile-card-row-2')).toHaveTextContent('Beta');
   });
 
+  it('exposes ordinary mobile records as a labelled list', () => {
+    render(
+      <DataTable
+        aria-label="Rows"
+        columns={COLUMNS}
+        items={ROWS}
+        rowId={({ item }) => item.id}
+        renderCell={renderCell}
+        renderMobileCard={renderMobileCard}
+      />,
+    );
+
+    const list = screen.getByRole('list', { name: 'Rows' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+  });
+
   it('renders row actions in the desktop actions column and appended under each mobile card', () => {
     const rowActions = vi.fn(({ item }: DataTableItemInput<Row>) => (
       <button type="button" data-testid={`action-${item.id}`}>

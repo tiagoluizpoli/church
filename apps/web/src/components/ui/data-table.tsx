@@ -144,7 +144,8 @@ export function DataTable<T extends object>({
     <div className={cn('space-y-3', className)}>
       <div
         className="space-y-3 md:hidden"
-        role="listbox"
+        role={selectionMode ? 'listbox' : 'list'}
+        aria-label={ariaLabel}
         data-testid={mobileListTestId}
       >
         {mobileListHeader}
@@ -152,7 +153,11 @@ export function DataTable<T extends object>({
           const id = rowId({ item });
           const key = rowKey ? rowKey({ item }) : id;
           return (
-            <div key={key} data-testid={rowTestId?.({ item })}>
+            <div
+              key={key}
+              role={selectionMode ? undefined : 'listitem'}
+              data-testid={rowTestId?.({ item })}
+            >
               {renderMobileCard({ item })}
               {rowActions ? rowActions({ item }) : null}
             </div>

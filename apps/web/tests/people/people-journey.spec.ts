@@ -28,7 +28,9 @@ async function openPerson({ page, name }: OpenPersonInput): Promise<void> {
   await page.goto('/people');
   await page.getByLabel(m.people_filter_search({}, PT)).fill(name);
   await page.getByLabel(m.people_filter_search({}, PT)).press('Enter');
-  await page.getByRole('link', { name }).click();
+  await page
+    .getByRole('link', { name: m.people_view_label({ name }, PT) })
+    .click();
   await expect(page.getByRole('heading', { name, level: 1 })).toBeVisible();
 }
 

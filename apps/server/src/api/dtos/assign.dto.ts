@@ -1,10 +1,15 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import type {
+  AssignmentProposalView,
   EligibleVolunteerView,
   ParticipationCompletionView,
 } from '../../domain/contracts/application/participation-manager';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
+import {
+  EMPTY_PROPOSAL_REASON_OPTIONS,
+  VOLUNTEER_DECIDING_RULE_OPTIONS,
+} from '../../domain/services/assignment-proposal';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 
 interface AssignmentWarningResponseInput {
@@ -75,7 +80,54 @@ export const reassignAssignmentBodySchema = z.object({
   volunteerId: z.string(),
 });
 
+/**
+ * A preview only: the additions are explicit (shiftRequirementId,
+ * volunteerId) pairs so a later apply can submit exactly what was reviewed.
+ */
+export const assignmentProposalResponseSchema = z.object({
+  additions: z.array(
+    z.object({
+      volunteerId: z.string(),
+      volunteerName: z.string(),
+      shiftRequirementId: z.string(),
+      shiftId: z.string(),
+      reason: z.object({
+        eligibleShiftCount: z.number(),
+        needCandidateCount: z.number(),
+        decidedBy: z.enum(VOLUNTEER_DECIDING_RULE_OPTIONS),
+      }),
+    }),
+  ),
+  gaps: z.array(
+    z.object({
+      shiftRequirementId: z.string(),
+      shiftId: z.string(),
+      remaining: z.number(),
+    }),
+  ),
+  excludedUnconfirmedCount: z.number(),
+  emptyReason: z.enum(EMPTY_PROPOSAL_REASON_OPTIONS).nullable(),
+});
+
 export const assignMapper = {
+  proposalToResponse(proposal: AssignmentProposalView) {
+    return {
+      additions: proposal.additions.map((addition) => ({
+        volunteerId: addition.volunteerId as string,
+        volunteerName: addition.volunteerName,
+        shiftRequirementId: addition.shiftRequirementId as string,
+        shiftId: addition.shiftId as string,
+        reason: addition.reason,
+      })),
+      gaps: proposal.gaps.map((gap) => ({
+        shiftRequirementId: gap.shiftRequirementId as string,
+        shiftId: gap.shiftId as string,
+        remaining: gap.remaining,
+      })),
+      excludedUnconfirmedCount: proposal.excludedUnconfirmedCount,
+      emptyReason: proposal.emptyReason,
+    };
+  },
   eligibleVolunteerToResponse(volunteer: EligibleVolunteerView) {
     return {
       volunteerId: volunteer.volunteerId as string,

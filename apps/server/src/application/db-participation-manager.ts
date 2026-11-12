@@ -17,6 +17,7 @@ import type {
 } from '../domain/branded-ids';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
+  AssignmentProposalView,
   CycleBuilderEventTimeBlockView,
   CycleBuilderEventView,
   CycleBuilderRequirementView,
@@ -25,6 +26,7 @@ import type {
   CycleBuilderView,
   CycleParticipationView,
   EligibleVolunteerView,
+  GetAssignmentProposalInput,
   GetCycleBuilderDataInput,
   GetCycleParticipationInput,
   GetParticipationCompletionInput,
@@ -106,6 +108,13 @@ import {
 import { ShiftHasResponsesError } from '../domain/errors/shift-has-responses';
 import { scheduleChanges } from '../domain/schedule-changes';
 import type { ScheduleAssignmentSnapshot } from '../domain/schedule-last-told';
+import {
+  type ProposalAssignment,
+  type ProposalNeed,
+  type ProposalShift,
+  type ProposalVolunteer,
+  proposeAssignments,
+} from '../domain/services/assignment-proposal';
 import {
   type ShiftSplitStrategy,
   ShiftSplitter,
@@ -1245,6 +1254,197 @@ export class DbParticipationManager implements IParticipationManager {
     );
   }
 
+  async getAssignmentProposal(
+    input: GetAssignmentProposalInput,
+  ): Promise<AssignmentProposalView> {
+    const { churchId, cycleId, ministryId } = input;
+    await this.ministryRepository.getById({ churchId, id: ministryId });
+    await this.cycleRepository.getById({ churchId, cycleId });
+
+    return this.unitOfWork.run(async (tx) => {
+      const eventGroups = await this.eventRepository.listCycleEvents({
+        churchId,
+        cycleId,
+        tx,
+      });
+      const cycleBlockIds = new Set<string>(
+        eventGroups.flatMap(({ eventTimeBlocks }) =>
+          eventTimeBlocks.map(({ id }) => id as string),
+        ),
+      );
+      const cancelledBlockIds = new Set<string>(
+        eventGroups.flatMap(({ eventTimeBlocks }) =>
+          eventTimeBlocks
+            .filter(({ status }) => status === 'cancelled')
+            .map(({ id }) => id as string),
+        ),
+      );
+
+      // Between Ask and Publish only: the same stages Publish accepts.
+      const proposable: MinistryParticipation[] = [];
+      let publishedCount = 0;
+      for (const { event } of eventGroups) {
+        if (event.status === 'cancelled') continue;
+        const participation =
+          await this.participationRepository.findByMinistryEvent({
+            churchId,
+            ministryId,
+            eventId: event.id,
+            tx,
+          });
+        if (participation?.state === 'published') publishedCount += 1;
+        if (
+          participation?.state === 'availability_requested' ||
+          participation?.state === 'assigning'
+        )
+          proposable.push(participation);
+      }
+      if (proposable.length === 0 && publishedCount > 0)
+        throw new ScheduleAlreadyPublishedError();
+      if (proposable.length === 0)
+        throw new IllegalStateTransitionError({
+          from: 'prepare',
+          to: 'proposal',
+        });
+
+      const shifts: Shift[] = [];
+      const needs: ProposalNeed[] = [];
+      const scheduleAssignments: Assignment[] = [];
+      for (const participation of proposable) {
+        const [participationShifts, requirements, assignments] =
+          await Promise.all([
+            this.shiftRepository.listByParticipation({
+              churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.shiftRepository.listRequirementsByParticipation({
+              churchId,
+              participationId: participation.id,
+              tx,
+            }),
+            this.assignmentRepository.listByParticipation({
+              churchId,
+              participationId: participation.id,
+              tx,
+            }),
+          ]);
+        shifts.push(...participationShifts);
+        scheduleAssignments.push(
+          ...assignments.filter(({ status }) =>
+            isActiveAssignmentStatus(status),
+          ),
+        );
+        for (const { id, shiftId, roleId, peopleNeeded } of requirements) {
+          if (shiftId)
+            needs.push({
+              shiftRequirementId: id,
+              shiftId,
+              roleId,
+              peopleNeeded,
+            });
+        }
+      }
+
+      // Only Volunteers asked this Cycle are candidates; unconfirmed ones are counted.
+      const memberships =
+        await this.availabilityCheckRepository.listActiveMemberships({
+          churchId,
+          ministryId,
+          tx,
+        });
+      const checks =
+        memberships.length === 0
+          ? []
+          : await this.availabilityCheckRepository.listByCycle({
+              churchId,
+              cycleId,
+              ministryMembershipIds: memberships.map(
+                ({ ministryMembershipId }) => ministryMembershipId,
+              ),
+              tx,
+            });
+      const checkStateByMembership = new Map(
+        checks.map(({ ministryMembershipId, state }) => [
+          ministryMembershipId,
+          state,
+        ]),
+      );
+      const asked = memberships.filter(({ ministryMembershipId }) =>
+        checkStateByMembership.has(ministryMembershipId),
+      );
+      const membershipInfo = await this.listVolunteerMembershipInfo({
+        churchId,
+        ministryId,
+        tx,
+      });
+      const { activeAssignments, assignmentShiftsById, unavailableShiftKeys } =
+        await this.loadCandidateFacts({
+          churchId,
+          volunteerIds: asked.map(({ volunteerId }) => volunteerId),
+          tx,
+        });
+
+      const volunteers: ProposalVolunteer[] = asked.map(
+        ({ ministryMembershipId, volunteerId }) => ({
+          volunteerId,
+          roleIds: (membershipInfo.get(volunteerId as string)
+            ?.qualifiedRoleIds ?? []) as RoleId[],
+          availability:
+            checkStateByMembership.get(ministryMembershipId) === 'confirmed'
+              ? 'confirmed'
+              : 'not_confirmed',
+          unavailableShiftIds: shifts
+            .filter(({ id }) =>
+              unavailableShiftKeys.has(
+                `${volunteerId as string}:${id as string}`,
+              ),
+            )
+            .map(({ id }) => id),
+        }),
+      );
+      const proposalShifts: ProposalShift[] = shifts.map((shift) => ({
+        shiftId: shift.id,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        cancelled: cancelledBlockIds.has(shift.eventTimeBlockId as string),
+      }));
+      const proposalAssignments = toProposalAssignments({
+        scheduleAssignments,
+        candidateAssignments: activeAssignments,
+        shiftsById: new Map([
+          ...assignmentShiftsById,
+          ...shifts.map((shift): [string, Shift] => [
+            shift.id as string,
+            shift,
+          ]),
+        ]),
+        cycleBlockIds,
+      });
+
+      const proposal = proposeAssignments({
+        now: now(),
+        shifts: proposalShifts,
+        needs,
+        volunteers,
+        assignments: proposalAssignments,
+      });
+      const nameByVolunteer = new Map(
+        memberships.map(({ volunteerId, volunteerName }) => [
+          volunteerId,
+          volunteerName,
+        ]),
+      );
+      return {
+        ...proposal,
+        additions: proposal.additions.map((addition) => ({
+          ...addition,
+          volunteerName: nameByVolunteer.get(addition.volunteerId) ?? '',
+        })),
+      };
+    });
+  }
+
   async publishCycle(input: PublishCycleInput): Promise<PublishCycleView> {
     await this.ministryRepository.getById({
       churchId: input.churchId,
@@ -2124,6 +2324,41 @@ export class DbParticipationManager implements IParticipationManager {
 
     return eligibleByShift;
   }
+}
+
+interface ToProposalAssignmentsInput {
+  /** Active Assignments of the target Schedule, by any Volunteer. */
+  scheduleAssignments: Assignment[];
+  /** Active Assignments of the candidates, in any Ministry. */
+  candidateAssignments: Assignment[];
+  shiftsById: Map<string, Shift>;
+  cycleBlockIds: Set<string>;
+}
+
+/** One entry per Assignment; only target-Schedule ones name a need. */
+function toProposalAssignments({
+  scheduleAssignments,
+  candidateAssignments,
+  shiftsById,
+  cycleBlockIds,
+}: ToProposalAssignmentsInput): ProposalAssignment[] {
+  const scheduleIds = new Set(scheduleAssignments.map(({ id }) => id));
+  const byId = new Map<string, ProposalAssignment>();
+  for (const assignment of [...scheduleAssignments, ...candidateAssignments]) {
+    const shift = assignment.shiftId && shiftsById.get(assignment.shiftId);
+    if (!shift || byId.has(assignment.id)) continue;
+    byId.set(assignment.id, {
+      volunteerId: assignment.volunteerId,
+      shiftId: shift.id,
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+      shiftRequirementId: scheduleIds.has(assignment.id)
+        ? assignment.shiftRequirementId
+        : undefined,
+      inCycle: cycleBlockIds.has(assignment.eventTimeBlockId as string),
+    });
+  }
+  return [...byId.values()];
 }
 
 function dedupeVolunteersById(

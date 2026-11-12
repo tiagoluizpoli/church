@@ -5,6 +5,7 @@ import {
   assignmentAudit,
   availabilityCheck,
   church,
+  ministryMembership,
   ministryParticipation,
   outboxMessage,
   shiftRequirement,
@@ -394,6 +395,200 @@ describe('builder eligibility contract', () => {
         endTime: '2026-09-07T10:30:00.000Z',
       },
     });
+  });
+});
+
+describe('Assignment proposal preview', () => {
+  interface SetScheduleStateInput {
+    participationId: string;
+    state: 'preparing' | 'availability_requested' | 'assigning' | 'published';
+  }
+
+  async function setScheduleState({
+    participationId,
+    state,
+  }: SetScheduleStateInput) {
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state })
+      .where(eq(ministryParticipation.id, participationId));
+  }
+
+  interface AskInput {
+    churchId: string;
+    cycleId: string;
+    ministryId: string;
+    membershipId: string;
+    state: 'pending' | 'confirmed';
+  }
+
+  async function ask({ membershipId, ...input }: AskInput) {
+    return buildAvailabilityCheck({
+      db: schedulingTestDb,
+      ...input,
+      ministryMembershipId: membershipId,
+    });
+  }
+
+  type ProposalSeed = Awaited<ReturnType<typeof seedCrossMinistryOverlap>>;
+
+  async function propose(seed: ProposalSeed) {
+    return app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/assignment-proposal?ministryId=${seed.ministryId}`,
+    });
+  }
+
+  it('proposes from confirmed answers only, keeps existing Assignments, skips cross-Ministry overlaps and writes nothing', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    await setScheduleState({
+      participationId: seed.targetParticipationId,
+      state: 'assigning',
+    });
+    const scope = {
+      churchId: seed.churchId,
+      cycleId: seed.cycleId,
+      ministryId: seed.ministryId,
+    };
+    const memberships = await schedulingTestDb
+      .select()
+      .from(ministryMembership)
+      .where(eq(ministryMembership.ministryId, seed.ministryId));
+    const membershipOf = (volunteerId: string) =>
+      memberships.find((row) => row.volunteerId === volunteerId)?.id ?? '';
+    await ask({
+      ...scope,
+      membershipId: membershipOf(seed.freeVolunteerId),
+      state: 'confirmed',
+    });
+    await ask({
+      ...scope,
+      membershipId: membershipOf(seed.doubleBookedVolunteerId),
+      state: 'confirmed',
+    });
+    const unanswered = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Unanswered',
+      email: 'proposal-unanswered@test.com',
+    });
+    await seedRoleQualification({
+      churchId: seed.churchId,
+      membershipId: unanswered.membership.id,
+      roleId: seed.targetRoleId,
+    });
+    await ask({
+      ...scope,
+      membershipId: unanswered.membership.id,
+      state: 'pending',
+    });
+    const existing = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Already assigned',
+      email: 'proposal-existing@test.com',
+    });
+    await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: existing.volunteer.id,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
+    const assignmentsBefore = await schedulingTestDb.select().from(assignment);
+
+    const response = await propose(seed);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      additions: [
+        {
+          volunteerId: seed.freeVolunteerId,
+          volunteerName: 'Free Volunteer',
+          shiftRequirementId: seed.targetRequirementId,
+          shiftId: seed.targetShiftId,
+          reason: {
+            eligibleShiftCount: 1,
+            needCandidateCount: 1,
+            decidedBy: 'only_candidate',
+          },
+        },
+      ],
+      gaps: [],
+      excludedUnconfirmedCount: 1,
+      emptyReason: null,
+    });
+    // The overlap is used, never described.
+    expect(response.body).not.toContain('Other ministry');
+    expect(await schedulingTestDb.select().from(assignment)).toEqual(
+      assignmentsBefore,
+    );
+    const [participation] = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.id, seed.targetParticipationId));
+    expect(participation?.state).toBe('assigning');
+  });
+
+  it('explains an empty proposal when nobody has confirmed', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    await setScheduleState({
+      participationId: seed.targetParticipationId,
+      state: 'availability_requested',
+    });
+
+    const response = await propose(seed);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      additions: [],
+      gaps: [
+        {
+          shiftRequirementId: seed.targetRequirementId,
+          shiftId: seed.targetShiftId,
+          remaining: 2,
+        },
+      ],
+      excludedUnconfirmedCount: 0,
+      emptyReason: 'no_confirmed_responses',
+    });
+  });
+
+  it('is offered only between asking for availability and publishing', async () => {
+    const seed = await seedCrossMinistryOverlap();
+
+    const preparing = await propose(seed);
+    expect(preparing.statusCode).toBe(409);
+    expect(preparing.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+
+    await setScheduleState({
+      participationId: seed.targetParticipationId,
+      state: 'published',
+    });
+    const published = await propose(seed);
+    expect(published.statusCode).toBe(409);
+    expect(published.json().error).toBe('SCHEDULE_ALREADY_PUBLISHED');
+  });
+
+  it('requires manual-assignment authority and stays inside the active Church', async () => {
+    const seed = await seedCrossMinistryOverlap();
+    await setScheduleState({
+      participationId: seed.targetParticipationId,
+      state: 'assigning',
+    });
+    authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: false });
+    authorityGuard.decideManageAnyMinistry.mockResolvedValue({
+      allowed: false,
+    });
+    expect((await propose(seed)).statusCode).toBe(403);
+
+    authorityGuard.decideManageMinistry.mockResolvedValue({ allowed: true });
+    const foreign = await app.inject({
+      method: 'GET',
+      url: `/api/v1/assign/cycles/${seed.cycleId}/assignment-proposal?ministryId=${seed.foreignMinistryId}`,
+    });
+    expect(foreign.statusCode).toBe(404);
   });
 });
 

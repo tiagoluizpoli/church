@@ -29,6 +29,10 @@ import type {
   UsualSetupEntryInput,
   UsualSetupHeadcount,
 } from '../../entities/usual-setup';
+import type {
+  AssignmentProposal,
+  ProposedAddition,
+} from '../../services/assignment-proposal';
 import type { ShiftSplitStrategy } from '../../services/shift-splitter';
 
 export interface GetCycleParticipationInput {
@@ -271,6 +275,22 @@ export interface SavePreparationInput {
   headcounts?: UsualSetupHeadcount[];
 }
 
+export interface GetAssignmentProposalInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  ministryId: MinistryId;
+}
+
+export interface ProposedAdditionView extends ProposedAddition {
+  volunteerName: string;
+}
+
+/** A side-effect-free preview: nothing here is stored or written. */
+export interface AssignmentProposalView
+  extends Omit<AssignmentProposal, 'additions'> {
+  additions: ProposedAdditionView[];
+}
+
 export interface IParticipationManager {
   getCycleParticipation(
     input: GetCycleParticipationInput,
@@ -296,6 +316,10 @@ export interface IParticipationManager {
   getCompletion(
     input: GetParticipationCompletionInput,
   ): Promise<ParticipationCompletionView>;
+  /** Proposes Assignments for one Schedule between Ask and Publish; writes nothing. */
+  getAssignmentProposal(
+    input: GetAssignmentProposalInput,
+  ): Promise<AssignmentProposalView>;
   publishCycle(input: PublishCycleInput): Promise<PublishCycleView>;
   sendScheduleUpdates(
     input: PublishCycleInput,

@@ -23,6 +23,7 @@ import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   assignMapper,
+  assignmentProposalResponseSchema,
   createParticipationAssignmentBodySchema,
   createParticipationAssignmentResponseSchema,
   eligibleVolunteerListResponseSchema,
@@ -248,6 +249,51 @@ export class AssignController implements FastifyController {
         },
       );
     }
+
+    app.get(
+      '/cycles/:cycleId/assignment-proposal',
+      {
+        schema: {
+          tags: ['assign'],
+          operationId: 'getAssignmentProposal',
+          summary: "Propose Assignments for a Ministry's Schedule",
+          description:
+            'Compute a deterministic Assignment proposal for one Schedule between asking for availability and publishing. Writes nothing.',
+          querystring: cycleMinistryQuerySchema,
+          response: {
+            200: assignmentProposalResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId } = request.params as CycleRouteParams;
+        const { ministryId } = request.query as CycleMinistryQuery;
+
+        const decision = await this.authorityGuard.decideManageMinistry({
+          churchId: ChurchId.from(request.churchId),
+          ministryId: MinistryId.from(ministryId),
+          userId: UserId.from(request.userId),
+        });
+        if (
+          await this.denyAuthorityDecision({
+            request,
+            reply,
+            allowed: decision.allowed,
+          })
+        )
+          return;
+
+        const proposal = await this.participationManager.getAssignmentProposal({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          ministryId: MinistryId.from(ministryId),
+        });
+        return reply.send(assignMapper.proposalToResponse(proposal));
+      },
+    );
 
     app.post(
       '/cycles/:cycleId/publish',

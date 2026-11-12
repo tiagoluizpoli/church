@@ -62,12 +62,15 @@ export interface ProposeAssignmentsInput {
   assignments: ProposalAssignment[];
 }
 
+export const VOLUNTEER_DECIDING_RULE_OPTIONS = [
+  'only_candidate',
+  'fewest_eligible_shifts',
+  'fewest_cycle_assignments',
+  'stable_order',
+] as const;
 /** Which Volunteer ranking rule set this Volunteer apart from the next one. */
 export type VolunteerDecidingRule =
-  | 'only_candidate'
-  | 'fewest_eligible_shifts'
-  | 'fewest_cycle_assignments'
-  | 'stable_order';
+  (typeof VOLUNTEER_DECIDING_RULE_OPTIONS)[number];
 
 export interface ProposedAdditionReason {
   /** Distinct target-Schedule Shifts the Volunteer could still fill. */
@@ -91,10 +94,13 @@ export interface ProposalGap {
   remaining: number;
 }
 
+export const EMPTY_PROPOSAL_REASON_OPTIONS = [
+  'no_open_needs',
+  'no_confirmed_responses',
+  'no_eligible_placements',
+] as const;
 export type EmptyProposalReason =
-  | 'no_open_needs'
-  | 'no_confirmed_responses'
-  | 'no_eligible_placements';
+  (typeof EMPTY_PROPOSAL_REASON_OPTIONS)[number];
 
 export interface AssignmentProposal {
   additions: ProposedAddition[];

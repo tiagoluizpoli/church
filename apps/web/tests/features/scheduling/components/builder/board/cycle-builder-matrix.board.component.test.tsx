@@ -16,6 +16,7 @@ import type {
   CycleBuilderData,
   CycleBuilderEligibleVolunteerSummary,
 } from '@/features/scheduling/hooks/use-cycle-builder';
+import * as ranking from '@/features/scheduling/utils/builder/cycle-builder-ranking.utils';
 import { pickCalendarDate } from '@/tests/setup/date-picker';
 import { renderWithProviders } from '@/tests/setup/render';
 
@@ -204,6 +205,43 @@ function boardDataWithShiftAssignments(): CycleBuilderData {
 }
 
 describe('CycleBuilderMatrix', () => {
+  it('does not rerank focused volunteers when unrelated board controls change', () => {
+    const rank = vi.spyOn(ranking, 'rankVolunteersForShiftRole');
+    renderWithProviders(
+      <CycleBuilderMatrix data={boardData} {...refreshProps} />,
+    );
+    fireEvent.click(
+      screen.getByTestId('cycle-requirement-focus-requirement-role-1'),
+    );
+    expect(rank).toHaveBeenCalled();
+    rank.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: /date filters/i }));
+    expect(rank).not.toHaveBeenCalled();
+    rank.mockRestore();
+  });
+
+  it('shares one expiry timer across cells and clears it on unmount', () => {
+    const intervals = vi.spyOn(window, 'setInterval');
+    const clears = vi.spyOn(window, 'clearInterval');
+    const { unmount } = renderWithProviders(
+      <CycleBuilderMatrix
+        data={boardDataWithShiftAssignments()}
+        {...refreshProps}
+      />,
+    );
+    const expiryCalls = intervals.mock.calls.filter(
+      ([, delay]) => delay === 30_000,
+    );
+    expect(expiryCalls).toHaveLength(1);
+    const timer =
+      intervals.mock.results[intervals.mock.calls.indexOf(expiryCalls[0])]
+        ?.value;
+    unmount();
+    expect(clears).toHaveBeenCalledWith(timer);
+    intervals.mockRestore();
+    clears.mockRestore();
+  });
+
   it('keeps same-role Sector cells independent and selects the requirement id', async () => {
     const user = userEvent.setup();
     const onSelectAssignment = vi.fn();

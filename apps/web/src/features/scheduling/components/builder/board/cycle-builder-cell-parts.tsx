@@ -1,19 +1,19 @@
 import { m } from '@church/i18n/messages';
-import { useDndContext, useDraggable, useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import {
   GripVerticalIcon,
   LocateFixed,
   RotateCcwIcon,
   XIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import type { CycleBuilderAssignment } from '../../../hooks/use-cycle-builder';
 import { isOptimisticAssignmentId } from '../../../hooks/use-cycle-builder.optimistic';
 import type { PickerVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
-import { draggedAssignment } from '../../../utils/builder/cycle-builder-dnd.utils';
 import { AssignmentChip } from '../assignment/assignment-chip';
 import { AssignmentPicker } from '../assignment/assignment-picker';
 import { useSwapRequestBoard } from '../swap-request/swap-request-context';
+import { useBoardDragIdentity } from './board-drag-identity';
 import { Button } from '@/components/ui/button';
 import { useFormControlSize } from '@/components/ui/form-control-size';
 import {
@@ -65,8 +65,7 @@ export function AssignmentButton({
   // The row only carries a client-invented id while the create is in flight, so
   // this is the sync state, not a domain status.
   const isPending = isOptimisticAssignmentId({ assignmentId: assignment.id });
-  const { active } = useDndContext();
-  const moving = draggedAssignment({ active });
+  const moving = useBoardDragIdentity()?.assignment;
   const {
     openRequestByAssignment,
     onOpenSwapRequest,
@@ -85,24 +84,6 @@ export function AssignmentButton({
     }, 0);
     return () => clearTimeout(timer);
   }, [coverRequested, onFocus, onCoverHandled]);
-  const drag = useDraggable({
-    id: `move-assignment:${assignment.id}`,
-    data: {
-      kind: 'assignment',
-      assignmentId: assignment.id,
-      shiftId,
-      shiftRequirementId,
-      roleId,
-    },
-    disabled: isPending || !isEditable,
-  });
-  const replacementTarget = useDroppable({
-    id: `cycle-assignment:${assignment.id}`,
-    data: { shiftId, shiftRequirementId, assignmentId: assignment.id },
-    // Replacing a row the server has never seen would send it an id it cannot
-    // resolve. The window is short; refusing it is cheaper than a 404 toast.
-    disabled: isPending || !isEditable || Boolean(moving),
-  });
   const chip = (
     <AssignmentChip
       readOnly={isPending || !isEditable}
@@ -122,28 +103,20 @@ export function AssignmentButton({
   );
 
   return (
-    <span
-      ref={replacementTarget.setNodeRef}
-      className={cn(
-        'inline-flex max-w-full rounded-full',
-        replacementTarget.isOver && 'ring-1 ring-primary ring-offset-1',
-      )}
-      data-drop-target={isPending || !isEditable ? undefined : 'replace'}
-      data-testid={`cycle-assignment-${assignment.id}`}
+    <AssignmentDropTarget
+      assignmentId={assignment.id}
+      shiftId={shiftId}
+      shiftRequirementId={shiftRequirementId}
+      disabled={isPending || !isEditable || Boolean(moving)}
+      readOnly={isPending || !isEditable}
     >
       {!isPending && isEditable && moveTargets?.length ? (
-        <button
-          type="button"
-          ref={drag.setNodeRef}
-          {...drag.listeners}
-          {...drag.attributes}
-          aria-label={m.builder_ui_drag_assignment({
-            name: assignment.volunteerName ?? assignment.volunteerId,
-          })}
-          className="cursor-grab touch-none rounded px-1 focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <GripVerticalIcon className="size-4" />
-        </button>
+        <AssignmentDragGrip
+          assignment={assignment}
+          shiftId={shiftId}
+          shiftRequirementId={shiftRequirementId}
+          roleId={roleId}
+        />
       ) : null}
       {openSwapRequestId ? (
         <Button
@@ -189,6 +162,82 @@ export function AssignmentButton({
           onMove={onMove}
         />
       )}
+    </AssignmentDropTarget>
+  );
+}
+
+interface AssignmentDragGripProps {
+  assignment: CycleBuilderAssignment;
+  shiftId: string;
+  shiftRequirementId: string;
+  roleId: string;
+}
+
+function AssignmentDragGrip({
+  assignment,
+  shiftId,
+  shiftRequirementId,
+  roleId,
+}: AssignmentDragGripProps) {
+  const drag = useDraggable({
+    id: `move-assignment:${assignment.id}`,
+    data: {
+      kind: 'assignment',
+      assignmentId: assignment.id,
+      shiftId,
+      shiftRequirementId,
+      roleId,
+    },
+  });
+  return (
+    <button
+      type="button"
+      ref={drag.setNodeRef}
+      {...drag.listeners}
+      {...drag.attributes}
+      aria-label={m.builder_ui_drag_assignment({
+        name: assignment.volunteerName ?? assignment.volunteerId,
+      })}
+      className="cursor-grab touch-none rounded px-1 focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <GripVerticalIcon className="size-4" />
+    </button>
+  );
+}
+
+interface AssignmentDropTargetProps {
+  assignmentId: string;
+  shiftId: string;
+  shiftRequirementId: string;
+  disabled: boolean;
+  readOnly: boolean;
+  children: ReactNode;
+}
+
+function AssignmentDropTarget({
+  assignmentId,
+  shiftId,
+  shiftRequirementId,
+  disabled,
+  readOnly,
+  children,
+}: AssignmentDropTargetProps) {
+  const target = useDroppable({
+    id: `cycle-assignment:${assignmentId}`,
+    data: { shiftId, shiftRequirementId, assignmentId },
+    disabled,
+  });
+  return (
+    <span
+      ref={target.setNodeRef}
+      className={cn(
+        'inline-flex max-w-full rounded-full',
+        target.isOver && 'ring-1 ring-primary ring-offset-1',
+      )}
+      data-drop-target={readOnly ? undefined : 'replace'}
+      data-testid={`cycle-assignment-${assignmentId}`}
+    >
+      {children}
     </span>
   );
 }

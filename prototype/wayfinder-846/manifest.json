@@ -1,0 +1,58 @@
+[
+  {
+    "path": "prototype/wayfinder-853.html",
+    "sha256": "0ae989f2882b3072ead92da3b6c336feb451361009835b2685744023179eef52"
+  },
+  {
+    "path": "prototype/wayfinder-846/availability/index.html",
+    "sha256": "9df253a773d4772bb865b37ce3064159467edaaab1d648b0f80ad1078fa02d84"
+  },
+  {
+    "path": "prototype/wayfinder-846/schedule/report.md",
+    "sha256": "84f237fe29aa11e3a56f8fdf4d9c638a9a0532fcf6545fff42ef49a33a895001"
+  },
+  {
+    "path": "prototype/wayfinder-846/schedule/resolution.md",
+    "sha256": "2499ae66d5cf98d6e821b4e6074df3be54b12487f6dafd979be6c1eeec24c644"
+  },
+  {
+    "path": "prototype/wayfinder-846/availability/progress.md",
+    "sha256": "a205c7e256335f8c4b14fc8ef52638c6be1ab41bdd426c92006466fadb9788f6"
+  },
+  {
+    "path": "prototype/wayfinder-846/availability/switch-correction.md",
+    "sha256": "354c0e57a81dc1ff173706223baaf9ed008a0dac22fd2db8c64920c115cedd3d"
+  },
+  {
+    "path": "prototype/wayfinder-846/availability/compact-update.md",
+    "sha256": "73b66ece710c66d780d52e02753d2cdd11543cbb53222d6d6ec0a61f00d42c6c"
+  },
+  {
+    "path": "prototype/wayfinder-846/availability/resolution.md",
+    "sha256": "9bcffa706ac488cbd84b0872643610464cfb67b9d8f22280c677029167f218b0"
+  },
+  {
+    "path": "prototype/wayfinder-846/schedule/screenshots/c-mobile.png",
+    "sha256": "ef027815e2fded2b3b9d82c5e6f7dafcf2dde375a15aa5d73510b0ab89f15f37"
+  },
+  {
+    "path": "prototype/wayfinder-846/schedule/screenshots/a-desktop.png",
+    "sha256": "d04987e8d1f5477fa2878cf51fc618536789f0f14d7283ff8845f227a0b5e947"
+  },
+  {
+    "path": "prototype/wayfinder-846/schedule/screenshots/b-desktop.png",
+    "sha256": "6464a8fd0222a60147cd3e5ec3059cc1a38207869a4a9c377d4251e7385e443d"
+  },
+  {
+    "path": "prototype/wayfinder-846/schedule/screenshots/b-mobile.png",
+    "sha256": "e5c7154d2e1d5d609a255abd82a2cf9162b95dc1a327739d03a74a823b686738"
+  },
+  {
+    "path": "prototype/wayfinder-846/schedule/screenshots/a-mobile.png",
+    "sha256": "5d28c515dcf92b662c72aca4eed8685a02378b07b87f05cde83ae6b5c6ac4a06"
+  },
+  {
+    "path": "prototype/wayfinder-846/schedule/screenshots/c-desktop.png",
+    "sha256": "cfcc2e8a5c879e299906629f05ae455f5715abf209ae28f638618d6e98347f58"
+  }
+]

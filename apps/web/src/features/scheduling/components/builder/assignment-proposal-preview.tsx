@@ -16,10 +16,56 @@ import { formatInstantRangeOf } from '@/shared/utils/church-time';
 
 export type AssignmentProposal = GetAssignmentProposal200;
 
+/** `unknown`: the request failed without an answer, so it may have committed. */
+export type ProposalApplyState =
+  | { status: 'idle' }
+  | { status: 'pending' }
+  | { status: 'unknown' }
+  | { status: 'refused'; message: string };
+
 interface AssignmentProposalPreviewProps {
   data: CycleBuilderData;
   proposal: AssignmentProposal;
+  applyState: ProposalApplyState;
+  onApply: (proposal: AssignmentProposal) => void;
+  onReviewNew: () => void;
   onDiscard: () => void;
+}
+
+interface ApplyActionProps {
+  proposal: AssignmentProposal;
+  applyState: ProposalApplyState;
+  onApply: (proposal: AssignmentProposal) => void;
+  onReviewNew: () => void;
+}
+
+function ApplyAction({
+  proposal,
+  applyState,
+  onApply,
+  onReviewNew,
+}: ApplyActionProps) {
+  const { status } = applyState;
+  if (proposal.additions.length === 0) return null;
+  if (status === 'refused')
+    return (
+      <Button size="touch" onClick={onReviewNew}>
+        {m.builder_proposal_refresh()}
+      </Button>
+    );
+  return (
+    <Button
+      size="touch"
+      disabled={status === 'pending'}
+      onClick={() => onApply(proposal)}
+    >
+      {status === 'pending'
+        ? m.builder_proposal_applying()
+        : status === 'unknown'
+          ? m.builder_proposal_apply_retry()
+          : m.builder_proposal_apply()}
+    </Button>
+  );
 }
 
 interface ExistingAssignee {
@@ -140,12 +186,16 @@ function emptyReasonText({ emptyReason }: EmptyReasonInput): string | null {
 }
 
 /**
- * Read-only review of a proposal: nothing here writes. Apply arrives with
- * safe application (#873); until then the only action is Discard.
+ * Review of a proposal. Only Apply writes: exactly these additions, once
+ * (ADR 0013). A refusal asks for a fresh review; an unanswered attempt is
+ * retried with the same key so its committed outcome is recovered.
  */
 export function AssignmentProposalPreview({
   data,
   proposal,
+  applyState,
+  onApply,
+  onReviewNew,
   onDiscard,
 }: AssignmentProposalPreviewProps) {
   const { churchTimezone: timeZone } = useTimezone();
@@ -156,20 +206,45 @@ export function AssignmentProposalPreview({
   );
   const { excludedUnconfirmedCount } = proposal;
   const emptyText = emptyReasonText(proposal);
+  const isApplying = applyState.status === 'pending';
+  const applyAlert =
+    applyState.status === 'refused'
+      ? applyState.message
+      : applyState.status === 'unknown'
+        ? m.builder_proposal_apply_unknown()
+        : null;
 
   return (
     <ResponsiveFormSurface
       open
-      onOpenChange={(open) => !open && onDiscard()}
+      onOpenChange={(open) => !(open || isApplying) && onDiscard()}
       title={m.builder_proposal_title()}
       description={m.builder_proposal_description()}
       footer={
-        <Button variant="outline" size="touch" onClick={onDiscard}>
-          {m.builder_proposal_discard()}
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            size="touch"
+            disabled={isApplying}
+            onClick={onDiscard}
+          >
+            {m.builder_proposal_discard()}
+          </Button>
+          <ApplyAction
+            proposal={proposal}
+            applyState={applyState}
+            onApply={onApply}
+            onReviewNew={onReviewNew}
+          />
+        </>
       }
     >
       <div className="space-y-4" data-testid="assignment-proposal-preview">
+        {applyAlert ? (
+          <p role="alert" className="text-destructive text-sm">
+            {applyAlert}
+          </p>
+        ) : null}
         <div className="space-y-1 text-sm">
           {emptyText ? (
             <p className="font-medium">{emptyText}</p>

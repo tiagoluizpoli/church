@@ -1,6 +1,7 @@
 import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -16,7 +17,11 @@ import {
   summarizeCycleStaffing,
 } from '../../utils/builder/cycle-builder-staffing.utils';
 import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialog';
-import { AssignmentProposalPreview } from './assignment-proposal-preview';
+import {
+  type AssignmentProposal,
+  AssignmentProposalPreview,
+  type ProposalApplyState,
+} from './assignment-proposal-preview';
 import { AuditLogPanel } from './audit-log-panel';
 import { CycleBuilderMatrix } from './board/cycle-builder-matrix';
 import { CycleBuilderHeader } from './cycle-builder-header';
@@ -36,6 +41,8 @@ import {
 } from '@/components/ui/dialog';
 import { WorkspacePage } from '@/components/workspace-page';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { randomId } from '@/shared/utils/id';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
 interface CycleBuilderProps {
@@ -106,15 +113,62 @@ export function CycleBuilder({
   const belowFullCount = publishStaffing.shiftsBelowTarget;
   const emptyPlaces = publishStaffing.required - publishStaffing.coveredPlaces;
   const queryClient = useQueryClient();
+  const refreshBoard = () =>
+    void queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY });
+  // Each reviewed preview gets one key; every retry of it resends that key,
+  // so a lost response is recovered rather than applied twice (ADR 0013).
+  const [applicationKey, setApplicationKey] = useState('');
   // A read, kept only in memory: discarding it writes nothing.
   const proposal = useMutation({
     mutationFn: () => adminApi.getAssignmentProposal(cycleId, { ministryId }),
+    onSuccess: () => setApplicationKey(randomId()),
     onError: () => {
       toast.error(m.builder_proposal_error());
       // The Schedule may have moved on (e.g. published elsewhere).
-      void queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY });
+      refreshBoard();
     },
   });
+  const applyProposal = useMutation({
+    mutationFn: ({ reviewToken, additions }: AssignmentProposal) =>
+      adminApi.applyAssignmentProposal(
+        cycleId,
+        {
+          applicationKey,
+          reviewToken,
+          additions: additions.map(({ shiftRequirementId, volunteerId }) => ({
+            shiftRequirementId,
+            volunteerId,
+          })),
+        },
+        { ministryId },
+      ),
+    onSuccess: ({ additions }) => {
+      toast.success(m.builder_proposal_applied({ count: additions.length }));
+      proposal.reset();
+    },
+    onSettled: refreshBoard,
+  });
+  const discardProposal = () => {
+    applyProposal.reset();
+    proposal.reset();
+  };
+  const reviewNewProposal = () => {
+    applyProposal.reset();
+    proposal.mutate();
+  };
+  const applyError = applyProposal.error;
+  // A 4xx is a definite refusal; anything else may have committed.
+  const refused =
+    isAxiosError(applyError) &&
+    applyError.response !== undefined &&
+    applyError.response.status < 500;
+  const applyState: ProposalApplyState = applyProposal.isPending
+    ? { status: 'pending' }
+    : !applyError
+      ? { status: 'idle' }
+      : refused
+        ? { status: 'refused', message: requestErrorMessage(applyError) }
+        : { status: 'unknown' };
   const actions = useCycleBuilderActions({
     data,
     createAssignment,
@@ -344,7 +398,10 @@ export function CycleBuilder({
           <AssignmentProposalPreview
             data={data}
             proposal={proposal.data}
-            onDiscard={proposal.reset}
+            applyState={applyState}
+            onApply={applyProposal.mutate}
+            onReviewNew={reviewNewProposal}
+            onDiscard={discardProposal}
           />
         ) : null}
 

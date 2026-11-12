@@ -231,10 +231,11 @@ function renderBuilder({
 }: RenderBuilderInput = {}) {
   const mutateAsync = vi.fn(createAssignment ?? (() => Promise.resolve({})));
   const move = vi.fn(moveAssignment ?? (() => Promise.resolve({})));
+  const onPublish = vi.fn();
   renderWithProviders(
     <CycleBuilder
       data={data}
-      onPublish={vi.fn()}
+      onPublish={onPublish}
       isPublishing={false}
       cycleId="cycle-1"
       ministryId="ministry-1"
@@ -250,7 +251,7 @@ function renderBuilder({
       onSelectSwapRequest={onSelectSwapRequest}
     />,
   );
-  return { mutateAsync, move };
+  return { mutateAsync, move, onPublish };
 }
 
 async function assignGraceHopper() {
@@ -810,7 +811,44 @@ describe('Assignment proposal preview', () => {
     gaps: [],
     excludedUnconfirmedCount: 2,
     emptyReason: null,
+    reviewToken: 'review-token-1',
   };
+
+  const outcome = {
+    applicationKey: 'key',
+    appliedAt: '2026-08-01T10:00:00.000Z',
+    replayed: false,
+    additions: [
+      {
+        assignmentId: 'assignment-new',
+        shiftRequirementId: 'requirement-role-1',
+        volunteerId: 'volunteer-2',
+      },
+    ],
+  };
+
+  function conflict(message: string) {
+    return new AxiosError(
+      'Request failed with status code 409',
+      'ERR_BAD_REQUEST',
+      undefined,
+      undefined,
+      {
+        data: { error: 'ASSIGNMENT_PROPOSAL_STALE', message },
+        status: 409,
+        statusText: 'Conflict',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+      },
+    );
+  }
+
+  async function openPreview() {
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+    return screen.findByTestId('assignment-proposal-preview');
+  }
 
   it('previews additions, existing Assignments and reasons, and discards without writing', async () => {
     const getProposal = vi
@@ -852,10 +890,6 @@ describe('Assignment proposal preview', () => {
         m.builder_proposal_reason_workload(),
       ].join(' · '),
     );
-    expect(
-      screen.queryByRole('button', { name: /apply/i }),
-    ).not.toBeInTheDocument();
-
     await userEvent.click(
       screen.getByRole('button', { name: m.builder_proposal_discard() }),
     );
@@ -866,6 +900,139 @@ describe('Assignment proposal preview', () => {
       ).not.toBeInTheDocument(),
     );
     expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('applies exactly the reviewed pairs once and reports the added Assignments without publishing', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(proposal);
+    let resolveApply: (value: typeof outcome) => void = () => {};
+    const apply = vi.spyOn(adminApi, 'applyAssignmentProposal').mockReturnValue(
+      new Promise((resolve) => {
+        resolveApply = resolve;
+      }),
+    );
+    const { onPublish } = renderBuilder({ data: boardData({}) });
+    await openPreview();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+    );
+
+    const pending = screen.getByRole('button', {
+      name: m.builder_proposal_applying(),
+    });
+    expect(pending).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: m.builder_proposal_discard() }),
+    ).toBeDisabled();
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(apply).toHaveBeenCalledWith(
+      'cycle-1',
+      {
+        applicationKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
+        reviewToken: 'review-token-1',
+        additions: [
+          {
+            shiftRequirementId: 'requirement-role-1',
+            volunteerId: 'volunteer-2',
+          },
+        ],
+      },
+      { ministryId: 'ministry-1' },
+    );
+
+    resolveApply(outcome);
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        m.builder_proposal_applied({ count: 1 }),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('assignment-proposal-preview'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(onPublish).not.toHaveBeenCalled();
+  });
+
+  it('retries an unconfirmed Apply with the same key and recovers its outcome', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(proposal);
+    const apply = vi
+      .spyOn(adminApi, 'applyAssignmentProposal')
+      .mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK'))
+      .mockResolvedValueOnce({ ...outcome, replayed: true });
+    renderBuilder({ data: boardData({}) });
+    const preview = await openPreview();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+    );
+
+    expect(await within(preview).findByRole('alert')).toHaveTextContent(
+      m.builder_proposal_apply_unknown(),
+    );
+    expect(
+      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_apply_retry() }),
+    );
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        m.builder_proposal_applied({ count: 1 }),
+      ),
+    );
+    const [[, firstBody], [, retryBody]] = apply.mock.calls;
+    expect(retryBody).toEqual(firstBody);
+  });
+
+  it('shows a stale refusal and offers only a fresh review, with a new key', async () => {
+    const getProposal = vi
+      .spyOn(adminApi, 'getAssignmentProposal')
+      .mockResolvedValue(proposal);
+    const apply = vi
+      .spyOn(adminApi, 'applyAssignmentProposal')
+      .mockRejectedValueOnce(conflict('The proposal is out of date.'))
+      .mockResolvedValueOnce(outcome);
+    renderBuilder({ data: boardData({}) });
+    const preview = await openPreview();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+    );
+
+    expect(await within(preview).findByRole('alert')).toHaveTextContent(
+      'The proposal is out of date.',
+    );
+    expect(
+      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_refresh() }),
+    );
+    await waitFor(() => expect(getProposal).toHaveBeenCalledTimes(2));
+    await userEvent.click(
+      await screen.findByRole('button', { name: m.builder_proposal_apply() }),
+    );
+
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(2));
+    const [[, firstBody], [, secondBody]] = apply.mock.calls;
+    expect(secondBody?.applicationKey).not.toBe(firstBody?.applicationKey);
+  });
+
+  it('offers no Apply for an empty proposal', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue({
+      ...proposal,
+      additions: [],
+      emptyReason: 'no_confirmed_responses',
+    });
+    renderBuilder({ data: boardData({}) });
+    await openPreview();
+
+    expect(
+      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+    ).not.toBeInTheDocument();
   });
 
   it('explains an empty proposal and names the open places', async () => {
@@ -880,6 +1047,7 @@ describe('Assignment proposal preview', () => {
       ],
       excludedUnconfirmedCount: 1,
       emptyReason: 'no_confirmed_responses',
+      reviewToken: 'review-token-empty',
     });
     renderBuilder({ data: boardData({}) });
 

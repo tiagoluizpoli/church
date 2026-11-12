@@ -16,7 +16,7 @@ import {
 } from '@church/db';
 import { m } from '@church/i18n/messages';
 import { parseTimeOfDay } from '@church/time';
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import {
   afterAll,
   afterEach,
@@ -84,6 +84,11 @@ import {
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import {
+  pauseCall,
+  releasePausedCalls,
+  waitForLockWaiter,
+} from '@/tests/test-support/paused-calls';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -147,8 +152,6 @@ beforeEach(async () => {
 const BLOCK_START = '2099-03-01T09:00:00.000Z';
 const BLOCK_MIDDLE = '2099-03-01T10:00:00.000Z';
 const BLOCK_END = '2099-03-01T11:00:00.000Z';
-const LOCK_WAIT_TIMEOUT_MS = 5_000;
-const LOCK_WAIT_POLL_MS = 20;
 
 interface SignInInput {
   userId: string;
@@ -424,60 +427,8 @@ function typedHeadcount(base: Base, shiftIndex: number, peopleNeeded: number) {
 }
 
 describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
-  const pausedCalls: Array<() => void> = [];
-
   // A failed barrier must not strand its open transaction under the next test.
-  afterEach(() => {
-    for (const releaseCall of pausedCalls.splice(0)) releaseCall();
-  });
-
-  /** Another transaction of this worker's database is waiting on a row lock. */
-  async function waitForLockWaiter() {
-    await vi.waitFor(
-      async () => {
-        const { rows } = await db.execute(sql`
-          SELECT count(*)::int AS waiting
-          FROM pg_stat_activity
-          WHERE datname = current_database() AND wait_event_type = 'Lock'
-        `);
-        expect(rows[0]?.waiting).toBeGreaterThan(0);
-      },
-      { timeout: LOCK_WAIT_TIMEOUT_MS, interval: LOCK_WAIT_POLL_MS },
-    );
-  }
-
-  /** Pauses the first call of a repository write inside its transaction until the test releases it. */
-  function pauseCall<Repository extends object>(
-    prototype: Repository,
-    method: keyof Repository,
-  ) {
-    const original = prototype[method] as (input: never) => Promise<unknown>;
-    let release = () => {};
-    const released = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    let reached = () => {};
-    const paused = new Promise<void>((resolve) => {
-      reached = resolve;
-    });
-    let isFirstCall = true;
-    const pausedWrite = async function (this: Repository, input: never) {
-      if (isFirstCall) {
-        isFirstCall = false;
-        reached();
-        await released;
-      }
-      return original.call(this, input);
-    };
-    const spy = vi
-      .spyOn(prototype, method as never)
-      .mockImplementation(pausedWrite as never);
-    pausedCalls.push(() => {
-      release();
-      spy.mockRestore();
-    });
-    return { paused, release };
-  }
+  afterEach(releasePausedCalls);
 
   function pauseWrite(method: 'touch' | 'updateState') {
     return pauseCall(DrizzleMinistryParticipationRepository.prototype, method);

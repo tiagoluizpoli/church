@@ -285,13 +285,13 @@ function closureFact({ item, timeZone }: InvitationRowProps): string | null {
     : fact;
 }
 
-function ExpiredBadge({ item }: { item: ListInvitations200ItemsItem }) {
+function ExpiredBadge({ item }: RowActionProps) {
   return item.displayStatus === 'expired' ? (
     <Badge variant="destructive">{m.invitations_expired_badge()}</Badge>
   ) : null;
 }
 
-function Grants({ item }: { item: ListInvitations200ItemsItem }) {
+function Grants({ item }: RowActionProps) {
   const access = accessLabel(item);
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">

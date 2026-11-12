@@ -4061,6 +4061,75 @@ export type GetCycleAuditLog404 = {
   message: string;
 };
 
+export type GetAssignmentProposalParams = {
+ministryId: string;
+};
+
+export type GetAssignmentProposal200AdditionsItemReasonDecidedBy = typeof GetAssignmentProposal200AdditionsItemReasonDecidedBy[keyof typeof GetAssignmentProposal200AdditionsItemReasonDecidedBy];
+
+
+export const GetAssignmentProposal200AdditionsItemReasonDecidedBy = {
+  only_candidate: 'only_candidate',
+  fewest_eligible_shifts: 'fewest_eligible_shifts',
+  fewest_cycle_assignments: 'fewest_cycle_assignments',
+  stable_order: 'stable_order',
+} as const;
+
+export type GetAssignmentProposal200AdditionsItemReason = {
+  eligibleShiftCount: number;
+  needCandidateCount: number;
+  decidedBy: GetAssignmentProposal200AdditionsItemReasonDecidedBy;
+};
+
+export type GetAssignmentProposal200AdditionsItem = {
+  volunteerId: string;
+  volunteerName: string;
+  shiftRequirementId: string;
+  shiftId: string;
+  reason: GetAssignmentProposal200AdditionsItemReason;
+};
+
+export type GetAssignmentProposal200GapsItem = {
+  shiftRequirementId: string;
+  shiftId: string;
+  remaining: number;
+};
+
+/**
+ * @nullable
+ */
+export type GetAssignmentProposal200EmptyReason = typeof GetAssignmentProposal200EmptyReason[keyof typeof GetAssignmentProposal200EmptyReason] | null;
+
+
+export const GetAssignmentProposal200EmptyReason = {
+  no_open_needs: 'no_open_needs',
+  no_confirmed_responses: 'no_confirmed_responses',
+  no_eligible_placements: 'no_eligible_placements',
+} as const;
+
+export type GetAssignmentProposal200 = {
+  additions: GetAssignmentProposal200AdditionsItem[];
+  gaps: GetAssignmentProposal200GapsItem[];
+  excludedUnconfirmedCount: number;
+  /** @nullable */
+  emptyReason: GetAssignmentProposal200EmptyReason;
+};
+
+export type GetAssignmentProposal403 = {
+  error: string;
+  message: string;
+};
+
+export type GetAssignmentProposal404 = {
+  error: string;
+  message: string;
+};
+
+export type GetAssignmentProposal409 = {
+  error: string;
+  message: string;
+};
+
 export type PublishCycleParams = {
 ministryId: string;
 };

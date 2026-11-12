@@ -9291,6 +9291,148 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/assign/cycles/{cycleId}/assignment-proposal:
+    get:
+      operationId: getAssignmentProposal
+      summary: Propose Assignments for a Ministry's Schedule
+      tags:
+        - assign
+      description: Compute a deterministic Assignment proposal for one Schedule
+        between asking for availability and publishing. Writes nothing.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  additions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        volunteerId:
+                          type: string
+                        volunteerName:
+                          type: string
+                        shiftRequirementId:
+                          type: string
+                        shiftId:
+                          type: string
+                        reason:
+                          type: object
+                          properties:
+                            eligibleShiftCount:
+                              type: number
+                            needCandidateCount:
+                              type: number
+                            decidedBy:
+                              type: string
+                              enum:
+                                - only_candidate
+                                - fewest_eligible_shifts
+                                - fewest_cycle_assignments
+                                - stable_order
+                          required:
+                            - eligibleShiftCount
+                            - needCandidateCount
+                            - decidedBy
+                          additionalProperties: false
+                      required:
+                        - volunteerId
+                        - volunteerName
+                        - shiftRequirementId
+                        - shiftId
+                        - reason
+                      additionalProperties: false
+                  gaps:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        shiftRequirementId:
+                          type: string
+                        shiftId:
+                          type: string
+                        remaining:
+                          type: number
+                      required:
+                        - shiftRequirementId
+                        - shiftId
+                        - remaining
+                      additionalProperties: false
+                  excludedUnconfirmedCount:
+                    type: number
+                  emptyReason:
+                    nullable: true
+                    type: string
+                    enum:
+                      - no_open_needs
+                      - no_confirmed_responses
+                      - no_eligible_placements
+                required:
+                  - additions
+                  - gaps
+                  - excludedUnconfirmedCount
+                  - emptyReason
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/cycles/{cycleId}/publish:
     post:
       operationId: publishCycle

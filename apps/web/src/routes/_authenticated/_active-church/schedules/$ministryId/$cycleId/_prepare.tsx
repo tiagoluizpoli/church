@@ -247,7 +247,8 @@ function PrepareWorkspaceRoute() {
           <div
             data-testid="prepare-workspace-stack"
             className={cn(
-              'flex flex-col gap-4',
+              // Filters lay out by this column's width, which a panel narrows.
+              '@container flex flex-col gap-4',
               selectedBlockId && 'max-lg:hidden',
             )}
           >
@@ -304,7 +305,7 @@ function PrepareWorkspaceRoute() {
           {selectedBlockId ? (
             <div
               data-testid="prepare-block-panel"
-              className="fade-in slide-in-from-right-8 motion-reduce:animate-none lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:animate-in lg:overflow-y-auto lg:rounded-xl lg:border lg:bg-card lg:p-6 lg:duration-300"
+              className="fade-in slide-in-from-right-8 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:rounded-xl lg:border lg:bg-card lg:p-6 lg:duration-300 lg:motion-safe:animate-in"
             >
               <Outlet />
             </div>

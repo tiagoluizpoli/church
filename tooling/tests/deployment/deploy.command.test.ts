@@ -99,6 +99,28 @@ let workDir: string;
 // The checkout the command reads revisions from.
 let gitDir: string;
 
+// Readiness answers naming the right revision and database that still are not healthy.
+const UNHEALTHY_READINESS: Array<[string, (revision: string) => Response]> = [
+  [
+    'HTTP 503',
+    (revision) =>
+      Response.json(
+        { status: 'ok', database: 'ok', revision },
+        { status: 503 },
+      ),
+  ],
+  [
+    'status unavailable',
+    (revision) =>
+      Response.json({ status: 'unavailable', database: 'ok', revision }),
+  ],
+  ['no status', (revision) => Response.json({ database: 'ok', revision })],
+];
+
+function recordedRollouts(): RecordedRequest[] {
+  return requests.filter((r) => r.path === RECORDS && r.body);
+}
+
 // The environment's Dokploy compose env, connecting as `database` (role and name).
 function composeEnv(environment: string, database = `church_${environment}`) {
   return `CHURCH_ENVIRONMENT=${environment}\nDATABASE_URL=postgresql://${database}:${SECRET}@db:5432/${database}\nSERVER_IMAGE=old-server\n`;
@@ -738,7 +760,23 @@ describe('deploy rollout', () => {
     const result = await runDeploy(rolloutArgs());
 
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain('HTTP 503 with database unavailable');
+    expect(result.output).toContain(
+      'HTTP 503 with status unavailable and database unavailable',
+    );
+  });
+
+  it.each(
+    UNHEALTHY_READINESS,
+  )('records no verified rollout when the API answers %s', async (_, answer) => {
+    state.health = () => answer(REVISION);
+
+    const result = await runDeploy(rolloutArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('did not become healthy');
+    expect(recordedRollouts()).toEqual([]);
+    expect(result.summary).toBe('');
+    expect(result.githubOutput).toBe('');
   });
 });
 
@@ -794,6 +832,12 @@ describe('deploy rollout of a staging candidate', () => {
         });
       },
     ],
+    ...UNHEALTHY_READINESS.map(([label, answer]): [string, () => void] => [
+      `the candidate's API answers ${label}`,
+      () => {
+        state.health = () => answer(REVISION);
+      },
+    ]),
     [
       'the candidate never serves its revision',
       () => {
@@ -1253,6 +1297,18 @@ describe('deploy rollback to a verified image set', () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain('database unavailable');
+  });
+
+  it.each(
+    UNHEALTHY_READINESS,
+  )('does not report the rollback verified when the API answers %s', async (_, answer) => {
+    state.health = () => answer(base);
+
+    const result = await runDeploy(rollbackArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(recordedRollouts()).toEqual([]);
+    expect(result.summary).toBe('');
   });
 
   it.each([

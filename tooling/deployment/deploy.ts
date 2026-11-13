@@ -750,16 +750,17 @@ async function observe(input: HealthInput): Promise<Health> {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     const text = await response.text();
-    let body: { database?: string; revision?: string } = {};
+    let body: { status?: string; database?: string; revision?: string } = {};
     try {
-      body = JSON.parse(text);
+      body = JSON.parse(text) ?? {};
     } catch {}
     if (body.revision !== revision) {
       problems.push(`API serves revision ${body.revision ?? 'unknown'}`);
     }
-    if (body.database !== 'ok') {
+    // The whole readiness contract: a 2xx answer, status ok and database ok.
+    if (!response.ok || body.status !== 'ok' || body.database !== 'ok') {
       problems.push(
-        `API answered HTTP ${response.status} with database ${body.database ?? 'unknown'}`,
+        `API answered HTTP ${response.status} with status ${body.status ?? 'unknown'} and database ${body.database ?? 'unknown'}`,
       );
     }
   } catch (error) {

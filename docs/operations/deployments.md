@@ -39,8 +39,8 @@ Nothing here configures live infrastructure. Set up the environment first
       fails the Dokploy deployment, and the previous containers keep
       running;
    5. waits until `<PUBLIC_ORIGIN>/revision.txt` and `/api/health` both
-      report the revision and the API reports its database `ok`. A still
-      healthy old container does not count;
+      report the revision and the API answers HTTP 2xx with status and
+      database `ok`. A still healthy old container does not count;
    6. reports the URL, revision and both digests in the log and the job
       summary, and records them as a GitHub deployment in
       `verified-development`, the list [rollback](rollback.md) picks from.

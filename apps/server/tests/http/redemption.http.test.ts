@@ -61,7 +61,7 @@ import { CaptureEmailSender } from '@/infrastructure/services/capture-email-send
 import { auth, createServerAuth } from '@/main/di/server-auth';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
-import { provisionChurch } from '@/scripts/provision-church';
+import { runOperatorCommand } from '@/scripts/operator';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
@@ -1221,14 +1221,29 @@ interface ProvisionedPlainInvitation {
 /** The Platform Operator's real provisioning: a Church and its unredeemed first-admin invitation. */
 async function provisionPlainInvitation(): Promise<ProvisionedPlainInvitation> {
   const suffix = crypto.randomUUID().slice(0, 8);
-  const { church, invitationId, redemptionPath } = await provisionChurch({
+  const runtimeEnvironment = 'staging';
+  await runOperatorCommand({
     db: testDb,
-    churchName: 'Plain Grace Church',
-    churchSlug: `plain-grace-${suffix}`,
-    adminEmail: PLAIN_ADMIN_EMAIL,
-    operatorUserId: fixture.adminA,
-    reportRedemptionPath: false,
+    runtimeEnvironment,
+    argv: ['setup-identity', '--environment', runtimeEnvironment],
   });
+  const provisioned = await runOperatorCommand({
+    db: testDb,
+    runtimeEnvironment,
+    argv: [
+      'provision-church',
+      '--environment',
+      runtimeEnvironment,
+      '--name',
+      'Plain Grace Church',
+      '--slug',
+      `plain-grace-${suffix}`,
+      '--admin-email',
+      PLAIN_ADMIN_EMAIL,
+    ],
+  });
+  if (!provisioned) throw new Error('Expected a provisioned Church.');
+  const { church, invitationId, redemptionPath } = provisioned;
   return {
     churchId: church.id,
     churchName: church.name,

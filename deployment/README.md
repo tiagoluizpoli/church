@@ -122,3 +122,42 @@ docker run --rm --network <database network> \
 Then set that environment's `DATABASE_URL` in Dokploy to the role and
 password. The administrator URL is used only for this command and is never
 stored in an application environment.
+
+## Platform Operator and first Church
+
+Nothing in a deployment creates users, a Platform Operator or a Church. An
+operator runs two explicit commands inside the environment's running `server`
+container (it already has that environment's `DATABASE_URL` and
+`CHURCH_ENVIRONMENT`):
+
+```sh
+docker compose exec server bun run operator setup-identity --environment staging
+docker compose exec server bun run operator provision-church --environment staging \
+  --name '<Church name>' --slug '<slug>' --admin-email '<admin email>' \
+  --base-url 'https://<environment origin>'
+```
+
+- `--environment` is required and must be `development`, `staging` or
+  `production` **and** equal the container's `CHURCH_ENVIRONMENT`. Any other
+  value, including `local`, is refused before a write.
+- `setup-identity` is idempotent. It creates the Platform Operator User with
+  no credentials, password or Church Membership. `provision-church` refuses
+  until it has run.
+- `provision-church` reuses Church provisioning: one Church and one pending
+  ChurchAdmin invitation. Nobody is created with a password; the invited admin
+  redeems the printed `/invitations/church/<id>` link through normal
+  onboarding (email verification code, own password) and can then invite
+  others.
+- The printed redemption link is a bearer secret for that admin: send it only
+  to the admin's address or channel, never to a ticket or chat, and do not keep
+  command output in shared logs. A wrong admin email is fixed by repairing the
+  invitation, not by editing the database.
+
+### After a clean reset
+
+A clean-installation reset removes users, Churches, sessions, pending emails
+and captured messages, and keeps operator configuration
+(`runtime_configuration`, e.g. `email_delivery_mode`). Run both commands again
+afterwards: `setup-identity`, then `provision-church` for each Church. The
+only operator configuration they need is the environment's existing
+`DATABASE_URL`, `CHURCH_ENVIRONMENT` and the public origin for `--base-url`.

@@ -1,7 +1,7 @@
 import { type TenancyWriter, user } from '@church/db';
 import { eq } from 'drizzle-orm';
 
-const PLATFORM_OPERATOR_EMAIL = 'platform-operator@local.church';
+export const PLATFORM_OPERATOR_EMAIL = 'platform-operator@local.church';
 const PLATFORM_OPERATOR_NAME = 'Local Platform Operator';
 
 export interface EnsurePlatformOperatorInput {

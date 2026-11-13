@@ -369,8 +369,8 @@ async function observe(input: HealthInput): Promise<Health> {
     try {
       body = JSON.parse(text);
     } catch {}
-    if (body.revision && body.revision !== revision) {
-      problems.push(`API serves revision ${body.revision}`);
+    if (body.revision !== revision) {
+      problems.push(`API serves revision ${body.revision ?? 'unknown'}`);
     }
     if (body.database !== 'ok') {
       problems.push(

@@ -3,8 +3,9 @@
 How a revision reaches a deployed environment. Development is automatic:
 every push to `develop` that passes CI deploys to the homelab
 ([deploy-development.yml](../../.github/workflows/deploy-development.yml)).
-Staging and production follow published releases and are documented with
-their own workflows.
+Staging follows published release candidates
+([releases.md](releases.md)); production promotion is documented with its
+own workflow.
 
 Nothing here configures live infrastructure. Set up the environment first
 ([deployment/README.md](../../deployment/README.md),

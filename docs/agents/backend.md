@@ -39,7 +39,9 @@ Migration `0028_noisy_gunslinger` creates the unique index
 `template_time_block_template_label_idx` on `(template_id, lower(label))`. It
 does not trim labels, diagnose duplicates or repair data, and the journal
 alone does not show whether a target has it. This applies only to a deployment
-where 0028 is still pending; never rewrite the historical migration. Before
+where 0028 is still pending; never rewrite the historical migration. Deployed
+environments run the collision query automatically in the `migrate` service
+(`packages/db/src/deployment-preflight.ts`) and stop on a collision. Before
 such a deployment, identify the target and revision, compare the ledger with
 the branch journal, check the index definition and validity, and run this
 read-only check:

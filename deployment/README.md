@@ -21,6 +21,10 @@ docker build -f deployment/server.Dockerfile --build-arg APP_REVISION="$(git rev
 docker build -f deployment/web.Dockerfile --build-arg APP_REVISION="$(git rev-parse HEAD)" -t <registry>/church-web .
 ```
 
+The deployment workflows build and push them for you; see
+[docs/operations/deployments.md](../docs/operations/deployments.md) for the
+develop pipeline, its checks and the deployment runbook.
+
 `APP_REVISION` is the only build input, and the build fails without it.
 `bun install --frozen-lockfile` pins the dependencies, and the base images
 are pinned to versions. `.dockerignore` keeps every `.env*` value file out of
@@ -69,7 +73,8 @@ setting described in
 
 ## Topology
 
-- `migrate` runs `drizzle-kit migrate` once and exits. `server` starts only
+- `migrate` runs the read-only migration preflights, then `drizzle-kit
+  migrate` once, and exits. `server` starts only
   after it succeeds, so a failed migration stops the deployment.
 - `server` is not routed publicly. Its healthcheck calls `/api/health`.
 - `web` is the only public service. Its healthcheck reads `/revision.txt`, and
@@ -86,9 +91,9 @@ setting described in
 
 Startup never seeds, provisions a Church or creates users. It keeps all data.
 Migrations only change the schema. A migration with its own preflight, such as
-`0028` in `docs/agents/backend.md`, still needs that preflight before the first
-deployment that applies it. A newly provisioned empty database has no rows for
-it to collide with.
+`0028` in `docs/agents/backend.md`, has it run by `migrate` while that
+migration is pending (`packages/db/src/deployment-preflight.ts`). A failed
+preflight stops the deployment before any migration runs.
 
 ## Readiness
 

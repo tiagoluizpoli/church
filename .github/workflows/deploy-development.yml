@@ -86,6 +86,10 @@ jobs:
     if: needs.checks.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 75
+    # Records the verified image set as a rollback target (#887).
+    permissions:
+      contents: read
+      deployments: write
     # One deployment, migration or rollback per environment at a time. A
     # running one is never cancelled; a newer push replaces only a queued one.
     concurrency:
@@ -108,6 +112,7 @@ jobs:
           config --no-interpolate --no-normalize > "$RUNNER_TEMP/compose.yml"
       - name: Back up, migrate, roll out and verify
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           DOKPLOY_URL: ${{ vars.DOKPLOY_URL }}
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           DOKPLOY_COMPOSE_ID: ${{ vars.DOKPLOY_COMPOSE_ID }}

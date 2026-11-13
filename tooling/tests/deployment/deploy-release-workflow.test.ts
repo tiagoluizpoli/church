@@ -75,7 +75,10 @@ describe('deploy-release workflow', () => {
       group: 'deploy-staging',
       'cancel-in-progress': false,
     });
-    expect(staging.permissions).toEqual({ contents: 'write' });
+    expect(staging.permissions).toEqual({
+      contents: 'write',
+      deployments: 'write',
+    });
   });
 
   it('rolls out the routed candidate and records its evidence', () => {
@@ -106,7 +109,10 @@ describe('deploy-release workflow', () => {
       group: 'deploy-production',
       'cancel-in-progress': false,
     });
-    expect(production.permissions).toEqual({ contents: 'read' });
+    expect(production.permissions).toEqual({
+      contents: 'read',
+      deployments: 'write',
+    });
     expect(JSON.stringify(production.steps)).not.toMatch(
       /build-push|mailpit|seed|provision|deploy:rollout/,
     );

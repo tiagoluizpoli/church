@@ -1,0 +1,78 @@
+name: Roll Back
+
+# Manually redeploys the image set a verified rollout recorded for the chosen
+# environment and revision (#887). Nothing is built. The database is backed up
+# first and never rewound: deploy:rollback refuses a revision never verified
+# there, or one the current schema is not declared compatible with. Database
+# restoration is a separate procedure. Runbook: docs/operations/rollback.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to roll back
+        type: choice
+        options: [development, staging, production]
+        required: true
+      revision:
+        description: Full commit SHA of an earlier verified rollout in that environment
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    name: Roll back
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    # Records the verified rollback as a rollout of its revision.
+    permissions:
+      contents: read
+      deployments: write
+    # The environment's deployment lock: never overlaps a deployment or its
+    # migrations, and is never cancelled.
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ vars.PUBLIC_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The compatibility check reads every deployed revision's migrations.
+          fetch-depth: 0
+      - uses: jdx/mise-action@v5
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Compose file of the target revision
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          REVISION: ${{ inputs.revision }}
+        run: |
+          [[ "$REVISION" =~ ^[0-9a-f]{40}$ ]] || { echo "revision must be a full commit SHA"; exit 1; }
+          mkdir "$RUNNER_TEMP/target"
+          git archive "$REVISION" deployment | tar -x -C "$RUNNER_TEMP/target"
+          files=(-f "$RUNNER_TEMP/target/deployment/compose.yml")
+          # Production has no Mailpit: it always delivers through Resend.
+          if [ "$ENVIRONMENT" != production ]; then
+            files+=(-f "$RUNNER_TEMP/target/deployment/compose.mailpit.yml")
+          fi
+          docker compose "${files[@]}" config --no-interpolate --no-normalize > "$RUNNER_TEMP/compose.yml"
+      - name: Check eligibility, back up, roll out and verify
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DOKPLOY_URL: ${{ vars.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_COMPOSE_ID: ${{ vars.DOKPLOY_COMPOSE_ID }}
+          CHURCH_BACKUP_ID: ${{ vars.CHURCH_BACKUP_ID }}
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          REVISION: ${{ inputs.revision }}
+        run: >-
+          bun run deploy:rollback --
+          --environment="$ENVIRONMENT"
+          --revision="$REVISION"
+          --compose-file="$RUNNER_TEMP/compose.yml"

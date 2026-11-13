@@ -93,9 +93,11 @@ jobs:
     needs: [route, staging-images]
     runs-on: ubuntu-latest
     timeout-minutes: 75
-    # Uploads the candidate's evidence to its release.
+    # Uploads the candidate's evidence to its release and records the
+    # verified image set as a rollback target (#887).
     permissions:
       contents: write
+      deployments: write
     # One deployment, migration or rollback per environment at a time; a
     # running one is never cancelled.
     concurrency:
@@ -152,6 +154,7 @@ jobs:
     timeout-minutes: 75
     permissions:
       contents: read
+      deployments: write
     concurrency:
       group: deploy-production
       cancel-in-progress: false

@@ -23,6 +23,10 @@ interface JournalEntry {
   when: number;
 }
 
+interface Journal {
+  entries: JournalEntry[];
+}
+
 export interface DeploymentPreflightInput {
   databaseUrl: string;
   migrationsFolder: string;
@@ -32,9 +36,7 @@ export class DeploymentPreflightFailure extends Error {}
 
 function migrationTimestamp(input: DeploymentPreflightInput): number {
   const journalPath = join(input.migrationsFolder, 'meta/_journal.json');
-  const { entries } = JSON.parse(readFileSync(journalPath, 'utf8')) as {
-    entries: JournalEntry[];
-  };
+  const { entries } = JSON.parse(readFileSync(journalPath, 'utf8')) as Journal;
   const entry = entries.find(({ tag }) => tag === LABEL_INDEX_MIGRATION);
   if (!entry) {
     throw new DeploymentPreflightFailure(

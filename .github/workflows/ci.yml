@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    # develop: Fast Gate is the required check deploy-development.yml waits
+    # for before deploying the pushed revision (#881).
+    branches: [master, develop]
   pull_request:
     branches: [master, develop]
 

@@ -1,0 +1,138 @@
+name: Deploy Release
+
+# Publishing a GitHub release deploys it (#882). deploy:release accepts only a
+# published vX.Y.Z-rc.N prerelease (staging) or vX.Y.Z release (production)
+# whose tagged commit belongs to master and records that version; anything
+# else fails here and deploys nothing. Drafts, tag pushes and merges to master
+# never start this workflow. Runbook: docs/operations/releases.md.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  route:
+    name: Route release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      environment: ${{ steps.route.outputs.environment }}
+      tag: ${{ steps.route.outputs.tag }}
+      revision: ${{ steps.route.outputs.revision }}
+      content: ${{ steps.route.outputs.content }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: jdx/mise-action@v5
+      - id: route
+        name: Validate the release and select its environment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bun run deploy:release
+
+  staging-images:
+    name: Build candidate images
+    needs: [route]
+    if: needs.route.outputs.environment == 'staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      server: ${{ steps.refs.outputs.server }}
+      web: ${{ steps.refs.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.route.outputs.revision }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: names
+        name: Name the images
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "server=ghcr.io/$owner/church-server" >> "$GITHUB_OUTPUT"
+          echo "web=ghcr.io/$owner/church-web" >> "$GITHUB_OUTPUT"
+      - id: server
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployment/server.Dockerfile
+          build-args: APP_REVISION=${{ needs.route.outputs.revision }}
+          tags: ${{ steps.names.outputs.server }}:${{ needs.route.outputs.tag }}
+          push: true
+      - id: web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployment/web.Dockerfile
+          build-args: APP_REVISION=${{ needs.route.outputs.revision }}
+          tags: ${{ steps.names.outputs.web }}:${{ needs.route.outputs.tag }}
+          push: true
+      - id: refs
+        name: Record immutable digests
+        env:
+          SERVER_DIGEST: ${{ steps.server.outputs.digest }}
+          WEB_DIGEST: ${{ steps.web.outputs.digest }}
+        run: |
+          echo "server=${{ steps.names.outputs.server }}@$SERVER_DIGEST" >> "$GITHUB_OUTPUT"
+          echo "web=${{ steps.names.outputs.web }}@$WEB_DIGEST" >> "$GITHUB_OUTPUT"
+
+  staging:
+    name: Deploy staging
+    needs: [route, staging-images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    # Uploads the candidate's evidence to its release.
+    permissions:
+      contents: write
+    # One deployment, migration or rollback per environment at a time; a
+    # running one is never cancelled.
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    environment:
+      name: staging
+      url: ${{ vars.PUBLIC_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.route.outputs.revision }}
+      - uses: jdx/mise-action@v5
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Compose file for this revision
+        # Staging keeps captured email in the private Mailpit inbox.
+        run: >-
+          docker compose -f deployment/compose.yml -f deployment/compose.mailpit.yml
+          config --no-interpolate --no-normalize > "$RUNNER_TEMP/compose.yml"
+      - name: Back up, migrate, roll out, verify and record evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DOKPLOY_URL: ${{ vars.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_COMPOSE_ID: ${{ vars.DOKPLOY_COMPOSE_ID }}
+          CHURCH_BACKUP_ID: ${{ vars.CHURCH_BACKUP_ID }}
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+          REVISION: ${{ needs.route.outputs.revision }}
+          CANDIDATE: ${{ needs.route.outputs.tag }}
+          CONTENT: ${{ needs.route.outputs.content }}
+          SERVER_IMAGE: ${{ needs.staging-images.outputs.server }}
+          WEB_IMAGE: ${{ needs.staging-images.outputs.web }}
+        run: >-
+          bun run deploy:rollout --
+          --environment=staging
+          --revision="$REVISION"
+          --candidate="$CANDIDATE"
+          --content="$CONTENT"
+          --server-image="$SERVER_IMAGE"
+          --web-image="$WEB_IMAGE"
+          --compose-file="$RUNNER_TEMP/compose.yml"

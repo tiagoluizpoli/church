@@ -89,6 +89,14 @@ function buildInvitation(overrides: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Like the repository: the stored delivery, nothing confirmed yet.
+  outboxRepository.recordEmailPrepared.mockImplementation(
+    async ({ tx: _tx, id: _id, ...delivery }) => ({
+      ...delivery,
+      frozenMode: undefined,
+      confirmedDestinations: [],
+    }),
+  );
   churchRepository.getById.mockResolvedValue({
     name: 'Grace Church',
     timezone: 'America/Sao_Paulo',

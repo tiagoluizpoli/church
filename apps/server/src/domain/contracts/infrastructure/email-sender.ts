@@ -322,6 +322,28 @@ export interface PrepareEmailInput {
   locale?: EmailLocale;
 }
 
+/** Where a development/staging email can go: the private Mailpit capture
+ * or the real Resend provider. */
+export type EmailDestination = 'mailpit' | 'resend';
+
+export interface ConfirmEmailDestinationInput {
+  destination: EmailDestination;
+}
+
+/**
+ * An outbox email's routing state. Only the development/staging mode-routing
+ * sender reads it; every other sender ignores it.
+ */
+export interface EmailRouting {
+  /** The operator's raw `email_delivery_mode`, frozen when the email was
+   * created: untrusted, and absent on older rows. */
+  frozenMode: unknown;
+  /** Destinations that already confirmed this email: never sent again. */
+  confirmed: EmailDestination[];
+  /** Persists one destination's confirmation before the next is attempted. */
+  confirm(input: ConfirmEmailDestinationInput): Promise<void>;
+}
+
 export interface DeliverEmailInput {
   email: ReplayableEmail;
   /**
@@ -329,6 +351,7 @@ export interface DeliverEmailInput {
    * provider's retention window is deduplicated rather than sent twice.
    */
   idempotencyKey?: string;
+  routing?: EmailRouting;
 }
 
 export interface SendEmailInput {

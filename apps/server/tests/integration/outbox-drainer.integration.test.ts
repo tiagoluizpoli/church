@@ -10,6 +10,7 @@ import {
   organization,
   outboxMessage,
   role,
+  runtimeConfiguration,
   shift,
   shiftRequirement,
   user as userTable,
@@ -24,8 +25,8 @@ import {
   resetClock,
   setTestClock,
 } from '@church/time';
-import { and, eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { and, eq, sql } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { testDb, truncateAll } from './repositories/setup';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
 import { DbVolunteerTransferManager } from '@/application/db-volunteer-transfer-manager';
@@ -37,7 +38,10 @@ import {
   UserId,
 } from '@/domain/branded-ids';
 import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
-import type { DeliverEmailInput } from '@/domain/contracts/infrastructure/email-sender';
+import type {
+  DeliverEmailInput,
+  EmailSender,
+} from '@/domain/contracts/infrastructure/email-sender';
 import type {
   CreateNotificationInput,
   NotificationRepository,
@@ -46,9 +50,11 @@ import type { RedemptionIdentityGateway } from '@/domain/contracts/infrastructur
 import { EmailSendError } from '@/domain/errors/email-send-error';
 import {
   DrizzleNotificationRepository,
+  DrizzleRuntimeConfigurationRepository,
   DrizzleSecurityLogRepository,
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { DeliveryModeEmailSender } from '@/infrastructure/services/delivery-mode-email-sender';
 import { provisionChurch } from '@/scripts/provision-church';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
@@ -92,7 +98,7 @@ beforeEach(async () => {
 });
 
 interface BuildDrainerInput {
-  emailSender: CaptureEmailSender;
+  emailSender: EmailSender;
 }
 
 function buildDrainer({ emailSender }: BuildDrainerInput): DbOutboxDrainer {
@@ -492,6 +498,233 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
 
     expect(result).toEqual({ claimed: 2, sent: 1, failed: 1 });
     expect(emailSender.delivered).toHaveLength(1);
+  });
+});
+
+describe('DbOutboxDrainer — development/staging email delivery mode (ticket #884, integration)', () => {
+  const firstAttempt = '2026-11-02T12:00:00.000Z' as Instant;
+  const { backoffCapMinutes, maxAttempts } = appConfig.outbox;
+  // The chained path (no User) is drained directly; a Church Member's N1 goes
+  // through the Notifier's email sink. Both must honour the frozen mode.
+  const newcomer = 'newcomer@fixture.test';
+  const memberEmail = () => `${fixture.memberNoVolunteerA}@fixture.test`;
+
+  beforeEach(() => {
+    setTestClock({ instant: firstAttempt });
+  });
+
+  afterEach(() => {
+    resetClock();
+    vi.restoreAllMocks();
+  });
+
+  interface SetModeInput {
+    value: unknown;
+  }
+
+  /** What an operator does: edit the row directly in the database. */
+  async function setMode({ value }: SetModeInput): Promise<void> {
+    await testDb
+      .insert(runtimeConfiguration)
+      .values({ code: 'email_delivery_mode', value })
+      .onConflictDoUpdate({
+        target: runtimeConfiguration.code,
+        set: { value },
+      });
+  }
+
+  interface Destinations {
+    mailpit: FlakyEmailSender;
+    resend: FlakyEmailSender;
+    emailSender: DeliveryModeEmailSender;
+  }
+
+  /** A freshly built sender, as after a restart. */
+  function destinations(): Destinations {
+    const mailpit = new FlakyEmailSender('Church');
+    const resend = new FlakyEmailSender('Church');
+    const emailSender = new DeliveryModeEmailSender({
+      mailpit,
+      resend,
+      runtimeConfiguration: new DrizzleRuntimeConfigurationRepository({
+        db: testDb,
+      }),
+    });
+    return { mailpit, resend, emailSender };
+  }
+
+  interface MintBothInput {
+    emails?: string[];
+  }
+
+  async function mintBoth({ emails }: MintBothInput = {}): Promise<void> {
+    for (const email of emails ?? [newcomer, memberEmail()]) {
+      await mintInvitation({ email });
+    }
+  }
+
+  interface MintInvitationForInput {
+    email: string;
+  }
+
+  async function mintInvitation({
+    email,
+  }: MintInvitationForInput): Promise<void> {
+    await manager.mint({
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: UserId.from(fixture.adminA),
+      email,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    });
+  }
+
+  function advanceToRetry(): void {
+    setTestClock({
+      instant: addMilliseconds({
+        instant: firstAttempt,
+        milliseconds: backoffCapMinutes * 60_000 * maxAttempts,
+      }),
+    });
+  }
+
+  it.each([
+    ['mailpit', 2, 0],
+    ['resend', 0, 2],
+    ['both', 2, 2],
+  ] as const)('delivers queued email in %s mode to the chosen destinations', async (mode, mailpitCount, resendCount) => {
+    await setMode({ value: mode });
+    await mintBoth();
+    const { mailpit, resend, emailSender } = destinations();
+
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 2, sent: 2, failed: 0 });
+    expect(mailpit.delivered).toHaveLength(mailpitCount);
+    expect(resend.delivered).toHaveLength(resendCount);
+  });
+
+  it('keeps the mode chosen at creation across an edit and a restart: an old Mailpit backlog never reaches real recipients', async () => {
+    await setMode({ value: 'mailpit' });
+    await mintBoth();
+    await setMode({ value: 'resend' });
+    const { mailpit, resend, emailSender } = destinations();
+
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(mailpit.delivered).toHaveLength(2);
+    expect(resend.delivered).toHaveLength(0);
+    const rows = await testDb.select().from(outboxMessage);
+    expect(rows.map((row) => row.emailDeliveryMode)).toEqual([
+      'mailpit',
+      'mailpit',
+    ]);
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['invalid', 'real-email-please'],
+  ])('a %s setting delivers to Mailpit only and logs a safe diagnostic', async (_label, value) => {
+    if (value !== undefined) await setMode({ value });
+    await mintBoth();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { mailpit, resend, emailSender } = destinations();
+
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(mailpit.delivered).toHaveLength(2);
+    expect(resend.delivered).toHaveLength(0);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('email_delivery_mode'),
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('real-email-please');
+  });
+
+  it('routes an older pending row, written before the mode existed, to Mailpit only', async () => {
+    await setMode({ value: 'resend' });
+    await mintBoth();
+    // Rows enqueued before this column existed carry no frozen mode.
+    await testDb.update(outboxMessage).set({ emailDeliveryMode: null });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { mailpit, resend, emailSender } = destinations();
+
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(mailpit.delivered).toHaveLength(2);
+    expect(resend.delivered).toHaveLength(0);
+  });
+
+  it('in both mode retries only the unconfirmed destination, under the same Resend key', async () => {
+    await setMode({ value: 'both' });
+    await mintBoth();
+    const { mailpit, resend, emailSender } = destinations();
+    resend.queueFailure({ mode: 'before-provider', retryable: true });
+    resend.queueFailure({ mode: 'before-provider', retryable: true });
+    const drainer = buildDrainer({ emailSender });
+
+    await drainer.drainOnce({ limit: 10 });
+    const pending = await testDb.select().from(outboxMessage);
+    expect(pending).toEqual([
+      expect.objectContaining({
+        status: 'pending',
+        emailConfirmedDestinations: ['mailpit'],
+        emailDeliveredAt: null,
+      }),
+      expect.objectContaining({
+        status: 'pending',
+        emailConfirmedDestinations: ['mailpit'],
+        emailDeliveredAt: null,
+      }),
+    ]);
+
+    advanceToRetry();
+    const retried = await drainer.drainOnce({ limit: 10 });
+
+    expect(retried).toEqual({ claimed: 2, sent: 2, failed: 0 });
+    expect(mailpit.delivered).toHaveLength(2);
+    expect(resend.delivered).toHaveLength(2);
+    expect(new Set(resend.attemptedKeys).size).toBe(2);
+    expect(resend.attemptedKeys).toHaveLength(4);
+    const sent = await testDb.select().from(outboxMessage);
+    for (const row of sent) {
+      expect(row).toMatchObject({ status: 'sent' });
+      expect([...row.emailConfirmedDestinations].sort()).toEqual([
+        'mailpit',
+        'resend',
+      ]);
+    }
+  });
+
+  it('accepts a duplicate Mailpit capture after an uncertain SMTP send', async () => {
+    await setMode({ value: 'both' });
+    await mintBoth({ emails: [newcomer] });
+    const { mailpit, resend, emailSender } = destinations();
+    // SMTP accepted the message but the reply was lost: unconfirmed.
+    mailpit.queueFailure({ mode: 'after-provider', retryable: true });
+    const drainer = buildDrainer({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    advanceToRetry();
+
+    await drainer.drainOnce({ limit: 10 });
+
+    expect(resend.attemptedKeys).toHaveLength(1);
+    expect(mailpit.attemptedKeys).toHaveLength(2);
+  });
+
+  it('fails the enqueue, writing nothing, when the configuration cannot be read', async () => {
+    await testDb.execute(
+      sql`ALTER TABLE runtime_configuration RENAME TO runtime_configuration_unavailable`,
+    );
+    try {
+      await expect(mintInvitation({ email: newcomer })).rejects.toThrow();
+    } finally {
+      await testDb.execute(
+        sql`ALTER TABLE runtime_configuration_unavailable RENAME TO runtime_configuration`,
+      );
+    }
+    expect(await testDb.select().from(outboxMessage)).toHaveLength(0);
+    expect(await testDb.select().from(ministryInvitation)).toHaveLength(0);
   });
 });
 

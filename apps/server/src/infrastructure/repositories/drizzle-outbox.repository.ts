@@ -2,7 +2,10 @@ import { ministryInvitation, outboxMessage } from '@church/db';
 import { fromDate, toDate } from '@church/time';
 import { and, asc, desc, eq, inArray, lte, or, sql } from 'drizzle-orm';
 import type { ChurchId } from '../../domain/branded-ids';
-import type { ReplayableEmail } from '../../domain/contracts/infrastructure/email-sender';
+import type {
+  EmailDestination,
+  ReplayableEmail,
+} from '../../domain/contracts/infrastructure/email-sender';
 import type {
   ChainedInvitationOutboxMessage,
   ChannelOutcomes,
@@ -20,8 +23,10 @@ import type {
   OutboxRepository,
   RecordOutboxDeliveryFactsInput,
   RecordOutboxEmailDeliveredInput,
+  RecordOutboxEmailDestinationConfirmedInput,
   RecordOutboxEmailPreparedInput,
 } from '../../domain/contracts/infrastructure/outbox.repository';
+import { currentEmailDeliveryMode } from './drizzle-runtime-configuration.repository';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
@@ -98,14 +103,32 @@ export class DrizzleOutboxRepository implements OutboxRepository {
 
   async recordEmailPrepared(
     input: RecordOutboxEmailPreparedInput,
-  ): Promise<void> {
+  ): Promise<OutboxEmailDelivery> {
     const { id, email, idempotencyKey, firstAttemptAt, tx } = input;
-    await getClient({ db: this.db, tx })
+    const [row] = await getClient({ db: this.db, tx })
       .update(outboxMessage)
       .set({
         emailRequest: email,
         emailIdempotencyKey: idempotencyKey,
         emailFirstAttemptAt: toDate({ instant: firstAttemptAt }),
+      })
+      .where(eq(outboxMessage.id, id))
+      .returning();
+    const delivery = row && mapEmailDelivery(row);
+    if (!delivery) throw new Error(`Outbox message ${id} was not prepared`);
+    return delivery;
+  }
+
+  async recordEmailDestinationConfirmed(
+    input: RecordOutboxEmailDestinationConfirmedInput,
+  ): Promise<void> {
+    const { id, destination, tx } = input;
+    const { emailConfirmedDestinations: confirmed } = outboxMessage;
+    const added = JSON.stringify([destination]);
+    await getClient({ db: this.db, tx })
+      .update(outboxMessage)
+      .set({
+        emailConfirmedDestinations: sql`CASE WHEN ${confirmed} @> ${added}::jsonb THEN ${confirmed} ELSE ${confirmed} || ${added}::jsonb END`,
       })
       .where(eq(outboxMessage.id, id));
   }
@@ -145,6 +168,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
       payload,
       correlationId,
       scheduledFor,
+      emailDeliveryMode: currentEmailDeliveryMode,
     });
   }
 
@@ -254,5 +278,8 @@ function mapEmailDelivery(
     deliveredAt: row.emailDeliveredAt
       ? fromDate({ date: row.emailDeliveredAt })
       : undefined,
+    frozenMode: row.emailDeliveryMode ?? undefined,
+    // Written only by recordEmailDestinationConfirmed, from EmailDestination values.
+    confirmedDestinations: row.emailConfirmedDestinations as EmailDestination[],
   };
 }

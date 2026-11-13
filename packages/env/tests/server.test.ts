@@ -58,6 +58,16 @@ describe('server env: development email', () => {
     );
   });
 
+  it('defaults CHURCH_ENVIRONMENT to local and rejects an unknown one', async () => {
+    expect((await parse({})).CHURCH_ENVIRONMENT).toBe('local');
+    expect(
+      (await parse({ CHURCH_ENVIRONMENT: 'staging' })).CHURCH_ENVIRONMENT,
+    ).toBe('staging');
+    expect(await invalidIssues({ CHURCH_ENVIRONMENT: 'qa' })).toContain(
+      'CHURCH_ENVIRONMENT',
+    );
+  });
+
   it('parses a complete SMTP configuration', async () => {
     const env = await parse({
       SMTP_HOST: 'smtp.example.com',

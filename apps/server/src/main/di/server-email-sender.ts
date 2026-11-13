@@ -1,9 +1,13 @@
 import { appConfig } from '@church/app-config';
+import { db } from '@church/db';
 import { env } from '@church/env/server';
+import { DrizzleRuntimeConfigurationRepository } from '../../infrastructure/repositories/drizzle-runtime-configuration.repository';
 import { createEmailSenders } from './email-senders';
 
 const senders = createEmailSenders({
   nodeEnv: env.NODE_ENV,
+  environment: env.CHURCH_ENVIRONMENT,
+  runtimeConfiguration: new DrizzleRuntimeConfigurationRepository({ db }),
   devSender: env.DEV_EMAIL_SENDER,
   appName: appConfig.appName,
   resend: { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },

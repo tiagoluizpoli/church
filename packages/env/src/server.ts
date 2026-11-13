@@ -13,6 +13,11 @@ export const env = createEnv({
     /** Development sender; unset is SMTP. Test is always capture, production
      * always Resend, whatever this says. */
     DEV_EMAIL_SENDER: z.enum(['smtp', 'resend', 'capture']).optional(),
+    /** Deployed environment, independent of NODE_ENV: development and staging
+     * route email by the database delivery mode; production is Resend. */
+    CHURCH_ENVIRONMENT: z
+      .enum(['local', 'development', 'staging', 'production'])
+      .default('local'),
     SMTP_HOST: z.string().default('localhost'),
     SMTP_PORT: z.coerce.number().int().min(1).default(1025),
     SMTP_SECURE: z.stringbool().default(false),

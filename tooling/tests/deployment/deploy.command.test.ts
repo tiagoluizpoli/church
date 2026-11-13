@@ -16,6 +16,9 @@ const SERVER_IMAGE = `ghcr.io/church/church-server@sha256:${'1'.repeat(64)}`;
 const WEB_IMAGE = `ghcr.io/church/church-web@sha256:${'2'.repeat(64)}`;
 const SECRET = 'super-secret-database-password';
 const COMPOSE_ID = 'compose-dev';
+const CANDIDATE = 'v1.2.0-rc.1';
+const CONTENT = 'c'.repeat(64);
+const EVIDENCE = 'staging-evidence.json';
 
 interface CheckRun {
   id: number;
@@ -32,6 +35,9 @@ interface Deployment {
 }
 
 interface State {
+  environment: string;
+  evidenceAssets: Array<{ id: number; name: string }>;
+  upload: () => Response;
   branchHead: string;
   checkRuns: () => CheckRun[];
   compose: { sourceType: string; env: string };
@@ -56,8 +62,8 @@ let workDir: string;
 function backupConfiguration() {
   return {
     backupId: 'recovery-id',
-    database: 'church_development',
-    prefix: 'development/pre-deployment',
+    database: `church_${state.environment}`,
+    prefix: `${state.environment}/pre-deployment`,
     schedule: '0 0 * * *',
     enabled: false,
     keepLatestCount: 5,
@@ -75,6 +81,17 @@ function handle(url: URL, body: string): Response {
     // biome-ignore lint/style/useNamingConvention: GitHub's response field
     return Response.json({ check_runs: state.checkRuns() });
   }
+  if (pathname === `/repos/church/app/releases/tags/${CANDIDATE}`) {
+    return Response.json({
+      // biome-ignore lint/style/useNamingConvention: GitHub's response field
+      upload_url: `${server.url.origin}/uploads/releases/7/assets{?name,label}`,
+      assets: [{ id: 3, name: 'notes.txt' }, ...state.evidenceAssets],
+    });
+  }
+  if (pathname.startsWith('/repos/church/app/releases/assets/')) {
+    return new Response(null, { status: 204 });
+  }
+  if (pathname === '/uploads/releases/7/assets') return state.upload();
   if (pathname === '/api/settings.getDokployVersion') {
     return Response.json('v0.31.2');
   }
@@ -113,6 +130,9 @@ beforeEach(() => {
   workDir = mkdtempSync(join(tmpdir(), 'deploy-command-'));
   writeFileSync(join(workDir, 'compose.yml'), 'services: {}\n');
   state = {
+    environment: 'development',
+    evidenceAssets: [],
+    upload: () => Response.json({ id: 9 }, { status: 201 }),
     branchHead: REVISION,
     checkRuns: () => [
       { id: 1, name: 'Fast Gate', status: 'completed', conclusion: 'success' },
@@ -140,7 +160,10 @@ beforeEach(() => {
     async fetch(request) {
       const url = new URL(request.url);
       const body = await request.text();
-      requests.push({ path: url.pathname, body });
+      requests.push({
+        path: `${request.method === 'DELETE' ? 'DELETE ' : ''}${url.pathname}${url.search}`,
+        body,
+      });
       return handle(url, body);
     },
   });
@@ -227,6 +250,31 @@ const DOWNSTREAM = new Set([
 
 function downstreamCalls(): string[] {
   return requests.map((r) => r.path).filter((path) => DOWNSTREAM.has(path));
+}
+
+const EVIDENCE_CALLS =
+  /^DELETE |^\/uploads\/|^\/api\/backup\.manualBackupPostgres$/;
+
+function evidenceCalls(): string[] {
+  return requests
+    .map((r) => r.path)
+    .filter((path) => EVIDENCE_CALLS.test(path));
+}
+
+function stagingArgs(overrides: Record<string, string> = {}): string[] {
+  return rolloutArgs({
+    environment: 'staging',
+    candidate: CANDIDATE,
+    content: CONTENT,
+    ...overrides,
+  });
+}
+
+function useStaging(): void {
+  state.environment = 'staging';
+  state.compose.env = 'CHURCH_ENVIRONMENT=staging\n';
+  // A previous run of this candidate left evidence behind.
+  state.evidenceAssets = [{ id: 5, name: EVIDENCE }];
 }
 
 describe('deploy checks', () => {
@@ -443,5 +491,120 @@ describe('deploy rollout', () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain('HTTP 503 with database unavailable');
+  });
+});
+
+describe('deploy rollout of a staging candidate', () => {
+  beforeEach(useStaging);
+
+  it('withdraws old evidence first and publishes verified evidence last', async () => {
+    const result = await runDeploy(stagingArgs(), {
+      GITHUB_SERVER_URL: 'https://github.example',
+      GITHUB_RUN_ID: '42',
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(evidenceCalls()).toEqual([
+      'DELETE /repos/church/app/releases/assets/5',
+      '/api/backup.manualBackupPostgres',
+      `/uploads/releases/7/assets?name=${EVIDENCE}`,
+    ]);
+    const upload = requests.find((r) => r.path.startsWith('/uploads/'));
+    expect(JSON.parse(upload?.body ?? '{}')).toEqual({
+      schema: 1,
+      environment: 'staging',
+      candidate: { tag: CANDIDATE, version: '1.2.0-rc.1' },
+      revision: REVISION,
+      content: CONTENT,
+      images: { server: SERVER_IMAGE, web: WEB_IMAGE },
+      rollout: {
+        status: 'verified',
+        url: server.url.origin,
+        dokployDeploymentId: 'new-deployment',
+        run: 'https://github.example/church/app/actions/runs/42',
+      },
+    });
+    expect(upload?.body).not.toContain(SECRET);
+    expect(result.summary).toContain(CANDIDATE);
+    expect(result.summary).toContain(CONTENT);
+  });
+
+  it.each([
+    [
+      'the required backup fails',
+      () => {
+        state.manualBackup = () =>
+          Response.json({ message: 'S3 unreachable' }, { status: 500 });
+      },
+    ],
+    [
+      'the migration fails',
+      () => {
+        state.deploymentStatus = () => ({
+          status: 'error',
+          errorMessage: 'service "migrate" exited 1',
+        });
+      },
+    ],
+    [
+      'the candidate never serves its revision',
+      () => {
+        state.health = () =>
+          Response.json({
+            status: 'ok',
+            database: 'ok',
+            revision: OLD_REVISION,
+          });
+      },
+    ],
+  ])('leaves no evidence when %s', async (_, fail) => {
+    fail();
+
+    const result = await runDeploy(stagingArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(requests.map((r) => r.path)).toContain(
+      'DELETE /repos/church/app/releases/assets/5',
+    );
+    expect(requests.some((r) => r.path.startsWith('/uploads/'))).toBe(false);
+  });
+
+  it('fails when verified evidence cannot be published', async () => {
+    state.upload = () =>
+      Response.json({ message: 'forbidden' }, { status: 403 });
+
+    const result = await runDeploy(stagingArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('evidence was not published');
+  });
+
+  it('refuses a staging rollout of anything but a release candidate', async () => {
+    const results = [
+      await runDeploy(rolloutArgs({ environment: 'staging' })),
+      await runDeploy(stagingArgs({ candidate: 'v1.2.0' })),
+      await runDeploy(stagingArgs({ content: 'not-an-identity' })),
+    ];
+
+    expect(results.map((result) => result.exitCode)).toEqual([2, 2, 2]);
+    expect(requests).toEqual([]);
+  });
+
+  it('refuses candidate evidence outside staging', async () => {
+    const result = await runDeploy(
+      rolloutArgs({ candidate: CANDIDATE, content: CONTENT }),
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(requests).toEqual([]);
+  });
+
+  it('touches no evidence when the Dokploy target is another environment', async () => {
+    state.compose.env = 'CHURCH_ENVIRONMENT=production\n';
+
+    const result = await runDeploy(stagingArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(evidenceCalls()).toEqual([]);
   });
 });

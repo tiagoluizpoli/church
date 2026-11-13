@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -18,6 +19,16 @@ import { parseArgs } from 'node:util';
  *     Dokploy to finish (the compose's migrate service runs pending
  *     migrations once before the server starts) and succeeds only when the
  *     public frontend and API serve the revision with a reachable database.
+ *     Staging also takes --candidate=<vX.Y.Z-rc.N> --content=<identity>: it
+ *     withdraws the candidate's evidence before the backup and publishes
+ *     fresh evidence on its GitHub release only after the rollout verified.
+ *
+ *   release
+ *     routes the published GitHub release in GITHUB_EVENT_PATH (#882):
+ *     a vX.Y.Z-rc.N prerelease selects staging, a vX.Y.Z release production,
+ *     only when the tag, prerelease flag, master membership and recorded
+ *     package.json version agree. Writes environment, tag, version, revision
+ *     and content (the application content identity) outputs.
  *
  * Nothing here seeds or provisions data. See docs/operations/deployments.md.
  */
@@ -27,6 +38,12 @@ type Environment = (typeof ENVIRONMENTS)[number];
 
 const REVISION = /^[0-9a-f]{40}$/;
 const IMAGE_DIGEST = /^[^\s@]+@sha256:[0-9a-f]{64}$/;
+const RELEASE_TAG =
+  /^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(-rc\.[1-9]\d*)?)$/;
+const CONTENT_IDENTITY = /^[0-9a-f]{64}$/;
+const EVIDENCE_ASSET = 'staging-evidence.json';
+// GitHub compare statuses meaning the commit is reachable from master.
+const ON_MASTER = new Set(['behind', 'identical']);
 const DEFAULT_POLL_INTERVAL_MS = 10_000;
 // Poll budgets at the default interval: 30 minutes for checks and Dokploy,
 // 3 minutes for the public endpoints to serve the new revision.
@@ -44,6 +61,7 @@ class UsageError extends Error {}
 
 interface ApiRequest {
   url: string;
+  method?: 'DELETE';
   headers: Record<string, string>;
   body?: unknown;
 }
@@ -74,6 +92,11 @@ interface ChecksCommand {
   checks: string[];
 }
 
+interface Candidate {
+  tag: string;
+  content: string;
+}
+
 interface RolloutCommand {
   command: 'rollout';
   environment: Environment;
@@ -81,9 +104,35 @@ interface RolloutCommand {
   serverImage: string;
   webImage: string;
   composeFile: string;
+  candidate: Candidate | undefined;
 }
 
-type Command = ChecksCommand | RolloutCommand;
+interface ReleaseCommand {
+  command: 'release';
+}
+
+type Command = ChecksCommand | RolloutCommand | ReleaseCommand;
+
+interface GitHubRelease {
+  // biome-ignore lint/style/useNamingConvention: GitHub's response field
+  upload_url: string;
+  assets: Array<{ id: number; name: string }>;
+}
+
+interface UploadInput {
+  release: GitHubRelease;
+  evidence: unknown;
+}
+
+interface ReleaseEvent {
+  action?: string;
+  release?: {
+    // biome-ignore lint/style/useNamingConvention: GitHub's payload field
+    tag_name?: string;
+    prerelease?: boolean;
+    draft?: boolean;
+  };
+}
 
 interface Images {
   serverImage: string;
@@ -128,7 +177,7 @@ function detail(text: string): string {
 async function callApi(request: ApiRequest): Promise<unknown> {
   const { url, headers, body } = request;
   const init: RequestInit = {
-    method: body === undefined ? 'GET' : 'POST',
+    method: request.method ?? (body === undefined ? 'GET' : 'POST'),
     headers: { ...headers, 'content-type': 'application/json' },
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   };
@@ -146,7 +195,7 @@ async function callApi(request: ApiRequest): Promise<unknown> {
       `${pathname} failed (HTTP ${response.status}): ${detail(text)}`,
     );
   }
-  return JSON.parse(text);
+  return text ? JSON.parse(text) : null;
 }
 
 function writeOutput(line: string): void {
@@ -190,6 +239,40 @@ class GitHub {
       // biome-ignore lint/style/useNamingConvention: GitHub's response field
     })) as { check_runs: CheckRun[] };
     return runs;
+  }
+
+  async commit(ref: string): Promise<string> {
+    const url = `${this.api}/repos/${this.repository}/commits/${encodeURIComponent(ref)}`;
+    const { sha } = (await callApi({ url, headers: this.headers })) as {
+      sha: string;
+    };
+    return sha;
+  }
+
+  async onMaster(revision: string): Promise<boolean> {
+    const url = `${this.api}/repos/${this.repository}/compare/master...${revision}`;
+    const { status } = (await callApi({ url, headers: this.headers })) as {
+      status: string;
+    };
+    return ON_MASTER.has(status);
+  }
+
+  release(tag: string): Promise<GitHubRelease> {
+    const url = `${this.api}/repos/${this.repository}/releases/tags/${encodeURIComponent(tag)}`;
+    return callApi({ url, headers: this.headers }) as Promise<GitHubRelease>;
+  }
+
+  async deleteAsset(id: number): Promise<void> {
+    const url = `${this.api}/repos/${this.repository}/releases/assets/${id}`;
+    await callApi({ url, headers: this.headers, method: 'DELETE' });
+  }
+
+  async uploadAsset(input: UploadInput): Promise<void> {
+    const { release, evidence } = input;
+    // upload_url is an RFC 6570 template ending in {?name,label}.
+    const base = release.upload_url.replace(/\{.*\}$/, '');
+    const url = `${base}?name=${EVIDENCE_ASSET}`;
+    await callApi({ url, headers: this.headers, body: evidence });
   }
 }
 
@@ -238,6 +321,96 @@ async function awaitChecks(command: ChecksCommand): Promise<void> {
   throw new DeployFailure(
     `Required checks did not complete for ${revision}; not deploying.`,
   );
+}
+
+// ── release ───────────────────────────────────────────────────────────────
+
+function git(args: string[]): string {
+  const result = Bun.spawnSync(['git', ...args]);
+  if (result.exitCode !== 0) {
+    throw new DeployFailure(
+      `git ${args.join(' ')} failed: ${String(result.stderr).trim()}`,
+    );
+  }
+  return String(result.stdout);
+}
+
+function recordedManifest(revision: string): Record<string, unknown> {
+  return JSON.parse(git(['show', `${revision}:package.json`]));
+}
+
+/**
+ * The revision's application content: every tracked file, with the root
+ * package.json version left out so finalizing a candidate's version keeps
+ * its identity while any other change produces a new one.
+ */
+function contentIdentity(revision: string): string {
+  const files = git(['ls-tree', '-r', '--full-tree', revision])
+    .split('\n')
+    .filter((line) => line && !line.endsWith('\tpackage.json'));
+  const { version: _version, ...manifest } = recordedManifest(revision);
+  const sha256 = (text: string) =>
+    createHash('sha256').update(text).digest('hex');
+  files.push(`manifest ${sha256(JSON.stringify(manifest))}`);
+  return sha256(files.join('\n'));
+}
+
+async function routeRelease(): Promise<void> {
+  const event = JSON.parse(
+    readFileSync(requiredEnv('GITHUB_EVENT_PATH'), 'utf8'),
+  ) as ReleaseEvent;
+  if (
+    process.env.GITHUB_EVENT_NAME !== 'release' ||
+    event.action !== 'published'
+  ) {
+    throw new DeployFailure(
+      `Event ${process.env.GITHUB_EVENT_NAME}/${event.action ?? 'none'} does not deploy; only a published release deploys.`,
+    );
+  }
+  const { tag_name: tag = '', prerelease, draft } = event.release ?? {};
+  if (draft !== false) {
+    throw new DeployFailure(`Release ${tag} is a draft; drafts never deploy.`);
+  }
+  const match = RELEASE_TAG.exec(tag);
+  if (!match) {
+    throw new DeployFailure(
+      `Tag "${tag}" is not vX.Y.Z or vX.Y.Z-rc.N; not deploying.`,
+    );
+  }
+  const [, version = '', rc] = match;
+  const candidate = rc !== undefined;
+  if (prerelease !== candidate) {
+    throw new DeployFailure(
+      `Tag ${tag} needs prerelease=${candidate}, but the release has prerelease=${prerelease}; not deploying.`,
+    );
+  }
+  const github = new GitHub();
+  const revision = await github.commit(tag);
+  if (!(await github.onMaster(revision))) {
+    throw new DeployFailure(
+      `${tag} points at ${revision}, which does not belong to master; not deploying.`,
+    );
+  }
+  const recorded = recordedManifest(revision).version;
+  if (recorded !== version) {
+    throw new DeployFailure(
+      `${tag} points at ${revision}, whose package.json records version ${recorded ?? '(none)'}; not deploying.`,
+    );
+  }
+  const environment = candidate ? 'staging' : 'production';
+  const content = contentIdentity(revision);
+  console.log(
+    `✔ ${tag} (${revision}) selects ${environment}; content ${content}.`,
+  );
+  for (const [name, value] of Object.entries({
+    environment,
+    tag,
+    version,
+    revision,
+    content,
+  })) {
+    writeOutput(`${name}=${value}`);
+  }
 }
 
 // ── rollout ───────────────────────────────────────────────────────────────
@@ -400,8 +573,14 @@ async function awaitHealth(input: HealthInput): Promise<void> {
 }
 
 function report(command: RolloutCommand, origin: string): void {
-  const { environment, revision, serverImage, webImage } = command;
+  const { environment, revision, serverImage, webImage, candidate } = command;
   const rows = [
+    ...(candidate
+      ? [
+          ['Candidate', candidate.tag],
+          ['Content', candidate.content],
+        ]
+      : []),
     ['Environment', environment],
     ['URL', origin],
     ['Revision', revision],
@@ -423,6 +602,70 @@ function report(command: RolloutCommand, origin: string): void {
     ].join('\n');
     appendFileSync(summaryPath, summary);
   }
+}
+
+interface WithdrawInput {
+  github: GitHub;
+  tag: string;
+}
+
+// Evidence left by an earlier run must not outlive this rollout's outcome.
+async function withdrawEvidence(input: WithdrawInput): Promise<GitHubRelease> {
+  const release = await input.github.release(input.tag);
+  for (const asset of release.assets) {
+    if (asset.name === EVIDENCE_ASSET) await input.github.deleteAsset(asset.id);
+  }
+  return release;
+}
+
+interface EvidenceInput {
+  command: RolloutCommand;
+  candidate: Candidate;
+  origin: string;
+  deploymentId: string;
+}
+
+function evidence(input: EvidenceInput) {
+  const { command, candidate, origin, deploymentId } = input;
+  const {
+    GITHUB_SERVER_URL: host,
+    GITHUB_REPOSITORY: repository,
+    GITHUB_RUN_ID: runId,
+  } = process.env;
+  return {
+    schema: 1,
+    environment: command.environment,
+    candidate: { tag: candidate.tag, version: candidate.tag.slice(1) },
+    revision: command.revision,
+    content: candidate.content,
+    images: { server: command.serverImage, web: command.webImage },
+    rollout: {
+      status: 'verified',
+      url: origin,
+      dokployDeploymentId: deploymentId,
+      run: host && runId ? `${host}/${repository}/actions/runs/${runId}` : null,
+    },
+  };
+}
+
+interface PublishInput {
+  github: GitHub;
+  release: GitHubRelease;
+  evidence: ReturnType<typeof evidence>;
+}
+
+async function publishEvidence(input: PublishInput): Promise<void> {
+  const { github, release } = input;
+  try {
+    await github.uploadAsset({ release, evidence: input.evidence });
+  } catch (error) {
+    throw new DeployFailure(
+      `Staging is verified, but its evidence was not published (${(error as Error).message}); re-run the deployment before promoting ${input.evidence.candidate.tag}.`,
+    );
+  }
+  console.log(
+    `✔ Published ${EVIDENCE_ASSET} on ${input.evidence.candidate.tag}.`,
+  );
 }
 
 async function rollout(command: RolloutCommand): Promise<void> {
@@ -447,6 +690,14 @@ async function rollout(command: RolloutCommand): Promise<void> {
       `Dokploy compose ${composeId} is configured for CHURCH_ENVIRONMENT=${targetEnvironment ?? '(unset)'}, not ${environment}; refusing.`,
     );
   }
+
+  const github = command.candidate ? new GitHub() : undefined;
+  const release = command.candidate
+    ? await withdrawEvidence({
+        github: github as GitHub,
+        tag: command.candidate.tag,
+      })
+    : undefined;
 
   await backUp(environment);
 
@@ -474,9 +725,49 @@ async function rollout(command: RolloutCommand): Promise<void> {
   await awaitHealth({ origin, revision });
   console.log(`✔ ${environment} serves ${revision} with a reachable database.`);
   report(command, origin);
+  if (github && release && command.candidate) {
+    await publishEvidence({
+      github,
+      release,
+      evidence: evidence({
+        command,
+        candidate: command.candidate,
+        origin,
+        deploymentId,
+      }),
+    });
+  }
 }
 
 // ── entry ─────────────────────────────────────────────────────────────────
+
+interface CandidateInput {
+  environment: Environment;
+  tag: string | undefined;
+  content: string | undefined;
+}
+
+// Staging deploys only release candidates, and only staging records evidence.
+function parseCandidate(input: CandidateInput): Candidate | undefined {
+  const { environment, tag, content } = input;
+  if (environment !== 'staging') {
+    if (tag !== undefined || content !== undefined) {
+      throw new UsageError('--candidate and --content are for staging only.');
+    }
+    return undefined;
+  }
+  if (!tag || !RELEASE_TAG.exec(tag)?.[2]) {
+    throw new UsageError(
+      `Staging deploys a release candidate: --candidate must be vX.Y.Z-rc.N, got "${tag ?? ''}".`,
+    );
+  }
+  if (!content || !CONTENT_IDENTITY.test(content)) {
+    throw new UsageError(
+      `--content must be the candidate's 64-hex content identity, got "${content ?? ''}".`,
+    );
+  }
+  return { tag, content };
+}
 
 function parseCommand(): Command {
   const { positionals, values } = parseArgs({
@@ -489,6 +780,8 @@ function parseCommand(): Command {
       'server-image': { type: 'string' },
       'web-image': { type: 'string' },
       'compose-file': { type: 'string' },
+      candidate: { type: 'string' },
+      content: { type: 'string' },
     },
   });
   const [command] = positionals;
@@ -496,6 +789,7 @@ function parseCommand(): Command {
   const serverImage = values['server-image'] ?? '';
   const webImage = values['web-image'] ?? '';
   const composeFile = values['compose-file'];
+  if (command === 'release') return { command };
   if (!REVISION.test(revision)) {
     throw new UsageError(
       `--revision must be a full commit SHA, got "${revision}".`,
@@ -519,6 +813,11 @@ function parseCommand(): Command {
     }
     if (!composeFile) throw new UsageError('--compose-file is required.');
     return {
+      candidate: parseCandidate({
+        environment: environment as Environment,
+        tag: values.candidate,
+        content: values.content,
+      }),
       command,
       environment: environment as Environment,
       revision,
@@ -529,13 +828,15 @@ function parseCommand(): Command {
   }
   throw new UsageError(
     'Usage: deploy.ts checks --revision=<sha> --branch=<branch> --check=<name>...\n' +
-      '       deploy.ts rollout --environment=<env> --revision=<sha> --server-image=<ref@sha256:…> --web-image=<ref@sha256:…> --compose-file=<path>',
+      '       deploy.ts rollout --environment=<env> --revision=<sha> --server-image=<ref@sha256:…> --web-image=<ref@sha256:…> --compose-file=<path> [--candidate=<vX.Y.Z-rc.N> --content=<identity>]\n' +
+      '       deploy.ts release',
   );
 }
 
 async function main(): Promise<void> {
   const command = parseCommand();
   if (command.command === 'checks') await awaitChecks(command);
+  else if (command.command === 'release') await routeRelease();
   else await rollout(command);
 }
 

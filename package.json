@@ -82,6 +82,7 @@
     "deploy:checks": "bun tooling/deployment/deploy.ts checks",
     "deploy:rollout": "varlock run --path tooling/deployment -- bun tooling/deployment/deploy.ts rollout",
     "deploy:release": "bun tooling/deployment/deploy.ts release",
+    "deploy:promote": "varlock run --path tooling/deployment -- bun tooling/deployment/deploy.ts promote",
     "version:rc": "bun tooling/deployment/version.ts rc",
     "version:stable": "bun tooling/deployment/version.ts stable",
     "push:safe": "bash tooling/git-safe-push.sh",

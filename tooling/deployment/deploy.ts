@@ -30,6 +30,14 @@ import { parseArgs } from 'node:util';
  *     package.json version agree. Writes environment, tag, version, revision
  *     and content (the application content identity) outputs.
  *
+ *   promote --release=<vX.Y.Z> --content=<identity> --compose-file=<path>
+ *     promotes the newest published vX.Y.Z-rc.N candidate to production
+ *     (#883). Its staging evidence must be verified, name the candidate's
+ *     current commit and record the stable release's content; otherwise
+ *     nothing is backed up or deployed. The rollout then reuses the
+ *     evidenced image digests and revision, never rebuilding. Production is
+ *     reachable only this way: `rollout` refuses it.
+ *
  * Nothing here seeds or provisions data. See docs/operations/deployments.md.
  */
 
@@ -44,6 +52,7 @@ const CONTENT_IDENTITY = /^[0-9a-f]{64}$/;
 const EVIDENCE_ASSET = 'staging-evidence.json';
 // GitHub compare statuses meaning the commit is reachable from master.
 const ON_MASTER = new Set(['behind', 'identical']);
+const RELEASES_PAGE = 100;
 const DEFAULT_POLL_INTERVAL_MS = 10_000;
 // Poll budgets at the default interval: 30 minutes for checks and Dokploy,
 // 3 minutes for the public endpoints to serve the new revision.
@@ -105,18 +114,54 @@ interface RolloutCommand {
   webImage: string;
   composeFile: string;
   candidate: Candidate | undefined;
+  promotion?: Promotion;
+}
+
+interface Promotion {
+  release: string;
+  candidate: string;
 }
 
 interface ReleaseCommand {
   command: 'release';
 }
 
-type Command = ChecksCommand | RolloutCommand | ReleaseCommand;
+interface PromoteCommand {
+  command: 'promote';
+  release: string;
+  content: string;
+  composeFile: string;
+}
+
+type Command = ChecksCommand | RolloutCommand | ReleaseCommand | PromoteCommand;
+
+interface Asset {
+  id: number;
+  name: string;
+}
+
+interface ListedRelease {
+  // biome-ignore lint/style/useNamingConvention: GitHub's response field
+  tag_name: string;
+  draft: boolean;
+  prerelease: boolean;
+  assets: Asset[];
+}
+
+interface StagingEvidence {
+  schema: number;
+  environment: string;
+  candidate: { tag: string };
+  revision: string;
+  content: string;
+  images: { server: string; web: string };
+  rollout: { status: string };
+}
 
 interface GitHubRelease {
   // biome-ignore lint/style/useNamingConvention: GitHub's response field
   upload_url: string;
-  assets: Array<{ id: number; name: string }>;
+  assets: Asset[];
 }
 
 interface UploadInput {
@@ -260,6 +305,41 @@ class GitHub {
   release(tag: string): Promise<GitHubRelease> {
     const url = `${this.api}/repos/${this.repository}/releases/tags/${encodeURIComponent(tag)}`;
     return callApi({ url, headers: this.headers }) as Promise<GitHubRelease>;
+  }
+
+  async releases(): Promise<ListedRelease[]> {
+    const all: ListedRelease[] = [];
+    for (let page = 1; ; page++) {
+      const url = `${this.api}/repos/${this.repository}/releases?per_page=${RELEASES_PAGE}&page=${page}`;
+      const batch = (await callApi({
+        url,
+        headers: this.headers,
+      })) as ListedRelease[];
+      all.push(...batch);
+      if (batch.length < RELEASES_PAGE) return all;
+    }
+  }
+
+  async downloadAsset(id: number): Promise<string> {
+    const url = `${this.api}/repos/${this.repository}/releases/assets/${id}`;
+    const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+    try {
+      let response = await fetch(url, {
+        headers: { ...this.headers, accept: 'application/octet-stream' },
+        redirect: 'manual',
+        signal,
+      });
+      const location = response.headers.get('location');
+      // The signed storage URL must not receive the GitHub token.
+      if (location) response = await fetch(location, { signal });
+      const text = await response.text();
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return text;
+    } catch (error) {
+      throw new DeployFailure(
+        `Release asset ${id} could not be downloaded: ${String(error)}`,
+      );
+    }
   }
 
   async deleteAsset(id: number): Promise<void> {
@@ -573,8 +653,16 @@ async function awaitHealth(input: HealthInput): Promise<void> {
 }
 
 function report(command: RolloutCommand, origin: string): void {
-  const { environment, revision, serverImage, webImage, candidate } = command;
+  const { environment, revision, serverImage, webImage, candidate, promotion } =
+    command;
   const rows = [
+    // The release's own commit only bumps the version; Revision is what runs.
+    ...(promotion
+      ? [
+          ['Release', promotion.release],
+          ['Promoted candidate', promotion.candidate],
+        ]
+      : []),
     ...(candidate
       ? [
           ['Candidate', candidate.tag],
@@ -739,6 +827,121 @@ async function rollout(command: RolloutCommand): Promise<void> {
   }
 }
 
+// ── promote ───────────────────────────────────────────────────────────────
+
+interface ResolveInput {
+  github: GitHub;
+  command: PromoteCommand;
+}
+
+interface Resolved {
+  tag: string;
+  evidence: StagingEvidence;
+}
+
+// The newest published candidate of the version is the one staging tested last.
+async function latestCandidate(input: ResolveInput): Promise<ListedRelease> {
+  const { release } = input.command;
+  const prefix = `${release}-rc.`;
+  const candidates = (await input.github.releases())
+    .filter(
+      (r) =>
+        !r.draft &&
+        r.prerelease &&
+        r.tag_name.startsWith(prefix) &&
+        RELEASE_TAG.test(r.tag_name),
+    )
+    .sort(
+      (a, b) =>
+        Number(b.tag_name.slice(prefix.length)) -
+        Number(a.tag_name.slice(prefix.length)),
+    );
+  const [latest] = candidates;
+  if (!latest) {
+    throw new DeployFailure(
+      `No published ${prefix}N candidate exists; publish one and verify it on staging before ${release}. Not promoting.`,
+    );
+  }
+  return latest;
+}
+
+async function resolveCandidate(input: ResolveInput): Promise<Resolved> {
+  const { github, command } = input;
+  const candidate = await latestCandidate(input);
+  const tag = candidate.tag_name;
+  const asset = candidate.assets.find(({ name }) => name === EVIDENCE_ASSET);
+  if (!asset) {
+    throw new DeployFailure(
+      `${tag} has no ${EVIDENCE_ASSET}: it was never verified on staging. Not promoting.`,
+    );
+  }
+  let text: string;
+  try {
+    text = await github.downloadAsset(asset.id);
+  } catch (error) {
+    throw new DeployFailure(
+      `${tag}'s evidence: ${(error as Error).message}. Not promoting.`,
+    );
+  }
+  let evidence: Partial<StagingEvidence>;
+  try {
+    evidence = JSON.parse(text) ?? {};
+  } catch {
+    throw new DeployFailure(
+      `${tag}'s ${EVIDENCE_ASSET} is not JSON. Not promoting.`,
+    );
+  }
+  if (
+    evidence.schema !== 1 ||
+    evidence.environment !== 'staging' ||
+    evidence.candidate?.tag !== tag ||
+    !REVISION.test(evidence.revision ?? '') ||
+    !IMAGE_DIGEST.test(evidence.images?.server ?? '') ||
+    !IMAGE_DIGEST.test(evidence.images?.web ?? '')
+  ) {
+    throw new DeployFailure(
+      `${tag}'s ${EVIDENCE_ASSET} does not describe a staging rollout of ${tag} with immutable images. Not promoting.`,
+    );
+  }
+  if (evidence.rollout?.status !== 'verified') {
+    throw new DeployFailure(
+      `${tag} was not verified on staging (rollout ${evidence.rollout?.status ?? 'unknown'}). Not promoting.`,
+    );
+  }
+  if (evidence.content !== command.content) {
+    throw new DeployFailure(
+      `${command.release} has content ${command.content}, but staging verified ${tag} with ${evidence.content}: the application changed. Publish another candidate. Not promoting.`,
+    );
+  }
+  const current = await github.commit(tag);
+  if (current !== evidence.revision) {
+    throw new DeployFailure(
+      `${tag} now points at ${current}, but staging verified ${evidence.revision}. Not promoting.`,
+    );
+  }
+  return { tag, evidence: evidence as StagingEvidence };
+}
+
+async function promote(command: PromoteCommand): Promise<void> {
+  const { tag, evidence } = await resolveCandidate({
+    github: new GitHub(),
+    command,
+  });
+  console.log(
+    `✔ ${command.release} promotes ${tag} (revision ${evidence.revision}), verified on staging with unchanged content.`,
+  );
+  await rollout({
+    command: 'rollout',
+    environment: 'production',
+    revision: evidence.revision,
+    serverImage: evidence.images.server,
+    webImage: evidence.images.web,
+    composeFile: command.composeFile,
+    candidate: undefined,
+    promotion: { release: command.release, candidate: tag },
+  });
+}
+
 // ── entry ─────────────────────────────────────────────────────────────────
 
 interface CandidateInput {
@@ -782,6 +985,7 @@ function parseCommand(): Command {
       'compose-file': { type: 'string' },
       candidate: { type: 'string' },
       content: { type: 'string' },
+      release: { type: 'string' },
     },
   });
   const [command] = positionals;
@@ -790,6 +994,22 @@ function parseCommand(): Command {
   const webImage = values['web-image'] ?? '';
   const composeFile = values['compose-file'];
   if (command === 'release') return { command };
+  if (command === 'promote') {
+    const { release = '', content = '' } = values;
+    const match = RELEASE_TAG.exec(release);
+    if (!match || match[2]) {
+      throw new UsageError(
+        `--release must be a stable vX.Y.Z tag, got "${release}".`,
+      );
+    }
+    if (!CONTENT_IDENTITY.test(content)) {
+      throw new UsageError(
+        `--content must be the release's 64-hex content identity, got "${content}".`,
+      );
+    }
+    if (!composeFile) throw new UsageError('--compose-file is required.');
+    return { command, release, content, composeFile };
+  }
   if (!REVISION.test(revision)) {
     throw new UsageError(
       `--revision must be a full commit SHA, got "${revision}".`,
@@ -802,6 +1022,11 @@ function parseCommand(): Command {
     if (!ENVIRONMENTS.includes(environment as Environment)) {
       throw new UsageError(
         `--environment must be one of ${ENVIRONMENTS.join(', ')}.`,
+      );
+    }
+    if (environment === 'production') {
+      throw new UsageError(
+        'Production deploys only by promoting a verified staging candidate (deploy.ts promote).',
       );
     }
     for (const image of [serverImage, webImage]) {
@@ -829,7 +1054,8 @@ function parseCommand(): Command {
   throw new UsageError(
     'Usage: deploy.ts checks --revision=<sha> --branch=<branch> --check=<name>...\n' +
       '       deploy.ts rollout --environment=<env> --revision=<sha> --server-image=<ref@sha256:…> --web-image=<ref@sha256:…> --compose-file=<path> [--candidate=<vX.Y.Z-rc.N> --content=<identity>]\n' +
-      '       deploy.ts release',
+      '       deploy.ts release\n' +
+      '       deploy.ts promote --release=<vX.Y.Z> --content=<identity> --compose-file=<path>',
   );
 }
 
@@ -837,6 +1063,7 @@ async function main(): Promise<void> {
   const command = parseCommand();
   if (command.command === 'checks') await awaitChecks(command);
   else if (command.command === 'release') await routeRelease();
+  else if (command.command === 'promote') await promote(command);
   else await rollout(command);
 }
 

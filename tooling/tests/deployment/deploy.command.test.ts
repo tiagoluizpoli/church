@@ -19,6 +19,18 @@ const COMPOSE_ID = 'compose-dev';
 const CANDIDATE = 'v1.2.0-rc.1';
 const CONTENT = 'c'.repeat(64);
 const EVIDENCE = 'staging-evidence.json';
+const RELEASE = 'v1.2.0';
+// rc.10 outranks rc.9 numerically, not as text.
+const PROMOTED = 'v1.2.0-rc.10';
+const EVIDENCE_ASSET_ID = 11;
+
+interface ListedRelease {
+  // biome-ignore lint/style/useNamingConvention: GitHub's response field
+  tag_name: string;
+  draft: boolean;
+  prerelease: boolean;
+  assets: Array<{ id: number; name: string }>;
+}
 
 interface CheckRun {
   id: number;
@@ -47,11 +59,15 @@ interface State {
   deploymentStatus: () => { status: string; errorMessage: string | null };
   revisionTxt: () => Response;
   health: () => Response;
+  releases: ListedRelease[];
+  stagingEvidence: () => Response;
+  promotedCommit: string;
 }
 
 interface RecordedRequest {
   path: string;
   body: string;
+  authorized: boolean;
 }
 
 let state: State;
@@ -88,6 +104,19 @@ function handle(url: URL, body: string): Response {
       assets: [{ id: 3, name: 'notes.txt' }, ...state.evidenceAssets],
     });
   }
+  if (pathname === '/repos/church/app/releases') {
+    return Response.json(
+      url.searchParams.get('page') === '1' ? state.releases : [],
+    );
+  }
+  if (pathname === `/repos/church/app/commits/${PROMOTED}`) {
+    return Response.json({ sha: state.promotedCommit });
+  }
+  if (pathname === `/repos/church/app/releases/assets/${EVIDENCE_ASSET_ID}`) {
+    // GitHub redirects an asset download to signed storage.
+    return Response.redirect(`${server.url.origin}/storage/evidence`, 302);
+  }
+  if (pathname === '/storage/evidence') return state.stagingEvidence();
   if (pathname.startsWith('/repos/church/app/releases/assets/')) {
     return new Response(null, { status: 204 });
   }
@@ -154,6 +183,9 @@ beforeEach(() => {
     revisionTxt: () => new Response(`${REVISION}\n`),
     health: () =>
       Response.json({ status: 'ok', database: 'ok', revision: REVISION }),
+    releases: [],
+    stagingEvidence: () => Response.json(stagingEvidence()),
+    promotedCommit: REVISION,
   };
   server = Bun.serve({
     port: 0,
@@ -163,6 +195,7 @@ beforeEach(() => {
       requests.push({
         path: `${request.method === 'DELETE' ? 'DELETE ' : ''}${url.pathname}${url.search}`,
         body,
+        authorized: request.headers.has('authorization'),
       });
       return handle(url, body);
     },
@@ -268,6 +301,66 @@ function stagingArgs(overrides: Record<string, string> = {}): string[] {
     content: CONTENT,
     ...overrides,
   });
+}
+
+function stagingEvidence(overrides: Record<string, unknown> = {}) {
+  return {
+    schema: 1,
+    environment: 'staging',
+    candidate: { tag: PROMOTED, version: PROMOTED.slice(1) },
+    revision: REVISION,
+    content: CONTENT,
+    images: { server: SERVER_IMAGE, web: WEB_IMAGE },
+    rollout: { status: 'verified', url: 'https://staging.example' },
+    ...overrides,
+  };
+}
+
+function listed(tag: string, overrides: Partial<ListedRelease> = {}) {
+  return {
+    // biome-ignore lint/style/useNamingConvention: GitHub's response field
+    tag_name: tag,
+    draft: false,
+    prerelease: true,
+    assets: [],
+    ...overrides,
+  };
+}
+
+function promoteArgs(overrides: Record<string, string> = {}): string[] {
+  const values = {
+    release: RELEASE,
+    content: CONTENT,
+    'compose-file': join(workDir, 'compose.yml'),
+    ...overrides,
+  };
+  return [
+    'promote',
+    ...Object.entries(values).map(([key, value]) => `--${key}=${value}`),
+  ];
+}
+
+function useProduction(): void {
+  state.environment = 'production';
+  state.compose.env =
+    'CHURCH_ENVIRONMENT=production\nSERVER_IMAGE=old-server\n';
+  state.releases = [
+    listed(RELEASE, { prerelease: false }),
+    // A newer draft and another version's candidate are not this release's.
+    listed('v1.2.0-rc.11', { draft: true }),
+    listed('v1.3.0-rc.1', { assets: [{ id: 99, name: EVIDENCE }] }),
+    listed(PROMOTED, {
+      assets: [
+        { id: 3, name: 'notes.txt' },
+        { id: EVIDENCE_ASSET_ID, name: EVIDENCE },
+      ],
+    }),
+    listed('v1.2.0-rc.9', { assets: [{ id: 98, name: EVIDENCE }] }),
+  ];
+}
+
+function dokployCalls(): string[] {
+  return requests.map((r) => r.path).filter((path) => path.startsWith('/api/'));
 }
 
 function useStaging(): void {
@@ -606,5 +699,149 @@ describe('deploy rollout of a staging candidate', () => {
 
     expect(result.exitCode).toBe(1);
     expect(evidenceCalls()).toEqual([]);
+  });
+});
+
+describe('deploy promote of a stable release', () => {
+  beforeEach(useProduction);
+
+  it('rolls out the newest verified candidate’s images without rebuilding', async () => {
+    const result = await runDeploy(promoteArgs());
+
+    expect(result.exitCode).toBe(0);
+    expect(downstreamCalls()).toEqual([
+      '/api/backup.manualBackupPostgres',
+      '/api/compose.update',
+      '/api/compose.deploy',
+    ]);
+    const update = requests.find((r) => r.path === '/api/compose.update');
+    const { env } = JSON.parse(update?.body ?? '{}');
+    expect(env).toContain(`SERVER_IMAGE=${SERVER_IMAGE}\n`);
+    expect(env).toContain(`WEB_IMAGE=${WEB_IMAGE}\n`);
+    expect(env).not.toContain('old-server');
+    const download = requests.find((r) => r.path === '/storage/evidence');
+    expect(download?.authorized).toBe(false);
+    // Release metadata and the promoted application revision are both reported.
+    for (const text of [result.output, result.summary]) {
+      expect(text).toContain(RELEASE);
+      expect(text).toContain(PROMOTED);
+      expect(text).toContain(REVISION);
+      expect(text).toContain(SERVER_IMAGE);
+    }
+  });
+
+  it.each([
+    [
+      'no candidate of the version was published',
+      () => {
+        state.releases = [listed(RELEASE, { prerelease: false })];
+      },
+      'No published v1.2.0-rc.N candidate',
+    ],
+    [
+      'the newest candidate has no staging evidence',
+      () => {
+        state.releases = [listed(PROMOTED), ...state.releases];
+      },
+      `${PROMOTED} has no ${EVIDENCE}`,
+    ],
+    [
+      'the staging rollout was not verified',
+      () => {
+        state.stagingEvidence = () =>
+          Response.json(stagingEvidence({ rollout: { status: 'failed' } }));
+      },
+      'was not verified on staging',
+    ],
+    [
+      'the evidence belongs to another candidate',
+      () => {
+        state.stagingEvidence = () =>
+          Response.json(stagingEvidence({ candidate: { tag: 'v1.2.0-rc.9' } }));
+      },
+      'does not describe a staging rollout',
+    ],
+    [
+      'the evidence names a mutable image',
+      () => {
+        state.stagingEvidence = () =>
+          Response.json(
+            stagingEvidence({
+              images: {
+                server: 'ghcr.io/church/church-server:latest',
+                web: WEB_IMAGE,
+              },
+            }),
+          );
+      },
+      'immutable images',
+    ],
+    [
+      'the evidence is not JSON',
+      () => {
+        state.stagingEvidence = () => new Response('<html>');
+      },
+      'is not JSON',
+    ],
+    [
+      'the evidence cannot be downloaded',
+      () => {
+        state.stagingEvidence = () => new Response('gone', { status: 404 });
+      },
+      'could not be downloaded',
+    ],
+    [
+      'the application content changed after the candidate',
+      () => {
+        state.stagingEvidence = () =>
+          Response.json(stagingEvidence({ content: 'd'.repeat(64) }));
+      },
+      'the application changed',
+    ],
+    [
+      'the candidate tag moved after staging verified it',
+      () => {
+        state.promotedCommit = OLD_REVISION;
+      },
+      `now points at ${OLD_REVISION}`,
+    ],
+  ])('refuses before any backup or deployment when %s', async (_, fail, message) => {
+    fail();
+
+    const result = await runDeploy(promoteArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain(message);
+    expect(result.output).toContain('Not promoting');
+    expect(dokployCalls()).toEqual([]);
+    expect(result.summary).toBe('');
+  });
+
+  it('refuses a Dokploy target outside production before the backup', async () => {
+    state.compose.env = 'CHURCH_ENVIRONMENT=staging\n';
+
+    const result = await runDeploy(promoteArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(downstreamCalls()).toEqual([]);
+  });
+
+  it.each([
+    ['a release candidate', { release: 'v1.2.0-rc.1' }],
+    ['a malformed release', { release: '1.2.0' }],
+    ['a missing content identity', { content: 'not-an-identity' }],
+  ])('refuses to promote %s', async (_, overrides) => {
+    const result = await runDeploy(promoteArgs(overrides));
+
+    expect(result.exitCode).toBe(2);
+    expect(requests).toEqual([]);
+  });
+
+  it('keeps production out of reach of a direct rollout', async () => {
+    const result = await runDeploy(rolloutArgs({ environment: 'production' }));
+
+    expect(result.exitCode).toBe(2);
+    expect(result.output).toContain('only by promoting');
+    expect(requests).toEqual([]);
   });
 });

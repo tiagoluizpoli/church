@@ -4,7 +4,9 @@ name: Deploy Release
 # published vX.Y.Z-rc.N prerelease (staging) or vX.Y.Z release (production)
 # whose tagged commit belongs to master and records that version; anything
 # else fails here and deploys nothing. Drafts, tag pushes and merges to master
-# never start this workflow. Runbook: docs/operations/releases.md.
+# never start this workflow. A candidate is built and verified on staging; a
+# stable release promotes the verified candidate's images to production.
+# Runbook: docs/operations/releases.md.
 
 on:
   release:
@@ -135,4 +137,51 @@ jobs:
           --content="$CONTENT"
           --server-image="$SERVER_IMAGE"
           --web-image="$WEB_IMAGE"
+          --compose-file="$RUNNER_TEMP/compose.yml"
+
+  # Publishing the stable release is the approval (#883): the production
+  # GitHub Environment has no required reviewers. Nothing is built here;
+  # deploy:promote reuses the image digests the candidate's staging evidence
+  # verified and refuses, before any backup, unless that candidate exists,
+  # was verified and has the release's application content.
+  production:
+    name: Promote to production
+    needs: [route]
+    if: needs.route.outputs.environment == 'production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: ${{ vars.PUBLIC_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.route.outputs.revision }}
+      - uses: jdx/mise-action@v5
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Compose file for this revision
+        # Production has no Mailpit: it always delivers through Resend.
+        run: >-
+          docker compose -f deployment/compose.yml
+          config --no-interpolate --no-normalize > "$RUNNER_TEMP/compose.yml"
+      - name: Resolve the candidate, back up, migrate, roll out and verify
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DOKPLOY_URL: ${{ vars.DOKPLOY_URL }}
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          DOKPLOY_COMPOSE_ID: ${{ vars.DOKPLOY_COMPOSE_ID }}
+          CHURCH_BACKUP_ID: ${{ vars.CHURCH_BACKUP_ID }}
+          PUBLIC_ORIGIN: ${{ vars.PUBLIC_ORIGIN }}
+          RELEASE: ${{ needs.route.outputs.tag }}
+          CONTENT: ${{ needs.route.outputs.content }}
+        run: >-
+          bun run deploy:promote --
+          --release="$RELEASE"
+          --content="$CONTENT"
           --compose-file="$RUNNER_TEMP/compose.yml"

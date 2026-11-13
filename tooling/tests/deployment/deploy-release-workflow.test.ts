@@ -93,4 +93,43 @@ describe('deploy-release workflow', () => {
     expect(rollout?.run).toContain('--content="$CONTENT"');
     expect(rollout?.run).not.toMatch(/seed|provision/);
   });
+
+  it('promotes only a routed production release, serialized and unbuilt', () => {
+    const production = job('production');
+
+    expect(production.needs).toEqual(['route']);
+    expect(production.if).toBe(
+      "needs.route.outputs.environment == 'production'",
+    );
+    expect(production.environment?.name).toBe('production');
+    expect(production.concurrency).toEqual({
+      group: 'deploy-production',
+      'cancel-in-progress': false,
+    });
+    expect(production.permissions).toEqual({ contents: 'read' });
+    expect(JSON.stringify(production.steps)).not.toMatch(
+      /build-push|mailpit|seed|provision|deploy:rollout/,
+    );
+  });
+
+  it('promotes the routed release by its content identity', () => {
+    const promote = job('production').steps.find((s) =>
+      s.run?.includes('deploy:promote'),
+    );
+
+    expect(promote?.env).toMatchObject({
+      RELEASE: route('tag'),
+      CONTENT: route('content'),
+    });
+    expect(promote?.run).toContain('--release="$RELEASE"');
+    expect(promote?.run).toContain('--content="$CONTENT"');
+  });
+
+  it('deploys production from no other job', () => {
+    const others = Object.entries(workflow.jobs).filter(
+      ([name]) => name !== 'production',
+    );
+
+    expect(JSON.stringify(others)).not.toMatch(/production|deploy:promote/);
+  });
 });

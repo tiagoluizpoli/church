@@ -95,6 +95,11 @@ let workDir: string;
 // The checkout the command reads revisions from.
 let gitDir: string;
 
+// The environment's Dokploy compose env, connecting as `database` (role and name).
+function composeEnv(environment: string, database = `church_${environment}`) {
+  return `CHURCH_ENVIRONMENT=${environment}\nDATABASE_URL=postgresql://${database}:${SECRET}@db:5432/${database}\nSERVER_IMAGE=old-server\n`;
+}
+
 function backupConfiguration() {
   return {
     backupId: 'recovery-id',
@@ -196,7 +201,7 @@ beforeEach(() => {
     ],
     compose: {
       sourceType: 'raw',
-      env: `CHURCH_ENVIRONMENT=development\nDATABASE_URL=postgresql://church_development:${SECRET}@db/church_development\nSERVER_IMAGE=old-server\n`,
+      env: composeEnv('development'),
     },
     manualBackup: () => Response.json(true),
     deployments: [
@@ -377,8 +382,7 @@ function promoteArgs(overrides: Record<string, string> = {}): string[] {
 
 function useProduction(): void {
   state.environment = 'production';
-  state.compose.env =
-    'CHURCH_ENVIRONMENT=production\nSERVER_IMAGE=old-server\n';
+  state.compose.env = composeEnv('production');
   state.releases = [
     listed(RELEASE, { prerelease: false }),
     // A newer draft and another version's candidate are not this release's.
@@ -400,7 +404,7 @@ function dokployCalls(): string[] {
 
 function useStaging(): void {
   state.environment = 'staging';
-  state.compose.env = 'CHURCH_ENVIRONMENT=staging\n';
+  state.compose.env = composeEnv('staging');
   // A previous run of this candidate left evidence behind.
   state.evidenceAssets = [{ id: 5, name: EVIDENCE }];
 }
@@ -576,6 +580,49 @@ describe('deploy rollout', () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain('CHURCH_ENVIRONMENT=staging');
+    expect(downstreamCalls()).toEqual([]);
+  });
+
+  it.each([
+    [
+      'another environment’s complete connection string',
+      `postgresql://church_production:${SECRET}@db:5432/church_production`,
+    ],
+    [
+      'another environment’s database',
+      `postgresql://church_development:${SECRET}@db:5432/church_production`,
+    ],
+    [
+      'another login role',
+      `postgresql://church_production:${SECRET}@db:5432/church_development`,
+    ],
+    [
+      'a query parameter overriding the role',
+      `postgresql://church_development:${SECRET}@db:5432/church_development?user=church_production`,
+    ],
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: a Dokploy variable reference, not a template
+    ['an unverifiable reference', '${{project.DATABASE_URL}}'],
+  ])('refuses a DATABASE_URL with %s before any backup or Dokploy change', async (_, url) => {
+    state.compose.env = `CHURCH_ENVIRONMENT=development\nDATABASE_URL=${url}\n`;
+
+    const result = await runDeploy(rolloutArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('church_development');
+    expect(result.output).toContain('refusing');
+    expect(result.output).not.toContain(SECRET);
+    expect(dokployCalls()).toEqual([
+      `/api/compose.one?composeId=${COMPOSE_ID}`,
+    ]);
+    expect(requests.map((r) => r.path)).not.toContain(RECORDS);
+  });
+
+  it('refuses a compose without DATABASE_URL', async () => {
+    state.compose.env = 'CHURCH_ENVIRONMENT=development\n';
+
+    const result = await runDeploy(rolloutArgs());
+
+    expect(result.exitCode).toBe(1);
     expect(downstreamCalls()).toEqual([]);
   });
 
@@ -772,6 +819,16 @@ describe('deploy rollout of a staging candidate', () => {
 
     expect(result.exitCode).toBe(1);
     expect(evidenceCalls()).toEqual([]);
+  });
+
+  it('touches no evidence when staging’s DATABASE_URL reaches production', async () => {
+    state.compose.env = composeEnv('staging', 'church_production');
+
+    const result = await runDeploy(stagingArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(evidenceCalls()).toEqual([]);
+    expect(downstreamCalls()).toEqual([]);
   });
 });
 
@@ -1026,7 +1083,7 @@ describe('deploy rollback to a verified image set', () => {
     'production',
   ])('redeploys the verified %s images over the current schema', async (environment) => {
     state.environment = environment;
-    state.compose.env = `CHURCH_ENVIRONMENT=${environment}\nSERVER_IMAGE=old-server\n`;
+    state.compose.env = composeEnv(environment);
 
     const result = await runDeploy(rollbackArgs({ environment }));
 

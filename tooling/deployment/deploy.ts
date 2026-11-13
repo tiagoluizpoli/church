@@ -629,6 +629,40 @@ function envValue(env: string, name: string): string | undefined {
     .replace(/^(['"])(.*)\1$/, '$2');
 }
 
+interface DatabaseTargetInput {
+  composeId: string;
+  environment: Environment;
+  databaseUrl: string | undefined;
+}
+
+/**
+ * The CHURCH_ENVIRONMENT label cannot catch a DATABASE_URL copied from another
+ * environment: the compose must connect as role church_<env> to database
+ * church_<env>, the database the backup covers. Only names are ever printed.
+ */
+function assertDatabaseTarget(input: DatabaseTargetInput): void {
+  const { composeId, environment, databaseUrl = '' } = input;
+  const expected = `church_${environment}`;
+  let role = '';
+  let database = '';
+  try {
+    const url = new URL(databaseUrl);
+    // libpq and node-postgres let query parameters override the role or database.
+    const overridden = ['user', 'dbname', 'database'].some((name) =>
+      url.searchParams.has(name),
+    );
+    if (/^postgres(ql)?:$/.test(url.protocol) && !overridden) {
+      role = decodeURIComponent(url.username);
+      database = decodeURIComponent(url.pathname.slice(1));
+    }
+  } catch {}
+  if (role !== expected || database !== expected) {
+    throw new DeployFailure(
+      `Dokploy compose ${composeId}'s DATABASE_URL connects as role "${role || 'unknown'}" to database "${database || 'unknown'}", not ${expected}; refusing.`,
+    );
+  }
+}
+
 function withImages(input: WithImagesInput): string {
   const kept = input.env
     .split('\n')
@@ -881,6 +915,11 @@ async function rollout(command: RolloutCommand): Promise<void> {
       `Dokploy compose ${composeId} is configured for CHURCH_ENVIRONMENT=${targetEnvironment ?? '(unset)'}, not ${environment}; refusing.`,
     );
   }
+  assertDatabaseTarget({
+    composeId,
+    environment,
+    databaseUrl: envValue(env, 'DATABASE_URL'),
+  });
 
   const before = await deploymentIds(dokploy, composeId);
   const running = before.find(({ status }) => status === 'running');

@@ -143,8 +143,10 @@ docker compose exec server bun run operator provision-church --environment stagi
 ```
 
 - `--environment` is required and must be `development`, `staging` or
-  `production` **and** equal the container's `CHURCH_ENVIRONMENT`. Any other
-  value, including `local`, is refused before a write.
+  `production` **and** equal the container's `CHURCH_ENVIRONMENT`, and the
+  live connection must be database and role `church_<environment>`. Any other
+  value, including `local`, or a `DATABASE_URL` reaching another
+  environment, is refused before a write.
 - `setup-identity` is idempotent. It creates the Platform Operator User with
   no credentials, password or Church Membership. `provision-church` refuses
   until it has run.

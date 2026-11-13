@@ -1222,14 +1222,19 @@ interface ProvisionedPlainInvitation {
 async function provisionPlainInvitation(): Promise<ProvisionedPlainInvitation> {
   const suffix = crypto.randomUUID().slice(0, 8);
   const runtimeEnvironment = 'staging';
+  const connected = {
+    environment: runtimeEnvironment,
+    database: 'church_staging',
+    role: 'church_staging',
+  };
   await runOperatorCommand({
     db: testDb,
-    runtimeEnvironment,
+    connected,
     argv: ['setup-identity', '--environment', runtimeEnvironment],
   });
   const provisioned = await runOperatorCommand({
     db: testDb,
-    runtimeEnvironment,
+    connected,
     argv: [
       'provision-church',
       '--environment',

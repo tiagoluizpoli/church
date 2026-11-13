@@ -11,7 +11,9 @@ two modes:
 
 Production cannot be reset. Local and worktree databases keep using
 `bun run db:reseed:dev` and its loopback/worktree protections. This command
-refuses a `local` target.
+refuses a `local` target. It also refuses when its live connection is not database
+and role `church_<environment>`, so a `DATABASE_URL` copied from another
+environment is caught before the backup.
 
 ## What survives and what is recreated
 

@@ -23,8 +23,10 @@ Nothing here configures live infrastructure. Set up the environment first
    (`image@sha256:…`), never by tag.
 4. **Rollout** (`bun run deploy:rollout`), in the `development` GitHub
    Environment, one at a time (concurrency group `deploy-development`):
-   1. refuses a Dokploy compose that is not source type **Raw** or whose
-      `CHURCH_ENVIRONMENT` is not `development`;
+   1. refuses a Dokploy compose that is not source type **Raw**, whose
+      `CHURCH_ENVIRONMENT` is not `development`, or whose `DATABASE_URL` does
+      not connect as role `church_development` to database
+      `church_development` (a URL copied from another environment);
    2. takes the required pre-deployment backup (`backup.ts create`). A failed
       backup stops here;
    3. writes the revision's compose file (`compose.yml` +
@@ -121,6 +123,7 @@ Run it only when no workflow deployment for the environment is running.
 | `Required check "Fast Gate" concluded failure` | CI failed on the revision | fix and push |
 | `Missing prerequisite: <NAME>` | an Environment variable or secret is not set | set it, re-run |
 | `configured for CHURCH_ENVIRONMENT=…` / `must be "raw"` | wrong Dokploy target | fix `DOKPLOY_COMPOSE_ID` or the compose |
+| `DATABASE_URL connects as role … to database …` | the compose points at another environment's database | set that environment's own `DATABASE_URL` (a literal URL, not a variable reference) |
 | `… is still running; refusing to overlap its migrations` | an earlier Dokploy deployment has not finished | wait for it in Dokploy, then re-run |
 | `Required backup … failed; nothing was deployed` | backup or its storage failed | see [backups.md](backups.md) |
 | `rollout record was not saved` | verified, but recording the rollback target failed | re-run the workflow |

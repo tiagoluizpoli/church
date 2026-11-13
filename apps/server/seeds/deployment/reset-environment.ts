@@ -5,6 +5,11 @@ import { now, today } from '@church/time';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import {
+  assertConnectedTo,
+  CONNECTED_IDENTITY_QUERY,
+  type ConnectedEnvironment,
+} from '../../src/scripts/connected-environment';
 import { DEVELOPMENT_CHURCH_TIMEZONE } from '../blueprints/development';
 import { verifyDevelopmentGraph } from '../development/verify';
 import { runSeedRecipe } from '../recipe';
@@ -42,8 +47,8 @@ export interface ResetEnvironmentInput {
   /** Connected to the environment's own database. */
   pool: pg.Pool;
   argv: string[];
-  /** The environment this process is actually deployed in (CHURCH_ENVIRONMENT). */
-  runtimeEnvironment: string;
+  /** The environment label and database identity `pool` actually connects to. */
+  connected: ConnectedEnvironment;
   /** Resolves only once the target backup has succeeded. */
   backup: (target: BackupTarget) => Promise<void>;
   capturedMessages: CapturedMessages;
@@ -79,24 +84,20 @@ function parseResetArguments({
 
 interface AssertResettableTargetInput {
   requested: string;
-  runtimeEnvironment: string;
+  connected: ConnectedEnvironment;
 }
 
 /** Production, local and anything unknown are refused; so is a target that is not the connected one. */
 function assertResettableTarget({
   requested,
-  runtimeEnvironment,
+  connected,
 }: AssertResettableTargetInput): ResettableEnvironment {
   if (!RESETTABLE_ENVIRONMENTS.includes(requested as ResettableEnvironment)) {
     throw new Error(
       `Refusing target "${requested}": only ${RESETTABLE_ENVIRONMENTS.join(' or ')} can be reset.`,
     );
   }
-  if (requested !== runtimeEnvironment) {
-    throw new Error(
-      `Refusing target "${requested}": this process is connected to "${runtimeEnvironment}".`,
-    );
-  }
+  assertConnectedTo({ requested, connected });
   return requested as ResettableEnvironment;
 }
 
@@ -118,13 +119,6 @@ async function assertServerStopped({ pool }: PoolInput): Promise<void> {
       `Refusing reset: the server still has ${connections} connection(s) to this database. Stop the server and web services first.`,
     );
   }
-}
-
-async function currentDatabase({ pool }: PoolInput): Promise<string> {
-  const { rows } = await pool.query<{ name: string }>(
-    'SELECT current_database() AS name',
-  );
-  return rows[0]?.name as string;
 }
 
 interface ResetDatabaseInput {
@@ -173,15 +167,15 @@ async function resetDatabase({
 export async function resetEnvironment({
   pool,
   argv,
-  runtimeEnvironment,
+  connected,
   backup,
   capturedMessages,
 }: ResetEnvironmentInput): Promise<ResetEnvironmentResult> {
   const { mode, environment: requested } = parseResetArguments({ argv });
-  const environment = assertResettableTarget({ requested, runtimeEnvironment });
+  const environment = assertResettableTarget({ requested, connected });
   await assertServerStopped({ pool });
   await capturedMessages.assertReachable();
-  const database = await currentDatabase({ pool });
+  const { database } = connected;
 
   await backup({ environment, database });
 
@@ -252,21 +246,31 @@ if (import.meta.main) {
     max: 1,
   });
   const mailpitUrl = env.MAILPIT_API_URL;
-  resetEnvironment({
-    pool,
-    argv: process.argv.slice(2),
-    runtimeEnvironment: env.CHURCH_ENVIRONMENT,
-    backup: runBackupCommand,
-    capturedMessages: mailpitUrl
-      ? mailpit({ url: mailpitUrl })
-      : {
-          assertReachable: () =>
-            Promise.reject(
-              new Error('Missing prerequisite: MAILPIT_API_URL is not set.'),
-            ),
-          deleteAll: () => Promise.resolve(),
+  pool
+    .query<{ database: string; role: string }>(CONNECTED_IDENTITY_QUERY)
+    .then(({ rows: [identity] }) =>
+      resetEnvironment({
+        pool,
+        argv: process.argv.slice(2),
+        connected: {
+          environment: env.CHURCH_ENVIRONMENT,
+          database: identity?.database ?? '',
+          role: identity?.role ?? '',
         },
-  })
+        backup: runBackupCommand,
+        capturedMessages: mailpitUrl
+          ? mailpit({ url: mailpitUrl })
+          : {
+              assertReachable: () =>
+                Promise.reject(
+                  new Error(
+                    'Missing prerequisite: MAILPIT_API_URL is not set.',
+                  ),
+                ),
+              deleteAll: () => Promise.resolve(),
+            },
+      }),
+    )
     .then(({ mode, environment, database }) => {
       console.log(`✔ ${environment} (${database}) reset to ${mode}.`);
       process.exitCode = 0;

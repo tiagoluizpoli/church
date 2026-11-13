@@ -20,10 +20,24 @@ const PROVISION = [
 interface RunInput {
   argv: string[];
   runtimeEnvironment?: string;
+  // The database and role the connection reports; church_<runtimeEnvironment> by default.
+  connectedAs?: string;
 }
 
-function run({ argv, runtimeEnvironment = 'staging' }: RunInput) {
-  return runOperatorCommand({ db: testDb, argv, runtimeEnvironment });
+function run({
+  argv,
+  runtimeEnvironment = 'staging',
+  connectedAs = `church_${runtimeEnvironment}`,
+}: RunInput) {
+  return runOperatorCommand({
+    db: testDb,
+    argv,
+    connected: {
+      environment: runtimeEnvironment,
+      database: connectedAs,
+      role: connectedAs,
+    },
+  });
 }
 
 async function countRows() {
@@ -77,6 +91,16 @@ describe('operator commands', () => {
         runtimeEnvironment: runtime,
       }),
     ).rejects.toThrow(/Refusing target/);
+    expect(await countRows()).toEqual({ users: 0, churches: 0 });
+  });
+
+  it.each([
+    ['setup-identity', ['setup-identity', '--environment', 'staging']],
+    ['provision-church', PROVISION],
+  ])('%s refuses a staging label whose connection reaches church_production', async (_command, argv) => {
+    await expect(
+      run({ argv, connectedAs: 'church_production' }),
+    ).rejects.toThrow(/connected to database "church_production"/);
     expect(await countRows()).toEqual({ users: 0, churches: 0 });
   });
 

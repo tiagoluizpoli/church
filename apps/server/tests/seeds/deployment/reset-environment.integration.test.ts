@@ -31,6 +31,11 @@ const OLD_EMAIL = randomUUID();
 const CHURCH_ID = '11111111-1111-1111-1111-111111111111';
 const USER_ID = '22222222-2222-2222-2222-222222222221';
 const DELIVERY_MODE = { code: 'email_delivery_mode', value: 'both' };
+const STAGING = {
+  environment: 'staging',
+  database: 'church_staging',
+  role: 'church_staging',
+};
 
 let events: string[];
 let seededUsers: number | undefined;
@@ -58,13 +63,23 @@ async function backup(target: BackupTarget): Promise<void> {
 interface RunInput {
   argv: string[];
   runtimeEnvironment?: string;
+  // The database and role the connection reports; church_<runtimeEnvironment> by default.
+  connectedAs?: string;
 }
 
-function run({ argv, runtimeEnvironment = 'staging' }: RunInput) {
+function run({
+  argv,
+  runtimeEnvironment = 'staging',
+  connectedAs = `church_${runtimeEnvironment}`,
+}: RunInput) {
   return resetEnvironment({
     pool,
     argv,
-    runtimeEnvironment,
+    connected: {
+      environment: runtimeEnvironment,
+      database: connectedAs,
+      role: connectedAs,
+    },
     backup,
     capturedMessages,
   });
@@ -127,14 +142,14 @@ describe('environment reset', () => {
       argv: ['clean', '--environment', 'staging'],
     });
 
-    const [database] = (await pool.query('SELECT current_database() AS d'))
-      .rows;
     expect(result).toEqual({
       mode: 'clean',
       environment: 'staging',
-      database: database.d,
+      database: 'church_staging',
     });
-    expect(backups).toEqual([{ environment: 'staging', database: database.d }]);
+    expect(backups).toEqual([
+      { environment: 'staging', database: 'church_staging' },
+    ]);
     expect(events).toEqual([
       'mailpit-check',
       `backup with ${seededUsers} users`,
@@ -152,7 +167,7 @@ describe('environment reset', () => {
     await runOperatorCommand({
       db: testDb,
       argv: ['setup-identity', '--environment', 'staging'],
-      runtimeEnvironment: 'staging',
+      connected: STAGING,
     });
     const provisioned = await runOperatorCommand({
       db: testDb,
@@ -167,7 +182,7 @@ describe('environment reset', () => {
         '--admin-email',
         'admin@first-church.test',
       ],
-      runtimeEnvironment: 'staging',
+      connected: STAGING,
     });
 
     const [pending] = await testDb
@@ -215,6 +230,20 @@ describe('environment reset', () => {
       await expect(run({ argv, runtimeEnvironment })).rejects.toThrow();
 
       expect(events).toEqual([]);
+      expect(await countOf(user)).toBe(seededUsers);
+      expect(await countOf(session)).toBe(1);
+    });
+
+    it.each([
+      ['another environment’s database', 'church_production'],
+      ['a database outside the environment naming', 'postgres'],
+    ])('when the connection reaches %s despite the staging label', async (_label, connectedAs) => {
+      await expect(
+        run({ argv: ['clean', '--environment', 'staging'], connectedAs }),
+      ).rejects.toThrow(new RegExp(`connected to database "${connectedAs}"`));
+
+      expect(events).toEqual([]);
+      expect(backups).toEqual([]);
       expect(await countOf(user)).toBe(seededUsers);
       expect(await countOf(session)).toBe(1);
     });

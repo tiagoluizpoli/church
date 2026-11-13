@@ -1,6 +1,11 @@
 import { NotFoundError } from '@church/core';
 import { createDb, type TenancyWriter, user } from '@church/db';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import {
+  assertConnectedTo,
+  CONNECTED_IDENTITY_QUERY,
+  type ConnectedEnvironment,
+} from './connected-environment';
 import {
   ensurePlatformOperator,
   PLATFORM_OPERATOR_EMAIL,
@@ -23,8 +28,8 @@ const USAGE = [
 export interface RunOperatorCommandInput {
   db: TenancyWriter;
   argv: string[];
-  /** The environment this process is actually connected to (CHURCH_ENVIRONMENT). */
-  runtimeEnvironment: string;
+  /** The environment label and database identity this process is actually connected to. */
+  connected: ConnectedEnvironment;
 }
 
 interface ParseFlagsInput {
@@ -60,24 +65,20 @@ function requireFlags({ flags, names }: RequireFlagsInput): string[] {
 
 interface AssertTargetInput {
   requested: string;
-  runtimeEnvironment: string;
+  connected: ConnectedEnvironment;
 }
 
 /** Refuses before any write: the named target must be a deployable environment and be the one this process is connected to. */
 function assertTarget({
   requested,
-  runtimeEnvironment,
+  connected,
 }: AssertTargetInput): OperatorEnvironment {
   if (!OPERATOR_ENVIRONMENTS.includes(requested as OperatorEnvironment)) {
     throw new Error(
       `Refusing target "${requested}": expected one of ${OPERATOR_ENVIRONMENTS.join(', ')}.`,
     );
   }
-  if (requested !== runtimeEnvironment) {
-    throw new Error(
-      `Refusing target "${requested}": this process is connected to "${runtimeEnvironment}".`,
-    );
-  }
+  assertConnectedTo({ requested, connected });
   return requested as OperatorEnvironment;
 }
 
@@ -88,14 +89,14 @@ function assertTarget({
 export async function runOperatorCommand({
   db,
   argv,
-  runtimeEnvironment,
+  connected,
 }: RunOperatorCommandInput): Promise<ProvisionChurchResult | undefined> {
   const [command, ...rest] = argv;
   const flags = parseFlags({ argv: rest });
 
   if (command === 'setup-identity') {
     const [requested] = requireFlags({ flags, names: ['environment'] });
-    assertTarget({ requested: requested as string, runtimeEnvironment });
+    assertTarget({ requested: requested as string, connected });
     const operator = await ensurePlatformOperator({ db });
     console.log(`Platform Operator identity ready: ${operator.id}`);
     return undefined;
@@ -106,7 +107,7 @@ export async function runOperatorCommand({
       flags,
       names: ['environment', 'name', 'slug', 'admin-email'],
     }) as [string, string, string, string];
-    assertTarget({ requested, runtimeEnvironment });
+    assertTarget({ requested, connected });
 
     const operator = await ensurePlatformOperatorExisting({ db });
     return await provisionChurch({
@@ -143,11 +144,21 @@ async function ensurePlatformOperatorExisting({
 
 if (import.meta.main) {
   const { env } = await import('@church/env/server');
-  runOperatorCommand({
-    db: createDb(),
-    argv: process.argv.slice(2),
-    runtimeEnvironment: env.CHURCH_ENVIRONMENT,
-  })
+  const db = createDb();
+  db.execute<{ database: string; role: string }>(
+    sql.raw(CONNECTED_IDENTITY_QUERY),
+  )
+    .then(({ rows: [identity] }) =>
+      runOperatorCommand({
+        db,
+        argv: process.argv.slice(2),
+        connected: {
+          environment: env.CHURCH_ENVIRONMENT,
+          database: identity?.database ?? '',
+          role: identity?.role ?? '',
+        },
+      }),
+    )
     .then(() => process.exit(0))
     .catch((error) => {
       console.error('❌', error instanceof Error ? error.message : error);

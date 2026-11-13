@@ -33,6 +33,17 @@ Load for backend, API, database, security, tenancy, or infrastructure work.
 - Select backend and test specialist skills when their descriptions fit the
   identified work.
 
+## Rollback-compatible migrations
+
+Prefer migrations the previous application still runs against (add nullable
+columns or tables first, drop in a later release). When a new migration is,
+put `-- rollback-compatible: <why the previous application still works>` on a
+line of its SQL file when you create it; `deploy:rollback` refuses to roll an
+environment back past any deployed migration without that line
+([rollback runbook](../operations/rollback.md)). Never add it to an applied
+migration, and never claim it for a drop, rename, new `NOT NULL` without a
+default or tightened constraint the previous application can violate.
+
 ## Deployment preflight: migration 0028
 
 Migration `0028_noisy_gunslinger` creates the unique index

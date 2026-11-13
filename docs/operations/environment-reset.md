@@ -84,7 +84,7 @@ provision-church` for each Church, as in the deployment README.
 | emptying or seeding (the transaction) | rolled back, the data is as before | read the error and run it again. A backup was already taken; that is harmless |
 | demo verification after the seed | the seed is loaded but did not verify | run the reset again; if it keeps failing, use `clean` and report the seed problem |
 | `Mailpit's captured messages were not deleted` | the database is reset, old captured mail remains | open the Mailpit inbox over Tailscale, choose **Delete all**, then start the application |
-| the wrong mode, or the old data is needed again | the database is reset | restore the backup the reset just made (newest file under `<environment>/pre-deployment`) with [database restoration](backups.md#application-rollback-is-not-database-restoration), keeping the application stopped |
+| the wrong mode, or the old data is needed again | the database is reset | restore the backup the reset just made (newest file under `<environment>/pre-deployment`) with [database restoration](backups.md#database-restoration), keeping the application stopped |
 
 Start `server` and `web` again in every case once the database is in the state
 you want. No reset of a deployed database is part of implementing this

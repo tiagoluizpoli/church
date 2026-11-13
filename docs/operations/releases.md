@@ -139,7 +139,7 @@ in [backups.md](backups.md) before the first promotion.
   release unpromotable; publish another candidate instead.
 - Keep the ghcr.io `church-server` and `church-web` versions named by the
   evidence of every candidate that may still be promoted, and of every
-  production release you may roll back to. Production pulls them by digest;
+  `verified-<environment>` rollout you may [roll back](rollback.md) to. Production pulls them by digest;
   a pruned digest fails the Dokploy deployment, leaving the previous
   containers running.
 

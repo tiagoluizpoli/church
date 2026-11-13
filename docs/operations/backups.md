@@ -138,16 +138,56 @@ ownership and CONNECT restriction.
 
 ## Application rollback is not database restoration
 
-- **Application rollback** redeploys a previously successful image set and
-  leaves the database as it is. This is safe only when the current schema is
-  compatible with that application version. It loses no data.
+- **Application rollback** ([rollback.md](rollback.md)) redeploys a
+  previously verified image set and leaves the database as it is. It refuses
+  a target the current schema is not declared compatible with. It loses no
+  data.
 - **Database restoration** replaces the environment database with a backup.
-  Every write made after that backup is lost. It is a deliberate, separate
-  operator action:
-  1. stop the application;
-  2. take a `backup:create` of the current state first;
-  3. restore with the steps above, targeting the environment database;
-  4. reapply the role grants;
-  5. deploy an application version that matches the restored schema.
+  It is a deliberate, separate operator action. No workflow, rollback or
+  deployment restores a database or reverses a migration.
 
-  No workflow restores a database automatically.
+## Database restoration
+
+Restoring discards **every write made after the chosen backup**: sign-ups,
+invitations, schedules, assignments, sessions and queued email created since
+then are gone, and nothing merges them back. Use it only when the data itself
+is wrong (a destructive migration, a bad reset, corruption) and fixing forward
+or an application rollback cannot repair it. For production, agree the loss
+window with the Church before starting.
+
+1. **Choose the backup.** List the pool folders
+   (`<environment>/pre-deployment`, and for production
+   `production/scheduled`) and pick the newest file taken before the damage.
+   Note its timestamp: the lost window is from then until now.
+2. **Verify it in isolation first.** Restore that file into an empty,
+   unconnected database (`church_restore_check`) on a non-production
+   service, exactly as in the [restore exercise](#restore-exercise-before-the-production-launch).
+   Check that it restores without errors, that its latest migration is the
+   one you expect, and that the rows you need are there and the damage is
+   not. Drop it afterwards. Do not continue if this fails.
+3. **Stop writes.** Make sure no deployment, rollback or reset of the
+   environment is running or queued (its `deploy-<environment>` workflow
+   runs). In Dokploy, stop the environment's compose so `server` and its
+   outbox worker no longer write.
+4. **Back up the current state** with `backup:create`, even though it holds
+   the damage. It is the only copy of the writes you are about to discard.
+5. **Restore** the chosen file into the environment database, connected as
+   or with `--role=church_<environment>` (see above), never another
+   environment's database or dump. Then rerun
+   `db:provision:environment <environment>` to reapply ownership and the
+   CONNECT restriction.
+6. **Match the application to the restored schema.** Compare
+   `drizzle.__drizzle_migrations` with the journals of verified revisions.
+   Start the compose only with images whose migrations are all in the
+   restored ledger or newer and compatible; usually redeploy the revision
+   that was running when the backup was taken, through
+   [Roll Back](rollback.md) or a normal deployment (whose backup and
+   `migrate` then run against the restored database).
+7. **Verify** `/api/health` reports the expected revision and database `ok`,
+   sign in, and check the data from step 2.
+8. **Record** the backup file, the lost-data window, who approved it and
+   the verification result on the incident issue.
+
+A failed migration can leave earlier migrations of the same deployment
+applied. Inspect the ledger and the Dokploy log before choosing between
+fixing forward and restoring.

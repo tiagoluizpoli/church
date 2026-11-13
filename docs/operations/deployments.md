@@ -40,7 +40,12 @@ Nothing here configures live infrastructure. Set up the environment first
       report the revision and the API reports its database `ok`. A still
       healthy old container does not count;
    6. reports the URL, revision and both digests in the log and the job
-      summary. The GitHub deployment for the revision succeeds only then.
+      summary, and records them as a GitHub deployment in
+      `verified-development`, the list [rollback](rollback.md) picks from.
+      The GitHub deployment for the revision succeeds only then.
+
+   Before the backup it also refuses while an earlier Dokploy deployment of
+   the compose is still running, for example after a timed-out job.
 
 No step seeds, provisions a Church, creates users or deletes data.
 
@@ -61,8 +66,9 @@ re-run the workflow.
 
 - Prefer schema changes the previous application version still runs against,
   such as adding nullable columns or tables first and removing old ones in a
-  later release. Rollback redeploys earlier images without undoing
-  migrations.
+  later release, and mark them `-- rollback-compatible: <why>`.
+  [Rollback](rollback.md) redeploys earlier images without undoing
+  migrations, and refuses to cross a deployed migration without that mark.
 - Never edit an applied migration. A migration that needs a data check
   before it runs gets a read-only preflight in
   `packages/db/src/deployment-preflight.ts`, which runs only while that
@@ -115,7 +121,9 @@ Run it only when no workflow deployment for the environment is running.
 | `Required check "Fast Gate" concluded failure` | CI failed on the revision | fix and push |
 | `Missing prerequisite: <NAME>` | an Environment variable or secret is not set | set it, re-run |
 | `configured for CHURCH_ENVIRONMENT=…` / `must be "raw"` | wrong Dokploy target | fix `DOKPLOY_COMPOSE_ID` or the compose |
+| `… is still running; refusing to overlap its migrations` | an earlier Dokploy deployment has not finished | wait for it in Dokploy, then re-run |
 | `Required backup … failed; nothing was deployed` | backup or its storage failed | see [backups.md](backups.md) |
+| `rollout record was not saved` | verified, but recording the rollback target failed | re-run the workflow |
 | `Dokploy deployment <id> ended error` | build, preflight, migration or startup failed; the previous containers still run | read that deployment's log in Dokploy |
 | `did not report it finished` | Dokploy kept running past 30 minutes | inspect Dokploy before re-running |
 | `did not become healthy on <sha>: …` | the public frontend or API serves another revision, or the API's database is unavailable | check routing, containers and the server log |

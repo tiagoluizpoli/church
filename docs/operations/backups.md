@@ -21,7 +21,9 @@ backup on that environment's PostgreSQL service:
 | production | scheduled | `production/scheduled` | enabled, daily (e.g. `0 3 * * *`) | 5 |
 
 Development and staging have no scheduled cadence. Every backup's
-**Database** is that environment's own database. Pre-deployment and reset
+**Database** is that environment's own database: `church_development`,
+`church_staging` or `church_production`, each owned by the role of the same
+name (see [deployment/README.md](../../deployment/README.md)). Pre-deployment and reset
 backups share one pool.
 
 ### Why Dokploy's own retention is enough
@@ -80,10 +82,10 @@ Verify each of these on the real hosts. Do not assume any of them:
 
 ```sh
 # After setup, and whenever the backup configuration changes:
-bun run backup:check -- --environment=production --database=<production database>
+bun run backup:check -- --environment=production --database=church_production
 
 # Before a deployment or reset. The protected operation runs only on exit 0:
-bun run backup:create -- --environment=staging --database=<staging database>
+bun run backup:create -- --environment=staging --database=church_staging
 ```
 
 Both commands verify the following before they start anything:
@@ -128,8 +130,11 @@ touches a running environment.
 5. Drop `church_restore_drill`.
 
 The dumps carry no owners or grants (`--no-owner --no-acl`). Restoring over a
-real environment database therefore also needs that environment's role grants
-applied again.
+real environment database therefore restores as that environment's role
+(`pg_restore --role=church_<environment>`, or connected as it) so the objects
+belong to it, then reruns `db:provision:environment <environment>` from
+[deployment/README.md](../../deployment/README.md) to reapply its database
+ownership and CONNECT restriction.
 
 ## Application rollback is not database restoration
 

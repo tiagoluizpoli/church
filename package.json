@@ -78,6 +78,8 @@
     "validate": "bun tooling/validation/validate.ts",
     "backup:create": "varlock run --path tooling/deployment -- bun tooling/deployment/backup.ts create",
     "backup:check": "varlock run --path tooling/deployment -- bun tooling/deployment/backup.ts check",
+    "deploy:checks": "bun tooling/deployment/deploy.ts checks",
+    "deploy:rollout": "varlock run --path tooling/deployment -- bun tooling/deployment/deploy.ts rollout",
     "push:safe": "bash tooling/git-safe-push.sh",
     "commit": "cz"
   },

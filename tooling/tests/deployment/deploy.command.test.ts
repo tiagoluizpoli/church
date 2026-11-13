@@ -29,6 +29,8 @@ const OLD_REVISION = 'b'.repeat(40);
 const SERVER_IMAGE = `ghcr.io/church/church-server@sha256:${'1'.repeat(64)}`;
 const WEB_IMAGE = `ghcr.io/church/church-web@sha256:${'2'.repeat(64)}`;
 const SECRET = 'super-secret-database-password';
+const S3_SECRET = 'synthetic-s3-secret-value';
+const S3_FLAGS = `--s3-access-key-id synthetic-key --s3-secret-access-key ${S3_SECRET}`;
 const COMPOSE_ID = 'compose-dev';
 const CANDIDATE = 'v1.2.0-rc.1';
 const CONTENT = 'c'.repeat(64);
@@ -80,6 +82,8 @@ interface State {
   promotedCommit: string;
   // GitHub's answer to the rollback's lookup of verified rollouts.
   verifiedRollouts: () => Response;
+  // Answers a request in place of the stand-in's usual answer.
+  intercept: (url: URL, body: string) => Response | undefined;
 }
 
 interface RecordedRequest {
@@ -220,6 +224,7 @@ beforeEach(() => {
     stagingEvidence: () => Response.json(stagingEvidence()),
     promotedCommit: REVISION,
     verifiedRollouts: () => Response.json([]),
+    intercept: () => undefined,
   };
   gitDir = REPO_ROOT;
   server = Bun.serve({
@@ -232,7 +237,7 @@ beforeEach(() => {
         body,
         authorized: request.headers.has('authorization'),
       });
-      return handle(url, body);
+      return state.intercept(url, body) ?? handle(url, body);
     },
   });
 });
@@ -561,16 +566,44 @@ describe('deploy rollout', () => {
     expect(bodies).not.toMatch(/seed|provision/i);
   });
 
-  it('stops before deploying when the required backup fails', async () => {
+  it('stops before deploying when the required backup fails, printing no provider body', async () => {
     state.manualBackup = () =>
-      Response.json({ message: 'S3 unreachable' }, { status: 500 });
+      Response.json(
+        { message: `Command failed: rclone rcat ${S3_FLAGS}` },
+        { status: 500 },
+      );
 
     const result = await runDeploy(rolloutArgs());
 
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain('S3 unreachable');
+    expect(result.output).not.toContain(S3_SECRET);
+    expect(result.output).toContain(
+      'backup.manualBackupPostgres failed (HTTP 500)',
+    );
     expect(result.output).toContain('nothing was deployed');
     expect(downstreamCalls()).toEqual(['/api/backup.manualBackupPostgres']);
+  });
+
+  it.each([
+    ['compose.update', '/api/compose.update'],
+    ['compose.deploy', '/api/compose.deploy'],
+    ['GitHub', RECORDS],
+  ])('prints only the endpoint and status when %s fails with a secret-bearing body', async (_, failing) => {
+    state.intercept = (url, body) =>
+      url.pathname === failing && body
+        ? Response.json(
+            { message: `rejected ${S3_FLAGS} DATABASE_URL=${SECRET}` },
+            { status: 400 },
+          )
+        : undefined;
+
+    const result = await runDeploy(rolloutArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain(`${failing} failed (HTTP 400)`);
+    expect(result.output).not.toContain(S3_SECRET);
+    expect(result.output).not.toContain(SECRET);
+    expect(result.output).not.toContain('rejected');
   });
 
   it('refuses a Dokploy compose configured for another environment', async () => {
@@ -655,17 +688,19 @@ describe('deploy rollout', () => {
     expect(requests).toEqual([]);
   });
 
-  it('reports a failed migration from Dokploy and never checks health', async () => {
+  it('reports a failed migration by its Dokploy deployment, not its secret-bearing message, and never checks health', async () => {
     state.deploymentStatus = () => ({
       status: 'error',
-      errorMessage: 'service "migrate" didn\'t complete successfully: exit 1',
+      errorMessage: `service "migrate" exited 1: postgresql://church_development:${SECRET}@db ${S3_FLAGS}`,
     });
 
     const result = await runDeploy(rolloutArgs());
 
     expect(result.exitCode).toBe(1);
     expect(result.output).toContain('new-deployment ended error');
-    expect(result.output).toContain('"migrate"');
+    expect(result.output).toContain('Dokploy log');
+    expect(result.output).not.toContain(SECRET);
+    expect(result.output).not.toContain(S3_SECRET);
     expect(requests.map((r) => r.path)).not.toContain('/api/health');
     expect(result.summary).toBe('');
   });

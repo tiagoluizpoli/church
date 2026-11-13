@@ -105,6 +105,11 @@ configuration, a refused configuration, a failed backup and a request that
 never completes (timeout, proxy 5xx) all exit non-zero. The request lasts as
 long as the backup itself, so any proxy in front of Dokploy must allow that.
 
+A failure prints only the Dokploy endpoint, the HTTP status and the backup
+id, never Dokploy's response: a failed backup's error can quote the backup
+command with the destination's S3 keys, which GitHub's log masking does not
+know. Read the reason in that backup's log in Dokploy.
+
 ## Restore exercise (before the production launch)
 
 Run this once before the first production launch, and again after any change

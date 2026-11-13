@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..');
 const API_KEY = 'dokploy-test-api-key';
+const S3_SECRET = 'synthetic-s3-secret-value';
+const S3_FLAGS = `--s3-access-key-id synthetic-key --s3-secret-access-key ${S3_SECRET}`;
 
 interface DokployBackup {
   backupId: string;
@@ -156,17 +158,42 @@ describe('backup create', () => {
     ]);
   });
 
-  it('fails with the Dokploy error when the backup fails', async () => {
-    state.manualBackup = () =>
-      Response.json(
-        { message: 'pg_dump: connection refused' },
-        { status: 400 },
-      );
+  // Dokploy 0.30.0 forwards the failed backup shell command, S3 flags included.
+  it.each([
+    [
+      'a JSON message',
+      () =>
+        Response.json(
+          { message: `Command failed: rclone rcat ${S3_FLAGS}` },
+          { status: 500 },
+        ),
+    ],
+    [
+      'a plain-text body',
+      () => new Response(`Command failed: ${S3_FLAGS}`, { status: 400 }),
+    ],
+    ['an unconfirmed answer', () => Response.json({ detail: S3_FLAGS })],
+  ])('fails with a bounded diagnostic, never the provider body, for %s', async (_, answer) => {
+    state.manualBackup = answer;
 
     const result = await runBackup(CREATE_STAGING);
 
     expect(result.exitCode).toBe(1);
-    expect(result.output).toContain('pg_dump: connection refused');
+    expect(result.output).not.toContain(S3_SECRET);
+    expect(result.output).not.toContain('Command failed');
+    expect(result.output).toContain('backup.manualBackupPostgres');
+    expect(result.output).toContain('recovery-id');
+    expect(result.output.length).toBeLessThan(600);
+  });
+
+  it('never prints a secret-bearing Dokploy version answer', async () => {
+    state.version = `${S3_FLAGS}`;
+
+    const result = await runBackup(CREATE_STAGING);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).not.toContain(S3_SECRET);
+    expect(triggeredBackups()).toEqual([]);
   });
 
   it('fails when the backup does not finish behind the proxy', async () => {

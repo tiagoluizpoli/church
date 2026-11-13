@@ -47,6 +47,8 @@ interface DokployRequest {
   path: string;
   body?: unknown;
   timeoutMs: number;
+  /** Where in Dokploy the operator finds the details, e.g. a backup id. */
+  reference?: string;
 }
 
 interface DokployConnection {
@@ -80,37 +82,39 @@ class Dokploy {
   }
 
   async call(request: DokployRequest): Promise<unknown> {
-    const { path, body, timeoutMs } = request;
+    const { path, body, timeoutMs, reference } = request;
     const init: RequestInit = {
       method: body === undefined ? 'GET' : 'POST',
       headers: { 'x-api-key': this.apiKey, 'content-type': 'application/json' },
       signal: AbortSignal.timeout(timeoutMs),
     };
     if (body !== undefined) init.body = JSON.stringify(body);
+    const endpoint = path.split('?')[0];
     let response: Response;
     try {
       response = await fetch(`${this.url}/api/${path}`, init);
     } catch (error) {
       throw new BackupFailure(
-        `Dokploy ${path} did not answer: ${String(error)}`,
+        `Dokploy ${endpoint} did not answer: ${(error as Error).name}.`,
       );
     }
     const text = await response.text();
+    // Dokploy's errors can carry the backup shell command and its S3 keys,
+    // which no log masking knows about: never print a response body.
+    const see = reference ? ` See ${reference} in Dokploy for its log.` : '';
     if (!response.ok) {
       throw new BackupFailure(
-        `Dokploy ${path} failed (HTTP ${response.status}): ${errorMessage(text)}`,
+        `Dokploy ${endpoint} failed (HTTP ${response.status}); its response is not printed.${see}`,
       );
     }
-    return JSON.parse(text);
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new BackupFailure(
+        `Dokploy ${endpoint} answered HTTP ${response.status} with a body that is not JSON.${see}`,
+      );
+    }
   }
-}
-
-function errorMessage(text: string): string {
-  try {
-    const { message } = JSON.parse(text) as { message?: unknown };
-    if (typeof message === 'string') return message;
-  } catch {}
-  return text.slice(0, 500);
 }
 
 function normalizePrefix(prefix: string): string {
@@ -135,8 +139,11 @@ async function verifyDokployVersion(dokploy: Dokploy): Promise<void> {
   const parts = String(version).replace(/^v/, '').split(/[.-]/).map(Number);
   const tooOld = isOlderThanMinimum(parts);
   if (tooOld) {
+    const shown = /^v?\d+(\.\d+)*(-[\w.]{1,20})?$/.test(String(version))
+      ? version
+      : '(unrecognised version)';
     throw new BackupFailure(
-      `Dokploy ${version} can leave a failed backup's partial file to count against retention; ` +
+      `Dokploy ${shown} can leave a failed backup's partial file to count against retention; ` +
         `upgrade to ${MINIMUM_DOKPLOY_VERSION.join('.')} or later.`,
     );
   }
@@ -248,10 +255,11 @@ async function main(): Promise<void> {
     path: 'backup.manualBackupPostgres',
     body: { backupId },
     timeoutMs: BACKUP_REQUEST_TIMEOUT_MS,
+    reference: `backup ${backupId}`,
   });
   if (confirmed !== true) {
     throw new BackupFailure(
-      `Dokploy did not confirm the backup: ${JSON.stringify(confirmed)}`,
+      `Dokploy backup.manualBackupPostgres did not confirm the backup; its answer is not printed. See backup ${backupId} in Dokploy for its log.`,
     );
   }
   console.log(

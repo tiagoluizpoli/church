@@ -78,7 +78,6 @@ const CHECK_POLLS = 180;
 const DOKPLOY_POLLS = 180;
 const HEALTH_POLLS = 18;
 const REQUEST_TIMEOUT_MS = 30_000;
-const ERROR_DETAIL_LENGTH = 500;
 const EXIT_FAILURE = 1;
 const EXIT_USAGE = 2;
 
@@ -258,14 +257,6 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-function detail(text: string): string {
-  try {
-    const { message } = JSON.parse(text) as { message?: unknown };
-    if (typeof message === 'string') return message;
-  } catch {}
-  return text.slice(0, ERROR_DETAIL_LENGTH);
-}
-
 async function callApi(request: ApiRequest): Promise<unknown> {
   const { url, headers, body } = request;
   const init: RequestInit = {
@@ -282,12 +273,20 @@ async function callApi(request: ApiRequest): Promise<unknown> {
     throw new DeployFailure(`${pathname} did not answer: ${String(error)}`);
   }
   const text = await response.text();
+  // Provider errors can echo commands, URLs or keys no log masking knows
+  // about: never print a response body, only the endpoint and status.
   if (!response.ok) {
     throw new DeployFailure(
-      `${pathname} failed (HTTP ${response.status}): ${detail(text)}`,
+      `${pathname} failed (HTTP ${response.status}); its response is not printed.`,
     );
   }
-  return text ? JSON.parse(text) : null;
+  try {
+    return text ? JSON.parse(text) : null;
+  } catch {
+    throw new DeployFailure(
+      `${pathname} answered HTTP ${response.status} with a body that is not JSON.`,
+    );
+  }
 }
 
 function writeOutput(line: string): void {
@@ -718,13 +717,10 @@ async function awaitDokploy(input: AwaitDokployInput): Promise<string> {
     );
     if (ours?.status === 'done') return ours.deploymentId;
     if (ours?.status === 'error' || ours?.status === 'cancelled') {
-      const reason = (ours.errorMessage ?? 'no error message').slice(
-        0,
-        ERROR_DETAIL_LENGTH,
-      );
+      // Its errorMessage can quote the compose's secrets; the log is in Dokploy.
       throw new DeployFailure(
-        `Dokploy deployment ${ours.deploymentId} ended ${ours.status}: ${reason}. ` +
-          'A failed migration or backup leaves the previous application running; see its Dokploy log.',
+        `Dokploy deployment ${ours.deploymentId} ended ${ours.status}. ` +
+          'A failed migration or backup leaves the previous application running; see its Dokploy log for the reason.',
       );
     }
     await sleep(pollIntervalMs);

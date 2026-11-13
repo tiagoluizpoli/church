@@ -90,3 +90,16 @@ describe('server env: development email', () => {
     expect(await invalidIssues({ [name]: 'maybe' })).toContain(name);
   });
 });
+
+describe('server env: APP_REVISION', () => {
+  it('reports an unversioned local run when no image revision is set', async () => {
+    expect((await parse({})).APP_REVISION).toBe('unversioned');
+  });
+
+  it('keeps the revision a deployed image supplies', async () => {
+    const revision = 'a'.repeat(40);
+    expect((await parse({ APP_REVISION: revision })).APP_REVISION).toBe(
+      revision,
+    );
+  });
+});

@@ -30,6 +30,9 @@ export const env = createEnv({
      * a future public non-production environment (staging, ...) stays shut
      * by default instead of inheriting every debug route via NODE_ENV alone. */
     ENABLE_DEBUG_ENDPOINTS: z.stringbool().default(false),
+    /** Source revision baked into a deployed image and reported by readiness;
+     * local and test runs have none. */
+    APP_REVISION: z.string().min(1).default('unversioned'),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

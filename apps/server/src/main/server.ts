@@ -1,5 +1,8 @@
+import { db } from '@church/db';
 import { env } from '@church/env/server';
+import { sql } from 'drizzle-orm';
 import { createCompositionRoot } from './di/composition-root';
+import { registerReadiness } from './fastify/readiness';
 import { registerControllers } from './fastify/register-controllers';
 import { createFastify } from './fastify/setup';
 import { OutboxPoller } from './outbox-poller';
@@ -18,6 +21,12 @@ async function start(): Promise<void> {
     },
     { prefix: '/api/v1' },
   );
+
+  registerReadiness({
+    app,
+    revision: env.APP_REVISION,
+    checkDatabase: () => db.execute(sql`select 1`),
+  });
 
   const outboxPoller = new OutboxPoller({
     drainer: root.outboxDrainer,

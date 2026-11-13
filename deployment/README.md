@@ -160,6 +160,9 @@ docker compose exec server bun run operator provision-church --environment stagi
 
 ### After a clean reset
 
+Development and staging can be reset to a clean installation or to demo data
+with `bun run environment:reset`; see
+[docs/operations/environment-reset.md](../docs/operations/environment-reset.md).
 A clean-installation reset removes users, Churches, sessions, pending emails
 and captured messages, and keeps operator configuration
 (`runtime_configuration`, e.g. `email_delivery_mode`). Run both commands again

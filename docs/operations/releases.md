@@ -1,8 +1,9 @@
-# Releases and staging
+# Releases, staging and production
 
-How a version becomes a release candidate on staging. Publishing a GitHub
-release is what deploys; preparing a version never does. Production
-promotion of a stable release is documented separately.
+How a version becomes a release candidate on staging, and how a stable
+release promotes that tested candidate to production. Publishing a GitHub
+release is what deploys; preparing a version or merging into `master` never
+does.
 
 Nothing here configures live infrastructure. Set up staging first
 ([deployment/README.md](../../deployment/README.md), [backups.md](backups.md),
@@ -87,6 +88,61 @@ GitHub release:
 - Keep the release, its asset and the digests it names. Do not delete those
   ghcr.io image versions while the candidate may still be promoted.
 
+## Promoting to production
+
+Publishing the stable release **is** the approval. The `production` GitHub
+Environment has no required reviewers or wait timer; do not add any.
+
+1. When the newest candidate (say `v1.3.0-rc.2`) is verified on staging,
+   `bun run version:stable`, commit (`chore(root): release v1.3.0`) and merge
+   into `master`. The merge deploys nothing.
+2. On GitHub, create a release with the new tag `v1.3.0` targeting that
+   `master` commit, leave **Set as a pre-release** unticked, and **Publish**.
+3. `Deploy Release` routes it exactly as for a candidate (stable tag, no
+   pre-release flag, `master` commit, recorded version), then the
+   `production` job runs `bun run deploy:promote`, one at a time
+   (concurrency group `deploy-production`, never cancelled). It:
+   1. takes the **newest** published `v1.3.0-rc.N` (drafts ignored) and reads
+      its `staging-evidence.json`;
+   2. refuses, before any backup or Dokploy change, unless that evidence is
+      a `verified` staging rollout of that candidate with digest-pinned
+      images, the candidate tag still points at the evidenced revision, and
+      the evidence's `content` equals the stable release's content identity.
+      Only the root `package.json` version may differ;
+   3. builds **nothing**: it rolls out the evidenced image digests through
+      the usual path ([deployments.md](deployments.md)): Dokploy target check
+      (`CHURCH_ENVIRONMENT=production`), required backup of
+      `church_production`, migrations, Dokploy completion and health of the
+      **candidate's** revision.
+
+The job summary reports the stable release, the promoted candidate and the
+revision actually running. That revision is the candidate's commit (the
+images were built there), not the stable release's version-bump commit.
+
+`deploy:rollout` refuses `--environment=production`; promotion is the only
+way to deploy production. A prerelease never reaches the `production` job.
+
+### Production setup checklist
+
+Production runs on the VPS with its own database `church_production`, role,
+secrets and hostname, and no Mailpit (`compose.yml` only; email always goes
+through Resend). The `production` GitHub Environment needs the same names as
+staging, with production values: `DOKPLOY_URL`, `DOKPLOY_API_KEY` (secret),
+`DOKPLOY_COMPOSE_ID`, `CHURCH_BACKUP_ID` (the `production/pre-deployment`
+pool, [backups.md](backups.md)) and `PUBLIC_ORIGIN`. Run the restore exercise
+in [backups.md](backups.md) before the first promotion.
+
+### Retention
+
+- Keep every candidate release and its `staging-evidence.json` until a later
+  stable release supersedes it. Deleting the evidence makes the stable
+  release unpromotable; publish another candidate instead.
+- Keep the ghcr.io `church-server` and `church-web` versions named by the
+  evidence of every candidate that may still be promoted, and of every
+  production release you may roll back to. Production pulls them by digest;
+  a pruned digest fails the Dokploy deployment, leaving the previous
+  containers running.
+
 ## Staging setup checklist
 
 Staging runs on the VPS with its own database `church_staging`, role,
@@ -119,5 +175,11 @@ anything changes.
 | `does not belong to master` | the tag points outside `master` | tag a `master` commit |
 | `records version …` | the tagged `package.json` version differs from the tag | tag the commit that prepared that version |
 | `evidence was not published` | staging verified, upload failed | re-run the workflow |
+| `No published vX.Y.Z-rc.N candidate` | no candidate of that version | publish one, verify it on staging, then republish the stable release |
+| `has no staging-evidence.json` / `was not verified on staging` | the newest candidate has no successful staging rollout | re-run its staging deployment, then re-run `Deploy Release` for the stable release |
+| `does not describe a staging rollout` / `is not JSON` | the evidence was edited or replaced | re-run the candidate's staging deployment |
+| `the application changed` | the stable commit differs from the candidate beyond its version | publish another candidate with that content |
+| `now points at …` | the candidate tag moved after staging verified it | publish another candidate |
+| `only by promoting` | a direct `deploy:rollout` to production | publish a stable release instead |
 
 Rollout failures are listed in [deployments.md](deployments.md#when-it-fails).

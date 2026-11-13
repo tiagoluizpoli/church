@@ -154,6 +154,7 @@ export default defineConfig({
             'tests/tenancy/provision-church.test.ts',
             'tests/tenancy/init-system.test.ts',
             'tests/tenancy/ensure-platform-operator.test.ts',
+            'tests/tenancy/operator.test.ts',
             'tests/transfer/volunteer-transfer.constraints.test.ts',
             'tests/transfer/volunteer-transfer.repository.test.ts',
           ],

@@ -201,6 +201,15 @@ export const outboxMessage = pgTable('outbox_message', {
   providerMessageId: text('provider_message_id'),
   correlationId: text('correlation_id').notNull(),
   sentAt: timestamp('sent_at', { withTimezone: true, mode: 'date' }),
+  /** The operator's `email_delivery_mode` value as it was when the row was
+   * written; null on rows written before it existed or while it was unset. */
+  emailDeliveryMode: jsonb('email_delivery_mode'),
+  /** Destinations ('mailpit' | 'resend') that confirmed this email; a retry
+   * skips them. */
+  emailConfirmedDestinations: jsonb('email_confirmed_destinations')
+    .$type<string[]>()
+    .default([])
+    .notNull(),
   /** The exact prepared email, persisted before its first external attempt
    * and replayed unchanged on retry. Private server data. */
   emailRequest: jsonb('email_request'),

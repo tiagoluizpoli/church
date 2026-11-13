@@ -52,6 +52,7 @@ import {
 import { recipientLocale } from '../domain/services/recipient-locale';
 import { webLink } from '../domain/services/web-link';
 import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
+import { emailRoutingFor } from './email-routing';
 import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
 
 export class DbOutboxDrainer implements IOutboxDrainer {
@@ -599,15 +600,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     payload,
     locale,
   }: PrepareAndDeliverInput): Promise<'sent' | 'failed'> {
-    const delivery: OutboxEmailDelivery = {
-      email: this.emailSender.prepare({ payload, locale }),
-      idempotencyKey: emailIdempotencyKeyFor({ message }),
-      firstAttemptAt: now(),
-    };
-    await this.unitOfWork.run((tx) =>
+    const delivery = await this.unitOfWork.run((tx) =>
       this.outboxRepository.recordEmailPrepared({
         id: message.id,
-        ...delivery,
+        email: this.emailSender.prepare({ payload, locale }),
+        idempotencyKey: emailIdempotencyKeyFor({ message }),
+        firstAttemptAt: now(),
         tx,
       }),
     );
@@ -641,6 +639,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       const result = await this.emailSender.deliver({
         email: delivery.email,
         idempotencyKey: delivery.idempotencyKey,
+        routing: emailRoutingFor({
+          id: message.id,
+          delivery,
+          outboxRepository: this.outboxRepository,
+          unitOfWork: this.unitOfWork,
+        }),
       });
       await this.unitOfWork.run(async (tx) => {
         await this.outboxRepository.recordEmailDelivered({

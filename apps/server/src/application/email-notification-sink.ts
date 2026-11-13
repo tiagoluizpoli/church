@@ -16,6 +16,7 @@ import type {
 } from '../domain/contracts/infrastructure/outbox.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import { EmailSendError } from '../domain/errors/email-send-error';
+import { emailRoutingFor } from './email-routing';
 
 /** A Church Member's email address, in the language they read. */
 export interface EmailRecipientAddress {
@@ -90,6 +91,12 @@ export class EmailNotificationSink
       const result = await this.emailSender.deliver({
         email: delivery.email,
         idempotencyKey: delivery.idempotencyKey,
+        routing: emailRoutingFor({
+          id: deliveryId,
+          delivery,
+          outboxRepository: this.outboxRepository,
+          unitOfWork: this.unitOfWork,
+        }),
       });
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.recordEmailDelivered({
@@ -114,19 +121,15 @@ export class EmailNotificationSink
     payload,
     address,
   }: PrepareInput): Promise<OutboxEmailDelivery> {
-    const delivery: OutboxEmailDelivery = {
-      email: this.emailSender.prepare({ payload, locale: address.locale }),
-      idempotencyKey: `outbox-message/${deliveryId}`,
-      firstAttemptAt: now(),
-    };
-    await this.unitOfWork.run((tx) =>
+    return this.unitOfWork.run((tx) =>
       this.outboxRepository.recordEmailPrepared({
         id: deliveryId,
-        ...delivery,
+        email: this.emailSender.prepare({ payload, locale: address.locale }),
+        idempotencyKey: `outbox-message/${deliveryId}`,
+        firstAttemptAt: now(),
         tx,
       }),
     );
-    return delivery;
   }
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { DeliveryModeEmailSender } from '@/infrastructure/services/delivery-mode-email-sender';
 import { ResendEmailSender } from '@/infrastructure/services/resend-email-sender';
 import { SmtpEmailSender } from '@/infrastructure/services/smtp-email-sender';
 import {
@@ -10,7 +11,9 @@ import {
 function config(overrides: Partial<EmailSenderConfig>): EmailSenderConfig {
   return {
     nodeEnv: 'development',
+    environment: 'local',
     devSender: undefined,
+    runtimeConfiguration: { findEmailDeliveryMode: async () => 'both' },
     appName: 'Church',
     resend: { apiKey: 'key', from: 'Church <a@b.test>' },
     smtp: {
@@ -40,6 +43,31 @@ describe('createEmailSenders', () => {
       config({ nodeEnv, devSender }),
     );
     expect(serverEmailSender).toBeInstanceOf(expected);
+  });
+
+  it.each([
+    ['development', 'production', DeliveryModeEmailSender],
+    ['staging', 'production', DeliveryModeEmailSender],
+    ['staging', 'development', DeliveryModeEmailSender],
+    ['production', 'production', ResendEmailSender],
+    ['production', 'development', ResendEmailSender],
+    ['staging', 'test', CaptureEmailSender],
+  ] as const)('the %s environment under NODE_ENV=%s selects the expected sender', (environment, nodeEnv, expected) => {
+    const { serverEmailSender } = createEmailSenders(
+      config({ environment, nodeEnv, devSender: 'capture' }),
+    );
+    expect(serverEmailSender).toBeInstanceOf(expected);
+  });
+
+  it('requires Resend credentials in staging, so switching the mode later cannot fail at send', () => {
+    expect(() =>
+      createEmailSenders(
+        config({
+          environment: 'staging',
+          resend: { apiKey: undefined, from: 'x' },
+        }),
+      ),
+    ).toThrow(/RESEND_API_KEY/);
   });
 
   it('exposes capture inspection only when capture is the sender', () => {

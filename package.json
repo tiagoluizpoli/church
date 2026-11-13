@@ -1,6 +1,7 @@
 {
   "name": "church",
   "private": true,
+  "version": "0.0.0",
   "workspaces": {
     "packages": [
       "apps/server",
@@ -76,6 +77,15 @@
     "validate:affected": "bun tooling/validation/affected.ts",
     "validate:no-docker": "bun tooling/validation/affected.ts --no-docker",
     "validate": "bun tooling/validation/validate.ts",
+    "backup:create": "varlock run --path tooling/deployment -- bun tooling/deployment/backup.ts create",
+    "backup:check": "varlock run --path tooling/deployment -- bun tooling/deployment/backup.ts check",
+    "deploy:checks": "bun tooling/deployment/deploy.ts checks",
+    "deploy:rollout": "varlock run --path tooling/deployment -- bun tooling/deployment/deploy.ts rollout",
+    "deploy:release": "bun tooling/deployment/deploy.ts release",
+    "deploy:promote": "varlock run --path tooling/deployment -- bun tooling/deployment/deploy.ts promote",
+    "deploy:rollback": "varlock run --path tooling/deployment -- bun tooling/deployment/deploy.ts rollback",
+    "version:rc": "bun tooling/deployment/version.ts rc",
+    "version:stable": "bun tooling/deployment/version.ts stable",
     "push:safe": "bash tooling/git-safe-push.sh",
     "commit": "cz"
   },

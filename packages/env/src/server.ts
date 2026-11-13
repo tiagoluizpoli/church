@@ -13,6 +13,11 @@ export const env = createEnv({
     /** Development sender; unset is SMTP. Test is always capture, production
      * always Resend, whatever this says. */
     DEV_EMAIL_SENDER: z.enum(['smtp', 'resend', 'capture']).optional(),
+    /** Deployed environment, independent of NODE_ENV: development and staging
+     * route email by the database delivery mode; production is Resend. */
+    CHURCH_ENVIRONMENT: z
+      .enum(['local', 'development', 'staging', 'production'])
+      .default('local'),
     SMTP_HOST: z.string().default('localhost'),
     SMTP_PORT: z.coerce.number().int().min(1).default(1025),
     SMTP_SECURE: z.stringbool().default(false),
@@ -20,6 +25,8 @@ export const env = createEnv({
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     SMTP_FROM_EMAIL: z.string().default('Church <noreply@church.test>'),
+    /** Deployed development/staging Mailpit API, used only by the environment reset. */
+    MAILPIT_API_URL: z.url().optional(),
     OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
     OUTBOX_DRAIN_BATCH_SIZE: z.coerce.number().int().min(1).default(10),
     NODE_ENV: z
@@ -30,6 +37,9 @@ export const env = createEnv({
      * a future public non-production environment (staging, ...) stays shut
      * by default instead of inheriting every debug route via NODE_ENV alone. */
     ENABLE_DEBUG_ENDPOINTS: z.stringbool().default(false),
+    /** Source revision baked into a deployed image and reported by readiness;
+     * local and test runs have none. */
+    APP_REVISION: z.string().min(1).default('unversioned'),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

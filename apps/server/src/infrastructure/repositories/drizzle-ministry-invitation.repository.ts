@@ -79,6 +79,7 @@ import { PendingChurchInvitationExistsError } from '../../domain/errors/pending-
 import { PendingMinistryInvitationExistsError } from '../../domain/errors/pending-ministry-invitation-exists';
 import { resolveInvitationEmail } from '../../domain/services/resolve-invitation-email';
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
+import { currentEmailDeliveryMode } from './drizzle-runtime-configuration.repository';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
@@ -950,6 +951,7 @@ export class DrizzleMinistryInvitationRepository
       payload,
       correlationId,
       scheduledFor,
+      emailDeliveryMode: currentEmailDeliveryMode,
     });
   }
 

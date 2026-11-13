@@ -4,7 +4,7 @@ import type {
   NotificationDeliveryData,
   NotificationRequest,
 } from '../../notification-kinds';
-import type { ReplayableEmail } from './email-sender';
+import type { EmailDestination, ReplayableEmail } from './email-sender';
 import type { TransactionContext } from './transaction-context';
 import type { ChurchRecipient } from '@/domain/contracts/application/church-notifications';
 
@@ -53,6 +53,10 @@ export interface OutboxEmailDelivery {
   idempotencyKey: string;
   firstAttemptAt: Instant;
   deliveredAt?: Instant;
+  /** The raw `email_delivery_mode` frozen when the row was written. */
+  frozenMode: unknown;
+  /** Destinations that already confirmed this email. */
+  confirmedDestinations: EmailDestination[];
 }
 
 export interface ChainedInvitationOutboxPayload {
@@ -140,6 +144,12 @@ export interface RecordOutboxEmailDeliveredInput {
   tx: TransactionContext;
 }
 
+export interface RecordOutboxEmailDestinationConfirmedInput {
+  id: string;
+  destination: EmailDestination;
+  tx: TransactionContext;
+}
+
 export interface RecordOutboxDeliveryFactsInput {
   id: string;
   facts: NotificationDeliveryData;
@@ -185,8 +195,16 @@ export interface OutboxRepository {
   markFailed(input: MarkOutboxMessageFailedInput): Promise<void>;
 
   /** Persists the prepared email, key and first-attempt Instant — committed
-   * before the provider is called, so a retry resends exactly this. */
-  recordEmailPrepared(input: RecordOutboxEmailPreparedInput): Promise<void>;
+   * before the provider is called, so a retry resends exactly this. Returns
+   * the row's full email delivery state. */
+  recordEmailPrepared(
+    input: RecordOutboxEmailPreparedInput,
+  ): Promise<OutboxEmailDelivery>;
+
+  /** Adds one destination's confirmation; a retry skips it. */
+  recordEmailDestinationConfirmed(
+    input: RecordOutboxEmailDestinationConfirmedInput,
+  ): Promise<void>;
 
   /** Freezes a `notification` row's resolved display facts into its payload. */
   recordDeliveryFacts(input: RecordOutboxDeliveryFactsInput): Promise<void>;

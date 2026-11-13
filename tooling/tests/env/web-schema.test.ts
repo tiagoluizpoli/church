@@ -55,7 +55,50 @@ function webPort(input: WebPortInput): string {
   }).trim();
 }
 
+interface ServerUrlInput {
+  value: string;
+}
+
+/** The value Varlock resolves for this server URL, or `invalid`. */
+function loadServerUrl(input: ServerUrlInput): string {
+  writeFileSync(join(rootDir, '.env'), `VITE_SERVER_URL=${input.value}\n`);
+
+  try {
+    return execFileSync(
+      VARLOCK,
+      ['printenv', '--path', webDir, 'VITE_SERVER_URL'],
+      {
+        encoding: 'utf8',
+        env: { PATH: process.env.PATH, CHURCH_EXEC_PURPOSE: 'development' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    ).trim();
+  } catch {
+    return 'invalid';
+  }
+}
+
 describe('apps/web .env.schema', () => {
+  it.each([
+    'http://localhost:4100',
+    'https://church-feature-a.dev.home.arpa:27520',
+    '/',
+  ])('accepts VITE_SERVER_URL=%s', (value) => {
+    expect(loadServerUrl({ value })).toBe(value);
+  });
+
+  it.each([
+    '/api',
+    'localhost:4100',
+    'ftp://localhost',
+  ])('rejects VITE_SERVER_URL=%s', (value) => {
+    expect(loadServerUrl({ value })).toBe('invalid');
+  });
+
+  it('still requires VITE_SERVER_URL', () => {
+    expect(loadServerUrl({ value: '' })).toBe('invalid');
+  });
+
   it('binds the worktree web port', () => {
     expect(webPort({ rootValues: ['CHURCH_WEB_PORT=31133'] })).toBe('31133');
   });

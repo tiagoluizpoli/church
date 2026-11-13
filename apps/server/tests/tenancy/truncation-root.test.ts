@@ -25,6 +25,7 @@ import {
   outboxMessage,
   participationEventTimeBlockInclusion,
   role,
+  runtimeConfiguration,
   scheduleLastTold,
   sector,
   securityLog,
@@ -257,6 +258,11 @@ async function seedEveryTenantedTable(): Promise<void> {
     payload: { ministryInvitationId: IDS.ministryInvitation },
     scheduledFor: new Date('2030-01-01T00:00:00Z'),
     correlationId: 'truncation-root-correlation',
+  });
+
+  await testDb.insert(runtimeConfiguration).values({
+    code: 'email_delivery_mode',
+    value: 'mailpit',
   });
 
   await testDb.insert(cycle).values({

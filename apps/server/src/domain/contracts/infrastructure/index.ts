@@ -24,6 +24,7 @@ export * from './planning-event.repository';
 export * from './redemption.repository';
 export * from './redemption-identity-gateway';
 export * from './role.repository';
+export * from './runtime-configuration.repository';
 export * from './scheduling-scope.repository';
 export * from './sector.repository';
 export * from './security-log.repository';

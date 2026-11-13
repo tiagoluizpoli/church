@@ -379,6 +379,13 @@
       "when": 1794475749865,
       "tag": "0053_assignment_proposal_application",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1794535778441,
+      "tag": "0054_runtime_email_delivery",
+      "breakpoints": true
     }
   ]
 }

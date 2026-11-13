@@ -9,6 +9,7 @@ export * from './onboarding';
 export * from './organization';
 export * from './participation';
 export * from './planning';
+export * from './runtime-configuration';
 export * from './scheduling';
 export * from './swap-requests';
 export * from './todo';

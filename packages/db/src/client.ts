@@ -27,6 +27,12 @@ export function createDb() {
     // Let short-lived scripts exit once idle instead of lingering on the 10 s idle timeout.
     allowExitOnIdle: true,
   });
+  // An idle connection the database drops (restart, failover) is discarded by
+  // the pool; unhandled, its error would end the process instead of letting
+  // the next query fail and readiness report the outage.
+  pool.on('error', (error) => {
+    console.error(`Idle database connection lost: ${error.message}`);
+  });
   return drizzle(pool, { schema });
 }
 

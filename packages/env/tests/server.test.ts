@@ -58,6 +58,16 @@ describe('server env: development email', () => {
     );
   });
 
+  it('defaults CHURCH_ENVIRONMENT to local and rejects an unknown one', async () => {
+    expect((await parse({})).CHURCH_ENVIRONMENT).toBe('local');
+    expect(
+      (await parse({ CHURCH_ENVIRONMENT: 'staging' })).CHURCH_ENVIRONMENT,
+    ).toBe('staging');
+    expect(await invalidIssues({ CHURCH_ENVIRONMENT: 'qa' })).toContain(
+      'CHURCH_ENVIRONMENT',
+    );
+  });
+
   it('parses a complete SMTP configuration', async () => {
     const env = await parse({
       SMTP_HOST: 'smtp.example.com',
@@ -88,5 +98,18 @@ describe('server env: development email', () => {
     'SMTP_REQUIRE_TLS',
   ])('rejects a non-boolean %s', async (name) => {
     expect(await invalidIssues({ [name]: 'maybe' })).toContain(name);
+  });
+});
+
+describe('server env: APP_REVISION', () => {
+  it('reports an unversioned local run when no image revision is set', async () => {
+    expect((await parse({})).APP_REVISION).toBe('unversioned');
+  });
+
+  it('keeps the revision a deployed image supplies', async () => {
+    const revision = 'a'.repeat(40);
+    expect((await parse({ APP_REVISION: revision })).APP_REVISION).toBe(
+      revision,
+    );
   });
 });

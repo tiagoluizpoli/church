@@ -6,14 +6,15 @@ import { parseArgs } from 'node:util';
  *   create --environment=<env> --database=<db>  run the environment's
  *     pre-deployment/reset backup and exit 0 only once Dokploy confirms it.
  *   check  --environment=<env> --database=<db>  verify the environment's backup
- *     configuration (production also needs its daily scheduled backup).
+ *     configuration (production also needs its daily scheduled backup) and
+ *     that each pool holds its five backups.
  *
- * Retention is Dokploy's own `keepLatestCount`, which prunes only after a
- * successful backup and only inside that backup's `<service>/<prefix>/` folder.
- * Since 0.30.0 a failed upload also deletes its partial object, so a failed
- * backup cannot displace a retained one. Each pool therefore gets its own
- * Dokploy backup with prefix `<environment>/<pool>`, which this command
- * verifies before anything runs. See docs/operations/backups.md.
+ * Dokploy's own Keep latest counts any file, including a failed upload whose
+ * best-effort cleanup also failed, so it must stay unset: prune-backups.sh,
+ * run daily on each Dokploy host, keeps the newest five intact backups of
+ * each pool. Each pool gets its own Dokploy backup with prefix
+ * `<environment>/<pool>`, which this command verifies before anything runs.
+ * See docs/operations/backups.md.
  */
 
 const ENVIRONMENTS = ['development', 'staging', 'production'] as const;
@@ -41,6 +42,19 @@ interface DokployBackup {
   keepLatestCount: number | null;
   databaseType: string;
   backupType: string;
+  destinationId: string;
+  postgres: DokployPostgres | null;
+}
+
+interface DokployPostgres {
+  appName: string;
+  serverId: string | null;
+}
+
+// One `rclone lsjson` row of backup.listBackupFiles.
+interface DokployFile {
+  Name: string;
+  IsDir: boolean;
 }
 
 interface DokployRequest {
@@ -70,6 +84,8 @@ interface VerifyBackupInput {
   backupId: string;
   target: Target;
   pool: Pool;
+  /** check: the pool must already hold its five backups. */
+  requireRetained: boolean;
 }
 
 class Dokploy {
@@ -143,7 +159,7 @@ async function verifyDokployVersion(dokploy: Dokploy): Promise<void> {
       ? version
       : '(unrecognised version)';
     throw new BackupFailure(
-      `Dokploy ${shown} can leave a failed backup's partial file to count against retention; ` +
+      `Dokploy ${shown} does not clean up a failed backup's partial file; ` +
         `upgrade to ${MINIMUM_DOKPLOY_VERSION.join('.')} or later.`,
     );
   }
@@ -167,8 +183,11 @@ async function verifyBackup(input: VerifyBackupInput): Promise<DokployBackup> {
     normalizePrefix(backup.prefix) !== expectedPrefix
       ? `uses prefix "${backup.prefix}", not "${expectedPrefix}"`
       : '',
-    backup.keepLatestCount !== RETAINED_BACKUPS_PER_POOL
-      ? `keeps ${backup.keepLatestCount ?? 'all'} backups, not ${RETAINED_BACKUPS_PER_POOL}`
+    backup.keepLatestCount !== null
+      ? `prunes to ${backup.keepLatestCount} files itself, counting failed uploads; unset Keep latest so prune-backups.sh keeps ${RETAINED_BACKUPS_PER_POOL} intact backups`
+      : '',
+    !backup.postgres?.appName || !backup.destinationId
+      ? 'names no PostgreSQL service or destination'
       : '',
     scheduled && !(backup.enabled && DAILY_CRON.test(backup.schedule))
       ? `is not an enabled daily schedule (enabled=${backup.enabled}, schedule="${backup.schedule}")`
@@ -183,9 +202,43 @@ async function verifyBackup(input: VerifyBackupInput): Promise<DokployBackup> {
     );
   }
   console.log(
-    `✔ ${pool} pool: ${target.environment}/${target.database} → prefix ${expectedPrefix}, keeps ${RETAINED_BACKUPS_PER_POOL}`,
+    `✔ ${pool} pool: ${target.environment}/${target.database} → prefix ${expectedPrefix}, retention by prune-backups.sh`,
   );
+  if (input.requireRetained) {
+    await verifyRetained({ dokploy, backup, pool });
+  }
   return backup;
+}
+
+interface VerifyRetainedInput {
+  dokploy: Dokploy;
+  backup: DokployBackup;
+  pool: Pool;
+}
+
+// Lists the pool's folder the way Dokploy's restore view does.
+async function verifyRetained(input: VerifyRetainedInput): Promise<void> {
+  const { dokploy, backup, pool } = input;
+  const { appName, serverId } = backup.postgres as DokployPostgres;
+  const query = new URLSearchParams({
+    destinationId: backup.destinationId,
+    search: `${appName}/${normalizePrefix(backup.prefix)}/`,
+    ...(serverId ? { serverId } : {}),
+  });
+  const files = (await dokploy.call({
+    path: `backup.listBackupFiles?${query}`,
+    timeoutMs: READ_REQUEST_TIMEOUT_MS,
+    reference: `backup ${backup.backupId}`,
+  })) as DokployFile[];
+  const held = files.filter(
+    (file) => !file.IsDir && file.Name.endsWith('.sql.gz'),
+  ).length;
+  if (held < RETAINED_BACKUPS_PER_POOL) {
+    throw new BackupFailure(
+      `The ${pool} pool holds ${held} backup(s), fewer than ${RETAINED_BACKUPS_PER_POOL}; take backups or check prune-backups.sh on the Dokploy host.`,
+    );
+  }
+  console.log(`✔ ${pool} pool holds ${held} backups.`);
 }
 
 function requiredEnv(name: string): string {
@@ -225,7 +278,13 @@ async function main(): Promise<void> {
   const scheduledBackupId = process.env.CHURCH_SCHEDULED_BACKUP_ID;
 
   await verifyDokployVersion(dokploy);
-  await verifyBackup({ dokploy, backupId, target, pool: 'pre-deployment' });
+  await verifyBackup({
+    dokploy,
+    backupId,
+    target,
+    pool: 'pre-deployment',
+    requireRetained: command === 'check',
+  });
 
   if (command === 'check') {
     if (target.environment !== 'production') {
@@ -246,6 +305,7 @@ async function main(): Promise<void> {
       backupId: scheduledBackupId,
       target,
       pool: 'scheduled',
+      requireRetained: true,
     });
     return;
   }

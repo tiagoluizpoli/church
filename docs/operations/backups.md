@@ -13,12 +13,12 @@ runbook. It has configured nothing.
 Each environment has two retention pools, and each pool is its own Dokploy
 backup on that environment's PostgreSQL service:
 
-| Environment | Pool | Dokploy prefix | Schedule | Keep latest |
+| Environment | Pool | Dokploy prefix | Schedule | Dokploy Keep latest |
 | --- | --- | --- | --- | --- |
-| development | pre-deployment/reset | `development/pre-deployment` | disabled | 5 |
-| staging | pre-deployment/reset | `staging/pre-deployment` | disabled | 5 |
-| production | pre-deployment/reset | `production/pre-deployment` | disabled | 5 |
-| production | scheduled | `production/scheduled` | enabled, daily (e.g. `0 3 * * *`) | 5 |
+| development | pre-deployment/reset | `development/pre-deployment` | disabled | unset |
+| staging | pre-deployment/reset | `staging/pre-deployment` | disabled | unset |
+| production | pre-deployment/reset | `production/pre-deployment` | disabled | unset |
+| production | scheduled | `production/scheduled` | enabled, daily (e.g. `0 3 * * *`) | unset |
 
 Development and staging have no scheduled cadence. Every backup's
 **Database** is that environment's own database: `church_development`,
@@ -26,28 +26,48 @@ Development and staging have no scheduled cadence. Every backup's
 name (see [deployment/README.md](../../deployment/README.md)). Pre-deployment and reset
 backups share one pool.
 
-### Why Dokploy's own retention is enough
+### Five successful recovery points: `prune-backups.sh`
 
 Dokploy writes each backup to `<bucket>/<postgres app name>/<prefix>/<timestamp>.sql.gz`.
-After a backup succeeds, **Keep latest** prunes only the `*.sql.gz` files
-directly inside that backup's own folder, newest by storage time first. So:
+Distinct prefixes give each environment and pool its own folder. Staging and
+production share the VPS PostgreSQL service and its app name, so the prefix
+is what separates them.
 
-- Distinct prefixes give each environment and pool its own folder. Staging and
-  production share the VPS PostgreSQL service and its app name, so the prefix
-  is what separates them.
-- A failed backup stops before pruning runs. Since Dokploy **0.30.0**, the
-  partial upload of a failed backup is also deleted. Older versions can leave
-  that partial file behind, where it counts against retention. The command
-  refuses Dokploy older than 0.30.0.
-- Pruning one pool cannot reach another pool's files, another environment's
-  files or another database's files.
+Dokploy's own **Keep latest** is not enough, so it stays **unset**. It keeps
+the newest N file names whether or not each backup succeeded. A failed upload
+deletes its partial object only on a best-effort basis
+(`rclone deletefile … || true`). If storage drops during the upload, that
+delete can fail too. The partial object then counts as one of the N, and the
+next pruning run deletes a good recovery point in its place. Scheduled
+backups prune the same way.
 
-Residual risk: Dokploy deletes the partial file on a best-effort basis. If
-storage drops in the middle of an upload, that delete can fail too. After any
-failed backup, list the pool's folder. If the newest object is much smaller
-than the ones before it, delete that object before the next backup runs.
-Never put other files in these folders. Never change an existing backup's
-prefix without moving its files.
+Instead, [`tooling/deployment/prune-backups.sh`](../../tooling/deployment/prune-backups.sh)
+runs once a day on each Dokploy host and keeps the newest **five intact**
+backups of each pool. An object is intact when it is a complete gzip stream.
+Dokploy writes `pg_dump -Fc | gzip`, so a truncated or partial upload fails
+gzip's integrity check (`gzip -t`). For each pool the script:
+
+- keeps the newest five intact backups and deletes older intact ones;
+- deletes an incomplete object only when a newer intact backup exists. The
+  newest object may still be uploading, so it is never deleted while no newer
+  intact backup exists;
+- **fails closed**: if it cannot list the pool or fully read any object, it
+  deletes nothing in that pool and exits non-zero. It never deletes an intact
+  backup unless five newer intact ones exist. It ignores files that are not
+  `*.sql.gz`;
+- warns when a pool holds fewer than five intact backups.
+
+What the guarantee covers: after each daily run, every pool holds its five
+newest successful backups, or all of them while it has fewer. **Between
+daily runs, an on-demand pool (pre-deployment/reset) may briefly hold more
+than five**, because every `backup:create` adds one and nothing prunes it
+until the next run. Pruning one pool never reaches another pool's,
+environment's or database's files.
+
+The commands still refuse Dokploy older than 0.30.0, because older versions
+never clean up a failed backup's partial object. Never put other `*.sql.gz`
+files in these folders. Never change an existing backup's prefix without
+moving its files.
 
 ## Infrastructure inputs (separate setup step)
 
@@ -66,9 +86,36 @@ Verify each of these on the real hosts. Do not assume any of them:
    connection** before you continue.
 5. **Dokploy backups**: create the backups in the table above on each
    environment's PostgreSQL service and select the destination from step 4.
-   Note each backup id: it appears in the backup's API responses, for example
-   in `postgres.one` under `backups[].backupId`.
-6. **Command configuration**, declared in `tooling/deployment/.env.schema`.
+   Leave **Keep latest** empty. Note each backup id: it appears in the
+   backup's API responses, for example in `postgres.one` under
+   `backups[].backupId`.
+6. **Daily prune on each Dokploy host** (homelab and VPS). Create a second
+   access key, limited to the Church bucket, with list, read and delete. Keep
+   it on the host only: it never goes into GitHub. Run
+   `prune-backups.sh` daily, after the scheduled backup window (for example
+   `0 5 * * *` when the scheduled backup runs at `0 3 * * *`), as a Dokploy
+   server **Schedule** or a host cron job. It needs `rclone` and `gzip`, which
+   the `rclone/rclone` image provides:
+
+   ```sh
+   docker run --rm \
+     -v /etc/church/prune-backups.sh:/prune-backups.sh:ro \
+     --env-file /etc/church/prune-backups.env \
+     --entrypoint sh rclone/rclone:1.68.2 /prune-backups.sh \
+     church:<bucket>/<postgres app name>/production/pre-deployment \
+     church:<bucket>/<postgres app name>/production/scheduled \
+     church:<bucket>/<postgres app name>/staging/pre-deployment
+   ```
+
+   Here `/etc/church/prune-backups.sh` is a copy of the repository's script.
+   `prune-backups.env` (mode `0600`) defines the remote `church` with
+   `RCLONE_CONFIG_CHURCH_TYPE=s3`, `…_PROVIDER`, `…_ENDPOINT` (the tailnet S3
+   URL), `…_ACCESS_KEY_ID`, `…_SECRET_ACCESS_KEY` and `…_REGION`. On the
+   homelab, list the development pool, `…/development/pre-deployment`. Send
+   the job's non-zero exit and its output to the operator, for example
+   through the Dokploy schedule's notification. Run it once by hand and check
+   its `✔ … kept` lines before relying on it.
+7. **Command configuration**, declared in `tooling/deployment/.env.schema`.
    Set these per GitHub Environment, or in the operator's shell:
 
    | Name | Kind | Value |
@@ -94,13 +141,20 @@ Both commands verify the following before they start anything:
 - that the configured backup is a PostgreSQL database backup of exactly
   `--database`;
 - the pool's prefix;
-- that it keeps 5;
+- that Dokploy's **Keep latest** is unset (prune-backups.sh keeps five intact
+  backups instead);
 - that its schedule is disabled. `check` also requires production's enabled
   daily scheduled pool, and refuses a scheduled pool anywhere else.
 
+`check` also lists each pool through Dokploy (`backup.listBackupFiles`) and
+refuses a pool that holds fewer than five backups. A new environment's check
+therefore passes only once each pool holds five, and a failing check after
+that means backups or the daily prune need attention.
+
 `create` exits 0 only when Dokploy's synchronous
 `backup.manualBackupPostgres` call returns success. That happens after the
-dump and upload succeed and Dokploy has pruned the pool. Missing
+dump and upload succeed. Nothing prunes the pool at that point; the next daily
+prune does. Missing
 configuration, a refused configuration, a failed backup and a request that
 never completes (timeout, proxy 5xx) all exit non-zero. The request lasts as
 long as the backup itself, so any proxy in front of Dokploy must allow that.

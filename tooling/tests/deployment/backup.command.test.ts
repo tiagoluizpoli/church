@@ -20,12 +20,16 @@ interface DokployBackup {
   keepLatestCount: number | null;
   databaseType: string;
   backupType: string;
+  destinationId: string;
+  postgres: { appName: string; serverId: string | null } | null;
 }
 
 interface DokployState {
   version: string;
   backups: Record<string, DokployBackup>;
   manualBackup: () => Response;
+  // Backup files per listed folder (`<app>/<prefix>/`), as Dokploy lists them.
+  poolFiles: Record<string, number>;
 }
 
 interface RecordedRequest {
@@ -45,9 +49,11 @@ function recoveryBackup(overrides: Partial<DokployBackup> = {}): DokployBackup {
     prefix: 'staging/pre-deployment',
     schedule: '0 0 * * *',
     enabled: false,
-    keepLatestCount: 5,
+    keepLatestCount: null,
     databaseType: 'postgres',
     backupType: 'database',
+    destinationId: 'homelab-s3',
+    postgres: { appName: 'church-postgres', serverId: null },
     ...overrides,
   };
 }
@@ -61,11 +67,28 @@ function scheduledBackup(
     prefix: 'production/scheduled',
     schedule: '30 3 * * *',
     enabled: true,
-    keepLatestCount: 5,
+    keepLatestCount: null,
     databaseType: 'postgres',
     backupType: 'database',
+    destinationId: 'homelab-s3',
+    postgres: { appName: 'church-postgres', serverId: null },
     ...overrides,
   };
+}
+
+// Dokploy's rclone lsjson rows for a folder: its backups plus a subfolder.
+function poolListing(search: string) {
+  const count = state.poolFiles[search] ?? 0;
+  const files = Array.from({ length: count }, (_, index) => ({
+    Path: `${search}2026-11-0${index + 1}T03-00-00-000Z.sql.gz`,
+    Name: `2026-11-0${index + 1}T03-00-00-000Z.sql.gz`,
+    Size: 4096,
+    IsDir: false,
+  }));
+  return [
+    ...files,
+    { Path: `${search}old`, Name: 'old', Size: 0, IsDir: true },
+  ];
 }
 
 beforeEach(() => {
@@ -74,6 +97,11 @@ beforeEach(() => {
     version: 'v0.31.2',
     backups: { 'recovery-id': recoveryBackup() },
     manualBackup: () => Response.json(true),
+    poolFiles: {
+      'church-postgres/staging/pre-deployment/': 5,
+      'church-postgres/production/pre-deployment/': 5,
+      'church-postgres/production/scheduled/': 5,
+    },
   };
   server = Bun.serve({
     port: 0,
@@ -95,6 +123,13 @@ beforeEach(() => {
       }
       if (url.pathname === '/api/backup.manualBackupPostgres') {
         return state.manualBackup();
+      }
+      if (url.pathname === '/api/backup.listBackupFiles') {
+        const search = url.searchParams.get('search') ?? '';
+        if (url.searchParams.get('destinationId') !== 'homelab-s3') {
+          return Response.json([]);
+        }
+        return Response.json(poolListing(search));
       }
       return new Response('not found', { status: 404 });
     },
@@ -246,8 +281,11 @@ describe('backup create', () => {
     ['another environment prefix', { prefix: 'production/pre-deployment' }],
     ['the scheduled pool prefix', { prefix: 'staging/scheduled' }],
     ['a prefix shared by both pools', { prefix: 'staging' }],
-    ['a different retention count', { keepLatestCount: 10 }],
-    ['no retention count', { keepLatestCount: null }],
+    [
+      'Dokploy’s count-based pruning (counts failed uploads)',
+      { keepLatestCount: 5 },
+    ],
+    ['another pruning count', { keepLatestCount: 10 }],
     ['an enabled schedule', { enabled: true }],
     ['a non-Postgres backup', { databaseType: 'mysql' }],
   ])('refuses a backup configuration with %s and starts nothing', async (_, overrides) => {
@@ -255,6 +293,15 @@ describe('backup create', () => {
 
     expect((await runBackup(CREATE_STAGING)).exitCode).toBe(1);
     expect(triggeredBackups()).toEqual([]);
+  });
+
+  it('creates a backup in a pool that does not yet hold five', async () => {
+    state.poolFiles = {};
+
+    const result = await runBackup(CREATE_STAGING);
+
+    expect(result.exitCode).toBe(0);
+    expect(triggeredBackups()).toHaveLength(1);
   });
 
   it('accepts the configured prefix with surrounding slashes, as Dokploy normalizes it', async () => {
@@ -317,9 +364,34 @@ describe('backup check', () => {
     ['not daily', { schedule: '0 */6 * * *' }],
     ['disabled', { enabled: false }],
     ['in the recovery pool prefix', { prefix: 'production/pre-deployment' }],
-    ['keeping another count', { keepLatestCount: 7 }],
+    ['pruned by Dokploy', { keepLatestCount: 5 }],
   ])('refuses a production scheduled backup that is %s', async (_, overrides) => {
     state.backups['scheduled-id'] = scheduledBackup(overrides);
+
+    const result = await runBackup(CHECK_PRODUCTION, {
+      CHURCH_SCHEDULED_BACKUP_ID: 'scheduled-id',
+    });
+
+    expect(result.exitCode).toBe(1);
+  });
+
+  it.each([
+    ['pre-deployment', 'church-postgres/production/pre-deployment/'],
+    ['scheduled', 'church-postgres/production/scheduled/'],
+  ])('refuses a %s pool holding fewer than five backups', async (pool, folder) => {
+    state.poolFiles[folder] = 4;
+
+    const result = await runBackup(CHECK_PRODUCTION, {
+      CHURCH_SCHEDULED_BACKUP_ID: 'scheduled-id',
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain(`${pool} pool holds 4 backup(s)`);
+    expect(triggeredBackups()).toEqual([]);
+  });
+
+  it('refuses a backup whose PostgreSQL service it cannot identify', async () => {
+    state.backups['scheduled-id'] = scheduledBackup({ postgres: null });
 
     const result = await runBackup(CHECK_PRODUCTION, {
       CHURCH_SCHEDULED_BACKUP_ID: 'scheduled-id',

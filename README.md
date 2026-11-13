@@ -54,6 +54,10 @@ in the shared Git directory. The committed `.env.schema` files declare every
 variable; there are no per-package value files. See
 [docs/agents/tooling.md](docs/agents/tooling.md), "Worktree bootstrap".
 
+Development email goes to the local Mailpit inbox by default. To send real
+email through Resend, set `DEV_EMAIL_SENDER=resend`; see "Development email"
+in [docs/agents/tooling.md](docs/agents/tooling.md).
+
 Then, run the development server:
 
 ```bash

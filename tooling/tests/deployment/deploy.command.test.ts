@@ -1,7 +1,21 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'bun:test';
 
 /**
  * Runs the real deployment command against one stand-in server that plays
@@ -23,6 +37,8 @@ const RELEASE = 'v1.2.0';
 // rc.10 outranks rc.9 numerically, not as text.
 const PROMOTED = 'v1.2.0-rc.10';
 const EVIDENCE_ASSET_ID = 11;
+const RECORD_ID = 77;
+const RECORDS = '/repos/church/app/deployments';
 
 interface ListedRelease {
   // biome-ignore lint/style/useNamingConvention: GitHub's response field
@@ -62,6 +78,8 @@ interface State {
   releases: ListedRelease[];
   stagingEvidence: () => Response;
   promotedCommit: string;
+  // GitHub's answer to the rollback's lookup of verified rollouts.
+  verifiedRollouts: () => Response;
 }
 
 interface RecordedRequest {
@@ -74,6 +92,8 @@ let state: State;
 let requests: RecordedRequest[];
 let server: ReturnType<typeof Bun.serve>;
 let workDir: string;
+// The checkout the command reads revisions from.
+let gitDir: string;
 
 function backupConfiguration() {
   return {
@@ -121,6 +141,14 @@ function handle(url: URL, body: string): Response {
     return new Response(null, { status: 204 });
   }
   if (pathname === '/uploads/releases/7/assets') return state.upload();
+  if (pathname === '/repos/church/app/deployments') {
+    return body
+      ? Response.json({ id: RECORD_ID }, { status: 201 })
+      : state.verifiedRollouts();
+  }
+  if (pathname === `/repos/church/app/deployments/${RECORD_ID}/statuses`) {
+    return Response.json({ id: 1 }, { status: 201 });
+  }
   if (pathname === '/api/settings.getDokployVersion') {
     return Response.json('v0.31.2');
   }
@@ -186,7 +214,9 @@ beforeEach(() => {
     releases: [],
     stagingEvidence: () => Response.json(stagingEvidence()),
     promotedCommit: REVISION,
+    verifiedRollouts: () => Response.json([]),
   };
+  gitDir = REPO_ROOT;
   server = Bun.serve({
     port: 0,
     async fetch(request) {
@@ -218,9 +248,14 @@ async function runDeploy(
   writeFileSync(summaryPath, '');
   const origin = server.url.origin;
   const child = Bun.spawn(
-    ['bun', '--no-env-file', 'tooling/deployment/deploy.ts', ...args],
+    [
+      'bun',
+      '--no-env-file',
+      join(REPO_ROOT, 'tooling/deployment/deploy.ts'),
+      ...args,
+    ],
     {
-      cwd: REPO_ROOT,
+      cwd: gitDir,
       env: {
         PATH: process.env.PATH,
         GITHUB_API_URL: origin,
@@ -475,6 +510,44 @@ describe('deploy rollout', () => {
       expect(text).not.toContain(SECRET);
     }
     expect(result.githubOutput).toBe(`url=${server.url.origin}\n`);
+    // The verified image set becomes a durable rollback target.
+    const record = requests.find((r) => r.path === RECORDS && r.body);
+    expect(JSON.parse(record?.body ?? '{}')).toMatchObject({
+      ref: REVISION,
+      environment: 'verified-development',
+      payload: {
+        schema: 1,
+        environment: 'development',
+        revision: REVISION,
+        images: { server: SERVER_IMAGE, web: WEB_IMAGE },
+      },
+    });
+  });
+
+  it('refuses while an earlier Dokploy deployment is still running', async () => {
+    state.deployments[0] = {
+      deploymentId: 'timed-out-deployment',
+      description: `revision ${OLD_REVISION}`,
+      status: 'running',
+      errorMessage: null,
+    };
+
+    const result = await runDeploy(rolloutArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('timed-out-deployment');
+    expect(result.output).toContain('still running');
+    expect(downstreamCalls()).toEqual([]);
+  });
+
+  it('records no rollback target when the revision is never served', async () => {
+    state.health = () =>
+      Response.json({ status: 'ok', database: 'ok', revision: OLD_REVISION });
+
+    const result = await runDeploy(rolloutArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(requests.map((r) => r.path)).not.toContain(RECORDS);
   });
 
   it('never seeds or provisions anything', async () => {
@@ -842,6 +915,261 @@ describe('deploy promote of a stable release', () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.output).toContain('only by promoting');
+    expect(requests).toEqual([]);
+  });
+});
+
+describe('deploy rollback to a verified image set', () => {
+  const MIGRATIONS = 'packages/db/src/migrations';
+  const ROLLBACK_SERVER = `ghcr.io/church/church-server@sha256:${'3'.repeat(64)}`;
+  const ROLLBACK_WEB = `ghcr.io/church/church-web@sha256:${'4'.repeat(64)}`;
+  let checkout: string;
+  // Each revision adds one migration; 0001 declares the application before
+  // it still runs against its schema, 0002 does not.
+  let base: string;
+  let compatible: string;
+  let incompatible: string;
+
+  function git(args: string[]): string {
+    const result = Bun.spawnSync(
+      ['git', '-c', 'user.name=Rollback Test', '-c', 'user.email=t@t', ...args],
+      { cwd: checkout },
+    );
+    if (result.exitCode !== 0) throw new Error(String(result.stderr));
+    return String(result.stdout).trim();
+  }
+
+  function commitMigration(sql: string): string {
+    const journal = JSON.parse(
+      readFileSync(join(checkout, MIGRATIONS, 'meta/_journal.json'), 'utf8'),
+    ) as { entries: Array<{ tag: string }> };
+    const tag = `000${journal.entries.length}_change`;
+    journal.entries.push({ tag });
+    writeFileSync(join(checkout, MIGRATIONS, `${tag}.sql`), sql);
+    writeFileSync(
+      join(checkout, MIGRATIONS, 'meta/_journal.json'),
+      JSON.stringify(journal),
+    );
+    git(['add', '.']);
+    git(['commit', '-q', '-m', tag]);
+    return git(['rev-parse', 'HEAD']);
+  }
+
+  beforeAll(() => {
+    checkout = mkdtempSync(join(tmpdir(), 'deploy-rollback-'));
+    git(['init', '-q']);
+    mkdirSync(join(checkout, MIGRATIONS, 'meta'), { recursive: true });
+    writeFileSync(
+      join(checkout, MIGRATIONS, 'meta/_journal.json'),
+      JSON.stringify({ entries: [] }),
+    );
+    base = commitMigration('CREATE TABLE "a" ("id" int);');
+    compatible = commitMigration(
+      '-- rollback-compatible: a nullable column the previous application ignores\nALTER TABLE "a" ADD COLUMN "b" text;',
+    );
+    incompatible = commitMigration('ALTER TABLE "a" DROP COLUMN "id";');
+  });
+
+  afterAll(() => rmSync(checkout, { recursive: true, force: true }));
+
+  function verified(revision: string, overrides: Record<string, unknown> = {}) {
+    return {
+      payload: {
+        schema: 1,
+        environment: state.environment,
+        revision,
+        images: { server: ROLLBACK_SERVER, web: ROLLBACK_WEB },
+        ...overrides,
+      },
+    };
+  }
+
+  function deployed(...revisions: string[]): Deployment[] {
+    return revisions.map((revision, index) => ({
+      deploymentId: `deployment-${index}`,
+      description: `revision ${revision}`,
+      status: index === 0 ? 'error' : 'done',
+      errorMessage: null,
+    }));
+  }
+
+  function serving(revision: string): void {
+    state.revisionTxt = () => new Response(`${revision}\n`);
+    state.health = () =>
+      Response.json({ status: 'ok', database: 'ok', revision });
+  }
+
+  function rollbackArgs(overrides: Record<string, string> = {}): string[] {
+    const values = {
+      environment: 'development',
+      revision: base,
+      'compose-file': join(workDir, 'compose.yml'),
+      ...overrides,
+    };
+    return [
+      'rollback',
+      ...Object.entries(values).map(([key, value]) => `--${key}=${value}`),
+    ];
+  }
+
+  beforeEach(() => {
+    gitDir = checkout;
+    // The newest release migrated with 0001 and failed its health check.
+    state.deployments = deployed(compatible, base);
+    state.verifiedRollouts = () => Response.json([verified(base)]);
+    serving(base);
+  });
+
+  it.each([
+    'development',
+    'staging',
+    'production',
+  ])('redeploys the verified %s images over the current schema', async (environment) => {
+    state.environment = environment;
+    state.compose.env = `CHURCH_ENVIRONMENT=${environment}\nSERVER_IMAGE=old-server\n`;
+
+    const result = await runDeploy(rollbackArgs({ environment }));
+
+    expect(result.exitCode).toBe(0);
+    const lookup = requests.find((r) => r.path.startsWith(`${RECORDS}?`));
+    expect(lookup?.path).toContain(`environment=verified-${environment}`);
+    expect(lookup?.path).toContain(`sha=${base}`);
+    // Same backup protection and Dokploy rollout; nothing is rebuilt or restored.
+    expect(downstreamCalls()).toEqual([
+      '/api/backup.manualBackupPostgres',
+      '/api/compose.update',
+      '/api/compose.deploy',
+    ]);
+    const update = requests.find((r) => r.path === '/api/compose.update');
+    const { env } = JSON.parse(update?.body ?? '{}');
+    expect(env).toContain(`SERVER_IMAGE=${ROLLBACK_SERVER}\n`);
+    expect(env).toContain(`WEB_IMAGE=${ROLLBACK_WEB}\n`);
+    const deploy = requests.find((r) => r.path === '/api/compose.deploy');
+    expect(JSON.parse(deploy?.body ?? '{}').description).toBe(
+      `rollback to revision ${base}`,
+    );
+    expect(result.summary).toContain(`Rolled back ${environment}`);
+    expect(result.summary).toContain(base);
+    expect(result.summary).toContain(ROLLBACK_SERVER);
+  });
+
+  it.each([
+    [
+      'the revision was never verified in the environment',
+      () => {
+        state.verifiedRollouts = () => Response.json([]);
+      },
+      'has no verified development rollout',
+    ],
+    [
+      'the record names a mutable image',
+      () => {
+        state.verifiedRollouts = () =>
+          Response.json([
+            verified(base, {
+              images: { server: 'ghcr.io/church/church-server:latest' },
+            }),
+          ]);
+      },
+      'does not name its immutable images',
+    ],
+    [
+      'the record belongs to another environment',
+      () => {
+        state.verifiedRollouts = () =>
+          Response.json([verified(base, { environment: 'staging' })]);
+      },
+      'does not name its immutable images',
+    ],
+    [
+      'the database holds a migration not declared rollback-compatible',
+      () => {
+        state.deployments = deployed(incompatible, compatible, base);
+      },
+      '0002_change',
+    ],
+    [
+      'Dokploy names no deployed revision, so the schema is unknown',
+      () => {
+        state.deployments = [];
+      },
+      'current schema is unknown',
+    ],
+    [
+      'Dokploy deployed a revision this checkout does not know',
+      () => {
+        state.deployments = deployed('e'.repeat(40), base);
+      },
+      'cannot be read',
+    ],
+  ])('refuses before any backup or deployment when %s', async (_, fail, message) => {
+    fail();
+
+    const result = await runDeploy(rollbackArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain(message);
+    expect(result.output).toContain('Not rolling back');
+    expect(downstreamCalls()).toEqual([]);
+    expect(result.summary).toBe('');
+  });
+
+  it('refuses a target whose own migrations the database never received', async () => {
+    state.deployments = deployed(base);
+    state.verifiedRollouts = () => Response.json([verified(compatible)]);
+
+    const result = await runDeploy(rollbackArgs({ revision: compatible }));
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('0001_change');
+    expect(result.output).toContain('deploy it forward instead');
+    expect(downstreamCalls()).toEqual([]);
+  });
+
+  it('shares the deployment lock: refuses while a Dokploy deployment runs', async () => {
+    state.deployments = [
+      { ...deployed(compatible)[0], status: 'running' } as Deployment,
+      ...deployed(compatible, base).slice(1),
+    ];
+
+    const result = await runDeploy(rollbackArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('still running');
+    expect(downstreamCalls()).toEqual([]);
+  });
+
+  it('fails while the newer application keeps serving its revision', async () => {
+    serving(compatible);
+
+    const result = await runDeploy(rollbackArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain(`did not become healthy on ${base}`);
+    expect(result.output).toContain(`API serves revision ${compatible}`);
+    expect(result.summary).toBe('');
+  });
+
+  it('fails while the API cannot reach its database', async () => {
+    state.health = () =>
+      Response.json(
+        { status: 'unavailable', database: 'unavailable', revision: base },
+        { status: 503 },
+      );
+
+    const result = await runDeploy(rollbackArgs());
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('database unavailable');
+  });
+
+  it.each([
+    ['an unknown environment', { environment: 'preview' }],
+    ['an abbreviated revision', { revision: 'abc123' }],
+  ])('refuses %s without contacting anything', async (_, overrides) => {
+    const result = await runDeploy(rollbackArgs(overrides));
+
+    expect(result.exitCode).toBe(2);
     expect(requests).toEqual([]);
   });
 });

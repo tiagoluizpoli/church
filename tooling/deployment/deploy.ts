@@ -38,6 +38,20 @@ import { parseArgs } from 'node:util';
  *     evidenced image digests and revision, never rebuilding. Production is
  *     reachable only this way: `rollout` refuses it.
  *
+ *   rollback --environment=<env> --revision=<sha> --compose-file=<path>
+ *     redeploys the image set a verified rollout of the revision recorded for
+ *     the environment (#887), never rebuilding and never touching the
+ *     database beyond the required backup. It refuses a revision never
+ *     verified there, and one whose migration journal lacks a migration the
+ *     environment's Dokploy history deployed unless that migration's SQL
+ *     declares `-- rollback-compatible: <why>`. The rollout itself is the
+ *     same backup, Dokploy and health verification as any deployment.
+ *
+ * Every verified rollout records its revision and image digests as a GitHub
+ * deployment in `verified-<environment>`: the durable list rollback picks
+ * from. A rollout refuses while a Dokploy deployment of the compose still
+ * runs, so a timed-out job cannot overlap migrations with the next one.
+ *
  * Nothing here seeds or provisions data. See docs/operations/deployments.md.
  */
 
@@ -50,6 +64,10 @@ const RELEASE_TAG =
   /^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(-rc\.[1-9]\d*)?)$/;
 const CONTENT_IDENTITY = /^[0-9a-f]{64}$/;
 const EVIDENCE_ASSET = 'staging-evidence.json';
+const ROLLOUT_TASK = 'church:verified-rollout';
+const MIGRATIONS = 'packages/db/src/migrations';
+const ROLLBACK_COMPATIBLE = /^-- rollback-compatible: \S/m;
+const DESCRIBED_REVISION = /revision ([0-9a-f]{40})/;
 // GitHub compare statuses meaning the commit is reachable from master.
 const ON_MASTER = new Set(['behind', 'identical']);
 const RELEASES_PAGE = 100;
@@ -115,6 +133,30 @@ interface RolloutCommand {
   composeFile: string;
   candidate: Candidate | undefined;
   promotion?: Promotion;
+  rollback?: boolean;
+}
+
+interface RollbackCommand {
+  command: 'rollback';
+  environment: Environment;
+  revision: string;
+  composeFile: string;
+}
+
+interface VerifiedRollout {
+  schema: number;
+  environment: string;
+  revision: string;
+  images: { server: string; web: string };
+}
+
+interface RolloutRecord {
+  environment: Environment;
+  revision: string;
+  origin: string;
+  serverImage: string;
+  webImage: string;
+  deploymentId: string;
 }
 
 interface Promotion {
@@ -133,7 +175,12 @@ interface PromoteCommand {
   composeFile: string;
 }
 
-type Command = ChecksCommand | RolloutCommand | ReleaseCommand | PromoteCommand;
+type Command =
+  | ChecksCommand
+  | RolloutCommand
+  | ReleaseCommand
+  | PromoteCommand
+  | RollbackCommand;
 
 interface Asset {
   id: number;
@@ -353,6 +400,61 @@ class GitHub {
     const base = release.upload_url.replace(/\{.*\}$/, '');
     const url = `${base}?name=${EVIDENCE_ASSET}`;
     await callApi({ url, headers: this.headers, body: evidence });
+  }
+
+  // Its own environment keeps the record clear of the job's protection rules.
+  async recordRollout(record: RolloutRecord): Promise<void> {
+    const { environment, revision, origin, serverImage, webImage } = record;
+    const { GITHUB_SERVER_URL: host, GITHUB_RUN_ID: runId } = process.env;
+    const { id } = (await callApi({
+      url: `${this.api}/repos/${this.repository}/deployments`,
+      headers: this.headers,
+      body: {
+        ref: revision,
+        task: ROLLOUT_TASK,
+        environment: `verified-${environment}`,
+        description: `Verified ${environment} rollout`,
+        // biome-ignore lint/style/useNamingConvention: GitHub's request field
+        auto_merge: false,
+        // biome-ignore lint/style/useNamingConvention: GitHub's request field
+        required_contexts: [],
+        payload: {
+          schema: 1,
+          environment,
+          revision,
+          images: { server: serverImage, web: webImage },
+          url: origin,
+          dokployDeploymentId: record.deploymentId,
+          run:
+            host && runId
+              ? `${host}/${this.repository}/actions/runs/${runId}`
+              : null,
+        },
+      },
+    })) as { id: number };
+    await callApi({
+      url: `${this.api}/repos/${this.repository}/deployments/${id}/statuses`,
+      headers: this.headers,
+      // biome-ignore lint/style/useNamingConvention: GitHub's request fields
+      body: { state: 'success', environment_url: origin, auto_inactive: false },
+    });
+  }
+
+  async verifiedRollout(
+    command: RollbackCommand,
+  ): Promise<Partial<VerifiedRollout> | undefined> {
+    const query = new URLSearchParams({
+      environment: `verified-${command.environment}`,
+      task: ROLLOUT_TASK,
+      sha: command.revision,
+      // biome-ignore lint/style/useNamingConvention: GitHub's query parameter
+      per_page: '1',
+    });
+    const [newest] = (await callApi({
+      url: `${this.api}/repos/${this.repository}/deployments?${query}`,
+      headers: this.headers,
+    })) as Array<{ payload: Partial<VerifiedRollout> | null }>;
+    return newest && (newest.payload ?? {});
   }
 }
 
@@ -681,7 +783,7 @@ function report(command: RolloutCommand, origin: string): void {
   if (summaryPath) {
     const table = rows.map(([label, value]) => `| ${label} | \`${value}\` |`);
     const summary = [
-      `### Deployed ${environment}`,
+      `### ${command.rollback ? 'Rolled back' : 'Deployed'} ${environment}`,
       '',
       '| | |',
       '| --- | --- |',
@@ -759,6 +861,7 @@ async function publishEvidence(input: PublishInput): Promise<void> {
 async function rollout(command: RolloutCommand): Promise<void> {
   const { environment, revision, serverImage, webImage } = command;
   const composeFile = readFileSync(command.composeFile, 'utf8');
+  const github = new GitHub();
   const dokploy = new Dokploy();
   const composeId = requiredEnv('DOKPLOY_COMPOSE_ID');
   const origin = requiredEnv('PUBLIC_ORIGIN').replace(/\/+$/, '');
@@ -779,12 +882,17 @@ async function rollout(command: RolloutCommand): Promise<void> {
     );
   }
 
-  const github = command.candidate ? new GitHub() : undefined;
+  const before = await deploymentIds(dokploy, composeId);
+  const running = before.find(({ status }) => status === 'running');
+  if (running) {
+    throw new DeployFailure(
+      `Dokploy deployment ${running.deploymentId} of ${environment} is still running; refusing to overlap its migrations. Wait for it to finish.`,
+    );
+  }
+  const previous = new Set(before.map(({ deploymentId }) => deploymentId));
+
   const release = command.candidate
-    ? await withdrawEvidence({
-        github: github as GitHub,
-        tag: command.candidate.tag,
-      })
+    ? await withdrawEvidence({ github, tag: command.candidate.tag })
     : undefined;
 
   await backUp(environment);
@@ -795,12 +903,10 @@ async function rollout(command: RolloutCommand): Promise<void> {
     composeFile,
     env: nextEnv,
   });
-  const before = await deploymentIds(dokploy, composeId);
-  const previous = new Set(before.map(({ deploymentId }) => deploymentId));
   await dokploy.mutate('compose.deploy', {
     composeId,
-    title: `Church ${revision.slice(0, 12)}`,
-    description: `revision ${revision}`,
+    title: `Church ${command.rollback ? 'rollback ' : ''}${revision.slice(0, 12)}`,
+    description: `${command.rollback ? 'rollback to ' : ''}revision ${revision}`,
   });
   console.log(`Dokploy accepted ${revision}; waiting for it to finish…`);
   const deploymentId = await awaitDokploy({
@@ -813,7 +919,21 @@ async function rollout(command: RolloutCommand): Promise<void> {
   await awaitHealth({ origin, revision });
   console.log(`✔ ${environment} serves ${revision} with a reachable database.`);
   report(command, origin);
-  if (github && release && command.candidate) {
+  try {
+    await github.recordRollout({
+      environment,
+      revision,
+      origin,
+      serverImage,
+      webImage,
+      deploymentId,
+    });
+  } catch (error) {
+    throw new DeployFailure(
+      `${environment} is verified, but its rollout record was not saved (${(error as Error).message}); re-run before relying on rolling back to ${revision}.`,
+    );
+  }
+  if (release && command.candidate) {
     await publishEvidence({
       github,
       release,
@@ -942,6 +1062,109 @@ async function promote(command: PromoteCommand): Promise<void> {
   });
 }
 
+// ── rollback ──────────────────────────────────────────────────────────────
+
+function migrations(revision: string): string[] {
+  try {
+    const journal = JSON.parse(
+      git(['show', `${revision}:${MIGRATIONS}/meta/_journal.json`]),
+    ) as { entries: Array<{ tag: string }> };
+    return journal.entries.map(({ tag }) => tag);
+  } catch (error) {
+    throw new DeployFailure(
+      `The migrations of ${revision} cannot be read (${(error as Error).message}). Not rolling back.`,
+    );
+  }
+}
+
+interface CompatibilityInput {
+  target: string;
+  // Every revision the environment's Dokploy history deployed.
+  deployed: string[];
+}
+
+/**
+ * The database can hold any migration a deployed revision knew. The target
+ * must know none beyond them (its rollout would migrate forward) and lack
+ * only migrations declared compatible with the application before them.
+ */
+function checkCompatibility(input: CompatibilityInput): void {
+  const { target, deployed } = input;
+  if (deployed.length === 0) {
+    throw new DeployFailure(
+      'Dokploy records no deployed revision, so the current schema is unknown. Not rolling back.',
+    );
+  }
+  const known = new Set(migrations(target));
+  const applied = new Map<string, string>();
+  for (const revision of deployed) {
+    for (const tag of migrations(revision)) {
+      if (!applied.has(tag)) applied.set(tag, revision);
+    }
+  }
+  const forward = [...known].filter((tag) => !applied.has(tag));
+  if (forward.length > 0) {
+    throw new DeployFailure(
+      `${target} has migrations no deployed revision applied (${forward.join(', ')}); deploy it forward instead. Not rolling back.`,
+    );
+  }
+  const incompatible = [...applied]
+    .filter(
+      ([tag, revision]) =>
+        !known.has(tag) &&
+        !ROLLBACK_COMPATIBLE.test(
+          git(['show', `${revision}:${MIGRATIONS}/${tag}.sql`]),
+        ),
+    )
+    .map(([tag]) => tag);
+  if (incompatible.length > 0) {
+    throw new DeployFailure(
+      `The database may hold ${incompatible.join(', ')}, which ${target} predates and which do not declare "-- rollback-compatible:". Fix forward or restore the database (docs/operations/backups.md). Not rolling back.`,
+    );
+  }
+}
+
+async function rollback(command: RollbackCommand): Promise<void> {
+  const { environment, revision } = command;
+  const record = await new GitHub().verifiedRollout(command);
+  if (!record) {
+    throw new DeployFailure(
+      `${revision} has no verified ${environment} rollout to return to. Not rolling back.`,
+    );
+  }
+  const { server = '', web = '' } = record.images ?? {};
+  if (
+    record.schema !== 1 ||
+    record.environment !== environment ||
+    record.revision !== revision ||
+    !IMAGE_DIGEST.test(server) ||
+    !IMAGE_DIGEST.test(web)
+  ) {
+    throw new DeployFailure(
+      `The ${environment} rollout record of ${revision} does not name its immutable images. Not rolling back.`,
+    );
+  }
+  const dokploy = new Dokploy();
+  const composeId = requiredEnv('DOKPLOY_COMPOSE_ID');
+  const deployed = (await deploymentIds(dokploy, composeId)).flatMap(
+    ({ description }) => DESCRIBED_REVISION.exec(description ?? '')?.[1] ?? [],
+  );
+  checkCompatibility({ target: revision, deployed: [...new Set(deployed)] });
+  console.log(
+    `✔ ${revision} was verified on ${environment} and fits its current schema; rolling back without rebuilding.`,
+  );
+  await rollout({
+    command: 'rollout',
+    environment,
+    revision,
+    serverImage: server,
+    webImage: web,
+    composeFile: command.composeFile,
+    candidate: undefined,
+    rollback: true,
+  });
+}
+
 // ── entry ─────────────────────────────────────────────────────────────────
 
 interface CandidateInput {
@@ -1015,6 +1238,20 @@ function parseCommand(): Command {
       `--revision must be a full commit SHA, got "${revision}".`,
     );
   }
+  if (command === 'rollback') {
+    if (!ENVIRONMENTS.includes(environment as Environment)) {
+      throw new UsageError(
+        `--environment must be one of ${ENVIRONMENTS.join(', ')}.`,
+      );
+    }
+    if (!composeFile) throw new UsageError('--compose-file is required.');
+    return {
+      command,
+      environment: environment as Environment,
+      revision,
+      composeFile,
+    };
+  }
   if (command === 'checks' && branch && checks.length > 0) {
     return { command, revision, branch, checks };
   }
@@ -1055,7 +1292,8 @@ function parseCommand(): Command {
     'Usage: deploy.ts checks --revision=<sha> --branch=<branch> --check=<name>...\n' +
       '       deploy.ts rollout --environment=<env> --revision=<sha> --server-image=<ref@sha256:…> --web-image=<ref@sha256:…> --compose-file=<path> [--candidate=<vX.Y.Z-rc.N> --content=<identity>]\n' +
       '       deploy.ts release\n' +
-      '       deploy.ts promote --release=<vX.Y.Z> --content=<identity> --compose-file=<path>',
+      '       deploy.ts promote --release=<vX.Y.Z> --content=<identity> --compose-file=<path>\n' +
+      '       deploy.ts rollback --environment=<env> --revision=<sha> --compose-file=<path>',
   );
 }
 
@@ -1064,6 +1302,7 @@ async function main(): Promise<void> {
   if (command.command === 'checks') await awaitChecks(command);
   else if (command.command === 'release') await routeRelease();
   else if (command.command === 'promote') await promote(command);
+  else if (command.command === 'rollback') await rollback(command);
   else await rollout(command);
 }
 

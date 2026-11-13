@@ -25,6 +25,8 @@ export const env = createEnv({
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     SMTP_FROM_EMAIL: z.string().default('Church <noreply@church.test>'),
+    /** Deployed development/staging Mailpit API, used only by the environment reset. */
+    MAILPIT_API_URL: z.url().optional(),
     OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
     OUTBOX_DRAIN_BATCH_SIZE: z.coerce.number().int().min(1).default(10),
     NODE_ENV: z

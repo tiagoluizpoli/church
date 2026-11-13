@@ -12,6 +12,7 @@ services:
       CHURCH_ENVIRONMENT: ${CHURCH_ENVIRONMENT:?CHURCH_ENVIRONMENT must be development or staging}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
+      MAILPIT_API_URL: http://mailpit:8025
     depends_on:
       mailpit:
         condition: service_started

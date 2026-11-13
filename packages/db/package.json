@@ -20,7 +20,7 @@
     "db:generate": "drizzle-kit generate",
     "db:studio": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- drizzle-kit studio",
     "db:migrate": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- drizzle-kit migrate",
-    "db:migrate:deployment": "CHURCH_EXEC_PURPOSE=deployment varlock run --path . -- drizzle-kit migrate",
+    "db:migrate:deployment": "CHURCH_EXEC_PURPOSE=deployment varlock run --path . -- bun src/scripts/deployment-preflight.ts && CHURCH_EXEC_PURPOSE=deployment varlock run --path . -- drizzle-kit migrate",
     "db:provision:environment": "bun src/scripts/provision-environment-database.ts",
     "db:reset:dev": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun src/scripts/reset-db.ts",
     "db:start": "sh ../../tooling/worktree/shared-compose.sh up --detach --wait",

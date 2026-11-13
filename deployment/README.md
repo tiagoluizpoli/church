@@ -39,6 +39,7 @@ contract in `packages/env/src/server.ts`.
 | --- | --- | --- |
 | `SERVER_IMAGE` | yes | server image digest |
 | `WEB_IMAGE` | yes | web image digest |
+| `CHURCH_ENVIRONMENT` | yes | `development`, `staging` or `production`; selects email delivery |
 | `DATABASE_URL` | yes, secret | `postgresql://church_<environment>:<password>@<host>:5432/church_<environment>` |
 | `BETTER_AUTH_SECRET` | yes, secret | at least 32 characters, different in every environment |
 | `PUBLIC_ORIGIN` | yes | the environment's public origin, e.g. `https://staging.example.org`; it becomes `BETTER_AUTH_URL` and `CORS_ORIGIN` |
@@ -47,9 +48,12 @@ contract in `packages/env/src/server.ts`.
 | `DATABASE_NETWORK` | no | Docker network that reaches the host's PostgreSQL (default `dokploy-network`) |
 
 The images set `NODE_ENV=production` for every environment, so debug
-endpoints stay off and API docs are not served. Email therefore goes through
-Resend in every deployed environment until the non-production delivery
-setting (#884) is in place.
+endpoints stay off and API docs are not served. `CHURCH_ENVIRONMENT`, not
+`NODE_ENV`, tells the environments apart. Production always sends through
+Resend. Development and staging deploy with
+`-f compose.yml -f compose.mailpit.yml` and route email by the database
+setting described in
+[docs/deployment/email-delivery.md](../docs/deployment/email-delivery.md).
 
 ## Local versus deployed
 

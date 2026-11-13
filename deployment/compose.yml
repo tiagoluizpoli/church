@@ -24,6 +24,7 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *database-url
+      CHURCH_ENVIRONMENT: ${CHURCH_ENVIRONMENT:?CHURCH_ENVIRONMENT must be development, staging or production}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
       BETTER_AUTH_URL: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
       CORS_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}

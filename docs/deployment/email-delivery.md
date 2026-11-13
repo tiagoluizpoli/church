@@ -66,7 +66,7 @@ Compose deployment (`-f compose.yml -f compose.mailpit.yml`):
 
 | Variable | Where | Notes |
 | --- | --- | --- |
-| `CHURCH_ENVIRONMENT` | development, staging | `development` or `staging`; leave production unset or `production` |
+| `CHURCH_ENVIRONMENT` | development, staging | `development` or `staging`; production sets `production` (required by `deployment/compose.yml`) |
 | `MAILPIT_TAILSCALE_IP` | development, staging | the host's tailnet IPv4; the inbox binds only to it |
 | `RESEND_API_KEY` (secret) | all deployed environments | required at startup, so switching to `resend` needs no restart |
 | `RESEND_FROM_EMAIL` | all deployed environments | a Resend-verified sender; Mailpit copies use the same address |

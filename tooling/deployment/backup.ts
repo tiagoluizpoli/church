@@ -9,10 +9,10 @@ import { parseArgs } from 'node:util';
  *     configuration (production also needs its daily scheduled backup) and
  *     that each pool holds its five backups.
  *
- * Dokploy's own Keep latest counts any file, including a failed upload whose
- * best-effort cleanup also failed, so it must stay unset: prune-backups.sh,
- * run daily on each Dokploy host, keeps the newest five intact backups of
- * each pool. Each pool gets its own Dokploy backup with prefix
+ * Retention is Dokploy's Keep latest, set to five on every pool: after each
+ * successful backup Dokploy deletes all but the newest five, and a failed
+ * backup deletes its own partial upload. Each pool gets its own Dokploy
+ * backup with prefix
  * `<environment>/<pool>`, which this command verifies before anything runs.
  * See docs/operations/backups.md.
  */
@@ -183,8 +183,8 @@ async function verifyBackup(input: VerifyBackupInput): Promise<DokployBackup> {
     normalizePrefix(backup.prefix) !== expectedPrefix
       ? `uses prefix "${backup.prefix}", not "${expectedPrefix}"`
       : '',
-    backup.keepLatestCount !== null
-      ? `prunes to ${backup.keepLatestCount} files itself, counting failed uploads; unset Keep latest so prune-backups.sh keeps ${RETAINED_BACKUPS_PER_POOL} intact backups`
+    backup.keepLatestCount !== RETAINED_BACKUPS_PER_POOL
+      ? `keeps the latest ${backup.keepLatestCount ?? 'unlimited'} backups, not ${RETAINED_BACKUPS_PER_POOL}; set Keep latest to ${RETAINED_BACKUPS_PER_POOL}`
       : '',
     !backup.postgres?.appName || !backup.destinationId
       ? 'names no PostgreSQL service or destination'
@@ -202,7 +202,7 @@ async function verifyBackup(input: VerifyBackupInput): Promise<DokployBackup> {
     );
   }
   console.log(
-    `✔ ${pool} pool: ${target.environment}/${target.database} → prefix ${expectedPrefix}, retention by prune-backups.sh`,
+    `✔ ${pool} pool: ${target.environment}/${target.database} → prefix ${expectedPrefix}, keeps the latest ${RETAINED_BACKUPS_PER_POOL}`,
   );
   if (input.requireRetained) {
     await verifyRetained({ dokploy, backup, pool });
@@ -235,7 +235,7 @@ async function verifyRetained(input: VerifyRetainedInput): Promise<void> {
   ).length;
   if (held < RETAINED_BACKUPS_PER_POOL) {
     throw new BackupFailure(
-      `The ${pool} pool holds ${held} backup(s), fewer than ${RETAINED_BACKUPS_PER_POOL}; take backups or check prune-backups.sh on the Dokploy host.`,
+      `The ${pool} pool holds ${held} backup(s), fewer than ${RETAINED_BACKUPS_PER_POOL}; take backups until it does.`,
     );
   }
   console.log(`✔ ${pool} pool holds ${held} backups.`);

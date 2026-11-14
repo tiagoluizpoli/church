@@ -133,7 +133,7 @@ function backupConfiguration() {
     prefix: `${state.environment}/pre-deployment`,
     schedule: '0 0 * * *',
     enabled: false,
-    keepLatestCount: null,
+    keepLatestCount: 5,
     databaseType: 'postgres',
     backupType: 'database',
     destinationId: 'homelab-s3',

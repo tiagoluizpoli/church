@@ -45,6 +45,16 @@ jobs:
           # The compatibility check reads every deployed revision's migrations.
           fetch-depth: 0
       - uses: jdx/mise-action@v5
+      # The homelab (Dokploy and the development site) is reachable only
+      # through the tailnet route to its LAN address.
+      - name: Join the tailnet
+        if: inputs.environment == 'development'
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          args: --accept-routes
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Compose file of the target revision

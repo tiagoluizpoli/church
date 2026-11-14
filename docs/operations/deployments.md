@@ -90,15 +90,13 @@ The `development` GitHub Environment needs:
 | `DOKPLOY_COMPOSE_ID` | variable | id of the development Compose application |
 | `CHURCH_BACKUP_ID` | variable | development pre-deployment backup id ([backups.md](backups.md)) |
 | `PUBLIC_ORIGIN` | variable | e.g. `https://church-dev.example.org` |
-| `HOMELAB_TAILNET_IP` | variable | the homelab's Tailscale IP, e.g. `100.x.y.z` |
 | `TS_OAUTH_CLIENT_ID` | secret | Tailscale OAuth client allowed to create `tag:ci` auth keys |
 | `TS_OAUTH_SECRET` | secret | that client's secret |
 
-The homelab's names resolve publicly to its LAN address, which a GitHub
-runner cannot reach. The deploy job (and a development rollback) therefore
-joins the tailnet as `tag:ci` and pins the `DOKPLOY_URL` and `PUBLIC_ORIGIN`
-hostnames to `HOMELAB_TAILNET_IP`. The tailnet policy must let `tag:ci` reach
-that IP on port 443.
+The homelab is reachable only on its LAN, so the deploy job (and a development
+rollback) first joins the tailnet as `tag:ci` with `--accept-routes`. The
+homelab must advertise a subnet route covering its LAN address, and the
+tailnet policy must let `tag:ci` reach it on port 443.
 
 The Dokploy Compose application must use source type **Raw** with
 auto-deploy off, Isolated Deployment on, and the domain routed to service

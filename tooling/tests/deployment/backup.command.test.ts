@@ -49,7 +49,7 @@ function recoveryBackup(overrides: Partial<DokployBackup> = {}): DokployBackup {
     prefix: 'staging/pre-deployment',
     schedule: '0 0 * * *',
     enabled: false,
-    keepLatestCount: null,
+    keepLatestCount: 5,
     databaseType: 'postgres',
     backupType: 'database',
     destinationId: 'homelab-s3',
@@ -67,7 +67,7 @@ function scheduledBackup(
     prefix: 'production/scheduled',
     schedule: '30 3 * * *',
     enabled: true,
-    keepLatestCount: null,
+    keepLatestCount: 5,
     databaseType: 'postgres',
     backupType: 'database',
     destinationId: 'homelab-s3',
@@ -281,11 +281,8 @@ describe('backup create', () => {
     ['another environment prefix', { prefix: 'production/pre-deployment' }],
     ['the scheduled pool prefix', { prefix: 'staging/scheduled' }],
     ['a prefix shared by both pools', { prefix: 'staging' }],
-    [
-      'Dokploy’s count-based pruning (counts failed uploads)',
-      { keepLatestCount: 5 },
-    ],
-    ['another pruning count', { keepLatestCount: 10 }],
+    ['no retention (Keep latest unset)', { keepLatestCount: null }],
+    ['another retention count', { keepLatestCount: 10 }],
     ['an enabled schedule', { enabled: true }],
     ['a non-Postgres backup', { databaseType: 'mysql' }],
   ])('refuses a backup configuration with %s and starts nothing', async (_, overrides) => {
@@ -364,7 +361,7 @@ describe('backup check', () => {
     ['not daily', { schedule: '0 */6 * * *' }],
     ['disabled', { enabled: false }],
     ['in the recovery pool prefix', { prefix: 'production/pre-deployment' }],
-    ['pruned by Dokploy', { keepLatestCount: 5 }],
+    ['without retention', { keepLatestCount: null }],
   ])('refuses a production scheduled backup that is %s', async (_, overrides) => {
     state.backups['scheduled-id'] = scheduledBackup(overrides);
 

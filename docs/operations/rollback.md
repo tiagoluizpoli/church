@@ -127,12 +127,11 @@ None of it has been done.
   each role is refused `CONNECT` to the other environment's database.
 - [ ] **Tailscale and homelab S3**: the VPS reaches the homelab S3 endpoint
   over the tailnet, and each Dokploy destination passes **Test connection**.
-- [ ] **Independent retention**: every pool in
-  [backups.md](backups.md#recovery-pools) exists with its own prefix and an
-  unset Keep latest; `prune-backups.sh` runs daily on each Dokploy host and
-  its manual run reports every pool; `backup:check` passes per environment,
-  including production's daily scheduled pool, once each pool holds five; a
-  deliberately failed backup removes no older file.
+- [ ] **Retention**: every pool in
+  [backups.md](backups.md#recovery-pools) exists with its own prefix and Keep
+  latest 5; `backup:check` passes per environment, including production's
+  daily scheduled pool, once each pool holds five; a deliberately failed
+  backup removes no older file.
 - [ ] **Restore exercise** in [backups.md](backups.md#restore-exercise-before-the-production-launch)
   completed into an isolated database and recorded.
 - [ ] **Domains and secrets**: each environment's hostname routes to service

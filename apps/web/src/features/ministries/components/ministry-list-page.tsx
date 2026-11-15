@@ -41,7 +41,7 @@ function ministryColumns(): DataTableColumn[] {
     { id: 'name', name: m.ministries_name_label(), isRowHeader: true },
     { id: 'sectors', name: m.ministry_tab_sectors() },
     { id: 'roles', name: m.ministry_tab_roles() },
-    { id: 'actions', name: m.people_column_actions(), hideName: true },
+    { id: 'actions', name: m.people_column_actions() },
   ];
 }
 
@@ -155,7 +155,7 @@ export function MinistryListPage() {
         className="flex flex-col gap-3 md:flex-row md:items-end"
         onSubmit={(event) => event.preventDefault()}
       >
-        <div className="min-w-48 flex-1 space-y-1">
+        <div className="flex min-w-48 flex-1 flex-col gap-1">
           <Label htmlFor="ministries-filter-search">
             {m.ministries_name_label()}
           </Label>
@@ -167,7 +167,7 @@ export function MinistryListPage() {
             className="min-h-11 md:min-h-0"
           />
         </div>
-        <div className="space-y-1">
+        <div className="flex flex-col gap-1">
           <Label htmlFor="ministries-filter-status">
             {m.ministries_filter_status()}
           </Label>

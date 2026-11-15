@@ -38,22 +38,24 @@ export function MinistrySettings({ ministryId }: MinistrySettingsProps) {
     <CapabilityGate allow={isChurchAdmin} refusal="no-access">
       {ministry ? (
         <div className="space-y-4">
-          <section className="surface-panel max-w-xl space-y-4 p-4">
+          <section className="surface-panel space-y-4 p-4">
             <h2 className="font-semibold text-lg">
               {m.ministry_settings_name_title()}
             </h2>
-            <MinistryNameForm
-              key={ministry.id}
-              initialName={ministry.name}
-              onSave={rename}
-              renderActions={(pending) => (
-                <Button type="submit" disabled={pending}>
-                  {pending
-                    ? m.ministry_settings_saving()
-                    : m.ministry_settings_save()}
-                </Button>
-              )}
-            />
+            <div className="max-w-sm">
+              <MinistryNameForm
+                key={ministry.id}
+                initialName={ministry.name}
+                onSave={rename}
+                renderActions={(pending) => (
+                  <Button type="submit" disabled={pending}>
+                    {pending
+                      ? m.ministry_settings_saving()
+                      : m.ministry_settings_save()}
+                  </Button>
+                )}
+              />
+            </div>
           </section>
           <MinistryArchive ministryId={ministry.id} name={ministry.name} />
         </div>

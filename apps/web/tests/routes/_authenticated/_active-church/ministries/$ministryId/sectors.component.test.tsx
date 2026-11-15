@@ -12,6 +12,7 @@ const getCallerCapabilities = vi.fn();
 const listMinistries = vi.fn();
 const getMinistry = vi.fn();
 const listSectors = vi.fn();
+const listMinistryRoles = vi.fn(async () => ({ roles: [] }));
 const createSector = vi.fn();
 const renameSector = vi.fn();
 const archiveSector = vi.fn();
@@ -21,6 +22,7 @@ vi.mock('@/utils/api-instances', async () => ({
     listMinistries: (...args: unknown[]) => listMinistries(...args),
     getMinistry: (...args: unknown[]) => getMinistry(...args),
     listSectors: (...args: unknown[]) => listSectors(...args),
+    listMinistryRoles: () => listMinistryRoles(),
     createSector: (...args: unknown[]) => createSector(...args),
     renameSector: (...args: unknown[]) => renameSector(...args),
     archiveSector: (...args: unknown[]) => archiveSector(...args),
@@ -87,7 +89,7 @@ beforeEach(() => {
 
 function renderSectors() {
   return renderRoute({
-    initialPath: `/ministries/${MINISTRY_ID}/sectors`,
+    initialPath: `/ministries/${MINISTRY_ID}/operational`,
     churchTimezone: 'UTC',
   });
 }
@@ -101,7 +103,7 @@ async function rowNames() {
     .map((item) => within(item).getByTestId('sector-name').textContent);
 }
 
-describe('/ministries/$ministryId/sectors', () => {
+describe('/ministries/$ministryId/operational (sectors panel)', () => {
   it.each([
     ['a ChurchAdmin', callerCapabilitiesFixture({ isChurchAdmin: true })],
     ['the Ministry leader', callerCapabilitiesFixture({ ledMinistries: 1 })],
@@ -177,9 +179,11 @@ describe('/ministries/$ministryId/sectors', () => {
     renderSectors();
 
     await user.click(
-      await screen.findByRole('button', {
-        name: m.sectors_rename_label({ name: 'stage' }),
-      }),
+      (
+        await screen.findAllByRole('button', {
+          name: m.sectors_rename_label({ name: 'stage' }),
+        })
+      )[0] as HTMLElement,
     );
     const dialog = await screen.findByRole('dialog');
     expect(
@@ -204,9 +208,11 @@ describe('/ministries/$ministryId/sectors', () => {
     renderSectors();
 
     await user.click(
-      await screen.findByRole('button', {
-        name: m.sectors_archive_label({ name: 'stage' }),
-      }),
+      (
+        await screen.findAllByRole('button', {
+          name: m.sectors_archive_label({ name: 'stage' }),
+        })
+      )[0] as HTMLElement,
     );
     const dialog = await screen.findByRole('alertdialog');
     expect(
@@ -248,9 +254,11 @@ describe('/ministries/$ministryId/sectors', () => {
     renderSectors();
 
     await user.click(
-      await screen.findByRole('button', {
-        name: m.sectors_archive_label({ name: 'stage' }),
-      }),
+      (
+        await screen.findAllByRole('button', {
+          name: m.sectors_archive_label({ name: 'stage' }),
+        })
+      )[0] as HTMLElement,
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
@@ -296,9 +304,11 @@ describe('/ministries/$ministryId/sectors', () => {
     renderSectors();
 
     await user.click(
-      await screen.findByRole('button', {
-        name: m.sectors_rename_label({ name: 'stage' }),
-      }),
+      (
+        await screen.findAllByRole('button', {
+          name: m.sectors_rename_label({ name: 'stage' }),
+        })
+      )[0] as HTMLElement,
     );
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', {
@@ -330,9 +340,11 @@ describe('/ministries/$ministryId/sectors', () => {
 
     for (const outcome of ['blocked', 'cancelled'] as const) {
       await user.click(
-        await screen.findByRole('button', {
-          name: m.sectors_rename_label({ name: 'stage' }),
-        }),
+        (
+          await screen.findAllByRole('button', {
+            name: m.sectors_rename_label({ name: 'stage' }),
+          })
+        )[0] as HTMLElement,
       );
       await user.click(
         within(await screen.findByRole('dialog')).getByRole('button', {

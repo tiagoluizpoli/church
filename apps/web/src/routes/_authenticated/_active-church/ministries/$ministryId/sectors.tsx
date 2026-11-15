@@ -1,13 +1,13 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { SectorRegistry } from '@/features/ministries/components/sector-registry';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
 export const Route = createFileRoute(
   '/_authenticated/_active-church/ministries/$ministryId/sectors',
 )({
-  component: MinistrySectorsRoute,
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: '/ministries/$ministryId/operational',
+      params,
+      replace: true,
+    });
+  },
 });
-
-function MinistrySectorsRoute() {
-  const { ministryId } = Route.useParams();
-  return <SectorRegistry ministryId={ministryId} />;
-}

@@ -11,6 +11,7 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getCallerCapabilities = vi.fn();
 const listMinistries = vi.fn();
 const getMinistry = vi.fn();
+const listSectors = vi.fn(async () => ({ sectors: [] }));
 const listMinistryRoles = vi.fn();
 const createMinistryRole = vi.fn();
 const renameMinistryRole = vi.fn();
@@ -20,6 +21,7 @@ vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     listMinistries: (...args: unknown[]) => listMinistries(...args),
     getMinistry: (...args: unknown[]) => getMinistry(...args),
+    listSectors: () => listSectors(),
     listMinistryRoles: (...args: unknown[]) => listMinistryRoles(...args),
     createMinistryRole: (...args: unknown[]) => createMinistryRole(...args),
     renameMinistryRole: (...args: unknown[]) => renameMinistryRole(...args),
@@ -96,7 +98,7 @@ beforeEach(() => {
 
 function renderRoles() {
   return renderRoute({
-    initialPath: `/ministries/${MINISTRY_ID}/roles`,
+    initialPath: `/ministries/${MINISTRY_ID}/operational`,
     churchTimezone: 'UTC',
   });
 }
@@ -110,7 +112,7 @@ async function roleRows() {
     .map((item) => within(item).getByTestId('role-name').textContent);
 }
 
-describe('/ministries/$ministryId/roles', () => {
+describe('/ministries/$ministryId/operational (roles panel)', () => {
   it('lists the active Roles in the order the server sorts them', async () => {
     asLeader();
 
@@ -196,9 +198,9 @@ describe('/ministries/$ministryId/roles', () => {
     await roleRows();
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getAllByRole('button', {
         name: m.ministry_roles_rename_named({ name: 'Singer' }),
-      }),
+      })[0] as HTMLElement,
     );
     const dialog = await screen.findByRole('dialog');
     const input = within(dialog).getByLabelText(m.ministries_name_label());
@@ -226,9 +228,9 @@ describe('/ministries/$ministryId/roles', () => {
     await roleRows();
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getAllByRole('button', {
         name: m.ministry_roles_archive_named({ name: 'Singer' }),
-      }),
+      })[0] as HTMLElement,
     );
     const dialog = await screen.findByRole('alertdialog');
     expect(
@@ -277,9 +279,9 @@ describe('/ministries/$ministryId/roles', () => {
     await roleRows();
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getAllByRole('button', {
         name: m.ministry_roles_archive_named({ name: 'Singer' }),
-      }),
+      })[0] as HTMLElement,
     );
     const dialog = await screen.findByRole('alertdialog');
     await user.click(
@@ -315,8 +317,11 @@ describe('/ministries/$ministryId/roles', () => {
     );
     expect(usualSetup).toHaveAttribute('target', '_blank');
     // The Role stays listed behind the still-open dialog.
-    expect(
-      screen.getAllByTestId('role-name').map((row) => row.textContent),
-    ).toEqual(['drums', 'Singer']);
+    // DataTable renders mobile + desktop copies; deduplicate to get unique names.
+    expect([
+      ...new Set(
+        screen.getAllByTestId('role-name').map((el) => el.textContent),
+      ),
+    ]).toEqual(['drums', 'Singer']);
   });
 });

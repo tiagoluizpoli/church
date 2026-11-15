@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import {
   Dialog,
   DialogContent,
@@ -73,7 +74,7 @@ export function MinistryRoles({ ministryId }: MinistryRolesProps) {
   };
 
   return (
-    <section className="surface-panel max-w-2xl space-y-4 p-4">
+    <section className="surface-panel space-y-4 p-4">
       <div className="flex items-center justify-between gap-4">
         <h2 className="font-semibold text-lg">{m.ministry_tab_roles()}</h2>
         <Button type="button" onClick={() => setNameDialog({ mode: 'add' })}>
@@ -93,46 +94,91 @@ export function MinistryRoles({ ministryId }: MinistryRolesProps) {
             {m.ministries_retry()}
           </Button>
         </div>
-      ) : roles.data && roles.data.roles.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          {m.ministry_roles_empty()}
-        </p>
-      ) : roles.data ? (
-        <ul aria-label={m.ministry_roles_list_label()} className="divide-y">
-          {roles.data.roles.map((role) => (
-            <li
-              key={role.id}
-              className="flex items-center justify-between gap-2 py-2"
-            >
-              <span data-testid="role-name">{role.name}</span>
+      ) : (
+        <DataTable<MinistryRole>
+          aria-label={m.ministry_roles_list_label()}
+          columns={[
+            {
+              id: 'name',
+              name: m.ministry_tab_roles(),
+              isRowHeader: true,
+            },
+            {
+              id: 'actions',
+              name: m.people_column_actions(),
+              hideName: true,
+            },
+          ]}
+          items={roles.data?.roles ?? []}
+          isLoading={roles.isLoading}
+          rowId={({ item }) => item.id}
+          renderCell={({ item }) => (
+            <span data-testid="role-name">{item.name}</span>
+          )}
+          renderMobileCard={({ item }) => (
+            <div className="flex items-center justify-between gap-2">
+              <span data-testid="role-name" className="text-sm">
+                {item.name}
+              </span>
               <div className="flex gap-2">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   aria-label={m.ministry_roles_rename_named({
-                    name: role.name,
+                    name: item.name,
                   })}
-                  onClick={() => setNameDialog({ mode: 'rename', role })}
+                  onClick={() => setNameDialog({ mode: 'rename', role: item })}
                 >
                   {m.ministry_roles_rename()}
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   aria-label={m.ministry_roles_archive_named({
-                    name: role.name,
+                    name: item.name,
                   })}
-                  onClick={() => setArchiving(role)}
+                  onClick={() => setArchiving(item)}
                 >
                   {m.ministry_roles_archive()}
                 </Button>
               </div>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+            </div>
+          )}
+          rowActions={({ item }) => (
+            <div className="flex w-full justify-end gap-2 max-md:hidden">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label={m.ministry_roles_rename_named({
+                  name: item.name,
+                })}
+                onClick={() => setNameDialog({ mode: 'rename', role: item })}
+              >
+                {m.ministry_roles_rename()}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label={m.ministry_roles_archive_named({
+                  name: item.name,
+                })}
+                onClick={() => setArchiving(item)}
+              >
+                {m.ministry_roles_archive()}
+              </Button>
+            </div>
+          )}
+          emptyContent={
+            <p className="text-muted-foreground text-sm">
+              {m.ministry_roles_empty()}
+            </p>
+          }
+        />
+      )}
       <Dialog
         open={nameDialog !== null}
         onOpenChange={(open) => {

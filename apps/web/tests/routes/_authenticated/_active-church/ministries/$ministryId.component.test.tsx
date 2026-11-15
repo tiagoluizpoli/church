@@ -14,6 +14,7 @@ const getCallerCapabilities = vi.fn();
 const listMinistries = vi.fn();
 const getMinistry = vi.fn();
 const listSectors = vi.fn(async () => ({ sectors: [] }));
+const listMinistryRoles = vi.fn(async () => ({ roles: [] }));
 const renameMinistry = vi.fn();
 const archiveMinistry = vi.fn();
 
@@ -22,6 +23,7 @@ vi.mock('@/utils/api-instances', async () => ({
     listMinistries: (...args: unknown[]) => listMinistries(...args),
     getMinistry: (...args: unknown[]) => getMinistry(...args),
     listSectors: () => listSectors(),
+    listMinistryRoles: () => listMinistryRoles(),
     renameMinistry: (...args: unknown[]) => renameMinistry(...args),
     archiveMinistry: (...args: unknown[]) => archiveMinistry(...args),
   },
@@ -105,14 +107,14 @@ async function tabNames() {
 }
 
 describe('/ministries/$ministryId workspace', () => {
-  it('redirects the Ministry root to its Sectors tab', async () => {
+  it('redirects the Ministry root to its Structure tab', async () => {
     asAdmin();
 
     const { router } = renderWorkspace();
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(
-        `/ministries/${MINISTRY_ID}/sectors`,
+        `/ministries/${MINISTRY_ID}/operational`,
       ),
     );
     expect(
@@ -120,19 +122,18 @@ describe('/ministries/$ministryId workspace', () => {
     ).toBeVisible();
   });
 
-  it('shows the four routed tabs in order to a ChurchAdmin', async () => {
+  it('shows the three routed tabs in order to a ChurchAdmin', async () => {
     asAdmin();
 
-    renderWorkspace('/sectors');
+    renderWorkspace('/operational');
 
     expect(await tabNames()).toEqual([
-      m.ministry_tab_sectors(),
-      m.ministry_tab_roles(),
+      m.ministry_tab_structure(),
       m.ministry_tab_usual_setup(),
       m.ministry_tab_settings(),
     ]);
     expect(
-      screen.getByRole('link', { name: m.ministry_tab_sectors() }),
+      screen.getByRole('link', { name: m.ministry_tab_structure() }),
     ).toHaveAttribute('aria-current', 'page');
   });
 
@@ -154,7 +155,7 @@ describe('/ministries/$ministryId workspace', () => {
       refusal(404, { error: 'NOT_FOUND', message: m.error_not_found() }),
     );
 
-    renderWorkspace('/sectors');
+    renderWorkspace('/operational');
 
     expect(await screen.findByText(m.ministry_not_found())).toBeVisible();
     expect(
@@ -168,7 +169,7 @@ describe('/ministries/$ministryId workspace', () => {
       refusal(403, { error: 'FORBIDDEN', message: m.error_forbidden() }),
     );
 
-    renderWorkspace('/sectors');
+    renderWorkspace('/operational');
 
     expect(await screen.findByText(m.shell_no_access())).toBeVisible();
   });

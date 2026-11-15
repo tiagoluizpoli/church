@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { HeaderStatChip } from '@/components/header-stat-chip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
@@ -506,6 +507,7 @@ export function InvitationListPage() {
   const query = useInvitationList({ filters });
   const items = query.data?.pages.flatMap((page) => page.items) ?? [];
   const options = query.data?.pages[0]?.options;
+  const counts = query.data?.pages[0]?.counts;
   const status = filters.status ?? 'pending';
   const isFiltered = Boolean(
     filters.ministryId || filters.invitedAs || filters.email,
@@ -525,7 +527,24 @@ export function InvitationListPage() {
         title={m.nav_invitations()}
         description={m.invitations_description()}
         autoFocusTitle
-        aside={<InviteDialog />}
+        aside={
+          counts ? (
+            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+              <HeaderStatChip
+                label={m.invitations_stat_pending()}
+                value={counts.pending}
+              />
+              <HeaderStatChip
+                label={m.invitations_stat_expired()}
+                value={counts.expired}
+              />
+              <HeaderStatChip
+                label={m.invitations_stat_accepted()}
+                value={counts.accepted}
+              />
+            </div>
+          ) : undefined
+        }
       />
       <FilterBar
         key={filters.email ?? ''}
@@ -533,6 +552,9 @@ export function InvitationListPage() {
         options={options}
         onChange={change}
       />
+      <div className="flex justify-end">
+        <InviteDialog />
+      </div>
       {query.isError && items.length === 0 ? (
         <Alert variant="destructive">
           <AlertDescription className="flex items-center gap-3">

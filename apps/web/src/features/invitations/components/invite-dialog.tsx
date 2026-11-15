@@ -21,6 +21,7 @@ import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries
 import { useMinistryList } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
 import { PEOPLE_QUERY_KEY } from '@/features/people/people-queries';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import type { MintMinistryInvitation409ExistingInvitation } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -333,6 +334,7 @@ export function InviteDialog({
     }
   };
 
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const noMinistry =
     !asAdmin && ministriesQuery.isSuccess && ministries.length === 0;
 
@@ -340,6 +342,7 @@ export function InviteDialog({
     <>
       <Button
         type="button"
+        size={isMobile ? 'touch' : 'default'}
         onClick={() => {
           if (initialEmail !== undefined) setEmail(initialEmail);
           setOpen(true);

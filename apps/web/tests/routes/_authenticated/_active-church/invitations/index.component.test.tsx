@@ -126,8 +126,8 @@ function signInAs(capabilities: GetCallerCapabilities200) {
   getCallerCapabilities.mockResolvedValue(capabilities);
 }
 
-function renderInvitations() {
-  return renderRoute({ initialPath: '/invitations', churchTimezone: 'UTC' });
+function renderInvitations(initialPath = '/invitations') {
+  return renderRoute({ initialPath, churchTimezone: 'UTC' });
 }
 
 // Both layouts render in jsdom; the card list is the one with list semantics.
@@ -148,6 +148,55 @@ beforeEach(() => {
 });
 
 describe('Invitations page', () => {
+  it('retains delivery and closure evidence in the desktop row and labels creation accurately', async () => {
+    listInvitations.mockResolvedValue(
+      page([
+        row({
+          status: 'canceled',
+          displayStatus: 'revoked',
+          createdAt: '2026-11-01T13:00:00Z',
+          lastSentAt: '2026-11-03T15:00:00Z',
+          emailDelivery: { state: 'failed' },
+          closure: {
+            actor: { id: 'u2', name: 'Bia' },
+            at: '2026-11-02T10:00:00Z',
+            reason: 'manual',
+          },
+        }),
+      ]),
+    );
+    renderInvitations();
+    await rows();
+    const tableRow = screen
+      .getAllByRole('row')
+      .find((r) => r.textContent?.includes('ana@example.com')) as HTMLElement;
+    expect(
+      screen.getByRole('columnheader', {
+        name: m.invitations_column_created(),
+      }),
+    ).toBeInTheDocument();
+    expect(within(tableRow).getByText('01/11/2026 13:00')).toBeInTheDocument();
+    expect(tableRow).not.toHaveTextContent('03/11/2026 15:00');
+    expect(tableRow).toHaveTextContent(m.invitations_email_failed());
+    expect(tableRow).toHaveTextContent(
+      m.invitations_revoked_by_on({ name: 'Bia', date: '02/11/2026 10:00' }),
+    );
+    expect(tableRow).toHaveTextContent(m.invitations_revoke_reason_manual());
+  });
+
+  it('drops cached rows when a refetch fails', async () => {
+    listInvitations
+      .mockResolvedValueOnce(page([row({})]))
+      .mockRejectedValueOnce(new Error('refused'));
+    const { queryClient } = renderInvitations();
+    await rows();
+    await queryClient.invalidateQueries({ queryKey: ['invitations'] });
+    expect(await screen.findByText(m.invitations_load_failed())).toBeVisible();
+    expect(
+      screen.queryByRole('list', { name: m.invitations_list_label() }),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows scope-wide counts and offers all statuses', async () => {
     listInvitations.mockResolvedValue(
       page([], {
@@ -359,6 +408,9 @@ describe('Invitations page', () => {
       page([row({})], { nextCursor: 'cursor-2' }),
     );
     listInvitations.mockRejectedValueOnce(new Error('boom'));
+    listInvitations.mockResolvedValueOnce(
+      page([row({ id: 'mi-2', email: 'bia@example.com' })]),
+    );
     const user = userEvent.setup();
 
     renderInvitations();
@@ -369,13 +421,62 @@ describe('Invitations page', () => {
 
     expect(await screen.findByText(m.invitations_load_failed())).toBeVisible();
     expect(await rows()).toHaveLength(1);
+    const retry = screen.getByRole('button', { name: m.invitations_retry() });
+    expect(retry).toHaveClass('min-h-11');
+    await user.click(retry);
     expect(
-      screen.getByRole('button', { name: m.invitations_retry() }),
-    ).toBeEnabled();
+      await within(await cardList()).findByText('bia@example.com'),
+    ).toBeVisible();
+    expect(await rows()).toHaveLength(2);
   });
 });
 
 describe('Invitations filters and history', () => {
+  it('loads valid filters from the URL', async () => {
+    listInvitations.mockResolvedValue(page([]));
+    renderInvitations(
+      '/invitations?status=any&email=ana%40example.com&ministryId=11111111-1111-4111-8111-111111111111&invitedAs=leader',
+    );
+    await waitFor(() =>
+      expect(listInvitations).toHaveBeenCalledWith({
+        status: 'any',
+        email: 'ana@example.com',
+        ministryId: '11111111-1111-4111-8111-111111111111',
+        invitedAs: 'leader',
+      }),
+    );
+    expect(
+      screen.getByRole('searchbox', { name: m.invitations_filter_email() }),
+    ).toHaveValue('ana@example.com');
+  });
+
+  it('ignores malformed URL filters', async () => {
+    listInvitations.mockResolvedValue(page([]));
+    renderInvitations(
+      '/invitations?status=bad&email=%20%20&ministryId=bad&invitedAs=bad',
+    );
+    await waitFor(() => expect(listInvitations).toHaveBeenCalledWith({}));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      m.invitations_empty(),
+    );
+  });
+
+  it.each([
+    ['pending', () => m.invitations_empty()],
+    ['expired', () => m.invitations_empty_expired()],
+    ['accepted', () => m.invitations_empty_accepted()],
+    ['declined', () => m.invitations_empty_declined()],
+    ['revoked', () => m.invitations_empty_revoked()],
+    ['any', () => m.invitations_empty_history()],
+  ])('shows the %s empty copy and exactly one invitation action', async (status, copy) => {
+    listInvitations.mockResolvedValue(page([]));
+    renderInvitations(`/invitations?status=${status}`);
+    expect(await screen.findByRole('status')).toHaveTextContent(copy());
+    expect(
+      screen.getAllByRole('button', { name: m.invitations_invite_open() }),
+    ).toHaveLength(1);
+  });
+
   async function pick(label: string, option: string) {
     const user = userEvent.setup();
     await user.click(await screen.findByRole('combobox', { name: label }));

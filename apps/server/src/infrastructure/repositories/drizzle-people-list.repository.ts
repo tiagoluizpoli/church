@@ -10,11 +10,13 @@ import {
 import {
   and,
   asc,
+  count,
   eq,
   exists,
   ilike,
   inArray,
   isNull,
+  not,
   or,
   type SQL,
   sql,
@@ -26,6 +28,7 @@ import type {
   PeopleListRepository,
 } from '../../domain/contracts/infrastructure/people-list.repository';
 import type {
+  PeopleListCounts,
   PeopleListFilters,
   PeopleListMinistry,
   PeopleListPage,
@@ -68,6 +71,14 @@ interface MinistriesOfInput {
   userIds: string[];
 }
 
+const NO_PEOPLE: PeopleListCounts = {
+  total: 0,
+  admins: 0,
+  leaders: 0,
+  volunteers: 0,
+  withoutMinistry: 0,
+};
+
 /** Escape LIKE wildcards so the text is matched literally. */
 function containsPattern(value: string): string {
   return `%${value.replace(/[\\%_]/g, '\\$&')}%`;
@@ -108,7 +119,10 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
     ) {
       throw new PeopleMinistryNotFoundError();
     }
-    if (!isAdmin && ministries.length === 0) return { items: [], options };
+    if (!isAdmin && ministries.length === 0) {
+      return { items: [], options, counts: NO_PEOPLE };
+    }
+    const counts = await this.countScope({ churchId, scope });
 
     const position = cursor ? decodePeopleListCursor({ cursor }) : undefined;
     const name = sql`${user.name} COLLATE "C"`;
@@ -157,7 +171,39 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
           ? encodePeopleListCursor({ name: last.name, id: last.id })
           : undefined,
       options,
+      counts,
     };
+  }
+
+  /** Header totals for the whole scope in one aggregate; the filters and cursor never apply. */
+  private async countScope({
+    churchId,
+    scope,
+  }: VisibleScopeInput): Promise<PeopleListCounts> {
+    const countWhere = (condition: SQL) =>
+      sql<number>`count(*) filter (where ${condition})`.mapWith(Number);
+    const [row] = await getClient({ db: this.db })
+      .select({
+        total: count(),
+        admins: countWhere(eq(churchMember.role, 'admin')),
+        leaders: countWhere(
+          this.hasVisibleMembership({ churchId, scope, level: 'leader' }),
+        ),
+        volunteers: countWhere(
+          this.hasVisibleMembership({ churchId, scope, level: 'volunteer' }),
+        ),
+        withoutMinistry: countWhere(
+          not(this.hasVisibleMembership({ churchId, scope })),
+        ),
+      })
+      .from(churchMember)
+      .where(
+        and(
+          eq(churchMember.organizationId, churchId),
+          this.memberFilter({ churchId, scope, filters: {} }),
+        ),
+      );
+    return row ?? NO_PEOPLE;
   }
 
   async get({

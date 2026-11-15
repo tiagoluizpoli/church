@@ -55,22 +55,32 @@ function person(
   };
 }
 
+const KIDS_ID = '6f1c2a4e-8b3d-4c5e-9a7f-1b2c3d4e5f60';
+
 const OPTIONS = {
   ministries: [
-    { id: 'm-kids', name: 'Kids' },
+    { id: KIDS_ID, name: 'Kids' },
     { id: 'm-worship', name: 'Worship' },
   ],
 };
 
+const COUNTS = {
+  total: 0,
+  admins: 0,
+  leaders: 0,
+  volunteers: 0,
+  withoutMinistry: 0,
+};
+
 function page(
   items: ListPeople200ItemsItem[],
-  extra: Partial<ListPeople200> = {},
+  { counts = COUNTS, ...extra }: Partial<ListPeople200> = {},
 ): ListPeople200 {
-  return { items, options: OPTIONS, ...extra };
+  return { ...extra, items, options: OPTIONS, counts };
 }
 
-function renderPeople() {
-  return renderRoute({ initialPath: '/people', churchTimezone: 'UTC' });
+function renderPeople(initialPath = '/people') {
+  return renderRoute({ initialPath, churchTimezone: 'UTC' });
 }
 
 async function rows() {
@@ -94,7 +104,7 @@ describe('People directory', () => {
         person({
           isAdmin: true,
           ministries: [
-            { id: 'm-kids', name: 'Kids', ministryAccessLevel: 'leader' },
+            { id: KIDS_ID, name: 'Kids', ministryAccessLevel: 'leader' },
             {
               id: 'm-worship',
               name: 'Worship',
@@ -130,6 +140,33 @@ describe('People directory', () => {
     expect(listPeople).toHaveBeenCalledWith({});
   });
 
+  it('shows the server scope counts in the header, not the loaded row count', async () => {
+    listPeople.mockResolvedValue(
+      page([person({})], {
+        counts: {
+          total: 143,
+          admins: 2,
+          leaders: 9,
+          volunteers: 120,
+          withoutMinistry: 14,
+        },
+      }),
+    );
+
+    renderPeople();
+
+    await rows();
+    expect(screen.getByTestId('people-total-chip')).toHaveTextContent('143');
+    expect(screen.getByTestId('people-admins-chip')).toHaveTextContent('2');
+    expect(screen.getByTestId('people-leaders-chip')).toHaveTextContent('9');
+    expect(screen.getByTestId('people-volunteers-chip')).toHaveTextContent(
+      '120',
+    );
+    expect(screen.getByTestId('people-no-ministry-chip')).toHaveTextContent(
+      '14',
+    );
+  });
+
   it('gives a Volunteer no-access without reading people', async () => {
     getCallerCapabilities.mockResolvedValue(callerCapabilitiesFixture({}));
 
@@ -158,11 +195,11 @@ describe('People directory', () => {
       screen.getByLabelText(m.people_filter_search()),
       '  caio  ',
     );
-    await user.click(
-      screen.getByRole('button', { name: m.invitations_filter_search() }),
-    );
     await waitFor(() =>
       expect(listPeople).toHaveBeenLastCalledWith({ search: 'caio' }),
+    );
+    expect(screen.getByLabelText(m.people_filter_search())).toHaveValue(
+      '  caio  ',
     );
     await waitFor(async () => expect(await rows()).toHaveLength(1));
   });
@@ -195,9 +232,6 @@ describe('People directory', () => {
 
     listPeople.mockResolvedValue(page([]));
     await user.type(screen.getByLabelText(m.people_filter_search()), 'zzz');
-    await user.click(
-      screen.getByRole('button', { name: m.invitations_filter_search() }),
-    );
     expect(
       await screen.findByText(m.people_empty_filtered()),
     ).toBeInTheDocument();
@@ -206,6 +240,74 @@ describe('People directory', () => {
       screen.getByRole('button', { name: m.invitations_clear_filters() }),
     );
     expect(await rows()).toHaveLength(1);
+    expect(screen.getByLabelText(m.people_filter_search())).toHaveValue('');
+  });
+
+  it('searches live without a submit button and keeps the filters in the URL', async () => {
+    const user = userEvent.setup();
+    listPeople.mockResolvedValue(page([person({})]));
+
+    const { router } = renderPeople();
+    await rows();
+    expect(
+      screen.queryByRole('button', { name: m.invitations_filter_search() }),
+    ).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText(m.people_filter_search()), 'ana');
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ search: 'ana' }),
+    );
+    await user.click(screen.getByLabelText(m.people_filter_access()));
+    await user.click(
+      await screen.findByRole('option', {
+        name: m.ministry_invitation_access_leader(),
+      }),
+    );
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({
+        search: 'ana',
+        access: 'leader',
+      }),
+    );
+  });
+
+  it('restores the filters from the URL and drops malformed ones', async () => {
+    listPeople.mockResolvedValue(page([person({})]));
+
+    renderPeople(`/people?search=ana&ministryId=${KIDS_ID}&access=owner`);
+
+    await rows();
+    expect(listPeople).toHaveBeenCalledWith({
+      search: 'ana',
+      ministryId: KIDS_ID,
+    });
+    expect(screen.getByLabelText(m.people_filter_search())).toHaveValue('ana');
+    expect(screen.getByLabelText(m.people_filter_ministry())).toHaveTextContent(
+      'Kids',
+    );
+  });
+
+  it('retries a failed next page in place', async () => {
+    const user = userEvent.setup();
+    listPeople
+      .mockResolvedValueOnce(page([person({})], { nextCursor: 'c1' }))
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue(page([person({ id: 'mem-2', name: 'Bia Lima' })]));
+
+    renderPeople();
+    await rows();
+    await user.click(
+      screen.getByRole('button', { name: m.invitations_load_more() }),
+    );
+    expect(await screen.findByText(m.people_load_failed())).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: m.invitations_load_more() }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: m.invitations_retry() }),
+    );
+    await waitFor(async () => expect(await rows()).toHaveLength(2));
+    expect(listPeople).toHaveBeenLastCalledWith({ cursor: 'c1' });
+    expect(screen.queryByText(m.people_load_failed())).not.toBeInTheDocument();
   });
 
   it('recovers from a failed load with retry', async () => {

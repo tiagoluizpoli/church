@@ -446,6 +446,35 @@ describe('GET /people', () => {
     expect((await list(`?ministryId=${missing}`)).res.statusCode).toBe(404);
   });
 
+  it('counts the whole admin scope, ignoring filters and the cursor', async () => {
+    signIn('admin');
+    const expected = {
+      total: 11,
+      admins: 1,
+      leaders: 3,
+      volunteers: 3,
+      withoutMinistry: 6,
+    };
+    const first = await list('?limit=1');
+    expect(first.body.counts).toEqual(expected);
+    const next = await list(`?limit=1&cursor=${first.body.nextCursor}`);
+    expect(next.body.counts).toEqual(expected);
+    const filtered = await list(`?ministryId=${kidsId}&access=leader`);
+    expect(filtered.body.counts).toEqual(expected);
+  });
+
+  it('counts only the members a leader can see', async () => {
+    signIn('wlkv');
+    // Walt volunteers in Kids, which this leader cannot see.
+    expect((await list('?search=wes')).body.counts).toEqual({
+      total: 4,
+      admins: 0,
+      leaders: 3,
+      volunteers: 1,
+      withoutMinistry: 0,
+    });
+  });
+
   it('keeps Church B data out', async () => {
     signIn('admin');
     const { body } = await list();

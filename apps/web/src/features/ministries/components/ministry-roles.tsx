@@ -106,7 +106,6 @@ export function MinistryRoles({ ministryId }: MinistryRolesProps) {
             {
               id: 'actions',
               name: m.people_column_actions(),
-              hideName: true,
             },
           ]}
           items={roles.data?.roles ?? []}

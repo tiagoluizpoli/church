@@ -52,7 +52,7 @@ const USUAL_SETUP_COLUMNS: DataTableColumn[] = [
   { id: 'name', name: m.usual_setup_col_block(), isRowHeader: true },
   { id: 'time', name: m.usual_setup_col_time() },
   { id: 'assignment', name: m.usual_setup_col_assignment() },
-  { id: 'actions', name: m.people_column_actions(), hideName: true },
+  { id: 'actions', name: m.people_column_actions() },
 ];
 
 function flattenGroups(groups: TemplateGroup[]): UsualSetupRow[] {

@@ -62,15 +62,23 @@ const OPTIONS = {
   ],
 };
 
+const COUNTS = {
+  total: 0,
+  admins: 0,
+  leaders: 0,
+  volunteers: 0,
+  withoutMinistry: 0,
+};
+
 function page(
   items: ListPeople200ItemsItem[],
   extra: Partial<ListPeople200> = {},
 ): ListPeople200 {
-  return { items, options: OPTIONS, ...extra };
+  return { items, options: OPTIONS, counts: COUNTS, ...extra };
 }
 
-function renderPeople() {
-  return renderRoute({ initialPath: '/people', churchTimezone: 'UTC' });
+function renderPeople(initialPath = '/people') {
+  return renderRoute({ initialPath, churchTimezone: 'UTC' });
 }
 
 async function rows() {
@@ -158,11 +166,11 @@ describe('People directory', () => {
       screen.getByLabelText(m.people_filter_search()),
       '  caio  ',
     );
-    await user.click(
-      screen.getByRole('button', { name: m.invitations_filter_search() }),
-    );
     await waitFor(() =>
       expect(listPeople).toHaveBeenLastCalledWith({ search: 'caio' }),
+    );
+    expect(screen.getByLabelText(m.people_filter_search())).toHaveValue(
+      '  caio  ',
     );
     await waitFor(async () => expect(await rows()).toHaveLength(1));
   });
@@ -195,9 +203,6 @@ describe('People directory', () => {
 
     listPeople.mockResolvedValue(page([]));
     await user.type(screen.getByLabelText(m.people_filter_search()), 'zzz');
-    await user.click(
-      screen.getByRole('button', { name: m.invitations_filter_search() }),
-    );
     expect(
       await screen.findByText(m.people_empty_filtered()),
     ).toBeInTheDocument();
@@ -206,6 +211,74 @@ describe('People directory', () => {
       screen.getByRole('button', { name: m.invitations_clear_filters() }),
     );
     expect(await rows()).toHaveLength(1);
+    expect(screen.getByLabelText(m.people_filter_search())).toHaveValue('');
+  });
+
+  it('searches live without a submit button and keeps the filters in the URL', async () => {
+    const user = userEvent.setup();
+    listPeople.mockResolvedValue(page([person({})]));
+
+    const { router } = renderPeople();
+    await rows();
+    expect(
+      screen.queryByRole('button', { name: m.invitations_filter_search() }),
+    ).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText(m.people_filter_search()), 'ana');
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ search: 'ana' }),
+    );
+    await user.click(screen.getByLabelText(m.people_filter_access()));
+    await user.click(
+      await screen.findByRole('option', {
+        name: m.ministry_invitation_access_leader(),
+      }),
+    );
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({
+        search: 'ana',
+        access: 'leader',
+      }),
+    );
+  });
+
+  it('restores the filters from the URL and drops malformed ones', async () => {
+    listPeople.mockResolvedValue(page([person({})]));
+
+    renderPeople('/people?search=ana&ministryId=m-kids&access=owner');
+
+    await rows();
+    expect(listPeople).toHaveBeenCalledWith({
+      search: 'ana',
+      ministryId: 'm-kids',
+    });
+    expect(screen.getByLabelText(m.people_filter_search())).toHaveValue('ana');
+    expect(screen.getByLabelText(m.people_filter_ministry())).toHaveTextContent(
+      'Kids',
+    );
+  });
+
+  it('retries a failed next page in place', async () => {
+    const user = userEvent.setup();
+    listPeople
+      .mockResolvedValueOnce(page([person({})], { nextCursor: 'c1' }))
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValue(page([person({ id: 'mem-2', name: 'Bia Lima' })]));
+
+    renderPeople();
+    await rows();
+    await user.click(
+      screen.getByRole('button', { name: m.invitations_load_more() }),
+    );
+    expect(await screen.findByText(m.people_load_failed())).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: m.invitations_load_more() }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: m.invitations_retry() }),
+    );
+    await waitFor(async () => expect(await rows()).toHaveLength(2));
+    expect(listPeople).toHaveBeenLastCalledWith({ cursor: 'c1' });
+    expect(screen.queryByText(m.people_load_failed())).not.toBeInTheDocument();
   });
 
   it('recovers from a failed load with retry', async () => {

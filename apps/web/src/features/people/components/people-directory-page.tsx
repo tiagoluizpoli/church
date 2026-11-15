@@ -1,9 +1,10 @@
 import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +30,9 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 
 const ANY = 'any';
+const SEARCH_DEBOUNCE_MS = 300;
+const FIELD = 'flex flex-col gap-1';
+const TRIGGER = 'min-h-11 w-full md:min-h-0 md:w-48';
 const ACCESS_VALUES = ['admin', 'leader', 'volunteer'] as const;
 
 function accessLabel(value: string): string {
@@ -109,18 +113,35 @@ interface FilterBarProps {
 }
 
 function FilterBar({ filters, options, onChange }: FilterBarProps) {
-  const [search, setSearch] = useState(filters.search ?? '');
+  const committed = filters.search ?? '';
+  const [search, setSearch] = useState(committed);
+  const [syncedSearch, setSyncedSearch] = useState(committed);
+  // A URL change from outside (clear filters, back/forward) replaces the typed text; our own commit keeps it as typed.
+  if (committed !== syncedSearch) {
+    setSyncedSearch(committed);
+    if (committed !== search.trim()) setSearch(committed);
+  }
+  const commitSearch = () =>
+    onChange({ ...filters, search: search.trim() || undefined });
+  useEffect(() => {
+    if (search.trim() === committed) return;
+    const timer = setTimeout(
+      () => onChange({ ...filters, search: search.trim() || undefined }),
+      SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [search, committed, filters, onChange]);
   const showMinistry = (options?.ministries.length ?? 0) > 0;
   return (
     <form
       aria-label={m.people_filters_label()}
-      className="flex flex-wrap items-end gap-3"
+      className="flex flex-col gap-3 md:flex-row md:items-end"
       onSubmit={(event) => {
         event.preventDefault();
-        onChange({ ...filters, search: search.trim() || undefined });
+        commitSearch();
       }}
     >
-      <div className="min-w-48 flex-1 space-y-1">
+      <div className={`${FIELD} min-w-48 flex-1`}>
         <Label htmlFor="people-filter-search">{m.people_filter_search()}</Label>
         <Input
           id="people-filter-search"
@@ -128,10 +149,11 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
           value={search}
           maxLength={254}
           onChange={(event) => setSearch(event.target.value)}
+          className="min-h-11 md:min-h-0"
         />
       </div>
       {showMinistry ? (
-        <div className="space-y-1">
+        <div className={FIELD}>
           <Label htmlFor="people-filter-ministry">
             {m.people_filter_ministry()}
           </Label>
@@ -144,7 +166,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
               })
             }
           >
-            <SelectTrigger id="people-filter-ministry" className="w-48">
+            <SelectTrigger id="people-filter-ministry" className={TRIGGER}>
               <SelectValue>
                 {options?.ministries.find((x) => x.id === filters.ministryId)
                   ?.name ?? m.invitations_filter_any()}
@@ -161,7 +183,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
           </Select>
         </div>
       ) : null}
-      <div className="space-y-1">
+      <div className={FIELD}>
         <Label htmlFor="people-filter-access">{m.people_filter_access()}</Label>
         <Select
           value={filters.access ?? ANY}
@@ -173,7 +195,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
             })
           }
         >
-          <SelectTrigger id="people-filter-access" className="w-40">
+          <SelectTrigger id="people-filter-access" className={TRIGGER}>
             <SelectValue>
               {filters.access
                 ? accessLabel(filters.access)
@@ -190,16 +212,21 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" variant="outline">
-        {m.invitations_filter_search()}
-      </Button>
     </form>
   );
 }
 
+interface PeopleDirectoryPageProps {
+  /** The route's search params; the page never keeps its own copy. */
+  filters: PeopleFilters;
+  onFiltersChange: (filters: PeopleFilters) => void;
+}
+
 /** The Active Church's members within the caller's authority, filterable and paged by name. */
-export function PeopleDirectoryPage() {
-  const [filters, setFilters] = useState<PeopleFilters>({});
+export function PeopleDirectoryPage({
+  filters,
+  onFiltersChange,
+}: PeopleDirectoryPageProps) {
   const query = usePeopleList({ filters });
   // A refused refetch keeps React Query's previous pages; drop them so refused rows and options are not shown.
   const data =
@@ -220,10 +247,9 @@ export function PeopleDirectoryPage() {
         autoFocusTitle
       />
       <FilterBar
-        key={filters.search ?? ''}
         filters={filters}
         options={options}
-        onChange={setFilters}
+        onChange={onFiltersChange}
       />
       {query.isError && items.length === 0 ? (
         <Alert variant="destructive">
@@ -240,10 +266,17 @@ export function PeopleDirectoryPage() {
           </AlertDescription>
         </Alert>
       ) : loading ? (
-        <div className="grid gap-3" data-testid="people-loading">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
+        <Card className="surface-panel">
+          {/* Rows at the real heights (mobile card, 41px desktop row) so the list does not jump in. */}
+          <CardContent
+            className="grid gap-3 md:gap-1"
+            data-testid="people-loading"
+          >
+            {[0, 1, 2].map((row) => (
+              <Skeleton key={row} className="h-27 w-full md:h-[41px]" />
+            ))}
+          </CardContent>
+        </Card>
       ) : items.length === 0 ? (
         <div className="space-y-2" role="status">
           <p className="text-muted-foreground">
@@ -253,60 +286,74 @@ export function PeopleDirectoryPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setFilters({})}
+              className="min-h-11 md:min-h-0"
+              onClick={() => onFiltersChange({})}
             >
               {m.invitations_clear_filters()}
             </Button>
           ) : null}
         </div>
       ) : (
-        <>
-          <DataTable
-            aria-label={m.people_list_label()}
-            columns={personColumns()}
-            items={items}
-            rowId={({ item }) => item.id}
-            renderCell={({ item, column }) => {
-              if (column.id === 'name') return <PersonName person={item} />;
-              if (column.id === 'email')
-                return <span className="break-all">{item.email}</span>;
-              if (column.id === 'ministries')
-                return <PersonMinistries person={item} />;
-              if (column.id === 'actions')
-                return <PersonAction person={item} />;
-              return null;
-            }}
-            renderMobileCard={({ item }) => (
-              <div className="surface-subtle workspace-panel flex flex-wrap items-end gap-x-3 gap-y-2">
-                <div className="min-w-0 flex-1 basis-40 space-y-2">
-                  <PersonName person={item} />
-                  <p className="break-all text-muted-foreground text-sm">
-                    {item.email}
-                  </p>
-                  <PersonMinistries person={item} />
+        <Card className="surface-panel">
+          <CardContent className="space-y-3">
+            <DataTable
+              aria-label={m.people_list_label()}
+              columns={personColumns()}
+              items={items}
+              rowId={({ item }) => item.id}
+              renderCell={({ item, column }) => {
+                if (column.id === 'name') return <PersonName person={item} />;
+                if (column.id === 'email')
+                  return <span className="break-all">{item.email}</span>;
+                if (column.id === 'ministries')
+                  return <PersonMinistries person={item} />;
+                if (column.id === 'actions')
+                  return <PersonAction person={item} />;
+                return null;
+              }}
+              renderMobileCard={({ item }) => (
+                <div className="surface-subtle workspace-panel flex flex-wrap items-end gap-x-3 gap-y-2">
+                  <div className="min-w-0 flex-1 basis-40 space-y-2">
+                    <PersonName person={item} />
+                    <p className="break-all text-muted-foreground text-sm">
+                      {item.email}
+                    </p>
+                    <PersonMinistries person={item} />
+                  </div>
+                  <PersonAction person={item} />
                 </div>
-                <PersonAction person={item} />
-              </div>
-            )}
-          />
-          {query.isFetchNextPageError ? (
-            <Alert variant="destructive">
-              <AlertDescription>{m.people_load_failed()}</AlertDescription>
-            </Alert>
-          ) : null}
-          {query.hasNextPage ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={query.isFetchingNextPage}
-              onClick={() => query.fetchNextPage()}
-            >
-              {query.isFetchingNextPage
-                ? m.invitations_loading_more()
-                : m.invitations_load_more()}
-            </Button>
-          ) : null}
-        </>
+              )}
+            />
+            {query.isFetchNextPageError ? (
+              <Alert variant="destructive">
+                <AlertDescription className="flex items-center gap-3">
+                  <span>{m.people_load_failed()}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={query.isFetchingNextPage}
+                    onClick={() => query.fetchNextPage()}
+                  >
+                    {m.invitations_retry()}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {query.hasNextPage && !query.isFetchNextPageError ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={query.isFetchingNextPage}
+                onClick={() => query.fetchNextPage()}
+              >
+                {query.isFetchingNextPage
+                  ? m.invitations_loading_more()
+                  : m.invitations_load_more()}
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
       )}
     </WorkspacePage>
   );

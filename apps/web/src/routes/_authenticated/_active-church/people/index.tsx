@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { z } from 'zod';
 import { PeopleDirectoryPage } from '@/features/people/components/people-directory-page';
 import type { PeopleFilters } from '@/features/people/people-queries';
@@ -20,13 +20,16 @@ export const Route = createFileRoute('/_authenticated/_active-church/people/')({
 function PeoplePage() {
   const filters = Route.useSearch();
   const navigate = Route.useNavigate();
+  const router = useRouter();
   return (
     <CapabilityGate allow={isAdminOrLeader} refusal="no-access">
       <PeopleDirectoryPage
         filters={filters}
-        onFiltersChange={(next: PeopleFilters) =>
-          navigate({ search: next, replace: true })
-        }
+        onFiltersChange={(next: PeopleFilters) => {
+          // A late debounced search must not pull the user back from a person they opened.
+          if (router.latestLocation.pathname !== '/people') return;
+          navigate({ search: next, replace: true });
+        }}
       />
     </CapabilityGate>
   );

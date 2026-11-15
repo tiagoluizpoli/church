@@ -1,6 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -121,15 +121,19 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
     setSyncedSearch(committed);
     if (committed !== search.trim()) setSearch(committed);
   }
-  const commitSearch = () =>
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Enter commits now and cancels the pending debounce, so it cannot fire after a click away.
+  const commitSearch = () => {
+    clearTimeout(timer.current);
     onChange({ ...filters, search: search.trim() || undefined });
+  };
   useEffect(() => {
     if (search.trim() === committed) return;
-    const timer = setTimeout(
+    timer.current = setTimeout(
       () => onChange({ ...filters, search: search.trim() || undefined }),
       SEARCH_DEBOUNCE_MS,
     );
-    return () => clearTimeout(timer);
+    return () => clearTimeout(timer.current);
   }, [search, committed, filters, onChange]);
   const showMinistry = (options?.ministries.length ?? 0) > 0;
   return (

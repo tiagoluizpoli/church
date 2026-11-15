@@ -30,6 +30,7 @@ const mockGetSession = vi.mocked(
 const ministryManager = {
   listByChurch: vi.fn(),
   listByLeader: vi.fn(),
+  summarize: vi.fn(async () => new Map()),
 };
 
 const ministryInvitationManager = {

@@ -40,7 +40,25 @@ export interface ArchiveMinistryInput {
   callerId: UserId;
 }
 
+export interface MinistrySummary {
+  /** Active (not archived) Sectors, as the Sectors tab lists them. */
+  sectorCount: number;
+  /** Active (not archived) Roles, as the Roles tab lists them. */
+  roleCount: number;
+  /** Any Usual setup block of the Ministry needs review. */
+  needsReview: boolean;
+}
+
+export interface SummarizeMinistriesInput {
+  churchId: ChurchId;
+  ministries: Ministry[];
+}
+
 export interface IMinistryManager {
+  /** A fixed number of queries whatever the list size; one entry per given Ministry. */
+  summarize(
+    input: SummarizeMinistriesInput,
+  ): Promise<Map<MinistryId, MinistrySummary>>;
   /** Active Ministries of the Church, alphabetical ignoring case. */
   listByChurch(churchId: ChurchId): Promise<Ministry[]>;
   /** Active Ministries the leader leads, alphabetical ignoring case. */

@@ -17,6 +17,11 @@ export interface RoleRepository {
   /** Active Roles, alphabetical ignoring case. */
   listActiveByMinistry(input: ListRolesByMinistryInput): Promise<Role[]>;
 
+  /** Active Role count per Ministry in one query; Ministries with none are absent. */
+  countActiveByMinistry(
+    input: CountActiveRolesByMinistryInput,
+  ): Promise<Map<MinistryId, number>>;
+
   /** `RoleNameInUseError` when an active Role of the Ministry has the name, ignoring case. */
   create(input: CreateRoleRecordInput): Promise<Role>;
 
@@ -50,6 +55,11 @@ export interface ListRolesByMinistryInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   tx?: TransactionContext;
+}
+
+export interface CountActiveRolesByMinistryInput {
+  churchId: ChurchId;
+  ministryIds: MinistryId[];
 }
 
 export interface CreateRoleRecordInput {

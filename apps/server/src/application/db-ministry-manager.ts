@@ -1,21 +1,28 @@
 import { NotFoundError } from '@church/core';
 import { now, toDate } from '@church/time';
-import type { ChurchId } from '../domain/branded-ids';
+import type { ChurchId, MinistryId } from '../domain/branded-ids';
 import type {
   ArchiveMinistryInput,
   CreateMinistryInput,
   GetActiveMinistryInput,
   IMinistryManager,
   ListMinistriesByLeaderInput,
+  MinistrySummary,
   RenameMinistryInput,
   SetDefaultDirectionInput,
+  SummarizeMinistriesInput,
 } from '../domain/contracts/application/ministry-manager';
+import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
+import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
+import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Ministry } from '../domain/entities/ministry';
 import { MinistryInUseError } from '../domain/errors/ministry-in-use';
+import { usualSetupNeedsReview } from '../domain/services/usual-setup-planner';
 import { revokeMinistryHalf } from './invitation-revocation';
 
 interface DbMinistryManagerDependencies {
@@ -23,6 +30,10 @@ interface DbMinistryManagerDependencies {
   volunteerRepo: VolunteerRepository;
   invitationRepo: MinistryInvitationRepository;
   unitOfWork: UnitOfWork;
+  sectorRepo: SectorRepository;
+  roleRepo: RoleRepository;
+  usualSetupRepo: UsualSetupRepository;
+  templateRepo: EventTemplateRepository;
 }
 
 export class DbMinistryManager implements IMinistryManager {
@@ -30,17 +41,64 @@ export class DbMinistryManager implements IMinistryManager {
   private readonly volunteerRepo: VolunteerRepository;
   private readonly invitationRepo: MinistryInvitationRepository;
   private readonly unitOfWork: UnitOfWork;
+  private readonly sectorRepo: SectorRepository;
+  private readonly roleRepo: RoleRepository;
+  private readonly usualSetupRepo: UsualSetupRepository;
+  private readonly templateRepo: EventTemplateRepository;
 
   constructor({
     ministryRepo,
     volunteerRepo,
     invitationRepo,
     unitOfWork,
+    sectorRepo,
+    roleRepo,
+    usualSetupRepo,
+    templateRepo,
   }: DbMinistryManagerDependencies) {
     this.ministryRepo = ministryRepo;
     this.volunteerRepo = volunteerRepo;
     this.invitationRepo = invitationRepo;
     this.unitOfWork = unitOfWork;
+    this.sectorRepo = sectorRepo;
+    this.roleRepo = roleRepo;
+    this.usualSetupRepo = usualSetupRepo;
+    this.templateRepo = templateRepo;
+  }
+
+  async summarize({
+    churchId,
+    ministries,
+  }: SummarizeMinistriesInput): Promise<Map<MinistryId, MinistrySummary>> {
+    const ministryIds = ministries.map((ministry) => ministry.id);
+    const [sectorCounts, roleCounts, setups, templates] = await Promise.all([
+      this.sectorRepo.countActiveByMinistry({ churchId, ministryIds }),
+      this.roleRepo.countActiveByMinistry({ churchId, ministryIds }),
+      this.usualSetupRepo.listByChurch({ churchId }),
+      this.templateRepo.list({ churchId }),
+    ]);
+    const entries = new Map(
+      setups.map((entry) => [
+        `${entry.ministryId}:${entry.sourceTemplateTimeBlockId}`,
+        entry,
+      ]),
+    );
+    const blocks = templates.flatMap((template) => template.blocks);
+    return new Map(
+      ministryIds.map((id) => [
+        id,
+        {
+          sectorCount: sectorCounts.get(id) ?? 0,
+          roleCount: roleCounts.get(id) ?? 0,
+          needsReview: blocks.some((block) =>
+            usualSetupNeedsReview({
+              entry: entries.get(`${id}:${block.id}`),
+              block,
+            }),
+          ),
+        },
+      ]),
+    );
   }
 
   async listByChurch(churchId: ChurchId): Promise<Ministry[]> {

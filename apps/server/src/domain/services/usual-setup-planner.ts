@@ -8,7 +8,9 @@ import {
   toInstantAfter,
   toTimeOfDay,
 } from '@church/time';
+import type { TemplateTimeBlock } from '../entities/template-time-block';
 import type {
+  UsualSetup,
   UsualSetupHeadcount,
   UsualSetupShiftSplit,
 } from '../entities/usual-setup';
@@ -207,4 +209,24 @@ export function planUsualSetupShifts({
       headcounts: headcounts.filter((count) => count.shiftIndex === shiftIndex),
     })),
   };
+}
+
+export interface UsualSetupNeedsReviewInput {
+  entry: UsualSetup | undefined;
+  block: TemplateTimeBlock;
+}
+
+/** A serving manual split that no longer fits its Time block's current bounds. */
+export function usualSetupNeedsReview({
+  entry,
+  block,
+}: UsualSetupNeedsReviewInput): boolean {
+  return (
+    entry?.serves === true &&
+    entry.shiftSplit.kind === 'manual' &&
+    !splitFitsBlock({
+      shiftSplit: entry.shiftSplit,
+      ...wallClockUtcBounds(block),
+    })
+  );
 }

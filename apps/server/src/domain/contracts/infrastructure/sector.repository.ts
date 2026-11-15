@@ -10,6 +10,11 @@ export interface ListSectorsByMinistryInput {
   tx?: TransactionContext;
 }
 
+export interface CountActiveSectorsByMinistryInput {
+  churchId: ChurchId;
+  ministryIds: MinistryId[];
+}
+
 export interface GetSectorInput {
   churchId: ChurchId;
   sectorId: SectorId;
@@ -56,6 +61,10 @@ export interface ListSectorArchiveBlockersInput {
 export interface SectorRepository {
   /** The Ministry's active Sectors, the choices for new use, ordered by name. */
   listByMinistry(input: ListSectorsByMinistryInput): Promise<Sector[]>;
+  /** Active Sector count per Ministry in one query; Ministries with none are absent. */
+  countActiveByMinistry(
+    input: CountActiveSectorsByMinistryInput,
+  ): Promise<Map<MinistryId, number>>;
   /** Any Sector of the Church, archived too, for historical reads. Throws `NotFoundError` when absent. */
   getById(input: GetSectorInput): Promise<Sector>;
   /**

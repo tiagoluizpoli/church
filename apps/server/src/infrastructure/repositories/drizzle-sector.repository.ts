@@ -11,10 +11,11 @@ import {
   usualSetup,
 } from '@church/db';
 import { nowAsDate, toDate } from '@church/time';
-import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import type { ArchiveBlocker } from '../../domain/archive-blockers';
-import type { SectorId } from '../../domain/branded-ids';
+import type { MinistryId, SectorId } from '../../domain/branded-ids';
 import type {
+  CountActiveSectorsByMinistryInput,
   CreateSectorRecordInput,
   GetSectorInput,
   ListSectorArchiveBlockersInput,
@@ -90,6 +91,27 @@ export class DrizzleSectorRepository implements SectorRepository {
       )
       .orderBy(asc(sql`lower(${sector.name})`), asc(sector.id));
     return rows.map(mapSector);
+  }
+
+  async countActiveByMinistry({
+    churchId,
+    ministryIds,
+  }: CountActiveSectorsByMinistryInput): Promise<Map<MinistryId, number>> {
+    if (ministryIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({ ministryId: sector.ministryId, total: count() })
+      .from(sector)
+      .where(
+        and(
+          withChurchIsolation({ table: sector, churchId }),
+          inArray(sector.ministryId, ministryIds),
+          isNull(sector.archivedAt),
+        ),
+      )
+      .groupBy(sector.ministryId);
+    return new Map(
+      rows.map((row) => [row.ministryId as MinistryId, row.total]),
+    );
   }
 
   async getById(input: GetSectorInput): Promise<Sector> {

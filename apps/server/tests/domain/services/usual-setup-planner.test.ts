@@ -4,6 +4,7 @@ import type { RoleId, SectorId } from '@/domain/branded-ids';
 import {
   planUsualSetupShifts,
   splitFitsBlock,
+  usualSetupNeedsReview,
   wallClockUtcBounds,
 } from '@/domain/services/usual-setup-planner';
 
@@ -102,5 +103,31 @@ describe('usual setup planner', () => {
     expect(fits([span('09:00', '10:30'), span('10:00', '12:00')])).toBe(false);
     expect(fits([span('10:00', '10:00')])).toBe(false);
     expect(fits([span('09:00', '10:00'), span('11:00', '12:00')])).toBe(true);
+  });
+});
+
+describe('usualSetupNeedsReview', () => {
+  const block = { startTime: t('09:00'), endTime: t('11:00') } as never;
+  const entry = (serves: boolean, shiftSplit: unknown) =>
+    ({ serves, shiftSplit }) as never;
+  const overrun = {
+    kind: 'manual',
+    spans: [span('09:00', '10:00'), span('10:00', '12:00')],
+  };
+
+  it('flags only a serving manual split that no longer fits the block', () => {
+    expect(usualSetupNeedsReview({ entry: entry(true, overrun), block })).toBe(
+      true,
+    );
+    expect(usualSetupNeedsReview({ entry: entry(false, overrun), block })).toBe(
+      false,
+    );
+    expect(
+      usualSetupNeedsReview({
+        entry: entry(true, { kind: 'equal', count: 2 }),
+        block,
+      }),
+    ).toBe(false);
+    expect(usualSetupNeedsReview({ entry: undefined, block })).toBe(false);
   });
 });

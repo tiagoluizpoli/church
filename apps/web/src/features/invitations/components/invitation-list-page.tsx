@@ -543,14 +543,16 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
   );
 }
 
+interface InvitationListPageProps {
+  filters: InvitationFilters;
+  onFiltersChange: (filters: InvitationFilters) => void;
+}
+
 /** The Active Church's invitations and their history within the caller's authority, with Resend and Revoke where allowed. */
 export function InvitationListPage({
   filters,
   onFiltersChange,
-}: {
-  filters: InvitationFilters;
-  onFiltersChange: (filters: InvitationFilters) => void;
-}) {
+}: InvitationListPageProps) {
   const { churchTimezone } = useTimezone();
   const query = useInvitationList({ filters });
   const data =

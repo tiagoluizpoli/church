@@ -119,6 +119,13 @@ interface CountScopeInput extends FilterOptionsInput {
   now: Date;
 }
 
+interface TallyInput {
+  status: SQL;
+  expiresAt: SQL;
+  /** Extra condition an offer must meet to count as pending or expired. */
+  outstanding?: SQL;
+}
+
 interface ClosuresInput {
   churchId: string;
   rows: { kind: InvitationListKind; id: string; closureFacts: ClosureFacts }[];
@@ -302,11 +309,7 @@ export class DrizzleInvitationListRepository
     scope,
     now,
   }: CountScopeInput): Promise<InvitationListCounts> {
-    const tally = (
-      status: SQL,
-      expiresAt: SQL,
-      outstanding: SQL | undefined,
-    ) => {
+    const tally = ({ status, expiresAt, outstanding }: TallyInput) => {
       const when = (condition: SQL | undefined) =>
         sql<number>`count(*) filter (where ${condition ?? sql`true`})`.mapWith(
           Number,
@@ -335,12 +338,12 @@ export class DrizzleInvitationListRepository
     const [[ministryRow], [churchRow]] = await Promise.all([
       client
         .select(
-          tally(
-            sql`${ministryInvitation.status}`,
-            sql`${ministryInvitation.expiresAt}`,
+          tally({
+            status: sql`${ministryInvitation.status}`,
+            expiresAt: sql`${ministryInvitation.expiresAt}`,
             // Outstanding offers die with their Ministry; its history stays countable.
-            isNull(ministry.deletedAt),
-          ),
+            outstanding: isNull(ministry.deletedAt),
+          }),
         )
         .from(ministryInvitation)
         .innerJoin(ministry, eq(ministry.id, ministryInvitation.ministryId))
@@ -356,11 +359,10 @@ export class DrizzleInvitationListRepository
       scope.kind === 'church'
         ? client
             .select(
-              tally(
-                sql`${churchInvitation.status}`,
-                sql`${churchInvitation.expiresAt}`,
-                undefined,
-              ),
+              tally({
+                status: sql`${churchInvitation.status}`,
+                expiresAt: sql`${churchInvitation.expiresAt}`,
+              }),
             )
             .from(churchInvitation)
             .where(

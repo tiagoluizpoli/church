@@ -205,11 +205,13 @@ function createRepos(): Repos {
     getById: vi.fn(),
     listByMinistry: vi.fn(async () => []),
     listActiveByMinistry: vi.fn(async () => []),
+    countActiveByMinistry: vi.fn(async () => new Map()),
   } as unknown as RoleRepository;
 
   const sectorRepo: SectorRepository = {
     getById: vi.fn(),
     listByMinistry: vi.fn(async () => []),
+    countActiveByMinistry: vi.fn(async () => new Map()),
     lockActive: vi.fn(),
     create: vi.fn(),
     rename: vi.fn(),

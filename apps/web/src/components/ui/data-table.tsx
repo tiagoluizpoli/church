@@ -22,6 +22,8 @@ export interface DataTableColumn {
   name: string;
   allowsSorting?: boolean;
   isRowHeader?: boolean;
+  /** Keeps the name for screen readers only, e.g. an actions column whose buttons name themselves. */
+  hideName?: boolean;
 }
 
 export interface DataTableItemInput<T> {
@@ -63,6 +65,8 @@ export interface DataTableProps<T extends object> {
    * `'actions'`; ignored if `rowActions` is omitted. */
   actionsColumnId?: string;
   rowTestId?: (input: DataTableItemInput<T>) => string | undefined;
+  /** Extra classes for a desktop row, e.g. to mark one that needs attention. */
+  rowClassName?: (input: DataTableItemInput<T>) => string | undefined;
   /** `data-testid` of the mobile list container. Defaults to
    * `'data-table-mobile-list'`. */
   mobileListTestId?: string;
@@ -118,6 +122,7 @@ export function DataTable<T extends object>({
   rowActions,
   actionsColumnId = 'actions',
   rowTestId,
+  rowClassName,
   mobileListTestId = 'data-table-mobile-list',
   mobileListHeader,
   sortDescriptor,
@@ -184,7 +189,11 @@ export function DataTable<T extends object>({
                 isRowHeader={column.isRowHeader}
                 allowsSorting={column.allowsSorting}
               >
-                {column.name}
+                {column.hideName ? (
+                  <span className="sr-only">{column.name}</span>
+                ) : (
+                  column.name
+                )}
               </TableColumn>
             )}
           </TableHeader>
@@ -198,6 +207,7 @@ export function DataTable<T extends object>({
                   id={id}
                   columns={columns}
                   data-testid={rowTestId?.({ item })}
+                  className={rowClassName?.({ item })}
                 >
                   {(column) => (
                     <TableCell>

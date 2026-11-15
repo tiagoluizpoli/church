@@ -24,10 +24,14 @@ import { MinistryController } from '@/api/controllers/ministry-controller';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryInvitationRepository } from '@/infrastructure/repositories/drizzle-ministry-invitation.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -76,6 +80,10 @@ beforeAll(async () => {
         config: appConfig,
       }),
       unitOfWork: new DrizzleUnitOfWork({ db }),
+      sectorRepo: new DrizzleSectorRepository({ db }),
+      roleRepo: new DrizzleRoleRepository({ db }),
+      usualSetupRepo: new DrizzleUsualSetupRepository({ db }),
+      templateRepo: new DrizzleEventTemplateRepository({ db }),
     }),
     ministryInvitationManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,

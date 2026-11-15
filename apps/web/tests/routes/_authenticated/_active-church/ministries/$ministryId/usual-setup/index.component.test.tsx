@@ -72,9 +72,21 @@ function renderList() {
 }
 
 function rowsOf(templateName: string) {
-  return within(screen.getByRole('list', { name: templateName }))
-    .getAllByRole('link')
-    .map((row) => row.textContent);
+  const list = screen.getByTestId('data-table-mobile-list');
+  const items = within(list).getAllByRole('listitem');
+  let collecting = false;
+  const results: string[] = [];
+  for (const item of items) {
+    const links = within(item).queryAllByRole('link');
+    if (!collecting) {
+      if (item.textContent?.includes(templateName)) collecting = true;
+    } else if (links.length === 0) {
+      break;
+    } else {
+      results.push(links[0].textContent ?? '');
+    }
+  }
+  return results;
 }
 
 describe('/ministries/$ministryId/usual-setup', () => {
@@ -83,17 +95,19 @@ describe('/ministries/$ministryId/usual-setup', () => {
 
     renderList();
 
-    const row = (await screen.findByRole('link', { name: /Service/ }))
-      .textContent;
+    const list = await screen.findByTestId('data-table-mobile-list');
+    const row = within(list).getByRole('link', { name: 'Service' }).textContent;
     expect(row).toContain(m.usual_setup_needs_review());
     expect(row).toContain(m.usual_setup_review_fallback());
-    expect(screen.getAllByText(m.usual_setup_needs_review())).toHaveLength(1);
+    expect(
+      within(list).getAllByText(m.usual_setup_needs_review()),
+    ).toHaveLength(1);
   });
 
   it('groups blocks by template with weekday, time and a served or Not served summary', async () => {
     renderList();
 
-    expect(await screen.findByRole('list', { name: 'Sunday' })).toBeVisible();
+    await screen.findByTestId('data-table-mobile-list');
     expect(listUsualSetup).toHaveBeenCalledWith(MINISTRY_ID);
     expect(rowsOf('Sunday')).toEqual([
       `Welcome09:00–10:00${m.usual_setup_not_served()}`,
@@ -125,8 +139,9 @@ describe('/ministries/$ministryId/usual-setup', () => {
 
     renderList();
 
+    const list = await screen.findByTestId('data-table-mobile-list');
     expect(
-      await screen.findByText(
+      within(list).getByText(
         `${m.usual_setup_shift_count_other({ count: 2 })} · ${m.usual_setup_people_count_one()}`,
       ),
     ).toBeVisible();
@@ -136,7 +151,8 @@ describe('/ministries/$ministryId/usual-setup', () => {
     const user = userEvent.setup();
     renderList();
 
-    await user.click(await screen.findByRole('link', { name: /Welcome/ }));
+    const list = await screen.findByTestId('data-table-mobile-list');
+    await user.click(within(list).getByRole('link', { name: 'Welcome' }));
 
     expect(
       await screen.findByRole('heading', { name: 'Sunday · Welcome' }),
@@ -155,7 +171,7 @@ describe('/ministries/$ministryId/usual-setup', () => {
       within(alert).getByRole('button', { name: m.usual_setup_retry() }),
     );
 
-    expect(await screen.findByRole('list', { name: 'Sunday' })).toBeVisible();
+    expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
   });
 
   it('links a ChurchAdmin to Event templates when there are none', async () => {

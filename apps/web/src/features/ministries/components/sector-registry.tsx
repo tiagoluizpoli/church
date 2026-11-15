@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import {
   Dialog,
   DialogContent,
@@ -77,56 +78,58 @@ export function SectorRegistry({ ministryId }: SectorRegistryProps) {
       close();
     };
 
-  if (sectors.isPending) return null;
-  if (sectors.isError) {
-    return (
-      <div className="space-y-2" role="alert">
-        <p className="text-muted-foreground">{m.sectors_load_failed()}</p>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => sectors.refetch()}
-        >
-          {m.ministries_retry()}
-        </Button>
-      </div>
-    );
-  }
-
-  const rows = sectors.data.sectors;
-
   return (
-    <section className="max-w-2xl space-y-4">
+    <section className="surface-panel space-y-4 p-4">
       <div className="flex items-center justify-between gap-4">
-        {rows.length === 0 ? (
-          <p className="text-muted-foreground" role="status">
-            {m.ministry_sectors_empty()}
-          </p>
-        ) : (
-          <span />
-        )}
+        <h2 className="font-semibold text-lg">{m.ministry_tab_sectors()}</h2>
         <Button type="button" onClick={() => setDialog({ kind: 'add' })}>
           {m.sectors_add()}
         </Button>
       </div>
-      {rows.length > 0 ? (
-        <ul
+      {sectors.isError ? (
+        <div className="space-y-2" role="alert">
+          <p className="text-muted-foreground">{m.sectors_load_failed()}</p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => sectors.refetch()}
+          >
+            {m.ministries_retry()}
+          </Button>
+        </div>
+      ) : (
+        <DataTable<Sector>
           aria-label={m.ministry_tab_sectors()}
-          className="surface-panel divide-y"
-        >
-          {rows.map((sector) => (
-            <li
-              key={sector.id}
-              className="flex items-center justify-between gap-2 p-3"
-            >
-              <span data-testid="sector-name">{sector.name}</span>
-              <span className="flex gap-2">
+          columns={[
+            {
+              id: 'name',
+              name: m.ministry_tab_sectors(),
+              isRowHeader: true,
+            },
+            {
+              id: 'actions',
+              name: m.people_column_actions(),
+              hideName: true,
+            },
+          ]}
+          items={sectors.data?.sectors ?? []}
+          isLoading={sectors.isPending}
+          rowId={({ item }) => item.id}
+          renderCell={({ item }) => (
+            <span data-testid="sector-name">{item.name}</span>
+          )}
+          renderMobileCard={({ item }) => (
+            <div className="flex items-center justify-between gap-2">
+              <span data-testid="sector-name" className="text-sm">
+                {item.name}
+              </span>
+              <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  aria-label={m.sectors_rename_label({ name: sector.name })}
-                  onClick={() => setDialog({ kind: 'rename', sector })}
+                  aria-label={m.sectors_rename_label({ name: item.name })}
+                  onClick={() => setDialog({ kind: 'rename', sector: item })}
                 >
                   {m.sectors_rename()}
                 </Button>
@@ -134,18 +137,55 @@ export function SectorRegistry({ ministryId }: SectorRegistryProps) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  aria-label={m.sectors_archive_label({ name: sector.name })}
+                  aria-label={m.sectors_archive_label({ name: item.name })}
                   onClick={() =>
-                    setDialog({ kind: 'archive', sector, alternative: false })
+                    setDialog({
+                      kind: 'archive',
+                      sector: item,
+                      alternative: false,
+                    })
                   }
                 >
                   {m.sectors_archive()}
                 </Button>
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+              </div>
+            </div>
+          )}
+          rowActions={({ item }) => (
+            <div className="flex w-full justify-end gap-2 max-md:hidden">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label={m.sectors_rename_label({ name: item.name })}
+                onClick={() => setDialog({ kind: 'rename', sector: item })}
+              >
+                {m.sectors_rename()}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label={m.sectors_archive_label({ name: item.name })}
+                onClick={() =>
+                  setDialog({
+                    kind: 'archive',
+                    sector: item,
+                    alternative: false,
+                  })
+                }
+              >
+                {m.sectors_archive()}
+              </Button>
+            </div>
+          )}
+          emptyContent={
+            <p className="text-muted-foreground text-sm" role="status">
+              {m.ministry_sectors_empty()}
+            </p>
+          }
+        />
+      )}
 
       <Dialog
         open={dialog.kind === 'add' || dialog.kind === 'rename'}

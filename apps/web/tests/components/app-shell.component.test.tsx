@@ -465,8 +465,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   });
 
   it.each([
-    ['sectors', () => m.ministry_tab_sectors()],
-    ['roles', () => m.ministry_tab_roles()],
+    ['operational', () => m.ministry_tab_structure()],
     ['usual-setup', () => m.ministry_tab_usual_setup()],
     ['settings', () => m.ministry_tab_settings()],
   ])('reads Home › Ministries › name › tab on the Ministry %s tab', (tab, label) => {

@@ -95,6 +95,10 @@ beforeAll(async () => {
     volunteerRepo: new DrizzleVolunteerRepository({ db }),
     invitationRepo: {} as never,
     unitOfWork: new DrizzleUnitOfWork({ db }),
+    sectorRepo: {} as never,
+    roleRepo: {} as never,
+    usualSetupRepo: {} as never,
+    templateRepo: {} as never,
   });
   // The competing UsualSetup write path, for the archive race proof.
   const usualSetupController = new UsualSetupController({

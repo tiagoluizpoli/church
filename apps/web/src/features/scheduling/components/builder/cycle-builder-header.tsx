@@ -10,6 +10,7 @@ import {
   staffingStatusClasses,
 } from '../../utils/builder/cycle-builder-staffing.utils';
 import { SyncedAgoLabel } from './synced-ago-label';
+import { HeaderStatChip } from '@/components/header-stat-chip';
 import { WorkspaceIntroPanel } from '@/components/workspace-page';
 import { cn } from '@/lib/utils';
 import { toCycleDayKey } from '@/shared/utils/date';
@@ -45,26 +46,6 @@ interface CycleBuilderHeaderProps {
   /** Epoch ms of the last successful read of the builder query. */
   syncedAt?: number;
   isRefreshing?: boolean;
-}
-
-interface HeaderStatChipProps {
-  testId: string;
-  label: string;
-  value: number;
-}
-
-/** Same standalone chip Planning's header uses — each stat is its own
- * bordered pill, not one box divided into columns (that's Prepare's shape,
- * not this one). */
-function HeaderStatChip({ testId, label, value }: HeaderStatChipProps) {
-  return (
-    <div className="radius-surface flex items-center gap-2 border border-border/70 bg-background/70 px-3 py-1.5 text-sm">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <span className="font-medium text-xs" data-testid={testId}>
-        {value}
-      </span>
-    </div>
-  );
 }
 
 /**
@@ -109,21 +90,25 @@ export function CycleBuilderHeader({
           <div className="flex w-full flex-col items-stretch gap-3 xl:w-auto xl:items-end">
             <div className="flex w-full flex-wrap gap-2 xl:w-auto xl:justify-end">
               <HeaderStatChip
+                testIdOnValue
                 testId="cycle-builder-event-count"
                 label={m.builder_header_events()}
                 value={counts.eventCount}
               />
               <HeaderStatChip
+                testIdOnValue
                 testId="cycle-builder-event-time-block-count"
                 label={m.builder_header_time_blocks()}
                 value={counts.eventTimeBlockCount}
               />
               <HeaderStatChip
+                testIdOnValue
                 testId="cycle-builder-shift-count"
                 label={m.builder_header_shifts()}
                 value={counts.shiftCount}
               />
               <HeaderStatChip
+                testIdOnValue
                 testId="cycle-builder-assigned-count"
                 label={m.builder_header_assigned()}
                 value={counts.assignedCount}

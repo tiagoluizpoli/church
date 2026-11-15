@@ -1,5 +1,9 @@
 import { m } from '@church/i18n/messages';
 import { Link, Outlet } from '@tanstack/react-router';
+import {
+  MinistrySetupGuide,
+  useMinistrySetupGuide,
+} from './ministry-setup-guide';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,8 +14,7 @@ import { cn } from '@/lib/utils';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
 type MinistryTabPath =
-  | '/ministries/$ministryId/sectors'
-  | '/ministries/$ministryId/roles'
+  | '/ministries/$ministryId/operational'
   | '/ministries/$ministryId/usual-setup'
   | '/ministries/$ministryId/settings';
 
@@ -23,8 +26,10 @@ interface MinistryTab {
 
 /** Routed tabs, in the order #385 fixes; Settings is ChurchAdmin-only. */
 const MINISTRY_TABS: MinistryTab[] = [
-  { to: '/ministries/$ministryId/sectors', label: m.ministry_tab_sectors },
-  { to: '/ministries/$ministryId/roles', label: m.ministry_tab_roles },
+  {
+    to: '/ministries/$ministryId/operational',
+    label: m.ministry_tab_structure,
+  },
   {
     to: '/ministries/$ministryId/usual-setup',
     label: m.ministry_tab_usual_setup,
@@ -44,6 +49,14 @@ interface MinistryWorkspaceProps {
 export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
   const { isChurchAdmin } = useCallerCapabilities();
   const ministryQuery = useMinistry({ ministryId });
+  const [guideOpen, setGuideOpen, dismissGuide] = useMinistrySetupGuide();
+
+  function reopenGuide() {
+    try {
+      localStorage.removeItem('ministry-setup-guide-dismissed');
+    } catch {}
+    setGuideOpen(true);
+  }
 
   if (ministryQuery.isLoading) {
     return (
@@ -89,11 +102,25 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
 
   return (
     <WorkspacePage className="space-y-6">
-      <h1 className="font-semibold text-3xl tracking-[-0.02em]">
-        {ministryQuery.data?.name}
-      </h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="font-semibold text-2xl tracking-[-0.02em] md:text-3xl">
+          {ministryQuery.data?.name}
+        </h1>
+        {!guideOpen && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={reopenGuide}
+            className="mt-2 shrink-0 text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            {m.ministry_setup_guide_open()}
+          </Button>
+        )}
+      </div>
+      <MinistrySetupGuide open={guideOpen} onDismiss={dismissGuide} />
       <nav aria-label={m.ministry_tabs_label()}>
-        <ul className="flex flex-wrap gap-1 border-border border-b">
+        <ul className="flex gap-1 border-border border-b">
           {tabs.map((tab) => (
             <li key={tab.to}>
               <Link

@@ -168,6 +168,10 @@ beforeAll(async () => {
     volunteerRepo: new DrizzleVolunteerRepository({ db }),
     invitationRepo: {} as never,
     unitOfWork: new DrizzleUnitOfWork({ db }),
+    sectorRepo: {} as never,
+    roleRepo: {} as never,
+    usualSetupRepo: {} as never,
+    templateRepo: {} as never,
   });
   const admin = new ChurchAdminController({
     cycleManager: managers.cycleManager,

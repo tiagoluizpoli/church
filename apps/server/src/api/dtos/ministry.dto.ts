@@ -1,5 +1,7 @@
 import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
+import type { MinistryId } from '../../domain/branded-ids';
+import type { MinistrySummary } from '../../domain/contracts/application/ministry-manager';
 import type { Ministry } from '../../domain/entities/ministry';
 
 /** The single trim point for Ministry names; uniqueness is the database's. */
@@ -21,11 +23,32 @@ export const ministryResponseSchema = z.object({
 
 export type MinistryResponse = z.infer<typeof ministryResponseSchema>;
 
+export const ministryListItemResponseSchema = ministryResponseSchema.extend({
+  sectorCount: z.number().int().nonnegative(),
+  roleCount: z.number().int().nonnegative(),
+  needsReview: z.boolean(),
+});
+
+export type MinistryListItemResponse = z.infer<
+  typeof ministryListItemResponseSchema
+>;
+
 export const ministryListResponseSchema = z.object({
-  ministries: z.array(ministryResponseSchema),
+  ministries: z.array(ministryListItemResponseSchema),
 });
 
 export type MinistryListResponse = z.infer<typeof ministryListResponseSchema>;
+
+interface MinistryListMapperInput {
+  ministries: Ministry[];
+  summaries: Map<MinistryId, MinistrySummary>;
+}
+
+const EMPTY_SUMMARY: MinistrySummary = {
+  sectorCount: 0,
+  roleCount: 0,
+  needsReview: false,
+};
 
 export const ministryMapper = {
   toResponse(ministry: Ministry): MinistryResponse {
@@ -40,7 +63,15 @@ export const ministryMapper = {
     };
   },
 
-  toResponseList(ministries: Ministry[]): MinistryListResponse {
-    return { ministries: ministries.map((m) => ministryMapper.toResponse(m)) };
+  toResponseList({
+    ministries,
+    summaries,
+  }: MinistryListMapperInput): MinistryListResponse {
+    return {
+      ministries: ministries.map((m) => ({
+        ...ministryMapper.toResponse(m),
+        ...(summaries.get(m.id) ?? EMPTY_SUMMARY),
+      })),
+    };
   },
 };

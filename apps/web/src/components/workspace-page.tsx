@@ -58,9 +58,7 @@ export function WorkspaceIntroPanel({
           >
             {title}
           </h1>
-          <p className="workspace-section-description md:text-[0.95rem]">
-            {description}
-          </p>
+          <p className="workspace-section-description">{description}</p>
         </div>
         {aside ? <div className="w-full xl:w-auto">{aside}</div> : null}
       </div>

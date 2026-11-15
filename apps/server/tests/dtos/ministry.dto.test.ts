@@ -61,7 +61,10 @@ describe('ministryMapper', () => {
         id: 'm2',
       });
 
-      const response = ministryMapper.toResponseList([ministry1, ministry2]);
+      const response = ministryMapper.toResponseList({
+        ministries: [ministry1, ministry2],
+        summaries: new Map(),
+      });
 
       expect(response.ministries).toHaveLength(2);
       expect(response.ministries[0]?.id).toBe('m1');
@@ -69,7 +72,10 @@ describe('ministryMapper', () => {
     });
 
     it('maps an empty list', () => {
-      const response = ministryMapper.toResponseList([]);
+      const response = ministryMapper.toResponseList({
+        ministries: [],
+        summaries: new Map(),
+      });
 
       expect(response.ministries).toEqual([]);
     });

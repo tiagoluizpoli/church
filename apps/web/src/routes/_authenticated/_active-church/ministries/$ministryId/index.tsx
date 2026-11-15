@@ -5,7 +5,7 @@ export const Route = createFileRoute(
 )({
   beforeLoad: ({ params }) => {
     throw redirect({
-      to: '/ministries/$ministryId/sectors',
+      to: '/ministries/$ministryId/operational',
       params,
       replace: true,
     });

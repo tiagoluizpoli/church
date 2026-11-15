@@ -5,29 +5,12 @@ import {
   useCycleListStats,
   usePlanningTemplateLibraryStats,
 } from './planning-admin-context';
+import { HeaderStatChip } from '@/components/header-stat-chip';
 import { Badge } from '@/components/ui/badge';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
 interface CycleHeaderProps {
   showName?: boolean;
-}
-
-interface HeaderStatChipProps {
-  testId: string;
-  label: string;
-  value: string;
-}
-
-function HeaderStatChip({ testId, label, value }: HeaderStatChipProps) {
-  return (
-    <div
-      className="radius-surface flex items-center gap-2 border border-border/70 bg-background/70 px-3 py-1.5 text-sm"
-      data-testid={testId}
-    >
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <span className="font-medium text-xs">{value}</span>
-    </div>
-  );
 }
 
 /**

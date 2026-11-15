@@ -134,7 +134,13 @@ export class MinistryController implements FastifyController {
               churchId,
               leaderId: VolunteerId.from(request.volunteerId as string),
             });
-        return reply.send(ministryMapper.toResponseList(ministries));
+        const summaries = await this.ministryManager.summarize({
+          churchId,
+          ministries,
+        });
+        return reply.send(
+          ministryMapper.toResponseList({ ministries, summaries }),
+        );
       },
     );
 

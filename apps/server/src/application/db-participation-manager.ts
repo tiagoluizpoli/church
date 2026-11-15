@@ -132,8 +132,7 @@ import {
 } from '../domain/services/shift-splitter';
 import {
   spansFitBlock,
-  splitFitsBlock,
-  wallClockUtcBounds,
+  usualSetupNeedsReview,
 } from '../domain/services/usual-setup-planner';
 import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 
@@ -3072,12 +3071,6 @@ function toUsualSetupBlockView({
     order: block.order,
     entry,
     // Derived on every read from the serving manual split vs current bounds.
-    needsReview:
-      entry?.serves === true &&
-      entry.shiftSplit.kind === 'manual' &&
-      !splitFitsBlock({
-        shiftSplit: entry.shiftSplit,
-        ...wallClockUtcBounds(block),
-      }),
+    needsReview: usualSetupNeedsReview({ entry, block }),
   };
 }

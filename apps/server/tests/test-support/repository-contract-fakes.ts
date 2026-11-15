@@ -274,6 +274,7 @@ export function createRoleRepositoryFake() {
     getById: vi.fn<RoleRepository['getById']>(),
     listByMinistry: vi.fn<RoleRepository['listByMinistry']>(),
     listActiveByMinistry: vi.fn<RoleRepository['listActiveByMinistry']>(),
+    countActiveByMinistry: vi.fn<RoleRepository['countActiveByMinistry']>(),
     create: vi.fn<RoleRepository['create']>(),
     rename: vi.fn<RoleRepository['rename']>(),
     lockActiveForUse: vi.fn<RoleRepository['lockActiveForUse']>(),
@@ -286,6 +287,7 @@ export function createRoleRepositoryFake() {
 export function createSectorRepositoryFake() {
   return {
     listByMinistry: vi.fn<SectorRepository['listByMinistry']>(),
+    countActiveByMinistry: vi.fn<SectorRepository['countActiveByMinistry']>(),
     getById: vi.fn<SectorRepository['getById']>(),
     lockActive: vi.fn<SectorRepository['lockActive']>(),
     create: vi.fn<SectorRepository['create']>(),

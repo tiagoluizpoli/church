@@ -10,10 +10,12 @@ import {
   usualSetup,
 } from '@church/db';
 import { toDate } from '@church/time';
-import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import type { ArchiveBlocker } from '../../domain/archive-blockers';
+import type { MinistryId } from '../../domain/branded-ids';
 import type {
   ArchiveRoleRecordInput,
+  CountActiveRolesByMinistryInput,
   CreateRoleRecordInput,
   GetRoleByIdInput,
   ListRoleArchiveBlockersInput,
@@ -118,6 +120,27 @@ export class DrizzleRoleRepository implements RoleRepository {
       .where(activeInMinistry({ churchId, ministryId }))
       .orderBy(asc(sql`lower(${role.name})`), asc(role.id));
     return rows.map(mapRole);
+  }
+
+  async countActiveByMinistry({
+    churchId,
+    ministryIds,
+  }: CountActiveRolesByMinistryInput): Promise<Map<MinistryId, number>> {
+    if (ministryIds.length === 0) return new Map();
+    const rows = await this.db
+      .select({ ministryId: role.ministryId, total: count() })
+      .from(role)
+      .where(
+        and(
+          withChurchIsolation({ table: role, churchId }),
+          inArray(role.ministryId, ministryIds),
+          isNull(role.archivedAt),
+        ),
+      )
+      .groupBy(role.ministryId);
+    return new Map(
+      rows.map((row) => [row.ministryId as MinistryId, row.total]),
+    );
   }
 
   async create({

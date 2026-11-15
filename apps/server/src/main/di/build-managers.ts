@@ -162,6 +162,10 @@ export function buildManagers({
       volunteerRepo: volunteerRepository,
       invitationRepo: ministryInvitationRepository,
       unitOfWork,
+      sectorRepo: sectorRepository,
+      roleRepo: roleRepository,
+      usualSetupRepo: usualSetupRepository,
+      templateRepo: eventTemplateRepository,
     });
   const ministryRoleManager =
     overrides.ministryRoleManager ??

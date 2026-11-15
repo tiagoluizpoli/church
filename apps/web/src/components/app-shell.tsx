@@ -204,6 +204,7 @@ const BREADCRUMB_SEGMENT_LABELS: Record<string, () => string> = {
   people: () => m.nav_people(),
   invitations: () => m.nav_invitations(),
   ministry: () => m.breadcrumb_ministry(),
+  operational: () => m.ministry_tab_structure(),
   sectors: () => m.ministry_tab_sectors(),
   roles: () => m.ministry_tab_roles(),
   'usual-setup': () => m.ministry_tab_usual_setup(),

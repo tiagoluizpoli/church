@@ -12,6 +12,7 @@ const getCallerCapabilities = vi.fn();
 const listMinistries = vi.fn();
 const getMinistry = vi.fn();
 const listSectors = vi.fn(async () => ({ sectors: [] }));
+const listMinistryRoles = vi.fn(async () => ({ roles: [] }));
 const createMinistry = vi.fn();
 
 vi.mock('@/utils/api-instances', async () => ({
@@ -19,6 +20,7 @@ vi.mock('@/utils/api-instances', async () => ({
     listMinistries: (...args: unknown[]) => listMinistries(...args),
     getMinistry: (...args: unknown[]) => getMinistry(...args),
     listSectors: () => listSectors(),
+    listMinistryRoles: () => listMinistryRoles(),
     createMinistry: (...args: unknown[]) => createMinistry(...args),
   },
   callerCapabilitiesApi: {
@@ -49,8 +51,22 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-function ministry(id: string, name: string) {
+interface MinistryFixtureOverrides {
+  sectorCount?: number;
+  roleCount?: number;
+  needsReview?: boolean;
+}
+
+function ministry(
+  id: string,
+  name: string,
+  overrides: MinistryFixtureOverrides = {},
+) {
   return {
+    sectorCount: 3,
+    roleCount: 5,
+    needsReview: false,
+    ...overrides,
     id,
     churchId: 'church-1',
     name,
@@ -89,7 +105,7 @@ async function rowNames() {
   const list = await screen.findByRole('list', { name: m.nav_ministries() });
   return within(list)
     .getAllByRole('listitem')
-    .map((item) => item.textContent?.replace(m.ministries_open(), ''));
+    .map((item) => item.querySelector('p')?.textContent);
 }
 
 describe('/ministries', () => {
@@ -105,6 +121,93 @@ describe('/ministries', () => {
         { name: 'Abrir kids' },
       ),
     ).toHaveAttribute('href', '/ministries/m-kids');
+  });
+
+  it('shows the counts, the zero-Sector hint and a Revisar action on a needs-review Ministry', async () => {
+    signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
+    listMinistries.mockResolvedValue({
+      ministries: [
+        ministry('m-kids', 'kids', {
+          sectorCount: 1,
+          roleCount: 1,
+          needsReview: true,
+        }),
+        ministry('m-empty', 'Empty', { sectorCount: 0, roleCount: 0 }),
+        ministry('m-worship', 'Worship'),
+      ],
+    });
+
+    renderList();
+
+    const items = within(
+      await screen.findByRole('list', { name: m.nav_ministries() }),
+    ).getAllByRole('listitem');
+    const [kids, empty, worship] = items;
+    expect(kids).toHaveTextContent('1 setor · 1 função');
+    expect(
+      within(kids as HTMLElement).getByRole('link', {
+        name: m.ministries_review_label({ name: 'kids' }),
+      }),
+    ).toHaveAttribute('href', '/ministries/m-kids/usual-setup');
+    expect(empty).toHaveTextContent(m.ministries_no_sectors());
+    expect(empty).not.toHaveTextContent(m.ministries_review());
+    expect(worship).toHaveTextContent('3 setores · 5 funções');
+    expect(worship).not.toHaveTextContent(m.ministries_review());
+  });
+
+  it('filters names and statuses together while keeping full-list counters and clearing filters', async () => {
+    signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
+    listMinistries.mockResolvedValue({
+      ministries: [
+        ministry('a', 'Alpha', { needsReview: true }),
+        ministry('b', 'Beta', { sectorCount: 0, needsReview: true }),
+        ministry('c', 'Gamma', { sectorCount: 0 }),
+      ],
+    });
+    const user = userEvent.setup();
+    renderList();
+    expect(await rowNames()).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(screen.getByTestId('ministries-total-chip')).toHaveTextContent('3');
+    expect(screen.getByTestId('ministries-review-chip')).toHaveTextContent('2');
+    expect(screen.getByTestId('ministries-no-sectors-chip')).toHaveTextContent(
+      '2',
+    );
+    const create = screen.getByRole('button', { name: m.ministries_new() });
+    expect(create.parentElement).toHaveClass('justify-end');
+    const search = screen.getByRole('searchbox', {
+      name: m.ministries_name_label(),
+    });
+    await user.type(search, 'ALP');
+    expect(await rowNames()).toEqual(['Alpha']);
+    await user.clear(search);
+    await user.click(screen.getByLabelText(m.ministries_filter_status()));
+    await user.click(
+      screen.getByRole('option', { name: m.ministries_filter_review() }),
+    );
+    expect(await rowNames()).toEqual(['Alpha', 'Beta']);
+    await user.type(search, 'beta');
+    expect(await rowNames()).toEqual(['Beta']);
+    expect(screen.getByTestId('ministries-total-chip')).toHaveTextContent('3');
+    await user.clear(search);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('option', { name: m.ministries_filter_review() }),
+      ).not.toBeInTheDocument(),
+    );
+    await user.click(screen.getByLabelText(m.ministries_filter_status()));
+    await user.click(
+      await screen.findByRole('option', {
+        name: m.ministries_filter_no_sectors(),
+      }),
+    );
+    expect(await rowNames()).toEqual(['Beta', 'Gamma']);
+    await user.type(search, 'missing');
+    expect(screen.getByText(m.ministries_empty_filtered())).toBeVisible();
+    await user.click(
+      screen.getByRole('button', { name: m.invitations_clear_filters() }),
+    );
+    expect(await rowNames()).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(search).toHaveValue('');
   });
 
   it('keeps the one-row list for a leader of one Ministry, without New Ministry', async () => {
@@ -157,7 +260,7 @@ describe('/ministries', () => {
     expect(createMinistry).toHaveBeenCalledWith({ name: 'Media' });
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(
-        '/ministries/m-media/sectors',
+        '/ministries/m-media/operational',
       ),
     );
     expect(await screen.findByText(m.ministry_sectors_empty())).toBeVisible();

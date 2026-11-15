@@ -216,9 +216,9 @@ describe('/ministries/$ministryId/usual-setup/$blockId', () => {
         },
       ],
     });
-    const sunday = await screen.findByRole('list', { name: 'Sunday' });
+    const list = await screen.findByTestId('data-table-mobile-list');
     expect(
-      within(sunday).getByRole('link', { name: /Welcome/ }),
+      within(list).getByRole('link', { name: 'Welcome' }),
     ).toHaveTextContent(m.usual_setup_people_count_other({ count: 2 }));
   });
 
@@ -258,7 +258,7 @@ describe('/ministries/$ministryId/usual-setup/$blockId', () => {
     expect(cell('Stage')).toHaveValue(4);
     expect(cell('Door')).toHaveValue(1);
     await user.click(saveButton());
-    expect(await screen.findByRole('list', { name: 'Sunday' })).toBeVisible();
+    expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
     expect(saveUsualSetupBlock).toHaveBeenCalledTimes(2);
   });
 
@@ -287,7 +287,7 @@ describe('/ministries/$ministryId/usual-setup/$blockId', () => {
       screen.getByRole('button', { name: m.usual_setup_cancel() }),
     );
 
-    expect(await screen.findByRole('list', { name: 'Sunday' })).toBeVisible();
+    expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
     expect(saveUsualSetupBlock).not.toHaveBeenCalled();
   });
 

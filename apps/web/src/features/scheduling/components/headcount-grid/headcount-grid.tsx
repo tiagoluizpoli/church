@@ -167,8 +167,12 @@ export function HeadcountGrid({
           ),
         );
         return (
-          <fieldset key={shift.key} className="surface-panel space-y-3 p-3">
-            <legend className="px-1 font-medium text-sm">{shift.label}</legend>
+          <fieldset
+            key={shift.key}
+            aria-label={shift.label}
+            className="surface-panel space-y-3 p-3"
+          >
+            <p className="font-medium text-sm">{shift.label}</p>
             {isEmpty ? (
               <p className="text-muted-foreground text-xs">
                 {m.headcount_grid_empty_shift()}

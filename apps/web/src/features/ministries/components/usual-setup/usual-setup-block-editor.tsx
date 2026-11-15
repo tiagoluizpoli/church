@@ -61,9 +61,16 @@ export function UsualSetupBlockEditor({
 
   if (reads.some((read) => read.isPending)) {
     return (
-      <div className="max-w-2xl space-y-3" aria-busy="true">
-        <Skeleton className="h-6 w-64" />
-        <Skeleton className="h-24 w-full" />
+      <div
+        className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10"
+        aria-busy="true"
+      >
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-64" />
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
@@ -219,123 +226,139 @@ function UsualSetupBlockForm({
 
   return (
     <form
-      className="max-w-2xl space-y-5"
       onSubmit={(event) => {
         event.preventDefault();
         if (canSave) submit();
       }}
     >
-      <div className="space-y-1">
-        <h2 className="font-semibold text-lg">
-          {block.templateName} · {block.label}
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          {formatWeekday(block)} · {formatTimeRange(block)}
-        </p>
-      </div>
-
-      {block.needsReview ? (
-        <Alert role="status">
-          <AlertDescription>
-            <strong>{m.usual_setup_needs_review()}.</strong>{' '}
-            {m.usual_setup_review_fallback()}{' '}
-            {m.usual_setup_review_repair({ range: formatTimeRange(block) })}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="flex items-start gap-3">
-        <Checkbox
-          id="usual-setup-serves"
-          className="mt-0.5"
-          checked={serves}
-          disabled={save.isPending}
-          onCheckedChange={(checked) => setServes(checked)}
-          aria-describedby="usual-setup-serves-help"
-        />
-        <div className="space-y-1">
-          <label htmlFor="usual-setup-serves" className="font-medium text-sm">
-            {m.usual_setup_serves_label()}
-          </label>
-          <p
-            id="usual-setup-serves-help"
-            className="text-muted-foreground text-xs"
-          >
-            {m.usual_setup_serves_help()}
-          </p>
-        </div>
-      </div>
-
-      {serves ? (
-        <div className="space-y-3">
-          <ShiftSplitEditor
-            draft={draft}
-            block={bounds}
-            problems={problems}
-            disabled={save.isPending}
-            onChange={setDraft}
-          />
-          <h3 className="font-medium text-sm">
-            {m.usual_setup_people_needed()}
-          </h3>
-          <MissingCatalogs
-            ministryId={ministryId}
-            hasSectors={sectors.length > 0}
-            hasRoles={roles.length > 0}
-          />
-          {hasCatalogs && !splitValid ? (
-            <p className="text-muted-foreground text-sm" role="status">
-              {m.shift_split_fix_times()}
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-10">
+        {/* Left panel: block identity stays in view while editing numbers */}
+        <div className="space-y-4 lg:sticky lg:top-4">
+          <div className="space-y-1">
+            <h2 className="font-semibold text-lg">
+              {block.templateName} · {block.label}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              {formatWeekday(block)} · {formatTimeRange(block)}
             </p>
+          </div>
+
+          {block.needsReview ? (
+            <Alert role="note">
+              <AlertDescription>
+                <strong>{m.usual_setup_needs_review()}.</strong>{' '}
+                {m.usual_setup_review_fallback()}{' '}
+                {m.usual_setup_review_repair({ range: formatTimeRange(block) })}
+              </AlertDescription>
+            </Alert>
           ) : null}
-          {hasCatalogs && splitValid ? (
-            <HeadcountGrid
-              sectors={sectors}
-              roles={roles}
-              shifts={shifts}
-              values={values}
+
+          {/* Serves toggle — primary decision, elevated visually */}
+          <div className="surface-panel p-4">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="usual-setup-serves"
+                className="mt-0.5"
+                checked={serves}
+                disabled={save.isPending}
+                onCheckedChange={(checked) => setServes(checked)}
+                aria-describedby="usual-setup-serves-help"
+              />
+              <div className="space-y-1">
+                <label
+                  htmlFor="usual-setup-serves"
+                  className="font-medium text-sm"
+                >
+                  {m.usual_setup_serves_label()}
+                </label>
+                <p
+                  id="usual-setup-serves-help"
+                  className="text-muted-foreground text-xs"
+                >
+                  {m.usual_setup_serves_help()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {serves ? (
+            <ShiftSplitEditor
+              draft={draft}
+              block={bounds}
+              problems={problems}
               disabled={save.isPending}
-              onChange={({ value, ...cell }) =>
-                setValues((current) => ({
-                  ...current,
-                  [headcountGridKey(cell)]: value,
-                }))
-              }
+              onChange={setDraft}
             />
           ) : null}
-          {hasCatalogs && hasInvalid ? (
-            <p className="text-destructive text-sm">
-              {m.usual_setup_fix_invalid()}
-            </p>
+
+          {save.isError ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {saveErrorMessage({ error: save.error })}
+              </AlertDescription>
+            </Alert>
           ) : null}
-          {hasCatalogs && splitValid && isEmpty ? (
-            <p className="text-muted-foreground text-sm">
-              {m.error_validation_usual_setup_empty()}
-            </p>
+
+          <div className="flex gap-2">
+            <Button type="submit" disabled={!canSave}>
+              {save.isPending ? m.usual_setup_saving() : m.usual_setup_save()}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={save.isPending}
+              onClick={() => backToList()}
+            >
+              {m.usual_setup_cancel()}
+            </Button>
+          </div>
+        </div>
+
+        {/* Right panel: headcount grid */}
+        <div className="space-y-4">
+          {serves ? (
+            <>
+              <h3 className="font-medium text-sm">
+                {m.usual_setup_people_needed()}
+              </h3>
+              <MissingCatalogs
+                ministryId={ministryId}
+                hasSectors={sectors.length > 0}
+                hasRoles={roles.length > 0}
+              />
+              {hasCatalogs && !splitValid ? (
+                <p className="text-muted-foreground text-sm" role="status">
+                  {m.shift_split_fix_times()}
+                </p>
+              ) : null}
+              {hasCatalogs && splitValid ? (
+                <HeadcountGrid
+                  sectors={sectors}
+                  roles={roles}
+                  shifts={shifts}
+                  values={values}
+                  disabled={save.isPending}
+                  onChange={({ value, ...cell }) =>
+                    setValues((current) => ({
+                      ...current,
+                      [headcountGridKey(cell)]: value,
+                    }))
+                  }
+                />
+              ) : null}
+              {hasCatalogs && hasInvalid ? (
+                <p className="text-destructive text-sm">
+                  {m.usual_setup_fix_invalid()}
+                </p>
+              ) : null}
+              {hasCatalogs && splitValid && isEmpty ? (
+                <p className="text-muted-foreground text-sm">
+                  {m.error_validation_usual_setup_empty()}
+                </p>
+              ) : null}
+            </>
           ) : null}
         </div>
-      ) : null}
-
-      {save.isError ? (
-        <Alert variant="destructive">
-          <AlertDescription>
-            {saveErrorMessage({ error: save.error })}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="flex gap-2">
-        <Button type="submit" disabled={!canSave}>
-          {save.isPending ? m.usual_setup_saving() : m.usual_setup_save()}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={save.isPending}
-          onClick={() => backToList()}
-        >
-          {m.usual_setup_cancel()}
-        </Button>
       </div>
     </form>
   );
@@ -366,18 +389,23 @@ function MissingCatalogs({
     },
   ].filter((item) => item !== false);
 
-  return missing.map((item) => (
-    <p key={item.href} className="text-muted-foreground text-sm" role="status">
-      {item.text}{' '}
-      <a
-        href={item.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="underline underline-offset-2"
-      >
-        {item.link}
-        <span className="sr-only"> {m.sectors_opens_new_tab()}</span>
-      </a>
-    </p>
-  ));
+  if (missing.length === 0) return null;
+  return (
+    <div role="status" className="space-y-1">
+      {missing.map((item) => (
+        <p key={item.href} className="text-muted-foreground text-sm">
+          {item.text}{' '}
+          <a
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2"
+          >
+            {item.link}
+            <span className="sr-only"> {m.sectors_opens_new_tab()}</span>
+          </a>
+        </p>
+      ))}
+    </div>
+  );
 }

@@ -22,7 +22,9 @@ export interface DataTableColumn {
   name: string;
   allowsSorting?: boolean;
   isRowHeader?: boolean;
-  /** Keeps the name for screen readers only, e.g. an actions column whose buttons name themselves. */
+  /** Keeps the name for screen readers only. Defaults to true for the
+   * `actionsColumnId` column, whose buttons name themselves; pass `false` to
+   * show it. */
   hideName?: boolean;
 }
 
@@ -189,7 +191,7 @@ export function DataTable<T extends object>({
                 isRowHeader={column.isRowHeader}
                 allowsSorting={column.allowsSorting}
               >
-                {column.hideName ? (
+                {(column.hideName ?? column.id === actionsColumnId) ? (
                   <span className="sr-only">{column.name}</span>
                 ) : (
                   column.name

@@ -90,6 +90,34 @@ describe('DataTable', () => {
     expect(screen.getByRole('list', { name: 'Rows' })).toBeInTheDocument();
   });
 
+  it('keeps the actions column title for screen readers only, unless a column opts in', () => {
+    render(
+      <DataTable
+        aria-label="Rows"
+        columns={[
+          ...COLUMNS.slice(0, 2),
+          { id: 'actions', name: 'Actions' },
+          { id: 'notes', name: 'Notes', hideName: true },
+        ]}
+        items={ROWS}
+        rowId={({ item }) => item.id}
+        renderCell={renderCell}
+        renderMobileCard={renderMobileCard}
+      />,
+    );
+
+    const table = screen.getByRole('grid', { name: 'Rows' });
+    const header = (name: string) =>
+      within(table).getByRole('columnheader', { name });
+    expect(within(header('Actions')).getByText('Actions')).toHaveClass(
+      'sr-only',
+    );
+    expect(within(header('Notes')).getByText('Notes')).toHaveClass('sr-only');
+    expect(
+      within(header('Name')).queryByText('Name', { selector: '.sr-only' }),
+    ).toBeNull();
+  });
+
   it('renders row actions in the desktop actions column and appended under each mobile card', () => {
     const rowActions = vi.fn(({ item }: DataTableItemInput<Row>) => (
       <button type="button" data-testid={`action-${item.id}`}>

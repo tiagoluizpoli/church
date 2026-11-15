@@ -109,7 +109,6 @@ export function SectorRegistry({ ministryId }: SectorRegistryProps) {
             {
               id: 'actions',
               name: m.people_column_actions(),
-              hideName: true,
             },
           ]}
           items={sectors.data?.sectors ?? []}

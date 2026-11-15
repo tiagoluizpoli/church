@@ -33,11 +33,11 @@ function PeoplePage() {
   const router = useRouter();
   const onFiltersChange = useCallback(
     (next: PeopleFilters) => {
-      // A late debounced search must not pull the user back from a person they opened.
-      const stillHere = router.state.matches.some(
-        (match) => match.routeId === Route.id,
-      );
-      if (!stillHere) return;
+      // A late debounced search must not pull the user back from a person they opened; latestLocation already
+      // holds an in-flight navigation, which the resolved matches do not.
+      const here = router.buildLocation({ to: '/people' }).pathname;
+      const trim = (path: string) => path.replace(/\/+$/, '');
+      if (trim(router.latestLocation.pathname) !== trim(here)) return;
       navigate({ search: next, replace: true });
     },
     [router, navigate],

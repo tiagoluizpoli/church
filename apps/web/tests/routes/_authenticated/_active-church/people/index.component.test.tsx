@@ -55,9 +55,11 @@ function person(
   };
 }
 
+const KIDS_ID = '6f1c2a4e-8b3d-4c5e-9a7f-1b2c3d4e5f60';
+
 const OPTIONS = {
   ministries: [
-    { id: 'm-kids', name: 'Kids' },
+    { id: KIDS_ID, name: 'Kids' },
     { id: 'm-worship', name: 'Worship' },
   ],
 };
@@ -72,9 +74,9 @@ const COUNTS = {
 
 function page(
   items: ListPeople200ItemsItem[],
-  extra: Partial<ListPeople200> = {},
+  { counts = COUNTS, ...extra }: Partial<ListPeople200> = {},
 ): ListPeople200 {
-  return { items, options: OPTIONS, counts: COUNTS, ...extra } as ListPeople200;
+  return { ...extra, items, options: OPTIONS, counts };
 }
 
 function renderPeople(initialPath = '/people') {
@@ -102,7 +104,7 @@ describe('People directory', () => {
         person({
           isAdmin: true,
           ministries: [
-            { id: 'm-kids', name: 'Kids', ministryAccessLevel: 'leader' },
+            { id: KIDS_ID, name: 'Kids', ministryAccessLevel: 'leader' },
             {
               id: 'm-worship',
               name: 'Worship',
@@ -155,6 +157,7 @@ describe('People directory', () => {
 
     await rows();
     expect(screen.getByTestId('people-total-chip')).toHaveTextContent('143');
+    expect(screen.getByTestId('people-admins-chip')).toHaveTextContent('2');
     expect(screen.getByTestId('people-leaders-chip')).toHaveTextContent('9');
     expect(screen.getByTestId('people-volunteers-chip')).toHaveTextContent(
       '120',
@@ -270,12 +273,12 @@ describe('People directory', () => {
   it('restores the filters from the URL and drops malformed ones', async () => {
     listPeople.mockResolvedValue(page([person({})]));
 
-    renderPeople('/people?search=ana&ministryId=m-kids&access=owner');
+    renderPeople(`/people?search=ana&ministryId=${KIDS_ID}&access=owner`);
 
     await rows();
     expect(listPeople).toHaveBeenCalledWith({
       search: 'ana',
-      ministryId: 'm-kids',
+      ministryId: KIDS_ID,
     });
     expect(screen.getByLabelText(m.people_filter_search())).toHaveValue('ana');
     expect(screen.getByLabelText(m.people_filter_ministry())).toHaveTextContent(

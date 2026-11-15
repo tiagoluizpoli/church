@@ -12,6 +12,9 @@ import { peopleApi } from '@/utils/api-instances';
 /** Root of every People read; invalidate `peopleQueryKey` to refresh the Active Church's directory and details. */
 export const PEOPLE_QUERY_KEY = ['people'] as const;
 
+/** The server's longest accepted name or e-mail search. */
+export const PEOPLE_SEARCH_MAX_LENGTH = 254;
+
 export type PeopleFilters = Omit<ListPeopleParams, 'cursor' | 'limit'>;
 
 interface ChurchKeyInput {

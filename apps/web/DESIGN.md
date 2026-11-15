@@ -301,7 +301,7 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **DatePickerField:** an outline `Button` trigger (calendar icon plus the formatted date or a placeholder) that opens the `Calendar` in a `Popover`, replacing the OS date picker so the calendar matches the rest of the system in both themes.
 
 ### Lists & Tables
-- **DataTable:** renders as a `listbox` only when a selection mode is set; otherwise it is a plain `list` with `listitem` rows and an `aria-label`. Loading and empty states default to localized one-line messages.
+- **DataTable:** renders as a `listbox` only when a selection mode is set; otherwise it is a plain `list` with `listitem` rows and an `aria-label`. Loading and empty states default to localized one-line messages. The actions column (`actionsColumnId`, default `actions`) keeps its title for screen readers only; pass `hideName: false` to show it.
 
 ### Sheets & Overlays
 - **Drawer (base-ui):** the mobile counterpart to `Dialog`, used directly and via `ResponsiveFormSurface`. Bottom sheet by default (`swipeDirection="down"`), sheet-top corners, a pill grab handle, and no shadow (see Elevation & Depth).

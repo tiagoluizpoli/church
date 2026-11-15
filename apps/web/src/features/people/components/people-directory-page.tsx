@@ -22,6 +22,7 @@ import {
   WorkspacePage,
 } from '@/components/workspace-page';
 import {
+  PEOPLE_SEARCH_MAX_LENGTH,
   type PeopleFilters,
   usePeopleList,
 } from '@/features/people/people-queries';
@@ -32,6 +33,7 @@ import type {
 
 const ANY = 'any';
 const SEARCH_DEBOUNCE_MS = 300;
+const SKELETON_ROWS = [0, 1, 2];
 const FIELD = 'flex flex-col gap-1';
 const TRIGGER = 'min-h-11 w-full md:min-h-0 md:w-48';
 const ACCESS_VALUES = ['admin', 'leader', 'volunteer'] as const;
@@ -123,19 +125,30 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
     if (committed !== search.trim()) setSearch(committed);
   }
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  // Enter commits now and cancels the pending debounce, so it cannot fire after a click away.
+  // The latest filters and handler, so a pending debounce never applies stale ones and a parent re-render does not restart it.
+  const latest = useRef({ filters, onChange });
+  latest.current = { filters, onChange };
+  const trimmed = search.trim();
   const commitSearch = () => {
     clearTimeout(timer.current);
-    onChange({ ...filters, search: search.trim() || undefined });
+    latest.current.onChange({
+      ...latest.current.filters,
+      search: trimmed || undefined,
+    });
   };
+  // Enter commits now and cancels the pending debounce, so it cannot fire after a click away.
   useEffect(() => {
-    if (search.trim() === committed) return;
+    if (trimmed === committed) return;
     timer.current = setTimeout(
-      () => onChange({ ...filters, search: search.trim() || undefined }),
+      () =>
+        latest.current.onChange({
+          ...latest.current.filters,
+          search: trimmed || undefined,
+        }),
       SEARCH_DEBOUNCE_MS,
     );
     return () => clearTimeout(timer.current);
-  }, [search, committed, filters, onChange]);
+  }, [trimmed, committed]);
   const showMinistry = (options?.ministries.length ?? 0) > 0;
   return (
     <form
@@ -152,7 +165,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
           id="people-filter-search"
           type="search"
           value={search}
-          maxLength={254}
+          maxLength={PEOPLE_SEARCH_MAX_LENGTH}
           onChange={(event) => setSearch(event.target.value)}
           className="min-h-11 md:min-h-0"
         />
@@ -256,8 +269,13 @@ export function PeopleDirectoryPage({
             <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
               <HeaderStatChip
                 testId="people-total-chip"
-                label={m.nav_people()}
+                label={m.people_stat_total()}
                 value={counts.total}
+              />
+              <HeaderStatChip
+                testId="people-admins-chip"
+                label={m.people_stat_admins()}
+                value={counts.admins}
               />
               <HeaderStatChip
                 testId="people-leaders-chip"
@@ -271,7 +289,7 @@ export function PeopleDirectoryPage({
               />
               <HeaderStatChip
                 testId="people-no-ministry-chip"
-                label={m.people_no_ministries()}
+                label={m.people_stat_without_ministry()}
                 value={counts.withoutMinistry}
               />
             </div>
@@ -293,19 +311,23 @@ export function PeopleDirectoryPage({
               variant="outline"
               onClick={() => query.refetch()}
             >
-              {m.invitations_retry()}
+              {m.common_retry()}
             </Button>
           </AlertDescription>
         </Alert>
       ) : loading ? (
         <Card className="surface-panel">
-          {/* Rows at the real heights (mobile card, 41px desktop row) so the list does not jump in. */}
+          {/* The real table's header and 41px rows on desktop, the card height on mobile, so the list does not jump in. */}
           <CardContent
-            className="grid gap-3 md:gap-1"
+            className="grid gap-3 md:gap-0"
             data-testid="people-loading"
           >
-            {[0, 1, 2].map((row) => (
-              <Skeleton key={row} className="h-27 w-full md:h-[41px]" />
+            <Skeleton className="hidden h-[41px] w-full md:block" />
+            {SKELETON_ROWS.map((row) => (
+              <Skeleton
+                key={row}
+                className="h-27 w-full md:mt-px md:h-[40px]"
+              />
             ))}
           </CardContent>
         </Card>
@@ -367,7 +389,7 @@ export function PeopleDirectoryPage({
                     disabled={query.isFetchingNextPage}
                     onClick={() => query.fetchNextPage()}
                   >
-                    {m.invitations_retry()}
+                    {m.common_retry()}
                   </Button>
                 </AlertDescription>
               </Alert>

@@ -766,6 +766,7 @@
   "invitations_filter_status": "Status",
   "invitations_filter_ministry": "Ministry",
   "invitations_filter_invited_as": "Invited as",
+  "invitations_filter_all": "All",
   "invitations_filter_any": "Any",
   "invitations_filter_email": "Email",
   "invitations_filter_search": "Search",

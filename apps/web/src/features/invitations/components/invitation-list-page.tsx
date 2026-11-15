@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { HeaderStatChip } from '@/components/header-stat-chip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -382,33 +382,80 @@ interface FilterBarProps {
 }
 
 function FilterBar({ filters, options, onChange }: FilterBarProps) {
-  const [email, setEmail] = useState(filters.email ?? '');
+  const committed = filters.email ?? '';
+  const [email, setEmail] = useState(committed);
+  const [syncedEmail, setSyncedEmail] = useState(committed);
+  if (committed !== syncedEmail) {
+    setSyncedEmail(committed);
+    if (committed !== email.trim()) setEmail(committed);
+  }
+  const latest = useRef({ filters, onChange });
+  latest.current = { filters, onChange };
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const trimmed = email.trim();
+  useEffect(() => {
+    if (trimmed === committed) return;
+    timer.current = setTimeout(
+      () =>
+        latest.current.onChange({
+          ...latest.current.filters,
+          email: trimmed || undefined,
+        }),
+      300,
+    );
+    return () => clearTimeout(timer.current);
+  }, [trimmed, committed]);
   const isAdmin = options?.invitedAs.includes('admin') ?? false;
   const showMinistry = isAdmin || (options?.ministries.length ?? 0) >= 2;
   const status = filters.status ?? 'pending';
   return (
     <form
       aria-label={m.invitations_filters_label()}
-      className="flex flex-wrap items-end gap-3"
+      className="flex flex-col gap-3 md:flex-row md:items-end"
       onSubmit={(event) => {
         event.preventDefault();
-        onChange({ ...filters, email: email.trim() || undefined });
+        clearTimeout(timer.current);
+        onChange({ ...filters, email: trimmed || undefined });
       }}
     >
-      <div className="space-y-1">
+      <div className="flex min-w-48 flex-1 flex-col gap-1">
+        <Label htmlFor="invitations-filter-email">
+          {m.invitations_filter_email()}
+        </Label>
+        <Input
+          id="invitations-filter-email"
+          type="search"
+          value={email}
+          className="min-h-11 md:min-h-0"
+          maxLength={254}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+      </div>
+      <div className="flex flex-col gap-1">
         <Label htmlFor="invitations-filter-status">
           {m.invitations_filter_status()}
         </Label>
         <Select
           value={status}
           onValueChange={(value) =>
-            onChange({ ...filters, status: value as StatusFilter })
+            onChange({
+              ...filters,
+              status: value as InvitationFilters['status'],
+            })
           }
         >
-          <SelectTrigger id="invitations-filter-status" className="w-40">
-            <SelectValue>{statusLabel(status as StatusFilter)}</SelectValue>
+          <SelectTrigger
+            id="invitations-filter-status"
+            className="min-h-11 w-full md:min-h-0 md:w-48"
+          >
+            <SelectValue>
+              {status === ANY
+                ? m.invitations_filter_all()
+                : statusLabel(status as StatusFilter)}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={ANY}>{m.invitations_filter_all()}</SelectItem>
             {STATUSES.map((value) => (
               <SelectItem key={value} value={value}>
                 {statusLabel(value)}
@@ -418,7 +465,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
         </Select>
       </div>
       {showMinistry ? (
-        <div className="space-y-1">
+        <div className="flex flex-col gap-1">
           <Label htmlFor="invitations-filter-ministry">
             {m.invitations_filter_ministry()}
           </Label>
@@ -431,7 +478,10 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
               })
             }
           >
-            <SelectTrigger id="invitations-filter-ministry" className="w-48">
+            <SelectTrigger
+              id="invitations-filter-ministry"
+              className="min-h-11 w-full md:min-h-0 md:w-48"
+            >
               <SelectValue>
                 {options?.ministries.find((x) => x.id === filters.ministryId)
                   ?.name ?? m.invitations_filter_any()}
@@ -448,7 +498,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
           </Select>
         </div>
       ) : null}
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1">
         <Label htmlFor="invitations-filter-invited-as">
           {m.invitations_filter_invited_as()}
         </Label>
@@ -464,7 +514,10 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
             })
           }
         >
-          <SelectTrigger id="invitations-filter-invited-as" className="w-40">
+          <SelectTrigger
+            id="invitations-filter-invited-as"
+            className="min-h-11 w-full md:min-h-0 md:w-48"
+          >
             <SelectValue>
               {filters.invitedAs
                 ? invitedAsLabel(filters.invitedAs)
@@ -481,29 +534,19 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
           </SelectContent>
         </Select>
       </div>
-      <div className="min-w-48 flex-1 space-y-1">
-        <Label htmlFor="invitations-filter-email">
-          {m.invitations_filter_email()}
-        </Label>
-        <Input
-          id="invitations-filter-email"
-          type="search"
-          value={email}
-          maxLength={254}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-      </div>
-      <Button type="submit" variant="outline">
-        {m.invitations_filter_search()}
-      </Button>
     </form>
   );
 }
 
 /** The Active Church's invitations and their history within the caller's authority, with Resend and Revoke where allowed. */
-export function InvitationListPage() {
+export function InvitationListPage({
+  filters,
+  onFiltersChange,
+}: {
+  filters: InvitationFilters;
+  onFiltersChange: (filters: InvitationFilters) => void;
+}) {
   const { churchTimezone } = useTimezone();
-  const [filters, setFilters] = useState<InvitationFilters>({});
   const query = useInvitationList({ filters });
   const items = query.data?.pages.flatMap((page) => page.items) ?? [];
   const options = query.data?.pages[0]?.options;
@@ -516,7 +559,7 @@ export function InvitationListPage() {
   const loading = query.isLoading || query.isPlaceholderData;
   // The server defaults to Pending, so the default status stays off the request.
   const change = (next: InvitationFilters) =>
-    setFilters({
+    onFiltersChange({
       ...next,
       status: next.status === 'pending' ? undefined : next.status,
     });
@@ -546,12 +589,7 @@ export function InvitationListPage() {
           ) : undefined
         }
       />
-      <FilterBar
-        key={filters.email ?? ''}
-        filters={filters}
-        options={options}
-        onChange={change}
-      />
+      <FilterBar filters={filters} options={options} onChange={change} />
       <div className="flex justify-end">
         <InviteDialog />
       </div>

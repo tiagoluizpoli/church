@@ -3,17 +3,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { DialogFooter } from '@/components/ui/dialog';
 import { MinistryNameForm } from '@/features/ministries/components/ministry-name-form';
 import { invalidateMinistryReads } from '@/features/ministries/ministry-queries';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { adminApi } from '@/utils/api-instances';
 
 interface SaveInput {
@@ -25,6 +20,7 @@ export function CreateMinistryDialog() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
   const create = async ({ name }: SaveInput) => {
     const ministry = await adminApi.createMinistry({ name });
@@ -39,41 +35,42 @@ export function CreateMinistryDialog() {
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
+      <Button
+        type="button"
+        size={isMobile ? 'touch' : 'default'}
+        onClick={() => setOpen(true)}
+      >
         {m.ministries_new()}
       </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>{m.ministries_create_title()}</DialogTitle>
-            <DialogDescription>
-              {m.ministries_create_description()}
-            </DialogDescription>
-          </DialogHeader>
-          {open ? (
-            <MinistryNameForm
-              initialName=""
-              autoFocus
-              onSave={create}
-              renderActions={(pending) => (
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() => setOpen(false)}
-                  >
-                    {m.ministries_cancel()}
-                  </Button>
-                  <Button type="submit" disabled={pending}>
-                    {m.ministries_create_submit()}
-                  </Button>
-                </DialogFooter>
-              )}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <ResponsiveFormSurface
+        open={open}
+        onOpenChange={setOpen}
+        title={m.ministries_create_title()}
+        description={m.ministries_create_description()}
+      >
+        {open ? (
+          <MinistryNameForm
+            initialName=""
+            autoFocus
+            onSave={create}
+            renderActions={(pending) => (
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => setOpen(false)}
+                >
+                  {m.ministries_cancel()}
+                </Button>
+                <Button type="submit" disabled={pending}>
+                  {m.ministries_create_submit()}
+                </Button>
+              </DialogFooter>
+            )}
+          />
+        ) : null}
+      </ResponsiveFormSurface>
     </>
   );
 }

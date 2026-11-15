@@ -189,7 +189,13 @@ export function RolePicker({
         <span id={legendId} className="font-medium text-xs">
           {m.ministry_invitation_roles_label()}
         </span>
-        <Button type="button" size="sm" variant="outline" onClick={selectAll}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="min-h-11 md:min-h-0"
+          onClick={selectAll}
+        >
           {m.invitations_invite_select_all()}
         </Button>
       </div>

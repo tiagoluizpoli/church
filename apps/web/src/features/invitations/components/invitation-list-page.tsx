@@ -600,7 +600,26 @@ export function InvitationListPage({
         }
       />
       <FilterBar filters={filters} options={options} onChange={change} />
-      <div className="flex justify-end">
+      <div
+        className={
+          query.isSuccess &&
+          !loading &&
+          !isFiltered &&
+          status === 'pending' &&
+          items.length === 0
+            ? 'space-y-2'
+            : 'flex justify-end'
+        }
+      >
+        {query.isSuccess &&
+        !loading &&
+        !isFiltered &&
+        status === 'pending' &&
+        items.length === 0 ? (
+          <p role="status" className="text-muted-foreground">
+            {m.invitations_empty()}
+          </p>
+        ) : null}
         <InviteDialog />
       </div>
       {query.isError && items.length === 0 ? (
@@ -611,6 +630,7 @@ export function InvitationListPage({
               type="button"
               size="sm"
               variant="outline"
+              className="min-h-11 md:min-h-0"
               onClick={() => query.refetch()}
             >
               {m.invitations_retry()}
@@ -632,7 +652,9 @@ export function InvitationListPage({
             ))}
           </CardContent>
         </Card>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 &&
+        !isFiltered &&
+        status === 'pending' ? null : items.length === 0 ? (
         <div className="space-y-2" role="status">
           <p className="text-muted-foreground">
             {isFiltered
@@ -658,8 +680,6 @@ export function InvitationListPage({
             >
               {m.invitations_clear_filters()}
             </Button>
-          ) : status === 'pending' ? (
-            <InviteDialog />
           ) : null}
         </div>
       ) : (
@@ -675,7 +695,8 @@ export function InvitationListPage({
                 },
                 { id: 'grants', name: m.invitations_column_grants() },
                 { id: 'inviter', name: m.invitations_column_inviter() },
-                { id: 'sent', name: m.invitations_column_sent() },
+                { id: 'created', name: m.invitations_column_created() },
+                { id: 'details', name: m.invitations_details() },
                 { id: 'end', name: m.invitations_column_end() },
                 { id: 'actions', name: m.invitations_column_actions() },
               ]}
@@ -685,11 +706,27 @@ export function InvitationListPage({
                 if (column.id === 'grants') return <Grants item={item} />;
                 if (column.id === 'actions') return <RowActions item={item} />;
                 if (column.id === 'inviter') return item.invitedBy.name;
-                if (column.id === 'sent')
+                if (column.id === 'created')
                   return formatInstantOf({
                     value: item.createdAt,
                     timeZone: churchTimezone,
                   });
+                if (column.id === 'details') {
+                  const delivery = emailFact({
+                    item,
+                    timeZone: churchTimezone,
+                  });
+                  const closure = closureFact({
+                    item,
+                    timeZone: churchTimezone,
+                  });
+                  return delivery || closure ? (
+                    <div className="space-y-1 whitespace-normal text-muted-foreground text-sm">
+                      {delivery ? <p>{delivery}</p> : null}
+                      {closure ? <p>{closure}</p> : null}
+                    </div>
+                  ) : null;
+                }
                 if (column.id === 'end') {
                   const date =
                     item.displayStatus === 'pending'
@@ -722,6 +759,7 @@ export function InvitationListPage({
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="min-h-11 md:min-h-0"
                     onClick={() => query.fetchNextPage()}
                   >
                     {m.invitations_retry()}

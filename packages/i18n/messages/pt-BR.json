@@ -721,7 +721,7 @@
   "invitations_empty_revoked": "Nenhum convite revogado.",
   "invitations_column_actions": "Ações",
   "invitations_column_inviter": "Convidado por",
-  "invitations_column_sent": "Enviado em",
+  "invitations_column_created": "Criado em",
   "invitations_column_end": "Expira em ou encerrado em",
   "invitations_closed_on": "Encerrado em {date}",
   "invitations_column_invitation": "Convite",

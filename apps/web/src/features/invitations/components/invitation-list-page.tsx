@@ -201,7 +201,7 @@ const REVOCATION_REASONS: Record<string, () => string> = {
   'ministry-archived': () => m.invitations_revoke_reason_ministry_archived(),
 };
 
-type StatusFilter = NonNullable<InvitationFilters['status']>;
+type StatusFilter = Exclude<NonNullable<InvitationFilters['status']>, 'any'>;
 const STATUSES: StatusFilter[] = [
   'pending',
   'expired',
@@ -405,7 +405,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
           }
         >
           <SelectTrigger id="invitations-filter-status" className="w-40">
-            <SelectValue>{statusLabel(status)}</SelectValue>
+            <SelectValue>{statusLabel(status as StatusFilter)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {STATUSES.map((value) => (

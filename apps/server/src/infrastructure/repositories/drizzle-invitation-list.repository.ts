@@ -18,6 +18,7 @@ import {
   isNull,
   lt,
   lte,
+  ne,
   or,
   type SQL,
   sql,
@@ -30,6 +31,7 @@ import type {
 import type {
   InvitationClosure,
   InvitationEmailDelivery,
+  InvitationListCounts,
   InvitationListFilters,
   InvitationListKind,
   InvitationListOptions,
@@ -77,6 +79,14 @@ interface DeliveryLookupInput {
   pairedParents: Map<string, string>;
 }
 
+const NO_OFFERS: InvitationListCounts = {
+  pending: 0,
+  expired: 0,
+  accepted: 0,
+  declined: 0,
+  revoked: 0,
+};
+
 /** Filter words onto the storage words of both tables; `expired` is stored pending, narrowed by the clock. */
 const STORED_STATUS = {
   pending: 'pending',
@@ -103,6 +113,10 @@ const invitee = alias(user, 'invitee');
 interface FilterOptionsInput {
   churchId: string;
   scope: InvitationListScope;
+}
+
+interface CountScopeInput extends FilterOptionsInput {
+  now: Date;
 }
 
 interface ClosuresInput {
@@ -205,7 +219,10 @@ export class DrizzleInvitationListRepository
       throw new MinistryInvitationNotFoundError();
     }
     const ministryIds = isAdmin ? undefined : scope.ministryIds;
-    if (ministryIds?.length === 0) return { items: [], options };
+    if (ministryIds?.length === 0) {
+      return { items: [], options, counts: NO_OFFERS };
+    }
+    const countsPromise = this.countScope({ churchId, scope, now });
 
     const query = { churchId, limit: limit + 1, position, filters, now };
     const wantsMinistryRows = filters.invitedAs !== 'admin';
@@ -267,6 +284,7 @@ export class DrizzleInvitationListRepository
     return {
       items,
       options,
+      counts: await countsPromise,
       nextCursor:
         merged.length > limit && last
           ? encodeInvitationListCursor({
@@ -275,6 +293,92 @@ export class DrizzleInvitationListRepository
               id: last.id,
             })
           : undefined,
+    };
+  }
+
+  /** Per-status totals for the whole scope in one aggregate per offer table; the filters and cursor never apply. */
+  private async countScope({
+    churchId,
+    scope,
+    now,
+  }: CountScopeInput): Promise<InvitationListCounts> {
+    const tally = (
+      status: SQL,
+      expiresAt: SQL,
+      outstanding: SQL | undefined,
+    ) => {
+      const when = (condition: SQL | undefined) =>
+        sql<number>`count(*) filter (where ${condition ?? sql`true`})`.mapWith(
+          Number,
+        );
+      return {
+        pending: when(
+          and(
+            sql`${status} = 'pending'`,
+            sql`${expiresAt} > ${now}`,
+            outstanding,
+          ),
+        ),
+        expired: when(
+          and(
+            sql`${status} = 'pending'`,
+            sql`${expiresAt} <= ${now}`,
+            outstanding,
+          ),
+        ),
+        accepted: when(sql`${status} = 'accepted'`),
+        declined: when(sql`${status} = 'rejected'`),
+        revoked: when(sql`${status} = 'canceled'`),
+      };
+    };
+    const client = getClient({ db: this.db });
+    const [[ministryRow], [churchRow]] = await Promise.all([
+      client
+        .select(
+          tally(
+            sql`${ministryInvitation.status}`,
+            sql`${ministryInvitation.expiresAt}`,
+            // Outstanding offers die with their Ministry; its history stays countable.
+            isNull(ministry.deletedAt),
+          ),
+        )
+        .from(ministryInvitation)
+        .innerJoin(ministry, eq(ministry.id, ministryInvitation.ministryId))
+        .where(
+          and(
+            eq(ministryInvitation.churchId, churchId),
+            scope.kind === 'ministries'
+              ? inArray(ministryInvitation.ministryId, scope.ministryIds)
+              : undefined,
+          ),
+        ),
+      // Standalone admin grants are never visible to a Ministry leader.
+      scope.kind === 'church'
+        ? client
+            .select(
+              tally(
+                sql`${churchInvitation.status}`,
+                sql`${churchInvitation.expiresAt}`,
+                undefined,
+              ),
+            )
+            .from(churchInvitation)
+            .where(
+              and(
+                eq(churchInvitation.organizationId, churchId),
+                eq(churchInvitation.role, 'admin'),
+              ),
+            )
+        : Promise.resolve([NO_OFFERS]),
+    ]);
+    const a = ministryRow ?? NO_OFFERS;
+    const b = churchRow ?? NO_OFFERS;
+    return {
+      pending: a.pending + b.pending,
+      expired: a.expired + b.expired,
+      accepted: a.accepted + b.accepted,
+      declined: a.declined + b.declined,
+      revoked: a.revoked + b.revoked,
     };
   }
 
@@ -423,14 +527,21 @@ export class DrizzleInvitationListRepository
       .where(
         and(
           eq(ministryInvitation.churchId, churchId),
-          eq(ministryInvitation.status, STORED_STATUS[filters.status]),
+          filters.status === 'any'
+            ? undefined
+            : eq(ministryInvitation.status, STORED_STATUS[filters.status]),
           filters.status === 'expired'
             ? lte(ministryInvitation.expiresAt, now)
             : undefined,
           // Outstanding offers die with their Ministry; its history stays readable.
           filters.status === 'pending' || filters.status === 'expired'
             ? isNull(ministry.deletedAt)
-            : undefined,
+            : filters.status === 'any'
+              ? or(
+                  ne(ministryInvitation.status, 'pending'),
+                  isNull(ministry.deletedAt),
+                )
+              : undefined,
           ministryIds
             ? inArray(ministryInvitation.ministryId, ministryIds)
             : undefined,
@@ -519,7 +630,9 @@ export class DrizzleInvitationListRepository
       .where(
         and(
           eq(churchInvitation.organizationId, churchId),
-          eq(churchInvitation.status, STORED_STATUS[filters.status]),
+          filters.status === 'any'
+            ? undefined
+            : eq(churchInvitation.status, STORED_STATUS[filters.status]),
           filters.status === 'expired'
             ? lte(churchInvitation.expiresAt, now)
             : undefined,

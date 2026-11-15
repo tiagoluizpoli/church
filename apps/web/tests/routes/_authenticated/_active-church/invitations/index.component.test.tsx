@@ -107,11 +107,19 @@ const LEADER_OPTIONS: ListInvitations200Options = {
   invitedAs: ['leader', 'volunteer'],
 };
 
+const NO_COUNTS = {
+  pending: 0,
+  expired: 0,
+  accepted: 0,
+  declined: 0,
+  revoked: 0,
+};
+
 function page(
   items: ListInvitations200ItemsItem[],
   extra: Partial<ListInvitations200> = {},
 ): ListInvitations200 {
-  return { items, options: ADMIN_OPTIONS, ...extra };
+  return { items, counts: NO_COUNTS, options: ADMIN_OPTIONS, ...extra };
 }
 
 function signInAs(capabilities: GetCallerCapabilities200) {
@@ -142,6 +150,7 @@ beforeEach(() => {
 describe('Invitations page', () => {
   it('lists offers with Ministry, Roles, inviter, dates and delivery facts for an admin without a Volunteer profile', async () => {
     listInvitations.mockResolvedValue({
+      counts: NO_COUNTS,
       options: ADMIN_OPTIONS,
       items: [
         row({

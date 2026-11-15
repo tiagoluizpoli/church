@@ -52,8 +52,11 @@ export const INVITATION_INVITED_AS_OPTIONS = [
 export type InvitationInvitedAs =
   (typeof INVITATION_INVITED_AS_OPTIONS)[number];
 
+/** `any` lists every status; it is a filter word only, never a row's status. */
+export type InvitationListStatusFilter = InvitationListStatus | 'any';
+
 export interface InvitationListFilters {
-  status: InvitationListStatus;
+  status: InvitationListStatusFilter;
   ministryId?: string;
   invitedAs?: InvitationInvitedAs;
   /** Case-insensitive substring of the addressed email. */
@@ -109,15 +112,20 @@ export interface InvitationListRow
   parentPending: boolean;
 }
 
+/** Offers per lifecycle word in the caller's scope, unfiltered and cursor-independent. */
+export type InvitationListCounts = Record<InvitationListStatus, number>;
+
 export interface InvitationListRowsPage {
   items: InvitationListRow[];
   nextCursor?: string;
+  counts: InvitationListCounts;
   options: InvitationListOptions;
 }
 
 export interface InvitationListPage {
   items: InvitationListItem[];
   nextCursor?: string;
+  counts: InvitationListCounts;
   options: InvitationListOptions;
 }
 

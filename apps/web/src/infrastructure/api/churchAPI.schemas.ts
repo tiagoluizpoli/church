@@ -5000,6 +5000,7 @@ export const ListInvitationsStatus = {
   declined: 'declined',
   revoked: 'revoked',
   expired: 'expired',
+  any: 'any',
 } as const;
 
 export type ListInvitationsInvitedAs = typeof ListInvitationsInvitedAs[keyof typeof ListInvitationsInvitedAs];
@@ -5121,6 +5122,34 @@ export type ListInvitations200ItemsItem = {
   canRevoke: boolean;
 };
 
+export type ListInvitations200Counts = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  pending: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  expired: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  accepted: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  declined: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  revoked: number;
+};
+
 export type ListInvitations200OptionsMinistriesItem = {
   id: string;
   name: string;
@@ -5143,6 +5172,7 @@ export type ListInvitations200Options = {
 export type ListInvitations200 = {
   items: ListInvitations200ItemsItem[];
   nextCursor?: string;
+  counts: ListInvitations200Counts;
   options: ListInvitations200Options;
 };
 

@@ -74,7 +74,7 @@ function page(
   items: ListPeople200ItemsItem[],
   extra: Partial<ListPeople200> = {},
 ): ListPeople200 {
-  return { items, options: OPTIONS, counts: COUNTS, ...extra };
+  return { items, options: OPTIONS, counts: COUNTS, ...extra } as ListPeople200;
 }
 
 function renderPeople(initialPath = '/people') {

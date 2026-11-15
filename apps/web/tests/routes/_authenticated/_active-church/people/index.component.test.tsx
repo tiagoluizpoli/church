@@ -138,6 +138,32 @@ describe('People directory', () => {
     expect(listPeople).toHaveBeenCalledWith({});
   });
 
+  it('shows the server scope counts in the header, not the loaded row count', async () => {
+    listPeople.mockResolvedValue(
+      page([person({})], {
+        counts: {
+          total: 143,
+          admins: 2,
+          leaders: 9,
+          volunteers: 120,
+          withoutMinistry: 14,
+        },
+      }),
+    );
+
+    renderPeople();
+
+    await rows();
+    expect(screen.getByTestId('people-total-chip')).toHaveTextContent('143');
+    expect(screen.getByTestId('people-leaders-chip')).toHaveTextContent('9');
+    expect(screen.getByTestId('people-volunteers-chip')).toHaveTextContent(
+      '120',
+    );
+    expect(screen.getByTestId('people-no-ministry-chip')).toHaveTextContent(
+      '14',
+    );
+  });
+
   it('gives a Volunteer no-access without reading people', async () => {
     getCallerCapabilities.mockResolvedValue(callerCapabilitiesFixture({}));
 

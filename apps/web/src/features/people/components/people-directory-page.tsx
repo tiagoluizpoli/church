@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { HeaderStatChip } from '@/components/header-stat-chip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -237,6 +238,7 @@ export function PeopleDirectoryPage({
     query.isError && !query.isFetchNextPageError ? undefined : query.data;
   const items = data?.pages.flatMap((page) => page.items) ?? [];
   const options = data?.pages[0]?.options;
+  const counts = data?.pages[0]?.counts;
   const isFiltered = Boolean(
     filters.search || filters.ministryId || filters.access,
   );
@@ -249,6 +251,32 @@ export function PeopleDirectoryPage({
         title={m.nav_people()}
         description={m.people_description()}
         autoFocusTitle
+        aside={
+          counts ? (
+            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+              <HeaderStatChip
+                testId="people-total-chip"
+                label={m.nav_people()}
+                value={counts.total}
+              />
+              <HeaderStatChip
+                testId="people-leaders-chip"
+                label={m.people_stat_leaders()}
+                value={counts.leaders}
+              />
+              <HeaderStatChip
+                testId="people-volunteers-chip"
+                label={m.people_stat_volunteers()}
+                value={counts.volunteers}
+              />
+              <HeaderStatChip
+                testId="people-no-ministry-chip"
+                label={m.people_no_ministries()}
+                value={counts.withoutMinistry}
+              />
+            </div>
+          ) : undefined
+        }
       />
       <FilterBar
         filters={filters}

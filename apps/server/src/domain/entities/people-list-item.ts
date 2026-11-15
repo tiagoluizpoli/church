@@ -33,9 +33,19 @@ export interface PeopleListItem {
   ministries: PeopleListMinistry[];
 }
 
+/** Members in the caller's scope, unfiltered and cursor-independent; capacities overlap. */
+export interface PeopleListCounts {
+  total: number;
+  admins: number;
+  leaders: number;
+  volunteers: number;
+  withoutMinistry: number;
+}
+
 export interface PeopleListPage {
   items: PeopleListItem[];
   nextCursor?: string;
+  counts: PeopleListCounts;
   options: { ministries: { id: string; name: string }[] };
 }
 

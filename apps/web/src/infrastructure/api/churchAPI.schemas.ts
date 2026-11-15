@@ -5720,6 +5720,34 @@ export type ListPeople200ItemsItem = {
   ministries: ListPeople200ItemsItemMinistriesItem[];
 };
 
+export type ListPeople200Counts = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  total: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  admins: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  leaders: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  volunteers: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  withoutMinistry: number;
+};
+
 export type ListPeople200OptionsMinistriesItem = {
   id: string;
   name: string;
@@ -5732,6 +5760,7 @@ export type ListPeople200Options = {
 export type ListPeople200 = {
   items: ListPeople200ItemsItem[];
   nextCursor?: string;
+  counts: ListPeople200Counts;
   options: ListPeople200Options;
 };
 

@@ -23,6 +23,14 @@ export const peopleListResponseSchema = z.object({
     }),
   ),
   nextCursor: z.string().optional(),
+  /** Members in the caller's scope, ignoring the filters and the cursor; a person may count as both leader and volunteer. */
+  counts: z.object({
+    total: z.number().int(),
+    admins: z.number().int(),
+    leaders: z.number().int(),
+    volunteers: z.number().int(),
+    withoutMinistry: z.number().int(),
+  }),
   /** Pickers limited to the Ministries the caller may see. */
   options: z.object({
     ministries: z.array(z.object({ id: z.string(), name: z.string() })),

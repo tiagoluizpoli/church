@@ -341,7 +341,7 @@ describe('Invite dialog', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
     await user.click(
-      screen.getByRole('button', { name: m.invitations_invite_open() }),
+      screen.getAllByRole('button', { name: m.invitations_invite_open() })[0],
     );
 
     const reopened = await screen.findByRole('dialog', {

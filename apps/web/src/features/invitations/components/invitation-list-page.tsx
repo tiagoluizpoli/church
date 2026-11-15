@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -238,7 +239,7 @@ function accessLabel(item: ListInvitations200ItemsItem): string | null {
   return null;
 }
 
-function emailFact({ item, timeZone }: InvitationRowProps): string {
+function emailFact({ item, timeZone }: InvitationRowProps): string | null {
   const { state, sentAt } = item.emailDelivery;
   if (state === 'sent') {
     return sentAt
@@ -249,7 +250,7 @@ function emailFact({ item, timeZone }: InvitationRowProps): string {
   }
   if (state === 'pending') return m.invitations_email_pending();
   if (state === 'failed') return m.invitations_email_failed();
-  return m.invitations_email_unavailable();
+  return null;
 }
 
 function closureFact({ item, timeZone }: InvitationRowProps): string | null {
@@ -263,46 +264,36 @@ function closureFact({ item, timeZone }: InvitationRowProps): string | null {
         ? m.invitations_accepted_by_on({ name: actor.name, date })
         : date
           ? m.invitations_accepted_on({ date })
-          : m.invitations_closure_unavailable();
+          : '';
   } else if (item.displayStatus === 'declined') {
     fact =
       actor && date
         ? m.invitations_declined_by_on({ name: actor.name, date })
         : date
           ? m.invitations_declined_link_on({ date })
-          : m.invitations_closure_unavailable();
+          : '';
   } else {
     fact =
       actor && date
         ? m.invitations_revoked_by_on({ name: actor.name, date })
         : date
           ? m.invitations_revoked_on({ date })
-          : m.invitations_closure_unavailable();
+          : '';
   }
   const revocationReason = reason ? REVOCATION_REASONS[reason] : undefined;
+  if (!fact) return null;
   if (revocationReason) return `${fact} · ${revocationReason()}`;
   return reason
     ? `${fact} · ${m.invitations_closure_reason({ reason })}`
     : fact;
 }
 
-function ExpiredBadge({ item }: RowActionProps) {
-  return item.displayStatus === 'expired' ? (
-    <Badge variant="destructive">{m.invitations_expired_badge()}</Badge>
-  ) : null;
-}
-
 function Grants({ item }: RowActionProps) {
   const access = accessLabel(item);
   return (
     <div className="flex flex-wrap items-center gap-2 whitespace-normal text-sm">
-      {item.status !== 'pending' ? (
-        <Badge variant="outline">{statusLabel(item.displayStatus)}</Badge>
-      ) : null}
       {item.churchAccessLevel ? (
-        <Badge variant="secondary">
-          {m.invitations_church_access()}: {m.join_church_access_admin()}
-        </Badge>
+        <Badge variant="secondary">{m.join_church_access_admin()}</Badge>
       ) : null}
       {item.ministryName ? (
         <Badge variant="outline">
@@ -323,23 +314,28 @@ function Grants({ item }: RowActionProps) {
 }
 
 function Facts({ item, timeZone }: InvitationRowProps) {
-  const expiry = formatInstantOf({ value: item.expiresAt, timeZone });
   return (
-    <p className="min-w-56 whitespace-normal break-words text-muted-foreground text-sm">
-      {[
-        m.invitations_invited_by({ name: item.invitedBy.name }),
-        m.invitations_created({
+    <div className="space-y-1 text-muted-foreground text-sm">
+      <p>{m.invitations_invited_by({ name: item.invitedBy.name })}</p>
+      <p>
+        {m.invitations_created({
           date: formatInstantOf({ value: item.createdAt, timeZone }),
-        }),
-        item.displayStatus === 'expired'
-          ? m.invitations_expired_on({ date: expiry })
-          : m.invitations_expires({ date: expiry }),
-        emailFact({ item, timeZone }),
-        closureFact({ item, timeZone }),
-      ]
-        .filter(Boolean)
-        .join(' · ')}
-    </p>
+        })}
+      </p>
+      {item.displayStatus === 'pending' ? (
+        <p>
+          {m.invitations_expires({
+            date: formatInstantOf({ value: item.expiresAt, timeZone }),
+          })}
+        </p>
+      ) : null}
+      {emailFact({ item, timeZone }) ? (
+        <p>{emailFact({ item, timeZone })}</p>
+      ) : null}
+      {closureFact({ item, timeZone }) ? (
+        <p>{closureFact({ item, timeZone })}</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -358,10 +354,19 @@ function InvitationCard({ item, timeZone }: InvitationRowProps) {
   return (
     <div className="surface-subtle workspace-panel space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="min-w-0 break-all font-medium">{item.email}</span>
-        <ExpiredBadge item={item} />
+        <span className="min-w-0 font-medium [overflow-wrap:anywhere]">
+          {item.email}
+        </span>
+        <Badge variant="outline">{statusLabel(item.displayStatus)}</Badge>
       </div>
       <Grants item={item} />
+      {item.displayStatus === 'pending' ? (
+        <p className="text-muted-foreground text-sm">
+          {m.invitations_expires({
+            date: formatInstantOf({ value: item.expiresAt, timeZone }),
+          })}
+        </p>
+      ) : null}
       <details className="text-sm">
         <summary className="min-h-11 cursor-pointer py-2 font-medium">
           {m.invitations_details()}
@@ -548,9 +553,11 @@ export function InvitationListPage({
 }) {
   const { churchTimezone } = useTimezone();
   const query = useInvitationList({ filters });
-  const items = query.data?.pages.flatMap((page) => page.items) ?? [];
-  const options = query.data?.pages[0]?.options;
-  const counts = query.data?.pages[0]?.counts;
+  const data =
+    query.isError && !query.isFetchNextPageError ? undefined : query.data;
+  const items = data?.pages.flatMap((page) => page.items) ?? [];
+  const options = data?.pages[0]?.options;
+  const counts = data?.pages[0]?.counts;
   const status = filters.status ?? 'pending';
   const isFiltered = Boolean(
     filters.ministryId || filters.invitedAs || filters.email,
@@ -574,14 +581,17 @@ export function InvitationListPage({
           counts ? (
             <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
               <HeaderStatChip
+                testId="invitations-pending-chip"
                 label={m.invitations_stat_pending()}
                 value={counts.pending}
               />
               <HeaderStatChip
+                testId="invitations-expired-chip"
                 label={m.invitations_stat_expired()}
                 value={counts.expired}
               />
               <HeaderStatChip
+                testId="invitations-accepted-chip"
                 label={m.invitations_stat_accepted()}
                 value={counts.accepted}
               />
@@ -608,10 +618,20 @@ export function InvitationListPage({
           </AlertDescription>
         </Alert>
       ) : loading ? (
-        <div className="grid gap-3" data-testid="invitations-loading">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
+        <Card className="surface-panel">
+          <CardContent
+            className="grid gap-3 md:gap-0"
+            data-testid="invitations-loading"
+          >
+            <Skeleton className="hidden h-[41px] w-full md:block" />
+            {[0, 1, 2].map((row) => (
+              <Skeleton
+                key={row}
+                className="h-27 w-full md:mt-px md:h-[40px]"
+              />
+            ))}
+          </CardContent>
+        </Card>
       ) : items.length === 0 ? (
         <div className="space-y-2" role="status">
           <p className="text-muted-foreground">
@@ -619,69 +639,111 @@ export function InvitationListPage({
               ? m.invitations_empty_filtered()
               : status === 'pending'
                 ? m.invitations_empty()
-                : m.invitations_empty_history()}
+                : status === 'any'
+                  ? m.invitations_empty_history()
+                  : status === 'expired'
+                    ? m.invitations_empty_expired()
+                    : status === 'accepted'
+                      ? m.invitations_empty_accepted()
+                      : status === 'declined'
+                        ? m.invitations_empty_declined()
+                        : m.invitations_empty_revoked()}
           </p>
           {isFiltered ? (
             <Button
               type="button"
               variant="outline"
+              className="min-h-11 md:min-h-0"
               onClick={() => change({ status: filters.status })}
             >
               {m.invitations_clear_filters()}
             </Button>
+          ) : status === 'pending' ? (
+            <InviteDialog />
           ) : null}
         </div>
       ) : (
-        <>
-          <DataTable
-            aria-label={m.invitations_list_label()}
-            columns={[
-              {
-                id: 'invitation',
-                name: m.invitations_column_invitation(),
-                isRowHeader: true,
-              },
-              { id: 'grants', name: m.invitations_column_grants() },
-              { id: 'details', name: m.invitations_details() },
-              { id: 'actions', name: m.people_column_actions() },
-            ]}
-            items={items}
-            rowId={({ item }) => `${item.kind}:${item.id}`}
-            renderCell={({ item, column }) => {
-              if (column.id === 'grants') return <Grants item={item} />;
-              if (column.id === 'actions') return <RowActions item={item} />;
-              if (column.id === 'details') {
-                return <Facts item={item} timeZone={churchTimezone} />;
-              }
-              return (
-                <div className="flex flex-wrap items-center gap-2 whitespace-normal">
-                  <span className="break-all font-medium">{item.email}</span>
-                  <ExpiredBadge item={item} />
-                </div>
-              );
-            }}
-            renderMobileCard={({ item }) => (
-              <InvitationCard item={item} timeZone={churchTimezone} />
-            )}
-          />
-          {query.isFetchNextPageError ? (
-            <Alert variant="destructive">
-              <AlertDescription>{m.invitations_load_failed()}</AlertDescription>
-            </Alert>
-          ) : null}
-          {query.hasNextPage ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={query.isFetchingNextPage}
-              onClick={() => query.fetchNextPage()}
-            >
-              {query.isFetchingNextPage
-                ? m.invitations_loading_more()
-                : m.invitations_load_more()}
-            </Button>
-          ) : null}
-        </>
+        <Card className="surface-panel">
+          <CardContent className="space-y-3">
+            <DataTable
+              aria-label={m.invitations_list_label()}
+              columns={[
+                {
+                  id: 'invitation',
+                  name: m.invitations_column_invitation(),
+                  isRowHeader: true,
+                },
+                { id: 'grants', name: m.invitations_column_grants() },
+                { id: 'inviter', name: m.invitations_column_inviter() },
+                { id: 'sent', name: m.invitations_column_sent() },
+                { id: 'end', name: m.invitations_column_end() },
+                { id: 'actions', name: m.invitations_column_actions() },
+              ]}
+              items={items}
+              rowId={({ item }) => `${item.kind}:${item.id}`}
+              renderCell={({ item, column }) => {
+                if (column.id === 'grants') return <Grants item={item} />;
+                if (column.id === 'actions') return <RowActions item={item} />;
+                if (column.id === 'inviter') return item.invitedBy.name;
+                if (column.id === 'sent')
+                  return formatInstantOf({
+                    value: item.createdAt,
+                    timeZone: churchTimezone,
+                  });
+                if (column.id === 'end') {
+                  const date =
+                    item.displayStatus === 'pending'
+                      ? item.expiresAt
+                      : item.closure?.at;
+                  return date
+                    ? formatInstantOf({ value: date, timeZone: churchTimezone })
+                    : null;
+                }
+                return (
+                  <div className="flex flex-wrap items-center gap-2 whitespace-normal">
+                    <span className="font-medium [overflow-wrap:anywhere]">
+                      {item.email}
+                    </span>
+                    <Badge variant="outline">
+                      {statusLabel(item.displayStatus)}
+                    </Badge>
+                  </div>
+                );
+              }}
+              renderMobileCard={({ item }) => (
+                <InvitationCard item={item} timeZone={churchTimezone} />
+              )}
+            />
+            {query.isFetchNextPageError ? (
+              <Alert variant="destructive">
+                <AlertDescription className="flex items-center gap-3">
+                  <span>{m.invitations_load_failed()}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => query.fetchNextPage()}
+                  >
+                    {m.invitations_retry()}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {query.hasNextPage && !query.isFetchNextPageError ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={query.isFetchingNextPage}
+                className="min-h-11 w-full md:min-h-0 md:w-auto"
+                onClick={() => query.fetchNextPage()}
+              >
+                {query.isFetchingNextPage
+                  ? m.invitations_loading_more()
+                  : m.invitations_load_more()}
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
       )}
     </WorkspacePage>
   );

@@ -77,7 +77,7 @@ function row(
   return {
     kind: 'ministry',
     id: 'mi-1',
-    ministryId: 'm-worship',
+    ministryId: '11111111-1111-4111-8111-111111111111',
     ministryName: 'Worship',
     email: 'ana@example.com',
     ministryAccessLevel: 'volunteer',
@@ -98,12 +98,12 @@ function row(
 const ADMIN_OPTIONS: ListInvitations200Options = {
   ministries: [
     { id: 'm-kids', name: 'Kids' },
-    { id: 'm-worship', name: 'Worship' },
+    { id: '11111111-1111-4111-8111-111111111111', name: 'Worship' },
   ],
   invitedAs: ['admin', 'leader', 'volunteer'],
 };
 const LEADER_OPTIONS: ListInvitations200Options = {
-  ministries: [{ id: 'm-worship', name: 'Worship' }],
+  ministries: [{ id: '11111111-1111-4111-8111-111111111111', name: 'Worship' }],
   invitedAs: ['leader', 'volunteer'],
 };
 
@@ -148,6 +148,34 @@ beforeEach(() => {
 });
 
 describe('Invitations page', () => {
+  it('shows scope-wide counts and offers all statuses', async () => {
+    listInvitations.mockResolvedValue(
+      page([], {
+        counts: { ...NO_COUNTS, pending: 8, expired: 3, accepted: 4 },
+      }),
+    );
+    const user = userEvent.setup();
+    renderInvitations();
+    expect(
+      await screen.findByTestId('invitations-pending-chip'),
+    ).toHaveTextContent('8');
+    expect(screen.getByTestId('invitations-expired-chip')).toHaveTextContent(
+      '3',
+    );
+    expect(screen.getByTestId('invitations-accepted-chip')).toHaveTextContent(
+      '4',
+    );
+    await user.click(
+      screen.getByRole('combobox', { name: m.invitations_filter_status() }),
+    );
+    await user.click(
+      screen.getByRole('option', { name: m.invitations_filter_all() }),
+    );
+    await waitFor(() =>
+      expect(listInvitations).toHaveBeenLastCalledWith({ status: 'any' }),
+    );
+  });
+
   it('lists offers with Ministry, Roles, inviter, dates and delivery facts for an admin without a Volunteer profile', async () => {
     listInvitations.mockResolvedValue({
       counts: NO_COUNTS,
@@ -222,11 +250,10 @@ describe('Invitations page', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      within(desktopRow as HTMLElement).getByText(
-        m.invitations_invited_by({ name: 'Pastor Paulo' }),
-        { exact: false },
-      ),
-    ).toHaveClass('whitespace-normal');
+      within(desktopRow as HTMLElement).getByText('Pastor Paulo', {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('badges an expired offer, and never calls an unknown delivery sent', async () => {
@@ -245,7 +272,7 @@ describe('Invitations page', () => {
 
     const [expired, queued] = await rows();
     expect(expired).toHaveTextContent(m.invitations_expired_badge());
-    expect(expired).toHaveTextContent(m.invitations_email_unavailable());
+    expect(expired).not.toHaveTextContent(m.invitations_email_unavailable());
     expect(expired).not.toHaveTextContent(
       m.invitations_email_sent({ date: '' }),
     );
@@ -343,7 +370,7 @@ describe('Invitations page', () => {
     expect(await screen.findByText(m.invitations_load_failed())).toBeVisible();
     expect(await rows()).toHaveLength(1);
     expect(
-      screen.getByRole('button', { name: m.invitations_load_more() }),
+      screen.getByRole('button', { name: m.invitations_retry() }),
     ).toBeEnabled();
   });
 });
@@ -371,14 +398,11 @@ describe('Invitations filters and history', () => {
       screen.getByRole('searchbox', { name: m.invitations_filter_email() }),
       'ANA',
     );
-    await user.click(
-      screen.getByRole('button', { name: m.invitations_filter_search() }),
-    );
 
     await vi.waitFor(() =>
       expect(listInvitations).toHaveBeenLastCalledWith({
         status: 'accepted',
-        ministryId: 'm-worship',
+        ministryId: '11111111-1111-4111-8111-111111111111',
         invitedAs: 'admin',
         email: 'ANA',
       }),
@@ -428,7 +452,7 @@ describe('Invitations filters and history', () => {
     renderInvitations();
     await pick(m.invitations_filter_status(), m.invitations_status_declined());
     expect(await screen.findByRole('status')).toHaveTextContent(
-      m.invitations_empty_history(),
+      m.invitations_empty_declined(),
     );
 
     await pick(m.invitations_filter_invited_as(), m.join_church_access_admin());
@@ -478,10 +502,10 @@ describe('Invitations filters and history', () => {
     expect(linkDecline).toHaveTextContent(
       m.invitations_closure_reason({ reason: 'Moved away' }),
     );
-    expect(legacyDecline).toHaveTextContent(
+    expect(legacyDecline).not.toHaveTextContent(
       m.invitations_closure_unavailable(),
     );
-    expect(revoked).toHaveTextContent(m.invitations_closure_unavailable());
+    expect(revoked).not.toHaveTextContent(m.invitations_closure_unavailable());
     expect(revoked).toHaveTextContent(m.invitations_status_revoked());
   });
 });
@@ -581,7 +605,10 @@ describe('Invitations resend', () => {
     expect(button).toBeDisabled();
     expect(button).toHaveTextContent(m.invitations_resending());
     expect(resendMinistryInvitation).toHaveBeenCalledTimes(1);
-    expect(resendMinistryInvitation).toHaveBeenCalledWith('m-worship', 'mi-1');
+    expect(resendMinistryInvitation).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
+      'mi-1',
+    );
     const listCalls = listInvitations.mock.calls.length;
     finish({ id: 'mi-1', deliveryStatus: 'pending' });
 
@@ -753,7 +780,10 @@ describe('Invitations revoke', () => {
     expect(confirm).toHaveTextContent('Revogando…');
     await user.click(confirm);
     expect(revokeMinistryInvitation).toHaveBeenCalledTimes(1);
-    expect(revokeMinistryInvitation).toHaveBeenCalledWith('m-worship', 'mi-1');
+    expect(revokeMinistryInvitation).toHaveBeenCalledWith(
+      '11111111-1111-4111-8111-111111111111',
+      'mi-1',
+    );
     const listCalls = listInvitations.mock.calls.length;
     finish(undefined);
 

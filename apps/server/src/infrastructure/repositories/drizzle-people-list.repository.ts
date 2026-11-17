@@ -304,13 +304,13 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
     };
   }
 
-  /** Search, Ministry and Access combine; a leader's scope is always applied. */
+  /** Search, Ministry, Access and Without Ministry combine; a leader's scope is always applied. */
   private memberFilter({
     churchId,
     scope,
     filters,
   }: MemberFilterInput): SQL | undefined {
-    const { search, ministryId, access } = filters;
+    const { search, ministryId, access, withoutMinistry } = filters;
     // Leader/volunteer match one visible membership together with the Ministry; Admin is Church-wide.
     const level = access === 'admin' ? undefined : access;
     const membership =
@@ -326,6 +326,10 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
         : undefined,
       access === 'admin' ? eq(churchMember.role, 'admin') : undefined,
       membership,
+      // The same predicate as `counts.withoutMinistry`; with a Ministry or leader/volunteer filter it is contradictory and matches nobody.
+      withoutMinistry
+        ? not(this.hasVisibleMembership({ churchId, scope }))
+        : undefined,
     );
   }
 

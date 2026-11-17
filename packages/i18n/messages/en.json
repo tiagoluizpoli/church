@@ -825,6 +825,7 @@
   "people_filter_search": "Name or email",
   "people_filter_ministry": "Ministry",
   "people_filter_access": "Access",
+  "people_filter_membership": "Ministry membership",
   "people_list_label": "People",
   "people_empty": "No members yet.",
   "people_empty_filtered": "No members match these filters.",

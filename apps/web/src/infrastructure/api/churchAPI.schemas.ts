@@ -5947,6 +5947,7 @@ search?: string;
  */
 ministryId?: string;
 access?: ListPeopleAccess;
+withoutMinistry?: string;
 cursor?: string;
 /**
  * @minimum 1

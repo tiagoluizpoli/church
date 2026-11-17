@@ -36,6 +36,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 const SKELETON_ROWS = [0, 1, 2];
 const FIELD = 'flex flex-col gap-1';
 const TRIGGER = 'min-h-11 w-full md:min-h-0 md:w-48';
+const WITHOUT_MINISTRY = 'without-ministry';
 const ACCESS_VALUES = ['admin', 'leader', 'volunteer'] as const;
 
 function accessLabel(value: string): string {
@@ -230,6 +231,34 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
           </SelectContent>
         </Select>
       </div>
+      <div className={FIELD}>
+        <Label htmlFor="people-filter-membership">
+          {m.people_filter_membership()}
+        </Label>
+        <Select
+          value={filters.withoutMinistry ? WITHOUT_MINISTRY : ANY}
+          onValueChange={(value) =>
+            onChange({
+              ...filters,
+              withoutMinistry: value === WITHOUT_MINISTRY || undefined,
+            })
+          }
+        >
+          <SelectTrigger id="people-filter-membership" className={TRIGGER}>
+            <SelectValue>
+              {filters.withoutMinistry
+                ? m.people_stat_without_ministry()
+                : m.invitations_filter_any()}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ANY}>{m.invitations_filter_any()}</SelectItem>
+            <SelectItem value={WITHOUT_MINISTRY}>
+              {m.people_stat_without_ministry()}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
     </form>
   );
 }
@@ -253,7 +282,10 @@ export function PeopleDirectoryPage({
   const options = data?.pages[0]?.options;
   const counts = data?.pages[0]?.counts;
   const isFiltered = Boolean(
-    filters.search || filters.ministryId || filters.access,
+    filters.search ||
+      filters.ministryId ||
+      filters.access ||
+      filters.withoutMinistry,
   );
   // A new filter set shows the previous rows only as placeholder data.
   const loading = query.isLoading || query.isPlaceholderData;

@@ -41,6 +41,8 @@ export const peopleListQuerystringSchema = z.object({
   search: z.string().trim().min(1).max(254).optional(),
   ministryId: z.string().uuid().optional(),
   access: z.enum(PEOPLE_ACCESS_OPTIONS).optional(),
+  /** `true` keeps only members in no visible Ministry; `false` or absent applies no filter. */
+  withoutMinistry: z.stringbool().optional(),
   cursor: z
     .string()
     .refine((cursor) => decodePeopleListCursor({ cursor }) !== undefined, {

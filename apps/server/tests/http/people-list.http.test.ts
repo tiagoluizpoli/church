@@ -496,6 +496,76 @@ describe('GET /people', () => {
     });
   });
 
+  describe('withoutMinistry filter', () => {
+    const NO_MINISTRY = [
+      'Ada Admin',
+      'Ari Archived',
+      'Bo Both',
+      'Eve Ended',
+      'Pat Plain',
+      'Rex Retired',
+    ];
+
+    it('keeps exactly the members the withoutMinistry count counts', async () => {
+      signIn('admin');
+      const { items, body } = await list('?withoutMinistry=true');
+      expect(names(items)).toEqual(NO_MINISTRY);
+      expect(items).toHaveLength(body.counts.withoutMinistry);
+      expect(body.counts.total).toBe(11);
+      expect(names((await list('?withoutMinistry=false')).items)).toHaveLength(
+        11,
+      );
+    });
+
+    it('combines with search and with paging', async () => {
+      signIn('admin');
+      expect(
+        names((await list('?withoutMinistry=true&search=pat')).items),
+      ).toEqual(['Pat Plain']);
+      expect(
+        (await list('?withoutMinistry=true&access=admin')).items.map(
+          (i) => i.name,
+        ),
+      ).toEqual(['Ada Admin']);
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const { body } = await list(
+          `?withoutMinistry=true&limit=4${cursor ? `&cursor=${cursor}` : ''}`,
+        );
+        seen.push(...names(body.items));
+        expect(body.counts.withoutMinistry).toBe(6);
+        cursor = body.nextCursor;
+      } while (cursor);
+      expect(seen).toEqual(NO_MINISTRY);
+    });
+
+    it('is contradictory with a Ministry or leader/volunteer filter and matches nobody', async () => {
+      signIn('admin');
+      for (const q of [
+        `?withoutMinistry=true&ministryId=${kidsId}`,
+        '?withoutMinistry=true&access=leader',
+        '?withoutMinistry=true&access=volunteer',
+      ]) {
+        expect((await list(q)).items, q).toEqual([]);
+      }
+    });
+
+    it('leaves a leader scoped to led Ministries, where nobody is without one', async () => {
+      signIn('wl');
+      const { res, items, body } = await list('?withoutMinistry=true');
+      expect(res.statusCode).toBe(200);
+      expect(items).toEqual([]);
+      expect(body.counts.withoutMinistry).toBe(0);
+      expect(names((await list()).items)).not.toContain('Pat Plain');
+    });
+
+    it('rejects a non-boolean value with 422', async () => {
+      signIn('admin');
+      expect((await list('?withoutMinistry=maybe')).res.statusCode).toBe(422);
+    });
+  });
+
   it('keeps Church B data out', async () => {
     signIn('admin');
     const { body } = await list();

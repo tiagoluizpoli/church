@@ -80,6 +80,36 @@ describe('switch-church-confirm route', () => {
     listCycles.mockResolvedValue({ cycles: [] });
   });
 
+  it('shows a skeleton on first load, then keeps the content during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    listActiveChurchOptions.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { queryClient } = renderConfirm(
+      '/switch-church-confirm?target=church-b&redirect=%2Fcycles',
+    );
+
+    const busy = await screen.findByLabelText(m.switch_church_loading());
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    listActiveChurchOptions.mockReturnValue(new Promise(() => undefined));
+    release({ churches: CHURCHES });
+    expect(await screen.findByText(m.switch_church_title())).toBeVisible();
+    expect(screen.queryByLabelText(m.switch_church_loading())).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(listActiveChurchOptions).toHaveBeenCalledTimes(2),
+    );
+    expect(screen.getByText(m.switch_church_title())).toBeVisible();
+    expect(screen.queryByLabelText(m.switch_church_loading())).toBeNull();
+  });
+
   it('names the current and target Church before switching', async () => {
     renderConfirm('/switch-church-confirm?target=church-b&redirect=%2Fcycles');
 

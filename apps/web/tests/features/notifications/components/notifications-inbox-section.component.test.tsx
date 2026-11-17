@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -137,7 +137,7 @@ describe('NotificationsInboxSection (full mode — /notifications page)', () => 
     ).toBeInTheDocument();
   });
 
-  it('shows a loading state instead of the empty state while the first page loads', () => {
+  it('shows a skeleton instead of the empty state while the first page loads', async () => {
     renderWithProviders(
       <NotificationsInboxSection
         variant="full"
@@ -153,7 +153,11 @@ describe('NotificationsInboxSection (full mode — /notifications page)', () => 
       />,
     );
 
-    expect(screen.getByText(m.notification_loading())).toBeInTheDocument();
+    const busy = screen.getByLabelText(m.notification_loading());
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
     expect(
       screen.queryByText(m.notification_empty_title()),
     ).not.toBeInTheDocument();

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import type {
   ConfirmVolunteerTransfer200,
   GetVolunteerTransferPreview200,
@@ -151,9 +153,14 @@ function TransferReview({
 
   if (previewQuery.isLoading) {
     return (
-      <p className="text-muted-foreground text-sm">
-        {m.volunteer_transfer_checking()}
-      </p>
+      <Pending
+        aria-label={m.volunteer_transfer_checking()}
+        className="space-y-3"
+      >
+        <Skeleton className="h-6 w-2/3" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </Pending>
     );
   }
 

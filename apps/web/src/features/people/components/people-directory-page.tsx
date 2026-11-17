@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
 import {
   Select,
   SelectContent,
@@ -350,17 +351,19 @@ export function PeopleDirectoryPage({
       ) : loading ? (
         <Card className="surface-panel">
           {/* The real table's header and 41px rows on desktop, the card height on mobile, so the list does not jump in. */}
-          <CardContent
-            className="grid gap-3 md:gap-0"
-            data-testid="people-loading"
-          >
-            <Skeleton className="hidden h-[41px] w-full md:block" />
-            {SKELETON_ROWS.map((row) => (
-              <Skeleton
-                key={row}
-                className="h-27 w-full md:mt-px md:h-[40px]"
-              />
-            ))}
+          <CardContent>
+            <Pending
+              className="grid gap-3 md:gap-0"
+              data-testid="people-loading"
+            >
+              <Skeleton className="hidden h-[41px] w-full md:block" />
+              {SKELETON_ROWS.map((row) => (
+                <Skeleton
+                  key={row}
+                  className="h-27 w-full md:mt-px md:h-[40px]"
+                />
+              ))}
+            </Pending>
           </CardContent>
         </Card>
       ) : items.length === 0 ? (

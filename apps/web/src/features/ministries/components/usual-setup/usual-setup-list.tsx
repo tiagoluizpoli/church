@@ -10,6 +10,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUsualSetup } from '@/features/ministries/usual-setup-queries';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
@@ -87,11 +88,11 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
         {m.usual_setup_description()}
       </p>
       {setup.isPending ? (
-        <div className="space-y-2" aria-busy="true">
+        <Pending className="space-y-2">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />
-        </div>
+        </Pending>
       ) : setup.isError ? (
         <div className="space-y-2" role="alert">
           <p className="text-muted-foreground">{m.usual_setup_load_failed()}</p>

@@ -38,12 +38,15 @@ describe('UserMenu (F8)', () => {
     vi.clearAllMocks();
   });
 
-  it('shows a loading skeleton while the session is pending', () => {
+  it('shows a loading skeleton while the session is pending', async () => {
     mockedUseSession.mockReturnValue({ data: null, isPending: true } as never);
 
     const { container } = renderUserMenu();
 
-    expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    await waitFor(() => {
+      expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
   });
 
   it('shows a Sign In link when there is no session', () => {

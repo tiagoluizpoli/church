@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
 import {
   Select,
   SelectContent,
@@ -245,10 +246,10 @@ export function MinistryListPage({
           </AlertDescription>
         </Alert>
       ) : loading ? (
-        <div className="grid gap-3">
+        <Pending className="grid gap-3">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
-        </div>
+        </Pending>
       ) : ministries.length === 0 ? (
         <div className="space-y-2" role="status">
           <p className="text-muted-foreground">

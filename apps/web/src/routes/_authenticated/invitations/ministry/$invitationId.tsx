@@ -8,6 +8,8 @@ import { ArrowRight, CircleAlert, ShieldAlert } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import { VolunteerTransferFlow } from '@/features/volunteer-transfer';
 import type {
   AcceptMinistryInvitation200,
@@ -190,9 +192,14 @@ function MinistryInvitationContent({
 
   if (statusQuery.isLoading) {
     return (
-      <p className="text-muted-foreground text-sm">
-        {m.ministry_invitation_loading()}
-      </p>
+      <Pending
+        aria-label={m.ministry_invitation_loading()}
+        className="space-y-4"
+      >
+        <Skeleton className="h-6 w-2/3" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </Pending>
     );
   }
 

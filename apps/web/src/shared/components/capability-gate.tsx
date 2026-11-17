@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import type { ReactNode } from 'react';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   type CallerCapabilities,
@@ -25,10 +26,10 @@ export function CapabilityGate({
 
   if (capabilities.isResolving) {
     return (
-      <div className="space-y-3" data-testid="capability-gate-skeleton">
+      <Pending className="space-y-3" data-testid="capability-gate-skeleton">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-72" />
-      </div>
+      </Pending>
     );
   }
 

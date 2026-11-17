@@ -333,7 +333,12 @@ function endDate({ item }: RowActionProps): string | null | undefined {
   return item.displayStatus === 'pending' ? item.expiresAt : item.closure?.at;
 }
 
-function factRowId(item: ListInvitations200ItemsItem, key: string): string {
+interface FactRowIdInput {
+  item: ListInvitations200ItemsItem;
+  key: string;
+}
+
+function factRowId({ item, key }: FactRowIdInput): string {
   return `${invitationRowId(item)}:${key}`;
 }
 
@@ -349,15 +354,17 @@ type VisibleRow =
       fact: Fact;
     };
 
+interface VisibleRowsInput {
+  items: ListInvitations200ItemsItem[];
+  expanded: ReadonlySet<string>;
+  timeZone: string;
+}
+
 function visibleRows({
   items,
   expanded,
   timeZone,
-}: {
-  items: ListInvitations200ItemsItem[];
-  expanded: ReadonlySet<string>;
-  timeZone: string;
-}): VisibleRow[] {
+}: VisibleRowsInput): VisibleRow[] {
   return items.flatMap((item): VisibleRow[] => [
     { kind: 'invitation', item },
     ...(expanded.has(invitationRowId(item))
@@ -817,13 +824,13 @@ export function InvitationListPage({
               mobileItems={rows.filter((row) => row.kind === 'invitation')}
               rowId={({ item }) =>
                 item.kind === 'fact'
-                  ? factRowId(item.item, item.fact.key)
+                  ? factRowId({ item: item.item, key: item.fact.key })
                   : invitationRowId(item.item)
               }
               // react-aria memoizes a row's cells by key, so the toggle state is part of it.
               rowKey={({ item }) =>
                 item.kind === 'fact'
-                  ? factRowId(item.item, item.fact.key)
+                  ? factRowId({ item: item.item, key: item.fact.key })
                   : `${invitationRowId(item.item)}:${expanded.has(invitationRowId(item.item))}`
               }
               renderCell={({ item: row, column }) => {
@@ -860,7 +867,7 @@ export function InvitationListPage({
                       aria-controls={
                         isOpen
                           ? factsOf({ item, timeZone: churchTimezone })
-                              .map(({ key }) => factRowId(item, key))
+                              .map(({ key }) => factRowId({ item, key }))
                               .join(' ')
                           : undefined
                       }

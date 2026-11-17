@@ -15,6 +15,8 @@ import {
   isChunkLoadError,
   reloadPage,
 } from '@/shared/utils/chunk-reload';
+import { isOutageError } from '@/shared/utils/outage';
+import { watchReadiness } from '@/shared/utils/readiness';
 
 interface ErrorFallbackProps {
   error: Error;
@@ -78,6 +80,23 @@ function ErrorFallback({ error, fullScreen }: ErrorFallbackProps) {
   );
 }
 
+/** The shell's own call failed because the server is down: wait for readiness, then re-run the guards to land on the requested page. */
+function ReconnectingFallback({ error }: { error: Error }) {
+  const router = useRouter();
+
+  // A new error (the guard failing again after a retry) restarts the watch.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: error is the restart trigger
+  useEffect(() => watchReadiness(() => router.invalidate()), [router, error]);
+
+  return (
+    <FullScreenFallback
+      role="status"
+      title={m.shell_reconnecting_title()}
+      description={m.shell_reconnecting_description()}
+    />
+  );
+}
+
 /** Router-wide default: a page crash renders inside whatever layout holds it, so the shell keeps working. */
 export function RouteErrorFallback({ error }: ErrorComponentProps) {
   return <ErrorFallback error={error} fullScreen={false} />;
@@ -85,6 +104,9 @@ export function RouteErrorFallback({ error }: ErrorComponentProps) {
 
 /** For the root and the shell's own routes, whose failure leaves no shell to render inside. */
 export function ShellErrorFallback({ error }: ErrorComponentProps) {
+  if (isOutageError(error)) {
+    return <ReconnectingFallback error={error} />;
+  }
   return <ErrorFallback error={error} fullScreen />;
 }
 

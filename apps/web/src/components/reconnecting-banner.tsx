@@ -3,11 +3,7 @@ import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { isOutageError } from '@/shared/utils/outage';
-import { apiClient } from '@/utils/api-client';
-
-const READINESS_PATH = '/api/health';
-const FIRST_PROBE_DELAY_MS = 1000;
-const MAX_PROBE_DELAY_MS = 30_000;
+import { watchReadiness } from '@/shared/utils/readiness';
 
 function hasOutage(queryClient: QueryClient): boolean {
   return queryClient
@@ -37,35 +33,11 @@ export function ReconnectingBanner() {
 
   useEffect(() => {
     if (!isOutage) return;
-    let delay = FIRST_PROBE_DELAY_MS;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let stopped = false;
-
-    const probe = async () => {
-      clearTimeout(timer);
-      try {
-        await apiClient({ url: READINESS_PATH });
-      } catch {
-        if (stopped) return;
-        timer = setTimeout(probe, delay);
-        delay = Math.min(delay * 2, MAX_PROBE_DELAY_MS);
-        return;
-      }
-      if (stopped) return;
-      // A first load in backoff ignores refetch, so cancel before restarting.
+    // A first load in backoff ignores refetch, so cancel before restarting.
+    return watchReadiness(async () => {
       await queryClient.cancelQueries();
       await queryClient.invalidateQueries();
-    };
-
-    timer = setTimeout(probe, delay);
-    window.addEventListener('focus', probe);
-    window.addEventListener('online', probe);
-    return () => {
-      stopped = true;
-      clearTimeout(timer);
-      window.removeEventListener('focus', probe);
-      window.removeEventListener('online', probe);
-    };
+    });
   }, [isOutage, queryClient]);
 
   if (!isOutage) return null;

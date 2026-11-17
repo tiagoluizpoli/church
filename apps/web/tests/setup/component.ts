@@ -2,7 +2,7 @@
 // (MSW's `CookieStore` touches it at module load). See the file for why.
 import '@/tests/setup/web-storage';
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import { mswServer } from '@/tests/setup/msw';
 
@@ -10,6 +10,11 @@ declare global {
   /** base-ui's opt-out for awaiting exit animations. See the stub below. */
   var BASE_UI_ANIMATIONS_DISABLED: boolean | undefined;
 }
+
+// findBy/waitFor poll, so a longer budget never slows a passing test. The 1s
+// default is shorter than a route test's first render under suite load, which
+// lazy-imports the whole route tree (the file's first test failed at ~1.5s).
+configure({ asyncUtilTimeout: 5000 });
 
 // Component-project setup: jest-dom matchers, RTL cleanup, and MSW lifecycle.
 beforeAll(() => mswServer.listen({ onUnhandledRequest: 'error' }));

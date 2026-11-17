@@ -305,7 +305,7 @@ describe('LeadershipSection', () => {
     givenSchedules([schedule({ name: 'Prep' })]);
     renderHomePage();
 
-    await screen.findByRole('heading', { name: m.home_section_serving() });
+    await screen.findByRole('heading', { name: m.home_next_assignment() });
     expect(
       screen.queryByRole('heading', { name: m.home_attention_schedules() }),
     ).not.toBeInTheDocument();

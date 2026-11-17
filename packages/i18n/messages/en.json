@@ -1566,7 +1566,7 @@
   "event_move_withdrawn_title_other": "{count} clashing Assignments were withdrawn",
   "home_section_church": "Church",
   "home_section_leadership": "Ministries I lead",
-  "home_section_serving": "My serving",
+  "home_respond": "Respond",
   "home_welcome": "Welcome to {churchName}. Nothing needs you right now.",
   "home_load_error": "We couldn’t load your Home. Try again.",
   "home_retry": "Try again",

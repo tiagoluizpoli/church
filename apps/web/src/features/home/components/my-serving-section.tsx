@@ -1,31 +1,35 @@
 import { m } from '@church/i18n/messages';
-import { now, today } from '@church/time';
+import { getLocale } from '@church/i18n/runtime';
+import {
+  addCalendarDays,
+  type CalendarDay,
+  formatLongCalendarDay,
+  now,
+  parseCalendarDay,
+  today,
+} from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Badge } from '@/components/ui/badge';
-import { HomeError } from '@/features/home/components/home-error';
+import { buttonVariants } from '@/components/ui/button';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { HomeWidget } from '@/features/home/components/home-widget';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
-import { CheckDeadline } from '@/features/volunteers/components/check-deadline';
+import type { ListAvailabilityChecks200ChecksItem } from '@/infrastructure/api/churchAPI.schemas';
+import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatInstantRangeOf } from '@/shared/utils/church-time';
+import {
+  dayOf,
+  formatInstantRangeOf,
+  formatTimeOf,
+} from '@/shared/utils/church-time';
 import { volunteerApi } from '@/utils/api-instances';
 
-export function MyServingSection({ churchId, userId }: HomeSectionProps) {
-  const { churchTimezone: timeZone } = useTimezone();
-  const churchDay = today({ instant: now(), timeZone });
-  const checks = useQuery({
-    queryKey: homeSectionQueryKey({
-      section: 'serving',
-      churchId,
-      userId,
-      parts: ['availability-checks'],
-    }),
-    queryFn: () => volunteerApi.listAvailabilityChecks(),
-    retry: false,
-  });
-  const dashboard = useQuery({
+/** A deadline this many Church days away (or fewer) gets the accent. */
+const DEADLINE_SOON_DAYS = 3;
+
+function useVolunteerDashboard({ churchId, userId }: HomeSectionProps) {
+  return useQuery({
     queryKey: homeSectionQueryKey({
       section: 'serving',
       churchId,
@@ -35,120 +39,231 @@ export function MyServingSection({ churchId, userId }: HomeSectionProps) {
     queryFn: () => volunteerApi.getVolunteerDashboard(),
     retry: false,
   });
+}
+
+function usePendingChecks({ churchId, userId }: HomeSectionProps) {
+  const query = useQuery({
+    queryKey: homeSectionQueryKey({
+      section: 'serving',
+      churchId,
+      userId,
+      parts: ['availability-checks'],
+    }),
+    queryFn: () => volunteerApi.listAvailabilityChecks(),
+    retry: false,
+  });
   // shortcut: listAvailabilityChecks has no state filter, filtered client-side; move to a server param when the endpoint gets one
-  const pending = (checks.data?.checks ?? []).filter(
+  const pending = (query.data?.checks ?? []).filter(
     (check) => check.state !== 'confirmed',
   );
+  return { query, pending };
+}
+
+interface LongRangeInput {
+  start: string;
+  end: string;
+  timeZone: string;
+}
+
+/** `domingo, 22 de novembro · 09:00–12:00`; a window ending on a later day names that day too. */
+function formatLongRange({ start, end, timeZone }: LongRangeInput): string {
+  const locale = getLocale();
+  const startDay = dayOf({ value: start, timeZone });
+  const endDay = dayOf({ value: end, timeZone });
+  const endLabel =
+    startDay === endDay
+      ? formatTimeOf({ value: end, timeZone })
+      : `${formatLongCalendarDay({ day: endDay, locale })} · ${formatTimeOf({ value: end, timeZone })}`;
+  return `${formatLongCalendarDay({ day: startDay, locale })} · ${formatTimeOf({ value: start, timeZone })}–${endLabel}`;
+}
+
+export function NextAssignmentWidget(props: HomeSectionProps) {
+  const { churchTimezone: timeZone } = useTimezone();
+  const dashboard = useVolunteerDashboard(props);
+  const { query: checks, pending } = usePendingChecks(props);
   const next = dashboard.data?.nextAssignment;
+  // With no next assignment, stay silent unless nothing at all needs the volunteer.
+  if (dashboard.isSuccess && !next && !(checks.isSuccess && !pending.length))
+    return null;
+  const needsResponse = next?.status === 'pending' && next.canRespond;
   return (
     <HomeWidget
-      title={m.home_section_serving()}
-      action={
-        dashboard.data?.upcomingAssignmentGroups.length ? (
-          <Link
-            to="/my-schedule"
-            className="inline-flex min-h-11 items-center underline"
-          >
-            {m.home_see_all()}
-          </Link>
-        ) : undefined
+      title={m.home_next_assignment()}
+      error={
+        dashboard.isError
+          ? {
+              message: m.my_schedule_load_error(),
+              retry: () => dashboard.refetch(),
+            }
+          : undefined
       }
     >
       {dashboard.isPending ? (
         <p role="status">{m.my_schedule_loading()}</p>
-      ) : dashboard.isError ? (
-        <HomeError
-          message={m.my_schedule_load_error()}
-          onRetry={() => dashboard.refetch()}
-        />
       ) : next ? (
-        <div className="space-y-2">
-          <h3 className="font-semibold">{m.home_next_assignment()}</h3>
-          <Link
-            to="/my-schedule/$assignmentId"
-            params={{ assignmentId: next.assignmentId }}
-            className="-mx-2 block min-h-11 rounded-md px-2 py-3 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <span className="block font-semibold">{next.eventTitle}</span>
-            <span className="block">
-              {formatInstantRangeOf({
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Link
+              to="/my-schedule/$assignmentId"
+              params={{ assignmentId: next.assignmentId }}
+              className="inline-flex min-h-11 items-center font-semibold text-2xl hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {next.eventTitle}
+            </Link>
+            <p className="text-lg">
+              {formatLongRange({
                 start: next.startTime,
                 end: next.endTime,
                 timeZone,
               })}
-            </span>
-            <span className="block">
+            </p>
+            <p className="text-muted-foreground">
               {next.ministryName} · {next.sectorName} · {next.roleName}
-            </span>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {needsResponse ? (
+              <Link
+                to="/my-schedule/$assignmentId"
+                params={{ assignmentId: next.assignmentId }}
+                className={buttonVariants({ size: 'touch' })}
+              >
+                {m.home_respond()}
+              </Link>
+            ) : null}
             <Badge variant="secondary">
               {next.timingState === 'in_progress'
                 ? m.my_schedule_in_progress()
-                : next.status === 'pending' && next.canRespond
+                : needsResponse
                   ? m.home_next_assignment_pending()
                   : m.home_next_assignment_answered()}
             </Badge>
-          </Link>
+          </div>
         </div>
-      ) : checks.isSuccess && pending.length === 0 ? (
+      ) : (
         <p>{m.my_schedule_empty()}</p>
-      ) : null}
-      {checks.isPending ? (
+      )}
+    </HomeWidget>
+  );
+}
+
+interface CheckDeadlineProps {
+  check: ListAvailabilityChecks200ChecksItem;
+  churchDay: CalendarDay;
+}
+
+function CheckDeadline({ check, churchDay }: CheckDeadlineProps) {
+  if (!check.answerBy) return null;
+  const answerBy = parseCalendarDay({ value: check.answerBy.slice(0, 10) });
+  const date = formatLongCalendarDay({ day: answerBy, locale: getLocale() });
+  const overdue = answerBy < churchDay;
+  const soon =
+    !overdue &&
+    answerBy <= addCalendarDays({ day: churchDay, days: DEADLINE_SOON_DAYS });
+  return (
+    <p
+      className={cn(
+        overdue
+          ? 'font-medium text-destructive'
+          : soon
+            ? 'font-medium text-primary'
+            : 'text-muted-foreground',
+      )}
+    >
+      <time dateTime={check.answerBy}>
+        {overdue
+          ? m.availability_list_overdue({ date })
+          : m.availability_list_answer_by({ date })}
+      </time>
+    </p>
+  );
+}
+
+export function PendingChecksWidget(props: HomeSectionProps) {
+  const { churchTimezone: timeZone } = useTimezone();
+  const churchDay = today({ instant: now(), timeZone });
+  const { query, pending } = usePendingChecks(props);
+  if (query.isSuccess && !pending.length) return null;
+  return (
+    <HomeWidget
+      title={m.home_pending_checks()}
+      error={
+        query.isError
+          ? {
+              message: m.availability_list_error(),
+              retry: () => query.refetch(),
+            }
+          : undefined
+      }
+    >
+      {query.isPending ? (
         <p role="status">{m.availability_list_loading()}</p>
-      ) : checks.isError ? (
-        <HomeError
-          message={m.availability_list_error()}
-          onRetry={() => checks.refetch()}
-        />
-      ) : pending.length ? (
-        <div className="space-y-2">
-          <h3 className="font-semibold">{m.home_pending_checks()}</h3>
-          <ul className="divide-y">
-            {pending.map((check) => (
-              <li key={check.id}>
-                <Link
-                  to="/availability/$checkId"
-                  params={{ checkId: check.id }}
-                  className="-mx-2 block min-h-11 rounded-md px-2 py-3 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-                >
-                  <span className="block font-semibold">
-                    {check.ministryName} · {check.cycleName}
-                  </span>
-                  <CheckDeadline check={check} churchDay={churchDay} />
-                  <span className="underline">
-                    {m.home_answer_availability()}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {dashboard.data?.upcomingAssignmentGroups.length ? (
-        <div className="space-y-2">
-          <h3 className="font-semibold">{m.home_upcoming_assignments()}</h3>
-          <ul className="divide-y">
-            {dashboard.data.upcomingAssignmentGroups.map((group) =>
-              group.assignments.map((assignment) => (
-                <li key={assignment.assignmentId}>
-                  <Link
-                    to="/my-schedule/$assignmentId"
-                    params={{ assignmentId: assignment.assignmentId }}
-                    className="-mx-2 block min-h-11 rounded-md px-2 py-3 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-                  >
-                    {group.eventTitle} ·{' '}
-                    {formatInstantRangeOf({
-                      start: assignment.startTime,
-                      end: assignment.endTime,
-                      timeZone,
-                    })}{' '}
-                    · {assignment.sectorName} · {assignment.roleName}
-                  </Link>
-                </li>
-              )),
-            )}
-          </ul>
-        </div>
-      ) : null}
+      ) : (
+        <ul className="divide-y">
+          {pending.map((check) => (
+            <li key={check.id} className="space-y-2 py-3 first:pt-0 last:pb-0">
+              <p className="font-semibold">
+                {check.ministryName} · {check.cycleName}
+              </p>
+              <CheckDeadline check={check} churchDay={churchDay} />
+              <Link
+                to="/availability/$checkId"
+                params={{ checkId: check.id }}
+                className={buttonVariants({ size: 'touch' })}
+              >
+                {m.home_answer_availability()}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </HomeWidget>
+  );
+}
+
+export function UpcomingAssignmentsWidget(props: HomeSectionProps) {
+  const { churchTimezone: timeZone } = useTimezone();
+  const dashboard = useVolunteerDashboard(props);
+  const nextId = dashboard.data?.nextAssignment?.assignmentId;
+  // Presentation dedupe only: the next assignment already has its own widget; server order is kept.
+  const rows = (dashboard.data?.upcomingAssignmentGroups ?? []).flatMap(
+    (group) =>
+      group.assignments
+        .filter((assignment) => assignment.assignmentId !== nextId)
+        .map((assignment) => ({ group, assignment })),
+  );
+  if (!rows.length) return null;
+  return (
+    <HomeWidget
+      title={m.home_upcoming_assignments()}
+      action={
+        <Link
+          to="/my-schedule"
+          className="inline-flex min-h-11 items-center underline"
+        >
+          {m.home_see_all()}
+        </Link>
+      }
+    >
+      <ul className="divide-y">
+        {rows.map(({ group, assignment }) => (
+          <li key={assignment.assignmentId}>
+            <Link
+              to="/my-schedule/$assignmentId"
+              params={{ assignmentId: assignment.assignmentId }}
+              className="-mx-2 block min-h-11 rounded-md px-2 py-3 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {group.eventTitle} ·{' '}
+              {formatInstantRangeOf({
+                start: assignment.startTime,
+                end: assignment.endTime,
+                timeZone,
+              })}{' '}
+              · {assignment.sectorName} · {assignment.roleName}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </HomeWidget>
   );
 }

@@ -102,7 +102,7 @@ const churchSection = () =>
 const leadershipSection = () =>
   screen.queryByRole('heading', { name: m.home_attention_schedules() });
 const servingSection = () =>
-  screen.queryByRole('heading', { name: m.home_section_serving() });
+  screen.queryByRole('heading', { name: m.home_next_assignment() });
 
 function givenCapabilities(
   input: Parameters<typeof callerCapabilitiesFixture>[0],
@@ -209,7 +209,7 @@ describe('HomePage', () => {
     const headings = screen
       .getAllByRole('heading', { level: 2 })
       .map((h) => h.textContent);
-    expect(headings.indexOf(m.home_section_serving())).toBeLessThan(
+    expect(headings.indexOf(m.home_next_assignment())).toBeLessThan(
       headings.indexOf(m.home_summary()),
     );
     expect(headings.indexOf(m.home_summary())).toBeLessThan(

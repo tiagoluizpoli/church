@@ -20,7 +20,7 @@ export function HomeWidget({
   children,
 }: HomeWidgetProps) {
   return (
-    <section className="surface-panel space-y-4 p-4 md:p-5">
+    <section className="surface-panel h-full space-y-4 p-4 md:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold text-xl">{title}</h2>
         {action}

@@ -2,7 +2,11 @@ import type { ComponentType } from 'react';
 import { ChurchSection } from '@/features/home/components/church-section';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { LeadershipSection } from '@/features/home/components/leadership-section';
-import { MyServingSection } from '@/features/home/components/my-serving-section';
+import {
+  NextAssignmentWidget,
+  PendingChecksWidget,
+  UpcomingAssignmentsWidget,
+} from '@/features/home/components/my-serving-section';
 import { NextCycleCard } from '@/features/home/components/next-cycle-card';
 import {
   AdminSummary,
@@ -38,6 +42,8 @@ interface WidgetDefinition {
   Component: ComponentType<WidgetProps>;
   cacheSection?: string;
   universal?: boolean;
+  /** Extra wrapper classes, e.g. to widen a paired widget when its partner renders nothing. */
+  className?: string;
 }
 
 export const homeWidgets: WidgetDefinition[] = [
@@ -50,10 +56,28 @@ export const homeWidgets: WidgetDefinition[] = [
     universal: true,
   },
   {
-    id: 'serving',
+    id: 'next-assignment',
+    capacity: (caps) => caps.serving,
+    span: 6,
+    Component: NextAssignmentWidget,
+    cacheSection: 'serving',
+    // Full width when the pending-checks widget beside it renders nothing.
+    className: 'md:[&:has(+div:empty)]:col-span-12',
+  },
+  {
+    id: 'pending-checks',
+    capacity: (caps) => caps.serving,
+    span: 6,
+    Component: PendingChecksWidget,
+    cacheSection: 'serving',
+    // Full width when there is no next-assignment widget beside it.
+    className: 'md:[div:empty+&]:col-span-12',
+  },
+  {
+    id: 'upcoming-assignments',
     capacity: (caps) => caps.serving,
     span: 12,
-    Component: MyServingSection,
+    Component: UpcomingAssignmentsWidget,
     cacheSection: 'serving',
   },
   {

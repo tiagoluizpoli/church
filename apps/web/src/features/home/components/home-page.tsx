@@ -18,6 +18,7 @@ import {
 } from '@/features/home/hooks/use-home-capacities';
 import { homeSectionQueryPrefix } from '@/features/home/lib/home-query-keys';
 import type { HomeSearch } from '@/features/home/lib/home-search';
+import { cn } from '@/lib/utils';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { churchOnlyWarningMessage } from '@/shared/utils/church-only-warning';
@@ -192,8 +193,11 @@ export function HomePage({ search }: HomePageProps) {
           ) : null}
           {homeWidgets
             .filter((widget) => widget.capacity(capacities))
-            .map(({ id, span, Component }) => (
-              <div key={id} className={`${widgetSpanClass[span]} empty:hidden`}>
+            .map(({ id, span, Component, className }) => (
+              <div
+                key={id}
+                className={cn(widgetSpanClass[span], 'empty:hidden', className)}
+              >
                 <Component {...sectionProps} />
               </div>
             ))}

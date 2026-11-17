@@ -110,7 +110,7 @@ function givenServing(
   );
 }
 
-describe('MyServingSection', () => {
+describe('Home serving widgets', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setTestClock({
@@ -126,12 +126,13 @@ describe('MyServingSection', () => {
     });
   });
 
-  it('shows the next assignment and pending checks in server order', async () => {
+  it('splits next assignment, pending checks and upcoming into server-ordered widgets', async () => {
     givenServing();
     volunteerApi.listAvailabilityChecks.mockResolvedValue({
       checks: [
         check('done', 'confirmed'),
         check('open', 'pending', '2026-10-20'),
+        check('soon', 'pending', '2026-10-13'),
         check('late', 'pending', '2026-10-01'),
       ],
     });
@@ -150,34 +151,88 @@ describe('MyServingSection', () => {
     });
     renderHomePage();
 
-    const section = (
-      await screen.findByRole('heading', { name: m.home_section_serving() })
-    ).closest('section') as HTMLElement;
-    await within(section).findByText(/Ministry open/);
-    const links = within(section).getAllByRole('link');
-    expect(
-      within(section).queryByText('Ministry done'),
-    ).not.toBeInTheDocument();
-    expect(links.map((link) => link.getAttribute('href'))).toEqual([
-      '/my-schedule',
-      '/my-schedule/a-1',
+    const widget = async (title: string) =>
+      (await screen.findByRole('heading', { name: title })).closest(
+        'section',
+      ) as HTMLElement;
+    const hrefs = (section: HTMLElement) =>
+      within(section)
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href'));
+
+    const next = await widget(m.home_next_assignment());
+    await within(next).findByRole('link', { name: 'Sunday' });
+    expect(hrefs(next)).toEqual(['/my-schedule/a-1']);
+    expect(within(next).getByText(/^domingo, 11 de outubro · /)).toBeVisible();
+    expect(within(next).getByText('Kids a-1 · Room · Teacher')).toBeVisible();
+
+    const checks = await widget(m.home_pending_checks());
+    await within(checks).findByText(/Ministry open/);
+    expect(within(checks).queryByText(/Ministry done/)).not.toBeInTheDocument();
+    expect(hrefs(checks)).toEqual([
       '/availability/open',
+      '/availability/soon',
       '/availability/late',
-      '/my-schedule/a-1',
+    ]);
+    expect(
+      within(checks).getAllByRole('link', {
+        name: m.home_answer_availability(),
+      }),
+    ).toHaveLength(3);
+    const deadline = (day: string) =>
+      checks.querySelector(`time[datetime="${day}"]`)?.parentElement;
+    expect(deadline('2026-10-01')).toHaveClass('text-destructive');
+    expect(deadline('2026-10-13')).toHaveClass('text-primary');
+    expect(deadline('2026-10-20')).not.toHaveClass('text-destructive');
+    expect(deadline('2026-10-20')).not.toHaveClass('text-primary');
+    expect(
+      within(checks).getByText(
+        m.availability_list_answer_by({ date: 'terça-feira, 20 de outubro' }),
+      ),
+    ).toBeVisible();
+
+    // The next assignment is not repeated in the upcoming list.
+    const upcoming = await widget(m.home_upcoming_assignments());
+    expect(hrefs(upcoming)).toEqual([
+      '/my-schedule',
       '/my-schedule/a-2',
       '/my-schedule/a-3',
     ]);
     expect(
-      within(section).getAllByText(m.home_answer_availability()),
-    ).toHaveLength(2);
-    const overdue = section.querySelector('time[datetime="2026-10-01"]');
-    expect(overdue?.parentElement).toHaveClass('text-destructive');
-    expect(
-      section.querySelector('time[datetime="2026-10-20"]')?.parentElement,
-    ).not.toHaveClass('text-destructive');
-    expect(
-      within(section).getByRole('link', { name: m.home_see_all() }),
+      within(upcoming).getByRole('link', { name: m.home_see_all() }),
     ).toHaveAttribute('href', '/my-schedule');
+  });
+
+  it('hides upcoming when it would only repeat the next assignment, and pending checks when none are open', async () => {
+    givenServing();
+    const first = assignment('a-1', 11);
+    volunteerApi.getVolunteerDashboard.mockResolvedValue({
+      nextAssignment: first,
+      upcomingAssignmentGroups: [
+        {
+          eventId: 'e',
+          eventTitle: 'Sunday',
+          ministryId: 'kids',
+          ministryName: 'Kids',
+          assignments: [first],
+        },
+      ],
+    });
+    renderHomePage();
+
+    expect(await screen.findByRole('link', { name: 'Sunday' })).toHaveAttribute(
+      'href',
+      '/my-schedule/a-1',
+    );
+    expect(
+      screen.queryByRole('heading', { name: m.home_upcoming_assignments() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: m.home_pending_checks() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: m.home_respond() }),
+    ).not.toBeInTheDocument();
   });
 
   it('marks a pending next assignment as needing a response', async () => {
@@ -190,6 +245,9 @@ describe('MyServingSection', () => {
     expect(
       await screen.findByText(m.home_next_assignment_pending()),
     ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: m.home_respond() }),
+    ).toHaveAttribute('href', '/my-schedule/a-1');
   });
 
   it('does not show the empty schedule copy beside a pending check', async () => {

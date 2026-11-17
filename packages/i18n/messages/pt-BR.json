@@ -1566,7 +1566,7 @@
   "event_move_withdrawn_title_other": "{count} escalas em conflito foram retiradas",
   "home_section_church": "Igreja",
   "home_section_leadership": "Ministérios que eu lidero",
-  "home_section_serving": "Meu serviço",
+  "home_respond": "Responder",
   "home_welcome": "Boas-vindas a {churchName}. Nada precisa de você agora.",
   "home_load_error": "Não conseguimos carregar seu Início. Tente novamente.",
   "home_retry": "Tentar novamente",

@@ -48,7 +48,8 @@ export interface DataTableProps<T extends object> {
    * doesn't end up with empty placeholder entries for rows it can't render. */
   mobileItems?: T[];
   rowId: (input: DataTableItemInput<T>) => string;
-  /** React reconciliation key for a row, separate from `rowId`. Defaults to
+  /** React reconciliation key for a desktop row (mobile cards key by `rowId`, so
+   * they keep focus and state), separate from `rowId`. Defaults to
    * `rowId`'s return value. A consumer whose cells depend on interaction
    * state the underlying react-aria Collection doesn't automatically
    * re-render on (see `ui/table.tsx`'s `TableBody` comment) can fold that
@@ -160,10 +161,9 @@ export function DataTable<T extends object>({
         {mobileListHeader}
         {mobileItems.map((item) => {
           const id = rowId({ item });
-          const key = rowKey ? rowKey({ item }) : id;
           return (
             <div
-              key={key}
+              key={id}
               role={isSelectable ? undefined : 'listitem'}
               data-testid={rowTestId?.({ item })}
             >

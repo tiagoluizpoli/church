@@ -142,6 +142,28 @@ async function rows() {
   return within(list).getAllByRole('listitem');
 }
 
+/** Opens a mobile card's Detalhes toggle. */
+async function expandCard(card: HTMLElement) {
+  await userEvent.click(
+    within(card).getByRole('button', { name: m.invitations_details() }),
+  );
+}
+
+/** Opens the ⋯ menu of an invitation's mobile card. */
+async function openMenu(email: string) {
+  await userEvent.click(
+    await within(await cardList()).findByRole('button', {
+      name: m.invitations_actions_label({ email }),
+    }),
+  );
+}
+
+function desktopRow(email: string) {
+  return screen
+    .getAllByRole('row')
+    .find((r) => r.textContent?.includes(email)) as HTMLElement;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
@@ -167,21 +189,28 @@ describe('Invitations page', () => {
     );
     renderInvitations();
     await rows();
-    const tableRow = screen
-      .getAllByRole('row')
-      .find((r) => r.textContent?.includes('ana@example.com')) as HTMLElement;
+    const tableRow = desktopRow('ana@example.com');
     expect(
-      screen.getByRole('columnheader', {
-        name: m.invitations_column_created(),
+      screen.queryByRole('columnheader', { name: 'Criado em' }),
+    ).not.toBeInTheDocument();
+    expect(tableRow).not.toHaveTextContent(m.invitations_email_failed());
+    await userEvent.click(
+      within(tableRow).getByRole('button', {
+        name: m.invitations_expand_label({ email: 'ana@example.com' }),
       }),
-    ).toBeInTheDocument();
-    expect(within(tableRow).getByText('01/11/2026 13:00')).toBeInTheDocument();
-    expect(tableRow).not.toHaveTextContent('03/11/2026 15:00');
-    expect(tableRow).toHaveTextContent(m.invitations_email_failed());
-    expect(tableRow).toHaveTextContent(
+    );
+    const table = screen.getByRole('grid', {
+      name: m.invitations_list_label(),
+    });
+    expect(table).toHaveTextContent(
+      m.invitations_created({ date: '01/11/2026 13:00' }),
+    );
+    expect(table).not.toHaveTextContent('03/11/2026 15:00');
+    expect(table).toHaveTextContent(m.invitations_email_failed());
+    expect(table).toHaveTextContent(
       m.invitations_revoked_by_on({ name: 'Bia', date: '02/11/2026 10:00' }),
     );
-    expect(tableRow).toHaveTextContent(m.invitations_revoke_reason_manual());
+    expect(table).toHaveTextContent(m.invitations_revoke_reason_manual());
   });
 
   it('drops cached rows when a refetch fails', async () => {
@@ -254,6 +283,8 @@ describe('Invitations page', () => {
     renderInvitations();
 
     const [first, second] = await rows();
+    await expandCard(first);
+    await expandCard(second);
     expect(first).toHaveTextContent('ana@example.com');
     expect(first).toHaveTextContent('Worship');
     expect(first).toHaveTextContent(m.ministry_invitation_access_volunteer());
@@ -270,39 +301,128 @@ describe('Invitations page', () => {
     expect(listInvitations).toHaveBeenCalledWith({});
   });
 
-  it('keeps secondary facts behind a labelled disclosure and leaves ordinary text without actions', async () => {
-    listInvitations.mockResolvedValue(page([row({ canResend: true })]));
+  it('keeps secondary facts behind a toggle on the mobile card and omits unavailable ones', async () => {
+    listInvitations.mockResolvedValue(
+      page([row({ canResend: true, roles: [] })]),
+    );
 
     renderInvitations();
 
     const [card] = await rows();
-    const summary = within(card).getByText(m.invitations_details());
-    expect(summary.tagName).toBe('SUMMARY');
-    expect(summary.closest('details')).toHaveTextContent(
+    const toggle = within(card).getByRole('button', {
+      name: m.invitations_details(),
+    });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(card).not.toHaveTextContent('Pastor Paulo');
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(card).toHaveTextContent(
       m.invitations_invited_by({ name: 'Pastor Paulo' }),
     );
-    expect(within(card).getAllByRole('button')).toHaveLength(1);
+    expect(card).toHaveTextContent(m.ministry_invitation_roles_none());
+    expect(card).not.toHaveTextContent(m.invitations_email_unavailable());
+    expect(card).not.toHaveTextContent('Encerr');
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(card).not.toHaveTextContent('Pastor Paulo');
+    // Actions live in the menu, not as buttons in the card body.
+    expect(
+      within(card).queryByRole('button', { name: m.invitations_resend() }),
+    ).not.toBeInTheDocument();
   });
 
-  it('puts the allowed actions in the desktop row and wraps long text there', async () => {
-    listInvitations.mockResolvedValue(page([row({ canResend: true })]));
+  it('shows one line per invitation on desktop and expands its facts as child rows', async () => {
+    listInvitations.mockResolvedValue(
+      page([row({ canResend: true, canRevoke: true })]),
+    );
 
     renderInvitations();
 
     await rows();
-    const desktopRow = screen
-      .getAllByRole('row')
-      .find((r) => r.textContent?.includes('ana@example.com'));
+    for (const name of [
+      m.invitations_column_invitation(),
+      m.invitations_column_status(),
+      m.invitations_column_grants(),
+      m.invitations_column_end(),
+    ]) {
+      expect(screen.getByRole('columnheader', { name })).toBeInTheDocument();
+    }
+    for (const gone of [
+      'Convidado por',
+      'Criado em',
+      m.invitations_details(),
+    ]) {
+      expect(
+        screen.queryByRole('columnheader', { name: gone }),
+      ).not.toBeInTheDocument();
+    }
+    const main = desktopRow('ana@example.com');
+    const cells = within(main)
+      .getAllByRole('rowheader')
+      .concat(within(main).getAllByRole('gridcell'));
+    expect(cells).toHaveLength(5);
     expect(
-      within(desktopRow as HTMLElement).getByRole('button', {
-        name: m.invitations_resend_label({ email: 'ana@example.com' }),
+      within(main).getByText(m.invitations_status_pending()),
+    ).toBeInTheDocument();
+    expect(within(main).getByText('Worship · Voluntário')).toBeInTheDocument();
+    expect(main).toHaveTextContent('20/11/2026 13:00');
+    expect(main).not.toHaveTextContent('Singer');
+    expect(main).not.toHaveTextContent('Pastor Paulo');
+    const toggle = within(main).getByRole('button', {
+      name: m.invitations_expand_label({ email: 'ana@example.com' }),
+    });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    const rowCount = screen.getAllByRole('row').length;
+
+    await userEvent.click(toggle);
+
+    expect(
+      within(desktopRow('ana@example.com')).getByRole('button', {
+        name: m.invitations_collapse_label({ email: 'ana@example.com' }),
       }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    const table = screen.getByRole('grid', {
+      name: m.invitations_list_label(),
+    });
+    expect(screen.getAllByRole('row')).toHaveLength(rowCount + 3);
+    expect(table).toHaveTextContent('Pastor Paulo');
+    expect(table).toHaveTextContent('Funções: Singer');
+
+    await userEvent.click(
+      within(desktopRow('ana@example.com')).getByRole('button', {
+        name: m.invitations_collapse_label({ email: 'ana@example.com' }),
+      }),
+    );
+    expect(screen.getAllByRole('row')).toHaveLength(rowCount);
+  });
+
+  it('puts the allowed actions in a ⋯ menu on the desktop row, and none when nothing applies', async () => {
+    listInvitations.mockResolvedValue(
+      page([
+        row({ canResend: true }),
+        row({ id: 'mi-2', email: 'bia@example.com' }),
+      ]),
+    );
+
+    renderInvitations();
+
+    await rows();
+    expect(
+      within(desktopRow('bia@example.com')).queryByRole('button', {
+        name: m.invitations_actions_label({ email: 'bia@example.com' }),
+      }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      within(desktopRow('ana@example.com')).getByRole('button', {
+        name: m.invitations_actions_label({ email: 'ana@example.com' }),
+      }),
+    );
+    expect(
+      await screen.findByRole('menuitem', { name: m.invitations_resend() }),
     ).toBeInTheDocument();
     expect(
-      within(desktopRow as HTMLElement).getByText('Pastor Paulo', {
-        exact: false,
-      }),
-    ).toBeInTheDocument();
+      screen.queryByRole('menuitem', { name: m.invitations_revoke() }),
+    ).not.toBeInTheDocument();
   });
 
   it('badges an expired offer, and never calls an unknown delivery sent', async () => {
@@ -320,6 +440,8 @@ describe('Invitations page', () => {
     renderInvitations();
 
     const [expired, queued] = await rows();
+    await expandCard(expired);
+    await expandCard(queued);
     expect(expired).toHaveTextContent(m.invitations_expired_badge());
     expect(expired).not.toHaveTextContent(m.invitations_email_unavailable());
     expect(expired).not.toHaveTextContent(
@@ -340,9 +462,14 @@ describe('Invitations page', () => {
     renderInvitations();
 
     const [only] = await rows();
+    await expandCard(only);
     expect(only).toHaveTextContent(m.ministry_invitation_access_leader());
     expect(only).toHaveTextContent(m.ministry_invitation_roles_none());
-    expect(within(only).queryByRole('button')).not.toBeInTheDocument();
+    expect(
+      within(only).queryByRole('button', {
+        name: m.invitations_actions_label({ email: 'ana@example.com' }),
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('refuses a plain member with the no-access state and never asks for the list', async () => {
@@ -594,6 +721,9 @@ describe('Invitations filters and history', () => {
     renderInvitations();
 
     const [accepted, linkDecline, legacyDecline, revoked] = await rows();
+    for (const card of [accepted, linkDecline, legacyDecline, revoked]) {
+      await expandCard(card);
+    }
     expect(accepted).toHaveTextContent(
       m.invitations_accepted_by_on({ name: 'Ana', date: '02/11/2026 10:00' }),
     );
@@ -619,10 +749,10 @@ function refusal(status: number, error: string) {
 }
 
 describe('Invitations resend', () => {
-  const resendButton = async (email: string) =>
-    within(await cardList()).findByRole('button', {
-      name: m.invitations_resend_label({ email }),
-    });
+  const resendItem = async (email: string) => {
+    await openMenu(email);
+    return screen.findByRole('menuitem', { name: m.invitations_resend() });
+  };
 
   it('offers Resend only on rows the server allows, including an expired offer whose email failed', async () => {
     listInvitations.mockResolvedValue(
@@ -651,14 +781,25 @@ describe('Invitations resend', () => {
     renderInvitations();
 
     const [failed, leader, church] = await rows();
+    const menuName = (email: string) => ({
+      name: m.invitations_actions_label({ email }),
+    });
     expect(
-      within(failed).getByRole('button', {
-        name: m.invitations_resend_label({ email: 'failed@example.com' }),
-      }),
-    ).toHaveTextContent(m.invitations_resend());
-    expect(within(leader).queryByRole('button')).not.toBeInTheDocument();
-    expect(within(church).queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.queryByText('Revogar')).not.toBeInTheDocument();
+      within(failed).getByRole('button', menuName('failed@example.com')),
+    ).toBeInTheDocument();
+    expect(
+      within(leader).queryByRole('button', menuName('leader@example.com')),
+    ).not.toBeInTheDocument();
+    expect(
+      within(church).queryByRole('button', menuName('admin@example.com')),
+    ).not.toBeInTheDocument();
+    await openMenu('failed@example.com');
+    expect(
+      await screen.findByRole('menuitem', { name: m.invitations_resend() }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: m.invitations_revoke() }),
+    ).not.toBeInTheDocument();
   });
 
   it('resends a Church row through the Church client by its id and refetches', async () => {
@@ -677,7 +818,7 @@ describe('Invitations resend', () => {
     resendChurchInvitation.mockResolvedValue({ id: 'ci-1' });
 
     renderInvitations();
-    await user.click(await resendButton('admin@example.com'));
+    await user.click(await resendItem('admin@example.com'));
 
     expect(resendChurchInvitation).toHaveBeenCalledWith('ci-1');
     expect(resendMinistryInvitation).not.toHaveBeenCalled();
@@ -699,12 +840,15 @@ describe('Invitations resend', () => {
     );
 
     renderInvitations();
-    const button = await resendButton('ana@example.com');
-    await user.click(button);
-    await user.click(button);
+    await user.click(await resendItem('ana@example.com'));
 
-    expect(button).toBeDisabled();
-    expect(button).toHaveTextContent(m.invitations_resending());
+    expect(resendMinistryInvitation).toHaveBeenCalledTimes(1);
+    await openMenu('ana@example.com');
+    const button = await screen.findByRole('menuitem', {
+      name: m.invitations_resending(),
+    });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    await user.click(button);
     expect(resendMinistryInvitation).toHaveBeenCalledTimes(1);
     expect(resendMinistryInvitation).toHaveBeenCalledWith(
       '11111111-1111-4111-8111-111111111111',
@@ -743,20 +887,22 @@ describe('Invitations resend', () => {
     resendMinistryInvitation.mockRejectedValue(refusal(status, code));
 
     renderInvitations();
-    const button = await resendButton('ana@example.com');
-    await user.click(button);
+    await user.click(await resendItem('ana@example.com'));
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(text));
     expect(toastSuccess).not.toHaveBeenCalled();
-    await waitFor(() => expect(button).toBeEnabled());
+    await openMenu('ana@example.com');
+    expect(
+      await screen.findByRole('menuitem', { name: m.invitations_resend() }),
+    ).not.toHaveAttribute('aria-disabled', 'true');
   });
 });
 
 describe('Invitations revoke', () => {
-  const revokeButton = async (email: string) =>
-    within(await cardList()).findByRole('button', {
-      name: m.invitations_revoke_label({ email }),
-    });
+  const revokeButton = async (email: string) => {
+    await openMenu(email);
+    return screen.findByRole('menuitem', { name: m.invitations_revoke() });
+  };
 
   it('offers Revoke only on rows the server allows, Church rows included', async () => {
     listInvitations.mockResolvedValue(
@@ -784,16 +930,21 @@ describe('Invitations revoke', () => {
     renderInvitations();
 
     const [expired, leader, church] = await rows();
+    const menuName = (email: string) => ({
+      name: m.invitations_actions_label({ email }),
+    });
     expect(
-      within(expired).getByRole('button', {
-        name: 'Revogar o convite para expired@example.com',
-      }),
-    ).toHaveTextContent('Revogar');
-    expect(within(leader).queryByRole('button')).not.toBeInTheDocument();
+      within(expired).getByRole('button', menuName('expired@example.com')),
+    ).toBeInTheDocument();
     expect(
-      within(church).getByRole('button', {
-        name: 'Revogar o convite para admin@example.com',
-      }),
+      within(leader).queryByRole('button', menuName('leader@example.com')),
+    ).not.toBeInTheDocument();
+    expect(
+      within(church).getByRole('button', menuName('admin@example.com')),
+    ).toBeInTheDocument();
+    await openMenu('admin@example.com');
+    expect(
+      await screen.findByRole('menuitem', { name: m.invitations_revoke() }),
     ).toBeInTheDocument();
   });
 
@@ -980,6 +1131,7 @@ describe('Invitations revoke', () => {
     renderInvitations();
 
     const [manual, archived, parent] = await rows();
+    for (const card of [manual, archived, parent]) await expandCard(card);
     expect(manual).toHaveTextContent(
       'Revogado por Bia em 02/11/2026 10:00 · Revogado manualmente',
     );

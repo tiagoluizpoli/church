@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { ReconnectingBanner } from '@/components/reconnecting-banner';
+import { RouteProgress } from '@/components/route-progress';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -49,6 +50,7 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="vite-ui-theme"
       >
+        <RouteProgress />
         <Outlet />
         <ReconnectingBanner />
         <Toaster richColors />

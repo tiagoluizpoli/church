@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
@@ -185,7 +185,11 @@ describe('CycleListCard table view (US1)', () => {
 
     render();
 
-    expect(await screen.findByText(m.cycles_loading())).toBeInTheDocument();
+    const loading = await screen.findByTestId('cycles-loading');
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
     expect(screen.queryByTestId('cycles-empty')).not.toBeInTheDocument();
   });
 

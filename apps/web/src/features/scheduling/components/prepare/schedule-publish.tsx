@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
 import { summarizeCycleStaffing } from '@/features/scheduling/utils/builder/cycle-builder-staffing.utils';
 
@@ -37,6 +38,7 @@ export function SchedulePublish({ ministryId, cycleId }: SchedulePublishProps) {
         disabled={sendUpdates.isPending}
         onClick={() => sendUpdates.mutate()}
       >
+        {sendUpdates.isPending ? <Spinner /> : null}
         {m.builder_send_updates({ count: data.affectedVolunteerCount ?? 0 })}
       </Button>
     ) : null;
@@ -51,6 +53,7 @@ export function SchedulePublish({ ministryId, cycleId }: SchedulePublishProps) {
         disabled={publish.isPending}
         onClick={() => setOpen(true)}
       >
+        {publish.isPending ? <Spinner /> : null}
         {m.builder_ui_publish()}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>

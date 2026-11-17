@@ -119,7 +119,11 @@ describe('Send to Ministries confirmation', () => {
     const user = await openConfirmation();
     const confirm = await screen.findByTestId('confirm-cycle-send-button');
 
-    expect(screen.getByText(m.cycle_send_summary_loading())).toBeVisible();
+    const loading = screen.getByTestId('cycle-send-summary-loading');
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
     expect(confirm).toBeDisabled();
     await user.click(confirm);
     expect(sendCycle).not.toHaveBeenCalled();

@@ -931,9 +931,11 @@ it('keeps loading distinct from an empty or editable block', async () => {
     initialPath: EDITOR_PATH,
     churchTimezone: 'America/Sao_Paulo',
   });
-  expect(
-    await screen.findByRole('status', { name: m.schedules_loading() }),
-  ).toBeVisible();
+  const loading = await screen.findByTestId('prepare-loading');
+  expect(loading).toHaveAttribute('aria-busy', 'true');
+  await waitFor(() =>
+    expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+  );
   expect(screen.queryByRole('checkbox')).toBeNull();
   expect(screen.queryByText(m.usual_setup_missing_sectors())).toBeNull();
 });

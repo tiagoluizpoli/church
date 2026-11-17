@@ -332,9 +332,11 @@ it('shows translated loading feedback until the prepare read resolves', async ()
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
-  expect(
-    await screen.findByRole('status', { name: m.schedules_loading() }),
-  ).toBeVisible();
+  expect(await screen.findByTestId('prepare-loading')).toHaveAttribute(
+    'aria-busy',
+    'true',
+  );
+  expect(await screen.findByText(m.schedules_loading())).toBeInTheDocument();
   expect(screen.queryByText(m.prepare_empty())).not.toBeInTheDocument();
   await act(async () => resolveRead({ events: [EVENT] }));
   expect(
@@ -365,7 +367,7 @@ it.each([
       initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}#event-time-block-${BLOCK.eventTimeBlock.id}`,
       churchTimezone: 'America/Sao_Paulo',
     });
-    await screen.findByRole('status', { name: m.schedules_loading() });
+    await screen.findByTestId('prepare-loading');
     await waitFor(() => expect(router.state.status).toBe('idle'));
     await waitFor(() =>
       expect(lookup).toHaveBeenCalledWith(

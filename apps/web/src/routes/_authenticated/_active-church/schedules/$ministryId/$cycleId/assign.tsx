@@ -10,6 +10,7 @@ import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
@@ -93,10 +94,10 @@ function EventBuilderRoute() {
 
   if (query.isLoading || !query.data || !data) {
     return (
-      <div className="space-y-3">
+      <Pending data-testid="assign-loading" className="space-y-3">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-80 w-full" />
-      </div>
+      </Pending>
     );
   }
 

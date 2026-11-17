@@ -919,8 +919,10 @@ describe('CycleReviewCard resolution states', () => {
       </PlanningAdminProvider>,
     );
 
-    expect(await screen.findByTestId('cycle-review-loading')).toHaveTextContent(
-      m.cycle_review_loading(),
+    const loading = await screen.findByTestId('cycle-review-loading');
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
     );
     expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
   });

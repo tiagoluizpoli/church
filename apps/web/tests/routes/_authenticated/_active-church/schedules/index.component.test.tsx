@@ -323,9 +323,9 @@ describe('Schedules list', () => {
       }),
     );
     renderPrepareIndex();
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      m.schedules_loading(),
-    );
+    const loading = await screen.findByTestId('schedules-loading');
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    expect(await screen.findByText(m.schedules_loading())).toBeInTheDocument();
     expect(screen.queryByText(m.schedules_empty())).not.toBeInTheDocument();
     resolve(page([]));
     expect(await screen.findByText(m.schedules_empty())).toBeVisible();

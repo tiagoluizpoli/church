@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   WorkspaceIntroPanel,
@@ -229,9 +230,10 @@ function PrepareWorkspaceRoute() {
       ) : failed && !ready ? (
         retryAlert
       ) : !ready ? (
-        <div role="status" aria-label={m.schedules_loading()}>
+        <Pending data-testid="prepare-loading">
+          <span className="sr-only">{m.schedules_loading()}</span>
           <Skeleton className="h-64 w-full" />
-        </div>
+        </Pending>
       ) : (
         <div
           className={cn(

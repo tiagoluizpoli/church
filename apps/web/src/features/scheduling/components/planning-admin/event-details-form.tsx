@@ -8,6 +8,7 @@ import { CancelToCycle } from './event-editor-page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import type { GetCycle200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
 
@@ -105,6 +106,7 @@ export function EventDetailsForm({ cycleId, graph }: EventDetailsFormProps) {
       ) : null}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={!canSave}>
+          {mutation.isPending ? <Spinner /> : null}
           {mutation.isPending
             ? m.event_editor_saving()
             : m.event_details_submit()}

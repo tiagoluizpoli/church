@@ -7,6 +7,7 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
+import { ReconnectingBanner } from '@/components/reconnecting-banner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -49,6 +50,7 @@ function RootComponent() {
         storageKey="vite-ui-theme"
       >
         <Outlet />
+        <ReconnectingBanner />
         <Toaster richColors />
       </ThemeProvider>
       <TanStackRouterDevtools position="bottom-left" />

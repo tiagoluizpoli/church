@@ -107,6 +107,60 @@ async function tabNames() {
 }
 
 describe('/ministries/$ministryId workspace', () => {
+  it('shows a skeleton while the Ministry first loads, then keeps it during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    getMinistry.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    asAdmin();
+    const { queryClient } = renderWorkspace('/operational');
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('[aria-busy="true"] [data-slot="skeleton"]'),
+      ).not.toBeNull();
+    });
+
+    getMinistry.mockReturnValue(new Promise(() => undefined));
+    release(ministry('Worship'));
+    expect(
+      await screen.findByRole('heading', { name: 'Worship' }),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(document.querySelector('[aria-busy="true"]')).toBeNull(),
+    );
+
+    const calls = getMinistry.mock.calls.length;
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(getMinistry.mock.calls.length).toBeGreaterThan(calls),
+    );
+    expect(screen.getByRole('heading', { name: 'Worship' })).toBeVisible();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
+  it('keeps the Settings form during a refetch of the Ministry', async () => {
+    asAdmin();
+    const { queryClient } = renderWorkspace('/settings');
+    const name = await screen.findByRole('textbox', {
+      name: m.ministries_name_label(),
+    });
+    expect(name).toHaveValue('Worship');
+
+    getMinistry.mockReturnValue(new Promise(() => undefined));
+    const calls = getMinistry.mock.calls.length;
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(getMinistry.mock.calls.length).toBeGreaterThan(calls),
+    );
+    expect(
+      screen.getByRole('textbox', { name: m.ministries_name_label() }),
+    ).toHaveValue('Worship');
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
   it('redirects the Ministry root to its Structure tab', async () => {
     asAdmin();
 

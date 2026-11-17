@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import {
   type ArchiveBlocker,
   ArchiveBlockerList,
@@ -215,6 +216,7 @@ export function MinistryRoles({ ministryId }: MinistryRolesProps) {
                     {m.ministries_cancel()}
                   </Button>
                   <Button type="submit" disabled={pending}>
+                    {pending ? <Spinner /> : null}
                     {nameDialog.mode === 'rename'
                       ? m.ministry_roles_rename_submit()
                       : m.ministry_roles_add_submit()}
@@ -309,6 +311,7 @@ function ArchiveRoleDialog({
             disabled={pending}
             onClick={confirm}
           >
+            {pending ? <Spinner /> : null}
             {pending
               ? m.ministry_roles_archiving()
               : m.ministry_roles_archive_confirm()}

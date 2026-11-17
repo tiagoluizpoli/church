@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { RolePicker } from '@/features/invitations/components/invite-dialog';
 import { UpcomingAssignmentsAlert } from '@/features/people/components/upcoming-assignments-alert';
 import {
@@ -143,6 +144,7 @@ export function EditRolesDialog({
                 {m.people_access_cancel()}
               </Button>
               <Button type="submit" disabled={pending}>
+                {pending ? <Spinner /> : null}
                 {pending ? m.people_access_saving() : m.people_roles_save()}
               </Button>
             </DialogFooter>

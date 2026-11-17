@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries';
 import { useMinistryList } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
@@ -396,6 +397,7 @@ export function InviteDialog({
               form={formId}
               disabled={pending || noMinistry}
             >
+              {pending ? <Spinner /> : null}
               {pending
                 ? m.invitations_invite_submitting()
                 : m.invitations_invite_submit()}

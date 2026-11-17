@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,
@@ -178,6 +179,7 @@ function RevokeDialog({ item, open, onOpenChange }: RevokeDialogProps) {
             disabled={pending}
             onClick={revoke}
           >
+            {pending ? <Spinner /> : null}
             {pending
               ? m.invitations_revoking()
               : m.invitations_revoke_confirm()}
@@ -441,6 +443,7 @@ function RowActions({ item }: RowActionProps) {
               disabled={pending}
               onClick={resend}
             >
+              {pending ? <Spinner /> : null}
               {pending ? m.invitations_resending() : m.invitations_resend()}
             </DropdownMenuItem>
           ) : null}
@@ -935,6 +938,7 @@ export function InvitationListPage({
                 className="min-h-11 w-full md:min-h-0 md:w-auto"
                 onClick={() => query.fetchNextPage()}
               >
+                {query.isFetchingNextPage ? <Spinner /> : null}
                 {query.isFetchingNextPage
                   ? m.invitations_loading_more()
                   : m.invitations_load_more()}

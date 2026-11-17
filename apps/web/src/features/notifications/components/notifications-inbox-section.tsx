@@ -13,6 +13,7 @@ import {
 import { Pending } from '@/components/ui/pending';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { notificationUnreadLabel } from '@/features/notifications/lib/notification-unread-label';
 
 export interface NotificationItemViewModel {
@@ -39,6 +40,8 @@ export interface NotificationsInboxItemActions
   extends NotificationsInboxLoadState {
   onOpenNotification: (notificationId: string) => void;
   onMarkRead: (notificationId: string) => void;
+  /** The notification whose mark-read call is in flight. */
+  markingReadId?: string;
 }
 
 export interface NotificationsInboxFullModeProps
@@ -50,6 +53,7 @@ export interface NotificationsInboxFullModeProps
   hasMore: boolean;
   onLoadMore: () => void;
   onMarkAllRead: () => void;
+  isMarkingAllRead?: boolean;
 }
 
 export interface NotificationsInboxCompactModeProps
@@ -108,6 +112,8 @@ function FullModeInbox({
   onOpenNotification,
   onMarkRead,
   onMarkAllRead,
+  isMarkingAllRead,
+  markingReadId,
   isLoading,
   isError,
   onRetry,
@@ -132,9 +138,10 @@ function FullModeInbox({
           <Button
             type="button"
             variant="outline"
-            disabled={unreadCount === 0}
+            disabled={unreadCount === 0 || isMarkingAllRead}
             onClick={onMarkAllRead}
           >
+            {isMarkingAllRead ? <Spinner /> : null}
             {m.notification_mark_all_read()}
           </Button>
         </div>
@@ -193,8 +200,10 @@ function FullModeInbox({
                             <Button
                               type="button"
                               variant="ghost"
+                              disabled={markingReadId === item.id}
                               onClick={() => onMarkRead(item.id)}
                             >
+                              {markingReadId === item.id ? <Spinner /> : null}
                               {m.notification_mark_read()}
                             </Button>
                           ) : null}
@@ -215,6 +224,7 @@ function FullModeInbox({
             disabled={isLoadingMore}
             onClick={onLoadMore}
           >
+            {isLoadingMore ? <Spinner /> : null}
             {isLoadingMore
               ? m.notification_loading_more()
               : m.notification_load_more()}

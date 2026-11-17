@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,
@@ -436,6 +437,7 @@ export function PeopleDirectoryPage({
                 disabled={query.isFetchingNextPage}
                 onClick={() => query.fetchNextPage()}
               >
+                {query.isFetchingNextPage ? <Spinner /> : null}
                 {query.isFetchingNextPage
                   ? m.invitations_loading_more()
                   : m.invitations_load_more()}

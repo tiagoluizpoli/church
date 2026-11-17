@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import type {
   PreviewChurchInvitation200,
   PreviewChurchInvitation200ChurchAccessLevel,
@@ -350,7 +351,7 @@ function ChurchInvitationJoinRoute() {
             disabled={requestCodeMutation.isPending}
             onClick={() => requestCodeMutation.mutate()}
           >
-            <MailCheck />
+            {requestCodeMutation.isPending ? <Spinner /> : <MailCheck />}
             {requestCodeMutation.isPending
               ? m.join_sending_code()
               : m.join_send_code()}
@@ -387,6 +388,7 @@ function ChurchInvitationJoinRoute() {
                   disabled={declineMutation.isPending}
                   onClick={() => declineMutation.mutate()}
                 >
+                  {declineMutation.isPending ? <Spinner /> : null}
                   {declineMutation.isPending
                     ? m.join_declining()
                     : m.join_decline_confirm()}
@@ -502,6 +504,7 @@ function ChurchInvitationJoinRoute() {
             className="w-full"
             disabled={redeemMutation.isPending || failure?.canRetry === false}
           >
+            {redeemMutation.isPending ? <Spinner /> : null}
             {redeemMutation.isPending
               ? m.join_submitting()
               : outcome?.kind === 'retryable-failure'

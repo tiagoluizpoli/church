@@ -2,8 +2,7 @@ import { m } from '@church/i18n/messages';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Pending } from '@/components/ui/pending';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { MinistryArchive } from '@/features/ministries/components/ministry-archive';
 import { MinistryNameForm } from '@/features/ministries/components/ministry-name-form';
 import {
@@ -28,8 +27,7 @@ const isChurchAdmin = (capabilities: CallerCapabilities) =>
 /** ChurchAdmin-only. Renaming keeps the identity, so every view shows the new name. */
 export function MinistrySettings({ ministryId }: MinistrySettingsProps) {
   const queryClient = useQueryClient();
-  const ministryQuery = useMinistry({ ministryId });
-  const ministry = ministryQuery.data;
+  const ministry = useMinistry({ ministryId }).data;
 
   const rename = async ({ name }: SaveInput) => {
     await adminApi.renameMinistry(ministryId, { name });
@@ -39,12 +37,7 @@ export function MinistrySettings({ ministryId }: MinistrySettingsProps) {
 
   return (
     <CapabilityGate allow={isChurchAdmin} refusal="no-access">
-      {ministryQuery.isPending ? (
-        <Pending className="space-y-4">
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </Pending>
-      ) : ministry ? (
+      {ministry ? (
         <div className="space-y-4">
           <section className="surface-panel space-y-4 p-4">
             <h2 className="font-semibold text-lg">
@@ -57,6 +50,7 @@ export function MinistrySettings({ ministryId }: MinistrySettingsProps) {
                 onSave={rename}
                 renderActions={(pending) => (
                   <Button type="submit" disabled={pending}>
+                    {pending ? <Spinner /> : null}
                     {pending
                       ? m.ministry_settings_saving()
                       : m.ministry_settings_save()}

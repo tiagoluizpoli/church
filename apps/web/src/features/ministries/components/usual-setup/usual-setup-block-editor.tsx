@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { useSectorList } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
 import {
@@ -299,6 +300,7 @@ function UsualSetupBlockForm({
 
           <div className="flex gap-2">
             <Button type="submit" disabled={!canSave}>
+              {save.isPending ? <Spinner /> : null}
               {save.isPending ? m.usual_setup_saving() : m.usual_setup_save()}
             </Button>
             <Button

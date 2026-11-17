@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,
@@ -335,6 +336,7 @@ export function MinistryListPage({
                 className="min-h-11 w-full md:min-h-0 md:w-auto"
                 onClick={() => query.fetchNextPage()}
               >
+                {query.isFetchingNextPage ? <Spinner /> : null}
                 {query.isFetchingNextPage
                   ? m.invitations_loading_more()
                   : m.invitations_load_more()}

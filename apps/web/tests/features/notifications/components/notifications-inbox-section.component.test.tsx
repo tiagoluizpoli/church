@@ -116,6 +116,40 @@ describe('NotificationsInboxSection (full mode — /notifications page)', () => 
     expect(onMarkAllRead).toHaveBeenCalledTimes(1);
   });
 
+  it('disables only the in-flight mark-read trigger and shows the spinner, keeping the rest interactive', () => {
+    renderWithProviders(
+      <NotificationsInboxSection
+        variant="full"
+        unreadCount={1}
+        pages={notificationPagesFixture}
+        isLoadingMore={false}
+        hasMore={false}
+        onLoadMore={vi.fn()}
+        onOpenNotification={vi.fn()}
+        onMarkRead={vi.fn()}
+        onMarkAllRead={vi.fn()}
+        isMarkingAllRead
+        markingReadId="notification-1"
+      />,
+    );
+
+    const markAll = screen.getByRole('button', {
+      name: m.notification_mark_all_read(),
+    });
+    const markRead = screen.getByRole('button', {
+      name: m.notification_mark_read(),
+    });
+    expect(markAll).toBeDisabled();
+    expect(markAll.querySelector('svg.animate-spin')).not.toBeNull();
+    expect(markRead).toBeDisabled();
+    expect(markRead.querySelector('svg.animate-spin')).not.toBeNull();
+    for (const open of screen.getAllByRole('button', {
+      name: m.notification_open_notification(),
+    })) {
+      expect(open).toBeEnabled();
+    }
+  });
+
   it('shows empty state when inbox has no notifications', () => {
     renderWithProviders(
       <NotificationsInboxSection

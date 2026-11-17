@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
 import {
   type ActiveChurchArea,
@@ -106,7 +107,7 @@ function CrossChurchConfirmCard({
             </Button>
             <Button onClick={onSwitch} disabled={isSwitchPending}>
               {m.switch_church_switch({ churchName: targetChurchName })}
-              <ArrowRight />
+              {isSwitchPending ? <Spinner /> : <ArrowRight />}
             </Button>
           </div>
         </CardContent>

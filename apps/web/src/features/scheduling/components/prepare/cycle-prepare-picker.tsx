@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { classifyPrepareFetchError } from '../participation-prepare.utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   WorkspaceIntroPanel,
@@ -62,11 +63,11 @@ export function CyclePreparePicker({
           </AlertDescription>
         </Alert>
       ) : ministriesQuery.isPending ? (
-        <output className="grid gap-3">
+        <Pending data-testid="cycle-picker-loading" className="grid gap-3">
           <span className="sr-only">{m.prepare_cycle_picker_loading()}</span>
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
-        </output>
+        </Pending>
       ) : ministries.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           {m.prepare_cycle_picker_empty()}

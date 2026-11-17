@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
 import {
   Select,
   SelectContent,
@@ -342,15 +343,20 @@ export function SchedulesListPage({
           <FilterBar filters={filters} options={options} onChange={change} />
           {loading ? (
             <Card className="surface-panel">
-              <CardContent className="grid gap-3 md:gap-0">
-                <output className="sr-only">{m.schedules_loading()}</output>
-                <Skeleton className="hidden h-[41px] w-full md:block" />
-                {[0, 1, 2].map((row) => (
-                  <Skeleton
-                    key={row}
-                    className="h-20 w-full md:mt-px md:h-[48px]"
-                  />
-                ))}
+              <CardContent>
+                <Pending
+                  data-testid="schedules-loading"
+                  className="grid gap-3 md:gap-0"
+                >
+                  <span className="sr-only">{m.schedules_loading()}</span>
+                  <Skeleton className="hidden h-[41px] w-full md:block" />
+                  {[0, 1, 2].map((row) => (
+                    <Skeleton
+                      key={row}
+                      className="h-20 w-full md:mt-px md:h-[48px]"
+                    />
+                  ))}
+                </Pending>
               </CardContent>
             </Card>
           ) : rows.length === 0 ? (

@@ -6,6 +6,7 @@ import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-builder';
 import {
@@ -104,6 +105,7 @@ export function SwapRequestSheet({
               disabled={keep.isPending}
               onClick={() => keep.mutate()}
             >
+              {keep.isPending ? <Spinner /> : null}
               {m.swap_board_keep()}
             </Button>
           )}

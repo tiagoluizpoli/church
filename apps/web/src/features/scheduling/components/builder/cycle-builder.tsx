@@ -39,6 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { WorkspacePage } from '@/components/workspace-page';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { randomId } from '@/shared/utils/id';
@@ -247,6 +248,7 @@ export function CycleBuilder({
           disabled={proposal.isPending || isPublishing}
           onClick={() => proposal.mutate()}
         >
+          {proposal.isPending ? <Spinner /> : null}
           {proposal.isPending
             ? m.builder_proposal_loading()
             : m.builder_proposal_open()}
@@ -349,6 +351,7 @@ export function CycleBuilder({
                     .then(() => setPendingRemovalId(null));
                 }}
               >
+                {deleteAssignment.isPending ? <Spinner /> : null}
                 {deleteAssignment.isPending
                   ? m.builder_ui_removing()
                   : m.builder_ui_remove()}

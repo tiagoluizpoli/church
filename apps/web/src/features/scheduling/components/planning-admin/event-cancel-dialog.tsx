@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-builder';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
@@ -237,9 +240,10 @@ export function EventCancelDialog({
               </div>
             </div>
           ) : preview.isPending ? (
-            <p className="text-muted-foreground text-sm" role="status">
-              {m.event_cancel_loading()}
-            </p>
+            <Pending data-testid="event-cancel-loading" className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </Pending>
           ) : null}
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>
@@ -256,6 +260,7 @@ export function EventCancelDialog({
                 disabled={!typedMatches || cancel.isPending}
                 onClick={() => cancel.mutate(typed)}
               >
+                {cancel.isPending ? <Spinner /> : null}
                 {cancel.isPending
                   ? m.event_cancel_confirming()
                   : eventTimeBlockId

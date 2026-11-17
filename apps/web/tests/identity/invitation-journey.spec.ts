@@ -180,8 +180,21 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
       const row = leaderPage.getByRole('row').filter({
         hasText: journey.volunteerEmail,
       });
-      await expect(row).toContainText(worship.roles.usher.name);
       await expect(row).toContainText(m.invitations_status_accepted({}, PT));
+      // The Role sits in the row's expandable details.
+      await row
+        .getByRole('button', {
+          name: m.invitations_expand_label(
+            { email: journey.volunteerEmail },
+            PT,
+          ),
+        })
+        .click();
+      await expect(
+        leaderPage.getByRole('grid', {
+          name: m.invitations_list_label({}, PT),
+        }),
+      ).toContainText(worship.roles.usher.name);
     } finally {
       await leaderContext.close();
       await volunteerContext.close();

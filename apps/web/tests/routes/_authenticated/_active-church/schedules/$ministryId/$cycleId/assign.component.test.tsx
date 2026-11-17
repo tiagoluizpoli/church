@@ -197,7 +197,9 @@ describe('Assign board route', () => {
   ])('leaves the retired path %s not found', async (path) => {
     renderRoute({ initialPath: path, churchTimezone: 'UTC' });
 
-    expect(await screen.findByText('Not Found')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: m.shell_not_found_title() }),
+    ).toBeVisible();
     expect(screen.queryByTestId('event-builder-route')).not.toBeInTheDocument();
   });
 });
@@ -229,7 +231,9 @@ it('shows indistinguishable not found for a foreign Ministry leader receiving 40
     initialPath: '/schedules/ministry-1/cycle-1/assign',
     churchTimezone: 'UTC',
   });
-  expect(await screen.findByText('Not Found')).toBeVisible();
+  expect(
+    await screen.findByRole('heading', { name: m.shell_not_found_title() }),
+  ).toBeVisible();
   expect(screen.queryByText('Secret ministry name')).not.toBeInTheDocument();
   expect(router.state.location.pathname).toBe(
     '/schedules/ministry-1/cycle-1/assign',

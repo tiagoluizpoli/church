@@ -1,6 +1,5 @@
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { isConflict } from '../lib/http-status';
 import {
@@ -15,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { volunteerApi } from '@/utils/api-instances';
 
 export interface SwapWithdrawButtonProps {
@@ -72,9 +72,7 @@ export function SwapWithdrawButton({ assignmentId }: SwapWithdrawButtonProps) {
               mutation.mutate();
             }}
           >
-            {mutation.isPending ? (
-              <Loader2 className="animate-spin" aria-hidden />
-            ) : null}
+            {mutation.isPending ? <Spinner /> : null}
             {m.swap_withdraw_confirm()}
           </AlertDialogAction>
         </AlertDialogFooter>

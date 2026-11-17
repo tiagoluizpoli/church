@@ -2,13 +2,13 @@ import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { isStaleRequest } from '../lib/http-status';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { volunteerApi } from '@/utils/api-instances';
 
@@ -78,7 +78,7 @@ export function SwapRequestSheet({
           >
             {mutation.isPending ? (
               <>
-                <Loader2 className="animate-spin" aria-hidden />
+                <Spinner />
                 {m.swap_sending()}
               </>
             ) : (

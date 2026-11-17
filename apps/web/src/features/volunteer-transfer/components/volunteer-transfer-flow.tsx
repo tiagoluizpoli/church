@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { formatInstant, parseInstant } from '@church/time';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowRight, CircleAlert, Loader2, Repeat2 } from 'lucide-react';
+import { ArrowRight, CircleAlert, Repeat2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import type {
   ConfirmVolunteerTransfer200,
   GetVolunteerTransferPreview200,
@@ -381,9 +382,7 @@ function TransferConfirm({
             !nameMatches || password.length < 8 || confirmMutation.isPending
           }
         >
-          {confirmMutation.isPending ? (
-            <Loader2 className="animate-spin" aria-hidden />
-          ) : null}
+          {confirmMutation.isPending ? <Spinner /> : null}
           {confirmMutation.isPending
             ? m.volunteer_transfer_moving()
             : m.volunteer_transfer_confirm_title()}

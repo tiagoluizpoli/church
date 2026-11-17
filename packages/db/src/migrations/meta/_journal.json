@@ -386,6 +386,13 @@
       "when": 1794535778441,
       "tag": "0054_runtime_email_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794937969619,
+      "tag": "0055_home_lookup_indexes",
+      "breakpoints": true
     }
   ]
 }

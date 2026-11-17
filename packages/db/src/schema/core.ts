@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
+  index,
   pgTable,
   text,
   timestamp,
@@ -119,32 +120,42 @@ export const team = pgTable('team', {
  * row with `access_level: 'leader'`, scoped only to the teams that row
  * points at — not a ministry-wide deputy.
  */
-export const ministryMembership = pgTable('ministry_membership', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  churchId: uuid('church_id')
-    .notNull()
-    .references(() => church.id, { onDelete: 'cascade' }),
-  volunteerId: uuid('volunteer_id')
-    .notNull()
-    .references(() => volunteer.id, { onDelete: 'cascade' }),
-  ministryId: uuid('ministry_id')
-    .notNull()
-    .references(() => ministry.id, { onDelete: 'cascade' }),
-  /** Ministry-wide access level — sole source of truth for ministry leadership designation. */
-  ministryAccessLevel: ministryAccessLevelEnum('ministry_access_level')
-    .default('volunteer')
-    .notNull(),
-  status: membershipStatusEnum('status').default('active').notNull(),
-  joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .notNull(),
-  /**
-   * Set when a Volunteer Transfer retires this membership (spec §8.2). The
-   * `ministry_membership_role` and `ministry_membership_team` rows are left in
-   * place — they record *why* a past Assignment was possible.
-   */
-  leftAt: timestamp('left_at', { withTimezone: true, mode: 'date' }),
-});
+export const ministryMembership = pgTable(
+  'ministry_membership',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    volunteerId: uuid('volunteer_id')
+      .notNull()
+      .references(() => volunteer.id, { onDelete: 'cascade' }),
+    ministryId: uuid('ministry_id')
+      .notNull()
+      .references(() => ministry.id, { onDelete: 'cascade' }),
+    /** Ministry-wide access level — sole source of truth for ministry leadership designation. */
+    ministryAccessLevel: ministryAccessLevelEnum('ministry_access_level')
+      .default('volunteer')
+      .notNull(),
+    status: membershipStatusEnum('status').default('active').notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    /**
+     * Set when a Volunteer Transfer retires this membership (spec §8.2). The
+     * `ministry_membership_role` and `ministry_membership_team` rows are left in
+     * place — they record *why* a past Assignment was possible.
+     */
+    leftAt: timestamp('left_at', { withTimezone: true, mode: 'date' }),
+  },
+  (table) => [
+    index('ministry_membership_church_volunteer_status_idx').on(
+      table.churchId,
+      table.volunteerId,
+      table.status,
+    ),
+  ],
+);
 
 /**
  * A Ministry Role. Archive (`archived_at`) hides it from new use only:

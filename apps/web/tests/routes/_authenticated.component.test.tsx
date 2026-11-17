@@ -90,6 +90,10 @@ describe('the session guard (_authenticated)', () => {
         'a 503 answer',
         () => Promise.resolve({ data: null, error: { status: 503 } }),
       ],
+      [
+        'a 500 answer',
+        () => Promise.resolve({ data: null, error: { status: 500 } }),
+      ],
     ])('shows the reconnecting state, not the login page, after %s on the session call', async (_name, failure) => {
       serverIsDown();
       getSession.mockImplementation(failure);

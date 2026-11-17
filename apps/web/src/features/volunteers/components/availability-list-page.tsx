@@ -5,6 +5,7 @@ import { Link } from '@tanstack/react-router';
 import { CheckDeadline } from './check-deadline';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CapabilityGate } from '@/shared/components/capability-gate';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -28,9 +29,9 @@ function AvailabilityListContent() {
     <div className="mx-auto w-full max-w-2xl space-y-6">
       <h1 className="font-semibold text-xl">{m.nav_availability()}</h1>
       {checksQuery.isLoading ? (
-        <div role="status" aria-label={m.availability_list_loading()}>
+        <Pending role="status" aria-label={m.availability_list_loading()}>
           <Skeleton className="h-32 w-full" />
-        </div>
+        </Pending>
       ) : checksQuery.isError ? (
         <div role="alert" className="space-y-3">
           <p>{m.availability_list_error()}</p>

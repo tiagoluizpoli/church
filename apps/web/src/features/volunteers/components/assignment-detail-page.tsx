@@ -9,6 +9,7 @@ import { SwapRequestSheet } from './swap-request-sheet';
 import { SwapWithdrawButton } from './swap-withdraw-button';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GetAssignmentDetail200 } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -186,9 +187,9 @@ export function AssignmentDetailPage({
   });
   if (query.isLoading)
     return (
-      <div role="status" aria-label={m.assignment_detail_loading()}>
+      <Pending role="status" aria-label={m.assignment_detail_loading()}>
         <Skeleton className="h-64 w-full" />
-      </div>
+      </Pending>
     );
   if (query.isError) {
     const status = isAxiosError(query.error)

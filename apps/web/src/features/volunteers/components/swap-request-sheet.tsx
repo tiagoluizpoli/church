@@ -2,6 +2,7 @@ import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { isStaleRequest } from '../lib/http-status';
@@ -75,7 +76,14 @@ export function SwapRequestSheet({
             disabled={mutation.isPending}
             onClick={() => mutation.mutate()}
           >
-            {mutation.isPending ? m.swap_sending() : m.swap_send()}
+            {mutation.isPending ? (
+              <>
+                <Loader2 className="animate-spin" aria-hidden />
+                {m.swap_sending()}
+              </>
+            ) : (
+              m.swap_send()
+            )}
           </Button>
         </>
       }

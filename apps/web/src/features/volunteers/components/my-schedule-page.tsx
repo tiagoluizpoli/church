@@ -12,6 +12,7 @@ import { AssignmentLink } from './assignment-link';
 import { BackgroundRefreshIndicator } from './background-refresh-indicator';
 import { MyScheduleOfflineBanner } from './my-schedule-offline-banner';
 import { Button } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import type {
   GetPublishedVolunteerSchedule200,
@@ -164,9 +165,9 @@ export function MySchedulePage() {
   });
   if (query.isLoading)
     return (
-      <div role="status" aria-label={m.my_schedule_loading()}>
+      <Pending role="status" aria-label={m.my_schedule_loading()}>
         <Skeleton className="h-64 w-full" />
-      </div>
+      </Pending>
     );
   // Retained data stays on screen when a refetch fails; the full error is for no data.
   if (query.isError && !query.data) {

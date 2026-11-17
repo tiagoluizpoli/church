@@ -9,6 +9,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBlocker } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
+import { Loader2 } from 'lucide-react';
 import { useId, useState } from 'react';
 import { z } from 'zod';
 import { useLocalAvailabilityDraft } from '../hooks/use-local-availability-draft';
@@ -20,6 +21,7 @@ import {
 } from '../lib/unavailable-shifts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import type {
@@ -370,6 +372,9 @@ function AvailabilityAnswer({
             disabled={answer.isPending}
             onClick={() => answer.mutate()}
           >
+            {answer.isPending ? (
+              <Loader2 className="animate-spin" aria-hidden />
+            ) : null}
             {answer.isPending
               ? confirmed
                 ? m.availability_detail_saving()
@@ -407,9 +412,9 @@ function AvailabilityDetailContent({
   });
   if (query.isLoading)
     return (
-      <div role="status" aria-label={m.availability_detail_loading()}>
+      <Pending role="status" aria-label={m.availability_detail_loading()}>
         <Skeleton className="h-64 w-full" />
-      </div>
+      </Pending>
     );
   if (query.isError) {
     const status = isAxiosError(query.error)

@@ -1,6 +1,8 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
 import { Link, type LinkProps, linkOptions } from '@tanstack/react-router';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import { HomeError } from '@/features/home/components/home-error';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { HomeWidget } from '@/features/home/components/home-widget';
@@ -260,12 +262,9 @@ export function NotificationSummary({ churchId, userId }: HomeSectionProps) {
   });
   if (query.isPending)
     return (
-      <output
-        aria-label={m.home_notifications()}
-        className="text-muted-foreground"
-      >
-        {m.home_loading()}
-      </output>
+      <Pending role="status" aria-label={m.home_notifications()}>
+        <Skeleton className="h-6 w-48" />
+      </Pending>
     );
   if (query.isError)
     return (

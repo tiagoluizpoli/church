@@ -1,4 +1,6 @@
+import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
+import { QueryClient } from '@tanstack/react-query';
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosHeaders } from 'axios';
@@ -380,5 +382,43 @@ describe('AssignmentDetailPage', () => {
     expect(
       await screen.findByText('Esta escala não faz mais parte da sua escala.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('loading states', () => {
+  it('shows its skeleton only after the pending delay on first load', async () => {
+    api.getAssignmentDetail.mockReturnValue(new Promise(() => {}));
+    renderWithProviders(<AssignmentDetailPage assignmentId="a-1" />, {
+      churchTimezone: 'America/Sao_Paulo',
+      queryClient: new QueryClient(),
+    });
+    const region = screen.getByRole('status', {
+      name: m.assignment_detail_loading(),
+    });
+    expect(region).toHaveAttribute('aria-busy', 'true');
+    expect(region).toBeEmptyDOMElement();
+    await waitFor(() =>
+      expect(region.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+  });
+
+  it('keeps the shown data, with no skeleton, while a refetch is in flight', async () => {
+    const queryClient = new QueryClient();
+    api.getAssignmentDetail.mockResolvedValue(DETAIL);
+    renderWithProviders(<AssignmentDetailPage assignmentId="a-1" />, {
+      churchTimezone: 'America/Sao_Paulo',
+      queryClient: queryClient,
+    });
+    expect(await screen.findByText('Sunday Service')).toBeVisible();
+    api.getAssignmentDetail.mockClear();
+    api.getAssignmentDetail.mockReturnValue(new Promise(() => {}));
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(api.getAssignmentDetail).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText('Sunday Service')).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: m.assignment_detail_loading() }),
+    ).toBeNull();
   });
 });

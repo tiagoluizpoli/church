@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { QueryClient } from '@tanstack/react-query';
-import { act, cleanup, screen } from '@testing-library/react';
+import { act, cleanup, screen, waitFor } from '@testing-library/react';
 import { AxiosError, AxiosHeaders } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MySchedulePage } from '@/features/volunteers/components/my-schedule-page';
@@ -231,5 +231,47 @@ describe('MySchedulePage', () => {
     expect(
       await screen.findByText("You don't serve in a Ministry yet."),
     ).toBeVisible();
+  });
+});
+
+describe('loading states', () => {
+  it('shows its skeleton only after the pending delay on first load', async () => {
+    api.getPublishedVolunteerSchedule.mockReturnValue(new Promise(() => {}));
+    renderWithProviders(
+      <CallerCapabilitiesScopeProvider churchId="church-1" userId="user-1">
+        <MySchedulePage />
+      </CallerCapabilitiesScopeProvider>,
+      { churchTimezone: 'America/Sao_Paulo', queryClient: new QueryClient() },
+    );
+    const region = screen.getByRole('status', {
+      name: m.my_schedule_loading(),
+    });
+    expect(region).toHaveAttribute('aria-busy', 'true');
+    expect(region).toBeEmptyDOMElement();
+    await waitFor(() =>
+      expect(region.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+  });
+
+  it('keeps the shown data, with no skeleton, while a refetch is in flight', async () => {
+    const queryClient = new QueryClient();
+    api.getPublishedVolunteerSchedule.mockResolvedValue(DATA);
+    renderWithProviders(
+      <CallerCapabilitiesScopeProvider churchId="church-1" userId="user-1">
+        <MySchedulePage />
+      </CallerCapabilitiesScopeProvider>,
+      { churchTimezone: 'America/Sao_Paulo', queryClient: queryClient },
+    );
+    expect(await screen.findByText('Mon 12 Oct')).toBeVisible();
+    api.getPublishedVolunteerSchedule.mockClear();
+    api.getPublishedVolunteerSchedule.mockReturnValue(new Promise(() => {}));
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(api.getPublishedVolunteerSchedule).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText('Mon 12 Oct')).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: m.my_schedule_loading() }),
+    ).toBeNull();
   });
 });

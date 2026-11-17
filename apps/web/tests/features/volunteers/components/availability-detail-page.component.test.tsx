@@ -1248,3 +1248,35 @@ describe('Availability check page', () => {
     expect(api.getAvailabilityCheck).toHaveBeenCalledWith('check-1');
   });
 });
+
+describe('loading states', () => {
+  it('shows its skeleton only after the pending delay on first load', async () => {
+    api.getAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    renderPage(undefined, undefined, undefined, undefined, new QueryClient());
+    const region = await screen.findByRole('status', {
+      name: m.availability_detail_loading(),
+    });
+    expect(region).toHaveAttribute('aria-busy', 'true');
+    expect(region).toBeEmptyDOMElement();
+    await waitFor(() =>
+      expect(region.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+  });
+
+  it('keeps the shown data, with no skeleton, while a refetch is in flight', async () => {
+    const queryClient = new QueryClient();
+    api.getAvailabilityCheck.mockResolvedValue(CHECK);
+    renderPage(undefined, undefined, undefined, undefined, queryClient);
+    expect(await screen.findByText('Não confirmada')).toBeVisible();
+    api.getAvailabilityCheck.mockClear();
+    api.getAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(api.getAvailabilityCheck).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText('Não confirmada')).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: m.availability_detail_loading() }),
+    ).toBeNull();
+  });
+});

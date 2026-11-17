@@ -357,7 +357,7 @@ function Details({ item, timeZone, id }: InvitationRowProps & { id?: string }) {
   return (
     <dl
       id={id}
-      className="grid grid-cols-2 gap-x-8 gap-y-3 whitespace-normal rounded-md bg-muted/30 p-3 md:[grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))]"
+      className="grid grid-cols-2 gap-x-10 gap-y-3 whitespace-normal border-t pt-3 md:border-t-0 md:py-1 md:[grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))]"
     >
       {factsOf({ item, timeZone }).map((fact) => (
         <div
@@ -365,7 +365,7 @@ function Details({ item, timeZone, id }: InvitationRowProps & { id?: string }) {
           className={cn('min-w-0', fact.wide && 'max-md:col-span-2')}
         >
           <dt className="text-muted-foreground text-xs">{fact.label}</dt>
-          <dd className="text-foreground text-sm [overflow-wrap:anywhere]">
+          <dd className="font-normal text-foreground text-sm [overflow-wrap:anywhere]">
             {fact.value}
           </dd>
         </div>
@@ -475,7 +475,7 @@ function InvitationCard({
   const date = endDate({ item });
   const panelId = detailsRowId(item);
   return (
-    <div className="surface-subtle workspace-panel space-y-2">
+    <div className="surface-subtle workspace-panel space-y-1">
       <div className="flex items-start gap-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
           <span className="min-w-0 font-medium [overflow-wrap:anywhere]">
@@ -483,7 +483,9 @@ function InvitationCard({
           </span>
           <Badge variant="outline">{statusLabel(item.displayStatus)}</Badge>
         </div>
-        <RowActions item={item} />
+        <div className="-my-2 -mr-2">
+          <RowActions item={item} />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <Grants item={item} />
@@ -496,7 +498,7 @@ function InvitationCard({
       <Button
         type="button"
         variant="ghost"
-        className="min-h-11 px-2 text-sm"
+        className="-ml-2 min-h-11 px-2 text-sm aria-expanded:bg-transparent"
         aria-expanded={expanded}
         aria-controls={expanded ? panelId : undefined}
         onClick={() => onToggle(item)}
@@ -860,7 +862,7 @@ export function InvitationListPage({
                 const { item } = row;
                 if (row.kind === 'details') {
                   return (
-                    <div className="ml-8">
+                    <div className="ml-8 min-w-0 flex-1">
                       <Details
                         item={item}
                         timeZone={churchTimezone}

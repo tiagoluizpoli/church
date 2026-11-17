@@ -158,6 +158,12 @@ async function openMenu(email: string) {
   );
 }
 
+/** The description paired with a term of an expanded details list, or null when the fact is omitted. */
+function definition(scope: HTMLElement, term: string): HTMLElement | null {
+  const dt = within(scope).queryAllByText(term, { selector: 'dt' }).at(0);
+  return (dt?.nextElementSibling as HTMLElement | null) ?? null;
+}
+
 function desktopRow(email: string) {
   return screen
     .getAllByRole('row')
@@ -202,15 +208,16 @@ describe('Invitations page', () => {
     const table = screen.getByRole('grid', {
       name: m.invitations_list_label(),
     });
-    expect(table).toHaveTextContent(
-      m.invitations_created({ date: '01/11/2026 13:00' }),
+    expect(definition(table, m.invitations_fact_created())).toHaveTextContent(
+      '01/11/2026 13:00',
     );
     expect(table).not.toHaveTextContent('03/11/2026 15:00');
-    expect(table).toHaveTextContent(m.invitations_email_failed());
-    expect(table).toHaveTextContent(
-      m.invitations_revoked_by_on({ name: 'Bia', date: '02/11/2026 10:00' }),
+    expect(definition(table, m.invitations_fact_email())).toHaveTextContent(
+      m.invitations_email_failed(),
     );
-    expect(table).toHaveTextContent(m.invitations_revoke_reason_manual());
+    expect(definition(table, m.invitations_fact_closure())).toHaveTextContent(
+      `${m.invitations_revoked_by_on({ name: 'Bia', date: '02/11/2026 10:00' })} · ${m.invitations_revoke_reason_manual()}`,
+    );
   });
 
   it('drops cached rows when a refetch fails', async () => {
@@ -288,16 +295,25 @@ describe('Invitations page', () => {
     expect(first).toHaveTextContent('ana@example.com');
     expect(first).toHaveTextContent('Worship');
     expect(first).toHaveTextContent(m.ministry_invitation_access_volunteer());
-    expect(first).toHaveTextContent('Singer, Drums');
-    expect(first).toHaveTextContent(
-      m.invitations_invited_by({ name: 'Pastor Paulo' }),
+    const roles = definition(first, m.ministry_invitation_roles_label());
+    expect(
+      within(roles as HTMLElement).getByText('Singer'),
+    ).toBeInTheDocument();
+    expect(within(roles as HTMLElement).getByText('Drums')).toBeInTheDocument();
+    expect(definition(first, m.invitations_fact_inviter())).toHaveTextContent(
+      'Pastor Paulo',
     );
-    expect(first).toHaveTextContent(
+    expect(definition(first, m.invitations_fact_email())).toHaveTextContent(
       m.invitations_email_sent({ date: '01/11/2026 13:05' }),
     );
     expect(second).toHaveTextContent('chief@example.com');
     expect(second).toHaveTextContent(m.join_church_access_admin());
-    expect(second).toHaveTextContent(m.invitations_email_failed());
+    expect(definition(second, m.invitations_fact_email())).toHaveTextContent(
+      m.invitations_email_failed(),
+    );
+    expect(
+      definition(second, m.ministry_invitation_roles_label()),
+    ).not.toBeInTheDocument();
     expect(listInvitations).toHaveBeenCalledWith({});
   });
 
@@ -316,12 +332,19 @@ describe('Invitations page', () => {
     expect(card).not.toHaveTextContent('Pastor Paulo');
     await userEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(card).toHaveTextContent(
-      m.invitations_invited_by({ name: 'Pastor Paulo' }),
+    expect(definition(card, m.invitations_fact_inviter())).toHaveTextContent(
+      'Pastor Paulo',
     );
-    expect(card).toHaveTextContent(m.ministry_invitation_roles_none());
-    expect(card).not.toHaveTextContent(m.invitations_email_unavailable());
-    expect(card).not.toHaveTextContent('Encerr');
+    expect(definition(card, m.invitations_fact_created())).toHaveTextContent(
+      '01/11/2026 13:00',
+    );
+    for (const omitted of [
+      m.invitations_fact_email(),
+      m.invitations_fact_closure(),
+      m.ministry_invitation_roles_label(),
+    ]) {
+      expect(definition(card, omitted)).not.toBeInTheDocument();
+    }
     await userEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(card).not.toHaveTextContent('Pastor Paulo');
@@ -384,9 +407,26 @@ describe('Invitations page', () => {
     const table = screen.getByRole('grid', {
       name: m.invitations_list_label(),
     });
-    expect(screen.getAllByRole('row')).toHaveLength(rowCount + 3);
-    expect(table).toHaveTextContent('Pastor Paulo');
-    expect(table).toHaveTextContent('Funções: Singer');
+    expect(screen.getAllByRole('row')).toHaveLength(rowCount + 1);
+    // One child row spanning every column holds the facts, with no dividers of its own.
+    expect(definition(table, m.invitations_fact_inviter())).toHaveTextContent(
+      'Pastor Paulo',
+    );
+    const roles = definition(table, m.ministry_invitation_roles_label());
+    expect(
+      within(roles as HTMLElement).getByText('Singer'),
+    ).toBeInTheDocument();
+    const detailsRow = (roles as HTMLElement).closest('tr') as HTMLElement;
+    const detailCells = detailsRow.querySelectorAll('td, th');
+    expect(detailCells).toHaveLength(1);
+    expect(detailCells[0]).toHaveAttribute('colspan', '5');
+    expect(
+      within(desktopRow('ana@example.com'))
+        .getByRole('button', {
+          name: m.invitations_collapse_label({ email: 'ana@example.com' }),
+        })
+        .getAttribute('aria-controls'),
+    ).toBe(detailsRow.querySelector('dl')?.id);
 
     await userEvent.click(
       within(desktopRow('ana@example.com')).getByRole('button', {
@@ -464,7 +504,9 @@ describe('Invitations page', () => {
     const [only] = await rows();
     await expandCard(only);
     expect(only).toHaveTextContent(m.ministry_invitation_access_leader());
-    expect(only).toHaveTextContent(m.ministry_invitation_roles_none());
+    expect(
+      definition(only, m.ministry_invitation_roles_label()),
+    ).not.toBeInTheDocument();
     expect(
       within(only).queryByRole('button', {
         name: m.invitations_actions_label({ email: 'ana@example.com' }),

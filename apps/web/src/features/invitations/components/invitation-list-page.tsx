@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { ChevronDown, ChevronRight, MoreHorizontal } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { HeaderStatChip } from '@/components/header-stat-chip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -50,6 +50,7 @@ import type {
   ListInvitations200ItemsItem,
   ListInvitations200Options,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { cn } from '@/lib/utils';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
@@ -295,7 +296,10 @@ function Grants({ item }: RowActionProps) {
 
 interface Fact {
   key: string;
-  text: string;
+  label: string;
+  value: ReactNode;
+  /** Long values take the whole row of the details list on a phone. */
+  wide?: boolean;
 }
 
 /** What the main row leaves out; unavailable facts are omitted. */
@@ -305,72 +309,97 @@ function factsOf({ item, timeZone }: InvitationRowProps): Fact[] {
   const facts: Fact[] = [
     {
       key: 'inviter',
-      text: m.invitations_invited_by({ name: item.invitedBy.name }),
+      label: m.invitations_fact_inviter(),
+      value: item.invitedBy.name,
     },
     {
       key: 'created',
-      text: m.invitations_created({
-        date: formatInstantOf({ value: item.createdAt, timeZone }),
-      }),
+      label: m.invitations_fact_created(),
+      value: formatInstantOf({ value: item.createdAt, timeZone }),
     },
   ];
-  if (delivery) facts.push({ key: 'email', text: delivery });
-  if (closure) facts.push({ key: 'closure', text: closure });
-  if (item.ministryName) {
+  if (delivery) {
+    facts.push({
+      key: 'email',
+      label: m.invitations_fact_email(),
+      value: delivery,
+    });
+  }
+  if (closure) {
+    facts.push({
+      key: 'closure',
+      label: m.invitations_fact_closure(),
+      value: closure,
+      wide: true,
+    });
+  }
+  if (item.ministryName && item.roles.length > 0) {
     facts.push({
       key: 'roles',
-      text: `${m.ministry_invitation_roles_label()}: ${
-        item.roles.length > 0
-          ? item.roles.map((role) => role.name).join(', ')
-          : m.ministry_invitation_roles_none()
-      }`,
+      label: m.ministry_invitation_roles_label(),
+      wide: true,
+      value: (
+        <span className="flex flex-wrap gap-1.5">
+          {item.roles.map((role) => (
+            <Badge key={role.id} variant="outline">
+              {role.name}
+            </Badge>
+          ))}
+        </span>
+      ),
     });
   }
   return facts;
+}
+
+/** The expanded facts as one tinted block of label/value pairs that wraps only when needed. */
+function Details({ item, timeZone, id }: InvitationRowProps & { id?: string }) {
+  return (
+    <dl
+      id={id}
+      className="grid grid-cols-2 gap-x-8 gap-y-3 whitespace-normal rounded-md bg-muted/30 p-3 md:[grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))]"
+    >
+      {factsOf({ item, timeZone }).map((fact) => (
+        <div
+          key={fact.key}
+          className={cn('min-w-0', fact.wide && 'max-md:col-span-2')}
+        >
+          <dt className="text-muted-foreground text-xs">{fact.label}</dt>
+          <dd className="text-foreground text-sm [overflow-wrap:anywhere]">
+            {fact.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 function endDate({ item }: RowActionProps): string | null | undefined {
   return item.displayStatus === 'pending' ? item.expiresAt : item.closure?.at;
 }
 
-interface FactRowIdInput {
-  item: ListInvitations200ItemsItem;
-  key: string;
-}
-
-function factRowId({ item, key }: FactRowIdInput): string {
-  return `${invitationRowId(item)}:${key}`;
-}
-
 function invitationRowId(item: ListInvitations200ItemsItem): string {
   return `${item.kind}:${item.id}`;
 }
 
+function detailsRowId(item: ListInvitations200ItemsItem): string {
+  return `${invitationRowId(item)}:details`;
+}
+
 type VisibleRow =
   | { kind: 'invitation'; item: ListInvitations200ItemsItem }
-  | {
-      kind: 'fact';
-      item: ListInvitations200ItemsItem;
-      fact: Fact;
-    };
+  | { kind: 'details'; item: ListInvitations200ItemsItem };
 
 interface VisibleRowsInput {
   items: ListInvitations200ItemsItem[];
   expanded: ReadonlySet<string>;
-  timeZone: string;
 }
 
-function visibleRows({
-  items,
-  expanded,
-  timeZone,
-}: VisibleRowsInput): VisibleRow[] {
+function visibleRows({ items, expanded }: VisibleRowsInput): VisibleRow[] {
   return items.flatMap((item): VisibleRow[] => [
     { kind: 'invitation', item },
     ...(expanded.has(invitationRowId(item))
-      ? factsOf({ item, timeZone }).map(
-          (fact): VisibleRow => ({ kind: 'fact', item, fact }),
-        )
+      ? [{ kind: 'details' as const, item }]
       : []),
   ]);
 }
@@ -444,7 +473,7 @@ function InvitationCard({
   onToggle,
 }: InvitationRowProps & ToggleProps) {
   const date = endDate({ item });
-  const panelId = `${invitationRowId(item)}:details`;
+  const panelId = detailsRowId(item);
   return (
     <div className="surface-subtle workspace-panel space-y-2">
       <div className="flex items-start gap-2">
@@ -476,14 +505,7 @@ function InvitationCard({
         {m.invitations_details()}
       </Button>
       {expanded ? (
-        <ul
-          id={panelId}
-          className="space-y-1 text-muted-foreground text-sm [overflow-wrap:anywhere]"
-        >
-          {factsOf({ item, timeZone }).map((fact) => (
-            <li key={fact.key}>{fact.text}</li>
-          ))}
-        </ul>
+        <Details item={item} timeZone={timeZone} id={panelId} />
       ) : null}
     </div>
   );
@@ -679,7 +701,7 @@ export function InvitationListPage({
       if (!next.delete(id)) next.add(id);
       return next;
     });
-  const rows = visibleRows({ items, expanded, timeZone: churchTimezone });
+  const rows = visibleRows({ items, expanded });
   const status = filters.status ?? 'pending';
   const isFiltered = Boolean(
     filters.ministryId || filters.invitedAs || filters.email,
@@ -823,24 +845,29 @@ export function InvitationListPage({
               items={rows}
               mobileItems={rows.filter((row) => row.kind === 'invitation')}
               rowId={({ item }) =>
-                item.kind === 'fact'
-                  ? factRowId({ item: item.item, key: item.fact.key })
+                item.kind === 'details'
+                  ? detailsRowId(item.item)
                   : invitationRowId(item.item)
               }
+              rowSpansColumns={({ item }) => item.kind === 'details'}
               // react-aria memoizes a row's cells by key, so the toggle state is part of it.
               rowKey={({ item }) =>
-                item.kind === 'fact'
-                  ? factRowId({ item: item.item, key: item.fact.key })
+                item.kind === 'details'
+                  ? detailsRowId(item.item)
                   : `${invitationRowId(item.item)}:${expanded.has(invitationRowId(item.item))}`
               }
               renderCell={({ item: row, column }) => {
                 const { item } = row;
-                if (row.kind === 'fact') {
-                  return column.id === 'invitation' ? (
-                    <span className="pl-9 text-muted-foreground">
-                      {row.fact.text}
-                    </span>
-                  ) : null;
+                if (row.kind === 'details') {
+                  return (
+                    <div className="ml-8">
+                      <Details
+                        item={item}
+                        timeZone={churchTimezone}
+                        id={detailsRowId(item)}
+                      />
+                    </div>
+                  );
                 }
                 if (column.id === 'status')
                   return (
@@ -864,13 +891,7 @@ export function InvitationListPage({
                       size="icon-xs"
                       variant="ghost"
                       aria-expanded={isOpen}
-                      aria-controls={
-                        isOpen
-                          ? factsOf({ item, timeZone: churchTimezone })
-                              .map(({ key }) => factRowId({ item, key }))
-                              .join(' ')
-                          : undefined
-                      }
+                      aria-controls={isOpen ? detailsRowId(item) : undefined}
                       aria-label={
                         isOpen
                           ? m.invitations_collapse_label({ email: item.email })

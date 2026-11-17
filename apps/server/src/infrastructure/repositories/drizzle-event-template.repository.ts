@@ -27,13 +27,8 @@ import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
-interface EventTemplateGraphRow {
-  template: typeof eventTemplate.$inferSelect;
-  blocks: Array<typeof templateTimeBlock.$inferSelect>;
-}
-
-interface MapTemplateGraphInput {
-  template: typeof eventTemplate.$inferSelect;
+interface MapTemplateGraphsInput {
+  templates: (typeof eventTemplate.$inferSelect)[];
   tx?: CreateEventTemplateInput['tx'];
 }
 
@@ -329,14 +324,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
         asc(eventTemplate.id),
       );
 
-    return Promise.all(
-      templateRows.map((templateRow) =>
-        this.mapTemplateGraph({
-          template: templateRow,
-          tx: input.tx,
-        }),
-      ),
-    );
+    return this.mapTemplateGraphs({ templates: templateRows, tx: input.tx });
   }
 
   async getById(input: GetEventTemplateInput): Promise<EventTemplate> {
@@ -362,10 +350,11 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       throw templateNotFound({ templateId: input.templateId });
     }
 
-    return this.mapTemplateGraph({
-      template: templateRow,
+    const [template] = await this.mapTemplateGraphs({
+      templates: [templateRow],
       tx: input.tx,
     });
+    return template;
   }
 
   async getByIds(input: GetEventTemplatesByIdsInput): Promise<EventTemplate[]> {
@@ -389,31 +378,40 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
         ),
       );
 
-    return Promise.all(
-      templateRows.map((templateRow) =>
-        this.mapTemplateGraph({
-          template: templateRow,
-          tx: input.tx,
-        }),
-      ),
-    );
+    return this.mapTemplateGraphs({ templates: templateRows, tx: input.tx });
   }
 
-  private async mapTemplateGraph(
-    input: MapTemplateGraphInput,
-  ): Promise<EventTemplate> {
+  /** One blocks query for all templates; keeps the input template order. */
+  private async mapTemplateGraphs(
+    input: MapTemplateGraphsInput,
+  ): Promise<EventTemplate[]> {
+    if (input.templates.length === 0) {
+      return [];
+    }
     const db = getClient({ db: this.db, tx: input.tx });
-    const blocks = await db
+    const blockRows = await db
       .select()
       .from(templateTimeBlock)
-      .where(eq(templateTimeBlock.templateId, input.template.id))
+      .where(
+        inArray(
+          templateTimeBlock.templateId,
+          input.templates.map((template) => template.id),
+        ),
+      )
       .orderBy(asc(templateTimeBlock.order));
 
-    const graph: EventTemplateGraphRow = {
-      template: input.template,
-      blocks,
-    };
+    const blocksByTemplate = new Map<string, (typeof blockRows)[number][]>();
+    for (const block of blockRows) {
+      const blocks = blocksByTemplate.get(block.templateId) ?? [];
+      blocks.push(block);
+      blocksByTemplate.set(block.templateId, blocks);
+    }
 
-    return mapEventTemplate(graph);
+    return input.templates.map((template) =>
+      mapEventTemplate({
+        template,
+        blocks: blocksByTemplate.get(template.id) ?? [],
+      }),
+    );
   }
 }

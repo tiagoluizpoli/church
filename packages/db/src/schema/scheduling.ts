@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  index,
   integer,
   pgTable,
   text,
@@ -52,7 +53,10 @@ export const event = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [check('event_date_check', sql`${table.start} < ${table.end}`)],
+  (table) => [
+    index('event_church_cycle_idx').on(table.churchId, table.cycleId),
+    check('event_date_check', sql`${table.start} < ${table.end}`),
+  ],
 );
 
 export const eventTimeBlock = pgTable(
@@ -88,6 +92,7 @@ export const eventTimeBlock = pgTable(
       .notNull(),
   },
   (table) => [
+    index('event_time_block_event_idx').on(table.eventId),
     check(
       'event_time_block_duration_check',
       sql`${table.startTime} < ${table.endTime}`,
@@ -122,6 +127,12 @@ export const shift = pgTable(
       .notNull(),
   },
   (table) => [
+    // Leads with participation_id, so it also serves participation-only lookups.
+    index('shift_participation_block_idx').on(
+      table.participationId,
+      table.eventTimeBlockId,
+    ),
+    index('shift_event_time_block_idx').on(table.eventTimeBlockId),
     check('shift_duration_check', sql`${table.startTime} < ${table.endTime}`),
   ],
 );
@@ -149,6 +160,7 @@ export const shiftRequirement = pgTable(
     notes: text('notes'),
   },
   (table) => [
+    index('shift_requirement_participation_idx').on(table.participationId),
     uniqueIndex('shift_requirement_shift_sector_role_idx').on(
       table.shiftId,
       table.sectorId,

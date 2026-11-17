@@ -15,7 +15,10 @@ export const PEOPLE_QUERY_KEY = ['people'] as const;
 /** The server's longest accepted name or e-mail search. */
 export const PEOPLE_SEARCH_MAX_LENGTH = 254;
 
-export type PeopleFilters = Omit<ListPeopleParams, 'cursor' | 'limit'>;
+export interface PeopleFilters
+  extends Omit<ListPeopleParams, 'cursor' | 'limit' | 'withoutMinistry'> {
+  withoutMinistry?: true;
+}
 
 interface ChurchKeyInput {
   churchId: string | undefined;
@@ -46,10 +49,15 @@ export function usePeopleList({ filters }: UsePeopleListInput) {
     queryKey: peopleListQueryKey({ churchId, filters }),
     // Keeps the pickers on screen while a new filter set loads.
     placeholderData: keepPreviousData,
-    queryFn: ({ pageParam }) =>
-      peopleApi.listPeople(
-        pageParam ? { ...filters, cursor: pageParam } : filters,
-      ),
+    queryFn: ({ pageParam }) => {
+      const { withoutMinistry, ...rest } = filters;
+      const params = withoutMinistry
+        ? { ...rest, withoutMinistry: 'true' }
+        : rest;
+      return peopleApi.listPeople(
+        pageParam ? { ...params, cursor: pageParam } : params,
+      );
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     retry: false,

@@ -19,7 +19,6 @@ export function useCycleBreadcrumb(): BreadcrumbSegmentOverride | null {
     queryKey: ['cycle-details', cycleId],
     queryFn: () => adminApi.getCycle(cycleId ?? ''),
     enabled: cycleId !== undefined && ministryId === undefined,
-    retry: false,
   });
   const schedule = useSchedule({
     ministryId,

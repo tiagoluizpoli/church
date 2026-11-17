@@ -403,7 +403,6 @@ function AvailabilityDetailContent({
   const query = useQuery({
     queryKey: ['availability-check', checkId],
     queryFn: () => volunteerApi.getAvailabilityCheck(checkId),
-    retry: false,
   });
   if (query.isLoading)
     return (

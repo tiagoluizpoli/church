@@ -58,7 +58,6 @@ export function MyMinistrySchedulePage({
         key: cacheKey,
         fetch: () => volunteerApi.getMinistrySchedule(ministryId, { cycleId }),
       }),
-    retry: false,
     ...cachedReadOptions({
       scope: cacheScope,
       key: cacheKey,

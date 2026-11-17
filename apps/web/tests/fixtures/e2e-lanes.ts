@@ -23,6 +23,7 @@ export const ISOLATED_SPECS = [
   'identity/volunteer-transfer-journey.spec.ts',
   'ministries/ministries-directory.spec.ts',
   'people/people-journey.spec.ts',
+  'resilience/reconnecting-banner.spec.ts',
   'scheduling/a11y-planning-nav.spec.ts',
   'scheduling/capability-index.spec.ts',
   'scheduling/cross-cutting.spec.ts',

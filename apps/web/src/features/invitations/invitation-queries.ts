@@ -35,6 +35,5 @@ export function useInvitationList({ filters }: UseInvitationListInput) {
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    retry: false,
   });
 }

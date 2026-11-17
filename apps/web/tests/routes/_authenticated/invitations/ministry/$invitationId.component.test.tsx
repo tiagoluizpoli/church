@@ -17,6 +17,8 @@ const confirmVolunteerTransfer = vi.fn();
 const listActiveChurchOptions = vi.fn();
 const selectActiveChurch = vi.fn();
 
+vi.mock('@/components/ui/sonner', () => ({ Toaster: () => null }));
+
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
     getSession: (...args: unknown[]) => getSession(...args),

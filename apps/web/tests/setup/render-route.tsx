@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
   createRouter,
@@ -11,6 +11,7 @@ import {
   activeChurchApiMock,
   resolvedActiveChurchStatus,
 } from '@/tests/setup/active-church';
+import { createQueryClient } from '@/utils/api';
 import { activeChurchApi } from '@/utils/api-instances';
 
 interface RenderRouteOptions {
@@ -73,12 +74,8 @@ export function renderRoute({
     seedResolvedActiveChurch({ churchTimezone });
   }
 
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
+  // The app's own retry and error policy, so tests exercise it.
+  const queryClient = createQueryClient();
 
   const router = createRouter({
     routeTree,

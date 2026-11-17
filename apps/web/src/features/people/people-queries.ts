@@ -60,7 +60,6 @@ export function usePeopleList({ filters }: UsePeopleListInput) {
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    retry: false,
   });
 }
 
@@ -83,7 +82,6 @@ export function usePerson({ memberId }: UsePersonInput) {
   return useQuery({
     queryKey: peopleDetailQueryKey({ churchId, memberId }),
     queryFn: () => peopleApi.getPerson(memberId),
-    retry: false,
   });
 }
 
@@ -96,7 +94,6 @@ export function usePersonBreadcrumb({
     queryKey: peopleDetailQueryKey({ churchId, memberId: memberId ?? '' }),
     queryFn: () => peopleApi.getPerson(memberId ?? ''),
     enabled: memberId !== undefined,
-    retry: false,
   });
   if (memberId === undefined) return null;
   return {

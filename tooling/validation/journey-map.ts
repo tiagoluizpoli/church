@@ -70,6 +70,11 @@ const MINISTRIES_JOURNEY_SPEC_PATHS = [
   'tests/ministries/ministries-directory.spec.ts',
 ];
 
+// #905: an unreachable API, the reconnecting banner and recovery.
+const RECONNECTING_SPEC_PATHS = [
+  'tests/resilience/reconnecting-banner.spec.ts',
+];
+
 const CHURCH_INVITATION_SPEC_PATHS = [
   'tests/identity/first-admin-onboarding.spec.ts',
   ...INVITATION_JOURNEY_SPEC_PATHS,
@@ -624,6 +629,22 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix: 'apps/web/src/components/app-shell.tsx',
     specPaths: ['tests/scheduling/a11y-planning-nav.spec.ts'],
+  },
+  // #905: the reconnecting banner and the outage rule cross the
+  // browser/API boundary only in this spec.
+  {
+    sourcePathPrefix: 'apps/web/src/components/reconnecting-banner.tsx',
+    specPaths: RECONNECTING_SPEC_PATHS,
+  },
+  {
+    sourcePathPrefix: 'apps/web/src/shared/utils/outage.ts',
+    specPaths: RECONNECTING_SPEC_PATHS,
+  },
+  // Every page reads through the shared query client, so it keeps the
+  // critical smoke set alongside its own spec.
+  {
+    sourcePathPrefix: 'apps/web/src/utils/api.ts',
+    specPaths: [...RECONNECTING_SPEC_PATHS, ...CRITICAL_SMOKE_SPEC_PATHS],
   },
   {
     sourcePathPrefix: 'apps/web/src/routes/login.tsx',

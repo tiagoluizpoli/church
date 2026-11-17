@@ -182,7 +182,6 @@ export function AssignmentDetailPage({
   const query = useQuery({
     queryKey: ['assignment-detail', assignmentId],
     queryFn: () => volunteerApi.getAssignmentDetail(assignmentId),
-    retry: false,
   });
   if (query.isLoading)
     return (

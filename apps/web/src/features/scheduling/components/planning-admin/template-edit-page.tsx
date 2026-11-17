@@ -59,7 +59,6 @@ export function TemplateEditPage({ templateId }: TemplateEditPageProps) {
   const templateQuery = useQuery({
     queryKey: templateDetailQueryKey({ templateId }),
     queryFn: () => adminApi.getEventTemplate(templateId),
-    retry: false,
   });
 
   return (

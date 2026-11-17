@@ -137,7 +137,6 @@ function MinistryInvitationContent({
   const statusQuery = useQuery({
     queryKey: ['redemption', 'ministry-invitation', invitationId],
     queryFn: () => redemptionApi.getMinistryInvitationStatus(invitationId),
-    retry: false,
   });
 
   const continueToChurch = useContinueToChurch();

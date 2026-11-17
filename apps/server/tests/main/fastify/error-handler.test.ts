@@ -24,6 +24,29 @@ beforeAll(async () => {
   app.get('/boom/crash', async () => {
     throw new Error('secret detail');
   });
+  for (const code of [
+    '08006',
+    '08001',
+    '57P01',
+    '57P02',
+    '57P03',
+    '53300',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'ECONNRESET',
+  ]) {
+    app.get(`/boom/conn/${code}`, async () => {
+      throw Object.assign(new Error('connection failed'), { code });
+    });
+  }
+  app.get('/boom/conn/wrapped', async () => {
+    throw new Error('Failed query', {
+      cause: Object.assign(new Error('refused'), { code: 'ECONNREFUSED' }),
+    });
+  });
+  app.get('/boom/conn/unique', async () => {
+    throw Object.assign(new Error('duplicate key'), { code: '23505' });
+  });
   app.get(
     '/boom/query',
     { schema: { querystring: z.object({ n: z.coerce.number() }) } },
@@ -92,6 +115,35 @@ describe('error handler locale', () => {
       error: 'INTERNAL_SERVER_ERROR',
       message: m.common_generic_error({}, { locale: 'pt-BR' }),
     });
+  });
+});
+
+describe('database connection failures', () => {
+  it.each([
+    '08006',
+    '08001',
+    '57P01',
+    '57P02',
+    '57P03',
+    '53300',
+    'ECONNREFUSED',
+    'ETIMEDOUT',
+    'ECONNRESET',
+    'wrapped',
+  ])('answers 503 with Retry-After for %s', async (code) => {
+    const res = await inject(`/boom/conn/${code}`);
+    expect(res.statusCode).toBe(503);
+    expect(res.headers['retry-after']).toBe('5');
+    expect(res.json()).toEqual({
+      error: 'SERVICE_UNAVAILABLE',
+      message: m.common_generic_error({}, { locale: 'pt-BR' }),
+    });
+  });
+
+  it('keeps 500 for a non-connection SQLSTATE', async () => {
+    const res = await inject('/boom/conn/unique');
+    expect(res.statusCode).toBe(500);
+    expect(res.headers['retry-after']).toBeUndefined();
   });
 });
 

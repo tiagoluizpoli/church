@@ -16,6 +16,7 @@ import {
 } from 'fastify-type-provider-zod';
 import pino from 'pino';
 import PinoPretty from 'pino-pretty';
+import { connectionErrorCode } from '../../api/utils/connection-error';
 import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
 import { registerE2eTargetHeader } from '../../api/utils/e2e-target-header';
 import {
@@ -226,6 +227,19 @@ export async function createFastify({
       );
       return reply.code(500).send({
         error: 'INTERNAL_SERVER_ERROR',
+        message: genericError,
+      });
+    }
+
+    const connectionCode = connectionErrorCode({ error });
+    if (connectionCode) {
+      // Log the code only: the error message may carry the connection string.
+      request.log.error(
+        { code: connectionCode, url: request.url },
+        'Database connection failure',
+      );
+      return reply.status(503).header('Retry-After', '5').send({
+        error: 'SERVICE_UNAVAILABLE',
         message: genericError,
       });
     }

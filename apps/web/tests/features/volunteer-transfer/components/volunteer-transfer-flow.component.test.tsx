@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,5 +34,40 @@ describe('VolunteerTransferFlow loading', () => {
     await waitFor(() =>
       expect(region.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
     );
+  });
+
+  it('keeps the review shown, with no skeleton, while the preview refetches', async () => {
+    const queryClient = new QueryClient();
+    api.getVolunteerTransferPreview.mockResolvedValue({
+      kind: 'reviewable',
+      sourceChurchName: 'Old',
+      destinationChurchName: 'New',
+      endedMemberships: [{ ministryName: 'Kids' }],
+      withdrawnAssignments: [],
+    });
+    renderWithProviders(
+      <VolunteerTransferFlow
+        invitationId="inv-1"
+        sourceChurchName="Old"
+        destinationChurchName="New"
+        onContinueAsMember={vi.fn()}
+        onTransferred={vi.fn()}
+      />,
+      { queryClient },
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: m.volunteer_transfer_move_action() }),
+    );
+    expect(await screen.findByText('Kids')).toBeVisible();
+    api.getVolunteerTransferPreview.mockClear();
+    api.getVolunteerTransferPreview.mockReturnValue(new Promise(() => {}));
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(api.getVolunteerTransferPreview).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText('Kids')).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: m.volunteer_transfer_checking() }),
+    ).toBeNull();
   });
 });

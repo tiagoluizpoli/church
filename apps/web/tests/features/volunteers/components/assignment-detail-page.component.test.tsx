@@ -131,6 +131,22 @@ describe('AssignmentDetailPage', () => {
     );
   });
 
+  it('busies only the send button while the swap request is in flight', async () => {
+    api.getAssignmentDetail.mockResolvedValue(DETAIL);
+    api.raiseSwapRequest.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Ask to swap' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    const sending = await screen.findByRole('button', { name: /Sending/ });
+    expect(sending).toBeDisabled();
+    expect(sending.querySelector('svg.animate-spin')).not.toBeNull();
+    expect(screen.getByLabelText('Who will take your place?')).toBeEnabled();
+    expect(screen.getByText('Sunday Service')).toBeVisible();
+  });
+
   it('hides the entry once the Shift has started', async () => {
     api.getAssignmentDetail.mockResolvedValue(DETAIL);
     vi.setSystemTime(new Date('2026-10-12T13:00:00Z'));

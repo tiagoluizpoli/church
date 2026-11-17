@@ -354,7 +354,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       templates: [templateRow],
       tx: input.tx,
     });
-    return template;
+    return template as EventTemplate;
   }
 
   async getByIds(input: GetEventTemplatesByIdsInput): Promise<EventTemplate[]> {

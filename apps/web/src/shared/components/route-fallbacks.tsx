@@ -81,7 +81,11 @@ function ErrorFallback({ error, fullScreen }: ErrorFallbackProps) {
 }
 
 /** The shell's own call failed because the server is down: wait for readiness, then re-run the guards to land on the requested page. */
-function ReconnectingFallback({ error }: { error: Error }) {
+interface ReconnectingFallbackProps {
+  error: Error;
+}
+
+function ReconnectingFallback({ error }: ReconnectingFallbackProps) {
   const router = useRouter();
 
   // A new error (the guard failing again after a retry) restarts the watch.

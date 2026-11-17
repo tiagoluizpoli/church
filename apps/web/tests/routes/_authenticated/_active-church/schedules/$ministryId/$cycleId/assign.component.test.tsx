@@ -3,11 +3,13 @@ import { focusManager } from '@tanstack/react-query';
 import { act, screen, waitFor } from '@testing-library/react';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SCHEDULE } from '@/tests/features/scheduling/components/prepare/preparation-block.fixtures';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const getCycleBuilderData = vi.fn();
 const listMinistrySwapRequests = vi.fn();
+const getSchedule = vi.fn();
 const toastError = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
@@ -16,6 +18,7 @@ vi.mock('@/utils/api-instances', async () => ({
     getCycleBuilderData: (...args: unknown[]) => getCycleBuilderData(...args),
     listMinistrySwapRequests: (...args: unknown[]) =>
       listMinistrySwapRequests(...args),
+    getSchedule: (...args: unknown[]) => getSchedule(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -60,6 +63,7 @@ const swapRequest = {
 beforeEach(() => {
   vi.clearAllMocks();
   listMinistrySwapRequests.mockResolvedValue({ schedules: [] });
+  getSchedule.mockResolvedValue(SCHEDULE);
   getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
   getCycleBuilderData.mockResolvedValue({
     cycle: {

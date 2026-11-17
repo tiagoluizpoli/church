@@ -53,19 +53,16 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   const cyclesQuery = useQuery({
     queryKey: ['cycles'],
     queryFn: () => adminApi.listCycles(),
-    retry: false,
   });
   const templatesQuery = useQuery({
     queryKey: TEMPLATE_LIST_QUERY_KEY,
     queryFn: () => adminApi.listEventTemplates(),
-    retry: false,
   });
   const cycleDetailsQuery = useQuery({
     queryKey: ['cycle-details', selectedCycleId],
     queryFn: () =>
       adminApi.getCycle(getSelectedCycleIdOrThrow({ selectedCycleId })),
     enabled: Boolean(selectedCycleId),
-    retry: false,
   });
 
   const cycles = cyclesQuery.data?.cycles ?? [];

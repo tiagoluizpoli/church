@@ -51,7 +51,6 @@ function EventBuilderRoute() {
   const swapRequestList = useQuery({
     queryKey: ['ministry-swap-requests', ministryId, cycleId],
     queryFn: () => adminApi.listMinistrySwapRequests(ministryId, { cycleId }),
-    retry: false,
   });
   const swapRequests = useMemo(
     () => swapRequestList.data?.schedules.flatMap(({ requests }) => requests),

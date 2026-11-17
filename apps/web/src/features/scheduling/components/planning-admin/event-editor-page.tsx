@@ -76,7 +76,6 @@ export function EventEditorPage({
   const cycleQuery = useQuery({
     queryKey: ['cycle-details', cycleId],
     queryFn: () => adminApi.getCycle(cycleId),
-    retry: false,
   });
   const { data: details } = cycleQuery;
   const shownDescription =

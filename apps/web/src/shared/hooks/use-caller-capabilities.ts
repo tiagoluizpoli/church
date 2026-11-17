@@ -46,7 +46,6 @@ export function useCallerCapabilities(): CallerCapabilitiesState {
     ],
     queryFn: () => callerCapabilitiesApi.getCallerCapabilities(),
     enabled: Boolean(scope?.userId && scope.churchId),
-    retry: false,
   });
 
   const retry = () => {

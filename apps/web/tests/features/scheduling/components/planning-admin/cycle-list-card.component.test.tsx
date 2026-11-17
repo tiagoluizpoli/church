@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { screen, waitFor, within } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
@@ -191,6 +192,41 @@ describe('CycleListCard table view (US1)', () => {
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
     );
     expect(screen.queryByTestId('cycles-empty')).not.toBeInTheDocument();
+  });
+
+  it('keeps the rows on screen while a refetch is in flight', async () => {
+    listCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'sent',
+        },
+      ],
+    });
+    getCycle.mockResolvedValue(undefined);
+    const queryClient = new QueryClient();
+    renderWithProviders(
+      <PlanningAdminProvider>
+        <CycleListCard onSelectCycle={vi.fn()} onNewCycle={vi.fn()} />
+      </PlanningAdminProvider>,
+      { queryClient },
+    );
+    expect(
+      await screen.findByRole('row', { name: /August 2026/ }),
+    ).toBeInTheDocument();
+    listCycles.mockClear();
+    listCycles.mockReturnValue(new Promise(() => undefined));
+    act(() => {
+      void queryClient.invalidateQueries();
+    });
+    await waitFor(() => expect(listCycles).toHaveBeenCalled());
+    expect(
+      screen.getByRole('row', { name: /August 2026/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('cycles-loading')).not.toBeInTheDocument();
   });
 
   it('shows a retryable error, never the empty state, when the read fails', async () => {

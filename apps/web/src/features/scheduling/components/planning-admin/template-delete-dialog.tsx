@@ -89,7 +89,7 @@ export function TemplateDeleteDialog({
             testId="template-delete-usage-error"
             onRetry={() => usage.refetch()}
           />
-        ) : usageReady ? (
+        ) : usage.isSuccess ? (
           count > 0 ? (
             <p className="text-sm" data-testid="template-delete-count">
               {pluralMessage({

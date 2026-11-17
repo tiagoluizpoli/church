@@ -22,6 +22,7 @@ import {
 import type { PreparationBlock } from '@/features/scheduling/components/prepare/preparation-block.utils';
 import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderRoute } from '@/tests/setup/render-route';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
@@ -945,6 +946,25 @@ it('keeps loading distinct from an empty or editable block', async () => {
   );
   expect(screen.queryByRole('checkbox')).toBeNull();
   expect(screen.queryByText(m.usual_setup_missing_sectors())).toBeNull();
+});
+
+it('keeps the editor on screen while a refetch is in flight', async () => {
+  const { queryClient } = renderRoute({
+    initialPath: EDITOR_PATH,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByRole('checkbox');
+
+  await startHangingRefetch({
+    queryClient,
+    read: api.getCycleParticipation,
+  });
+
+  expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
+  expect(screen.queryByTestId('prepare-loading')).not.toBeInTheDocument();
+  expect(
+    screen.queryByTestId('preparation-block-loading'),
+  ).not.toBeInTheDocument();
 });
 
 it.each([

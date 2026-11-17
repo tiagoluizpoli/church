@@ -16,6 +16,7 @@ import {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const listSchedules = vi.fn();
@@ -297,6 +298,21 @@ describe('Schedules list', () => {
     expect(
       screen.queryByRole('button', { name: m.schedules_retry() }),
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps the rows on screen while a refetch is in flight', async () => {
+    listSchedules.mockResolvedValue(page([schedule()]));
+    const { queryClient } = renderPrepareIndex();
+    expect(
+      (await scheduleList()).getByRole('link', { name: /Kids · Outubro/ }),
+    ).toBeInTheDocument();
+
+    await startHangingRefetch({ queryClient, read: listSchedules });
+
+    expect(
+      (await scheduleList()).getByRole('link', { name: /Kids · Outubro/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('schedules-loading')).not.toBeInTheDocument();
   });
 
   it('keeps a failed read distinct from empty and retries into the real list', async () => {

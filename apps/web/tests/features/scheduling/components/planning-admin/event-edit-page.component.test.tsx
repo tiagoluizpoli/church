@@ -1,11 +1,13 @@
 import { m } from '@church/i18n/messages';
 import { parseInstant, setTestClock } from '@church/time';
+import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEditPage } from '@/features/scheduling/components/planning-admin/event-edit-page';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
@@ -588,5 +590,32 @@ describe('Edit Sent Event details', () => {
       await screen.findByTestId('event-edit-not-draft'),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('event-details-form')).not.toBeInTheDocument();
+  });
+});
+
+describe('EventEditPage loading', () => {
+  it('shows a busy skeleton on first load', async () => {
+    getCycle.mockReturnValue(new Promise(() => undefined));
+    renderPage();
+    const loading = await screen.findByTestId('event-editor-loading');
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+  });
+
+  it('keeps the form on screen while a refetch is in flight', async () => {
+    const queryClient = new QueryClient();
+    renderWithProviders(<EventEditPage cycleId="cycle-1" eventId="event-1" />, {
+      churchTimezone: SAO_PAULO,
+      queryClient,
+    });
+    const title = await screen.findByLabelText(m.event_editor_title_label());
+
+    await startHangingRefetch({ queryClient, read: getCycle });
+
+    expect(title).toBeInTheDocument();
+    expect(titleInput()).toBeInTheDocument();
+    expect(screen.queryByTestId('event-editor-loading')).toBeNull();
   });
 });

@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TemplateEditPage } from '@/features/scheduling/components/planning-admin/template-edit-page';
 import { USUAL_SETUP_QUERY_KEY } from '@/features/scheduling/components/planning-admin/template-query-keys';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const getEventTemplate = vi.fn();
@@ -360,5 +361,27 @@ describe('TemplateEditPage', () => {
     );
     expect(screen.getByTestId('template-name-input')).toHaveValue('Domingo');
     expect(navigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('TemplateEditPage loading', () => {
+  it('shows a busy skeleton on first load', async () => {
+    getEventTemplate.mockReturnValue(new Promise(() => undefined));
+    renderWithProviders(<TemplateEditPage templateId="template-1" />);
+    const loading = await screen.findByTestId('template-detail-loading');
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+  });
+
+  it('keeps the form on screen while a refetch is in flight', async () => {
+    const queryClient = new QueryClient();
+    await renderLoaded(queryClient);
+
+    await startHangingRefetch({ queryClient, read: getEventTemplate });
+
+    expect(screen.getByDisplayValue('Sunday')).toBeInTheDocument();
+    expect(screen.queryByTestId('template-detail-loading')).toBeNull();
   });
 });

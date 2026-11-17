@@ -1051,6 +1051,56 @@ describe('GET /api/v1/invitations — filters and history', () => {
     expect(second.body.nextCursor).toBeUndefined();
   });
 
+  it('lists every status with status=any across pages without repeats', async () => {
+    signIn('admin');
+    const first = await list('?status=any&limit=4');
+    const second = await list(
+      `?status=any&limit=4&cursor=${first.body.nextCursor}`,
+    );
+    const third = await list(
+      `?status=any&limit=4&cursor=${second.body.nextCursor}`,
+    );
+    const items = [...first.items, ...second.items, ...third.items];
+    expect(items).toHaveLength(10);
+    expect(third.body.nextCursor).toBeUndefined();
+    expect(new Set(items.map((r) => r.displayStatus))).toEqual(
+      new Set(['pending', 'expired', 'accepted', 'declined', 'revoked']),
+    );
+    expect(new Set(items.map((r) => `${r.kind}:${r.id}`)).size).toBe(10);
+  });
+
+  it('counts every status in the whole admin scope, ignoring filters and the cursor', async () => {
+    signIn('admin');
+    const expected = {
+      pending: 2,
+      expired: 1,
+      accepted: 2,
+      declined: 3,
+      revoked: 2,
+    };
+    expect((await list()).body.counts).toEqual(expected);
+    const filtered = await list(
+      `?status=declined&ministryId=${fx.kidsId}&email=nobody`,
+    );
+    expect(filtered.body.counts).toEqual(expected);
+    const first = await list('?status=any&limit=2');
+    expect(
+      (await list(`?status=any&limit=2&cursor=${first.body.nextCursor}`)).body
+        .counts,
+    ).toEqual(expected);
+  });
+
+  it('counts only the offers a leader can see', async () => {
+    signIn('worshipLeader');
+    expect((await list('?status=declined')).body.counts).toEqual({
+      pending: 1,
+      expired: 0,
+      accepted: 1,
+      declined: 0,
+      revoked: 0,
+    });
+  });
+
   it('scopes options and rows for leaders and gives unmanaged Ministries the same 404 as missing ones', async () => {
     signIn('admin');
     const adminBody = (await list()).body;

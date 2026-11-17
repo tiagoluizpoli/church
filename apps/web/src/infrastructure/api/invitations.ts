@@ -21,7 +21,7 @@ import { apiClient } from '../../utils/api-client';
 
   export const getInvitations = () => {
 /**
- * List the Active Church's offers, newest created first. Pending (the default) includes expired offers badged; Expired is pending past its expiry; Accepted, Declined and Revoked are history with the closure facts that were recorded. Status, Ministry, invited-as and email filters combine before pagination. A ChurchAdmin sees every Ministry offer and admin Church grant; a Ministry leader sees only Ministry offers in the Ministries they lead.
+ * List the Active Church's offers, newest created first. Pending (the default) includes expired offers badged; Expired is pending past its expiry; Accepted, Declined and Revoked are history with the closure facts that were recorded. `status=any` lists every status. Status, Ministry, invited-as and email filters combine before pagination. `counts` covers the caller's whole scope per status (pending excludes expired): it ignores the filters and the cursor, so every page repeats the same values. A ChurchAdmin sees every Ministry offer and admin Church grant; a Ministry leader sees only Ministry offers in the Ministries they lead.
  * @summary List invitations
  */
 const listInvitations = (

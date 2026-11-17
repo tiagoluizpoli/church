@@ -21,6 +21,7 @@ import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries
 import { useMinistryList } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
 import { PEOPLE_QUERY_KEY } from '@/features/people/people-queries';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import type { MintMinistryInvitation409ExistingInvitation } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -185,16 +186,25 @@ export function RolePicker({
       aria-describedby={errorId}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span id={legendId} className="font-medium text-sm">
+        <span id={legendId} className="font-medium text-xs">
           {m.ministry_invitation_roles_label()}
         </span>
-        <Button type="button" size="sm" variant="outline" onClick={selectAll}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="min-h-11 md:min-h-0"
+          onClick={selectAll}
+        >
           {m.invitations_invite_select_all()}
         </Button>
       </div>
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className="grid gap-2">
         {[...roles, ...heldArchived].map((role) => (
-          <li key={role.id} className="flex items-center gap-2">
+          <li
+            key={role.id}
+            className="flex min-h-11 items-center gap-2 md:min-h-0"
+          >
             <Checkbox
               id={`${idPrefix}-role-${role.id}`}
               checked={selected.includes(role.id)}
@@ -333,6 +343,7 @@ export function InviteDialog({
     }
   };
 
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const noMinistry =
     !asAdmin && ministriesQuery.isSuccess && ministries.length === 0;
 
@@ -340,6 +351,7 @@ export function InviteDialog({
     <>
       <Button
         type="button"
+        size={isMobile ? 'touch' : 'default'}
         onClick={() => {
           if (initialEmail !== undefined) setEmail(initialEmail);
           setOpen(true);
@@ -401,7 +413,7 @@ export function InviteDialog({
               onChange={(event) => setEmail(event.target.value)}
             />
             {errors.email ? (
-              <p id={emailErrorId} className="text-destructive text-sm">
+              <p id={emailErrorId} className="text-destructive text-xs">
                 {errors.email}
               </p>
             ) : null}
@@ -409,7 +421,7 @@ export function InviteDialog({
 
           {isChurchAdmin ? (
             <fieldset className="space-y-2">
-              <legend className="font-medium text-sm">
+              <legend className="font-medium text-xs">
                 {m.invitations_invite_as_label()}
               </legend>
               <RadioGroup
@@ -430,7 +442,10 @@ export function InviteDialog({
                   ? (['volunteer', 'leader'] as const)
                   : (['volunteer', 'leader', 'admin'] as const)
                 ).map((value) => (
-                  <div key={value} className="flex items-center gap-2">
+                  <div
+                    key={value}
+                    className="flex min-h-11 items-center gap-2 md:min-h-0"
+                  >
                     <RadioGroupItem value={value} id={`${formId}-${value}`} />
                     <Label htmlFor={`${formId}-${value}`}>
                       {value === 'admin'
@@ -509,7 +524,7 @@ export function InviteDialog({
                 </SelectContent>
               </Select>
               {errors.ministry ? (
-                <p id={ministryErrorId} className="text-destructive text-sm">
+                <p id={ministryErrorId} className="text-destructive text-xs">
                   {errors.ministry}
                 </p>
               ) : null}
@@ -528,13 +543,13 @@ export function InviteDialog({
             />
           ) : null}
           {errors.roles ? (
-            <p id={rolesErrorId} className="text-destructive text-sm">
+            <p id={rolesErrorId} className="text-destructive text-xs">
               {errors.roles}
             </p>
           ) : null}
 
           {formError ? (
-            <p className="text-destructive text-sm" role="alert">
+            <p className="text-destructive text-xs" role="alert">
               {formError}
             </p>
           ) : null}

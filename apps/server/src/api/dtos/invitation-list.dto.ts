@@ -58,6 +58,14 @@ export type InvitationListItemResponse = z.infer<
 export const invitationListResponseSchema = z.object({
   items: z.array(invitationListItemResponseSchema),
   nextCursor: z.string().optional(),
+  /** Offers per status in the caller's scope, ignoring the filters and the cursor; Pending excludes expired ones. */
+  counts: z.object({
+    pending: z.number().int(),
+    expired: z.number().int(),
+    accepted: z.number().int(),
+    declined: z.number().int(),
+    revoked: z.number().int(),
+  }),
   /** Pickers limited to what the caller's authority reaches. */
   options: z.object({
     ministries: z.array(z.object({ id: z.string(), name: z.string() })),
@@ -66,7 +74,7 @@ export const invitationListResponseSchema = z.object({
 });
 
 export const invitationListQuerystringSchema = z.object({
-  status: z.enum(INVITATION_LIST_STATUS_OPTIONS).default('pending'),
+  status: z.enum([...INVITATION_LIST_STATUS_OPTIONS, 'any']).default('pending'),
   ministryId: z.string().uuid().optional(),
   invitedAs: z.enum(INVITATION_INVITED_AS_OPTIONS).optional(),
   email: z.string().trim().min(1).max(254).optional(),
@@ -104,6 +112,7 @@ export const invitationListMapper = {
     return {
       items: page.items.map(toItemResponse),
       nextCursor: page.nextCursor,
+      counts: page.counts,
       options: page.options,
     };
   },

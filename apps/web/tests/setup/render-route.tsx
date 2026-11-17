@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-router';
 import { type RenderResult, render } from '@testing-library/react';
 import { routeTree } from '@/routeTree.gen';
+import { routeFallbackOptions } from '@/shared/components/route-fallbacks';
 import {
   activeChurchApiMock,
   resolvedActiveChurchStatus,
@@ -83,6 +84,7 @@ export function renderRoute({
     routeTree,
     history: createMemoryHistory({ initialEntries: [initialPath] }),
     context: { queryClient },
+    ...routeFallbackOptions,
   });
 
   const result = render(

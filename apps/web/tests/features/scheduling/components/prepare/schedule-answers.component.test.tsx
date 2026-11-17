@@ -18,7 +18,7 @@ const api = vi.hoisted(() => ({
   listMinistries: vi.fn(),
   listScheduleSummaries: vi.fn(),
   getCycleParticipation: vi.fn(),
-  listSchedules: vi.fn(),
+  getSchedule: vi.fn(),
   listSectors: vi.fn(),
   listMinistryRoles: vi.fn(),
 }));
@@ -64,7 +64,7 @@ beforeEach(() => {
   api.listMinistries.mockRejectedValue(new Error('admin-only read'));
   api.listScheduleSummaries.mockResolvedValue({ cycles: [] });
   api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
-  api.listSchedules.mockResolvedValue({ schedules: [SCHEDULE] });
+  api.getSchedule.mockResolvedValue(SCHEDULE);
   api.listSectors.mockResolvedValue({ sectors: SECTORS });
   api.listMinistryRoles.mockResolvedValue({ roles: ROLES });
   activeChurchApiMock.listActiveChurchOptions.mockResolvedValue({
@@ -77,7 +77,7 @@ it.each([
   'assigning',
   'published',
 ] as const)('mounts Answers for an %s Schedule and respects read-only state', async (stage) => {
-  api.listSchedules.mockResolvedValue({ schedules: [{ ...SCHEDULE, stage }] });
+  api.getSchedule.mockResolvedValue({ ...SCHEDULE, stage });
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
@@ -96,14 +96,10 @@ it.each([
 });
 
 it('keeps Past Schedule Answers readable without Deadline editing', async () => {
-  api.listSchedules.mockResolvedValue({
-    schedules: [
-      {
-        ...SCHEDULE,
-        stage: 'asking',
-        cycle: { ...SCHEDULE.cycle, state: 'past' },
-      },
-    ],
+  api.getSchedule.mockResolvedValue({
+    ...SCHEDULE,
+    stage: 'asking',
+    cycle: { ...SCHEDULE.cycle, state: 'past' },
   });
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
@@ -121,7 +117,7 @@ it.each([
   'to_prepare',
   'not_serving',
 ] as const)('does not read Answers before Ask or when %s', async (stage) => {
-  api.listSchedules.mockResolvedValue({ schedules: [{ ...SCHEDULE, stage }] });
+  api.getSchedule.mockResolvedValue({ ...SCHEDULE, stage });
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',

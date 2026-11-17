@@ -176,6 +176,7 @@ export function createMinistryRepositoryFake() {
   return {
     getById: vi.fn<MinistryRepository['getById']>(),
     listByChurch: vi.fn<MinistryRepository['listByChurch']>(),
+    listPage: vi.fn<MinistryRepository['listPage']>(),
     create: vi.fn<MinistryRepository['create']>(),
     rename: vi.fn<MinistryRepository['rename']>(),
     lockActive: vi.fn<MinistryRepository['lockActive']>(),
@@ -216,6 +217,10 @@ export function createMinistryParticipationRepositoryFake() {
       vi.fn<MinistryParticipationRepository['findAvailabilityRequestedAt']>(),
     listScheduleSummaries:
       vi.fn<MinistryParticipationRepository['listScheduleSummaries']>(),
+    listScheduleRows:
+      vi.fn<MinistryParticipationRepository['listScheduleRows']>(),
+    countCurrentSchedulesByStage:
+      vi.fn<MinistryParticipationRepository['countCurrentSchedulesByStage']>(),
     listScheduleServingStates:
       vi.fn<MinistryParticipationRepository['listScheduleServingStates']>(),
     countScheduleLateMarks:

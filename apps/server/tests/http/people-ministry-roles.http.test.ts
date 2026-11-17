@@ -166,6 +166,7 @@ beforeAll(async () => {
     config: appConfig,
   });
   const prepare = new PrepareController({
+    config: appConfig,
     participationManager: scheduling.participationManager,
     availabilityCheckManager: new DbAvailabilityCheckManager({
       participationRepository: new DrizzleMinistryParticipationRepository({

@@ -16,6 +16,8 @@ import type {
   CreateSectorBody,
   GetMinistry200,
   ListMinistries200,
+  ListMinistryDirectory200,
+  ListMinistryDirectoryParams,
   ListMinistryRoles200,
   ListSectors200,
   ListUsualSetup200,
@@ -62,6 +64,19 @@ const createMinistry = (
       {url: `/api/v1/ministries/`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: createMinistryBody
+    },
+      );
+    }
+  /**
+ * One page of the caller's accessible Ministries, alphabetical ignoring case: every Ministry for a ChurchAdmin, or the Ministries the caller actively leads. Search (trimmed, case-insensitive literal name substring) and status (`review`: a Usual setup block needs review; `no-sectors`: no active Sector) combine before pagination. `counts` covers the caller's whole scope: it ignores the filters and the cursor, so every page repeats the same values.
+ * @summary List the Ministries management page
+ */
+const listMinistryDirectory = (
+    params?: ListMinistryDirectoryParams,
+ ) => {
+      return apiClient<ListMinistryDirectory200>(
+      {url: `/api/v1/ministries/directory`, method: 'GET',
+        params
     },
       );
     }
@@ -285,9 +300,10 @@ const saveUsualSetupBlock = (
     },
       );
     }
-  return {listMinistries,createMinistry,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,revokeMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector,listUsualSetup,saveUsualSetupBlock}};
+  return {listMinistries,createMinistry,listMinistryDirectory,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,revokeMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector,listUsualSetup,saveUsualSetupBlock}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistries']>>>
 export type CreateMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistry']>>>
+export type ListMinistryDirectoryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistryDirectory']>>>
 export type GetMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['getMinistry']>>>
 export type RenameMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['renameMinistry']>>>
 export type ArchiveMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveMinistry']>>>

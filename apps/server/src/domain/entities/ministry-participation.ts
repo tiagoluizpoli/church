@@ -123,12 +123,13 @@ export type ScheduleStage = (typeof SCHEDULE_STAGE_OPTIONS)[number];
 
 type ScheduleStageOfState = readonly [ParticipationState, ScheduleStage];
 
-const SCHEDULE_STAGES_FURTHEST_BEHIND_FIRST: readonly ScheduleStageOfState[] = [
-  ['preparing', 'to_prepare'],
-  ['availability_requested', 'asking'],
-  ['assigning', 'assigning'],
-  ['published', 'published'],
-];
+export const SCHEDULE_STAGES_FURTHEST_BEHIND_FIRST: readonly ScheduleStageOfState[] =
+  [
+    ['preparing', 'to_prepare'],
+    ['availability_requested', 'asking'],
+    ['assigning', 'assigning'],
+    ['published', 'published'],
+  ];
 
 export interface DeriveScheduleStageInput {
   /** States of the Schedule's MinistryParticipations that serve a block. */

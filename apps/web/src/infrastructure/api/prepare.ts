@@ -13,8 +13,10 @@ import type {
   GetCycleAvailabilityStatusParams,
   GetCycleParticipation200,
   GetCycleParticipationParams,
+  GetSchedule200,
   ListScheduleSummaries200,
   ListSchedules200,
+  ListSchedulesParams,
   RemindSchedule200,
   RemindScheduleBody,
   SaveEventTimeBlockPreparation200,
@@ -30,14 +32,28 @@ import { apiClient } from '../../utils/api-client';
 
   export const getPrepare = () => {
 /**
- * List one row per Ministry and Sent or Past Cycle with its derived stage: every active Ministry for a ChurchAdmin, the led ones for a leader.
+ * List one row per Ministry and Cycle with its derived stage: every active Ministry for a ChurchAdmin, the led ones for a leader. `period` picks Sent Cycles (`current`, the default), Past Cycles or both. Ministry, stage, search (Ministry or Cycle name) and `attention` (current Schedules that wait on the leader: not serving excluded, Published only with an open Swap request) filters combine before pagination. Current Schedules come first by stage (to prepare, asking, assigning, published, not serving), then Past ones; within each, newest Cycle first, then Ministry name. `counts` covers the caller's current Schedules per stage: it ignores the filters and the cursor, so every page repeats the same values.
  * @summary List the caller's Schedules
  */
 const listSchedules = (
-
+    params?: ListSchedulesParams,
  ) => {
       return apiClient<ListSchedules200>(
-      {url: `/api/v1/prepare/schedules`, method: 'GET'
+      {url: `/api/v1/prepare/schedules`, method: 'GET',
+        params
+    },
+      );
+    }
+  /**
+ * Read one Ministry's Schedule of one Sent or Past Cycle, shaped as a `listSchedules` row. 404 when the Ministry is archived or outside the caller's led Ministries (a ChurchAdmin reaches every active one), the Cycle is a Draft, or either is unknown.
+ * @summary Get one of the caller's Schedules
+ */
+const getSchedule = (
+    ministryId: string,
+    cycleId: string,
+ ) => {
+      return apiClient<GetSchedule200>(
+      {url: `/api/v1/prepare/schedules/${ministryId}/${cycleId}`, method: 'GET'
     },
       );
     }
@@ -156,8 +172,9 @@ const getCycleAvailabilityStatus = (
     },
       );
     }
-  return {listSchedules,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,setAvailabilityDeadline,remindSchedule,getCycleAvailabilityStatus}};
+  return {listSchedules,getSchedule,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,setAvailabilityDeadline,remindSchedule,getCycleAvailabilityStatus}};
 export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
+export type GetScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getSchedule']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
 export type GetAskPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAskPreview']>>>
 export type ListScheduleSummariesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listScheduleSummaries']>>>

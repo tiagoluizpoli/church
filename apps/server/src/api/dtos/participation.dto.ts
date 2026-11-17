@@ -5,14 +5,16 @@ import {
   today,
 } from '@church/time';
 import { z } from 'zod';
-import type {
-  CycleParticipationView,
-  ParticipationEventTimeBlockView,
-  ParticipationEventView,
-  ParticipationRequirementView,
-  ParticipationShiftView,
-  ScheduleSummaryView,
-  ScheduleView,
+import {
+  type CycleParticipationView,
+  type ParticipationEventTimeBlockView,
+  type ParticipationEventView,
+  type ParticipationRequirementView,
+  type ParticipationShiftView,
+  SCHEDULE_LIST_PERIOD_OPTIONS,
+  type ScheduleListPage,
+  type ScheduleSummaryView,
+  type ScheduleView,
 } from '../../domain/contracts/application/participation-manager';
 import { CYCLE_STATE_OPTIONS } from '../../domain/entities/cycle';
 import {
@@ -22,6 +24,7 @@ import {
 import type { Shift } from '../../domain/entities/shift';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
 import { VALIDATION_REASONS } from '../../domain/errors/validation-rule-error';
+import { decodeScheduleListCursor } from '../../domain/schedule-list-cursor';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,
@@ -273,6 +276,36 @@ export type ScheduleResponse = z.infer<typeof scheduleResponseSchema>;
 
 export const scheduleListResponseSchema = z.object({
   schedules: z.array(scheduleResponseSchema),
+  nextCursor: z.string().optional(),
+  /** Current Schedules per stage in the caller's scope, ignoring the filters and the cursor. */
+  counts: z.object(
+    Object.fromEntries(
+      SCHEDULE_STAGE_OPTIONS.map((stage) => [stage, z.number().int()]),
+    ) as Record<(typeof SCHEDULE_STAGE_OPTIONS)[number], z.ZodNumber>,
+  ),
+  /** Pickers limited to what the caller's authority reaches. */
+  options: z.object({
+    ministries: z.array(z.object({ id: z.string(), name: z.string() })),
+  }),
+});
+
+export const scheduleRouteParamsSchema = z.object({
+  ministryId: z.uuid(),
+  cycleId: z.uuid(),
+});
+
+export const scheduleListQuerystringSchema = z.object({
+  period: z.enum(SCHEDULE_LIST_PERIOD_OPTIONS).default('current'),
+  ministryId: z.string().uuid().optional(),
+  stage: z.enum(SCHEDULE_STAGE_OPTIONS).optional(),
+  search: z.string().trim().min(1).max(100).optional(),
+  attention: z.stringbool().optional(),
+  cursor: z
+    .string()
+    .refine((cursor) => decodeScheduleListCursor({ cursor }) !== undefined, {
+      message: 'Invalid cursor',
+    })
+    .optional(),
 });
 export type ScheduleListResponse = z.infer<typeof scheduleListResponseSchema>;
 
@@ -443,7 +476,13 @@ export const participationMapper = {
   ): ScheduleSummaryListResponse {
     return { cycles: views.map(toScheduleSummaryResponse) };
   },
-  scheduleListToResponse(views: ScheduleView[]): ScheduleListResponse {
-    return { schedules: views.map(toScheduleResponse) };
+  scheduleToResponse: toScheduleResponse,
+  scheduleListToResponse(page: ScheduleListPage): ScheduleListResponse {
+    return {
+      schedules: page.schedules.map(toScheduleResponse),
+      nextCursor: page.nextCursor,
+      counts: page.counts,
+      options: page.options,
+    };
   },
 };

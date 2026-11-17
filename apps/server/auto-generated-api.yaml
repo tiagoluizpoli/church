@@ -4924,6 +4924,161 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/ministries/directory:
+    get:
+      operationId: listMinistryDirectory
+      summary: List the Ministries management page
+      tags:
+        - ministries
+      description: "One page of the caller's accessible Ministries, alphabetical
+        ignoring case: every Ministry for a ChurchAdmin, or the Ministries the
+        caller actively leads. Search (trimmed, case-insensitive literal name
+        substring) and status (`review`: a Usual setup block needs review;
+        `no-sectors`: no active Sector) combine before pagination. `counts`
+        covers the caller's whole scope: it ignores the filters and the cursor,
+        so every page repeats the same values."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+          in: query
+          name: search
+          required: false
+        - schema:
+            default: any
+            type: string
+            enum:
+              - any
+              - review
+              - no-sectors
+          in: query
+          name: status
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: cursor
+          required: false
+        - schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 50
+          in: query
+          name: limit
+          required: false
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ministries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        defaultDirection:
+                          type: string
+                          enum:
+                            - all_in
+                            - all_out
+                        createdAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        updatedAt:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        sectorCount:
+                          type: integer
+                          minimum: 0
+                          maximum: 9007199254740991
+                        roleCount:
+                          type: integer
+                          minimum: 0
+                          maximum: 9007199254740991
+                        needsReview:
+                          type: boolean
+                      required:
+                        - id
+                        - churchId
+                        - name
+                        - defaultDirection
+                        - createdAt
+                        - updatedAt
+                        - sectorCount
+                        - roleCount
+                        - needsReview
+                      additionalProperties: false
+                  nextCursor:
+                    type: string
+                  counts:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                      review:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                      noSectors:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                    required:
+                      - total
+                      - review
+                      - noSectors
+                    additionalProperties: false
+                required:
+                  - ministries
+                  - counts
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/ministries/{ministryId}:
     get:
       operationId: getMinistry
@@ -7093,9 +7248,71 @@ paths:
       summary: List the caller's Schedules
       tags:
         - prepare
-      description: "List one row per Ministry and Sent or Past Cycle with its derived
-        stage: every active Ministry for a ChurchAdmin, the led ones for a
-        leader."
+      description: "List one row per Ministry and Cycle with its derived stage: every
+        active Ministry for a ChurchAdmin, the led ones for a leader. `period`
+        picks Sent Cycles (`current`, the default), Past Cycles or both.
+        Ministry, stage, search (Ministry or Cycle name) and `attention`
+        (current Schedules that wait on the leader: not serving excluded,
+        Published only with an open Swap request) filters combine before
+        pagination. Current Schedules come first by stage (to prepare, asking,
+        assigning, published, not serving), then Past ones; within each, newest
+        Cycle first, then Ministry name. `counts` covers the caller's current
+        Schedules per stage: it ignores the filters and the cursor, so every
+        page repeats the same values."
+      parameters:
+        - schema:
+            default: current
+            type: string
+            enum:
+              - current
+              - past
+              - all
+          in: query
+          name: period
+          required: false
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: query
+          name: ministryId
+          required: false
+        - schema:
+            type: string
+            enum:
+              - to_prepare
+              - asking
+              - assigning
+              - published
+              - not_serving
+          in: query
+          name: stage
+          required: false
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          in: query
+          name: search
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: attention
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: cursor
+          required: false
+        - schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 50
+          in: query
+          name: limit
+          required: false
       responses:
         "200":
           description: Default Response
@@ -7184,8 +7401,61 @@ paths:
                         - openSwapRequestCount
                         - gapCount
                       additionalProperties: false
+                  nextCursor:
+                    type: string
+                  counts:
+                    type: object
+                    properties:
+                      to_prepare:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      asking:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      assigning:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      published:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      not_serving:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                    required:
+                      - to_prepare
+                      - asking
+                      - assigning
+                      - published
+                      - not_serving
+                    additionalProperties: false
+                  options:
+                    type: object
+                    properties:
+                      ministries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                          additionalProperties: false
+                    required:
+                      - ministries
+                    additionalProperties: false
                 required:
                   - schedules
+                  - counts
+                  - options
                 additionalProperties: false
         "401":
           description: Default Response
@@ -7203,6 +7473,159 @@ paths:
                   - message
                 additionalProperties: false
         "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/prepare/schedules/{ministryId}/{cycleId}:
+    get:
+      operationId: getSchedule
+      summary: Get one of the caller's Schedules
+      tags:
+        - prepare
+      description: Read one Ministry's Schedule of one Sent or Past Cycle, shaped as a
+        `listSchedules` row. 404 when the Ministry is archived or outside the
+        caller's led Ministries (a ChurchAdmin reaches every active one), the
+        Cycle is a Draft, or either is unknown.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  affectedVolunteerCount:
+                    type: number
+                  ministry:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                      - id
+                      - name
+                    additionalProperties: false
+                  cycle:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      startDate:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                      endDate:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                      state:
+                        type: string
+                        enum:
+                          - draft
+                          - sent
+                          - past
+                    required:
+                      - id
+                      - name
+                      - startDate
+                      - endDate
+                      - state
+                    additionalProperties: false
+                  stage:
+                    type: string
+                    enum:
+                      - to_prepare
+                      - asking
+                      - assigning
+                      - published
+                      - not_serving
+                  lateMarkCount:
+                    type: number
+                  openSwapRequestCount:
+                    type: number
+                  gapCount:
+                    type: number
+                  asking:
+                    type: object
+                    properties:
+                      confirmed:
+                        type: number
+                      asked:
+                        type: number
+                    required:
+                      - confirmed
+                      - asked
+                    additionalProperties: false
+                required:
+                  - affectedVolunteerCount
+                  - ministry
+                  - cycle
+                  - stage
+                  - lateMarkCount
+                  - openSwapRequestCount
+                  - gapCount
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:

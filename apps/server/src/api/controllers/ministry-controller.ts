@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
@@ -21,6 +22,8 @@ import {
   ministryListResponseSchema,
   ministryMapper,
   ministryNameBodySchema,
+  ministryPageQuerystringSchema,
+  ministryPageResponseSchema,
   ministryResponseSchema,
 } from '../dtos/ministry.dto';
 import {
@@ -30,12 +33,18 @@ import {
   mintMinistryInvitationConflictSchema,
   mintMinistryInvitationUnprocessableSchema,
 } from '../dtos/ministry-invitation.dto';
+import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { refuse } from '../utils/refuse';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
+
+/** The page size the route's own schema defaults and bounds by config. */
+interface MinistryPageLimitQuery {
+  limit: number;
+}
 
 interface MinistryRouteParams {
   ministryId: string;
@@ -64,6 +73,7 @@ interface MinistryControllerDependencies {
   ministryInvitationManager: IMinistryInvitationManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
+  config: Pick<AppConfig, 'ministries'>;
 }
 
 export class MinistryController implements FastifyController {
@@ -73,17 +83,22 @@ export class MinistryController implements FastifyController {
   private readonly ministryInvitationManager: IMinistryInvitationManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly authorityGuard: AuthorityGuard;
+  private readonly pageSize: number;
+  private readonly maxPageSize: number;
 
   constructor({
     ministryManager,
     ministryInvitationManager,
     activeChurchResolver,
     authorityGuard,
+    config,
   }: MinistryControllerDependencies) {
     this.ministryManager = ministryManager;
     this.ministryInvitationManager = ministryInvitationManager;
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
+    this.pageSize = config.ministries.pageSize;
+    this.maxPageSize = config.ministries.maxPageSize;
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -141,6 +156,53 @@ export class MinistryController implements FastifyController {
         return reply.send(
           ministryMapper.toResponseList({ ministries, summaries }),
         );
+      },
+    );
+
+    app.get(
+      '/directory',
+      {
+        schema: {
+          tags: ['ministries'],
+          operationId: 'listMinistryDirectory',
+          summary: 'List the Ministries management page',
+          description:
+            "One page of the caller's accessible Ministries, alphabetical ignoring case: every Ministry for a ChurchAdmin, or the Ministries the caller actively leads. Search (trimmed, case-insensitive literal name substring) and status (`review`: a Usual setup block needs review; `no-sectors`: no active Sector) combine before pagination. `counts` covers the caller's whole scope: it ignores the filters and the cursor, so every page repeats the same values.",
+          querystring: ministryPageQuerystringSchema.extend({
+            limit: pageLimitSchema({ maxPageSize: this.maxPageSize }).default(
+              this.pageSize,
+            ),
+          }),
+          response: {
+            200: ministryPageResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const { isChurchAdmin, ledMinistries } =
+          await this.authorityGuard.resolveCallerCapabilities({
+            churchId,
+            userId: UserId.from(request.userId),
+          });
+        if (!isChurchAdmin && ledMinistries.length === 0) {
+          return refuse({ reply, request, code: 'FORBIDDEN' });
+        }
+        const query = request.query as z.infer<
+          typeof ministryPageQuerystringSchema
+        > &
+          MinistryPageLimitQuery;
+        const page = await this.ministryManager.listPage({
+          ...query,
+          churchId,
+          // A person who is both gets admin behavior.
+          ministryIds: isChurchAdmin
+            ? undefined
+            : ledMinistries.map((m) => MinistryId.from(m.ministryId)),
+        });
+        return reply.send(ministryMapper.toPageResponse(page));
       },
     );
 

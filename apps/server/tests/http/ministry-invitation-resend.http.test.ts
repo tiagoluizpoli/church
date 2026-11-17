@@ -92,6 +92,7 @@ async function buildApp({ config = appConfig, notifications }: BuildAppInput) {
     : harness.manager;
   const instance = await createFastify({ locale: testLocale });
   const controller = new MinistryController({
+    config: appConfig,
     ministryManager: {} as never,
     ministryInvitationManager: manager,
     activeChurchResolver: activeChurchResolver as never,

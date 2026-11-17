@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import {
   invitation as churchInvitation,
   ministry,
@@ -74,6 +75,7 @@ async function buildApp({ wrapRepo = (repo) => repo }: BuildAppInput = {}) {
   const harness = createMinistryInvitationTestHarness({ db });
   const instance = await createFastify({ locale: testLocale });
   const controller = new MinistryController({
+    config: appConfig,
     ministryManager: new DbMinistryManager({
       ministryRepo: harness.ministryRepository,
       volunteerRepo: harness.volunteerRepository,

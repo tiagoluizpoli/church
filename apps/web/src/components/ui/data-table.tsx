@@ -145,6 +145,11 @@ export function DataTable<T extends object>({
   className,
 }: DataTableProps<T>) {
   const isSelectable = selectionMode != null && selectionMode !== 'none';
+  // The actions column always closes the row, whatever order the consumer passed.
+  const orderedColumns = [
+    ...columns.filter((column) => column.id !== actionsColumnId),
+    ...columns.filter((column) => column.id === actionsColumnId),
+  ];
 
   if (isLoading) {
     return <div className={className}>{loadingContent}</div>;
@@ -189,11 +194,14 @@ export function DataTable<T extends object>({
           selectedKeys={selectedKeys}
           onSelectionChange={onSelectionChange}
         >
-          <TableHeader columns={columns}>
+          <TableHeader columns={orderedColumns}>
             {(column) => (
               <TableColumn
                 isRowHeader={column.isRowHeader}
                 allowsSorting={column.allowsSorting}
+                className={
+                  column.id === actionsColumnId ? 'text-end' : undefined
+                }
               >
                 {(column.hideName ?? column.id === actionsColumnId) ? (
                   <span className="sr-only">{column.name}</span>
@@ -212,12 +220,20 @@ export function DataTable<T extends object>({
                 <TableRow
                   key={key}
                   id={id}
-                  columns={spans ? columns.slice(0, 1) : columns}
+                  columns={spans ? orderedColumns.slice(0, 1) : orderedColumns}
                   data-testid={rowTestId?.({ item })}
                   className={rowClassName?.({ item })}
                 >
                   {(column) => (
-                    <TableCell colSpan={spans ? columns.length : undefined}>
+                    <TableCell
+                      colSpan={spans ? columns.length : undefined}
+                      // Row actions always sit flush right, never centered or at the start.
+                      className={
+                        !spans && column.id === actionsColumnId
+                          ? 'text-end *:justify-end'
+                          : undefined
+                      }
+                    >
                       {rowActions && column.id === actionsColumnId
                         ? rowActions({ item })
                         : renderCell({ item, column })}

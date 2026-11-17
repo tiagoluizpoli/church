@@ -1,4 +1,10 @@
-import { type QueryClient, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  type QueryClient,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query';
+import type { ListMinistryDirectoryParams } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { CALLER_CAPABILITIES_QUERY_KEY } from '@/shared/hooks/use-caller-capabilities';
 import { adminApi } from '@/utils/api-instances';
@@ -44,6 +50,49 @@ export function useMinistryList({ enabled }: UseMinistryListInput) {
     queryKey: ministryListQueryKey({ churchId }),
     queryFn: () => adminApi.listMinistries(),
     enabled,
+    retry: false,
+  });
+}
+
+export type MinistryDirectoryFilters = Omit<
+  ListMinistryDirectoryParams,
+  'cursor' | 'limit'
+>;
+
+interface MinistryDirectoryKeyInput extends ChurchScopeInput {
+  filters?: MinistryDirectoryFilters;
+}
+
+/** Church, then filters: a switch of either reads another key and restarts at the first page. */
+export function ministryDirectoryQueryKey({
+  churchId,
+  filters,
+}: MinistryDirectoryKeyInput) {
+  return [
+    ...MINISTRIES_QUERY_KEY,
+    churchId,
+    'directory',
+    filters ?? {},
+  ] as const;
+}
+
+interface UseMinistryDirectoryInput {
+  filters: MinistryDirectoryFilters;
+}
+
+/** The Ministries page: server-filtered pages, alphabetical, with whole-scope counts. */
+export function useMinistryDirectory({ filters }: UseMinistryDirectoryInput) {
+  const churchId = useCallerCapabilitiesScope()?.churchId;
+  return useInfiniteQuery({
+    queryKey: ministryDirectoryQueryKey({ churchId, filters }),
+    // Keeps the chips and rows on screen while a new filter set loads.
+    placeholderData: keepPreviousData,
+    queryFn: ({ pageParam }) =>
+      adminApi.listMinistryDirectory(
+        pageParam ? { ...filters, cursor: pageParam } : filters,
+      ),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
     retry: false,
   });
 }

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { assignment, ministry, outboxMessage } from '@church/db';
+import { appConfig } from '@church/app-config';
+import { assignment, ministry, outboxMessage, swapRequest } from '@church/db';
 import { parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
@@ -74,6 +75,7 @@ beforeAll(async () => {
   // Better Auth session is a seam.
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
+    config: appConfig,
     participationManager: createSchedulingManagers().participationManager,
     availabilityCheckManager: {} as never,
     activeChurchResolver: new DbActiveChurchResolver({
@@ -125,8 +127,8 @@ function signIn({ userId, churchId }: SignInInput) {
   } as never);
 }
 
-function listSchedules() {
-  return app.inject({ method: 'GET', url: '/api/v1/prepare/schedules' });
+function listSchedules(query: Record<string, string> = {}) {
+  return app.inject({ method: 'GET', url: '/api/v1/prepare/schedules', query });
 }
 
 interface SeedPersonInput {
@@ -555,7 +557,7 @@ describe('GET /prepare/schedules scoping', () => {
       churchId: seed.churchId,
     });
 
-    const response = await listSchedules();
+    const response = await listSchedules({ period: 'all' });
 
     expect(response.statusCode).toBe(200);
     const { schedules } = response.json();
@@ -920,12 +922,770 @@ describe('GET /prepare/schedules stage', () => {
       state: 'published',
     });
 
-    const { schedules } = (await listSchedules()).json();
+    const { schedules } = (await listSchedules({ period: 'past' })).json();
     const past = schedules.find(
       (row: { cycle: { id: string } }) => row.cycle.id === pastCycle.id,
     );
 
     expect(past.cycle.state).toBe('past');
     expect(past.stage).toBe('published');
+  });
+});
+
+describe('GET /prepare/schedules filters, counts and pages', () => {
+  /** Sent October: Beta to prepare, Alpha published, Ministry A not serving. Past September: Alpha to prepare. */
+  async function seedList() {
+    const base = await seedSchedulingPhase3Base();
+    const { churchAId: churchId } = base;
+    const alpha = await buildMinistry({ db, churchId, name: 'Alpha' });
+    const beta = await buildMinistry({ db, churchId, name: 'Beta' });
+    const october = await seedCycle({
+      churchId,
+      name: 'October 2026',
+      month: '2026-10',
+      lastDay: '31',
+      state: 'sent',
+    });
+    const september = await seedCycle({
+      churchId,
+      name: 'September 2026',
+      month: '2026-09',
+      lastDay: '30',
+      state: 'past-from-sent',
+    });
+    await seedParticipation({
+      churchId,
+      cycleId: october.id,
+      ministryId: alpha.id,
+      state: 'published',
+    });
+    await seedParticipation({
+      churchId,
+      cycleId: october.id,
+      ministryId: beta.id,
+      state: 'preparing',
+    });
+    await seedParticipation({
+      churchId,
+      cycleId: september.id,
+      ministryId: alpha.id,
+      state: 'preparing',
+    });
+    return { ...base, churchId, alpha, beta, october, september };
+  }
+
+  // Stage names are the wire keys.
+  const COUNTS = Object.fromEntries([
+    ['to_prepare', 1],
+    ['asking', 0],
+    ['assigning', 0],
+    ['published', 1],
+    ['not_serving', 1],
+  ]);
+
+  async function signInAdmin(churchId: string) {
+    signIn({
+      userId: await seedMember({ churchId, accessLevel: 'admin' }),
+      churchId,
+    });
+  }
+
+  async function labels(query: Record<string, string> = {}) {
+    const response = await listSchedules(query);
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.counts).toEqual(COUNTS);
+    return body.schedules.map(
+      (row: { ministry: { name: string }; cycle: { name: string } }) =>
+        `${row.cycle.name} · ${row.ministry.name}`,
+    );
+  }
+
+  it('lists current Schedules by stage, with stage counts and the Ministry options', async () => {
+    const seed = await seedList();
+    await signInAdmin(seed.churchId);
+
+    const body = (await listSchedules()).json();
+
+    expect(
+      body.schedules.map(
+        (row: { ministry: { name: string }; stage: string }) =>
+          `${row.ministry.name} · ${row.stage}`,
+      ),
+    ).toEqual([
+      'Beta · to_prepare',
+      'Alpha · published',
+      'Scheduling Ministry A · not_serving',
+    ]);
+    expect(body.counts).toEqual(COUNTS);
+    expect(body.options.ministries).toEqual([
+      { id: seed.alpha.id, name: 'Alpha' },
+      { id: seed.beta.id, name: 'Beta' },
+      { id: seed.ministryAId, name: 'Scheduling Ministry A' },
+    ]);
+    expect(body).not.toHaveProperty('nextCursor');
+  });
+
+  it('puts Past Schedules after every current one, ignoring their stage', async () => {
+    const seed = await seedList();
+    await signInAdmin(seed.churchId);
+
+    expect(await labels({ period: 'past' })).toEqual([
+      'September 2026 · Alpha',
+      'September 2026 · Beta',
+      'September 2026 · Scheduling Ministry A',
+    ]);
+    expect(await labels({ period: 'all' })).toEqual([
+      'October 2026 · Beta',
+      'October 2026 · Alpha',
+      'October 2026 · Scheduling Ministry A',
+      'September 2026 · Alpha',
+      'September 2026 · Beta',
+      'September 2026 · Scheduling Ministry A',
+    ]);
+  });
+
+  it('filters by stage, Ministry and a case-insensitive Ministry or Cycle name, keeping the counts', async () => {
+    const seed = await seedList();
+    await signInAdmin(seed.churchId);
+
+    expect(await labels({ stage: 'published' })).toEqual([
+      'October 2026 · Alpha',
+    ]);
+    expect(await labels({ period: 'all', stage: 'to_prepare' })).toEqual([
+      'October 2026 · Beta',
+      'September 2026 · Alpha',
+    ]);
+    expect(await labels({ period: 'all', ministryId: seed.beta.id })).toEqual([
+      'October 2026 · Beta',
+      'September 2026 · Beta',
+    ]);
+    expect(await labels({ search: ' ALP ' })).toEqual(['October 2026 · Alpha']);
+    expect(await labels({ period: 'all', search: 'septem' })).toEqual([
+      'September 2026 · Alpha',
+      'September 2026 · Beta',
+      'September 2026 · Scheduling Ministry A',
+    ]);
+    expect(await labels({ search: '%' })).toEqual([]);
+  });
+
+  it('matches %, _ and \\ in a search literally', async () => {
+    const seed = await seedList();
+    for (const name of ['50% off', 'a_b', 'back\\slash']) {
+      await buildMinistry({ db, churchId: seed.churchId, name });
+    }
+    await signInAdmin(seed.churchId);
+
+    for (const [search, expected] of [
+      ['%', 'October 2026 · 50% off'],
+      ['_', 'October 2026 · a_b'],
+      ['\\', 'October 2026 · back\\slash'],
+    ] as const) {
+      const body = (await listSchedules({ search })).json();
+      expect(
+        body.schedules.map(
+          (row: { ministry: { name: string }; cycle: { name: string } }) =>
+            `${row.cycle.name} · ${row.ministry.name}`,
+        ),
+        search,
+      ).toEqual([expected]);
+    }
+  });
+
+  it('pages through the whole order with an opaque cursor and the same counts on every page', async () => {
+    const seed = await seedList();
+    await signInAdmin(seed.churchId);
+    const everything = await labels({ period: 'all' });
+
+    const paged: string[] = [];
+    let cursor: string | undefined;
+    let pages = 0;
+    do {
+      const response = await listSchedules({
+        period: 'all',
+        limit: '4',
+        ...(cursor ? { cursor } : {}),
+      });
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.counts).toEqual(COUNTS);
+      paged.push(
+        ...body.schedules.map(
+          (row: { ministry: { name: string }; cycle: { name: string } }) =>
+            `${row.cycle.name} · ${row.ministry.name}`,
+        ),
+      );
+      cursor = body.nextCursor;
+      pages += 1;
+    } while (cursor);
+
+    expect(pages).toBe(2);
+    expect(paged).toEqual(everything);
+  });
+
+  it('scopes counts and options to the Ministries a leader leads', async () => {
+    const seed = await seedList();
+    signIn({
+      userId: await seedServingMember({
+        churchId: seed.churchId,
+        ministryIds: [seed.beta.id],
+        ministryAccessLevel: 'leader',
+      }),
+      churchId: seed.churchId,
+    });
+
+    const body = (await listSchedules()).json();
+
+    expect(body.counts).toEqual({
+      ...COUNTS,
+      ...Object.fromEntries([
+        ['published', 0],
+        ['not_serving', 0],
+      ]),
+    });
+    expect(body.options.ministries).toEqual([
+      { id: seed.beta.id, name: 'Beta' },
+    ]);
+  });
+
+  /** A published Ministry in the Sent Cycle whose future Assignment has an open Swap request. */
+  async function seedPublishedWithSwapRequest(
+    seed: Awaited<ReturnType<typeof seedList>>,
+  ) {
+    const { churchId } = seed;
+    const gamma = await buildMinistry({ db, churchId, name: 'Gamma' });
+    const startsAt = '2099-10-04T12:00:00.000Z';
+    const endsAt = '2099-10-04T14:00:00.000Z';
+    const { participation, block } = await seedParticipation({
+      churchId,
+      cycleId: seed.october.id,
+      ministryId: gamma.id,
+      state: 'published',
+      startsAt,
+      endsAt,
+    });
+    const shift = await seedShift({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: block.id,
+      startTime: new Date(startsAt),
+      endTime: new Date(endsAt),
+      label: 'Morning',
+    });
+    const role = await seedRole({
+      churchId,
+      ministryId: gamma.id,
+      name: 'Usher',
+    });
+    const requirement = await seedRequirement({
+      churchId,
+      participationId: participation.id,
+      shiftId: shift.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    const person = await seedVolunteerMembership({
+      churchId,
+      ministryId: gamma.id,
+      name: 'Swapper',
+      email: 'swapper@test.com',
+    });
+    const assigned = await buildAssignment({
+      db,
+      churchId,
+      participationId: participation.id,
+      shiftId: shift.id,
+      roleId: role.id,
+      shiftRequirementId: requirement.id,
+      volunteerId: person.volunteer.id,
+      status: 'confirmed',
+    });
+    await db.insert(swapRequest).values({
+      churchId,
+      assignmentId: assigned.id,
+      status: 'open',
+      raisedBy: person.volunteer.userId,
+    });
+  }
+
+  it('keeps only current Schedules that wait on the leader when asked for attention, paging them', async () => {
+    const seed = await seedList();
+    await signInAdmin(seed.churchId);
+
+    // Published without a Swap request, not serving and Past rows all drop out.
+    expect(await labels({ period: 'all', attention: 'true' })).toEqual([
+      'October 2026 · Beta',
+    ]);
+    expect(await labels({ attention: 'false' })).toHaveLength(3);
+
+    await seedPublishedWithSwapRequest(seed);
+    const first = (
+      await listSchedules({ attention: 'true', limit: '1' })
+    ).json();
+    expect(
+      first.schedules.map(
+        ({ ministry }: { ministry: { name: string } }) => ministry.name,
+      ),
+    ).toEqual(['Beta']);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    const rest = (
+      await listSchedules({
+        attention: 'true',
+        limit: '1',
+        cursor: first.nextCursor,
+      })
+    ).json();
+    expect(rest.schedules).toMatchObject([
+      {
+        ministry: { name: 'Gamma' },
+        stage: 'published',
+        openSwapRequestCount: 1,
+      },
+    ]);
+    expect(rest).not.toHaveProperty('nextCursor');
+  });
+
+  function getSchedule(ministryId: string, cycleId: string) {
+    return app.inject({
+      method: 'GET',
+      url: `/api/v1/prepare/schedules/${ministryId}/${cycleId}`,
+    });
+  }
+
+  it("answers 404 outside a leader's Ministries, for a Draft Cycle and for an unknown pair", async () => {
+    const seed = await seedList();
+    const draft = await seedCycle({
+      churchId: seed.churchId,
+      name: 'November 2026',
+      month: '2026-11',
+      lastDay: '30',
+      state: 'draft',
+    });
+    signIn({
+      userId: await seedServingMember({
+        churchId: seed.churchId,
+        ministryIds: [seed.beta.id],
+        ministryAccessLevel: 'leader',
+      }),
+      churchId: seed.churchId,
+    });
+
+    expect((await getSchedule(seed.beta.id, seed.october.id)).statusCode).toBe(
+      200,
+    );
+    expect((await getSchedule(seed.alpha.id, seed.october.id)).statusCode).toBe(
+      404,
+    );
+    expect((await getSchedule(seed.beta.id, draft.id)).statusCode).toBe(404);
+    expect((await getSchedule(randomUUID(), seed.october.id)).statusCode).toBe(
+      404,
+    );
+    expect((await getSchedule(seed.beta.id, randomUUID())).statusCode).toBe(
+      404,
+    );
+  });
+
+  it.each([
+    ['an unknown period', { period: 'later' }],
+    ['an unknown stage', { stage: 'done' }],
+    ['a malformed Ministry id', { ministryId: 'nope' }],
+    ['a blank search', { search: '   ' }],
+    ['a cursor it never issued', { cursor: 'garbage' }],
+    ['a page larger than the maximum', { limit: '51' }],
+  ])('answers 422 for %s', async (_label, query) => {
+    const seed = await seedList();
+    await signInAdmin(seed.churchId);
+
+    expect((await listSchedules(query)).statusCode).toBe(422);
+  });
+});
+
+describe('GET /prepare/schedules order, attention and scope', () => {
+  interface SeedOpenSwapRequestInput {
+    churchId: string;
+    cycleId: string;
+    ministryId: string;
+    state: ParticipationState;
+    serves?: boolean;
+    volunteerName: string;
+  }
+
+  /** A participation whose future Assignment has an open Swap request. */
+  async function seedOpenSwapRequest({
+    churchId,
+    cycleId,
+    ministryId,
+    state,
+    serves,
+    volunteerName,
+  }: SeedOpenSwapRequestInput) {
+    const startsAt = '2099-10-04T12:00:00.000Z';
+    const endsAt = '2099-10-04T14:00:00.000Z';
+    const { participation, block } = await seedParticipation({
+      churchId,
+      cycleId,
+      ministryId,
+      state,
+      serves,
+      startsAt,
+      endsAt,
+    });
+    const shift = await seedShift({
+      churchId,
+      participationId: participation.id,
+      eventTimeBlockId: block.id,
+      startTime: new Date(startsAt),
+      endTime: new Date(endsAt),
+      label: 'Morning',
+    });
+    const role = await seedRole({
+      churchId,
+      ministryId,
+      name: `Usher ${volunteerName}`,
+    });
+    const requirement = await seedRequirement({
+      churchId,
+      participationId: participation.id,
+      shiftId: shift.id,
+      roleId: role.id,
+      peopleNeeded: 1,
+    });
+    const person = await seedVolunteerMembership({
+      churchId,
+      ministryId,
+      name: volunteerName,
+      email: `${volunteerName.toLowerCase()}@test.com`,
+    });
+    const assigned = await buildAssignment({
+      db,
+      churchId,
+      participationId: participation.id,
+      shiftId: shift.id,
+      roleId: role.id,
+      shiftRequirementId: requirement.id,
+      volunteerId: person.volunteer.id,
+      status: 'confirmed',
+    });
+    await db.insert(swapRequest).values({
+      churchId,
+      assignmentId: assigned.id,
+      status: 'open',
+      raisedBy: person.volunteer.userId,
+    });
+  }
+
+  /**
+   * Sent October 2026 (10-01..10-31): Alpha and Beta to prepare, Gamma asking
+   * with an open Swap request, Delta assigning, Scheduling Ministry A not serving.
+   * Sent November 2026: Alpha published, Beta published with an
+   * open Swap request, Gamma not serving with an open Swap request on an
+   * opted-out block, Delta and Scheduling Ministry A not serving.
+   * Past September 2026: Alpha to prepare, Beta published with an open Swap request.
+   */
+  async function seedBoard() {
+    const base = await seedSchedulingPhase3Base();
+    const { churchAId: churchId } = base;
+    const alpha = await buildMinistry({ db, churchId, name: 'Alpha' });
+    const beta = await buildMinistry({ db, churchId, name: 'Beta' });
+    const gamma = await buildMinistry({ db, churchId, name: 'Gamma' });
+    const delta = await buildMinistry({ db, churchId, name: 'Delta' });
+    const october = await seedCycle({
+      churchId,
+      name: 'October 2026',
+      month: '2026-10',
+      lastDay: '31',
+      state: 'sent',
+    });
+    const november = await seedCycle({
+      churchId,
+      name: 'November 2026',
+      month: '2026-11',
+      lastDay: '30',
+      state: 'sent',
+    });
+    const september = await seedCycle({
+      churchId,
+      name: 'September 2026',
+      month: '2026-09',
+      lastDay: '30',
+      state: 'past-from-sent',
+    });
+    for (const [ministryId, state] of [
+      [alpha.id, 'preparing'],
+      [beta.id, 'preparing'],
+      [delta.id, 'assigning'],
+    ] as const) {
+      await seedParticipation({
+        churchId,
+        cycleId: october.id,
+        ministryId,
+        state,
+      });
+    }
+    await seedOpenSwapRequest({
+      churchId,
+      cycleId: october.id,
+      ministryId: gamma.id,
+      state: 'availability_requested',
+      volunteerName: 'Gina',
+    });
+    await seedParticipation({
+      churchId,
+      cycleId: november.id,
+      ministryId: alpha.id,
+      state: 'published',
+    });
+    await seedOpenSwapRequest({
+      churchId,
+      cycleId: november.id,
+      ministryId: beta.id,
+      state: 'published',
+      volunteerName: 'Bruno',
+    });
+    await seedOpenSwapRequest({
+      churchId,
+      cycleId: november.id,
+      ministryId: gamma.id,
+      state: 'published',
+      serves: false,
+      volunteerName: 'Gabi',
+    });
+    await seedParticipation({
+      churchId,
+      cycleId: september.id,
+      ministryId: alpha.id,
+      state: 'preparing',
+    });
+    await seedOpenSwapRequest({
+      churchId,
+      cycleId: september.id,
+      ministryId: beta.id,
+      state: 'published',
+      volunteerName: 'Paulo',
+    });
+    return {
+      ...base,
+      churchId,
+      alpha,
+      beta,
+      gamma,
+      delta,
+      october,
+      november,
+      september,
+    };
+  }
+
+  const FULL_ORDER = [
+    'October 2026 · Alpha · to_prepare',
+    'October 2026 · Beta · to_prepare',
+    'October 2026 · Gamma · asking',
+    'October 2026 · Delta · assigning',
+    'November 2026 · Alpha · published',
+    'November 2026 · Beta · published',
+    'November 2026 · Delta · not_serving',
+    'November 2026 · Gamma · not_serving',
+    'November 2026 · Scheduling Ministry A · not_serving',
+    'October 2026 · Scheduling Ministry A · not_serving',
+    'September 2026 · Alpha · to_prepare',
+    'September 2026 · Beta · published',
+    'September 2026 · Delta · not_serving',
+    'September 2026 · Gamma · not_serving',
+    'September 2026 · Scheduling Ministry A · not_serving',
+  ];
+
+  const ATTENTION = [
+    'October 2026 · Alpha · to_prepare',
+    'October 2026 · Beta · to_prepare',
+    'October 2026 · Gamma · asking',
+    'October 2026 · Delta · assigning',
+    'November 2026 · Beta · published',
+  ];
+
+  async function signInAdmin(churchId: string) {
+    signIn({
+      userId: await seedMember({ churchId, accessLevel: 'admin' }),
+      churchId,
+    });
+  }
+
+  async function rows(query: Record<string, string> = {}) {
+    const response = await listSchedules(query);
+    expect(response.statusCode).toBe(200);
+    return response
+      .json()
+      .schedules.map(
+        (row: {
+          ministry: { name: string };
+          cycle: { name: string };
+          stage: string;
+        }) => `${row.cycle.name} · ${row.ministry.name} · ${row.stage}`,
+      );
+  }
+
+  async function everyPage(query: Record<string, string>) {
+    const paged: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const response = await listSchedules({
+        ...query,
+        ...(cursor ? { cursor } : {}),
+      });
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      paged.push(
+        ...body.schedules.map(
+          (row: {
+            ministry: { name: string };
+            cycle: { name: string };
+            stage: string;
+          }) => `${row.cycle.name} · ${row.ministry.name} · ${row.stage}`,
+        ),
+      );
+      cursor = body.nextCursor;
+    } while (cursor);
+    return paged;
+  }
+
+  function getSchedule(ministryId: string, cycleId: string) {
+    return app.inject({
+      method: 'GET',
+      url: `/api/v1/prepare/schedules/${ministryId}/${cycleId}`,
+    });
+  }
+
+  it('orders by stage, Cycle start and end newest first, then Ministry name, with Past last', async () => {
+    const seed = await seedBoard();
+    await signInAdmin(seed.churchId);
+
+    expect(await rows({ period: 'all' })).toEqual(FULL_ORDER);
+    expect(await rows({ period: 'all', attention: 'false' })).toEqual(
+      FULL_ORDER,
+    );
+  });
+
+  it.each([
+    '1',
+    '2',
+    '3',
+  ])('pages with limit %s across every boundary without duplicates or gaps', async (limit) => {
+    const seed = await seedBoard();
+    await signInAdmin(seed.churchId);
+
+    expect(await everyPage({ period: 'all', limit })).toEqual(FULL_ORDER);
+    expect(
+      await everyPage({ period: 'all', attention: 'true', limit }),
+    ).toEqual(ATTENTION);
+  });
+
+  it('keeps unfinished current Schedules and Published ones with an open Swap request when asked for attention', async () => {
+    const seed = await seedBoard();
+    await signInAdmin(seed.churchId);
+
+    expect(await rows({ attention: 'true' })).toEqual(ATTENTION);
+    expect(await rows({ period: 'all', attention: 'true' })).toEqual(ATTENTION);
+    expect(await rows({ period: 'past', attention: 'true' })).toEqual([]);
+  });
+
+  it('combines attention with the stage filter', async () => {
+    const seed = await seedBoard();
+    await signInAdmin(seed.churchId);
+
+    expect(await rows({ attention: 'true', stage: 'published' })).toEqual([
+      'November 2026 · Beta · published',
+    ]);
+    expect(await rows({ attention: 'true', stage: 'to_prepare' })).toEqual([
+      'October 2026 · Alpha · to_prepare',
+      'October 2026 · Beta · to_prepare',
+    ]);
+    expect(await rows({ attention: 'true', stage: 'not_serving' })).toEqual([]);
+  });
+
+  it('counts current Schedules per stage on every page, whatever the filters', async () => {
+    const seed = await seedBoard();
+    await signInAdmin(seed.churchId);
+
+    const response = await listSchedules({
+      period: 'past',
+      stage: 'published',
+      limit: '1',
+    });
+
+    expect(response.json().counts).toEqual(
+      Object.fromEntries([
+        ['to_prepare', 2],
+        ['asking', 1],
+        ['assigning', 1],
+        ['published', 2],
+        ['not_serving', 4],
+      ]),
+    );
+  });
+
+  it('keeps a leader to the Ministries they lead, even when naming another one', async () => {
+    const seed = await seedBoard();
+    signIn({
+      userId: await seedServingMember({
+        churchId: seed.churchId,
+        ministryIds: [seed.beta.id],
+        ministryAccessLevel: 'leader',
+      }),
+      churchId: seed.churchId,
+    });
+
+    expect(await rows({ period: 'all' })).toEqual([
+      'October 2026 · Beta · to_prepare',
+      'November 2026 · Beta · published',
+      'September 2026 · Beta · published',
+    ]);
+    expect(await rows({ period: 'all', ministryId: seed.alpha.id })).toEqual(
+      [],
+    );
+    expect((await getSchedule(seed.alpha.id, seed.october.id)).statusCode).toBe(
+      404,
+    );
+  });
+
+  it('reads one Schedule with its stage, counts, Cycle and Ministry', async () => {
+    const seed = await seedBoard();
+    await signInAdmin(seed.churchId);
+
+    const published = await getSchedule(seed.beta.id, seed.november.id);
+    expect(published.statusCode).toBe(200);
+    expect(published.json()).toMatchObject({
+      ministry: { id: seed.beta.id, name: 'Beta' },
+      cycle: {
+        id: seed.november.id,
+        name: 'November 2026',
+        startDate: '2026-11-01',
+        endDate: '2026-11-30',
+        state: 'sent',
+      },
+      stage: 'published',
+      lateMarkCount: 0,
+      openSwapRequestCount: 1,
+      gapCount: 0,
+    });
+    expect(published.json()).not.toHaveProperty('asking');
+
+    const asking = (await getSchedule(seed.gamma.id, seed.october.id)).json();
+    expect(asking).toMatchObject({
+      ministry: { name: 'Gamma' },
+      cycle: { name: 'October 2026', state: 'sent' },
+      stage: 'asking',
+      openSwapRequestCount: 1,
+      gapCount: 0,
+      asking: { confirmed: 0, asked: 0 },
+    });
+
+    const past = (await getSchedule(seed.alpha.id, seed.september.id)).json();
+    expect(past).toMatchObject({
+      ministry: { name: 'Alpha' },
+      cycle: { name: 'September 2026', state: 'past' },
+      stage: 'to_prepare',
+      lateMarkCount: 0,
+      openSwapRequestCount: 0,
+      gapCount: 0,
+    });
   });
 });

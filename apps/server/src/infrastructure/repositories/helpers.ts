@@ -54,3 +54,12 @@ export function getClient({ db, tx }: GetClientInput): AnyDrizzleDb {
   }
   return db;
 }
+
+export interface ContainsPatternInput {
+  value: string;
+}
+
+/** ILIKE pattern matching the value literally anywhere: `%`, `_` and `\` are escaped. */
+export function containsPattern({ value }: ContainsPatternInput): string {
+  return `%${value.replace(/[\\%_]/g, '\\$&')}%`;
+}

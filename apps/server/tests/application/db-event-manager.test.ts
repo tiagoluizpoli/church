@@ -239,6 +239,8 @@ function createRepos(): Repos {
     touch: vi.fn(),
     findAvailabilityRequestedAt: vi.fn(),
     listScheduleSummaries: vi.fn(),
+    listScheduleRows: vi.fn(),
+    countCurrentSchedulesByStage: vi.fn(),
     listScheduleServingStates: vi.fn(),
     countScheduleLateMarks: vi.fn(),
     countScheduleOpenSwapRequests: vi.fn(),

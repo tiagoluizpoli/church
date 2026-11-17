@@ -78,6 +78,7 @@ export function buildControllers({
       ministryInvitationManager,
       activeChurchResolver,
       authorityGuard,
+      config,
     }),
     new MinistryRoleController({
       ministryRoleManager,
@@ -101,6 +102,7 @@ export function buildControllers({
       availabilityCheckManager,
       activeChurchResolver,
       authorityGuard,
+      config,
     }),
     new AssignController({
       participationManager,

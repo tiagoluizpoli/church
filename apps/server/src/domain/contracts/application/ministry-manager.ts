@@ -4,7 +4,12 @@ import type {
   UserId,
   VolunteerId,
 } from '../../branded-ids';
-import type { DefaultDirection, Ministry } from '../../entities/ministry';
+import type {
+  DefaultDirection,
+  Ministry,
+  MinistryListCounts,
+  MinistryListStatus,
+} from '../../entities/ministry';
 
 export interface ListMinistriesByLeaderInput {
   leaderId: VolunteerId;
@@ -54,11 +59,31 @@ export interface SummarizeMinistriesInput {
   ministries: Ministry[];
 }
 
+export interface ListMinistryPageRequest {
+  churchId: ChurchId;
+  /** A leader's Ministries; the whole Church for a ChurchAdmin. Resolved by the controller. */
+  ministryIds?: MinistryId[];
+  search?: string;
+  status: MinistryListStatus;
+  cursor?: string;
+  limit: number;
+}
+
+export interface MinistryPage {
+  ministries: Ministry[];
+  /** One entry per listed Ministry. */
+  summaries: Map<MinistryId, MinistrySummary>;
+  nextCursor?: string;
+  counts: MinistryListCounts;
+}
+
 export interface IMinistryManager {
   /** A fixed number of queries whatever the list size; one entry per given Ministry. */
   summarize(
     input: SummarizeMinistriesInput,
   ): Promise<Map<MinistryId, MinistrySummary>>;
+  /** The Ministries management page: filtered, paginated, with whole-scope counts. */
+  listPage(input: ListMinistryPageRequest): Promise<MinistryPage>;
   /** Active Ministries of the Church, alphabetical ignoring case. */
   listByChurch(churchId: ChurchId): Promise<Ministry[]>;
   /** Active Ministries the leader leads, alphabetical ignoring case. */

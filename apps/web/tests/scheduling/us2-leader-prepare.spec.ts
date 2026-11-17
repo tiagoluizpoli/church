@@ -134,7 +134,11 @@ test('leader prepares one Time block and sees its saved Schedule summary', async
     }),
   ).toBeVisible();
   const schedulePath = assignPreparePath({ ministryId, cycleId: cycleBody.id });
-  await page.locator(`a[href="${schedulePath}"]`).click();
+  // DataTable keeps the hidden mobile card's link in the DOM too.
+  await page
+    .locator(`a[href="${schedulePath}"]`)
+    .filter({ visible: true })
+    .click();
   await expect(page).toHaveURL(schedulePath);
 
   // Discover the generated Time block ids through the same participation

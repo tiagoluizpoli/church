@@ -118,6 +118,12 @@ describe('/ministries/$ministryId/operational (roles panel)', () => {
 
     renderRoles();
 
+    // A file's first route render lands ~1 s on a cold, loaded worker.
+    await screen.findByRole(
+      'list',
+      { name: m.ministry_roles_list_label() },
+      { timeout: 3000 },
+    );
     expect(await roleRows()).toEqual(['drums', 'Singer']);
     expect(listMinistryRoles).toHaveBeenCalledWith(MINISTRY_ID);
   });

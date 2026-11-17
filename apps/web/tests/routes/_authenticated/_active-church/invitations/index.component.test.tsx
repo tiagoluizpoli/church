@@ -253,8 +253,9 @@ describe('Invitations page', () => {
     await user.click(
       screen.getByRole('combobox', { name: m.invitations_filter_status() }),
     );
+    // base-ui opens the Select in an animation frame after mousedown, so the option can mount after the click resolves.
     await user.click(
-      screen.getByRole('option', { name: m.invitations_filter_all() }),
+      await screen.findByRole('option', { name: m.invitations_filter_all() }),
     );
     await waitFor(() =>
       expect(listInvitations).toHaveBeenLastCalledWith({ status: 'any' }),
@@ -697,6 +698,8 @@ describe('Invitations filters and history', () => {
     await user.click(
       screen.getByRole('combobox', { name: m.invitations_filter_invited_as() }),
     );
+    // The list opens a frame later; without it this absence check is vacuous.
+    await screen.findByRole('listbox');
     expect(
       screen.queryByRole('option', { name: m.join_church_access_admin() }),
     ).not.toBeInTheDocument();

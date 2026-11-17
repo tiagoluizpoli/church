@@ -43,6 +43,7 @@ import {
 } from '@/features/scheduling/components/headcount-grid/headcount-grid';
 import { isShiftSplitValid } from '@/features/scheduling/components/shift-split-editor/shift-split.utils';
 import { ShiftSplitEditor } from '@/features/scheduling/components/shift-split-editor/shift-split-editor';
+import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import type {
   GetCycleParticipation200EventsItemEventTimeBlocksItem,
   SaveEventTimeBlockPreparationBody,
@@ -62,14 +63,8 @@ export function PreparationBlockEditor({
   cycleId,
   eventTimeBlockId,
 }: PreparationBlockEditorProps) {
-  const schedules = useQuery({
-    queryKey: ['prepare-schedules'],
-    queryFn: () => adminApi.listSchedules(),
-    retry: false,
-  });
-  const schedule = schedules.data?.schedules.find(
-    (row) => row.ministry.id === ministryId && row.cycle.id === cycleId,
-  );
+  const schedules = useSchedule({ ministryId, cycleId });
+  const schedule = schedules.data;
   const participation = useQuery({
     queryKey: ['prepare-cycle-participation', ministryId, cycleId],
     queryFn: () => adminApi.getCycleParticipation(cycleId, { ministryId }),

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
+import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { adminApi } from '@/utils/api-instances';
 
 export interface BreadcrumbSegmentOverride {
@@ -20,19 +21,13 @@ export function useCycleBreadcrumb(): BreadcrumbSegmentOverride | null {
     enabled: cycleId !== undefined && ministryId === undefined,
     retry: false,
   });
-  const schedules = useQuery({
-    queryKey: ['prepare-schedules'],
-    queryFn: () => adminApi.listSchedules(),
-    enabled:
-      cycleId !== undefined &&
-      ministryId !== undefined &&
-      timeSlotId === undefined,
-    retry: false,
+  const schedule = useSchedule({
+    ministryId,
+    cycleId,
+    enabled: timeSlotId === undefined,
   });
   const cycleName = ministryId
-    ? schedules.data?.schedules.find(
-        (row) => row.ministry.id === ministryId && row.cycle.id === cycleId,
-      )?.cycle.name
+    ? schedule.data?.cycle.name
     : cycleDetailsQuery.data?.cycle.name;
 
   if (cycleId === undefined || !cycleName) {

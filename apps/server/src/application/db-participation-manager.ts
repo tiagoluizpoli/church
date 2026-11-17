@@ -33,6 +33,7 @@ import type {
   GetCycleBuilderDataInput,
   GetCycleParticipationInput,
   GetParticipationCompletionInput,
+  GetScheduleInput,
   IParticipationManager,
   ListEligibleVolunteersInput,
   ListScheduleSummariesInput,
@@ -47,6 +48,9 @@ import type {
   PublishCycleView,
   SavePreparationInput,
   SaveUsualSetupBlockInput,
+  ScheduleListPage,
+  ScheduleListPeriod,
+  ScheduleStageCounts,
   ScheduleSummaryView,
   ScheduleView,
   SendScheduleUpdatesView,
@@ -62,9 +66,12 @@ import type { EventTemplateRepository } from '../domain/contracts/infrastructure
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type {
+  ListSchedulesFactsInput,
   MinistryParticipationRepository,
+  ScheduleCheckCountRow,
   ScheduleCountRow,
   ScheduleLastToldRow,
+  ScheduleListRow,
 } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
@@ -77,14 +84,13 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
-import type { Cycle } from '../domain/entities/cycle';
+import type { Cycle, CycleState } from '../domain/entities/cycle';
 import type { Event, EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { EventTemplate } from '../domain/entities/event-template';
 import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import type { MinistryAccessLevel } from '../domain/entities/ministry-membership';
 import {
   calculateCompletionPercent,
-  deriveScheduleStage,
   type MinistryParticipation,
 } from '../domain/entities/ministry-participation';
 import type { Shift } from '../domain/entities/shift';
@@ -115,6 +121,10 @@ import {
 import { ShiftHasResponsesError } from '../domain/errors/shift-has-responses';
 import { scheduleChanges } from '../domain/schedule-changes';
 import type { ScheduleAssignmentSnapshot } from '../domain/schedule-last-told';
+import {
+  decodeScheduleListCursor,
+  encodeScheduleListCursor,
+} from '../domain/schedule-list-cursor';
 import {
   type AppliedProposalAddition,
   findStaleAdditions,
@@ -419,6 +429,27 @@ interface ScheduleKeyInput {
 
 function scheduleKey({ ministryId, cycleId }: ScheduleKeyInput): string {
   return `${ministryId}:${cycleId}`;
+}
+
+const SCHEDULE_LIST_PERIOD_CYCLE_STATES: Record<
+  ScheduleListPeriod,
+  CycleState[]
+> = {
+  current: ['sent'],
+  past: ['past'],
+  all: ['sent', 'past'],
+};
+
+interface ScheduleListFacts {
+  checkCountsBySchedule: Map<string, ScheduleCheckCountRow>;
+  lateMarksBySchedule: Map<string, number>;
+  swapCountBySchedule: Map<string, number>;
+  gapCountBySchedule: Map<string, number>;
+}
+
+interface ToScheduleViewInput extends ScheduleListRow {
+  churchId: ChurchId;
+  facts: ScheduleListFacts;
 }
 
 interface LoadProposalFactsInput {
@@ -2101,89 +2132,137 @@ export class DbParticipationManager implements IParticipationManager {
 
   async listSchedules({
     churchId,
-    ministryIds: scopedMinistryIds,
-  }: ListSchedulesInput): Promise<ScheduleView[]> {
-    const [ministries, cycles] = await Promise.all([
-      this.ministryRepository.listByChurch({
+    ministryIds,
+    filters: { period, ...filters },
+    cursor,
+    limit,
+  }: ListSchedulesInput): Promise<ScheduleListPage> {
+    const [ministries, stageCounts, page] = await Promise.all([
+      this.ministryRepository.listByChurch({ churchId, ids: ministryIds }),
+      this.participationRepository.countCurrentSchedulesByStage({
         churchId,
-        ids: scopedMinistryIds,
+        ministryIds,
       }),
-      this.cycleRepository.list({ churchId }),
+      this.participationRepository.listScheduleRows({
+        churchId,
+        ministryIds,
+        ...filters,
+        cycleStates: SCHEDULE_LIST_PERIOD_CYCLE_STATES[period],
+        after: cursor ? decodeScheduleListCursor({ cursor }) : undefined,
+        limit,
+      }),
     ]);
-    const sentCycles = cycles.filter((cycle) => cycle.state !== 'draft');
-    if (ministries.length === 0 || sentCycles.length === 0) return [];
-
-    const scope = {
-      churchId,
-      ministryIds: ministries.map((ministry) => ministry.id),
-      cycleIds: sentCycles.map((cycle) => cycle.id),
+    const counts: ScheduleStageCounts = {
+      // biome-ignore lint/style/useNamingConvention: stage names are the wire keys
+      to_prepare: 0,
+      asking: 0,
+      assigning: 0,
+      published: 0,
+      // biome-ignore lint/style/useNamingConvention: stage names are the wire keys
+      not_serving: 0,
     };
-    const [servingStates, checkCounts, lateMarkCounts, swapCounts, gapCounts] =
-      await Promise.all([
-        this.participationRepository.listScheduleServingStates(scope),
-        this.participationRepository.countScheduleChecks(scope),
-        this.participationRepository.countScheduleLateMarks(scope),
-        this.participationRepository.countScheduleOpenSwapRequests(scope),
-        this.participationRepository.countScheduleGaps(scope),
-      ]);
+    for (const { stage, count } of stageCounts) counts[stage] = count;
+
+    // Only the page's rows pay for their facts and the per-Schedule change count.
+    const facts = await this.loadScheduleListFacts({
+      churchId,
+      ministryIds: page.rows.map(({ ministry }) => ministry.id),
+      cycleIds: page.rows.map(({ cycle }) => cycle.id),
+    });
+    const schedules = await Promise.all(
+      page.rows.map((row) => this.toScheduleView({ churchId, ...row, facts })),
+    );
+
+    return {
+      schedules,
+      nextCursor: page.next && encodeScheduleListCursor(page.next),
+      counts,
+      options: {
+        ministries: ministries.map(({ id, name }) => ({ id, name })),
+      },
+    };
+  }
+
+  async getSchedule({
+    churchId,
+    ministryIds,
+    ministryId,
+    cycleId,
+  }: GetScheduleInput): Promise<ScheduleView> {
+    const {
+      rows: [row],
+    } = await this.participationRepository.listScheduleRows({
+      churchId,
+      ministryIds,
+      ministryId,
+      cycleId,
+      cycleStates: ['sent', 'past'],
+      limit: 1,
+    });
+    if (!row) throw new NotFoundError('Schedule not found');
+    const facts = await this.loadScheduleListFacts({
+      churchId,
+      ministryIds: [ministryId],
+      cycleIds: [cycleId],
+    });
+    return this.toScheduleView({ churchId, ...row, facts });
+  }
+
+  private async toScheduleView({
+    churchId,
+    ministry,
+    cycle,
+    stage,
+    facts,
+  }: ToScheduleViewInput): Promise<ScheduleView> {
+    const key = scheduleKey({ ministryId: ministry.id, cycleId: cycle.id });
+    const affectedVolunteerCount = await this.unitOfWork.run((tx) =>
+      this.countScheduleChanges({
+        churchId,
+        ministryId: ministry.id,
+        cycleId: cycle.id,
+        tx,
+      }),
+    );
+    const view: ScheduleView = {
+      ministry,
+      cycle,
+      stage,
+      lateMarkCount: facts.lateMarksBySchedule.get(key) ?? 0,
+      openSwapRequestCount: facts.swapCountBySchedule.get(key) ?? 0,
+      gapCount: facts.gapCountBySchedule.get(key) ?? 0,
+      affectedVolunteerCount,
+    };
+    if (stage !== 'asking') return view;
+    const { confirmed = 0, asked = 0 } =
+      facts.checkCountsBySchedule.get(key) ?? {};
+    return { ...view, asking: { confirmed, asked } };
+  }
+
+  private async loadScheduleListFacts(
+    scope: ListSchedulesFactsInput,
+  ): Promise<ScheduleListFacts> {
+    const hasScope = scope.ministryIds.length > 0 && scope.cycleIds.length > 0;
+    const [checkCounts, lateMarkCounts, swapCounts, gapCounts] = hasScope
+      ? await Promise.all([
+          this.participationRepository.countScheduleChecks(scope),
+          this.participationRepository.countScheduleLateMarks(scope),
+          this.participationRepository.countScheduleOpenSwapRequests(scope),
+          this.participationRepository.countScheduleGaps(scope),
+        ])
+      : [[], [], [], []];
     const countEntry = (row: ScheduleCountRow): [string, number] => [
       scheduleKey(row),
       row.count,
     ];
-    const swapCountBySchedule = new Map(swapCounts.map(countEntry));
-    const gapCountBySchedule = new Map(gapCounts.map(countEntry));
-    const lateMarksBySchedule = new Map(lateMarkCounts.map(countEntry));
-    const statesBySchedule = Map.groupBy(servingStates, scheduleKey);
-    const countsBySchedule = new Map(
-      checkCounts.map((row) => [scheduleKey(row), row]),
-    );
-
-    return Promise.all(
-      sentCycles.flatMap((cycle) =>
-        ministries.map(async (ministry) => {
-          const key = scheduleKey({
-            ministryId: ministry.id,
-            cycleId: cycle.id,
-          });
-          const rows = statesBySchedule.get(key) ?? [];
-          const stage = deriveScheduleStage({
-            servingStates: rows.map((row) => row.state),
-          });
-          const lateMarkCount = lateMarksBySchedule.get(key) ?? 0;
-          const openSwapRequestCount = swapCountBySchedule.get(key) ?? 0;
-          const gapCount = gapCountBySchedule.get(key) ?? 0;
-          const affectedVolunteerCount = await this.unitOfWork.run((tx) =>
-            this.countScheduleChanges({
-              churchId,
-              ministryId: ministry.id,
-              cycleId: cycle.id,
-              tx,
-            }),
-          );
-          if (stage !== 'asking')
-            return {
-              ministry,
-              cycle,
-              stage,
-              lateMarkCount,
-              openSwapRequestCount,
-              gapCount,
-              affectedVolunteerCount,
-            };
-          const { confirmed = 0, asked = 0 } = countsBySchedule.get(key) ?? {};
-          return {
-            ministry,
-            cycle,
-            stage,
-            lateMarkCount,
-            openSwapRequestCount,
-            gapCount,
-            affectedVolunteerCount,
-            asking: { confirmed, asked },
-          };
-        }),
+    return {
+      checkCountsBySchedule: new Map(
+        checkCounts.map((row) => [scheduleKey(row), row]),
       ),
-    );
+      lateMarksBySchedule: new Map(lateMarkCounts.map(countEntry)),
+      swapCountBySchedule: new Map(swapCounts.map(countEntry)),
+      gapCountBySchedule: new Map(gapCounts.map(countEntry)),
+    };
   }
 
   private async getOrCreateParticipation(

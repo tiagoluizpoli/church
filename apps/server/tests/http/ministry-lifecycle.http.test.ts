@@ -72,6 +72,7 @@ beforeAll(async () => {
   // Real manager, repositories and AuthorityService; only the session and
   // Active Church selection are seams.
   const controller = new MinistryController({
+    config: appConfig,
     ministryManager: new DbMinistryManager({
       ministryRepo,
       volunteerRepo: new DrizzleVolunteerRepository({ db }),

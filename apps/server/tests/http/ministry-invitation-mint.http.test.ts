@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import {
   invitation as churchInvitation,
   ministry,
@@ -73,6 +74,7 @@ beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
   // Real managers, repositories and AuthorityService; only session and Active Church are seams.
   const controller = new MinistryController({
+    config: appConfig,
     ministryManager: {} as never,
     ministryInvitationManager: harness.manager,
     activeChurchResolver: activeChurchResolver as never,

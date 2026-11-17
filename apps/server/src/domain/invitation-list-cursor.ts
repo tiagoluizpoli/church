@@ -3,6 +3,7 @@ import {
   INVITATION_LIST_KIND_OPTIONS,
   type InvitationListKind,
 } from './entities/invitation-list-item';
+import { decodeListCursor, encodeListCursor } from './list-cursor';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Church Invitation ids are Better Auth strings, not UUIDs.
@@ -20,9 +21,10 @@ export function encodeInvitationListCursor({
   kind,
   id,
 }: InvitationListCursorPosition): string {
-  return Buffer.from(`${fromDate({ date: createdAt })}|${kind}|${id}`).toString(
-    'base64url',
-  );
+  return encodeListCursor({
+    owner: 'invitations',
+    fields: [fromDate({ date: createdAt }), kind, id],
+  });
 }
 
 export interface DecodeInvitationListCursorInput {
@@ -33,10 +35,9 @@ export interface DecodeInvitationListCursorInput {
 export function decodeInvitationListCursor({
   cursor,
 }: DecodeInvitationListCursorInput): InvitationListCursorPosition | undefined {
-  const [instant, kind, id, ...rest] = Buffer.from(cursor, 'base64url')
-    .toString()
-    .split('|');
-  if (rest.length > 0 || !instant || !kind || !id) return undefined;
+  const [instant, kind, id] =
+    decodeListCursor({ owner: 'invitations', cursor, size: 3 }) ?? [];
+  if (!instant || !kind || !id) return undefined;
   if (!INVITATION_LIST_KIND_OPTIONS.includes(kind as InvitationListKind)) {
     return undefined;
   }

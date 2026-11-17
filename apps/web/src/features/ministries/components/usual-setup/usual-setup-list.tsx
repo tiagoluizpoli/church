@@ -7,6 +7,7 @@ import {
   formatWeekday,
   type UsualSetupBlock,
 } from './usual-setup.utils';
+import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -144,13 +145,19 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
             const { block } = item;
             if (column.id === 'name') {
               return (
-                <span className="space-y-0.5 pl-8">
-                  <span className="block">{block.label}</span>
+                <span className="flex items-center gap-2 pl-8">
+                  {block.label}
                   {block.needsReview ? (
-                    <span className="block text-amber-700 text-xs dark:text-amber-500">
-                      <strong>{m.usual_setup_needs_review()}</strong>{' '}
-                      {m.usual_setup_review_fallback()}
-                    </span>
+                    <Badge
+                      variant="outline"
+                      className="border-amber-600/40 text-amber-700 dark:text-amber-500"
+                    >
+                      {m.usual_setup_needs_review()}
+                      <span className="sr-only">
+                        {' '}
+                        {m.usual_setup_review_fallback()}
+                      </span>
+                    </Badge>
                   ) : null}
                 </span>
               );

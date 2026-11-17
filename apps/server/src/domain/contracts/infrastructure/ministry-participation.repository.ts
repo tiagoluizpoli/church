@@ -8,12 +8,16 @@ import type {
   MinistryParticipationId,
   VolunteerId,
 } from '../../branded-ids';
+import type { Cycle, CycleState } from '../../entities/cycle';
+import type { Ministry } from '../../entities/ministry';
 import type {
   MinistryParticipation,
   ParticipationState,
+  ScheduleStage,
 } from '../../entities/ministry-participation';
 import type { ParticipationEventTimeBlockInclusion } from '../../entities/participation-event-time-block-inclusion';
 import type { ScheduleAssignmentSnapshot } from '../../schedule-last-told';
+import type { ScheduleListPosition } from '../../schedule-list-cursor';
 import type { TransactionContext } from './transaction-context';
 
 export interface GetParticipationInput {
@@ -136,6 +140,52 @@ export interface ScheduleSummaryRow {
   availabilityRequestedForAny: boolean;
 }
 
+export interface ListScheduleRowsInput {
+  churchId: ChurchId;
+  /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
+  ministryIds?: MinistryId[];
+  ministryId?: MinistryId;
+  cycleId?: CycleId;
+  cycleStates: CycleState[];
+  /** Case-insensitive substring of the Ministry name or the Cycle name. */
+  search?: string;
+  stage?: ScheduleStage;
+  /** Only current Schedules that wait on the leader: unfinished, or Published with an open Swap request. */
+  attention?: boolean;
+  /** Only rows after this position in the list order. */
+  after?: ScheduleListPosition;
+  limit: number;
+  tx?: TransactionContext;
+}
+
+/** One active Ministry paired with one Cycle: a Schedule before its facts are read. */
+export interface ScheduleCandidateRow {
+  ministry: Ministry;
+  cycle: Cycle;
+}
+
+export interface ScheduleListRow extends ScheduleCandidateRow {
+  stage: ScheduleStage;
+}
+
+export interface ScheduleRowsPage {
+  rows: ScheduleListRow[];
+  /** Position of the last row, set only when more rows follow it. */
+  next?: ScheduleListPosition;
+}
+
+export interface CountSchedulesByStageInput {
+  churchId: ChurchId;
+  /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
+  ministryIds?: MinistryId[];
+  tx?: TransactionContext;
+}
+
+export interface ScheduleStageCountRow {
+  stage: ScheduleStage;
+  count: number;
+}
+
 export interface ListSchedulesFactsInput {
   churchId: ChurchId;
   ministryIds: MinistryId[];
@@ -232,6 +282,15 @@ export interface MinistryParticipationRepository {
   listScheduleSummaries(
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryRow[]>;
+  /**
+   * Active Ministry × Cycle pairs in scope with their stage, filtered and paged in the list order:
+   * current Schedules by stage, then Past ones; newest Cycle first, then Ministry name and id.
+   */
+  listScheduleRows(input: ListScheduleRowsInput): Promise<ScheduleRowsPage>;
+  /** Every active Ministry × Sent Cycle pair in scope, per stage; stages with none are left out. */
+  countCurrentSchedulesByStage(
+    input: CountSchedulesByStageInput,
+  ): Promise<ScheduleStageCountRow[]>;
   /** Leaves out opted-out MinistryParticipations and cancelled Events. */
   listScheduleServingStates(
     input: ListSchedulesFactsInput,

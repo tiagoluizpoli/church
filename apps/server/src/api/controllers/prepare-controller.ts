@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import { parseInstant } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -19,6 +20,7 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { pageLimitSchema } from '../dtos/page-limit.dto';
 import {
   answersResponseSchema,
   askBlockedFlaggedShiftsResponseSchema,
@@ -36,7 +38,10 @@ import {
   remindScheduleResponseSchema,
   type SavePreparationBody,
   savePreparationBodySchema,
+  scheduleListQuerystringSchema,
   scheduleListResponseSchema,
+  scheduleResponseSchema,
+  scheduleRouteParamsSchema,
   scheduleSummaryListResponseSchema,
   setAvailabilityDeadlineBodySchema,
   shiftHasResponsesResponseSchema,
@@ -92,7 +97,16 @@ interface PrepareControllerDependencies {
   availabilityCheckManager: IAvailabilityCheckManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
+  config: AppConfig;
 }
+
+/** The page size the route's own schema bounds by the configured maximum. */
+interface ListLimitQuery {
+  limit: number;
+}
+
+type ScheduleListQuery = z.infer<typeof scheduleListQuerystringSchema> &
+  ListLimitQuery;
 
 export class PrepareController implements FastifyController {
   readonly prefix = '/prepare';
@@ -101,13 +115,18 @@ export class PrepareController implements FastifyController {
   private readonly availabilityCheckManager: IAvailabilityCheckManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly authorityGuard: AuthorityGuard;
+  private readonly schedulePageSize: number;
+  private readonly scheduleMaxPageSize: number;
 
   constructor({
     participationManager,
     availabilityCheckManager,
     activeChurchResolver,
     authorityGuard,
+    config,
   }: PrepareControllerDependencies) {
+    this.schedulePageSize = config.schedules.pageSize;
+    this.scheduleMaxPageSize = config.schedules.maxPageSize;
     this.participationManager = participationManager;
     this.availabilityCheckManager = availabilityCheckManager;
     this.activeChurchResolver = activeChurchResolver;
@@ -132,7 +151,12 @@ export class PrepareController implements FastifyController {
           operationId: 'listSchedules',
           summary: "List the caller's Schedules",
           description:
-            'List one row per Ministry and Sent or Past Cycle with its derived stage: every active Ministry for a ChurchAdmin, the led ones for a leader.',
+            "List one row per Ministry and Cycle with its derived stage: every active Ministry for a ChurchAdmin, the led ones for a leader. `period` picks Sent Cycles (`current`, the default), Past Cycles or both. Ministry, stage, search (Ministry or Cycle name) and `attention` (current Schedules that wait on the leader: not serving excluded, Published only with an open Swap request) filters combine before pagination. Current Schedules come first by stage (to prepare, asking, assigning, published, not serving), then Past ones; within each, newest Cycle first, then Ministry name. `counts` covers the caller's current Schedules per stage: it ignores the filters and the cursor, so every page repeats the same values.",
+          querystring: scheduleListQuerystringSchema.extend({
+            limit: pageLimitSchema({
+              maxPageSize: this.scheduleMaxPageSize,
+            }).default(this.schedulePageSize),
+          }),
           response: {
             200: scheduleListResponseSchema,
             401: errorResponseSchema,
@@ -152,15 +176,65 @@ export class PrepareController implements FastifyController {
           return;
         }
 
-        const schedules = await this.participationManager.listSchedules({
+        const { cursor, limit, ministryId, ...filters } =
+          request.query as ScheduleListQuery;
+        const page = await this.participationManager.listSchedules({
           churchId,
           ministryIds: isChurchAdmin
             ? undefined
             : ledMinistries.map(({ ministryId }) => ministryId),
+          filters: {
+            ...filters,
+            ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
+          },
+          cursor,
+          limit,
         });
-        return reply.send(
-          participationMapper.scheduleListToResponse(schedules),
-        );
+        return reply.send(participationMapper.scheduleListToResponse(page));
+      },
+    );
+
+    app.get(
+      '/schedules/:ministryId/:cycleId',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'getSchedule',
+          summary: "Get one of the caller's Schedules",
+          description:
+            "Read one Ministry's Schedule of one Sent or Past Cycle, shaped as a `listSchedules` row. 404 when the Ministry is archived or outside the caller's led Ministries (a ChurchAdmin reaches every active one), the Cycle is a Draft, or either is unknown.",
+          params: scheduleRouteParamsSchema,
+          response: {
+            200: scheduleResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const { isChurchAdmin, ledMinistries } =
+          await this.authorityGuard.resolveCallerCapabilities({
+            churchId,
+            userId: UserId.from(request.userId),
+          });
+        if (!isChurchAdmin && ledMinistries.length === 0) {
+          refuse({ reply, request, code: 'FORBIDDEN' });
+          return;
+        }
+        const { ministryId, cycleId } = request.params as z.infer<
+          typeof scheduleRouteParamsSchema
+        >;
+        const schedule = await this.participationManager.getSchedule({
+          churchId,
+          ministryIds: isChurchAdmin
+            ? undefined
+            : ledMinistries.map(({ ministryId }) => ministryId),
+          ministryId: MinistryId.from(ministryId),
+          cycleId: CycleId.from(cycleId),
+        });
+        return reply.send(participationMapper.scheduleToResponse(schedule));
       },
     );
 

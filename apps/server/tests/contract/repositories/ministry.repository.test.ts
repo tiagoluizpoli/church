@@ -7,6 +7,7 @@ import type {
   GetMinistrySettingsInput,
   ListMinistriesByChurchInput,
   LockActiveMinistryInput,
+  MinistryPageRecord,
   MinistryRepository,
   ParticipationCycle,
   RenameMinistryRecordInput,
@@ -60,6 +61,10 @@ class MockMinistryRepository implements MinistryRepository {
       (m) => m.churchId === churchId,
     );
     return list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async listPage(): Promise<MinistryPageRecord> {
+    throw new Error('listPage is not part of this contract spec');
   }
 
   async create({

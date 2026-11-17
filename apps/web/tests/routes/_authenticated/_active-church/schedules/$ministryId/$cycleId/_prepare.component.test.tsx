@@ -15,6 +15,7 @@ import {
 import { activeChurchApiMock } from '@/tests/setup/active-church';
 import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
 import { pickCalendarDate } from '@/tests/setup/date-picker';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const api = vi.hoisted(() => ({
@@ -332,9 +333,11 @@ it('shows translated loading feedback until the prepare read resolves', async ()
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
-  expect(
-    await screen.findByRole('status', { name: m.schedules_loading() }),
-  ).toBeVisible();
+  expect(await screen.findByTestId('prepare-loading')).toHaveAttribute(
+    'aria-busy',
+    'true',
+  );
+  expect(await screen.findByText(m.schedules_loading())).toBeInTheDocument();
   expect(screen.queryByText(m.prepare_empty())).not.toBeInTheDocument();
   await act(async () => resolveRead({ events: [EVENT] }));
   expect(
@@ -342,6 +345,24 @@ it('shows translated loading feedback until the prepare read resolves', async ()
       `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
     ),
   ).toBeVisible();
+});
+
+it('keeps the prepare rows on screen while a refetch is in flight', async () => {
+  api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+  const { queryClient } = renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const rowId = `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`;
+  expect(await screen.findByTestId(rowId)).toBeVisible();
+
+  await startHangingRefetch({
+    queryClient,
+    read: api.getCycleParticipation,
+  });
+
+  expect(screen.getByTestId(rowId)).toBeVisible();
+  expect(screen.queryByTestId('prepare-loading')).not.toBeInTheDocument();
 });
 
 it.each([
@@ -365,7 +386,7 @@ it.each([
       initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}#event-time-block-${BLOCK.eventTimeBlock.id}`,
       churchTimezone: 'America/Sao_Paulo',
     });
-    await screen.findByRole('status', { name: m.schedules_loading() });
+    await screen.findByTestId('prepare-loading');
     await waitFor(() => expect(router.state.status).toBe('idle'));
     await waitFor(() =>
       expect(lookup).toHaveBeenCalledWith(
@@ -693,6 +714,24 @@ it('shows the authoritative flagged-block refusal inside the dialog when another
   expect(
     within(dialog).getByRole('button', { name: m.prepare_ask() }),
   ).toBeDisabled();
+});
+
+it('keeps the Ask control on screen, disabled, while the preview refetches', async () => {
+  const { queryClient } = renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  const ask = await screen.findByRole('button', { name: m.prepare_ask() });
+  await waitFor(() => expect(ask).toBeEnabled());
+
+  await startHangingRefetch({ queryClient, read: api.getAskPreview });
+
+  expect(screen.getByRole('button', { name: m.prepare_ask() })).toBeDisabled();
+  expect(
+    screen.getByRole('status', { name: m.prepare_ask_loading() }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('prepare-loading')).not.toBeInTheDocument();
 });
 
 it('keeps Ask disabled while the preview loads, then retries a failed preview', async () => {

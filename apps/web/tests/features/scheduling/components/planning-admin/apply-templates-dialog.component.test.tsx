@@ -6,6 +6,7 @@ import { AxiosError } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApplyTemplatesDialog } from '@/features/scheduling/components/planning-admin/apply-templates-dialog';
 import { TEMPLATE_LIST_QUERY_KEY } from '@/features/scheduling/components/planning-admin/template-query-keys';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const listEventTemplates = vi.fn();
@@ -295,5 +296,30 @@ describe('ApplyTemplatesDialog', () => {
     const [sunday, stillMidweek] = await checkboxes();
     expect(sunday).toBeChecked();
     expect(stillMidweek).not.toBeChecked();
+  });
+});
+
+describe('ApplyTemplatesDialog loading', () => {
+  it('shows a busy skeleton while templates load', async () => {
+    listEventTemplates.mockReturnValue(new Promise(() => undefined));
+    renderDialog();
+    const loading = await screen.findByTestId('apply-templates-loading');
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+  });
+
+  it('keeps the templates on screen while a refetch is in flight', async () => {
+    const { client } = renderDialog();
+    expect(await checkboxes()).toHaveLength(2);
+
+    await startHangingRefetch({
+      queryClient: client,
+      read: listEventTemplates,
+    });
+
+    expect(screen.getAllByTestId('template-select-checkbox')).toHaveLength(2);
+    expect(screen.queryByTestId('apply-templates-loading')).toBeNull();
   });
 });

@@ -18,6 +18,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface SelectCycleInput {
@@ -168,7 +170,10 @@ export function CycleListCard({
           </p>
         ) : null}
         {cyclesLoading ? (
-          <p className="text-muted-foreground text-sm">{m.cycles_loading()}</p>
+          <Pending data-testid="cycles-loading" className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </Pending>
         ) : cyclesError ? (
           <RetryAlert
             message={m.cycles_load_failed()}

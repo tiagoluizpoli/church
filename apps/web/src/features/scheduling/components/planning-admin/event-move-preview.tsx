@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-builder';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
@@ -251,6 +252,7 @@ export function EventMovePreview({
                   preview.mutate(target);
                 }}
               >
+                {preview.isPending ? <Spinner /> : null}
                 {preview.isPending
                   ? m.event_move_preview_running()
                   : m.event_move_preview_run()}
@@ -262,6 +264,7 @@ export function EventMovePreview({
                 disabled={move.isPending}
                 onClick={() => move.mutate(target)}
               >
+                {move.isPending ? <Spinner /> : null}
                 {move.isPending
                   ? m.event_move_confirming()
                   : m.event_move_confirm()}

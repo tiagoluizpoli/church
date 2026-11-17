@@ -9,6 +9,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { ShellErrorFallback } from '@/shared/components/route-fallbacks';
 
 import '../index.css';
 
@@ -18,6 +19,7 @@ export interface RouterAppContext {
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootComponent,
+  errorComponent: ShellErrorFallback,
   head: () => ({
     meta: [
       {

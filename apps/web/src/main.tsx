@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom/client';
 import Loader from './components/loader';
 import { initLocale } from './locale-init';
 import { routeTree } from './routeTree.gen';
+import { routeFallbackOptions } from './shared/components/route-fallbacks';
 import { queryClient } from './utils/api';
 
 // Must run before the router is created so ?lang= never reaches route search schemas.
@@ -18,6 +19,7 @@ const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   defaultPendingComponent: () => <Loader />,
+  ...routeFallbackOptions,
   context: { queryClient },
   Wrap: function WrapComponent({ children }: WrapComponentProps) {
     return (

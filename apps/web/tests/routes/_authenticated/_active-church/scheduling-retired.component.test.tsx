@@ -38,7 +38,9 @@ describe('/scheduling retired', () => {
   it('shows not-found with no redirect', async () => {
     renderRoute({ initialPath: '/scheduling', churchTimezone: 'UTC' });
 
-    expect(await screen.findByText('Not Found')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: m.shell_not_found_title() }),
+    ).toBeVisible();
   });
 
   it('redirects a planning-admin refusal to "/"', async () => {

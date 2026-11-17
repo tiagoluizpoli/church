@@ -212,12 +212,30 @@ export function PendingChecksWidget(props: HomeSectionProps) {
                 className={buttonVariants({ size: 'touch' })}
               >
                 {m.home_answer_availability()}
+                <span className="sr-only">
+                  {' '}
+                  · {check.ministryName} · {check.cycleName}
+                </span>
               </Link>
             </li>
           ))}
         </ul>
       )}
     </HomeWidget>
+  );
+}
+
+/** Next assignment and open checks share a row on desktop; either takes the full row when the other renders nothing. */
+export function ServingActionsWidget(props: HomeSectionProps) {
+  return (
+    <div className="flex flex-col gap-4 md:flex-row">
+      <div className="min-w-0 flex-1 empty:hidden">
+        <NextAssignmentWidget {...props} />
+      </div>
+      <div className="min-w-0 flex-1 empty:hidden">
+        <PendingChecksWidget {...props} />
+      </div>
+    </div>
   );
 }
 
@@ -260,6 +278,11 @@ export function UpcomingAssignmentsWidget(props: HomeSectionProps) {
                 timeZone,
               })}{' '}
               · {assignment.sectorName} · {assignment.roleName}
+              {assignment.status === 'declined' ? (
+                <Badge variant="outline" className="ml-2">
+                  {m.home_assignment_declined()}
+                </Badge>
+              ) : null}
             </Link>
           </li>
         ))}

@@ -22,6 +22,7 @@ import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   createCycleBodySchema,
+  cycleAnchorsResponseSchema,
   cycleDetailsResponseSchema,
   cycleListResponseSchema,
   cycleMapper,
@@ -249,6 +250,26 @@ export class ChurchAdminController implements FastifyController {
           state: query.state,
         });
         return reply.send(cycleMapper.listToResponse(cycles));
+      },
+    );
+
+    app.get(
+      '/cycles/anchors',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'getCycleAnchors',
+          summary: 'Get the current and next Cycle',
+          description:
+            "The Cycle running on the Church's today (neither Draft nor Past) and the earliest Cycle starting after today that is not Past (Drafts included); either is null. Ties break on start date, then id.",
+          response: { 200: cycleAnchorsResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const anchors = await this.cycleManager.getCycleAnchors({
+          churchId: ChurchId.from(request.churchId),
+        });
+        return reply.send(cycleMapper.anchorsToResponse(anchors));
       },
     );
 

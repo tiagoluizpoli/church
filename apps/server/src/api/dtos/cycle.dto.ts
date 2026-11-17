@@ -1,7 +1,7 @@
 import { calendarDaySchema, fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { CycleDetails } from '../../domain/contracts/application/cycle-manager';
-import type { Cycle } from '../../domain/entities/cycle';
+import type { Cycle, CycleAnchors } from '../../domain/entities/cycle';
 import {
   eventGraphMapper,
   eventGraphResponseSchema,
@@ -101,6 +101,12 @@ export const cycleListResponseSchema = z.object({
   cycles: z.array(cycleResponseSchema),
 });
 
+/** Home's anchors: the running Sent Cycle and the earliest upcoming one, either absent. */
+export const cycleAnchorsResponseSchema = z.object({
+  current: cycleResponseSchema.nullable(),
+  next: cycleResponseSchema.nullable(),
+});
+
 export const cycleDetailsResponseSchema = z.object({
   cycle: cycleResponseSchema,
   events: z.array(eventGraphResponseSchema),
@@ -125,6 +131,12 @@ export const cycleMapper = {
   toResponse: toCycleResponse,
   listToResponse(cycles: Cycle[]) {
     return { cycles: cycles.map(toCycleResponse) };
+  },
+  anchorsToResponse({ current, next }: CycleAnchors) {
+    return {
+      current: current ? toCycleResponse(current) : null,
+      next: next ? toCycleResponse(next) : null,
+    };
   },
   detailsToResponse(details: CycleDetails) {
     return {

@@ -111,6 +111,37 @@ function inCancelledScope({
   return event.status === 'cancelled' || blockCancelled;
 }
 
+interface CompareTextInput {
+  left: string;
+  right: string;
+}
+
+/** Byte-order text comparison, so tie-breaks don't depend on the runtime locale. */
+function compareText({ left, right }: CompareTextInput): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+interface CapUpcomingAssignmentsInput {
+  groups: DashboardAssignmentGroup[];
+  limit: number;
+}
+
+/** The first `limit` assignments in group order, dropping groups left empty. */
+function capUpcomingAssignments({
+  groups,
+  limit,
+}: CapUpcomingAssignmentsInput): DashboardAssignmentGroup[] {
+  const capped: DashboardAssignmentGroup[] = [];
+  let remaining = limit;
+  for (const group of groups) {
+    if (remaining <= 0) break;
+    const assignments = group.assignments.slice(0, remaining);
+    remaining -= assignments.length;
+    capped.push({ ...group, assignments });
+  }
+  return capped;
+}
+
 function isPublishedStatus(
   status: AssignmentStatus,
 ): status is 'pending' | 'confirmed' | 'declined' {
@@ -229,6 +260,7 @@ export class DbVolunteerManager implements IVolunteerManager {
   private readonly unitOfWork: UnitOfWork;
 
   private readonly cancelLeadTimeDays: number;
+  private readonly upcomingLimit: number;
 
   constructor({
     volunteerRepo,
@@ -265,6 +297,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     this.unitOfWork = unitOfWork;
     const { assignment } = config;
     this.cancelLeadTimeDays = assignment.cancelLeadTimeDays;
+    this.upcomingLimit = config.volunteerDashboard.upcomingLimit;
   }
 
   async getDashboard(input: GetDashboardInput): Promise<VolunteerDashboard> {
@@ -368,6 +401,10 @@ export class DbVolunteerManager implements IVolunteerManager {
       const ministry = ministryById.get(participation.ministryId as string);
       if (!event || !ministry) continue;
 
+      // The inner join to sector guarantees a name for every found requirement.
+      const requirement = requirementsById.get(assignment.shiftRequirementId);
+      if (!requirement) continue;
+
       const role = await this.roleRepo.getById({
         churchId,
         id: assignment.roleId,
@@ -384,8 +421,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         participationId: participation.id as string,
         roleId: assignment.roleId as string,
         roleName: role.name,
-        sectorName:
-          requirementsById.get(assignment.shiftRequirementId)?.sectorName ?? '',
+        sectorName: requirement.sectorName,
         startTime: shift.startTime,
         endTime: shift.endTime,
         status: assignment.status,
@@ -409,15 +445,16 @@ export class DbVolunteerManager implements IVolunteerManager {
       }
     }
 
-    const upcomingAssignmentGroups: DashboardAssignmentGroup[] = Array.from(
+    const allUpcomingGroups: DashboardAssignmentGroup[] = Array.from(
       groupMap.values(),
     )
       .map((group) => {
-        const sorted = [...group.items].sort((a, b) =>
-          compareInstants({
-            left: a.startTime as Instant,
-            right: b.startTime as Instant,
-          }),
+        const sorted = [...group.items].sort(
+          (a, b) =>
+            compareInstants({
+              left: a.startTime as Instant,
+              right: b.startTime as Instant,
+            }) || compareText({ left: a.assignmentId, right: b.assignmentId }),
         );
         return {
           eventId: group.eventId,
@@ -430,18 +467,24 @@ export class DbVolunteerManager implements IVolunteerManager {
           assignments: sorted,
         };
       })
-      .sort((a, b) =>
-        compareInstants({
-          left: a.eventStart as Instant,
-          right: b.eventStart as Instant,
-        }),
+      // Total order: one Event yields a group per Ministry with an equal start.
+      .sort(
+        (a, b) =>
+          compareInstants({
+            left: a.eventStart as Instant,
+            right: b.eventStart as Instant,
+          }) ||
+          compareText({ left: a.ministryName, right: b.ministryName }) ||
+          compareText({ left: a.ministryId, right: b.ministryId }),
       );
 
-    const nextAssignment = upcomingAssignmentGroups.reduce<
+    // Chosen over every upcoming assignment, before the list is capped; a declined shift is never next.
+    const nextAssignment = allUpcomingGroups.reduce<
       VolunteerDashboard['nextAssignment']
     >((previous, group) => {
       let next = previous;
       for (const assignment of group.assignments) {
+        if (assignment.status === 'declined') continue;
         const order = next
           ? compareInstants({
               left: assignment.startTime as Instant,
@@ -464,6 +507,11 @@ export class DbVolunteerManager implements IVolunteerManager {
       }
       return next;
     }, null);
+
+    const upcomingAssignmentGroups = capUpcomingAssignments({
+      groups: allUpcomingGroups,
+      limit: this.upcomingLimit,
+    });
 
     const [unreadNotificationCount, notificationPreviewResult] =
       await Promise.all([

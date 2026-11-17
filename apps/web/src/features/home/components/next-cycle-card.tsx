@@ -1,22 +1,15 @@
 import { m } from '@church/i18n/messages';
-import {
-  compareCalendarDays,
-  now,
-  parseCalendarDay,
-  today,
-} from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { HomeWidget } from '@/features/home/components/home-widget';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
-import type { ListCycles200CyclesItem } from '@/infrastructure/api/churchAPI.schemas';
-import { useTimezone } from '@/shared/hooks/use-timezone';
+import type { GetCycleAnchors200Current } from '@/infrastructure/api/churchAPI.schemas';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
 interface CycleContentProps {
-  cycle: ListCycles200CyclesItem | undefined;
+  cycle: GetCycleAnchors200Current | undefined;
   canPlan?: boolean;
 }
 
@@ -53,43 +46,16 @@ function CycleContent({ cycle, canPlan = false }: CycleContentProps) {
 }
 
 export function NextCycleCard({ churchId, userId }: HomeSectionProps) {
-  const { churchTimezone } = useTimezone();
   const query = useQuery({
     queryKey: homeSectionQueryKey({
       section: 'church',
       churchId,
       userId,
-      parts: ['cycles'],
+      parts: ['cycle-anchors'],
     }),
-    queryFn: () => adminApi.listCycles(),
+    queryFn: () => adminApi.getCycleAnchors(),
     staleTime: 60_000,
   });
-  const churchDay = today({ instant: now(), timeZone: churchTimezone });
-  const cycles = query.data?.cycles ?? [];
-  const current = cycles.find(
-    (cycle) =>
-      compareCalendarDays({
-        left: parseCalendarDay({ value: cycle.startDate }),
-        right: churchDay,
-      }) <= 0 &&
-      compareCalendarDays({
-        left: parseCalendarDay({ value: cycle.endDate }),
-        right: churchDay,
-      }) >= 0,
-  );
-  const next = cycles.reduce<ListCycles200CyclesItem | undefined>(
-    (nearest, cycle) => {
-      if (
-        compareCalendarDays({
-          left: parseCalendarDay({ value: cycle.startDate }),
-          right: churchDay,
-        }) <= 0
-      )
-        return nearest;
-      return !nearest || cycle.startDate < nearest.startDate ? cycle : nearest;
-    },
-    undefined,
-  );
   return (
     <HomeWidget
       title={m.home_cycles()}
@@ -106,11 +72,11 @@ export function NextCycleCard({ churchId, userId }: HomeSectionProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <h3 className="font-medium">{m.home_current_cycle()}</h3>
-          <CycleContent cycle={current} />
+          <CycleContent cycle={query.data?.current} />
         </div>
         <div>
           <h3 className="font-medium">{m.home_next_cycle_title()}</h3>
-          <CycleContent cycle={next} canPlan />
+          <CycleContent cycle={query.data?.next} canPlan />
         </div>
       </div>
     </HomeWidget>

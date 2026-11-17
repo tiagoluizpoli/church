@@ -35,7 +35,7 @@ vi.mock('@/components/ui/sonner', () => ({
 
 const adminApiMock = vi.hoisted(() => ({
   listSchedules: vi.fn(),
-  listCycles: vi.fn().mockResolvedValue({ cycles: [] }),
+  getCycleAnchors: vi.fn().mockResolvedValue({ current: null, next: null }),
   listMinistryDirectory: vi
     .fn()
     .mockResolvedValue({ counts: { review: 0, noSectors: 0 } }),

@@ -20,8 +20,7 @@ describe('Home widget registry', () => {
     expect(widgets({})).toEqual(['notifications']);
     expect(widgets({ serving: true })).toEqual([
       'notifications',
-      'next-assignment',
-      'pending-checks',
+      'serving-actions',
       'upcoming-assignments',
     ]);
     expect(widgets({ leadership: true })).toEqual([
@@ -38,12 +37,7 @@ describe('Home widget registry', () => {
       'leadership',
     ]);
     expect(
-      widgets({ church: true, leadership: true, serving: true }).slice(1, 5),
-    ).toEqual([
-      'next-assignment',
-      'pending-checks',
-      'upcoming-assignments',
-      'schedule-summary',
-    ]);
+      widgets({ church: true, leadership: true, serving: true }).slice(1, 4),
+    ).toEqual(['serving-actions', 'upcoming-assignments', 'schedule-summary']);
   });
 });

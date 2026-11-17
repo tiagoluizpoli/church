@@ -29,7 +29,7 @@ vi.mock('@/utils/api-instances', async () => ({
       schedules: [],
       counts: { ['to_prepare']: 2, asking: 3, assigning: 4, published: 5 },
     }),
-    listCycles: vi.fn().mockResolvedValue({ cycles: [] }),
+    getCycleAnchors: vi.fn().mockResolvedValue({ current: null, next: null }),
     listMinistryDirectory: vi
       .fn()
       .mockResolvedValue({ counts: { review: 3, noSectors: 1 } }),

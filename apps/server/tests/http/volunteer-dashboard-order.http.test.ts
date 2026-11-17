@@ -280,3 +280,289 @@ describe('volunteer dashboard next assignment', () => {
     expect(response.json().nextAssignment).toBeNull();
   });
 });
+
+interface ArrangedItem {
+  id: string;
+  eventId: string;
+  start: string;
+  status: 'pending' | 'confirmed' | 'declined';
+  ministry?: string;
+}
+
+interface ArrangeInput {
+  events: { id: string; title: string; start: string }[];
+  items: ArrangedItem[];
+}
+
+/** One participation, shift and requirement per item, each ending two hours after its start. */
+function arrange({ events, items }: ArrangeInput) {
+  setTestClock({ instant: instant('2026-08-01T00:00:00Z') });
+  session.mockResolvedValue({
+    user: { id: userId },
+    session: { activeOrganizationId: null },
+  } as never);
+  const ministryIds = [
+    ...new Set(items.map((item) => item.ministry ?? 'Music')),
+  ];
+  const eventEntities = events.map(
+    (event) =>
+      new Event({
+        id: event.id,
+        props: {
+          churchId,
+          cycleId: 'cycle',
+          title: event.title,
+          start: instant(event.start),
+          end: instant('2026-08-09T23:00:00Z'),
+        },
+      }),
+  );
+  const participations = items.map(
+    (item) =>
+      new MinistryParticipation({
+        id: `p-${item.id}`,
+        props: {
+          churchId,
+          ministryId: MinistryId.from(item.ministry ?? 'Music'),
+          eventId: item.eventId,
+          state: 'published',
+        },
+      }),
+  );
+  const shifts = items.map((item) => {
+    const start = instant(item.start);
+    return new Shift({
+      id: `s-${item.id}`,
+      props: {
+        churchId,
+        participationId: `p-${item.id}`,
+        eventTimeBlockId: `b-${item.id}`,
+        startTime: start,
+        endTime: instant(
+          new Date(Date.parse(start) + 2 * 3_600_000).toISOString(),
+        ),
+      },
+    });
+  });
+  volunteerRepo.listMemberMinistryIds.mockResolvedValue(
+    ministryIds.map((id) => MinistryId.from(id)),
+  );
+  ministryRepo.listByChurch.mockResolvedValue(
+    ministryIds.map(
+      (id) =>
+        new Ministry({
+          id: MinistryId.from(id),
+          props: { churchId, name: id },
+        }),
+    ),
+  );
+  assignmentRepo.listByVolunteer.mockResolvedValue(
+    items.map(
+      (item) =>
+        new Assignment({
+          id: item.id,
+          props: {
+            churchId,
+            volunteerId,
+            eventTimeBlockId: `b-${item.id}`,
+            participationId: `p-${item.id}`,
+            shiftId: `s-${item.id}`,
+            roleId: 'role',
+            shiftRequirementId: `r-${item.id}`,
+            status: item.status,
+          },
+        }),
+    ),
+  );
+  participationRepo.listByIds.mockResolvedValue(participations);
+  eventRepo.getById.mockImplementation(async ({ eventId }) => {
+    const event = eventEntities.find((entry) => entry.id === eventId);
+    if (!event) throw new Error('missing event');
+    return event;
+  });
+  eventRepo.getWithEventTimeBlocks.mockImplementation(async ({ eventId }) => {
+    const event = eventEntities.find((entry) => entry.id === eventId);
+    if (!event) throw new Error('missing event');
+    return { event, eventTimeBlocks: [] };
+  });
+  shiftRepo.getById.mockImplementation(async ({ shiftId }) => {
+    const shift = shifts.find((entry) => entry.id === shiftId);
+    if (!shift) throw new Error('missing shift');
+    return shift;
+  });
+  shiftRepo.listRequirementsByIds.mockResolvedValue(
+    items.map(
+      (item) =>
+        new ShiftRequirement({
+          id: `r-${item.id}`,
+          props: {
+            churchId,
+            eventTimeBlockId: `b-${item.id}`,
+            participationId: `p-${item.id}`,
+            shiftId: `s-${item.id}`,
+            roleId: 'role',
+            sectorId: 'sector',
+            sectorName: 'Stage',
+            peopleNeeded: 1,
+          },
+        }),
+    ),
+  );
+  roleRepo.getById.mockResolvedValue(
+    new Role({ id: 'role', props: { churchId, ministryId, name: 'Singer' } }),
+  );
+  notificationRepo.countUnread.mockResolvedValue(0);
+  notificationRepo.list.mockResolvedValue({ items: [] });
+}
+
+async function getDashboard() {
+  const response = await app.inject({
+    method: 'GET',
+    url: '/api/v1/volunteer/dashboard',
+  });
+  expect(response.statusCode, response.body).toBe(200);
+  return response.json() as {
+    nextAssignment: { assignmentId: string } | null;
+    upcomingAssignmentGroups: {
+      eventId: string;
+      ministryName: string;
+      assignments: { assignmentId: string; status: string }[];
+    }[];
+  };
+}
+
+const assignmentIds = (groups: { assignments: { assignmentId: string }[] }[]) =>
+  groups.flatMap((group) => group.assignments.map((a) => a.assignmentId));
+
+describe('volunteer dashboard declined shifts', () => {
+  const sunday = [{ id: 'e', title: 'Sunday', start: '2026-08-02T08:00:00Z' }];
+
+  it('never makes a declined shift next, but still lists it with its status', async () => {
+    arrange({
+      events: sunday,
+      items: [
+        {
+          id: 'a-declined',
+          eventId: 'e',
+          start: '2026-08-02T09:00:00Z',
+          status: 'declined',
+        },
+        {
+          id: 'a-confirmed',
+          eventId: 'e',
+          start: '2026-08-02T12:00:00Z',
+          status: 'confirmed',
+        },
+      ],
+    });
+    const dashboard = await getDashboard();
+    expect(dashboard.nextAssignment?.assignmentId).toBe('a-confirmed');
+    expect(
+      dashboard.upcomingAssignmentGroups.flatMap((group) =>
+        group.assignments.map(({ assignmentId, status }) => [
+          assignmentId,
+          status,
+        ]),
+      ),
+    ).toEqual([
+      ['a-declined', 'declined'],
+      ['a-confirmed', 'confirmed'],
+    ]);
+  });
+
+  it('returns no next assignment when every upcoming shift was declined', async () => {
+    arrange({
+      events: sunday,
+      items: [
+        {
+          id: 'a-1',
+          eventId: 'e',
+          start: '2026-08-02T09:00:00Z',
+          status: 'declined',
+        },
+        {
+          id: 'a-2',
+          eventId: 'e',
+          start: '2026-08-02T12:00:00Z',
+          status: 'declined',
+        },
+      ],
+    });
+    const dashboard = await getDashboard();
+    expect(dashboard.nextAssignment).toBeNull();
+    expect(assignmentIds(dashboard.upcomingAssignmentGroups)).toEqual([
+      'a-1',
+      'a-2',
+    ]);
+  });
+});
+
+describe('volunteer dashboard upcoming cap and order', () => {
+  it('caps upcoming assignments without changing which one is next', async () => {
+    const limit = appConfig.volunteerDashboard.upcomingLimit;
+    // The earlier-starting Event holds only later shifts, so it fills the cap.
+    arrange({
+      events: [
+        { id: 'long', title: 'Retreat', start: '2026-08-02T08:00:00Z' },
+        { id: 'short', title: 'Prayer', start: '2026-08-02T09:00:00Z' },
+      ],
+      items: [
+        ...Array.from({ length: limit + 1 }, (_, index) => ({
+          id: `long-${index}`,
+          eventId: 'long',
+          start: `2026-08-0${3 + index}T15:00:00Z`,
+          status: 'confirmed' as const,
+        })),
+        {
+          id: 'short-0',
+          eventId: 'short',
+          start: '2026-08-02T10:00:00Z',
+          status: 'pending',
+        },
+      ],
+    });
+    const dashboard = await getDashboard();
+    expect(dashboard.nextAssignment?.assignmentId).toBe('short-0');
+    expect(assignmentIds(dashboard.upcomingAssignmentGroups)).toEqual(
+      Array.from({ length: limit }, (_, index) => `long-${index}`),
+    );
+  });
+
+  it('orders equal-start groups by Ministry name and equal-start items by id', async () => {
+    arrange({
+      events: [{ id: 'e', title: 'Sunday', start: '2026-08-02T08:00:00Z' }],
+      items: [
+        {
+          id: 'z-b',
+          eventId: 'e',
+          start: '2026-08-02T09:00:00Z',
+          status: 'confirmed',
+          ministry: 'Worship',
+        },
+        {
+          id: 'k-b',
+          eventId: 'e',
+          start: '2026-08-02T09:00:00Z',
+          status: 'confirmed',
+          ministry: 'Kids',
+        },
+        {
+          id: 'k-a',
+          eventId: 'e',
+          start: '2026-08-02T09:00:00Z',
+          status: 'confirmed',
+          ministry: 'Kids',
+        },
+      ],
+    });
+    const dashboard = await getDashboard();
+    expect(
+      dashboard.upcomingAssignmentGroups.map((group) => group.ministryName),
+    ).toEqual(['Kids', 'Worship']);
+    expect(assignmentIds(dashboard.upcomingAssignmentGroups)).toEqual([
+      'k-a',
+      'k-b',
+      'z-b',
+    ]);
+  });
+});

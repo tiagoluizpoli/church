@@ -125,3 +125,9 @@ export class Cycle extends Entity<CycleProps, CycleId> {
     );
   }
 }
+
+/** Home's anchors: the running Sent Cycle and the earliest not-yet-started one. */
+export interface CycleAnchors {
+  current: Cycle | null;
+  next: Cycle | null;
+}

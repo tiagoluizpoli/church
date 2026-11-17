@@ -3,8 +3,7 @@ import { ChurchSection } from '@/features/home/components/church-section';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { LeadershipSection } from '@/features/home/components/leadership-section';
 import {
-  NextAssignmentWidget,
-  PendingChecksWidget,
+  ServingActionsWidget,
   UpcomingAssignmentsWidget,
 } from '@/features/home/components/my-serving-section';
 import { NextCycleCard } from '@/features/home/components/next-cycle-card';
@@ -14,6 +13,7 @@ import {
   ScheduleSummary,
 } from '@/features/home/components/summary-widgets';
 import type { HomeCapacities } from '@/features/home/hooks/use-home-capacities';
+import type { HomeSection } from '@/features/home/lib/home-query-keys';
 
 interface WidgetProps extends HomeSectionProps {
   scope: string;
@@ -35,17 +35,21 @@ export const widgetSpanClass: Record<WidgetSpan, string> = {
   12: 'md:col-span-12',
 };
 
-interface WidgetDefinition {
+interface WidgetBase {
   id: string;
   capacity: (caps: HomeCapacities) => boolean;
   span: WidgetSpan;
   Component: ComponentType<WidgetProps>;
-  cacheSection?: string;
-  universal?: boolean;
-  /** Extra wrapper classes, e.g. to widen a paired widget when its partner renders nothing. */
-  className?: string;
 }
 
+/** A capacity-gated widget names the section its reads are cached under, so losing the capacity clears them. */
+type WidgetDefinition = WidgetBase &
+  (
+    | { cacheSection: HomeSection; universal?: never }
+    | { universal: true; cacheSection?: never }
+  );
+
+/** To add a widget: write a component on `HomeWidget` that queries via `homeSectionQueryKey`, then add one entry here (rendered in order). */
 export const homeWidgets: WidgetDefinition[] = [
   // A slim unread line first, right under the page header; the shell bell carries the same count.
   {
@@ -56,22 +60,11 @@ export const homeWidgets: WidgetDefinition[] = [
     universal: true,
   },
   {
-    id: 'next-assignment',
+    id: 'serving-actions',
     capacity: (caps) => caps.serving,
-    span: 6,
-    Component: NextAssignmentWidget,
+    span: 12,
+    Component: ServingActionsWidget,
     cacheSection: 'serving',
-    // Full width when the pending-checks widget beside it renders nothing.
-    className: 'md:[&:has(+div:empty)]:col-span-12',
-  },
-  {
-    id: 'pending-checks',
-    capacity: (caps) => caps.serving,
-    span: 6,
-    Component: PendingChecksWidget,
-    cacheSection: 'serving',
-    // Full width when there is no next-assignment widget beside it.
-    className: 'md:[div:empty+&]:col-span-12',
   },
   {
     id: 'upcoming-assignments',

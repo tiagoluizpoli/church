@@ -35,7 +35,7 @@ vi.mock('@/utils/api-instances', async () => ({
     getSetupProgress: vi.fn().mockResolvedValue({ hasEverSentCycle: true }),
   },
   adminApi: {
-    listCycles: vi.fn().mockResolvedValue({ cycles: [] }),
+    getCycleAnchors: vi.fn().mockResolvedValue({ current: null, next: null }),
     listSchedules: vi.fn().mockResolvedValue({ schedules: [], counts: {} }),
     listMinistryDirectory: vi.fn().mockResolvedValue({ counts: {} }),
   },
@@ -167,18 +167,24 @@ describe('Home serving widgets', () => {
     expect(within(next).getByText('Kids a-1 · Room · Teacher')).toBeVisible();
 
     const checks = await widget(m.home_pending_checks());
-    await within(checks).findByText(/Ministry open/);
+    await within(checks).findByText('Ministry open · Cycle open');
     expect(within(checks).queryByText(/Ministry done/)).not.toBeInTheDocument();
     expect(hrefs(checks)).toEqual([
       '/availability/open',
       '/availability/soon',
       '/availability/late',
     ]);
+    // Each check's button names its Ministry and Cycle for screen readers.
     expect(
-      within(checks).getAllByRole('link', {
-        name: m.home_answer_availability(),
-      }),
-    ).toHaveLength(3);
+      within(checks)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(
+      ['open', 'soon', 'late'].map(
+        (id) =>
+          `${m.home_answer_availability()} · Ministry ${id} · Cycle ${id}`,
+      ),
+    );
     const deadline = (day: string) =>
       checks.querySelector(`time[datetime="${day}"]`)?.parentElement;
     expect(deadline('2026-10-01')).toHaveClass('text-destructive');
@@ -257,7 +263,7 @@ describe('Home serving widgets', () => {
     });
     renderHomePage();
 
-    expect(await screen.findByText(/Ministry open/)).toBeVisible();
+    expect(await screen.findByText('Ministry open · Cycle open')).toBeVisible();
     expect(screen.queryByText(m.my_schedule_empty())).not.toBeInTheDocument();
   });
 
@@ -270,7 +276,7 @@ describe('Home serving widgets', () => {
     renderHomePage();
 
     expect(await screen.findByText(m.my_schedule_load_error())).toBeVisible();
-    expect(screen.getByText(/Ministry open/)).toBeVisible();
+    expect(screen.getByText('Ministry open · Cycle open')).toBeVisible();
     expect(screen.queryByText(m.my_schedule_empty())).not.toBeInTheDocument();
 
     volunteerApi.getVolunteerDashboard.mockResolvedValue({
@@ -338,5 +344,39 @@ describe('Home serving widgets', () => {
         ),
       ).toBeDefined(),
     );
+  });
+
+  it('labels a declined upcoming assignment', async () => {
+    givenServing();
+    const next = assignment('a-1', 11);
+    volunteerApi.getVolunteerDashboard.mockResolvedValue({
+      nextAssignment: next,
+      upcomingAssignmentGroups: [
+        {
+          eventId: 'e',
+          eventTitle: 'Sunday',
+          ministryId: 'kids',
+          ministryName: 'Kids',
+          assignments: [
+            next,
+            { ...assignment('a-2', 12), status: 'declined' },
+            assignment('a-3', 13),
+          ],
+        },
+      ],
+    });
+    renderHomePage();
+
+    const upcoming = (
+      await screen.findByRole('heading', {
+        name: m.home_upcoming_assignments(),
+      })
+    ).closest('section') as HTMLElement;
+    expect(
+      within(upcoming).getAllByText(m.home_assignment_declined()),
+    ).toHaveLength(1);
+    expect(
+      within(upcoming).getByText(m.home_assignment_declined()).closest('a'),
+    ).toHaveAttribute('href', '/my-schedule/a-2');
   });
 });

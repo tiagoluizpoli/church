@@ -1,19 +1,20 @@
 import { NotFoundError } from '@church/core';
 import { cycle } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, desc, eq, gte, lte, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, lte, ne, notInArray, sql } from 'drizzle-orm';
 import type {
   AcquireCycleChurchLockInput,
   CreateCycleInput,
   CycleRepository,
   DeleteCycleInput,
+  FindCycleAnchorsInput,
   FindOverlappingCyclesInput,
   GetCycleInput,
   ListCyclesInput,
   UpdateCycleInput,
   UpdateCycleStateInput,
 } from '../../domain/contracts/infrastructure/cycle.repository';
-import type { Cycle } from '../../domain/entities/cycle';
+import type { Cycle, CycleAnchors } from '../../domain/entities/cycle';
 import { OverlappingCycleError } from '../../domain/errors/overlapping-cycle';
 import { mapCycle } from '../mappers/cycle.mapper';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
@@ -124,6 +125,45 @@ export class DrizzleCycleRepository implements CycleRepository {
       );
 
     return rows.map(mapCycle);
+  }
+
+  async findAnchors(input: FindCycleAnchorsInput): Promise<CycleAnchors> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const church = withChurchIsolation({
+      table: cycle,
+      churchId: input.churchId,
+    });
+    const [[current], [next]] = await Promise.all([
+      db
+        .select()
+        .from(cycle)
+        .where(
+          and(
+            church,
+            lte(cycle.startDate, input.today),
+            gte(cycle.endDate, input.today),
+            notInArray(cycle.state, ['draft', 'past']),
+          ),
+        )
+        .orderBy(cycle.startDate, cycle.id)
+        .limit(1),
+      db
+        .select()
+        .from(cycle)
+        .where(
+          and(
+            church,
+            gt(cycle.startDate, input.today),
+            ne(cycle.state, 'past'),
+          ),
+        )
+        .orderBy(cycle.startDate, cycle.id)
+        .limit(1),
+    ]);
+    return {
+      current: current ? mapCycle(current) : null,
+      next: next ? mapCycle(next) : null,
+    };
   }
 
   async updateState(input: UpdateCycleStateInput): Promise<Cycle> {

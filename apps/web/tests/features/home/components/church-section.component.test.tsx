@@ -22,7 +22,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 
 const api = vi.hoisted(() => ({
   getSetupProgress: vi.fn(),
-  listCycles: vi.fn(),
+  getCycleAnchors: vi.fn(),
 }));
 vi.mock('@/utils/api-instances', () => ({ setupApi: api, adminApi: api }));
 
@@ -72,21 +72,22 @@ const DECEMBER_DRAFT = cycle({
   endDate: '2026-12-31',
   state: 'draft',
 });
-const OCTOBER_PAST = cycle({
-  id: 'october',
-  name: 'October',
-  startDate: '2026-10-01',
-  endDate: '2026-10-31',
-  state: 'past',
-});
 
 function givenProgress(progress: Partial<GetSetupProgress200>) {
   api.getSetupProgress.mockResolvedValue({ ...NOTHING_SET_UP, ...progress });
 }
 
-/** Repository order: start day desc, end day desc, id asc. */
-function givenCycles(cycles: ListCycles200CyclesItem[]) {
-  api.listCycles.mockResolvedValue({ cycles });
+interface AnchorsInput {
+  current?: ListCycles200CyclesItem;
+  next?: ListCycles200CyclesItem;
+}
+
+/** The server picks both anchors; the card renders them as given. */
+function givenAnchors({ current, next }: AnchorsInput = {}) {
+  api.getCycleAnchors.mockResolvedValue({
+    current: current ?? null,
+    next: next ?? null,
+  });
 }
 
 function renderSection(includeCycles = false) {
@@ -231,7 +232,7 @@ describe('ChurchSection setup checklist', () => {
 
   it('keeps every read under the Church section key Home clears on capacity loss and Church switch', async () => {
     givenProgress({ hasEverSentCycle: true });
-    givenCycles([]);
+    givenAnchors();
     const { queryClient } = renderSection(true);
     await screen.findAllByText(m.home_next_cycle_none());
 
@@ -250,7 +251,7 @@ describe('ChurchSection setup checklist', () => {
 describe('ChurchSection next-Cycle card', () => {
   it('replaces the checklist for good once any Cycle was sent, even if none is upcoming', async () => {
     givenProgress({ hasEverSentCycle: true });
-    givenCycles([OCTOBER_PAST]);
+    givenAnchors();
     renderSection(true);
 
     expect(await screen.findAllByText(m.home_next_cycle_none())).toHaveLength(
@@ -262,7 +263,7 @@ describe('ChurchSection next-Cycle card', () => {
 
   it('offers Continue on the latest draft', async () => {
     givenProgress({ hasEverSentCycle: true });
-    givenCycles([DECEMBER_DRAFT, OCTOBER_PAST]);
+    givenAnchors({ next: DECEMBER_DRAFT });
     renderSection(true);
 
     expect(
@@ -279,7 +280,7 @@ describe('ChurchSection next-Cycle card', () => {
 
   it('shows the end date of a Sent Cycle', async () => {
     givenProgress({ hasEverSentCycle: true });
-    givenCycles([NOVEMBER_SENT, OCTOBER_PAST]);
+    givenAnchors({ current: NOVEMBER_SENT });
     renderSection(true);
 
     expect(
@@ -293,9 +294,9 @@ describe('ChurchSection next-Cycle card', () => {
     expect(planCycle()).toHaveAttribute('href', '/cycles');
   });
 
-  it('prefers a newer draft over an older current Sent Cycle', async () => {
+  it('shows a draft next Cycle beside the current Sent one', async () => {
     givenProgress({ hasEverSentCycle: true });
-    givenCycles([DECEMBER_DRAFT, NOVEMBER_SENT]);
+    givenAnchors({ current: NOVEMBER_SENT, next: DECEMBER_DRAFT });
     renderSection(true);
 
     expect(
@@ -315,7 +316,10 @@ describe('ChurchSection next-Cycle card', () => {
 
   it('links the current and nearest upcoming sent cycles separately', async () => {
     givenProgress({ hasEverSentCycle: true });
-    givenCycles([{ ...DECEMBER_DRAFT, state: 'sent' }, NOVEMBER_SENT]);
+    givenAnchors({
+      current: NOVEMBER_SENT,
+      next: { ...DECEMBER_DRAFT, state: 'sent' },
+    });
     renderSection(true);
     expect(
       await screen.findByRole('link', {
@@ -335,49 +339,9 @@ describe('ChurchSection next-Cycle card', () => {
     ).toHaveAttribute('href', '/cycles/december');
   });
 
-  it('counts the last day in the Church Timezone, whatever the ambient zone', async () => {
-    givenProgress({ hasEverSentCycle: true });
-    // Its last day is the Church's today, though UTC and Kolkata are already on the 11th.
-    const endsToday = cycle({
-      id: 'ends-today',
-      name: 'Ends today',
-      startDate: '2026-11-01',
-      endDate: '2026-11-10',
-      state: 'sent',
-    });
-    givenCycles([endsToday]);
-    renderSection(true);
-
-    expect(
-      await screen.findByText(
-        m.home_next_cycle_sent({
-          cycleName: 'Ends today',
-          endDate: '10/11/2026',
-        }),
-      ),
-    ).toBeVisible();
-  });
-
-  it('skips a Cycle whose last day has elapsed in the Church Timezone', async () => {
-    givenProgress({ hasEverSentCycle: true });
-    const endedYesterday = cycle({
-      id: 'ended',
-      name: 'Ended',
-      startDate: '2026-11-01',
-      endDate: '2026-11-09',
-      state: 'sent',
-    });
-    givenCycles([endedYesterday]);
-    renderSection(true);
-
-    expect(await screen.findAllByText(m.home_next_cycle_none())).toHaveLength(
-      2,
-    );
-  });
-
   it('shows a retryable error, never Plan a cycle, when the Cycle read fails', async () => {
     givenProgress({ hasEverSentCycle: true });
-    api.listCycles.mockRejectedValueOnce(new Error('down'));
+    api.getCycleAnchors.mockRejectedValueOnce(new Error('down'));
     renderSection(true);
 
     expect(
@@ -385,7 +349,7 @@ describe('ChurchSection next-Cycle card', () => {
     ).toBeVisible();
     expect(planCycle()).not.toBeInTheDocument();
 
-    givenCycles([NOVEMBER_SENT]);
+    givenAnchors({ current: NOVEMBER_SENT });
     await userEvent.click(screen.getByRole('button', { name: m.home_retry() }));
 
     expect(
@@ -400,7 +364,7 @@ describe('ChurchSection next-Cycle card', () => {
 
   it('renders in pt-BR from the catalog', async () => {
     givenProgress({ hasEverSentCycle: true });
-    givenCycles([]);
+    givenAnchors();
     renderSection(true);
 
     await screen.findAllByText(m.home_next_cycle_none());

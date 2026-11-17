@@ -16,7 +16,10 @@ import {
   type HomeCapacities,
   useHomeCapacities,
 } from '@/features/home/hooks/use-home-capacities';
-import { homeSectionQueryPrefix } from '@/features/home/lib/home-query-keys';
+import {
+  type HomeSection,
+  homeSectionQueryPrefix,
+} from '@/features/home/lib/home-query-keys';
 import type { HomeSearch } from '@/features/home/lib/home-search';
 import { cn } from '@/lib/utils';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
@@ -93,7 +96,7 @@ function useClearUnheldSections(capacities: HomeCapacities | null) {
     const sections = new Set(
       homeWidgets
         .map((widget) => widget.cacheSection)
-        .filter((section): section is string => Boolean(section)),
+        .filter((section): section is HomeSection => Boolean(section)),
     );
     for (const section of sections) {
       if (
@@ -193,10 +196,10 @@ export function HomePage({ search }: HomePageProps) {
           ) : null}
           {homeWidgets
             .filter((widget) => widget.capacity(capacities))
-            .map(({ id, span, Component, className }) => (
+            .map(({ id, span, Component }) => (
               <div
                 key={id}
-                className={cn(widgetSpanClass[span], 'empty:hidden', className)}
+                className={cn(widgetSpanClass[span], 'empty:hidden')}
               >
                 <Component {...sectionProps} />
               </div>

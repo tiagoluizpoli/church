@@ -1,5 +1,5 @@
 import type { ChurchId, CycleId } from '../../branded-ids';
-import type { Cycle, CycleState } from '../../entities/cycle';
+import type { Cycle, CycleAnchors, CycleState } from '../../entities/cycle';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreateCycleInput {
@@ -54,6 +54,13 @@ export interface DeleteCycleInput {
   tx?: TransactionContext;
 }
 
+export interface FindCycleAnchorsInput {
+  churchId: ChurchId;
+  /** The Church's today, as the Date at its UTC midnight. */
+  today: Date;
+  tx?: TransactionContext;
+}
+
 export interface AcquireCycleChurchLockInput {
   churchId: ChurchId;
   tx: TransactionContext;
@@ -64,6 +71,8 @@ export interface CycleRepository {
   list(input: ListCyclesInput): Promise<Cycle[]>;
   getById(input: GetCycleInput): Promise<Cycle>;
   findOverlapping(input: FindOverlappingCyclesInput): Promise<Cycle[]>;
+  /** current: covers today, neither Draft nor Past; next: earliest start after today, not Past (Drafts included). Ties: start date, then id. */
+  findAnchors(input: FindCycleAnchorsInput): Promise<CycleAnchors>;
   updateState(input: UpdateCycleStateInput): Promise<Cycle>;
   /** Writes the name and range; an overlap race is refused as OVERLAPPING_CYCLE. */
   update(input: UpdateCycleInput): Promise<Cycle>;

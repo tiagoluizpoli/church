@@ -36,7 +36,6 @@ export function useScheduleList({ filters }: UseScheduleListInput) {
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    retry: false,
   });
 }
 
@@ -56,6 +55,5 @@ export function useSchedule({
     queryKey: [...SCHEDULES_QUERY_KEY, 'one', ministryId, cycleId],
     queryFn: () => adminApi.getSchedule(ministryId ?? '', cycleId ?? ''),
     enabled: enabled && ministryId !== undefined && cycleId !== undefined,
-    retry: false,
   });
 }

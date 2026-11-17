@@ -40,7 +40,6 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
   const preview = useQuery({
     queryKey: ['prepare-ask-preview', ministryId, cycleId],
     queryFn: () => adminApi.getAskPreview(cycleId, { ministryId }),
-    retry: false,
   });
   const previewStatus = isAxiosError<unknown>(preview.error)
     ? preview.error.response?.status

@@ -50,7 +50,6 @@ export function useMinistryList({ enabled }: UseMinistryListInput) {
     queryKey: ministryListQueryKey({ churchId }),
     queryFn: () => adminApi.listMinistries(),
     enabled,
-    retry: false,
   });
 }
 
@@ -93,7 +92,6 @@ export function useMinistryDirectory({ filters }: UseMinistryDirectoryInput) {
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    retry: false,
   });
 }
 
@@ -107,7 +105,6 @@ export function useMinistry({ ministryId }: UseMinistryInput) {
   return useQuery({
     queryKey: ministryDetailQueryKey({ churchId, ministryId }),
     queryFn: () => adminApi.getMinistry(ministryId),
-    retry: false,
   });
 }
 
@@ -138,7 +135,6 @@ export function useSectorList({ ministryId }: UseMinistryInput) {
   return useQuery({
     queryKey: sectorListQueryKey({ churchId, ministryId }),
     queryFn: () => adminApi.listSectors(ministryId),
-    retry: false,
   });
 }
 

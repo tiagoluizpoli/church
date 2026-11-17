@@ -62,7 +62,6 @@ function PrepareWorkspaceRoute() {
   const participation = useQuery({
     queryKey: ['prepare-cycle-participation', ministryId, cycleId],
     queryFn: () => adminApi.getCycleParticipation(cycleId, { ministryId }),
-    retry: false,
   });
   const schedule = schedules.data;
   const reads = [schedules, participation];

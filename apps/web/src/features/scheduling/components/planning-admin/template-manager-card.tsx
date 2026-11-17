@@ -94,7 +94,6 @@ export function TemplateManagerCard() {
   const templatesQuery = useQuery({
     queryKey: TEMPLATE_LIST_QUERY_KEY,
     queryFn: () => adminApi.listEventTemplates(),
-    retry: false,
   });
   const templates = templatesQuery.data?.templates ?? [];
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);

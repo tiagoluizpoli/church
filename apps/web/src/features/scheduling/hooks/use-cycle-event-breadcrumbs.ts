@@ -28,7 +28,6 @@ export function useCycleEventBreadcrumbs(): CycleEventBreadcrumbOverride[] {
     queryKey: ['cycle-details', cycleId],
     queryFn: () => adminApi.getCycle(cycleId ?? ''),
     enabled: cycleId !== undefined && eventId !== undefined,
-    retry: false,
   });
 
   if (NEW_EVENT_PATH.test(pathname)) {

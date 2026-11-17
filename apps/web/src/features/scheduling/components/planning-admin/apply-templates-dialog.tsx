@@ -64,7 +64,6 @@ export function ApplyTemplatesDialog({
     queryFn: () => adminApi.listEventTemplates(),
     enabled: open,
     refetchOnWindowFocus: 'always',
-    retry: false,
   });
   const templates = templatesQuery.data?.templates;
   const [selection, setSelection] = useState<Selection>(null);

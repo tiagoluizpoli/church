@@ -43,7 +43,6 @@ export function TemplateDeleteDialog({
     queryFn: () => adminApi.getEventTemplateUsage(templateId),
     staleTime: 0,
     gcTime: 0,
-    retry: false,
     refetchOnMount: 'always',
   });
   const remove = useMutation({

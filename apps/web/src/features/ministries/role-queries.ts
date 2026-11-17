@@ -25,7 +25,6 @@ export function useMinistryRoles({ ministryId }: UseMinistryRolesInput) {
   return useQuery({
     queryKey: ministryRolesQueryKey({ churchId, ministryId }),
     queryFn: () => adminApi.listMinistryRoles(ministryId),
-    retry: false,
   });
 }
 

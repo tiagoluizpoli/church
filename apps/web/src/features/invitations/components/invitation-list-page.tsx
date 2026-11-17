@@ -353,7 +353,11 @@ function factsOf({ item, timeZone }: InvitationRowProps): Fact[] {
 }
 
 /** The expanded facts as one tinted block of label/value pairs that wraps only when needed. */
-function Details({ item, timeZone, id }: InvitationRowProps & { id?: string }) {
+interface DetailsProps extends InvitationRowProps {
+  id?: string;
+}
+
+function Details({ item, timeZone, id }: DetailsProps) {
   return (
     <dl
       id={id}

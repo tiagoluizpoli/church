@@ -1,11 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
-import {
-  createFileRoute,
-  DefaultGlobalNotFound,
-  notFound,
-  useRouter,
-} from '@tanstack/react-router';
+import { createFileRoute, notFound, useRouter } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -13,6 +8,7 @@ import { z } from 'zod';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
+import { NotFoundScreen } from '@/shared/components/route-fallbacks';
 import { adminApi } from '@/utils/api-instances';
 
 /** The id an N7 swap request alert (bell or email) deep-links with. */
@@ -23,7 +19,7 @@ export const Route = createFileRoute(
 )({
   validateSearch: assignSearchSchema,
   component: EventBuilderRoute,
-  notFoundComponent: DefaultGlobalNotFound,
+  notFoundComponent: NotFoundScreen,
 });
 
 // Shell host for the cycle-centric Event Builder canvas (US1/US2/US3/US6).

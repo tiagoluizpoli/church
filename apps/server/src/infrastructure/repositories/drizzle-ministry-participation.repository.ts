@@ -22,17 +22,25 @@ import {
   and,
   asc,
   count,
+  desc,
   eq,
+  exists,
   getTableColumns,
   gt,
+  ilike,
   inArray,
   isNull,
   min,
   ne,
+  or,
+  type SQL,
+  type SQLWrapper,
   sql,
 } from 'drizzle-orm';
+import type { ChurchId, CycleId, MinistryId } from '../../domain/branded-ids';
 import type {
   AddInclusionInput,
+  CountSchedulesByStageInput,
   CreateParticipationInput,
   FindAvailabilityRequestedAtInput,
   FindParticipationByMinistryEventInput,
@@ -43,6 +51,7 @@ import type {
   ListParticipationsByIdsInput,
   ListParticipationsByMinistryInput,
   ListScheduleLastToldInput,
+  ListScheduleRowsInput,
   ListScheduleSummariesInput,
   ListSchedulesFactsInput,
   LockParticipationInput,
@@ -53,20 +62,99 @@ import type {
   ScheduleCheckCountRow,
   ScheduleCountRow,
   ScheduleLastToldRow,
+  ScheduleRowsPage,
   ScheduleServingStateRow,
+  ScheduleStageCountRow,
   ScheduleSummaryRow,
   TouchParticipationInput,
   UpdateParticipationStateInput,
 } from '../../domain/contracts/infrastructure/ministry-participation.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import type { CycleState } from '../../domain/entities/cycle';
 import type { MinistryParticipation } from '../../domain/entities/ministry-participation';
-import { aggregateCyclePrepareStatus } from '../../domain/entities/ministry-participation';
+import {
+  aggregateCyclePrepareStatus,
+  SCHEDULE_STAGE_OPTIONS,
+  SCHEDULE_STAGES_FURTHEST_BEHIND_FIRST,
+  type ScheduleStage,
+} from '../../domain/entities/ministry-participation';
 import type { ParticipationEventTimeBlockInclusion } from '../../domain/entities/participation-event-time-block-inclusion';
+import { SCHEDULE_LIST_PAST_BUCKET } from '../../domain/schedule-list-cursor';
+import { mapCycle } from '../mappers/cycle.mapper';
+import { mapMinistry } from '../mappers/ministry.mapper';
 import {
   mapMinistryParticipation,
   mapParticipationEventTimeBlockInclusion,
 } from '../mappers/ministry-participation.mapper';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  containsPattern,
+  getClient,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import type { AnyDrizzleDb } from './types';
+
+interface ScheduleStagesInput {
+  churchId: ChurchId;
+  ministryIds?: MinistryId[];
+  ministryId?: MinistryId;
+  cycleId?: CycleId;
+  cycleStates: CycleState[];
+  search?: string;
+  tx?: TransactionContext;
+}
+
+interface OpenSwapRequestCountsInput {
+  churchId: ChurchId;
+  ministryIds?: MinistryId[];
+  cycleIds?: CycleId[];
+  tx?: TransactionContext;
+}
+
+const NOT_SERVING: ScheduleStage = 'not_serving';
+
+/** A serving state's step in the domain's furthest-behind-first table; the lowest step wins. */
+const SERVING_STEP = sql`case ${ministryParticipation.state} ${sql.join(
+  SCHEDULE_STAGES_FURTHEST_BEHIND_FIRST.map(([state], step) =>
+    sql.raw(`when '${state}' then ${step}`),
+  ),
+  sql` `,
+)} end`;
+
+interface StepCaseInput {
+  step: SQLWrapper;
+  literalOf: (stage: ScheduleStage) => string;
+}
+
+/** Maps a Schedule's lowest step to a value of its stage; no step means not serving. */
+function caseOfStep({ step, literalOf }: StepCaseInput): SQL {
+  return sql`case ${step} ${sql.join(
+    SCHEDULE_STAGES_FURTHEST_BEHIND_FIRST.map(([, stage], index) =>
+      sql.raw(`when ${index} then ${literalOf(stage)}`),
+    ),
+    sql` `,
+  )} else ${sql.raw(literalOf(NOT_SERVING))} end`;
+}
+
+interface ListKey {
+  column: SQLWrapper;
+  value: unknown;
+  descending?: boolean;
+}
+
+interface AfterPositionInput {
+  /** The list order's keys, most significant first. */
+  keys: ListKey[];
+}
+
+/** Keyset predicate: rows strictly after the position in the order the keys describe. */
+function afterPosition({ keys }: AfterPositionInput): SQL {
+  return keys.reduceRight<SQL>(
+    (rest, { column, value, descending }) =>
+      sql`(${column} ${sql.raw(descending ? '<' : '>')} ${value} or (${column} = ${value} and ${rest}))`,
+    sql`false`,
+  );
+}
 
 interface DrizzleMinistryParticipationRepositoryInput {
   db: AnyDrizzleDb;
@@ -669,6 +757,221 @@ export class DrizzleMinistryParticipationRepository
     });
   }
 
+  async listScheduleRows({
+    stage,
+    attention,
+    after,
+    limit,
+    ...scope
+  }: ListScheduleRowsInput): Promise<ScheduleRowsPage> {
+    if (scope.ministryIds?.length === 0 || scope.cycleStates.length === 0) {
+      return { rows: [] };
+    }
+    const schedules = this.scheduleStages(scope);
+    const nameKey = sql<string>`lower(${ministry.name})`;
+    const rows = await getClient({ db: this.db, tx: scope.tx })
+      .select({
+        ministry,
+        cycle,
+        stage: schedules.stage,
+        bucket: schedules.bucket,
+        nameKey,
+      })
+      .from(schedules)
+      .innerJoin(ministry, eq(ministry.id, schedules.ministryId))
+      .innerJoin(cycle, eq(cycle.id, schedules.cycleId))
+      .where(
+        and(
+          stage ? eq(schedules.stage, stage) : undefined,
+          attention
+            ? and(
+                ne(cycle.state, 'past'),
+                ne(schedules.stage, NOT_SERVING),
+                or(
+                  ne(schedules.stage, 'published'),
+                  gt(schedules.openSwapRequests, 0),
+                ),
+              )
+            : undefined,
+          after
+            ? afterPosition({
+                keys: [
+                  { column: schedules.bucket, value: after.bucket },
+                  {
+                    column: cycle.startDate,
+                    value: sql`${after.startDate}::date`,
+                    descending: true,
+                  },
+                  {
+                    column: cycle.endDate,
+                    value: sql`${after.endDate}::date`,
+                    descending: true,
+                  },
+                  { column: cycle.id, value: after.cycleId },
+                  { column: nameKey, value: after.ministryNameKey },
+                  { column: ministry.id, value: after.ministryId },
+                ],
+              })
+            : undefined,
+        ),
+      )
+      .orderBy(
+        asc(schedules.bucket),
+        desc(cycle.startDate),
+        desc(cycle.endDate),
+        asc(cycle.id),
+        asc(nameKey),
+        asc(ministry.id),
+      )
+      .limit(limit + 1);
+    const page = rows.slice(0, limit).map((row) => ({
+      ministry: mapMinistry(row.ministry),
+      cycle: mapCycle(row.cycle),
+      stage: row.stage,
+      bucket: row.bucket,
+      nameKey: row.nameKey,
+    }));
+    const last = page.at(-1);
+    return {
+      rows: page.map(({ ministry, cycle, stage }) => ({
+        ministry,
+        cycle,
+        stage,
+      })),
+      next:
+        last && rows.length > limit
+          ? {
+              bucket: last.bucket,
+              startDate: last.cycle.startDate,
+              endDate: last.cycle.endDate,
+              cycleId: last.cycle.id,
+              ministryNameKey: last.nameKey,
+              ministryId: last.ministry.id,
+            }
+          : undefined,
+    };
+  }
+
+  async countCurrentSchedulesByStage({
+    churchId,
+    ministryIds,
+    tx,
+  }: CountSchedulesByStageInput): Promise<ScheduleStageCountRow[]> {
+    if (ministryIds?.length === 0) return [];
+    const schedules = this.scheduleStages({
+      churchId,
+      ministryIds,
+      cycleStates: ['sent'],
+      tx,
+    });
+    return getClient({ db: this.db, tx })
+      .select({ stage: schedules.stage, count: sql<number>`count(*)::int` })
+      .from(schedules)
+      .groupBy(schedules.stage)
+      .orderBy(asc(schedules.stage));
+  }
+
+  /**
+   * Every active Ministry × Cycle pair in scope with its stage, list bucket and open Swap requests.
+   * The stage is the furthest-behind state serving a block, read from the domain's own table.
+   */
+  private scheduleStages({
+    churchId,
+    ministryIds,
+    ministryId,
+    cycleId,
+    cycleStates,
+    search,
+    tx,
+  }: ScheduleStagesInput) {
+    const client = getClient({ db: this.db, tx });
+    const serving = client
+      .select({
+        ministryId: ministryParticipation.ministryId,
+        cycleId: event.cycleId,
+        step: sql<number>`min(${SERVING_STEP})`.as('step'),
+      })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          withChurchIsolation({ table: event, churchId }),
+          ne(event.status, 'cancelled'),
+          ministryIds
+            ? inArray(ministryParticipation.ministryId, ministryIds)
+            : undefined,
+          exists(
+            client
+              .select({ one: sql`1` })
+              .from(participationEventTimeBlockInclusion)
+              .where(
+                and(
+                  withChurchIsolation({
+                    table: participationEventTimeBlockInclusion,
+                    churchId,
+                  }),
+                  eq(
+                    participationEventTimeBlockInclusion.participationId,
+                    ministryParticipation.id,
+                  ),
+                ),
+              ),
+          ),
+        ),
+      )
+      .groupBy(ministryParticipation.ministryId, event.cycleId)
+      .as('serving');
+    const swaps = this.openSwapRequestCounts({ churchId, ministryIds, tx }).as(
+      'swaps',
+    );
+    const pattern = search && containsPattern({ value: search });
+    return client
+      .select({
+        ministryId: sql<string>`${ministry.id}`.as('schedule_ministry_id'),
+        cycleId: sql<string>`${cycle.id}`.as('schedule_cycle_id'),
+        stage: sql<ScheduleStage>`${caseOfStep({
+          step: serving.step,
+          literalOf: (stage) => `'${stage}'`,
+        })}`.as('stage'),
+        // Current Schedules sort by stage rank; Past ones share the bucket after them.
+        bucket: sql<number>`case when ${cycle.state} = 'past' then ${sql.raw(
+          String(SCHEDULE_LIST_PAST_BUCKET),
+        )} else ${caseOfStep({
+          step: serving.step,
+          literalOf: (stage) => String(SCHEDULE_STAGE_OPTIONS.indexOf(stage)),
+        })} end`.as('bucket'),
+        openSwapRequests: sql<number>`coalesce(${swaps.count}, 0)`.as(
+          'open_swap_requests',
+        ),
+      })
+      .from(ministry)
+      .innerJoin(cycle, eq(cycle.churchId, ministry.churchId))
+      .leftJoin(
+        serving,
+        and(eq(serving.ministryId, ministry.id), eq(serving.cycleId, cycle.id)),
+      )
+      .leftJoin(
+        swaps,
+        and(eq(swaps.ministryId, ministry.id), eq(swaps.cycleId, cycle.id)),
+      )
+      .where(
+        and(
+          withChurchIsolation({ table: ministry, churchId }),
+          withChurchIsolation({ table: cycle, churchId }),
+          isNull(ministry.deletedAt),
+          ministryIds ? inArray(ministry.id, ministryIds) : undefined,
+          ministryId ? eq(ministry.id, ministryId) : undefined,
+          cycleId ? eq(cycle.id, cycleId) : undefined,
+          inArray(cycle.state, cycleStates),
+          pattern
+            ? or(ilike(ministry.name, pattern), ilike(cycle.name, pattern))
+            : undefined,
+        ),
+      )
+      .as('schedules');
+  }
+
   async listScheduleServingStates({
     churchId,
     ministryIds,
@@ -764,11 +1067,25 @@ export class DrizzleMinistryParticipationRepository
     cycleIds,
     tx,
   }: ListSchedulesFactsInput): Promise<ScheduleCountRow[]> {
+    return this.openSwapRequestCounts({
+      churchId,
+      ministryIds,
+      cycleIds,
+      tx,
+    }).orderBy(asc(ministryParticipation.ministryId), asc(event.cycleId));
+  }
+
+  private openSwapRequestCounts({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: OpenSwapRequestCountsInput) {
     return getClient({ db: this.db, tx })
       .select({
         ministryId: ministryParticipation.ministryId,
         cycleId: event.cycleId,
-        count: count(),
+        count: sql<number>`count(*)::int`.as('open_swap_request_count'),
       })
       .from(swapRequest)
       .innerJoin(assignment, eq(assignment.id, swapRequest.assignmentId))
@@ -784,12 +1101,13 @@ export class DrizzleMinistryParticipationRepository
           // Same predicate as the leader list's open count (not derived-expired).
           eq(swapRequest.status, 'open'),
           gt(shift.startTime, nowAsDate()),
-          inArray(ministryParticipation.ministryId, ministryIds),
-          inArray(event.cycleId, cycleIds),
+          ministryIds
+            ? inArray(ministryParticipation.ministryId, ministryIds)
+            : undefined,
+          cycleIds ? inArray(event.cycleId, cycleIds) : undefined,
         ),
       )
-      .groupBy(ministryParticipation.ministryId, event.cycleId)
-      .orderBy(asc(ministryParticipation.ministryId), asc(event.cycleId));
+      .groupBy(ministryParticipation.ministryId, event.cycleId);
   }
 
   async countScheduleGaps({

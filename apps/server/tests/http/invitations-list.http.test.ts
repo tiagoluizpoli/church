@@ -1051,6 +1051,29 @@ describe('GET /api/v1/invitations — filters and history', () => {
     expect(second.body.nextCursor).toBeUndefined();
   });
 
+  it('matches %, _ and \\ in an email filter literally', async () => {
+    for (const [id, email] of [
+      ['ci-pct', 'a%b@lit.test'],
+      ['ci-und', 'a_b@lit.test'],
+      ['ci-bsl', 'a\\b@lit.test'],
+      ['ci-plain', 'axb@lit.test'],
+    ] as const) {
+      await churchOffer({ id, email, role: 'admin' });
+    }
+    signIn('admin');
+
+    for (const [email, expected] of [
+      ['a%25b', 'a%b@lit.test'],
+      ['a_b', 'a_b@lit.test'],
+      ['a%5Cb', 'a\\b@lit.test'],
+    ] as const) {
+      expect(
+        (await list(`?status=any&email=${email}`)).items.map((r) => r.email),
+        email,
+      ).toEqual([expected]);
+    }
+  });
+
   it('lists every status with status=any across pages without repeats', async () => {
     signIn('admin');
     const first = await list('?status=any&limit=4');

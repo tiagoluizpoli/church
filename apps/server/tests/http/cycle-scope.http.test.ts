@@ -75,6 +75,7 @@ beforeAll(async () => {
     config: withAllParkedOn(appConfig),
   });
   const prepare = new PrepareController({
+    config: appConfig,
     participationManager: managers.participationManager,
     availabilityCheckManager,
     activeChurchResolver: activeChurchResolver as never,

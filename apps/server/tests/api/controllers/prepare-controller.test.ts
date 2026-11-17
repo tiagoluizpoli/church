@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { parseCalendarDay, parseInstant } from '@church/time';
 import {
@@ -65,6 +66,7 @@ function createActiveChurchResolution() {
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
   const controller = new PrepareController({
+    config: appConfig,
     participationManager: participationManager as never,
     availabilityCheckManager: availabilityCheckManager as never,
     activeChurchResolver: activeChurchResolver as never,

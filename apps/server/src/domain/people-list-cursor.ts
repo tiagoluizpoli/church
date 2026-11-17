@@ -1,3 +1,5 @@
+import { decodeListCursor, encodeListCursor } from './list-cursor';
+
 export interface PeopleListCursorPosition {
   name: string;
   id: string;
@@ -8,7 +10,7 @@ export function encodePeopleListCursor({
   name,
   id,
 }: PeopleListCursorPosition): string {
-  return Buffer.from(JSON.stringify([name, id])).toString('base64url');
+  return encodeListCursor({ owner: 'people', fields: [name, id] });
 }
 
 export interface DecodePeopleListCursorInput {
@@ -19,17 +21,7 @@ export interface DecodePeopleListCursorInput {
 export function decodePeopleListCursor({
   cursor,
 }: DecodePeopleListCursorInput): PeopleListCursorPosition | undefined {
-  try {
-    const parsed: unknown = JSON.parse(
-      Buffer.from(cursor, 'base64url').toString(),
-    );
-    if (!Array.isArray(parsed) || parsed.length !== 2) return undefined;
-    const [name, id] = parsed;
-    if (typeof name !== 'string' || typeof id !== 'string' || !id) {
-      return undefined;
-    }
-    return { name, id };
-  } catch {
-    return undefined;
-  }
+  const fields = decodeListCursor({ owner: 'people', cursor, size: 2 });
+  const [name, id] = fields ?? [];
+  return name !== undefined && id ? { name, id } : undefined;
 }

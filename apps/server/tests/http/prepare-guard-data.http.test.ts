@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import {
   availabilityCheck,
   eventTimeBlock,
@@ -58,6 +59,7 @@ beforeAll(async () => {
   const managers = createSchedulingManagers();
   app = await createFastify({ locale: testLocale });
   const controller = new PrepareController({
+    config: appConfig,
     participationManager: managers.participationManager,
     availabilityCheckManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,

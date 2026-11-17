@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
+import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
@@ -17,12 +18,7 @@ export function usePreparationBlockBreadcrumbs(): PreparationBreadcrumbOverride[
     ministryId !== undefined &&
     cycleId !== undefined &&
     timeSlotId !== undefined;
-  const schedules = useQuery({
-    queryKey: ['prepare-schedules'],
-    queryFn: () => adminApi.listSchedules(),
-    enabled,
-    retry: false,
-  });
+  const schedules = useSchedule({ ministryId, cycleId, enabled });
   const participation = useQuery({
     queryKey: ['prepare-cycle-participation', ministryId, cycleId],
     queryFn: () =>
@@ -33,9 +29,7 @@ export function usePreparationBlockBreadcrumbs(): PreparationBreadcrumbOverride[
     retry: false,
   });
   if (!enabled || schedules.isError || participation.isError) return [];
-  const schedule = schedules.data?.schedules.find(
-    (row) => row.ministry.id === ministryId && row.cycle.id === cycleId,
-  );
+  const schedule = schedules.data;
   const block = participation.data?.events
     .flatMap((event) => event.eventTimeBlocks)
     .find((candidate) => candidate.eventTimeBlock.id === timeSlotId);

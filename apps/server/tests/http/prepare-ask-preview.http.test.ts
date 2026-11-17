@@ -75,6 +75,7 @@ beforeAll(async () => {
   const unitOfWork = new DrizzleUnitOfWork({ db });
   const ministryRepository = new DrizzleMinistryRepository({ db });
   const controller = new PrepareController({
+    config: appConfig,
     participationManager: {} as never,
     availabilityCheckManager: new DbAvailabilityCheckManager({
       participationRepository: new DrizzleMinistryParticipationRepository({

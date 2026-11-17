@@ -27,7 +27,7 @@ import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
 const api = vi.hoisted(() => ({
   getCycleParticipation: vi.fn(),
-  listSchedules: vi.fn(),
+  getSchedule: vi.fn(),
   listSectors: vi.fn(),
   listMinistryRoles: vi.fn(),
   saveEventTimeBlockPreparation: vi.fn(),
@@ -72,7 +72,7 @@ vi.mock('@/components/ui/sonner', () => ({ Toaster: () => null }));
 beforeEach(() => {
   vi.clearAllMocks();
   api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
-  api.listSchedules.mockResolvedValue({ schedules: [SCHEDULE] });
+  api.getSchedule.mockResolvedValue(SCHEDULE);
   api.listSectors.mockResolvedValue({ sectors: SECTORS });
   api.listMinistryRoles.mockResolvedValue({ roles: ROLES });
 });
@@ -120,10 +120,11 @@ it('saves this block only, omits zero and blank cells, and returns to its refres
   await user.clear(stage);
   await user.type(stage, '4');
   await user.type(door, '0');
-  queryClient.setQueryData(['prepare-schedules'], { schedules: [SCHEDULE] });
-  api.listSchedules.mockResolvedValue({
-    schedules: [{ ...SCHEDULE, stage: 'assigning' }],
-  });
+  queryClient.setQueryData(
+    ['prepare-schedules', 'one', MINISTRY_ID, CYCLE_ID],
+    SCHEDULE,
+  );
+  api.getSchedule.mockResolvedValue({ ...SCHEDULE, stage: 'assigning' });
   await user.click(screen.getByRole('button', { name: m.usual_setup_save() }));
   expect(api.saveEventTimeBlockPreparation).toHaveBeenCalledWith(
     PARTICIPATION_ID,
@@ -147,8 +148,16 @@ it('saves this block only, omits zero and blank cells, and returns to its refres
     ),
   );
   expect(router.state.location.hash).toBe(`event-time-block-${BLOCK_ID}`);
-  expect(queryClient.getQueryData(['prepare-schedules'])).toEqual({
-    schedules: [{ ...SCHEDULE, stage: 'assigning' }],
+  expect(
+    queryClient.getQueryData([
+      'prepare-schedules',
+      'one',
+      MINISTRY_ID,
+      CYCLE_ID,
+    ]),
+  ).toEqual({
+    ...SCHEDULE,
+    stage: 'assigning',
   });
 });
 
@@ -508,8 +517,9 @@ it('keeps a published participation editable for an Event added to the Sent Cycl
 });
 
 it('renders past preparation read-only', async () => {
-  api.listSchedules.mockResolvedValue({
-    schedules: [{ ...SCHEDULE, cycle: { ...SCHEDULE.cycle, state: 'past' } }],
+  api.getSchedule.mockResolvedValue({
+    ...SCHEDULE,
+    cycle: { ...SCHEDULE.cycle, state: 'past' },
   });
   renderRoute({
     initialPath: EDITOR_PATH,
@@ -810,8 +820,9 @@ it('refreshes the Cycle state after a concurrent transition refuses the save and
   });
   await user.clear(stage);
   await user.type(stage, '4');
-  api.listSchedules.mockResolvedValue({
-    schedules: [{ ...SCHEDULE, cycle: { ...SCHEDULE.cycle, state: 'past' } }],
+  api.getSchedule.mockResolvedValue({
+    ...SCHEDULE,
+    cycle: { ...SCHEDULE.cycle, state: 'past' },
   });
   await user.click(screen.getByRole('button', { name: m.usual_setup_save() }));
   expect(await screen.findByText(m.prepare_block_read_only())).toBeVisible();

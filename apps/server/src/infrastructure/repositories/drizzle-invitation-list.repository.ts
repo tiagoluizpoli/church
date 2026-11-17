@@ -47,7 +47,7 @@ import {
   type InvitationListCursorPosition,
 } from '../../domain/invitation-list-cursor';
 import { projectInvitationEmailDelivery } from '../../domain/services/invitation-email-delivery';
-import { getClient } from './helpers';
+import { containsPattern, getClient } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzleInvitationListRepositoryInput {
@@ -101,11 +101,6 @@ const DISPLAY_STATUS = {
   rejected: 'declined',
   canceled: 'revoked',
 } as const;
-
-/** Escape LIKE wildcards so the address is matched literally. */
-function containsPattern(value: string): string {
-  return `%${value.replace(/[\\%_]/g, '\\$&')}%`;
-}
 
 const inviter = alias(user, 'inviter');
 const invitee = alias(user, 'invitee');
@@ -556,7 +551,7 @@ export class DrizzleInvitationListRepository
           filters.email
             ? ilike(
                 sql`COALESCE(${invitee.email}, ${churchInvitation.email})`,
-                containsPattern(filters.email),
+                containsPattern({ value: filters.email }),
               )
             : undefined,
           afterCursor({
@@ -640,7 +635,10 @@ export class DrizzleInvitationListRepository
             : undefined,
           eq(churchInvitation.role, 'admin'),
           filters.email
-            ? ilike(churchInvitation.email, containsPattern(filters.email))
+            ? ilike(
+                churchInvitation.email,
+                containsPattern({ value: filters.email }),
+              )
             : undefined,
           afterCursor({
             kind: 'church',

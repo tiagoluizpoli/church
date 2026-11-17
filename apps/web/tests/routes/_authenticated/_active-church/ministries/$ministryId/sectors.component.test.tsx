@@ -112,6 +112,12 @@ describe('/ministries/$ministryId/operational (sectors panel)', () => {
 
     renderSectors();
 
+    // A file's first route render lands ~1 s on a cold, loaded worker.
+    await screen.findByRole(
+      'list',
+      { name: m.ministry_tab_sectors() },
+      { timeout: 3000 },
+    );
     expect(await rowNames()).toEqual(['Babies Room', 'stage']);
     expect(listSectors).toHaveBeenCalledWith(MINISTRY_ID);
   });

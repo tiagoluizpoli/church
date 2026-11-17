@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { ChevronDown, ChevronRight, MoreHorizontal } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { HeaderStatChip } from '@/components/header-stat-chip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -52,6 +52,7 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
+import { useDebouncedSearch } from '@/shared/hooks/use-debounced-search';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
 import { adminApi, invitationsApi } from '@/utils/api-instances';
@@ -527,28 +528,14 @@ interface FilterBarProps {
 
 function FilterBar({ filters, options, onChange }: FilterBarProps) {
   const committed = filters.email ?? '';
-  const [email, setEmail] = useState(committed);
-  const [syncedEmail, setSyncedEmail] = useState(committed);
-  if (committed !== syncedEmail) {
-    setSyncedEmail(committed);
-    if (committed !== email.trim()) setEmail(committed);
-  }
-  const latest = useRef({ filters, onChange });
-  latest.current = { filters, onChange };
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const trimmed = email.trim();
-  useEffect(() => {
-    if (trimmed === committed) return;
-    timer.current = setTimeout(
-      () =>
-        latest.current.onChange({
-          ...latest.current.filters,
-          email: trimmed || undefined,
-        }),
-      300,
-    );
-    return () => clearTimeout(timer.current);
-  }, [trimmed, committed]);
+  const {
+    search: email,
+    setSearch: setEmail,
+    commitNow,
+  } = useDebouncedSearch({
+    committed,
+    onCommit: ({ search }) => onChange({ ...filters, email: search }),
+  });
   const isAdmin = options?.invitedAs.includes('admin') ?? false;
   const showMinistry = isAdmin || (options?.ministries.length ?? 0) >= 2;
   const status = filters.status ?? 'pending';
@@ -558,8 +545,7 @@ function FilterBar({ filters, options, onChange }: FilterBarProps) {
       className="flex flex-col gap-3 md:flex-row md:items-end"
       onSubmit={(event) => {
         event.preventDefault();
-        clearTimeout(timer.current);
-        onChange({ ...filters, email: trimmed || undefined });
+        commitNow();
       }}
     >
       <div className="flex min-w-48 flex-1 flex-col gap-1">

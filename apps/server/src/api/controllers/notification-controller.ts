@@ -14,6 +14,7 @@ import {
   memberNotificationParamsSchema,
   memberNotificationsQuerystringSchema,
 } from '../dtos/member-notification.dto';
+import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { refuse } from '../utils/refuse';
 
 const errorResponseSchema = z.object({
@@ -94,12 +95,9 @@ export class NotificationController implements FastifyController {
           description:
             "List the caller's own Notifications in the Active Church, newest first, with the unread count of the whole inbox.",
           querystring: memberNotificationsQuerystringSchema.extend({
-            limit: z.coerce
-              .number()
-              .int()
-              .min(1)
-              .max(this.maxPageSize)
-              .optional(),
+            limit: pageLimitSchema({
+              maxPageSize: this.maxPageSize,
+            }).optional(),
           }),
           response: { 200: memberNotificationListResponseSchema, ...refusals },
         },

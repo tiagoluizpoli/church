@@ -1,21 +1,15 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HomeError } from '@/features/home/components/home-error';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
 import { ScheduleRows } from '@/features/scheduling/components/prepare/schedule-rows';
-import type { ListSchedules200SchedulesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
 
-/** A current Schedule that waits on the leader: unfinished, or with an open Swap request. */
-function needsAttention(row: ListSchedules200SchedulesItem): boolean {
-  const { stage, openSwapRequestCount } = row;
-  const { state: cycleState } = row.cycle;
-  if (cycleState === 'past' || stage === 'not_serving') return false;
-  if (stage === 'published') return openSwapRequestCount > 0;
-  return true;
-}
+/** Home shows one short page; the rest is on the Schedules page. */
+const LEADERSHIP_PAGE_SIZE = 5;
 
 interface LeadershipSectionProps extends HomeSectionProps {
   /** The caller's leadership authority; cached rows are keyed by it so a narrower scope never reads a broader one. */
@@ -36,10 +30,14 @@ export function LeadershipSection({
   });
   const query = useQuery({
     queryKey,
-    queryFn: () => adminApi.listSchedules(),
+    queryFn: () =>
+      adminApi.listSchedules({
+        attention: 'true',
+        limit: LEADERSHIP_PAGE_SIZE,
+      }),
     retry: false,
   });
-  const attention = (query.data?.schedules ?? []).filter(needsAttention);
+  const schedules = query.data?.schedules ?? [];
   return (
     <section
       aria-labelledby="home-section-leadership"
@@ -60,10 +58,21 @@ export function LeadershipSection({
           <span className="sr-only">{m.schedules_loading()}</span>
           <Skeleton className="h-16 w-full" />
         </output>
-      ) : attention.length === 0 ? (
+      ) : schedules.length === 0 ? (
         <p className="text-muted-foreground">{m.home_leadership_empty()}</p>
       ) : (
-        <ScheduleRows schedules={attention} showOutstanding />
+        <>
+          <ScheduleRows schedules={schedules} showOutstanding />
+          {query.data?.nextCursor && (
+            <Link
+              to="/schedules"
+              search={{ attention: true }}
+              className="inline-block min-h-11 py-2 underline"
+            >
+              {m.home_leadership_see_all()}
+            </Link>
+          )}
+        </>
       )}
     </section>
   );

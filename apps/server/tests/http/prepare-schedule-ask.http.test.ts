@@ -112,6 +112,7 @@ beforeAll(async () => {
   // Better Auth session is a seam.
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
+    config: appConfig,
     participationManager,
     availabilityCheckManager: new DbAvailabilityCheckManager({
       participationRepository: new DrizzleMinistryParticipationRepository({

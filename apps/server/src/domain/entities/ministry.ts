@@ -5,6 +5,21 @@ import type { ChurchId, MinistryId } from '../branded-ids';
 export const DEFAULT_DIRECTION_OPTIONS = ['all_in', 'all_out'] as const;
 export type DefaultDirection = (typeof DEFAULT_DIRECTION_OPTIONS)[number];
 
+/** Ministries management list filter: every Ministry, those needing review, or those without active Sectors. */
+export const MINISTRY_LIST_STATUS_OPTIONS = [
+  'any',
+  'review',
+  'no-sectors',
+] as const;
+export type MinistryListStatus = (typeof MINISTRY_LIST_STATUS_OPTIONS)[number];
+
+/** Ministries in the caller's whole scope; the filters and the cursor never apply. */
+export interface MinistryListCounts {
+  total: number;
+  review: number;
+  noSectors: number;
+}
+
 export interface MinistrySettings {
   defaultDirection: DefaultDirection;
 }

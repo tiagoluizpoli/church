@@ -1,5 +1,11 @@
 import { m } from '@church/i18n/messages';
-import { screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +16,7 @@ import { renderRoute } from '@/tests/setup/render-route';
 
 const getCallerCapabilities = vi.fn();
 const listMinistries = vi.fn();
+const listMinistryDirectory = vi.fn();
 const getMinistry = vi.fn();
 const listSectors = vi.fn(async () => ({ sectors: [] }));
 const listMinistryRoles = vi.fn(async () => ({ roles: [] }));
@@ -18,6 +25,8 @@ const createMinistry = vi.fn();
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
     listMinistries: (...args: unknown[]) => listMinistries(...args),
+    listMinistryDirectory: (...args: unknown[]) =>
+      listMinistryDirectory(...args),
     getMinistry: (...args: unknown[]) => getMinistry(...args),
     listSectors: () => listSectors(),
     listMinistryRoles: () => listMinistryRoles(),
@@ -76,6 +85,22 @@ function ministry(
   };
 }
 
+type MinistryFixture = ReturnType<typeof ministry>;
+
+interface PageInput {
+  ministries: MinistryFixture[];
+  nextCursor?: string;
+}
+
+/** One server page; counts are whole-scope, so they come from the fixture, not the rows. */
+function page({ ministries, nextCursor }: PageInput) {
+  return {
+    ministries,
+    nextCursor,
+    counts: { total: 3, review: 2, noSectors: 2 },
+  };
+}
+
 function signInAs(capabilities: GetCallerCapabilities200) {
   getCallerCapabilities.mockResolvedValue(capabilities);
 }
@@ -92,13 +117,16 @@ function conflict() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  listMinistries.mockResolvedValue({
-    ministries: [ministry('m-kids', 'kids'), ministry('m-worship', 'Worship')],
-  });
+  const ministries = [
+    ministry('m-kids', 'kids'),
+    ministry('m-worship', 'Worship'),
+  ];
+  listMinistries.mockResolvedValue({ ministries });
+  listMinistryDirectory.mockResolvedValue(page({ ministries }));
 });
 
-function renderList() {
-  return renderRoute({ initialPath: '/ministries', churchTimezone: 'UTC' });
+function renderList(initialPath = '/ministries') {
+  return renderRoute({ initialPath, churchTimezone: 'UTC' });
 }
 
 async function rowNames() {
@@ -125,17 +153,19 @@ describe('/ministries', () => {
 
   it('shows the counts, the zero-Sector hint and a Revisar action on a needs-review Ministry', async () => {
     signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
-    listMinistries.mockResolvedValue({
-      ministries: [
-        ministry('m-kids', 'kids', {
-          sectorCount: 1,
-          roleCount: 1,
-          needsReview: true,
-        }),
-        ministry('m-empty', 'Empty', { sectorCount: 0, roleCount: 0 }),
-        ministry('m-worship', 'Worship'),
-      ],
-    });
+    listMinistryDirectory.mockResolvedValue(
+      page({
+        ministries: [
+          ministry('m-kids', 'kids', {
+            sectorCount: 1,
+            roleCount: 1,
+            needsReview: true,
+          }),
+          ministry('m-empty', 'Empty', { sectorCount: 0, roleCount: 0 }),
+          ministry('m-worship', 'Worship'),
+        ],
+      }),
+    );
 
     renderList();
 
@@ -155,18 +185,28 @@ describe('/ministries', () => {
     expect(worship).not.toHaveTextContent(m.ministries_review());
   });
 
-  it('filters names and statuses together while keeping full-list counters and clearing filters', async () => {
+  it('sends search and status to the server, keeps them in the URL and shows the server counts', async () => {
     signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
-    listMinistries.mockResolvedValue({
-      ministries: [
-        ministry('a', 'Alpha', { needsReview: true }),
-        ministry('b', 'Beta', { sectorCount: 0, needsReview: true }),
-        ministry('c', 'Gamma', { sectorCount: 0 }),
-      ],
-    });
+    const alpha = ministry('a', 'Alpha', { needsReview: true });
+    const beta = ministry('b', 'Beta', { sectorCount: 0, needsReview: true });
+    const gamma = ministry('c', 'Gamma', { sectorCount: 0 });
+    listMinistryDirectory.mockImplementation(
+      async ({ search, status }: { search?: string; status?: string }) =>
+        page({
+          ministries:
+            search === 'missing'
+              ? []
+              : search === 'ALP'
+                ? [alpha]
+                : status === 'review'
+                  ? [alpha, beta]
+                  : [alpha, beta, gamma],
+        }),
+    );
     const user = userEvent.setup();
-    renderList();
+    const { router } = renderList();
     expect(await rowNames()).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(listMinistryDirectory).toHaveBeenLastCalledWith({});
     expect(screen.getByTestId('ministries-total-chip')).toHaveTextContent('3');
     expect(screen.getByTestId('ministries-review-chip')).toHaveTextContent('2');
     expect(screen.getByTestId('ministries-no-sectors-chip')).toHaveTextContent(
@@ -177,44 +217,146 @@ describe('/ministries', () => {
     const search = screen.getByRole('searchbox', {
       name: m.ministries_name_label(),
     });
+
     await user.type(search, 'ALP');
-    expect(await rowNames()).toEqual(['Alpha']);
-    await user.clear(search);
-    await user.click(screen.getByLabelText(m.ministries_filter_status()));
-    await user.click(
-      screen.getByRole('option', { name: m.ministries_filter_review() }),
-    );
-    expect(await rowNames()).toEqual(['Alpha', 'Beta']);
-    await user.type(search, 'beta');
-    expect(await rowNames()).toEqual(['Beta']);
-    expect(screen.getByTestId('ministries-total-chip')).toHaveTextContent('3');
-    await user.clear(search);
     await waitFor(() =>
-      expect(
-        screen.queryByRole('option', { name: m.ministries_filter_review() }),
-      ).not.toBeInTheDocument(),
+      expect(router.state.location.search).toEqual({ search: 'ALP' }),
     );
+    expect(await rowNames()).toEqual(['Alpha']);
+    expect(listMinistryDirectory).toHaveBeenLastCalledWith({ search: 'ALP' });
+
+    await user.clear(search);
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
     await user.click(screen.getByLabelText(m.ministries_filter_status()));
+    // base-ui opens a button-triggered Select a frame after mousedown.
     await user.click(
-      await screen.findByRole('option', {
-        name: m.ministries_filter_no_sectors(),
+      await screen.findByRole('option', { name: m.ministries_filter_review() }),
+    );
+    await waitFor(() =>
+      expect(listMinistryDirectory).toHaveBeenLastCalledWith({
+        status: 'review',
       }),
     );
-    expect(await rowNames()).toEqual(['Beta', 'Gamma']);
+    expect(await rowNames()).toEqual(['Alpha', 'Beta']);
+    expect(router.state.location.search).toEqual({ status: 'review' });
+
     await user.type(search, 'missing');
-    expect(screen.getByText(m.ministries_empty_filtered())).toBeVisible();
+    expect(
+      await screen.findByText(m.ministries_empty_filtered()),
+    ).toBeVisible();
     await user.click(
       screen.getByRole('button', { name: m.invitations_clear_filters() }),
     );
     expect(await rowNames()).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(router.state.location.search).toEqual({});
     expect(search).toHaveValue('');
+  });
+
+  it('asks the server for the trimmed search only once typing pauses for 300 ms', async () => {
+    signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
+    const { router } = renderList();
+    await rowNames();
+    const before = listMinistryDirectory.mock.calls.length;
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      fireEvent.change(
+        screen.getByRole('searchbox', { name: m.ministries_name_label() }),
+        { target: { value: ' wor ' } },
+      );
+      await act(() => vi.advanceTimersByTimeAsync(299));
+      expect(router.state.location.search).toEqual({});
+      expect(listMinistryDirectory).toHaveBeenCalledTimes(before);
+      await act(() => vi.advanceTimersByTimeAsync(1));
+    } finally {
+      vi.useRealTimers();
+    }
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ search: 'wor' }),
+    );
+    await waitFor(() =>
+      expect(listMinistryDirectory.mock.calls.slice(before)).toEqual([
+        [{ search: 'wor' }],
+      ]),
+    );
+  });
+
+  it('commits the search at once on submit and drops it from the URL when cleared', async () => {
+    signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
+    const { router } = renderList('/ministries?search=kid');
+    await rowNames();
+    const search = screen.getByRole('searchbox', {
+      name: m.ministries_name_label(),
+    });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      fireEvent.change(search, { target: { value: 'wor' } });
+      fireEvent.submit(
+        screen.getByRole('form', { name: m.ministries_filters_label() }),
+      );
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(router.state.location.search).toEqual({ search: 'wor' });
+      fireEvent.change(search, { target: { value: '' } });
+      await act(() => vi.advanceTimersByTimeAsync(299));
+      expect(router.state.location.search).toEqual({ search: 'wor' });
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(router.state.location.search).toEqual({});
+    } finally {
+      vi.useRealTimers();
+    }
+    await waitFor(() =>
+      expect(listMinistryDirectory).toHaveBeenLastCalledWith({}),
+    );
+    expect(listMinistryDirectory).toHaveBeenCalledWith({ search: 'wor' });
+  });
+
+  it('reads the filters from the URL on a deep link', async () => {
+    signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
+
+    renderList('/ministries?status=no-sectors&search=kid');
+
+    expect(await rowNames()).toEqual(['kids', 'Worship']);
+    expect(listMinistryDirectory).toHaveBeenCalledWith({
+      status: 'no-sectors',
+      search: 'kid',
+    });
+    expect(
+      screen.getByRole('searchbox', { name: m.ministries_name_label() }),
+    ).toHaveValue('kid');
+  });
+
+  it('appends the next server page on Carregar mais', async () => {
+    signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
+    listMinistryDirectory.mockImplementation(
+      async ({ cursor }: { cursor?: string }) =>
+        cursor === 'next'
+          ? page({ ministries: [ministry('c', 'Gamma')] })
+          : page({
+              ministries: [ministry('a', 'Alpha'), ministry('b', 'Beta')],
+              nextCursor: 'next',
+            }),
+    );
+    const user = userEvent.setup();
+    renderList();
+    expect(await rowNames()).toEqual(['Alpha', 'Beta']);
+
+    await user.click(
+      screen.getByRole('button', { name: m.invitations_load_more() }),
+    );
+
+    await waitFor(async () =>
+      expect(await rowNames()).toEqual(['Alpha', 'Beta', 'Gamma']),
+    );
+    expect(listMinistryDirectory).toHaveBeenLastCalledWith({ cursor: 'next' });
+    expect(
+      screen.queryByRole('button', { name: m.invitations_load_more() }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps the one-row list for a leader of one Ministry, without New Ministry', async () => {
     signInAs(callerCapabilitiesFixture({ ledMinistries: 1 }));
-    listMinistries.mockResolvedValue({
-      ministries: [ministry('m-worship', 'Worship')],
-    });
+    listMinistryDirectory.mockResolvedValue(
+      page({ ministries: [ministry('m-worship', 'Worship')] }),
+    );
 
     const { router } = renderList();
 
@@ -231,7 +373,7 @@ describe('/ministries', () => {
     renderList();
 
     expect(await screen.findByText(m.shell_no_access())).toBeVisible();
-    expect(listMinistries).not.toHaveBeenCalled();
+    expect(listMinistryDirectory).not.toHaveBeenCalled();
   });
 
   it('creates a Ministry from a name-only dialog and opens its Sectors tab with the setup instruction', async () => {

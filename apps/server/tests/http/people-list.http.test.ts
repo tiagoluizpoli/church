@@ -355,6 +355,27 @@ describe('GET /people', () => {
     expect((await list('?search=_')).items).toEqual([]);
   });
 
+  it('matches %, _ and \\ in a search literally', async () => {
+    signIn('admin');
+    for (const [key, name] of [
+      ['pct', '50% Off'],
+      ['und', 'A_B'],
+      ['bsl', 'Back\\Slash'],
+    ] as const) {
+      await person({ key, name });
+    }
+
+    for (const [search, expected] of [
+      ['%25', '50% Off'],
+      ['_', 'A_B'],
+      ['%5C', 'Back\\Slash'],
+    ] as const) {
+      expect(names((await list(`?search=${search}`)).items), search).toEqual([
+        expected,
+      ]);
+    }
+  });
+
   it('combines Ministry and Access on the same membership', async () => {
     signIn('admin');
     expect(names((await list(`?ministryId=${worshipId}`)).items)).toEqual([

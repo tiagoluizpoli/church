@@ -7,6 +7,8 @@ import type {
   GetActiveMinistryInput,
   IMinistryManager,
   ListMinistriesByLeaderInput,
+  ListMinistryPageRequest,
+  MinistryPage,
   MinistrySummary,
   RenameMinistryInput,
   SetDefaultDirectionInput,
@@ -24,6 +26,14 @@ import type { Ministry } from '../domain/entities/ministry';
 import { MinistryInUseError } from '../domain/errors/ministry-in-use';
 import { usualSetupNeedsReview } from '../domain/services/usual-setup-planner';
 import { revokeMinistryHalf } from './invitation-revocation';
+
+interface ReviewIdsInput {
+  churchId: ChurchId;
+}
+
+interface SummarizeWithInput extends SummarizeMinistriesInput {
+  reviewIds: ReadonlySet<MinistryId>;
+}
 
 interface DbMinistryManagerDependencies {
   ministryRepo: MinistryRepository;
@@ -70,34 +80,82 @@ export class DbMinistryManager implements IMinistryManager {
     churchId,
     ministries,
   }: SummarizeMinistriesInput): Promise<Map<MinistryId, MinistrySummary>> {
+    return this.summarizeWith({
+      churchId,
+      ministries,
+      reviewIds: await this.reviewIds({ churchId }),
+    });
+  }
+
+  /** Summaries given the Ministries needing review, so a caller that has them loads them once. */
+  private async summarizeWith({
+    churchId,
+    ministries,
+    reviewIds,
+  }: SummarizeWithInput): Promise<Map<MinistryId, MinistrySummary>> {
     const ministryIds = ministries.map((ministry) => ministry.id);
-    const [sectorCounts, roleCounts, setups, templates] = await Promise.all([
+    const [sectorCounts, roleCounts] = await Promise.all([
       this.sectorRepo.countActiveByMinistry({ churchId, ministryIds }),
       this.roleRepo.countActiveByMinistry({ churchId, ministryIds }),
-      this.usualSetupRepo.listByChurch({ churchId }),
-      this.templateRepo.list({ churchId }),
     ]);
-    const entries = new Map(
-      setups.map((entry) => [
-        `${entry.ministryId}:${entry.sourceTemplateTimeBlockId}`,
-        entry,
-      ]),
-    );
-    const blocks = templates.flatMap((template) => template.blocks);
     return new Map(
       ministryIds.map((id) => [
         id,
         {
           sectorCount: sectorCounts.get(id) ?? 0,
           roleCount: roleCounts.get(id) ?? 0,
-          needsReview: blocks.some((block) =>
-            usualSetupNeedsReview({
-              entry: entries.get(`${id}:${block.id}`),
-              block,
-            }),
-          ),
+          needsReview: reviewIds.has(id),
         },
       ]),
+    );
+  }
+
+  async listPage({
+    churchId,
+    ministryIds,
+    search,
+    status,
+    cursor,
+    limit,
+  }: ListMinistryPageRequest): Promise<MinistryPage> {
+    const reviewIds = await this.reviewIds({ churchId });
+    const page = await this.ministryRepo.listPage({
+      churchId,
+      ids: ministryIds,
+      search,
+      status,
+      reviewIds: [...reviewIds],
+      cursor,
+      limit,
+    });
+    const summaries = await this.summarizeWith({
+      churchId,
+      ministries: page.ministries,
+      reviewIds,
+    });
+    return { ...page, summaries };
+  }
+
+  /** Ministries with any Usual setup block needing review, by the domain rule. */
+  private async reviewIds({
+    churchId,
+  }: ReviewIdsInput): Promise<Set<MinistryId>> {
+    const [setups, templates] = await Promise.all([
+      this.usualSetupRepo.listByChurch({ churchId }),
+      this.templateRepo.list({ churchId }),
+    ]);
+    const blocks = new Map(
+      templates
+        .flatMap((template) => template.blocks)
+        .map((block) => [block.id, block]),
+    );
+    return new Set(
+      setups
+        .filter((entry) => {
+          const block = blocks.get(entry.sourceTemplateTimeBlockId);
+          return block !== undefined && usualSetupNeedsReview({ entry, block });
+        })
+        .map((entry) => entry.ministryId),
     );
   }
 

@@ -1,6 +1,5 @@
 import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
 import { HeaderStatChip } from '@/components/header-stat-chip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -21,9 +20,13 @@ import {
   WorkspacePage,
 } from '@/components/workspace-page';
 import { CreateMinistryDialog } from '@/features/ministries/components/create-ministry-dialog';
-import { useMinistryList } from '@/features/ministries/ministry-queries';
+import {
+  type MinistryDirectoryFilters,
+  useMinistryDirectory,
+} from '@/features/ministries/ministry-queries';
 import { cn } from '@/lib/utils';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
+import { useDebouncedSearch } from '@/shared/hooks/use-debounced-search';
 import { pluralMessage } from '@/shared/utils/plural';
 
 interface MinistryRow {
@@ -34,7 +37,7 @@ interface MinistryRow {
   needsReview: boolean;
 }
 
-type StatusFilter = 'any' | 'review' | 'no-sectors';
+type StatusFilter = NonNullable<MinistryDirectoryFilters['status']>;
 
 function ministryColumns(): DataTableColumn[] {
   return [
@@ -60,18 +63,6 @@ function roleCountLabel(ministry: MinistryRow) {
     one: () => m.ministries_role_count_one(),
     other: () => m.ministries_role_count_other({ count: ministry.roleCount }),
   });
-}
-
-/** Under the name only for a Ministry with no Sectors; needs-review shows as the row tint and a Revisar action. */
-function MinistryNotice({ sectorCount }: MinistryRow) {
-  if (sectorCount === 0) {
-    return (
-      <span className="block text-muted-foreground text-xs">
-        {m.ministries_no_sectors()}
-      </span>
-    );
-  }
-  return null;
 }
 
 const REVIEW_TINT = 'bg-amber-50 dark:bg-amber-950/30';
@@ -106,23 +97,104 @@ function MinistryAction({ needsReview, id, name }: MinistryRow) {
   );
 }
 
-/** The caller's active Ministries, as the server orders them; never auto-opens a single row. */
-export function MinistryListPage() {
-  const { isChurchAdmin } = useCallerCapabilities();
-  const ministriesQuery = useMinistryList({ enabled: true });
-  const ministries = ministriesQuery.data?.ministries ?? [];
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('any');
-  const normalizedSearch = search.trim().toLocaleLowerCase();
-  const filtered = ministries.filter(
-    (ministry) =>
-      ministry.name.toLocaleLowerCase().includes(normalizedSearch) &&
-      (status === 'any' ||
-        (status === 'review'
-          ? ministry.needsReview
-          : ministry.sectorCount === 0)),
+interface FilterBarProps {
+  filters: MinistryDirectoryFilters;
+  onChange: (filters: MinistryDirectoryFilters) => void;
+}
+
+function statusLabel(status: StatusFilter) {
+  if (status === 'review') return m.ministries_filter_review();
+  if (status === 'no-sectors') return m.ministries_filter_no_sectors();
+  return m.ministries_filter_all();
+}
+
+/** Search commits 300 ms after typing stops (or on submit); status commits at once. */
+function FilterBar({ filters, onChange }: FilterBarProps) {
+  const committed = filters.search ?? '';
+  const { search, setSearch, commitNow } = useDebouncedSearch({
+    committed,
+    onCommit: (commit) => onChange({ ...filters, ...commit }),
+  });
+  const status = filters.status ?? 'any';
+  return (
+    <form
+      aria-label={m.ministries_filters_label()}
+      className="flex flex-col gap-3 md:flex-row md:items-end"
+      onSubmit={(event) => {
+        event.preventDefault();
+        commitNow();
+      }}
+    >
+      <div className="flex min-w-48 flex-1 flex-col gap-1">
+        <Label htmlFor="ministries-filter-search">
+          {m.ministries_name_label()}
+        </Label>
+        <Input
+          id="ministries-filter-search"
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          className="min-h-11 md:min-h-0"
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="ministries-filter-status">
+          {m.ministries_filter_status()}
+        </Label>
+        <Select
+          value={status}
+          onValueChange={(value) =>
+            onChange({ ...filters, status: (value as StatusFilter) ?? 'any' })
+          }
+        >
+          <SelectTrigger
+            id="ministries-filter-status"
+            className="min-h-11 w-full md:min-h-0 md:w-48"
+          >
+            <SelectValue>{statusLabel(status)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">{m.ministries_filter_all()}</SelectItem>
+            <SelectItem value="review">
+              {m.ministries_filter_review()}
+            </SelectItem>
+            <SelectItem value="no-sectors">
+              {m.ministries_filter_no_sectors()}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </form>
   );
-  const isFiltered = Boolean(normalizedSearch || status !== 'any');
+}
+
+interface MinistryListPageProps {
+  filters: MinistryDirectoryFilters;
+  onFiltersChange: (filters: MinistryDirectoryFilters) => void;
+}
+
+/** The caller's active Ministries, filtered, counted and paged by the server; never auto-opens a single row. */
+export function MinistryListPage({
+  filters,
+  onFiltersChange,
+}: MinistryListPageProps) {
+  const { isChurchAdmin } = useCallerCapabilities();
+  const query = useMinistryDirectory({ filters });
+  const data =
+    query.isError && !query.isFetchNextPageError ? undefined : query.data;
+  const ministries = data?.pages.flatMap((page) => page.ministries) ?? [];
+  const counts = data?.pages[0]?.counts;
+  const isFiltered = Boolean(
+    filters.search || (filters.status && filters.status !== 'any'),
+  );
+  // A new filter set shows the previous rows only as placeholder data.
+  const loading = query.isLoading || query.isPlaceholderData;
+  // The server defaults to every status, so `any` stays off the URL.
+  const change = (next: MinistryDirectoryFilters) =>
+    onFiltersChange({
+      ...next,
+      status: next.status === 'any' ? undefined : next.status,
+    });
 
   return (
     <WorkspacePage>
@@ -131,82 +203,34 @@ export function MinistryListPage() {
         description={m.ministries_description()}
         autoFocusTitle
         aside={
-          <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
-            <HeaderStatChip
-              testId="ministries-total-chip"
-              label={m.nav_ministries()}
-              value={ministries.length}
-            />
-            <HeaderStatChip
-              testId="ministries-review-chip"
-              label={m.ministries_filter_review()}
-              value={ministries.filter((item) => item.needsReview).length}
-            />
-            <HeaderStatChip
-              testId="ministries-no-sectors-chip"
-              label={m.ministries_filter_no_sectors()}
-              value={ministries.filter((item) => item.sectorCount === 0).length}
-            />
-          </div>
+          counts ? (
+            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+              <HeaderStatChip
+                testId="ministries-total-chip"
+                label={m.nav_ministries()}
+                value={counts.total}
+              />
+              <HeaderStatChip
+                testId="ministries-review-chip"
+                label={m.ministries_filter_review()}
+                value={counts.review}
+              />
+              <HeaderStatChip
+                testId="ministries-no-sectors-chip"
+                label={m.ministries_filter_no_sectors()}
+                value={counts.noSectors}
+              />
+            </div>
+          ) : undefined
         }
       />
-      <form
-        aria-label={m.ministries_filters_label()}
-        className="flex flex-col gap-3 md:flex-row md:items-end"
-        onSubmit={(event) => event.preventDefault()}
-      >
-        <div className="flex min-w-48 flex-1 flex-col gap-1">
-          <Label htmlFor="ministries-filter-search">
-            {m.ministries_name_label()}
-          </Label>
-          <Input
-            id="ministries-filter-search"
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="min-h-11 md:min-h-0"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="ministries-filter-status">
-            {m.ministries_filter_status()}
-          </Label>
-          <Select
-            value={status}
-            onValueChange={(value) =>
-              setStatus((value as StatusFilter) ?? 'any')
-            }
-          >
-            <SelectTrigger
-              id="ministries-filter-status"
-              className="min-h-11 w-full md:min-h-0 md:w-48"
-            >
-              <SelectValue>
-                {status === 'review'
-                  ? m.ministries_filter_review()
-                  : status === 'no-sectors'
-                    ? m.ministries_filter_no_sectors()
-                    : m.ministries_filter_all()}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="any">{m.ministries_filter_all()}</SelectItem>
-              <SelectItem value="review">
-                {m.ministries_filter_review()}
-              </SelectItem>
-              <SelectItem value="no-sectors">
-                {m.ministries_filter_no_sectors()}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </form>
+      <FilterBar filters={filters} onChange={change} />
       {isChurchAdmin ? (
         <div className="flex justify-end">
           <CreateMinistryDialog />
         </div>
       ) : null}
-      {ministriesQuery.isError ? (
+      {query.isError && !query.isFetchNextPageError ? (
         <Alert variant="destructive">
           <AlertDescription className="flex items-center gap-3">
             <span>{m.ministries_load_failed()}</span>
@@ -214,18 +238,18 @@ export function MinistryListPage() {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => ministriesQuery.refetch()}
+              onClick={() => query.refetch()}
             >
               {m.ministries_retry()}
             </Button>
           </AlertDescription>
         </Alert>
-      ) : ministriesQuery.isLoading ? (
+      ) : loading ? (
         <div className="grid gap-3">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : ministries.length === 0 ? (
         <div className="space-y-2" role="status">
           <p className="text-muted-foreground">
             {isFiltered ? m.ministries_empty_filtered() : m.ministries_empty()}
@@ -235,10 +259,7 @@ export function MinistryListPage() {
               type="button"
               variant="outline"
               className="min-h-11 md:min-h-0"
-              onClick={() => {
-                setSearch('');
-                setStatus('any');
-              }}
+              onClick={() => change({})}
             >
               {m.invitations_clear_filters()}
             </Button>
@@ -250,7 +271,7 @@ export function MinistryListPage() {
             <DataTable<MinistryRow>
               aria-label={m.nav_ministries()}
               columns={ministryColumns()}
-              items={filtered}
+              items={ministries}
               rowId={({ item }) => item.id}
               rowClassName={({ item }) =>
                 item.needsReview ? REVIEW_TINT : undefined
@@ -258,12 +279,7 @@ export function MinistryListPage() {
               renderCell={({ item, column }) => {
                 switch (column.id) {
                   case 'name':
-                    return (
-                      <>
-                        {item.name}
-                        <MinistryNotice {...item} />
-                      </>
-                    );
+                    return item.name;
                   case 'sectors':
                     return item.sectorCount;
                   case 'roles':
@@ -294,6 +310,35 @@ export function MinistryListPage() {
                 </div>
               )}
             />
+            {query.isFetchNextPageError ? (
+              <Alert variant="destructive">
+                <AlertDescription className="flex items-center gap-3">
+                  <span>{m.ministries_load_failed()}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="min-h-11 md:min-h-0"
+                    onClick={() => query.fetchNextPage()}
+                  >
+                    {m.ministries_retry()}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {query.hasNextPage && !query.isFetchNextPageError ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={query.isFetchingNextPage}
+                className="min-h-11 w-full md:min-h-0 md:w-auto"
+                onClick={() => query.fetchNextPage()}
+              >
+                {query.isFetchingNextPage
+                  ? m.invitations_loading_more()
+                  : m.invitations_load_more()}
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       )}

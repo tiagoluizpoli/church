@@ -242,10 +242,57 @@ export interface ScheduleSummaryView {
   availabilityRequestedForAny: boolean;
 }
 
+/** `current` lists Sent Cycles, `past` Past Cycles, `all` both (current first). */
+export const SCHEDULE_LIST_PERIOD_OPTIONS = ['current', 'past', 'all'] as const;
+export type ScheduleListPeriod = (typeof SCHEDULE_LIST_PERIOD_OPTIONS)[number];
+
+/** Combined before pagination; a new filter is one more optional field here. */
+export interface ScheduleListFilters {
+  period: ScheduleListPeriod;
+  ministryId?: MinistryId;
+  stage?: ScheduleStage;
+  /** Case-insensitive substring of the Ministry name or the Cycle name. */
+  search?: string;
+  /** Only current Schedules that wait on the leader: unfinished, or Published with an open Swap request. */
+  attention?: boolean;
+}
+
 export interface ListSchedulesInput {
   churchId: ChurchId;
   /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
   ministryIds?: MinistryId[];
+  filters: ScheduleListFilters;
+  /** Opaque position of the last row of the previous page. */
+  cursor?: string;
+  limit: number;
+}
+
+/** One Schedule of a Sent or Past Cycle, within the caller's Ministries. */
+export interface GetScheduleInput {
+  churchId: ChurchId;
+  /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
+  ministryIds?: MinistryId[];
+  ministryId: MinistryId;
+  cycleId: CycleId;
+}
+
+export type ScheduleStageCounts = Record<ScheduleStage, number>;
+
+export interface ScheduleMinistryOption {
+  id: MinistryId;
+  name: string;
+}
+
+export interface ScheduleListOptions {
+  ministries: ScheduleMinistryOption[];
+}
+
+export interface ScheduleListPage {
+  schedules: ScheduleView[];
+  nextCursor?: string;
+  /** Current Schedules per stage in the caller's scope, ignoring the filters and the cursor. */
+  counts: ScheduleStageCounts;
+  options: ScheduleListOptions;
 }
 
 export interface ScheduleAskingView {
@@ -355,5 +402,7 @@ export interface IParticipationManager {
     input: ListScheduleSummariesInput,
   ): Promise<ScheduleSummaryView[]>;
   /** Newest Cycle first, then Ministries alphabetically. */
-  listSchedules(input: ListSchedulesInput): Promise<ScheduleView[]>;
+  listSchedules(input: ListSchedulesInput): Promise<ScheduleListPage>;
+  /** Throws NotFoundError when the pair is out of scope or its Cycle is a Draft. */
+  getSchedule(input: GetScheduleInput): Promise<ScheduleView>;
 }

@@ -23,7 +23,7 @@ const api = vi.hoisted(() => ({
   listMinistries: vi.fn(),
   listScheduleSummaries: vi.fn(),
   getCycleParticipation: vi.fn(),
-  listSchedules: vi.fn(),
+  getSchedule: vi.fn(),
   listSectors: vi.fn(),
   listMinistryRoles: vi.fn(),
 }));
@@ -67,7 +67,7 @@ beforeEach(() => {
   api.listMinistries.mockRejectedValue(new Error('admin-only read'));
   api.listScheduleSummaries.mockResolvedValue({ cycles: [] });
   api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
-  api.listSchedules.mockResolvedValue({ schedules: [SCHEDULE] });
+  api.getSchedule.mockResolvedValue(SCHEDULE);
   api.listSectors.mockResolvedValue({ sectors: SECTORS });
   api.listMinistryRoles.mockResolvedValue({ roles: ROLES });
   activeChurchApiMock.listActiveChurchOptions.mockResolvedValue({
@@ -115,8 +115,9 @@ it('shows a leader-callable Schedule with a link to edit one Time block and no i
 });
 
 it('shows a read-only Schedule for a past Cycle with navigation to view the block', async () => {
-  api.listSchedules.mockResolvedValue({
-    schedules: [{ ...SCHEDULE, cycle: { ...SCHEDULE.cycle, state: 'past' } }],
+  api.getSchedule.mockResolvedValue({
+    ...SCHEDULE,
+    cycle: { ...SCHEDULE.cycle, state: 'past' },
   });
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
@@ -136,9 +137,7 @@ it('shows a read-only Schedule for a past Cycle with navigation to view the bloc
 });
 
 it('keeps a published Schedule preparable without asking again, so an added Event can be staffed', async () => {
-  api.listSchedules.mockResolvedValue({
-    schedules: [{ ...SCHEDULE, stage: 'published' }],
-  });
+  api.getSchedule.mockResolvedValue({ ...SCHEDULE, stage: 'published' });
   api.getCycleParticipation.mockResolvedValue({
     events: [
       {
@@ -163,8 +162,10 @@ it('keeps a published Schedule preparable without asking again, so an added Even
 });
 
 it('shows the swap request count on the badge and links to the Assign board', async () => {
-  api.listSchedules.mockResolvedValue({
-    schedules: [{ ...SCHEDULE, stage: 'published', openSwapRequestCount: 2 }],
+  api.getSchedule.mockResolvedValue({
+    ...SCHEDULE,
+    stage: 'published',
+    openSwapRequestCount: 2,
   });
   api.getCycleParticipation.mockResolvedValue({ events: [] });
   renderRoute({
@@ -260,7 +261,7 @@ it.each([
   'participation',
 ] as const)('shows no-access for a forbidden %s read', async (read) => {
   const query =
-    read === 'schedules' ? api.listSchedules : api.getCycleParticipation;
+    read === 'schedules' ? api.getSchedule : api.getCycleParticipation;
   query.mockRejectedValue({ isAxiosError: true, response: { status: 403 } });
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
@@ -276,7 +277,10 @@ it.each([
   'participation',
 ] as const)('shows not-found when the Schedule is absent from %s', async (read) => {
   if (read === 'scoped-list')
-    api.listSchedules.mockResolvedValue({ schedules: [] });
+    api.getSchedule.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 404 },
+    });
   else
     api.getCycleParticipation.mockRejectedValue({
       isAxiosError: true,
@@ -299,7 +303,7 @@ it.each([
 ] as const)('shows a retryable %s error and recovers to the Schedule', async (read) => {
   const user = userEvent.setup();
   const query =
-    read === 'schedules' ? api.listSchedules : api.getCycleParticipation;
+    read === 'schedules' ? api.getSchedule : api.getCycleParticipation;
   query.mockRejectedValue(new Error('Network unavailable'));
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
@@ -307,7 +311,7 @@ it.each([
   });
   expect(await screen.findByText(m.prepare_schedule_error())).toBeVisible();
   expect(screen.queryByText(m.prepare_empty())).not.toBeInTheDocument();
-  api.listSchedules.mockResolvedValue({ schedules: [SCHEDULE] });
+  api.getSchedule.mockResolvedValue(SCHEDULE);
   api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
   await user.click(screen.getByRole('button', { name: m.schedules_retry() }));
   expect(
@@ -349,9 +353,8 @@ it.each([
     resolveRead = resolve;
   });
   const query =
-    read === 'schedules' ? api.listSchedules : api.getCycleParticipation;
-  const response =
-    read === 'schedules' ? { schedules: [SCHEDULE] } : { events: [EVENT] };
+    read === 'schedules' ? api.getSchedule : api.getCycleParticipation;
+  const response = read === 'schedules' ? SCHEDULE : { events: [EVENT] };
   query.mockReturnValue(pendingRead.then(() => response));
   const scroll = vi.fn();
   const previous = HTMLElement.prototype.scrollIntoView;
@@ -525,14 +528,10 @@ it.each([
     () =>
       new Promise((resolve) => {
         finishAsk = () => {
-          api.listSchedules.mockResolvedValue({
-            schedules: [
-              {
-                ...SCHEDULE,
-                stage: 'asking',
-                asking: { confirmed: 0, asked: 34 },
-              },
-            ],
+          api.getSchedule.mockResolvedValue({
+            ...SCHEDULE,
+            stage: 'asking',
+            asking: { confirmed: 0, asked: 34 },
           });
           api.getCycleParticipation.mockResolvedValue({
             events: [
@@ -601,8 +600,15 @@ it.each([
   expect(
     screen.queryByRole('button', { name: m.prepare_ask() }),
   ).not.toBeInTheDocument();
-  expect(queryClient.getQueryData(['prepare-schedules'])).toMatchObject({
-    schedules: [{ stage: 'asking' }],
+  expect(
+    queryClient.getQueryData([
+      'prepare-schedules',
+      'one',
+      MINISTRY_ID,
+      CYCLE_ID,
+    ]),
+  ).toMatchObject({
+    stage: 'asking',
   });
 });
 
@@ -767,9 +773,7 @@ it.each([
 it('refreshes the stage after another tab has already Asked so the dialog cannot reopen', async () => {
   const user = userEvent.setup();
   api.askScheduleAvailability.mockImplementation(async () => {
-    api.listSchedules.mockResolvedValue({
-      schedules: [{ ...SCHEDULE, stage: 'asking' }],
-    });
+    api.getSchedule.mockResolvedValue({ ...SCHEDULE, stage: 'asking' });
     throw {
       isAxiosError: true,
       response: {

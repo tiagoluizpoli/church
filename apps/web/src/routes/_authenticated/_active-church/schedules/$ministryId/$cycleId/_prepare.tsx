@@ -30,6 +30,7 @@ import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare
 import { ScheduleAsk } from '@/features/scheduling/components/prepare/schedule-ask';
 import { SchedulePublish } from '@/features/scheduling/components/prepare/schedule-publish';
 import { swapRequestCountLabel } from '@/features/scheduling/components/prepare/schedule-rows';
+import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
@@ -56,19 +57,13 @@ function PrepareWorkspaceRoute() {
   const [timeWindowFilter, setTimeWindowFilter] = useState<TimeWindowFilter>({
     mode: 'starts',
   });
-  const schedules = useQuery({
-    queryKey: ['prepare-schedules'],
-    queryFn: () => adminApi.listSchedules(),
-    retry: false,
-  });
+  const schedules = useSchedule({ ministryId, cycleId });
   const participation = useQuery({
     queryKey: ['prepare-cycle-participation', ministryId, cycleId],
     queryFn: () => adminApi.getCycleParticipation(cycleId, { ministryId }),
     retry: false,
   });
-  const schedule = schedules.data?.schedules.find(
-    (row) => row.ministry.id === ministryId && row.cycle.id === cycleId,
-  );
+  const schedule = schedules.data;
   const reads = [schedules, participation];
   const statuses = reads.map((read) =>
     isAxiosError(read.error) ? read.error.response?.status : undefined,

@@ -2268,6 +2268,95 @@ export type CreateMinistry409 = {
   message: string;
 };
 
+export type ListMinistryDirectoryParams = {
+/**
+ * @minLength 1
+ * @maxLength 255
+ */
+search?: string;
+status?: ListMinistryDirectoryStatus;
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListMinistryDirectoryStatus = typeof ListMinistryDirectoryStatus[keyof typeof ListMinistryDirectoryStatus];
+
+
+export const ListMinistryDirectoryStatus = {
+  any: 'any',
+  review: 'review',
+  'no-sectors': 'no-sectors',
+} as const;
+
+export type ListMinistryDirectory200MinistriesItemDefaultDirection = typeof ListMinistryDirectory200MinistriesItemDefaultDirection[keyof typeof ListMinistryDirectory200MinistriesItemDefaultDirection];
+
+
+export const ListMinistryDirectory200MinistriesItemDefaultDirection = {
+  all_in: 'all_in',
+  all_out: 'all_out',
+} as const;
+
+export type ListMinistryDirectory200MinistriesItem = {
+  id: string;
+  churchId: string;
+  name: string;
+  description?: string;
+  defaultDirection: ListMinistryDirectory200MinistriesItemDefaultDirection;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  sectorCount: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  roleCount: number;
+  needsReview: boolean;
+};
+
+export type ListMinistryDirectory200Counts = {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  total: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  review: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  noSectors: number;
+};
+
+export type ListMinistryDirectory200 = {
+  ministries: ListMinistryDirectory200MinistriesItem[];
+  nextCursor?: string;
+  counts: ListMinistryDirectory200Counts;
+};
+
+export type ListMinistryDirectory401 = {
+  error: string;
+  message: string;
+};
+
+export type ListMinistryDirectory403 = {
+  error: string;
+  message: string;
+};
+
 export type GetMinistry200DefaultDirection = typeof GetMinistry200DefaultDirection[keyof typeof GetMinistry200DefaultDirection];
 
 
@@ -3091,6 +3180,47 @@ export type SaveUsualSetupBlock404 = {
   message: string;
 };
 
+export type ListSchedulesParams = {
+period?: ListSchedulesPeriod;
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+ */
+ministryId?: string;
+stage?: ListSchedulesStage;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+search?: string;
+attention?: string;
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListSchedulesPeriod = typeof ListSchedulesPeriod[keyof typeof ListSchedulesPeriod];
+
+
+export const ListSchedulesPeriod = {
+  current: 'current',
+  past: 'past',
+  all: 'all',
+} as const;
+
+export type ListSchedulesStage = typeof ListSchedulesStage[keyof typeof ListSchedulesStage];
+
+
+export const ListSchedulesStage = {
+  to_prepare: 'to_prepare',
+  asking: 'asking',
+  assigning: 'assigning',
+  published: 'published',
+  not_serving: 'not_serving',
+} as const;
+
 export type ListSchedules200SchedulesItemMinistry = {
   id: string;
   name: string;
@@ -3142,8 +3272,48 @@ export type ListSchedules200SchedulesItem = {
   asking?: ListSchedules200SchedulesItemAsking;
 };
 
+export type ListSchedules200Counts = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  to_prepare: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  asking: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  assigning: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  published: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  not_serving: number;
+};
+
+export type ListSchedules200OptionsMinistriesItem = {
+  id: string;
+  name: string;
+};
+
+export type ListSchedules200Options = {
+  ministries: ListSchedules200OptionsMinistriesItem[];
+};
+
 export type ListSchedules200 = {
   schedules: ListSchedules200SchedulesItem[];
+  nextCursor?: string;
+  counts: ListSchedules200Counts;
+  options: ListSchedules200Options;
 };
 
 export type ListSchedules401 = {
@@ -3152,6 +3322,72 @@ export type ListSchedules401 = {
 };
 
 export type ListSchedules403 = {
+  error: string;
+  message: string;
+};
+
+export type GetSchedule200Ministry = {
+  id: string;
+  name: string;
+};
+
+export type GetSchedule200CycleState = typeof GetSchedule200CycleState[keyof typeof GetSchedule200CycleState];
+
+
+export const GetSchedule200CycleState = {
+  draft: 'draft',
+  sent: 'sent',
+  past: 'past',
+} as const;
+
+export type GetSchedule200Cycle = {
+  id: string;
+  name: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDate: string;
+  state: GetSchedule200CycleState;
+};
+
+export type GetSchedule200Stage = typeof GetSchedule200Stage[keyof typeof GetSchedule200Stage];
+
+
+export const GetSchedule200Stage = {
+  to_prepare: 'to_prepare',
+  asking: 'asking',
+  assigning: 'assigning',
+  published: 'published',
+  not_serving: 'not_serving',
+} as const;
+
+export type GetSchedule200Asking = {
+  confirmed: number;
+  asked: number;
+};
+
+export type GetSchedule200 = {
+  affectedVolunteerCount: number;
+  ministry: GetSchedule200Ministry;
+  cycle: GetSchedule200Cycle;
+  stage: GetSchedule200Stage;
+  lateMarkCount: number;
+  openSwapRequestCount: number;
+  gapCount: number;
+  asking?: GetSchedule200Asking;
+};
+
+export type GetSchedule401 = {
+  error: string;
+  message: string;
+};
+
+export type GetSchedule403 = {
+  error: string;
+  message: string;
+};
+
+export type GetSchedule404 = {
   error: string;
   message: string;
 };

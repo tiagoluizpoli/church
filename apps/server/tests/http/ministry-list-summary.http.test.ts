@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import { role, sector } from '@church/db';
 import { parseTimeOfDay } from '@church/time';
 import { eq } from 'drizzle-orm';
@@ -33,6 +34,7 @@ import {
   buildSector,
 } from '@/seeds/builders/ministry';
 import { buildEventTemplate, buildUsualSetup } from '@/seeds/builders/planning';
+import { buildVolunteerWithMembership } from '@/seeds/builders/volunteer';
 import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
@@ -68,6 +70,7 @@ beforeAll(async () => {
     }),
   });
   const controller = new MinistryController({
+    config: appConfig,
     ministryManager: new DbMinistryManager({
       ministryRepo,
       volunteerRepo: new DrizzleVolunteerRepository({ db }),
@@ -254,5 +257,169 @@ describe('GET /api/v1/ministries list summary', () => {
       roleCount: 1,
       needsReview: true,
     });
+  });
+});
+
+interface SignInInput {
+  userId: string;
+}
+
+function signIn({ userId }: SignInInput) {
+  mockGetSession.mockResolvedValue({
+    user: { id: userId },
+    session: { activeOrganizationId: null },
+  } as never);
+  activeChurchResolver.resolve.mockResolvedValue({
+    status: 'resolved',
+    churchId: CHURCH_A,
+    volunteerId: null,
+    autoSelected: false,
+  });
+}
+
+interface DirectoryInput {
+  query?: string;
+}
+
+async function directory({ query = '' }: DirectoryInput = {}) {
+  return app.inject({
+    method: 'GET',
+    url: `/api/v1/ministries/directory${query}`,
+  });
+}
+
+function names(rows: Record<string, unknown>[]) {
+  return rows.map((row) => row.name);
+}
+
+describe('GET /api/v1/ministries/directory', () => {
+  it('filters by status and search on the server while counts cover the whole scope', async () => {
+    await seed();
+    await buildMinistry({
+      db: schedulingTestDb,
+      churchId: CHURCH_A,
+      name: 'worship team',
+    });
+    signIn({ userId: 'sum-admin' });
+    const counts = { total: 3, review: 1, noSectors: 2 };
+
+    const all = await directory();
+    expect(all.statusCode).toBe(200);
+    expect(names(all.json().ministries)).toEqual([
+      'Kids',
+      'Worship',
+      'worship team',
+    ]);
+    expect(all.json()).toMatchObject({ counts });
+    expect(all.json().nextCursor).toBeUndefined();
+
+    const review = await directory({ query: '?status=review' });
+    expect(names(review.json().ministries)).toEqual(['Worship']);
+    expect(review.json().ministries[0]).toMatchObject({ needsReview: true });
+    expect(review.json().counts).toEqual(counts);
+
+    const noSectors = await directory({ query: '?status=no-sectors' });
+    expect(names(noSectors.json().ministries)).toEqual([
+      'Kids',
+      'worship team',
+    ]);
+
+    const search = await directory({ query: '?search=%20WORSHIP%20' });
+    expect(names(search.json().ministries)).toEqual([
+      'Worship',
+      'worship team',
+    ]);
+    expect(search.json().counts).toEqual(counts);
+
+    // A LIKE wildcard is matched literally.
+    const literal = await directory({ query: '?search=%25' });
+    expect(literal.json().ministries).toEqual([]);
+  });
+
+  it('pages alphabetically ignoring case with an opaque cursor', async () => {
+    await seed();
+    await buildMinistry({
+      db: schedulingTestDb,
+      churchId: CHURCH_A,
+      name: 'aux',
+    });
+    signIn({ userId: 'sum-admin' });
+
+    const first = await directory({ query: '?limit=2' });
+    expect(names(first.json().ministries)).toEqual(['aux', 'Kids']);
+    const { nextCursor } = first.json();
+    expect(nextCursor).toEqual(expect.any(String));
+
+    const second = await directory({
+      query: `?limit=2&cursor=${encodeURIComponent(nextCursor)}`,
+    });
+    expect(names(second.json().ministries)).toEqual(['Worship']);
+    expect(second.json().nextCursor).toBeUndefined();
+    expect(second.json().counts.total).toBe(3);
+  });
+
+  it('refuses a cursor the server could not have produced', async () => {
+    await seed();
+    signIn({ userId: 'sum-admin' });
+
+    const res = await directory({ query: '?cursor=not-a-cursor' });
+
+    expect(res.statusCode).toBe(422);
+  });
+
+  it.each([
+    ['a limit above the maximum page size', '?limit=51'],
+    ['a blank search', '?search=%20%20'],
+  ])('refuses %s', async (_label, query) => {
+    await seed();
+    signIn({ userId: 'sum-admin' });
+
+    const res = await directory({ query });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error).toBe('VALIDATION_ERROR');
+  });
+
+  it('matches %, _ and \\ in a search literally', async () => {
+    await seed();
+    for (const name of ['50% off', 'a_b', 'back\\slash']) {
+      await buildMinistry({ db: schedulingTestDb, churchId: CHURCH_A, name });
+    }
+    signIn({ userId: 'sum-admin' });
+
+    for (const [search, expected] of [
+      ['%25', '50% off'],
+      ['_', 'a_b'],
+      ['%5C', 'back\\slash'],
+    ] as const) {
+      const res = await directory({ query: `?search=${search}` });
+      expect(names(res.json().ministries), search).toEqual([expected]);
+    }
+  });
+
+  it('scopes a Ministry leader to the Ministries they lead', async () => {
+    const ids = await seed();
+    await buildVolunteerWithMembership({
+      db: schedulingTestDb,
+      churchId: CHURCH_A,
+      ministryId: ids.worshipId,
+      name: 'Leader',
+      email: 'leader@test.com',
+      userId: 'sum-leader',
+      ministryAccessLevel: 'leader',
+    });
+    await buildChurchMembership({
+      db: schedulingTestDb,
+      churchId: CHURCH_A,
+      userId: 'sum-leader',
+      accessLevel: 'member',
+    });
+    signIn({ userId: 'sum-leader' });
+
+    const res = await directory();
+
+    expect(res.statusCode).toBe(200);
+    expect(names(res.json().ministries)).toEqual(['Worship']);
+    expect(res.json().counts).toEqual({ total: 1, review: 1, noSectors: 0 });
   });
 });

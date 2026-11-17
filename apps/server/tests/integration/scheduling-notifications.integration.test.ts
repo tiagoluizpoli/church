@@ -984,8 +984,10 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       (
         await managers.participationManager.listSchedules({
           churchId: publishInput.churchId,
+          filters: { period: 'current' },
+          limit: 50,
         })
-      ).find(
+      ).schedules.find(
         (schedule) =>
           schedule.ministry.id === publishInput.ministryId &&
           schedule.cycle.id === publishInput.cycleId,

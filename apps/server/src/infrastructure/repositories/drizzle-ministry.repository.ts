@@ -1,7 +1,25 @@
 import { NotFoundError } from '@church/core';
-import { cycle, event, ministry, ministryParticipation } from '@church/db';
+import {
+  cycle,
+  event,
+  ministry,
+  ministryParticipation,
+  sector,
+} from '@church/db';
 import { nowAsDate, toDate } from '@church/time';
-import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNull,
+  notExists,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
 import type { CycleId } from '../../domain/branded-ids';
 import type {
   ArchiveMinistryRecordInput,
@@ -9,8 +27,10 @@ import type {
   GetMinistryByIdInput,
   GetMinistrySettingsInput,
   ListMinistriesByChurchInput,
+  ListMinistryPageInput,
   ListUnendedParticipationCyclesInput,
   LockActiveMinistryInput,
+  MinistryPageRecord,
   MinistryRepository,
   ParticipationCycle,
   RenameMinistryRecordInput,
@@ -18,15 +38,31 @@ import type {
 } from '../../domain/contracts/infrastructure/ministry.repository';
 import type {
   Ministry,
+  MinistryListCounts,
   MinistrySettings,
 } from '../../domain/entities/ministry';
 import { MinistryNameInUseError } from '../../domain/errors/ministry-name-in-use';
+import {
+  decodeMinistryListCursor,
+  encodeMinistryListCursor,
+} from '../../domain/ministry-list-cursor';
 import { mapMinistry } from '../mappers/ministry.mapper';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  containsPattern,
+  getClient,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
 const ACTIVE_NAME_CONSTRAINT = 'ministry_church_active_name_idx';
+
+const NO_MINISTRIES: MinistryListCounts = { total: 0, review: 0, noSectors: 0 };
+
+function countWhere(condition: SQL) {
+  return sql<number>`count(*) filter (where ${condition})`.mapWith(Number);
+}
 
 interface RefuseNameInUseInput<T> {
   write: Promise<T>;
@@ -90,6 +126,73 @@ export class DrizzleMinistryRepository implements MinistryRepository {
       )
       .orderBy(asc(sql`lower(${ministry.name})`), asc(ministry.id));
     return rows.map(mapMinistry);
+  }
+
+  async listPage({
+    churchId,
+    ids,
+    search,
+    status,
+    reviewIds,
+    cursor,
+    limit,
+  }: ListMinistryPageInput): Promise<MinistryPageRecord> {
+    if (ids?.length === 0) return { ministries: [], counts: NO_MINISTRIES };
+    const client = getClient({ db: this.db });
+    const inScope = and(
+      withChurchIsolation({ table: ministry, churchId }),
+      isNull(ministry.deletedAt),
+      ids ? inArray(ministry.id, ids) : undefined,
+    );
+    const needsReview =
+      reviewIds.length > 0 ? inArray(ministry.id, reviewIds) : sql`false`;
+    const withoutSectors = notExists(
+      client
+        .select({ id: sector.id })
+        .from(sector)
+        .where(
+          and(eq(sector.ministryId, ministry.id), isNull(sector.archivedAt)),
+        ),
+    );
+    // Header totals for the whole scope; the filters and cursor never apply.
+    const [counts] = await client
+      .select({
+        total: count(),
+        review: countWhere(needsReview),
+        noSectors: countWhere(withoutSectors),
+      })
+      .from(ministry)
+      .where(inScope);
+
+    const position = cursor ? decodeMinistryListCursor({ cursor }) : undefined;
+    const sortName = sql`lower(${ministry.name})`;
+    const rows = await client
+      .select()
+      .from(ministry)
+      .where(
+        and(
+          inScope,
+          search
+            ? ilike(ministry.name, containsPattern({ value: search }))
+            : undefined,
+          status === 'review' ? needsReview : undefined,
+          status === 'no-sectors' ? withoutSectors : undefined,
+          position &&
+            sql`(${sortName}, ${ministry.id}) > (lower(${position.name}), ${position.id}::uuid)`,
+        ),
+      )
+      .orderBy(asc(sortName), asc(ministry.id))
+      .limit(limit + 1);
+    const page = rows.slice(0, limit);
+    const last = page.at(-1);
+    return {
+      ministries: page.map(mapMinistry),
+      nextCursor:
+        rows.length > limit && last
+          ? encodeMinistryListCursor({ name: last.name, id: last.id })
+          : undefined,
+      counts: counts ?? NO_MINISTRIES,
+    };
   }
 
   async create({

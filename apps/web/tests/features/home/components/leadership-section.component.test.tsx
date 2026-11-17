@@ -1,11 +1,8 @@
 import { m } from '@church/i18n/messages';
-import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ListSchedules200SchedulesItem } from '@/infrastructure/api/churchAPI.schemas';
-import { renderHomePage } from '@/tests/features/home/components/render-home-page';
 import {
   activeChurchApiMock,
   DEFAULT_CHURCH_ID,
@@ -14,26 +11,26 @@ import {
   callerCapabilitiesApiMock,
   callerCapabilitiesFixture,
 } from '@/tests/setup/caller-capabilities';
+import type { ChildrenProps } from '@/tests/setup/children-props';
+import { renderRoute } from '@/tests/setup/render-route';
 
-vi.mock('@tanstack/react-router', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-router')>()),
-  Link: ({
-    children,
-    to,
-    params,
-    ...props
-  }: {
-    children: ReactNode;
-    to: string;
-    params: Record<string, string>;
-  }) => (
-    <a
-      href={to.replace(/\$(\w+)/g, (_match, key: string) => params[key])}
-      {...props}
-    >
-      {children}
-    </a>
-  ),
+const getSession = vi.fn().mockResolvedValue({
+  data: { user: { id: 'u1' }, session: {} },
+});
+vi.mock('@/lib/auth-client', () => ({
+  authClient: { getSession: (...args: unknown[]) => getSession(...args) },
+}));
+
+vi.mock('@/components/app-shell', () => ({
+  AppShell: ({ children }: ChildrenProps) => children,
+}));
+
+vi.mock('@/components/theme-provider', () => ({
+  ThemeProvider: ({ children }: ChildrenProps) => children,
+}));
+
+vi.mock('@/components/ui/sonner', () => ({
+  Toaster: () => null,
 }));
 
 const adminApiMock = vi.hoisted(() => ({ listSchedules: vi.fn() }));
@@ -69,6 +66,10 @@ function schedule(
 
 function givenSchedules(schedules: ListSchedules200SchedulesItem[]) {
   adminApiMock.listSchedules.mockResolvedValue({ schedules });
+}
+
+function renderHomePage() {
+  return renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
 }
 
 function givenCapabilities(
@@ -129,23 +130,48 @@ describe('LeadershipSection', () => {
     expect(screen.getByText(/Beta · October/)).toBeVisible();
   });
 
-  it('hides published without open requests, Past and not-serving rows and shows the empty state', async () => {
-    givenSchedules([
-      schedule({ name: 'Done', stage: 'published' }),
-      schedule({ name: 'Away', stage: 'not_serving', gapCount: 3 }),
-      schedule({
-        name: 'Old',
-        gapCount: 3,
-        openSwapRequestCount: 1,
-        cycle: {
-          id: 'c-old',
-          name: 'September',
-          startDate: '2026-09-01',
-          endDate: '2026-09-30',
-          state: 'past',
-        },
+  it('asks the server for the first page that needs the leader, without a see-all link when it is the only one', async () => {
+    givenSchedules([schedule({ name: 'Prep' })]);
+    renderHomePage();
+
+    expect(await screen.findByText(/Prep · October/)).toBeVisible();
+    expect(adminApiMock.listSchedules).toHaveBeenCalledWith({
+      attention: 'true',
+      limit: 5,
+    });
+    expect(
+      screen.queryByRole('link', { name: m.home_leadership_see_all() }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the Schedules page filtered to those needing attention when more need the leader', async () => {
+    adminApiMock.listSchedules.mockResolvedValue({
+      schedules: [schedule({ name: 'Prep' })],
+      nextCursor: 'next',
+    });
+    const { router } = renderHomePage();
+
+    await userEvent.click(
+      await screen.findByRole('link', { name: m.home_leadership_see_all() }),
+    );
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe('/schedules'),
+    );
+    await waitFor(() =>
+      expect(adminApiMock.listSchedules).toHaveBeenLastCalledWith({
+        attention: 'true',
       }),
-    ]);
+    );
+    expect(
+      await screen.findByRole('combobox', {
+        name: m.schedules_filter_status(),
+      }),
+    ).toHaveTextContent(m.schedules_filter_needs_attention());
+  });
+
+  it('shows the empty state when nothing needs the leader', async () => {
+    givenSchedules([]);
     renderHomePage();
 
     expect(await screen.findByText(m.home_leadership_empty())).toBeVisible();
@@ -187,10 +213,7 @@ describe('LeadershipSection', () => {
   it('does not render the former all-Ministry rows after an admin becomes a leader', async () => {
     givenCapabilities({ isChurchAdmin: true });
     givenSchedules([schedule({ name: 'Alpha' }), schedule({ name: 'Beta' })]);
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    renderHomePage({ queryClient });
+    const { queryClient } = renderHomePage();
     expect(await screen.findByText(/Beta · October/)).toBeVisible();
 
     givenCapabilities({ ledMinistries: 1 });

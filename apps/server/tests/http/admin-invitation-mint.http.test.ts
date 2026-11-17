@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import {
   invitation as churchInvitation,
   ministryInvitation,
@@ -76,6 +77,7 @@ beforeAll(async () => {
       maxPageSize: 50,
     }),
     new MinistryController({
+      config: appConfig,
       ministryManager: {} as never,
       ministryInvitationManager: harness.manager,
       activeChurchResolver: activeChurchResolver as never,

@@ -41,7 +41,7 @@ import {
   decodePeopleListCursor,
   encodePeopleListCursor,
 } from '../../domain/people-list-cursor';
-import { getClient } from './helpers';
+import { containsPattern, getClient } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzlePeopleListRepositoryInput {
@@ -78,11 +78,6 @@ const NO_PEOPLE: PeopleListCounts = {
   volunteers: 0,
   withoutMinistry: 0,
 };
-
-/** Escape LIKE wildcards so the text is matched literally. */
-function containsPattern(value: string): string {
-  return `%${value.replace(/[\\%_]/g, '\\$&')}%`;
-}
 
 export class DrizzlePeopleListRepository implements PeopleListRepository {
   private readonly db: AnyDrizzleDb;
@@ -325,8 +320,8 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
     return and(
       search
         ? or(
-            ilike(user.name, containsPattern(search)),
-            ilike(user.email, containsPattern(search)),
+            ilike(user.name, containsPattern({ value: search })),
+            ilike(user.email, containsPattern({ value: search })),
           )
         : undefined,
       access === 'admin' ? eq(churchMember.role, 'admin') : undefined,

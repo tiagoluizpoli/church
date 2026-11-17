@@ -1,3 +1,4 @@
+import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { parseInstant } from '@church/time';
 import {
@@ -62,6 +63,7 @@ function createActiveChurchResolution() {
 beforeAll(async () => {
   app = await createFastify({ locale: testLocale });
   const controller = new MinistryController({
+    config: appConfig,
     ministryManager: ministryManager as never,
     ministryInvitationManager: ministryInvitationManager as never,
     activeChurchResolver: activeChurchResolver as never,

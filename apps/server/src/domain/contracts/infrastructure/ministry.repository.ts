@@ -3,6 +3,8 @@ import type { ChurchId, CycleId, MinistryId } from '../../branded-ids';
 import type {
   DefaultDirection,
   Ministry,
+  MinistryListCounts,
+  MinistryListStatus,
   MinistrySettings,
 } from '../../entities/ministry';
 import type { TransactionContext } from './transaction-context';
@@ -19,6 +21,12 @@ export interface MinistryRepository {
 
   /** Active Ministries only, alphabetical ignoring case. */
   listByChurch(input: ListMinistriesByChurchInput): Promise<Ministry[]>;
+
+  /**
+   * One page of active Ministries, alphabetical ignoring case then by id,
+   * after the search and status filters; `counts` cover the whole scope.
+   */
+  listPage(input: ListMinistryPageInput): Promise<MinistryPageRecord>;
 
   /** Throws `MinistryNameInUseError` when an active Ministry has the name, ignoring case. */
   create(input: CreateMinistryRecordInput): Promise<Ministry>;
@@ -59,6 +67,25 @@ export interface ListMinistriesByChurchInput {
   /** Narrows the list to these Ministries when given. */
   ids?: MinistryId[];
   tx?: TransactionContext;
+}
+
+export interface ListMinistryPageInput {
+  churchId: ChurchId;
+  /** Narrows the scope to these Ministries (a leader's); the whole Church when absent. */
+  ids?: MinistryId[];
+  /** Case-insensitive literal substring of the name. */
+  search?: string;
+  status: MinistryListStatus;
+  /** Ministries whose Usual setup needs review, decided by the domain rule. */
+  reviewIds: MinistryId[];
+  cursor?: string;
+  limit: number;
+}
+
+export interface MinistryPageRecord {
+  ministries: Ministry[];
+  nextCursor?: string;
+  counts: MinistryListCounts;
 }
 
 export interface CreateMinistryRecordInput {

@@ -21,7 +21,7 @@ const api = vi.hoisted(() => ({
   listMinistries: vi.fn(),
   listScheduleSummaries: vi.fn(),
   getCycleParticipation: vi.fn(),
-  listSchedules: vi.fn(),
+  getSchedule: vi.fn(),
   listSectors: vi.fn(),
   listMinistryRoles: vi.fn(),
   saveEventTimeBlockPreparation: vi.fn(),
@@ -54,7 +54,7 @@ beforeEach(() => {
   api.listMinistries.mockRejectedValue(new Error('admin-only read'));
   api.listScheduleSummaries.mockResolvedValue({ cycles: [] });
   api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
-  api.listSchedules.mockResolvedValue({ schedules: [SCHEDULE] });
+  api.getSchedule.mockResolvedValue(SCHEDULE);
   api.listSectors.mockResolvedValue({ sectors: SECTORS });
   api.listMinistryRoles.mockResolvedValue({ roles: ROLES });
   api.getAskPreview.mockResolvedValue({

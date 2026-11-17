@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   assignment,
@@ -110,6 +111,7 @@ beforeAll(async () => {
   // Better Auth session is a seam.
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
+    config: appConfig,
     participationManager,
     availabilityCheckManager: {} as never,
     activeChurchResolver: new DbActiveChurchResolver({

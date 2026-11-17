@@ -18,7 +18,6 @@ function AvailabilityListContent() {
   const checksQuery = useQuery({
     queryKey: ['availability-checks'],
     queryFn: () => volunteerApi.listAvailabilityChecks(),
-    retry: false,
   });
   const checks = [...(checksQuery.data?.checks ?? [])].sort(
     (left, right) =>

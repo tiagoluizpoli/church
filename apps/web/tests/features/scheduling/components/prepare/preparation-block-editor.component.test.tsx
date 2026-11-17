@@ -548,24 +548,31 @@ it.each([
   [403, () => m.shell_no_access()],
   [404, () => m.error_not_found()],
   [500, () => m.prepare_schedule_error()],
-] as const)('shows a scoped read failure (%s) instead of an empty or editable form', async (status, message) => {
-  api.getCycleParticipation.mockRejectedValueOnce(
-    refusal(status, { error: 'READ_FAILED', message: 'failed' }),
-  );
-  renderRoute({
-    initialPath: EDITOR_PATH,
-    churchTimezone: 'America/Sao_Paulo',
-  });
-  expect(await screen.findByText(message())).toBeVisible();
-  expect(screen.queryByRole('checkbox')).toBeNull();
-  if (status === 500) {
-    api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: m.schedules_retry() }));
-    expect(await screen.findByRole('checkbox')).toBeChecked();
-  }
-});
+] as const)(
+  'shows a scoped read failure (%s) instead of an empty or editable form',
+  async (status, message) => {
+    // Persistent: the shared policy retries a 500 three times (1s, 2s, 4s apart).
+    api.getCycleParticipation.mockRejectedValue(
+      refusal(status, { error: 'READ_FAILED', message: 'failed' }),
+    );
+    renderRoute({
+      initialPath: EDITOR_PATH,
+      churchTimezone: 'America/Sao_Paulo',
+    });
+    expect(
+      await screen.findByText(message(), undefined, { timeout: 9000 }),
+    ).toBeVisible();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    if (status === 500) {
+      api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: m.schedules_retry() }));
+      expect(await screen.findByRole('checkbox')).toBeChecked();
+    }
+  },
+  12_000,
+);
 
 it('disables serving Save for invalid, blank and zero headcounts', async () => {
   const user = userEvent.setup();

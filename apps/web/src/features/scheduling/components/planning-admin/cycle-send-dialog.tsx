@@ -140,7 +140,6 @@ export function CycleSendDialog({
   const summary = useQuery({
     queryKey: ['cycle-send-summary', cycleId],
     queryFn: () => adminApi.getCycleSendSummary(cycleId),
-    retry: false,
     gcTime: 0,
   });
   const refreshCycle = useCallback(

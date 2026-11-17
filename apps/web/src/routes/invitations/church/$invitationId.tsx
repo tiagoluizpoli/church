@@ -182,7 +182,6 @@ function ChurchInvitationJoinRoute() {
   const previewQuery = useQuery({
     queryKey: ['redemption', 'church-invitation', invitationId],
     queryFn: () => redemptionApi.previewChurchInvitation(invitationId),
-    retry: false,
   });
 
   const requestCodeMutation = useMutation({

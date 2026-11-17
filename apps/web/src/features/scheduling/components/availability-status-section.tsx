@@ -72,7 +72,6 @@ export function AvailabilityStatusSection({
   const statusQuery = useQuery({
     queryKey,
     queryFn: () => adminApi.getCycleAvailabilityStatus(cycleId, { ministryId }),
-    retry: false,
   });
   const { churchTimezone } = useTimezone();
   const { data } = statusQuery;

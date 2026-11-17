@@ -149,7 +149,6 @@ function TransferReview({
   const previewQuery = useQuery({
     queryKey: ['redemption', 'transfer-preview', invitationId],
     queryFn: () => redemptionApi.getVolunteerTransferPreview(invitationId),
-    retry: false,
   });
 
   if (previewQuery.isLoading) {

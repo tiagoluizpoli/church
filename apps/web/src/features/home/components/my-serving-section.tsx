@@ -39,7 +39,6 @@ function useVolunteerDashboard({ churchId, userId }: HomeSectionProps) {
       parts: ['dashboard'],
     }),
     queryFn: () => volunteerApi.getVolunteerDashboard(),
-    retry: false,
   });
 }
 
@@ -52,7 +51,6 @@ function usePendingChecks({ churchId, userId }: HomeSectionProps) {
       parts: ['availability-checks'],
     }),
     queryFn: () => volunteerApi.listAvailabilityChecks(),
-    retry: false,
   });
   // shortcut: listAvailabilityChecks has no state filter, filtered client-side; move to a server param when the endpoint gets one
   const pending = (query.data?.checks ?? []).filter(

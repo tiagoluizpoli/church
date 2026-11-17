@@ -155,7 +155,6 @@ export function MySchedulePage() {
           return { ...schedule, fetchedAt: now() };
         },
       }),
-    retry: false,
     ...cachedReadOptions({
       scope: cacheScope,
       key: 'schedule',

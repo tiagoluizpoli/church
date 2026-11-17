@@ -28,7 +28,6 @@ export function useHomeSchedules({
         attention: 'true',
         limit: LEADERSHIP_PAGE_SIZE,
       }),
-    retry: false,
   });
 }
 export function LeadershipSection(props: LeadershipSectionProps) {

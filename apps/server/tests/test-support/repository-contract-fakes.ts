@@ -319,6 +319,9 @@ export function createShiftRepositoryFake() {
     deleteRequirements: vi.fn<ShiftRepository['deleteRequirements']>(),
     listRequirementsByParticipation:
       vi.fn<ShiftRepository['listRequirementsByParticipation']>(),
+    listRequirementsByIds: vi
+      .fn<ShiftRepository['listRequirementsByIds']>()
+      .mockResolvedValue([]),
     getRequirementForShift: vi.fn<ShiftRepository['getRequirementForShift']>(),
   } satisfies ShiftRepository;
 }

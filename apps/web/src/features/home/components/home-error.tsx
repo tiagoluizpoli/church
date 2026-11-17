@@ -13,7 +13,12 @@ export function HomeError({ message, onRetry }: HomeErrorProps) {
     <Alert variant="destructive">
       <AlertDescription className="flex flex-wrap items-center gap-3">
         {message}
-        <Button variant="outline" size="sm" onClick={onRetry}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="min-h-11"
+          onClick={onRetry}
+        >
           {m.home_retry()}
         </Button>
       </AlertDescription>

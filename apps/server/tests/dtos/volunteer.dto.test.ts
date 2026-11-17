@@ -9,6 +9,7 @@ describe('volunteerMapper', () => {
   describe('dashboardToResponse', () => {
     it('passes through a dashboard with defaultMinistryId present', () => {
       const dashboard = {
+        nextAssignment: null,
         upcomingAssignmentGroups: [],
         unreadNotificationCount: 2,
         notificationPreview: [],
@@ -23,6 +24,7 @@ describe('volunteerMapper', () => {
 
     it('passes through a dashboard with defaultMinistryId absent', () => {
       const dashboard = {
+        nextAssignment: null,
         upcomingAssignmentGroups: [],
         unreadNotificationCount: 0,
         notificationPreview: [],
@@ -36,6 +38,7 @@ describe('volunteerMapper', () => {
 
     it('parses a non-empty dashboard, branding every date/time field', () => {
       const dashboard = {
+        nextAssignment: null,
         upcomingAssignmentGroups: [
           {
             eventId: 'event-1',
@@ -53,6 +56,7 @@ describe('volunteerMapper', () => {
                 participationId: 'participation-1',
                 roleId: 'role-1',
                 roleName: 'Vocalist',
+                sectorName: 'Music',
                 startTime: '2026-05-15T09:00:00.000Z',
                 endTime: '2026-05-15T10:00:00.000Z',
                 status: 'pending' as const,

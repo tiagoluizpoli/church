@@ -7,96 +7,112 @@ import {
 } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { buttonVariants } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { HomeError } from '@/features/home/components/home-error';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
+import { HomeWidget } from '@/features/home/components/home-widget';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
 import type { ListCycles200CyclesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
 
-interface NextCycleContentProps {
+interface CycleContentProps {
   cycle: ListCycles200CyclesItem | undefined;
+  canPlan?: boolean;
 }
 
-function NextCycleContent({ cycle }: NextCycleContentProps) {
-  if (!cycle) {
+function CycleContent({ cycle, canPlan = false }: CycleContentProps) {
+  if (!cycle)
     return (
-      <>
+      <div>
         <p>{m.home_next_cycle_none()}</p>
-        <Link to="/cycles" className={buttonVariants({ size: 'sm' })}>
-          {m.home_next_cycle_plan()}
-        </Link>
-      </>
-    );
-  }
-  const { id: cycleId, name: cycleName, endDate, state } = cycle;
-  if (state === 'draft') {
-    return (
-      <>
-        <p>{m.home_next_cycle_draft({ cycleName })}</p>
-        <Link
-          to="/cycles/$cycleId"
-          params={{ cycleId }}
-          className={buttonVariants({ size: 'sm' })}
-        >
-          {m.home_next_cycle_continue()}
-        </Link>
-      </>
-    );
-  }
-  const formattedEnd = formatCalendarDateOnly({ value: endDate });
-  return <p>{m.home_next_cycle_sent({ cycleName, endDate: formattedEnd })}</p>;
-}
-
-/** Shown once the Church has ever sent a Cycle: the latest Cycle still to come. */
-export function NextCycleCard({ churchId, userId }: HomeSectionProps) {
-  const { churchTimezone } = useTimezone();
-  const cyclesKey = homeSectionQueryKey({
-    section: 'church',
-    churchId,
-    userId,
-    parts: ['cycles'],
-  });
-  const cyclesQuery = useQuery({
-    queryKey: cyclesKey,
-    queryFn: () => adminApi.listCycles(),
-    refetchOnWindowFocus: 'always',
-  });
-  const { data } = cyclesQuery;
-
-  if (cyclesQuery.isError) {
-    return (
-      <HomeError
-        message={m.home_next_cycle_load_error()}
-        onRetry={() => cyclesQuery.refetch()}
-      />
-    );
-  }
-  if (!data) {
-    return (
-      <div role="status" aria-label={m.home_next_cycle_loading()}>
-        <Skeleton className="h-16 w-full" />
+        {canPlan ? (
+          <Link
+            to="/cycles"
+            className="inline-flex min-h-11 items-center underline"
+          >
+            {m.home_next_cycle_plan()}
+          </Link>
+        ) : null}
       </div>
     );
-  }
-
-  const nowInstant = now();
-  const churchToday = today({ instant: nowInstant, timeZone: churchTimezone });
-  // The read is ordered start day desc, end day desc, id asc, so the first
-  // row still to come is the latest one: a newer draft wins over a current Sent Cycle.
-  const next = data.cycles.find(({ state, endDate }) => {
-    if (state === 'past') return false;
-    const cycleEnd = parseCalendarDay({ value: endDate });
-    return compareCalendarDays({ left: cycleEnd, right: churchToday }) >= 0;
-  });
-
+  const { id: cycleId, name: cycleName, endDate, state } = cycle;
   return (
-    <div className="space-y-2 rounded-lg border p-4">
-      <h3 className="font-medium">{m.home_next_cycle_title()}</h3>
-      <NextCycleContent cycle={next} />
-    </div>
+    <Link
+      to="/cycles/$cycleId"
+      params={{ cycleId }}
+      className="inline-flex min-h-11 items-center underline"
+    >
+      {state === 'draft'
+        ? m.home_next_cycle_draft({ cycleName })
+        : m.home_next_cycle_sent({
+            cycleName,
+            endDate: formatCalendarDateOnly({ value: endDate }),
+          })}
+    </Link>
+  );
+}
+
+export function NextCycleCard({ churchId, userId }: HomeSectionProps) {
+  const { churchTimezone } = useTimezone();
+  const query = useQuery({
+    queryKey: homeSectionQueryKey({
+      section: 'church',
+      churchId,
+      userId,
+      parts: ['cycles'],
+    }),
+    queryFn: () => adminApi.listCycles(),
+    staleTime: 60_000,
+  });
+  const churchDay = today({ instant: now(), timeZone: churchTimezone });
+  const cycles = query.data?.cycles ?? [];
+  const current = cycles.find(
+    (cycle) =>
+      compareCalendarDays({
+        left: parseCalendarDay({ value: cycle.startDate }),
+        right: churchDay,
+      }) <= 0 &&
+      compareCalendarDays({
+        left: parseCalendarDay({ value: cycle.endDate }),
+        right: churchDay,
+      }) >= 0,
+  );
+  const next = cycles.reduce<ListCycles200CyclesItem | undefined>(
+    (nearest, cycle) => {
+      if (
+        compareCalendarDays({
+          left: parseCalendarDay({ value: cycle.startDate }),
+          right: churchDay,
+        }) <= 0
+      )
+        return nearest;
+      return !nearest || cycle.startDate < nearest.startDate ? cycle : nearest;
+    },
+    undefined,
+  );
+  return (
+    <HomeWidget
+      title={m.home_cycles()}
+      loading={query.isPending}
+      error={
+        query.isError
+          ? {
+              message: m.home_next_cycle_load_error(),
+              retry: () => query.refetch(),
+            }
+          : undefined
+      }
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <h3 className="font-medium">{m.home_current_cycle()}</h3>
+          <CycleContent cycle={current} />
+        </div>
+        <div>
+          <h3 className="font-medium">{m.home_next_cycle_title()}</h3>
+          <CycleContent cycle={next} canPlan />
+        </div>
+      </div>
+    </HomeWidget>
   );
 }

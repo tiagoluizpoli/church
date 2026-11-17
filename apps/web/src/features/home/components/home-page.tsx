@@ -1,24 +1,24 @@
 import { m } from '@church/i18n/messages';
+import { formatCalendarDay, now, today } from '@church/time';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
-import { ChurchSection } from '@/features/home/components/church-section';
 import { HomeError } from '@/features/home/components/home-error';
-import { LeadershipSection } from '@/features/home/components/leadership-section';
-import { MyServingSection } from '@/features/home/components/my-serving-section';
+import {
+  homeWidgets,
+  widgetSpanClass,
+} from '@/features/home/components/home-widget-registry';
 import {
   type HomeCapacities,
   useHomeCapacities,
 } from '@/features/home/hooks/use-home-capacities';
-import {
-  type HomeSection,
-  homeSectionQueryPrefix,
-} from '@/features/home/lib/home-query-keys';
+import { homeSectionQueryPrefix } from '@/features/home/lib/home-query-keys';
 import type { HomeSearch } from '@/features/home/lib/home-search';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
+import { useTimezone } from '@/shared/hooks/use-timezone';
 import { churchOnlyWarningMessage } from '@/shared/utils/church-only-warning';
 import { membershipRemovedMessage } from '@/shared/utils/membership-removal';
 import { ministryJoinedMessage } from '@/shared/utils/ministry-invitation-result';
@@ -66,6 +66,7 @@ function PlainWelcome({ churchId }: PlainWelcomeProps) {
   const optionsQuery = useQuery({
     queryKey: ['active-church', 'options'],
     queryFn: () => activeChurchApi.listActiveChurchOptions(),
+    staleTime: 60_000,
   });
   const churchName = optionsQuery.data?.churches.find(
     (church) => church.churchId === churchId,
@@ -87,9 +88,18 @@ function useClearUnheldSections(capacities: HomeCapacities | null) {
   const queryClient = useQueryClient();
   useEffect(() => {
     if (!capacities) return;
-    const sections: HomeSection[] = ['church', 'leadership', 'serving'];
+    const sections = new Set(
+      homeWidgets
+        .map((widget) => widget.cacheSection)
+        .filter((section): section is string => Boolean(section)),
+    );
     for (const section of sections) {
-      if (!capacities[section]) {
+      if (
+        !homeWidgets.some(
+          (widget) =>
+            widget.cacheSection === section && widget.capacity(capacities),
+        )
+      ) {
         queryClient.removeQueries({
           queryKey: homeSectionQueryPrefix({ section }),
         });
@@ -118,6 +128,16 @@ function useClearStaleLeadershipScope(capacities: HomeCapacities | null) {
  */
 export function HomePage({ search }: HomePageProps) {
   const scope = useCallerCapabilitiesScope();
+  const { churchTimezone } = useTimezone();
+  const options = useQuery({
+    queryKey: ['active-church', 'options'],
+    queryFn: () => activeChurchApi.listActiveChurchOptions(),
+    staleTime: 60_000,
+  });
+  const churchName = options.data?.churches.find(
+    (church) => church.churchId === scope?.churchId,
+  )?.name;
+  const churchDay = today({ instant: now(), timeZone: churchTimezone });
   const state = useHomeCapacities();
   const capacities = state.status === 'ready' ? state.capacities : null;
   useClearUnheldSections(capacities);
@@ -138,12 +158,21 @@ export function HomePage({ search }: HomePageProps) {
   }, [search.invitationDeclined]);
 
   const sectionProps = scope?.userId
-    ? { churchId: scope.churchId, userId: scope.userId }
+    ? {
+        churchId: scope.churchId,
+        userId: scope.userId,
+        scope: capacities?.leadershipScope ?? '',
+      }
     : null;
 
   return (
     <WorkspacePage>
-      <h1 className="sr-only">{m.nav_home()}</h1>
+      <header>
+        <h1 className="font-semibold text-3xl">{churchName ?? m.nav_home()}</h1>
+        <p className="text-muted-foreground">
+          {formatCalendarDay({ day: churchDay })}
+        </p>
+      </header>
       <HomeBanners search={search} />
       {state.status === 'error' ? (
         <HomeError message={m.home_load_error()} onRetry={state.retry} />
@@ -151,19 +180,23 @@ export function HomePage({ search }: HomePageProps) {
         <div role="status" aria-label={m.home_loading()}>
           <Skeleton className="h-24 w-full" />
         </div>
-      ) : !capacities.leadership && !capacities.serving ? (
-        <PlainWelcome churchId={sectionProps.churchId} />
       ) : (
-        <>
-          {capacities.church ? <ChurchSection {...sectionProps} /> : null}
-          {capacities.leadership ? (
-            <LeadershipSection
-              {...sectionProps}
-              scope={capacities.leadershipScope}
-            />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+          {!homeWidgets.some(
+            (widget) => !widget.universal && widget.capacity(capacities),
+          ) ? (
+            <div className="md:col-span-12">
+              <PlainWelcome churchId={sectionProps.churchId} />
+            </div>
           ) : null}
-          {capacities.serving ? <MyServingSection {...sectionProps} /> : null}
-        </>
+          {homeWidgets
+            .filter((widget) => widget.capacity(capacities))
+            .map(({ id, span, Component }) => (
+              <div key={id} className={widgetSpanClass[span]}>
+                <Component {...sectionProps} />
+              </div>
+            ))}
+        </div>
       )}
     </WorkspacePage>
   );

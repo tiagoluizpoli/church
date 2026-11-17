@@ -6440,6 +6440,7 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem 
   participationId: string;
   roleId: string;
   roleName: string;
+  sectorName: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -6460,6 +6461,47 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItem = {
   hasPendingResponse: boolean;
   assignments: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem[];
 };
+
+export type GetVolunteerDashboard200NextAssignmentStatus = typeof GetVolunteerDashboard200NextAssignmentStatus[keyof typeof GetVolunteerDashboard200NextAssignmentStatus];
+
+
+export const GetVolunteerDashboard200NextAssignmentStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  declined: 'declined',
+} as const;
+
+export type GetVolunteerDashboard200NextAssignmentTimingState = typeof GetVolunteerDashboard200NextAssignmentTimingState[keyof typeof GetVolunteerDashboard200NextAssignmentTimingState];
+
+
+export const GetVolunteerDashboard200NextAssignmentTimingState = {
+  in_progress: 'in_progress',
+  upcoming: 'upcoming',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetVolunteerDashboard200NextAssignment = {
+  assignmentId: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  participationId: string;
+  roleId: string;
+  roleName: string;
+  sectorName: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  status: GetVolunteerDashboard200NextAssignmentStatus;
+  timingState: GetVolunteerDashboard200NextAssignmentTimingState;
+  canRespond: boolean;
+  eventId: string;
+  eventTitle: string;
+  ministryId: string;
+  ministryName: string;
+} | null;
 
 export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
@@ -6829,6 +6871,8 @@ export type GetVolunteerDashboard200MinistryOptionsItem = {
 
 export type GetVolunteerDashboard200 = {
   upcomingAssignmentGroups: GetVolunteerDashboard200UpcomingAssignmentGroupsItem[];
+  /** @nullable */
+  nextAssignment: GetVolunteerDashboard200NextAssignment;
   unreadNotificationCount: number;
   notificationPreview: GetVolunteerDashboard200NotificationPreviewItem[];
   defaultMinistryId?: string;

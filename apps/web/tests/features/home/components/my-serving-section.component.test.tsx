@@ -20,7 +20,7 @@ import {
 
 const volunteerApi = vi.hoisted(() => ({
   listAvailabilityChecks: vi.fn(),
-  getPublishedVolunteerSchedule: vi.fn(),
+  getVolunteerDashboard: vi.fn(),
 }));
 vi.mock('@/utils/api-instances', async () => ({
   activeChurchApi: (await import('@/tests/setup/active-church'))
@@ -28,6 +28,21 @@ vi.mock('@/utils/api-instances', async () => ({
   callerCapabilitiesApi: (await import('@/tests/setup/caller-capabilities'))
     .callerCapabilitiesApiMock,
   volunteerApi,
+  notificationsApi: {
+    getNotifications: vi.fn().mockResolvedValue({ items: [], unreadCount: 0 }),
+  },
+  setupApi: {
+    getSetupProgress: vi.fn().mockResolvedValue({ hasEverSentCycle: true }),
+  },
+  adminApi: {
+    listCycles: vi.fn().mockResolvedValue({ cycles: [] }),
+    listSchedules: vi.fn().mockResolvedValue({ schedules: [], counts: {} }),
+    listMinistryDirectory: vi.fn().mockResolvedValue({ counts: {} }),
+  },
+  peopleApi: { listPeople: vi.fn().mockResolvedValue({ counts: {} }) },
+  invitationsApi: {
+    listInvitations: vi.fn().mockResolvedValue({ counts: {} }),
+  },
 }));
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-router')>()),
@@ -80,6 +95,8 @@ const assignment = (id: string, day: number, swapRequested = false) => ({
   roleId: 'r',
   roleName: 'Teacher',
   status: 'confirmed' as const,
+  timingState: 'upcoming' as const,
+  canRespond: true,
   swapRequested,
 });
 
@@ -103,13 +120,13 @@ describe('MyServingSection', () => {
       churches: [{ churchId: DEFAULT_CHURCH_ID, name: 'St. Peter', areas: [] }],
     });
     volunteerApi.listAvailabilityChecks.mockResolvedValue({ checks: [] });
-    volunteerApi.getPublishedVolunteerSchedule.mockResolvedValue({
-      assignments: [],
-      schedules: [],
+    volunteerApi.getVolunteerDashboard.mockResolvedValue({
+      upcomingAssignmentGroups: [],
+      nextAssignment: null,
     });
   });
 
-  it('lists not-confirmed checks before the three earliest Assignments, with links and tags', async () => {
+  it('shows the next assignment and pending checks in server order', async () => {
     givenServing();
     volunteerApi.listAvailabilityChecks.mockResolvedValue({
       checks: [
@@ -118,26 +135,31 @@ describe('MyServingSection', () => {
         check('late', 'pending', '2026-10-01'),
       ],
     });
-    volunteerApi.getPublishedVolunteerSchedule.mockResolvedValue({
-      assignments: [
-        assignment('a-4', 25),
-        assignment('a-2', 12, true),
-        assignment('a-1', 11),
-        assignment('a-3', 13),
+    const first = assignment('a-1', 11);
+    volunteerApi.getVolunteerDashboard.mockResolvedValue({
+      nextAssignment: first,
+      upcomingAssignmentGroups: [
+        {
+          eventId: 'e',
+          eventTitle: 'Sunday',
+          ministryId: 'kids',
+          ministryName: 'Kids',
+          assignments: [first, assignment('a-2', 12), assignment('a-3', 13)],
+        },
       ],
-      schedules: [],
     });
     renderHomePage();
 
     const section = (
       await screen.findByRole('heading', { name: m.home_section_serving() })
     ).closest('section') as HTMLElement;
-    await within(section).findByText('Ministry open');
+    await within(section).findByText(/Ministry open/);
     const links = within(section).getAllByRole('link');
     expect(
       within(section).queryByText('Ministry done'),
     ).not.toBeInTheDocument();
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/my-schedule/a-1',
       '/availability/open',
       '/availability/late',
       '/my-schedule/a-1',
@@ -145,48 +167,57 @@ describe('MyServingSection', () => {
       '/my-schedule/a-3',
       '/my-schedule',
     ]);
-    expect(within(section).queryByText(/Kids a-4/)).not.toBeInTheDocument();
     expect(
-      within(section).getByText(m.my_schedule_swap_requested()),
-    ).toBeVisible();
+      within(section).getAllByText(m.home_answer_availability()),
+    ).toHaveLength(2);
     const overdue = section.querySelector('time[datetime="2026-10-01"]');
     expect(overdue?.parentElement).toHaveClass('text-destructive');
     expect(
       section.querySelector('time[datetime="2026-10-20"]')?.parentElement,
     ).not.toHaveClass('text-destructive');
     expect(
-      within(section).getByRole('link', { name: m.home_serving_see_all() }),
+      within(section).getByRole('link', { name: m.home_see_all() }),
     ).toHaveAttribute('href', '/my-schedule');
   });
 
-  it('keeps pending checks visible beside the empty schedule copy', async () => {
+  it('marks a pending next assignment as needing a response', async () => {
+    givenServing();
+    volunteerApi.getVolunteerDashboard.mockResolvedValue({
+      nextAssignment: { ...assignment('a-1', 11), status: 'pending' },
+      upcomingAssignmentGroups: [],
+    });
+    renderHomePage();
+    expect(
+      await screen.findByText(m.home_next_assignment_pending()),
+    ).toBeVisible();
+  });
+
+  it('does not show the empty schedule copy beside a pending check', async () => {
     givenServing();
     volunteerApi.listAvailabilityChecks.mockResolvedValue({
       checks: [check('open', 'pending')],
     });
     renderHomePage();
 
-    expect(await screen.findByText('Ministry open')).toBeVisible();
-    expect(await screen.findByText(m.my_schedule_empty())).toBeVisible();
+    expect(await screen.findByText(/Ministry open/)).toBeVisible();
+    expect(screen.queryByText(m.my_schedule_empty())).not.toBeInTheDocument();
   });
 
   it('fails each read independently and retries it without masquerading as empty', async () => {
     givenServing();
-    volunteerApi.getPublishedVolunteerSchedule.mockRejectedValueOnce(
-      new Error('down'),
-    );
+    volunteerApi.getVolunteerDashboard.mockRejectedValueOnce(new Error('down'));
     volunteerApi.listAvailabilityChecks.mockResolvedValue({
       checks: [check('open', 'pending')],
     });
     renderHomePage();
 
     expect(await screen.findByText(m.my_schedule_load_error())).toBeVisible();
-    expect(screen.getByText('Ministry open')).toBeVisible();
+    expect(screen.getByText(/Ministry open/)).toBeVisible();
     expect(screen.queryByText(m.my_schedule_empty())).not.toBeInTheDocument();
 
-    volunteerApi.getPublishedVolunteerSchedule.mockResolvedValue({
-      assignments: [assignment('a-1', 11)],
-      schedules: [],
+    volunteerApi.getVolunteerDashboard.mockResolvedValue({
+      nextAssignment: assignment('a-1', 11),
+      upcomingAssignmentGroups: [],
     });
     await userEvent.click(screen.getByRole('button', { name: m.home_retry() }));
     expect(await screen.findByText(/Kids a-1/)).toBeVisible();
@@ -200,25 +231,19 @@ describe('MyServingSection', () => {
     renderHomePage();
 
     expect(await screen.findByText(m.availability_list_error())).toBeVisible();
-    expect(await screen.findByText(m.my_schedule_empty())).toBeVisible();
+    expect(screen.queryByText(m.my_schedule_empty())).not.toBeInTheDocument();
   });
 
   it('shows loading states while the reads resolve', async () => {
     givenServing();
     volunteerApi.listAvailabilityChecks.mockReturnValue(new Promise(() => {}));
-    volunteerApi.getPublishedVolunteerSchedule.mockReturnValue(
-      new Promise(() => {}),
-    );
+    volunteerApi.getVolunteerDashboard.mockReturnValue(new Promise(() => {}));
     renderHomePage();
 
     expect(
-      await screen.findByRole('status', {
-        name: m.availability_list_loading(),
-      }),
+      await screen.findByText(m.availability_list_loading()),
     ).toBeVisible();
-    expect(
-      screen.getByRole('status', { name: m.my_schedule_loading() }),
-    ).toBeVisible();
+    expect(screen.getByText(m.my_schedule_loading())).toBeVisible();
   });
 
   it('serves a mixed persona and never reads for a non-serving caller', async () => {
@@ -227,12 +252,12 @@ describe('MyServingSection', () => {
     await screen.findByText(m.my_schedule_empty());
 
     volunteerApi.listAvailabilityChecks.mockClear();
-    volunteerApi.getPublishedVolunteerSchedule.mockClear();
+    volunteerApi.getVolunteerDashboard.mockClear();
     givenServing({ isChurchAdmin: true });
     renderHomePage({ queryClient: new QueryClient() });
     await screen.findByRole('heading', { name: m.home_section_church() });
     expect(volunteerApi.listAvailabilityChecks).not.toHaveBeenCalled();
-    expect(volunteerApi.getPublishedVolunteerSchedule).not.toHaveBeenCalled();
+    expect(volunteerApi.getVolunteerDashboard).not.toHaveBeenCalled();
   });
 
   it('scopes reads to Church and user under the Home serving key', async () => {
@@ -250,7 +275,7 @@ describe('MyServingSection', () => {
             section: 'serving',
             churchId: DEFAULT_CHURCH_ID,
             userId: HOME_USER_ID,
-            parts: ['schedule'],
+            parts: ['dashboard'],
           }),
         ),
       ).toBeDefined(),

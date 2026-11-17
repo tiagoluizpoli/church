@@ -15036,6 +15036,8 @@ paths:
                                 type: string
                               roleName:
                                 type: string
+                              sectorName:
+                                type: string
                               startTime:
                                 type: string
                                 format: date-time
@@ -15064,6 +15066,7 @@ paths:
                               - participationId
                               - roleId
                               - roleName
+                              - sectorName
                               - startTime
                               - endTime
                               - status
@@ -15080,6 +15083,71 @@ paths:
                         - hasPendingResponse
                         - assignments
                       additionalProperties: false
+                  nextAssignment:
+                    nullable: true
+                    type: object
+                    properties:
+                      assignmentId:
+                        type: string
+                      eventTimeBlockId:
+                        type: string
+                      shiftId:
+                        type: string
+                      participationId:
+                        type: string
+                      roleId:
+                        type: string
+                      roleName:
+                        type: string
+                      sectorName:
+                        type: string
+                      startTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      endTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      status:
+                        type: string
+                        enum:
+                          - pending
+                          - confirmed
+                          - declined
+                      timingState:
+                        type: string
+                        enum:
+                          - in_progress
+                          - upcoming
+                      canRespond:
+                        type: boolean
+                      eventId:
+                        type: string
+                      eventTitle:
+                        type: string
+                      ministryId:
+                        type: string
+                      ministryName:
+                        type: string
+                    required:
+                      - assignmentId
+                      - eventTimeBlockId
+                      - shiftId
+                      - participationId
+                      - roleId
+                      - roleName
+                      - sectorName
+                      - startTime
+                      - endTime
+                      - status
+                      - timingState
+                      - canRespond
+                      - eventId
+                      - eventTitle
+                      - ministryId
+                      - ministryName
+                    additionalProperties: false
                   unreadNotificationCount:
                     type: number
                   notificationPreview:
@@ -16055,6 +16123,7 @@ paths:
                       additionalProperties: false
                 required:
                   - upcomingAssignmentGroups
+                  - nextAssignment
                   - unreadNotificationCount
                   - notificationPreview
                   - ministryOptions

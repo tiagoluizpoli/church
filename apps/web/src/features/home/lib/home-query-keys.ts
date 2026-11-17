@@ -1,4 +1,4 @@
-export type HomeSection = 'church' | 'leadership' | 'serving';
+export type HomeSection = string;
 
 /** Root of every Home section read. Church switches already clear it (any non-`active-church` key). */
 export const HOME_QUERY_KEY = ['home'] as const;

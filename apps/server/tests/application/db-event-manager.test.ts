@@ -257,6 +257,7 @@ function createRepos(): Repos {
   const shiftRepo = {
     listByParticipation: vi.fn(async () => []),
     listRequirementsByParticipation: vi.fn(async () => []),
+    listRequirementsByIds: vi.fn(async () => []),
   };
 
   return {

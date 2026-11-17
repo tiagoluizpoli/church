@@ -1,129 +1,148 @@
 import { m } from '@church/i18n/messages';
-import { compareInstants, now, parseInstant, today } from '@church/time';
+import { now, today } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { HomeError } from '@/features/home/components/home-error';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
+import { HomeWidget } from '@/features/home/components/home-widget';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
-import { AssignmentLink } from '@/features/volunteers/components/assignment-link';
 import { CheckDeadline } from '@/features/volunteers/components/check-deadline';
 import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { volunteerApi } from '@/utils/api-instances';
-
-const ASSIGNMENT_LIMIT = 3;
 
 export function MyServingSection({ churchId, userId }: HomeSectionProps) {
   const { churchTimezone: timeZone } = useTimezone();
-  const nowInstant = now();
-  const churchDay = today({ instant: nowInstant, timeZone });
-  const checksQueryKey = homeSectionQueryKey({
-    section: 'serving',
-    churchId,
-    userId,
-    parts: ['availability-checks'],
-  });
-  const checksQuery = useQuery({
-    queryKey: checksQueryKey,
+  const churchDay = today({ instant: now(), timeZone });
+  const checks = useQuery({
+    queryKey: homeSectionQueryKey({
+      section: 'serving',
+      churchId,
+      userId,
+      parts: ['availability-checks'],
+    }),
     queryFn: () => volunteerApi.listAvailabilityChecks(),
     retry: false,
   });
-  const scheduleQueryKey = homeSectionQueryKey({
-    section: 'serving',
-    churchId,
-    userId,
-    parts: ['schedule'],
-  });
-  const scheduleQuery = useQuery({
-    queryKey: scheduleQueryKey,
-    queryFn: () => volunteerApi.getPublishedVolunteerSchedule(),
+  const dashboard = useQuery({
+    queryKey: homeSectionQueryKey({
+      section: 'serving',
+      churchId,
+      userId,
+      parts: ['dashboard'],
+    }),
+    queryFn: () => volunteerApi.getVolunteerDashboard(),
     retry: false,
   });
-  const pending = (checksQuery.data?.checks ?? []).filter(
+  // shortcut: listAvailabilityChecks has no state filter, filtered client-side; move to a server param when the endpoint gets one
+  const pending = (checks.data?.checks ?? []).filter(
     (check) => check.state !== 'confirmed',
   );
-  // Sort before limiting so the three are the next Assignments, not the first day groups.
-  const upcoming = [...(scheduleQuery.data?.assignments ?? [])]
-    .sort((leftAssignment, rightAssignment) => {
-      const left = parseInstant({ value: leftAssignment.startTime });
-      const right = parseInstant({ value: rightAssignment.startTime });
-      return compareInstants({ left, right });
-    })
-    .slice(0, ASSIGNMENT_LIMIT);
-
+  const next = dashboard.data?.nextAssignment;
   return (
-    <section
-      aria-labelledby="home-section-serving"
-      data-church-id={churchId}
-      data-user-id={userId}
-      className="space-y-4"
-    >
-      <h2 id="home-section-serving" className="font-semibold text-xl">
-        {m.home_section_serving()}
-      </h2>
-      {checksQuery.isLoading ? (
-        <div role="status" aria-label={m.availability_list_loading()}>
-          <Skeleton className="h-20 w-full" />
-        </div>
-      ) : checksQuery.isError ? (
-        <HomeError
-          message={m.availability_list_error()}
-          onRetry={() => checksQuery.refetch()}
-        />
-      ) : pending.length > 0 ? (
-        <ul className="space-y-3">
-          {pending.map((check) => (
-            <li key={check.id}>
-              <Link
-                to="/availability/$checkId"
-                params={{ checkId: check.id }}
-                className="radius-surface block transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
-              >
-                <Card>
-                  <CardContent className="space-y-2 text-sm">
-                    <h3 className="break-words font-semibold text-base">
-                      {check.ministryName}
-                    </h3>
-                    <p>{check.cycleName}</p>
-                    <CheckDeadline check={check} churchDay={churchDay} />
-                  </CardContent>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {scheduleQuery.isLoading ? (
-        <div role="status" aria-label={m.my_schedule_loading()}>
-          <Skeleton className="h-24 w-full" />
-        </div>
-      ) : scheduleQuery.isError ? (
+    <HomeWidget title={m.home_section_serving()}>
+      {dashboard.isPending ? (
+        <p role="status">{m.my_schedule_loading()}</p>
+      ) : dashboard.isError ? (
         <HomeError
           message={m.my_schedule_load_error()}
-          onRetry={() => scheduleQuery.refetch()}
+          onRetry={() => dashboard.refetch()}
         />
-      ) : (
-        <>
-          {upcoming.length === 0 ? (
-            <p>{m.my_schedule_empty()}</p>
-          ) : (
-            <ul className="space-y-2">
-              {upcoming.map((assignment) => (
+      ) : next ? (
+        <div className="space-y-2">
+          <h3 className="font-semibold">{m.home_next_assignment()}</h3>
+          <Link
+            to="/my-schedule/$assignmentId"
+            params={{ assignmentId: next.assignmentId }}
+            className="block min-h-11 rounded-md border p-4 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <span className="block font-semibold">{next.eventTitle}</span>
+            <span className="block">
+              {formatInstantRangeOf({
+                start: next.startTime,
+                end: next.endTime,
+                timeZone,
+              })}
+            </span>
+            <span className="block">
+              {next.ministryName} · {next.sectorName} · {next.roleName}
+            </span>
+            <Badge variant="secondary">
+              {next.timingState === 'in_progress'
+                ? m.my_schedule_in_progress()
+                : next.status === 'pending' && next.canRespond
+                  ? m.home_next_assignment_pending()
+                  : m.home_next_assignment_answered()}
+            </Badge>
+          </Link>
+        </div>
+      ) : checks.isSuccess && pending.length === 0 ? (
+        <p>{m.my_schedule_empty()}</p>
+      ) : null}
+      {checks.isPending ? (
+        <p role="status">{m.availability_list_loading()}</p>
+      ) : checks.isError ? (
+        <HomeError
+          message={m.availability_list_error()}
+          onRetry={() => checks.refetch()}
+        />
+      ) : pending.length ? (
+        <div className="space-y-2">
+          <h3 className="font-semibold">{m.home_pending_checks()}</h3>
+          <ul className="space-y-2">
+            {pending.map((check) => (
+              <li key={check.id}>
+                <Link
+                  to="/availability/$checkId"
+                  params={{ checkId: check.id }}
+                  className="block min-h-11 rounded-md border p-4 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <span className="block font-semibold">
+                    {check.ministryName} · {check.cycleName}
+                  </span>
+                  <CheckDeadline check={check} churchDay={churchDay} />
+                  <span className="underline">
+                    {m.home_answer_availability()}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {dashboard.data?.upcomingAssignmentGroups.length ? (
+        <div className="space-y-2">
+          <h3 className="font-semibold">{m.home_upcoming_assignments()}</h3>
+          <ul className="space-y-2">
+            {dashboard.data.upcomingAssignmentGroups.map((group) =>
+              group.assignments.map((assignment) => (
                 <li key={assignment.assignmentId}>
-                  <AssignmentLink assignment={assignment} timeZone={timeZone} />
+                  <Link
+                    to="/my-schedule/$assignmentId"
+                    params={{ assignmentId: assignment.assignmentId }}
+                    className="block min-h-11 rounded-md border p-3 hover:bg-accent"
+                  >
+                    {group.eventTitle} ·{' '}
+                    {formatInstantRangeOf({
+                      start: assignment.startTime,
+                      end: assignment.endTime,
+                      timeZone,
+                    })}{' '}
+                    · {assignment.sectorName} · {assignment.roleName}
+                  </Link>
                 </li>
-              ))}
-            </ul>
-          )}
+              )),
+            )}
+          </ul>
           <Link
             to="/my-schedule"
-            className="inline-block min-h-11 py-2 underline"
+            className="inline-flex min-h-11 items-center underline"
           >
-            {m.home_serving_see_all()}
+            {m.home_see_all()}
           </Link>
-        </>
-      )}
-    </section>
+        </div>
+      ) : null}
+    </HomeWidget>
   );
 }

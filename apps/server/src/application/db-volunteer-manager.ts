@@ -340,6 +340,16 @@ export class DbVolunteerManager implements IVolunteerManager {
       assignmentShifts.map((shift) => [shift.id as string, shift]),
     );
 
+    const requirements = await this.shiftRepo.listRequirementsByIds({
+      churchId,
+      shiftRequirementIds: [
+        ...new Set(allAssignments.map((item) => item.shiftRequirementId)),
+      ],
+    });
+    const requirementsById = new Map(
+      requirements.map((item) => [item.id, item]),
+    );
+
     for (const assignment of allAssignments) {
       if (!isPublishedStatus(assignment.status)) continue;
 
@@ -374,6 +384,8 @@ export class DbVolunteerManager implements IVolunteerManager {
         participationId: participation.id as string,
         roleId: assignment.roleId as string,
         roleName: role.name,
+        sectorName:
+          requirementsById.get(assignment.shiftRequirementId)?.sectorName ?? '',
         startTime: shift.startTime,
         endTime: shift.endTime,
         status: assignment.status,
@@ -381,11 +393,12 @@ export class DbVolunteerManager implements IVolunteerManager {
         canRespond: timingState === 'upcoming',
       };
 
-      const existing = groupMap.get(event.id as string);
+      const groupKey = `${event.id}:${participation.ministryId}`;
+      const existing = groupMap.get(groupKey);
       if (existing) {
         existing.items.push(item);
       } else {
-        groupMap.set(event.id as string, {
+        groupMap.set(groupKey, {
           eventId: event.id as string,
           eventTitle: event.title,
           ministryId: participation.ministryId as string,
@@ -424,6 +437,34 @@ export class DbVolunteerManager implements IVolunteerManager {
         }),
       );
 
+    const nextAssignment = upcomingAssignmentGroups.reduce<
+      VolunteerDashboard['nextAssignment']
+    >((previous, group) => {
+      let next = previous;
+      for (const assignment of group.assignments) {
+        const order = next
+          ? compareInstants({
+              left: assignment.startTime as Instant,
+              right: next.startTime as Instant,
+            })
+          : -1;
+        if (
+          !next ||
+          order < 0 ||
+          (order === 0 && assignment.assignmentId < next.assignmentId)
+        ) {
+          next = {
+            ...assignment,
+            eventId: group.eventId,
+            eventTitle: group.eventTitle,
+            ministryId: group.ministryId,
+            ministryName: group.ministryName,
+          };
+        }
+      }
+      return next;
+    }, null);
+
     const [unreadNotificationCount, notificationPreviewResult] =
       await Promise.all([
         this.notificationRepo.countUnread({ churchId, userId }),
@@ -440,6 +481,7 @@ export class DbVolunteerManager implements IVolunteerManager {
 
     return {
       upcomingAssignmentGroups,
+      nextAssignment,
       unreadNotificationCount,
       notificationPreview,
       defaultMinistryId,

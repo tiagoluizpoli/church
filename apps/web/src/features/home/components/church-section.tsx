@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HomeError } from '@/features/home/components/home-error';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
-import { NextCycleCard } from '@/features/home/components/next-cycle-card';
+import { HomeWidget } from '@/features/home/components/home-widget';
 import { SetupChecklist } from '@/features/home/components/setup-checklist';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
 import { setupApi } from '@/utils/api-instances';
@@ -26,12 +26,10 @@ export function ChurchSection({ churchId, userId }: HomeSectionProps) {
     refetchOnWindowFocus: 'always',
   });
   const { data: progress } = progressQuery;
+  if (progress?.hasEverSentCycle) return null;
 
   return (
-    <section aria-labelledby="home-section-church" className="space-y-3">
-      <h2 id="home-section-church" className="font-semibold text-xl">
-        {m.home_section_church()}
-      </h2>
+    <HomeWidget title={m.home_setup_section()}>
       {progressQuery.isError ? (
         <HomeError
           message={m.home_setup_load_error()}
@@ -41,11 +39,9 @@ export function ChurchSection({ churchId, userId }: HomeSectionProps) {
         <div role="status" aria-label={m.home_setup_loading()}>
           <Skeleton className="h-24 w-full" />
         </div>
-      ) : progress.hasEverSentCycle ? (
-        <NextCycleCard churchId={churchId} userId={userId} />
       ) : (
         <SetupChecklist progress={progress} />
       )}
-    </section>
+    </HomeWidget>
   );
 }

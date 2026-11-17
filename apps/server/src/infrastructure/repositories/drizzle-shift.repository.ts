@@ -17,6 +17,7 @@ import type {
   DeleteShiftsByEventTimeBlockInput,
   GetRequirementForShiftInput,
   GetShiftInput,
+  ListRequirementsByIdsInput,
   ListRequirementsByParticipationInput,
   ListShiftConflictFactsInput,
   ListShiftsByEventTimeBlockInput,
@@ -288,6 +289,30 @@ export class DrizzleShiftRepository implements ShiftRepository {
           withChurchIsolation({ table: shiftRequirement, churchId }),
         ),
       );
+  }
+
+  async listRequirementsByIds(
+    input: ListRequirementsByIdsInput,
+  ): Promise<ShiftRequirement[]> {
+    if (input.shiftRequirementIds.length === 0) return [];
+    const db = getClient({ db: this.db, tx: input.tx });
+    const rows = await db
+      .select({ requirement: shiftRequirement, sectorName: sector.name })
+      .from(shiftRequirement)
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
+      .where(
+        and(
+          inArray(shiftRequirement.id, input.shiftRequirementIds),
+          withChurchIsolation({
+            table: shiftRequirement,
+            churchId: input.churchId,
+          }),
+          withChurchIsolation({ table: sector, churchId: input.churchId }),
+        ),
+      );
+    return rows.map(({ requirement, sectorName }) =>
+      mapShiftRequirement({ row: requirement, sectorName }),
+    );
   }
 
   async listRequirementsByParticipation(

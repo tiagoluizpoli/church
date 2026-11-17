@@ -31,6 +31,24 @@ export const CRITICAL_SMOKE_SPEC_PATHS: string[] = [
   'tests/scheduling/us4-schedule-publish.spec.ts',
 ];
 
+// #900: production files every journey runs through, kept on the critical
+// smoke fallback on purpose: no journey set is narrower than "run what is
+// critical". journey-map-guard fails when a path here is missing or a
+// JOURNEY_MAP prefix starts to cover it, so the list cannot drift silently.
+export const DELIBERATE_SMOKE_FALLBACK_PATHS: {
+  path: string;
+  reason: string;
+}[] = [
+  {
+    path: 'apps/server/src/infrastructure/repositories/helpers.ts',
+    reason: 'shared by most Drizzle repositories',
+  },
+  {
+    path: 'apps/server/src/main/di/build-controllers.ts',
+    reason: 'wires every HTTP controller',
+  },
+];
+
 const REDEMPTION_SPEC_PATHS = [
   'tests/identity/redemption-new-user.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
@@ -45,6 +63,12 @@ const INVITATION_JOURNEY_SPEC_PATHS = [
 // J2 (#682): People directory and member detail, the Ministry Role edit and
 // the Church access change it consumes from People A.
 const PEOPLE_JOURNEY_SPEC_PATHS = ['tests/people/people-journey.spec.ts'];
+
+// #900: the Ministries page (search, status filter, counts) and a Ministry's
+// Usual setup.
+const MINISTRIES_JOURNEY_SPEC_PATHS = [
+  'tests/ministries/ministries-directory.spec.ts',
+];
 
 const CHURCH_INVITATION_SPEC_PATHS = [
   'tests/identity/first-admin-onboarding.spec.ts',
@@ -109,6 +133,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/route-protection.spec.ts',
   'tests/identity/volunteer-transfer-journey.spec.ts',
   ...PEOPLE_JOURNEY_SPEC_PATHS,
+  ...MINISTRIES_JOURNEY_SPEC_PATHS,
   'tests/scheduling/a11y-builder.spec.ts',
   'tests/scheduling/a11y-planning-nav.spec.ts',
   'tests/scheduling/builder-event-time-block-focus.spec.ts',
@@ -167,6 +192,13 @@ const PREPARE_SPEC_PATHS = [
   'tests/scheduling/smoke.spec.ts',
   'tests/scheduling/us2-leader-prepare.spec.ts',
   'tests/scheduling/us4-schedule-publish.spec.ts',
+];
+
+// #900: the scoped Schedules list (`/schedules`).
+const SCHEDULE_LIST_SPEC_PATHS = [
+  'tests/scheduling/capability-index.spec.ts',
+  'tests/scheduling/planning-role-guard-matrix.spec.ts',
+  'tests/scheduling/us2-leader-prepare.spec.ts',
 ];
 
 const BUILDER_SPEC_PATHS = [
@@ -232,6 +264,112 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix,
     specPaths: PEOPLE_JOURNEY_SPEC_PATHS,
   })),
+  // #900: the server-side list filtering, counts and paging of #899.
+  ...[
+    'apps/web/src/features/ministries/components/ministry-list-page.tsx',
+    'apps/web/src/features/ministries/components/usual-setup/usual-setup-list.tsx',
+    'apps/web/src/features/ministries/ministry-queries.ts',
+    'apps/web/src/routes/_authenticated/_active-church/ministries/index.tsx',
+    'apps/server/src/api/dtos/ministry.dto.ts',
+    'apps/server/src/domain/ministry-list-cursor.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: MINISTRIES_JOURNEY_SPEC_PATHS,
+  })),
+  // Ministry and participation persistence serves far more than the lists, so
+  // these keep the critical smoke set and add the list journeys.
+  ...[
+    'apps/server/src/application/db-ministry-manager.ts',
+    'apps/server/src/domain/contracts/application/ministry-manager.ts',
+    'apps/server/src/domain/contracts/infrastructure/ministry.repository.ts',
+    'apps/server/src/domain/entities/ministry.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-ministry.repository.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: [...MINISTRIES_JOURNEY_SPEC_PATHS, ...CRITICAL_SMOKE_SPEC_PATHS],
+  })),
+  ...[
+    'apps/server/src/domain/contracts/application/participation-manager.ts',
+    'apps/server/src/domain/contracts/infrastructure/ministry-participation.repository.ts',
+    'apps/server/src/domain/entities/ministry-participation.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-ministry-participation.repository.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: [
+      ...SCHEDULE_LIST_SPEC_PATHS,
+      ...PREPARE_SPEC_PATHS,
+      ...CRITICAL_SMOKE_SPEC_PATHS,
+    ],
+  })),
+  {
+    sourcePathPrefix: 'apps/server/src/domain/schedule-list-cursor.ts',
+    specPaths: SCHEDULE_LIST_SPEC_PATHS,
+  },
+  {
+    // The Schedules list, the Prepare route and its breadcrumbs read it.
+    sourcePathPrefix: 'apps/web/src/features/scheduling/hooks/use-schedule.ts',
+    specPaths: [
+      ...SCHEDULE_LIST_SPEC_PATHS,
+      ...PREPARE_SPEC_PATHS,
+      ...CYCLE_HANDOFF_SPEC_PATHS,
+    ],
+  },
+  {
+    // Home renders Leadership for a leader or admin; both specs load `/` so.
+    sourcePathPrefix:
+      'apps/web/src/features/home/components/leadership-section.tsx',
+    specPaths: [
+      'tests/scheduling/event-templates.spec.ts',
+      ...CYCLE_HANDOFF_SPEC_PATHS,
+    ],
+  },
+  {
+    sourcePathPrefix: 'apps/server/src/domain/list-cursor.ts',
+    specPaths: [
+      ...INVITATION_JOURNEY_SPEC_PATHS,
+      ...PEOPLE_JOURNEY_SPEC_PATHS,
+      ...MINISTRIES_JOURNEY_SPEC_PATHS,
+      ...SCHEDULE_LIST_SPEC_PATHS,
+    ],
+  },
+  ...[
+    'apps/server/src/domain/invitation-list-cursor.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-invitation-list.repository.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: INVITATION_JOURNEY_SPEC_PATHS,
+  })),
+  {
+    sourcePathPrefix: 'apps/server/src/domain/people-list-cursor.ts',
+    specPaths: PEOPLE_JOURNEY_SPEC_PATHS,
+  },
+  {
+    // The paged list routes: Invitations, People, Ministries, Notifications
+    // and Schedules.
+    sourcePathPrefix: 'apps/server/src/api/dtos/page-limit.dto.ts',
+    specPaths: [
+      ...INVITATION_JOURNEY_SPEC_PATHS,
+      ...PEOPLE_JOURNEY_SPEC_PATHS,
+      ...MINISTRIES_JOURNEY_SPEC_PATHS,
+      ...NOTIFICATION_BELL_SPEC_PATHS,
+      ...SCHEDULE_LIST_SPEC_PATHS,
+    ],
+  },
+  {
+    // The bell's inbox, and the N2 that J5 polls for.
+    sourcePathPrefix:
+      'apps/server/src/api/controllers/notification-controller.ts',
+    specPaths: [...NOTIFICATION_BELL_SPEC_PATHS, ...CYCLE_HANDOFF_SPEC_PATHS],
+  },
+  {
+    // The Invitations, Ministries and Schedules list searches.
+    sourcePathPrefix: 'apps/web/src/shared/hooks/use-debounced-search.ts',
+    specPaths: [
+      ...INVITATION_JOURNEY_SPEC_PATHS,
+      ...MINISTRIES_JOURNEY_SPEC_PATHS,
+      ...SCHEDULE_LIST_SPEC_PATHS,
+    ],
+  },
   // J4 (#667): the Invitations page (list and Invite dialog) and the list
   // controller the invited leader and Volunteer journey drives.
   {
@@ -459,6 +597,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: [
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
       ...INVITATION_JOURNEY_SPEC_PATHS,
+      ...MINISTRIES_JOURNEY_SPEC_PATHS,
     ],
   },
   {

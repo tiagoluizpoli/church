@@ -1,12 +1,14 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import {
   CRITICAL_SMOKE_SPEC_PATHS,
+  DELIBERATE_SMOKE_FALLBACK_PATHS,
   JOURNEY_MAP,
   type JourneyMapping,
 } from './journey-map';
 
-const WEB_ROOT = resolve(import.meta.dir, '../../apps/web');
+const REPO_ROOT = resolve(import.meta.dir, '../..');
+const WEB_ROOT = join(REPO_ROOT, 'apps/web');
 const SPEC_NAME_PATTERN = /\.spec\.ts$/;
 const NO_SUCH_SPEC = 'no such Playwright spec under apps/web/tests/';
 
@@ -65,6 +67,36 @@ export function getJourneyMapFailures({
   return [...unmapped, ...staleMap, ...staleSmoke];
 }
 
+// #900: a deliberate smoke fallback names an existing file that no JOURNEY_MAP
+// prefix covers; otherwise it is stale or contradicts the map.
+export function getDeliberateFallbackFailures({
+  fallbackPaths,
+  journeyMap,
+  fileExists = (path) => existsSync(join(REPO_ROOT, path)),
+}: {
+  fallbackPaths: string[];
+  journeyMap: JourneyMapping[];
+  fileExists?: (path: string) => boolean;
+}): string[] {
+  return fallbackPaths.flatMap((path) => {
+    const prefixes = journeyMap
+      .map(({ sourcePathPrefix }) => sourcePathPrefix)
+      .filter((prefix) => path.startsWith(prefix));
+    return [
+      ...(fileExists(path)
+        ? []
+        : [
+            `${path}: stale DELIBERATE_SMOKE_FALLBACK_PATHS entry: no such file`,
+          ]),
+      ...(prefixes.length > 0
+        ? [
+            `${path}: DELIBERATE_SMOKE_FALLBACK_PATHS entry is covered by JOURNEY_MAP (sourcePathPrefix ${[...new Set(prefixes)].sort().join(', ')}): remove one of them`,
+          ]
+        : []),
+    ];
+  });
+}
+
 // Paths come back relative to the web root with a tests/ prefix, matching the
 // metadata convention. A missing or unreadable tests root throws.
 export function discoverPlaywrightSpecPaths({
@@ -105,11 +137,17 @@ if (import.meta.main) {
     );
     process.exit(1);
   }
-  const failures = getJourneyMapFailures({
-    specPaths,
-    journeyMap: JOURNEY_MAP,
-    criticalSmokeSpecPaths: CRITICAL_SMOKE_SPEC_PATHS,
-  });
+  const failures = [
+    ...getJourneyMapFailures({
+      specPaths,
+      journeyMap: JOURNEY_MAP,
+      criticalSmokeSpecPaths: CRITICAL_SMOKE_SPEC_PATHS,
+    }),
+    ...getDeliberateFallbackFailures({
+      fallbackPaths: DELIBERATE_SMOKE_FALLBACK_PATHS.map(({ path }) => path),
+      journeyMap: JOURNEY_MAP,
+    }),
+  ];
   if (failures.length > 0) {
     console.error(failures.join('\n'));
     process.exitCode = 1;

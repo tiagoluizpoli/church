@@ -62,6 +62,10 @@ export const appConfigSchema = z.object({
     pageSize: positiveInt,
     maxPageSize: positiveInt,
   }),
+  volunteerDashboard: z.object({
+    /** The most upcoming assignments the dashboard returns; the full list lives on My schedule. */
+    upcomingLimit: positiveInt,
+  }),
   people: z.object({
     /** People directory page size when the request names none, and the most it may ask for. */
     pageSize: positiveInt,
@@ -126,6 +130,7 @@ export const appConfig = appConfigSchema.parse({
     pageSize: 20,
     maxPageSize: 50,
   },
+  volunteerDashboard: { upcomingLimit: 5 },
   people: { pageSize: 20, maxPageSize: 50 },
   invitations: { pageSize: 20, maxPageSize: 50 },
   schedules: { pageSize: 20, maxPageSize: 50 },

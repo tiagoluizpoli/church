@@ -54,6 +54,10 @@ export const assignment = pgTable(
     }),
   },
   (table) => [
+    index('assignment_church_volunteer_idx').on(
+      table.churchId,
+      table.volunteerId,
+    ),
     index('assignment_shift_requirement_idx').on(table.shiftRequirementId),
     // Partial: a volunteer may hold only one ACTIVE assignment per Shift.
     // Declined/cancelled rows are excluded so a volunteer can be re-assigned

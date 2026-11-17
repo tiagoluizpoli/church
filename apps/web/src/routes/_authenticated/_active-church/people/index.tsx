@@ -20,6 +20,8 @@ const peopleSearchSchema = z.object({
     .catch(undefined),
   ministryId: z.string().uuid().optional().catch(undefined),
   access: z.enum(['admin', 'leader', 'volunteer']).optional().catch(undefined),
+  // The router parses `?withoutMinistry=true` to a boolean; only `true` filters.
+  withoutMinistry: z.literal(true).optional().catch(undefined),
 });
 
 export const Route = createFileRoute('/_authenticated/_active-church/people/')({

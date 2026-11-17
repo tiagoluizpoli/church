@@ -22,6 +22,7 @@ import type {
   DeletePlanningEvent204,
   DeletePlanningEventTimeBlock204,
   GetCycle200,
+  GetCycleAnchors200,
   GetCycleSendSummary200,
   GetEventTemplate200,
   GetEventTemplateUsage200,
@@ -83,6 +84,18 @@ const listCycles = (
       return apiClient<ListCycles200>(
       {url: `/api/v1/admin/cycles`, method: 'GET',
         params
+    },
+      );
+    }
+  /**
+ * The Cycle running on the Church's today (neither Draft nor Past) and the earliest Cycle starting after today that is not Past (Drafts included); either is null. Ties break on start date, then id.
+ * @summary Get the current and next Cycle
+ */
+const getCycleAnchors = (
+
+ ) => {
+      return apiClient<GetCycleAnchors200>(
+      {url: `/api/v1/admin/cycles/anchors`, method: 'GET'
     },
       );
     }
@@ -502,9 +515,10 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,previewPlanningEventCancellation,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,previewPlanningEventTimeBlockCancellation,cancelPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycleAnchors,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,previewPlanningEventCancellation,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,previewPlanningEventTimeBlockCancellation,cancelPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
+export type GetCycleAnchorsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycleAnchors']>>>
 export type GetCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycle']>>>
 export type UpdateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updateCycle']>>>
 export type DeleteCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deleteCycle']>>>

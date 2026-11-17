@@ -10,6 +10,8 @@ export interface PeopleListFilters {
   search?: string;
   ministryId?: string;
   access?: PeopleAccess;
+  /** Only members with no active membership in a visible Ministry, as `counts.withoutMinistry` counts them. */
+  withoutMinistry?: boolean;
 }
 
 /** What the caller may see; decided by the application, enforced in the query itself. */

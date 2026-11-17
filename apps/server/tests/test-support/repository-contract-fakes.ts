@@ -127,6 +127,7 @@ export function createCycleRepositoryFake() {
     list: vi.fn<CycleRepository['list']>(),
     getById: vi.fn<CycleRepository['getById']>(),
     findOverlapping: vi.fn<CycleRepository['findOverlapping']>(),
+    findAnchors: vi.fn<CycleRepository['findAnchors']>(),
     updateState: vi.fn<CycleRepository['updateState']>(),
     update: vi.fn<CycleRepository['update']>(),
     delete: vi.fn<CycleRepository['delete']>(),
@@ -319,6 +320,9 @@ export function createShiftRepositoryFake() {
     deleteRequirements: vi.fn<ShiftRepository['deleteRequirements']>(),
     listRequirementsByParticipation:
       vi.fn<ShiftRepository['listRequirementsByParticipation']>(),
+    listRequirementsByIds: vi
+      .fn<ShiftRepository['listRequirementsByIds']>()
+      .mockResolvedValue([]),
     getRequirementForShift: vi.fn<ShiftRepository['getRequirementForShift']>(),
   } satisfies ShiftRepository;
 }

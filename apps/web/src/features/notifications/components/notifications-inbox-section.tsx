@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { notificationUnreadLabel } from '@/features/notifications/lib/notification-unread-label';
 
 export interface NotificationItemViewModel {
   id: string;
@@ -122,7 +123,7 @@ function FullModeInbox({
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={unreadCount > 0 ? 'default' : 'outline'}>
-            {m.notification_unread_count({ count: unreadCount })}
+            {notificationUnreadLabel(unreadCount)}
           </Badge>
           <Button
             type="button"

@@ -1,5 +1,13 @@
 import { NotFoundError } from '@church/core';
-import { compareCalendarDays, fromDateColumn, now, today } from '@church/time';
+import {
+  compareCalendarDays,
+  fromDateColumn,
+  now,
+  parseTimeOfDay,
+  toDate,
+  today,
+  toInstant,
+} from '@church/time';
 import type {
   ChurchId,
   CycleId,
@@ -12,6 +20,7 @@ import type {
   CycleDetails,
   CycleSendSummary,
   DeleteCycleManagerInput,
+  GetCycleAnchorsManagerInput,
   GetCycleManagerInput,
   GetSendSummaryManagerInput,
   ICycleManager,
@@ -27,7 +36,7 @@ import type { PlanningEventRepository } from '../domain/contracts/infrastructure
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import { Cycle } from '../domain/entities/cycle';
+import { Cycle, type CycleAnchors } from '../domain/entities/cycle';
 import type { EventWithEventTimeBlocks } from '../domain/entities/event';
 import {
   DraftStaffingReconciliationRequiredError,
@@ -176,6 +185,24 @@ export class DbCycleManager implements ICycleManager {
     return input.state
       ? resolvedCycles.filter((cycle) => cycle.state === input.state)
       : resolvedCycles;
+  }
+
+  async getCycleAnchors(
+    input: GetCycleAnchorsManagerInput,
+  ): Promise<CycleAnchors> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+    const churchToday = today({ instant: now(), timeZone: church.timezone });
+    // Both anchors end on or after today, so neither needs lazy Past resolution.
+    return this.cycleRepository.findAnchors({
+      churchId: input.churchId,
+      today: toDate({
+        instant: toInstant({
+          day: churchToday,
+          time: parseTimeOfDay({ value: '00:00' }),
+          timeZone: 'UTC',
+        }),
+      }),
+    });
   }
 
   async getCycle(input: GetCycleManagerInput): Promise<CycleDetails> {

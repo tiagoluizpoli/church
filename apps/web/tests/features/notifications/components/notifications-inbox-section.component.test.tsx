@@ -90,9 +90,7 @@ describe('NotificationsInboxSection (full mode — /notifications page)', () => 
       />,
     );
 
-    expect(
-      screen.getByText(m.notification_unread_count({ count: 1 })),
-    ).toBeInTheDocument();
+    expect(screen.getByText(m.notification_unread_one())).toBeInTheDocument();
     expect(screen.getByText(m.notification_unread_badge())).toBeInTheDocument();
 
     const [openNotificationButton] = screen.getAllByRole('button', {

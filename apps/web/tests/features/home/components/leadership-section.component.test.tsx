@@ -33,9 +33,44 @@ vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => null,
 }));
 
-const adminApiMock = vi.hoisted(() => ({ listSchedules: vi.fn() }));
+const adminApiMock = vi.hoisted(() => ({
+  listSchedules: vi.fn(),
+  getCycleAnchors: vi.fn().mockResolvedValue({ current: null, next: null }),
+  listMinistryDirectory: vi
+    .fn()
+    .mockResolvedValue({ counts: { review: 0, noSectors: 0 } }),
+}));
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: adminApiMock,
+  setupApi: {
+    getSetupProgress: vi.fn().mockResolvedValue({ hasEverSentCycle: true }),
+  },
+  notificationsApi: {
+    getNotifications: vi.fn().mockResolvedValue({ items: [], unreadCount: 0 }),
+  },
+  peopleApi: {
+    listPeople: vi.fn().mockResolvedValue({
+      counts: {
+        total: 0,
+        admins: 0,
+        leaders: 0,
+        volunteers: 0,
+        withoutMinistry: 0,
+      },
+    }),
+  },
+  invitationsApi: {
+    listInvitations: vi
+      .fn()
+      .mockResolvedValue({ counts: { pending: 0, expired: 0 } }),
+  },
+  volunteerApi: {
+    getVolunteerDashboard: vi.fn().mockResolvedValue({
+      nextAssignment: null,
+      upcomingAssignmentGroups: [],
+    }),
+    listAvailabilityChecks: vi.fn().mockResolvedValue({ checks: [] }),
+  },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
   callerCapabilitiesApi: (await import('@/tests/setup/caller-capabilities'))
@@ -65,7 +100,16 @@ function schedule(
 }
 
 function givenSchedules(schedules: ListSchedules200SchedulesItem[]) {
-  adminApiMock.listSchedules.mockResolvedValue({ schedules });
+  adminApiMock.listSchedules.mockResolvedValue({
+    schedules,
+    counts: {
+      ['to_prepare']: 0,
+      asking: 0,
+      assigning: 0,
+      published: 0,
+      ['not_serving']: 0,
+    },
+  });
 }
 
 function renderHomePage() {
@@ -102,7 +146,7 @@ describe('LeadershipSection', () => {
     ]);
     renderHomePage();
 
-    expect(await screen.findByText(m.schedules_to_prepare())).toBeVisible();
+    expect(await screen.findByText(/Prep · October/)).toBeVisible();
     expect(
       screen.getByText(m.schedules_asking_outstanding({ count: 3 })),
     ).toBeVisible();
@@ -114,11 +158,9 @@ describe('LeadershipSection', () => {
         `${m.schedules_published()} · ${m.schedules_swap_requests_other({ count: 2 })}`,
       ),
     ).toBeVisible();
-    expect(screen.getAllByRole('link')).toHaveLength(4);
-    expect(screen.getAllByRole('link')[0]).toHaveAttribute(
-      'href',
-      '/schedules/m-Prep/c-Prep',
-    );
+    expect(
+      screen.getByRole('link', { name: /Prep · October/ }),
+    ).toHaveAttribute('href', '/schedules/m-Prep/c-Prep');
   });
 
   it('shows every Ministry for a ChurchAdmin without a leader scope', async () => {
@@ -140,8 +182,8 @@ describe('LeadershipSection', () => {
       limit: 5,
     });
     expect(
-      screen.queryByRole('link', { name: m.home_leadership_see_all() }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('link', { name: m.home_see_all() }),
+    ).toHaveAttribute('href', '/schedules?attention=true');
   });
 
   it('opens the Schedules page filtered to those needing attention when more need the leader', async () => {
@@ -152,7 +194,7 @@ describe('LeadershipSection', () => {
     const { router } = renderHomePage();
 
     await userEvent.click(
-      await screen.findByRole('link', { name: m.home_leadership_see_all() }),
+      await screen.findByRole('link', { name: m.home_see_all() }),
     );
 
     await waitFor(() =>
@@ -175,7 +217,9 @@ describe('LeadershipSection', () => {
     renderHomePage();
 
     expect(await screen.findByText(m.home_leadership_empty())).toBeVisible();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: m.home_see_all() }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps Asking and Assigning rows with a zero outstanding count', async () => {
@@ -235,17 +279,23 @@ describe('LeadershipSection', () => {
       .mockReturnValueOnce(new Promise(() => {}))
       .mockRejectedValueOnce(new Error('down'));
     const first = renderHomePage();
-    expect(await screen.findByText(m.schedules_loading())).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', {
+        name: m.home_attention_schedules(),
+      }),
+    ).toBeVisible();
     expect(screen.queryByText(m.home_leadership_empty())).toBeNull();
     first.unmount();
 
     renderHomePage();
-    expect(await screen.findByText(m.schedules_error())).toBeVisible();
+    expect(
+      (await screen.findAllByText(m.schedules_error())).length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByText(m.home_leadership_empty())).toBeNull();
 
     givenSchedules([]);
     await userEvent.click(
-      screen.getByRole('button', { name: m.schedules_retry() }),
+      screen.getAllByRole('button', { name: m.home_retry() })[0],
     );
     expect(await screen.findByText(m.home_leadership_empty())).toBeVisible();
   });
@@ -255,9 +305,9 @@ describe('LeadershipSection', () => {
     givenSchedules([schedule({ name: 'Prep' })]);
     renderHomePage();
 
-    await screen.findByRole('heading', { name: m.home_section_serving() });
+    await screen.findByRole('heading', { name: m.home_next_assignment() });
     expect(
-      screen.queryByRole('heading', { name: m.home_section_leadership() }),
+      screen.queryByRole('heading', { name: m.home_attention_schedules() }),
     ).not.toBeInTheDocument();
     expect(adminApiMock.listSchedules).not.toHaveBeenCalled();
   });

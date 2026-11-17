@@ -59,13 +59,8 @@ export function ScheduleStatus({ row, showOutstanding }: StageLabelInput) {
   return (
     <span className="flex flex-wrap items-center gap-2">
       {row.lateMarkCount > 0 ? (
-        <Badge
-          variant="outline"
-          aria-label={m.schedule_late_mark_count({
-            count: row.lateMarkCount,
-          })}
-        >
-          ⚠ {row.lateMarkCount}
+        <Badge variant="outline">
+          {m.schedule_late_mark_count({ count: row.lateMarkCount })}
         </Badge>
       ) : null}
       <Badge variant={row.stage === 'not_serving' ? 'outline' : 'secondary'}>

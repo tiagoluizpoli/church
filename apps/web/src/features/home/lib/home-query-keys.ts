@@ -1,3 +1,4 @@
+/** Every Home cache section; a widget's reads and its registry `cacheSection` must name the same one. */
 export type HomeSection = 'church' | 'leadership' | 'serving';
 
 /** Root of every Home section read. Church switches already clear it (any non-`active-church` key). */

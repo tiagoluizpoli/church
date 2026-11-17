@@ -63,6 +63,71 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
     expect(result).toEqual([]);
   });
 
+  it("list and getByIds group each template's blocks in order from one batched read", async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repo = new DrizzleEventTemplateRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+
+    const alpha = await repo.create({
+      churchId,
+      name: 'Alpha',
+      weekday: 0,
+      blocks: [
+        { label: 'Second', startTime: '11:00', endTime: '12:00', order: 2 },
+        { label: 'First', startTime: '09:00', endTime: '10:00', order: 1 },
+      ],
+    });
+    const beta = await repo.create({
+      churchId,
+      name: 'Beta',
+      weekday: 1,
+      blocks: [
+        { label: 'Only', startTime: '18:00', endTime: '19:00', order: 1 },
+      ],
+    });
+    const empty = await repo.create({
+      churchId,
+      name: 'Gamma',
+      weekday: 2,
+      blocks: [],
+    });
+
+    const listed = await repo.list({ churchId });
+    expect(listed.map((t) => t.name)).toEqual(['Alpha', 'Beta', 'Gamma']);
+    expect(listed[0]?.blocks.map((b) => b.label)).toEqual(['First', 'Second']);
+    expect(listed[1]?.blocks.map((b) => b.label)).toEqual(['Only']);
+    expect(listed[2]?.blocks).toEqual([]);
+
+    // Block createdAt is stamped by the mapper at read time, so compare the
+    // persisted facts instead of the entities.
+    const facts = (t: (typeof listed)[number]) => ({
+      id: t.id,
+      name: t.name,
+      weekday: t.weekday,
+      blocks: t.blocks.map((b) => [
+        b.id,
+        b.label,
+        b.startTime,
+        b.endTime,
+        b.order,
+      ]),
+    });
+    for (const template of [alpha, beta, empty]) {
+      expect(facts(listed.find((t) => t.id === template.id) as never)).toEqual(
+        facts(await repo.getById({ churchId, templateId: template.id })),
+      );
+    }
+
+    const byIds = await repo.getByIds({
+      churchId,
+      templateIds: [alpha.id, beta.id],
+    });
+    expect(byIds.map((t) => t.blocks.map((b) => b.label)).sort()).toEqual([
+      ['First', 'Second'],
+      ['Only'],
+    ]);
+  });
+
   it('accepts a time block whose end is before its start (crosses midnight)', async () => {
     const seed = await seedSchedulingPhase3Base();
     const repo = new DrizzleEventTemplateRepository({ db: schedulingTestDb });

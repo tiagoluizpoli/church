@@ -45,4 +45,84 @@ describe('DrizzleCycleRepository (extra coverage)', () => {
       }),
     ).rejects.toThrow(NotFoundError);
   });
+
+  describe('findAnchors', () => {
+    const day = (value: string) => new Date(`${value}T00:00:00.000Z`);
+    const today = day('2026-11-17');
+
+    it('picks the running Sent Cycle and the earliest later non-Past one, Drafts included', async () => {
+      const seed = await seedSchedulingPhase3Base();
+      const repo = new DrizzleCycleRepository({ db: schedulingTestDb });
+      const churchId = ChurchId.from(seed.churchAId);
+      const create = (
+        name: string,
+        start: string,
+        end: string,
+        state: 'draft' | 'sent' | 'past',
+      ) =>
+        repo.create({
+          churchId,
+          name,
+          startDate: day(start),
+          endDate: day(end),
+          state,
+        });
+      await create('October', '2026-10-01', '2026-10-31', 'past');
+      await create('November', '2026-11-01', '2026-11-30', 'sent');
+      await create('January', '2027-01-01', '2027-01-31', 'sent');
+      await create('December', '2026-12-01', '2026-12-31', 'draft');
+      // Another Church's earlier upcoming Cycle never leaks in.
+      await repo.create({
+        churchId: ChurchId.from(seed.churchBId),
+        name: 'Other',
+        startDate: day('2026-11-20'),
+        endDate: day('2026-11-25'),
+        state: 'sent',
+      });
+
+      const anchors = await repo.findAnchors({ churchId, today });
+
+      expect(anchors.current?.name).toBe('November');
+      expect(anchors.next?.name).toBe('December');
+    });
+
+    it('has no current Cycle while the one covering today is a Draft, and skips a Past later one', async () => {
+      const seed = await seedSchedulingPhase3Base();
+      const repo = new DrizzleCycleRepository({ db: schedulingTestDb });
+      const churchId = ChurchId.from(seed.churchAId);
+      const create = (
+        name: string,
+        start: string,
+        end: string,
+        state: 'draft' | 'sent' | 'past',
+      ) =>
+        repo.create({
+          churchId,
+          name,
+          startDate: day(start),
+          endDate: day(end),
+          state,
+        });
+      await create('November', '2026-11-01', '2026-11-30', 'draft');
+      await create('December', '2026-12-01', '2026-12-31', 'past');
+      await create('January', '2027-01-01', '2027-01-31', 'sent');
+
+      const anchors = await repo.findAnchors({ churchId, today });
+
+      expect(anchors.current).toBeNull();
+      expect(anchors.next?.name).toBe('January');
+    });
+
+    it('returns both empty for a Church with no Cycles', async () => {
+      const seed = await seedSchedulingPhase3Base();
+      const repo = new DrizzleCycleRepository({ db: schedulingTestDb });
+
+      expect(
+        await repo.findAnchors({
+          churchId: ChurchId.from(seed.churchAId),
+          today,
+        }),
+      ).toEqual({ current: null, next: null });
+    });
+  });
 });

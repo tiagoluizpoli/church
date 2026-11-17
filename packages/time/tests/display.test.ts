@@ -7,6 +7,7 @@ import {
   formatDayLabel,
   formatInstant,
   formatInstantPrecise,
+  formatLongCalendarDay,
   formatMonthYear,
   formatRecency,
   formatRelative,
@@ -38,6 +39,17 @@ function timeOfDay(value: string): TimeOfDay {
 describe('formatCalendarDay', () => {
   it('renders dd/MM/yyyy', () => {
     expect(formatCalendarDay({ day: day('2027-01-04') })).toBe('04/01/2027');
+  });
+});
+
+describe('formatLongCalendarDay', () => {
+  it('formats a calendar day in the selected locale regardless of ambient timezone', () => {
+    expect(
+      formatLongCalendarDay({ day: day('2026-11-17'), locale: 'pt-BR' }),
+    ).toBe('terça-feira, 17 de novembro');
+    expect(
+      formatLongCalendarDay({ day: day('2026-11-17'), locale: 'en' }),
+    ).toBe('Tuesday, November 17');
   });
 });
 

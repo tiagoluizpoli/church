@@ -92,6 +92,7 @@ const dashboardAssignmentItemSchema = z.object({
   participationId: z.string(),
   roleId: z.string(),
   roleName: z.string(),
+  sectorName: z.string(),
   startTime: instantSchema,
   endTime: instantSchema,
   status: z.enum(['pending', 'confirmed', 'declined']),
@@ -123,6 +124,14 @@ const dashboardMinistryOptionSchema = z.object({
 
 export const dashboardResponseSchema = z.object({
   upcomingAssignmentGroups: z.array(dashboardAssignmentGroupSchema),
+  nextAssignment: dashboardAssignmentItemSchema
+    .extend({
+      eventId: z.string(),
+      eventTitle: z.string(),
+      ministryId: z.string(),
+      ministryName: z.string(),
+    })
+    .nullable(),
   unreadNotificationCount: z.number(),
   notificationPreview: z.array(memberNotificationResponseSchema),
   defaultMinistryId: z.string().optional(),
@@ -286,6 +295,7 @@ function dashboardAssignmentItemToResponse(
     participationId: item.participationId,
     roleId: item.roleId,
     roleName: item.roleName,
+    sectorName: item.sectorName,
     startTime: parseInstant({ value: item.startTime }),
     endTime: parseInstant({ value: item.endTime }),
     status: item.status,
@@ -314,6 +324,15 @@ function dashboardToResponse(dashboard: VolunteerDashboard): DashboardResponse {
     upcomingAssignmentGroups: dashboard.upcomingAssignmentGroups.map(
       dashboardAssignmentGroupToResponse,
     ),
+    nextAssignment: dashboard.nextAssignment
+      ? {
+          ...dashboardAssignmentItemToResponse(dashboard.nextAssignment),
+          eventId: dashboard.nextAssignment.eventId,
+          eventTitle: dashboard.nextAssignment.eventTitle,
+          ministryId: dashboard.nextAssignment.ministryId,
+          ministryName: dashboard.nextAssignment.ministryName,
+        }
+      : null,
     unreadNotificationCount: dashboard.unreadNotificationCount,
     notificationPreview: dashboard.notificationPreview.map(
       memberNotificationMapper.toResponse,

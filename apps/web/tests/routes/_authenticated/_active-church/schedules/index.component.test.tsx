@@ -227,9 +227,8 @@ describe('Schedules list', () => {
     listSchedules.mockResolvedValue(page([schedule({ lateMarkCount: 2 })]));
     renderPrepareIndex();
     const row = await scheduleItem(/Kids · Outubro/);
-    expect(row).toHaveTextContent('⚠ 2');
     expect(
-      within(row).getByLabelText(m.schedule_late_mark_count({ count: 2 })),
+      within(row).getByText(m.schedule_late_mark_count({ count: 2 })),
     ).toBeVisible();
   });
 

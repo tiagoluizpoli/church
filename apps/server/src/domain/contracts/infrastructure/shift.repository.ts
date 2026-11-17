@@ -96,6 +96,12 @@ export interface ListRequirementsByParticipationInput {
   tx?: TransactionContext;
 }
 
+export interface ListRequirementsByIdsInput {
+  churchId: ChurchId;
+  shiftRequirementIds: ShiftRequirementId[];
+  tx?: TransactionContext;
+}
+
 export interface GetRequirementForShiftInput {
   churchId: ChurchId;
   shiftId: ShiftId;
@@ -122,6 +128,9 @@ export interface ShiftRepository {
   deleteRequirements(input: DeleteShiftRequirementsInput): Promise<void>;
   listRequirementsByParticipation(
     input: ListRequirementsByParticipationInput,
+  ): Promise<ShiftRequirement[]>;
+  listRequirementsByIds(
+    input: ListRequirementsByIdsInput,
   ): Promise<ShiftRequirement[]>;
   getRequirementForShift(
     input: GetRequirementForShiftInput,

@@ -16,25 +16,79 @@ import {
   callerCapabilitiesApiMock,
   callerCapabilitiesFixture,
 } from '@/tests/setup/caller-capabilities';
+import {
+  adminApi,
+  invitationsApi,
+  notificationsApi,
+  peopleApi,
+} from '@/utils/api-instances';
 
 vi.mock('@/utils/api-instances', async () => ({
-  adminApi: { listSchedules: vi.fn().mockResolvedValue({ schedules: [] }) },
+  adminApi: {
+    listSchedules: vi.fn().mockResolvedValue({
+      schedules: [],
+      counts: { ['to_prepare']: 2, asking: 3, assigning: 4, published: 5 },
+    }),
+    getCycleAnchors: vi.fn().mockResolvedValue({ current: null, next: null }),
+    listMinistryDirectory: vi
+      .fn()
+      .mockResolvedValue({ counts: { review: 3, noSectors: 1 } }),
+  },
+  setupApi: {
+    getSetupProgress: vi.fn().mockResolvedValue({ hasEverSentCycle: true }),
+  },
+  peopleApi: {
+    listPeople: vi.fn().mockResolvedValue({
+      counts: {
+        total: 12,
+        admins: 1,
+        leaders: 2,
+        volunteers: 7,
+        withoutMinistry: 3,
+      },
+    }),
+  },
+  invitationsApi: {
+    listInvitations: vi
+      .fn()
+      .mockResolvedValue({ counts: { pending: 4, expired: 2 } }),
+  },
+  notificationsApi: {
+    getNotifications: vi.fn().mockResolvedValue({ items: [], unreadCount: 0 }),
+  },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
   callerCapabilitiesApi: (await import('@/tests/setup/caller-capabilities'))
     .callerCapabilitiesApiMock,
   volunteerApi: {
     listAvailabilityChecks: vi.fn().mockResolvedValue({ checks: [] }),
-    getPublishedVolunteerSchedule: vi
-      .fn()
-      .mockResolvedValue({ assignments: [], schedules: [] }),
+    getVolunteerDashboard: vi.fn().mockResolvedValue({
+      nextAssignment: null,
+      upcomingAssignmentGroups: [],
+    }),
   },
 }));
 
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-router')>()),
-  Link: ({ children }: { children: React.ReactNode }) => (
-    <a href="/">{children}</a>
+  Link: ({
+    children,
+    to,
+    search,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    search?: Record<string, unknown>;
+  }) => (
+    <a
+      href={
+        search
+          ? `${to}?${new URLSearchParams(Object.entries(search).map(([key, value]) => [key, String(value)]))}`
+          : to
+      }
+    >
+      {children}
+    </a>
   ),
 }));
 
@@ -46,9 +100,9 @@ vi.mock('sonner', () => ({
 const churchSection = () =>
   screen.queryByRole('heading', { name: m.home_section_church() });
 const leadershipSection = () =>
-  screen.queryByRole('heading', { name: m.home_section_leadership() });
+  screen.queryByRole('heading', { name: m.home_attention_schedules() });
 const servingSection = () =>
-  screen.queryByRole('heading', { name: m.home_section_serving() });
+  screen.queryByRole('heading', { name: m.home_next_assignment() });
 
 function givenCapabilities(
   input: Parameters<typeof callerCapabilitiesFixture>[0],
@@ -75,7 +129,9 @@ describe('HomePage', () => {
     expect(
       screen.getByRole('status', { name: m.home_loading() }),
     ).toBeVisible();
-    expect(screen.queryByText(/St\. Peter/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(m.home_welcome({ churchName: 'St. Peter' })),
+    ).not.toBeInTheDocument();
   });
 
   it('shows a retryable error, not the welcome or any section, when the read fails', async () => {
@@ -108,7 +164,9 @@ describe('HomePage', () => {
     expect(churchSection()).not.toBeInTheDocument();
     expect(leadershipSection()).not.toBeInTheDocument();
     expect(servingSection()).not.toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: /Notificações · 0 não lidas/ }),
+    ).toBeVisible();
   });
 
   it.each([
@@ -137,27 +195,97 @@ describe('HomePage', () => {
     givenCapabilities(input);
     renderHomePage();
 
-    await waitFor(() =>
-      expect(screen.queryByRole('status')).not.toBeInTheDocument(),
-    );
+    await screen.findByRole('link', { name: /Notificações · 0 não lidas/ });
     expect(Boolean(churchSection())).toBe(church);
     expect(Boolean(leadershipSection())).toBe(leadership);
     expect(Boolean(servingSection())).toBe(serving);
     expect(screen.queryByText(/Nothing needs you/)).not.toBeInTheDocument();
   });
 
-  it('orders sections Church, Ministries I lead, My serving', async () => {
+  it('puts volunteer actions ahead of the summary and attention list', async () => {
     givenCapabilities({ isChurchAdmin: true, hasVolunteerMembership: true });
     renderHomePage();
+    await screen.findByRole('heading', { name: m.home_attention_schedules() });
+    const headings = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((h) => h.textContent);
+    expect(headings.indexOf(m.home_next_assignment())).toBeLessThan(
+      headings.indexOf(m.home_summary()),
+    );
+    expect(headings.indexOf(m.home_summary())).toBeLessThan(
+      headings.indexOf(m.home_attention_schedules()),
+    );
+  });
 
-    await screen.findByRole('heading', { name: m.home_section_serving() });
+  it('links whole-scope counts to the matching list filters', async () => {
+    givenCapabilities({ isChurchAdmin: true });
+    renderHomePage();
     expect(
-      screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent),
-    ).toEqual([
-      m.home_section_church(),
-      m.home_section_leadership(),
-      m.home_section_serving(),
-    ]);
+      await screen.findByRole('link', { name: /2 A preparar/ }),
+    ).toHaveAttribute('href', '/schedules?stage=to_prepare');
+    expect(screen.getByRole('link', { name: /3 Consultando/ })).toHaveAttribute(
+      'href',
+      '/schedules?stage=asking',
+    );
+    expect(
+      screen.getByRole('link', { name: /3 Pessoas sem ministério/ }),
+    ).toHaveAttribute('href', '/people?withoutMinistry=true');
+    expect(
+      screen.getByRole('link', { name: /4 Convites pendentes/ }),
+    ).toHaveAttribute('href', '/invitations?status=pending');
+    expect(
+      screen.getByRole('link', { name: /2 Convites vencidos/ }),
+    ).toHaveAttribute('href', '/invitations?status=expired');
+    expect(
+      screen.getByRole('link', { name: /3 Ministérios para revisar/ }),
+    ).toHaveAttribute('href', '/ministries?status=review');
+    expect(
+      screen.getByRole('link', { name: /1 Ministérios sem setores/ }),
+    ).toHaveAttribute('href', '/ministries?status=no-sectors');
+  });
+
+  it('collapses zero attention counts while retaining the People group', async () => {
+    givenCapabilities({ isChurchAdmin: true });
+    vi.mocked(peopleApi.listPeople).mockResolvedValueOnce({
+      items: [],
+      options: { ministries: [] },
+      counts: {
+        total: 12,
+        admins: 1,
+        leaders: 2,
+        volunteers: 7,
+        withoutMinistry: 0,
+      },
+    });
+    vi.mocked(invitationsApi.listInvitations).mockResolvedValueOnce({
+      items: [],
+      options: { ministries: [], invitedAs: [] },
+      counts: { pending: 0, expired: 0, accepted: 0, declined: 0, revoked: 0 },
+    });
+    vi.mocked(adminApi.listMinistryDirectory).mockResolvedValueOnce({
+      ministries: [],
+      counts: { total: 1, review: 0, noSectors: 0 },
+    });
+    renderHomePage();
+    expect(await screen.findByText(m.home_all_clear())).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: m.home_people_group() }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('link', { name: /Pessoas sem ministério/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('uses singular unread wording in the compact notification link', async () => {
+    givenCapabilities({});
+    vi.mocked(notificationsApi.getNotifications).mockResolvedValueOnce({
+      items: [],
+      unreadCount: 1,
+    });
+    renderHomePage();
+    expect(
+      await screen.findByRole('link', { name: 'Notificações · 1 não lida' }),
+    ).toBeVisible();
   });
 
   it('drops a section’s cached reads when its capacity is lost, keeping held ones', async () => {

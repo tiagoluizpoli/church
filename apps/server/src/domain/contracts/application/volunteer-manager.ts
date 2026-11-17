@@ -20,6 +20,7 @@ export interface DashboardAssignmentItem {
   participationId: string;
   roleId: string;
   roleName: string;
+  sectorName: string;
   startTime: string;
   endTime: string;
   status: 'pending' | 'confirmed' | 'declined';
@@ -43,7 +44,15 @@ export interface DashboardMinistryOption {
   name: string;
 }
 
+export interface DashboardNextAssignment extends DashboardAssignmentItem {
+  eventId: string;
+  eventTitle: string;
+  ministryId: string;
+  ministryName: string;
+}
+
 export interface VolunteerDashboard {
+  nextAssignment: DashboardNextAssignment | null;
   upcomingAssignmentGroups: DashboardAssignmentGroup[];
   unreadNotificationCount: number;
   /** The caller's own latest member Notifications (User + Active Church). */

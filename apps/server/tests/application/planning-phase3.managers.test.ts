@@ -1,4 +1,11 @@
-import { fromDate, parseCalendarDay, parseTimeOfDay } from '@church/time';
+import {
+  fromDate,
+  parseCalendarDay,
+  parseInstant,
+  parseTimeOfDay,
+  resetClock,
+  setTestClock,
+} from '@church/time';
 import { describe, expect, it, vi } from 'vitest';
 import { DbCycleManager } from '@/application/db-cycle-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
@@ -195,6 +202,39 @@ function createPlanningEventHarness() {
 }
 
 describe('DbCycleManager', () => {
+  it('reads the anchors for the Church-timezone today, not the UTC one', async () => {
+    const harness = createCycleHarness();
+    harness.churchRepository.getById.mockResolvedValue(
+      new Church({
+        id: churchId,
+        props: {
+          name: 'Church',
+          slug: 'church',
+          timezone: 'America/Sao_Paulo',
+        },
+      }),
+    );
+    harness.cycleRepository.findAnchors.mockResolvedValue({
+      current: harness.cycle,
+      next: null,
+    });
+    // 23:00 on the 10th in São Paulo, already the 11th in UTC.
+    setTestClock({
+      instant: parseInstant({ value: '2026-11-11T02:00:00.000Z' }),
+    });
+    try {
+      await expect(
+        harness.manager.getCycleAnchors({ churchId }),
+      ).resolves.toEqual({ current: harness.cycle, next: null });
+    } finally {
+      resetClock();
+    }
+    expect(harness.cycleRepository.findAnchors).toHaveBeenCalledWith({
+      churchId,
+      today: new Date('2026-11-10T00:00:00.000Z'),
+    });
+  });
+
   it('creates a non-overlapping cycle while holding the church lock in the transaction', async () => {
     const { manager, cycle, cycleRepository } = createCycleHarness();
     const input = { churchId, name: 'January', startDate, endDate };

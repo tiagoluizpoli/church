@@ -280,6 +280,22 @@ describe('volunteer dashboard', () => {
       f.assignmentRepo.listByVolunteer.mockResolvedValue([assignment]);
       f.participationRepo.listByIds.mockResolvedValue([participation]);
       f.shiftRepo.getById.mockResolvedValue(shift);
+      // Every Assignment's requirement exists (non-null FK), with its Sector.
+      f.shiftRepo.listRequirementsByIds.mockResolvedValue([
+        new ShiftRequirement({
+          id: ShiftRequirementId.from({ raw: 'requirement' }),
+          props: {
+            churchId,
+            eventTimeBlockId: block.id,
+            participationId: participation.id,
+            shiftId: shift.id,
+            roleId: RoleId.from('role'),
+            sectorId: SectorId.from('sector'),
+            sectorName: 'Main Door',
+            peopleNeeded: 1,
+          },
+        }),
+      ]);
       f.roleRepo.getById.mockResolvedValue(
         new Role({
           id: RoleId.from('role'),

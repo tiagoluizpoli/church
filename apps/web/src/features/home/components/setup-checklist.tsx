@@ -44,7 +44,7 @@ export function SetupChecklist({ progress }: SetupChecklistProps) {
   ];
 
   return (
-    <div className="space-y-2 rounded-lg border p-4">
+    <div className="space-y-2">
       <h3 className="font-medium">{m.home_setup_title()}</h3>
       <ol className="space-y-2">
         {steps.map(({ done, label, href }) => (

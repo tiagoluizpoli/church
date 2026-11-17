@@ -286,6 +286,42 @@ describe('People directory', () => {
     );
   });
 
+  it('round-trips the without-Ministry filter through the URL and the select', async () => {
+    const user = userEvent.setup();
+    listPeople.mockResolvedValue(page([person({})]));
+
+    renderPeople('/people?withoutMinistry=true&access=owner');
+
+    await rows();
+    expect(listPeople).toHaveBeenCalledWith({ withoutMinistry: 'true' });
+    expect(
+      screen.getByLabelText(m.people_filter_membership()),
+    ).toHaveTextContent(m.people_stat_without_ministry());
+
+    await user.click(screen.getByLabelText(m.people_filter_membership()));
+    await user.click(
+      await screen.findByRole('option', { name: m.invitations_filter_any() }),
+    );
+    await waitFor(() => expect(listPeople).toHaveBeenLastCalledWith({}));
+
+    await user.click(screen.getByLabelText(m.people_filter_membership()));
+    await user.click(
+      await screen.findByRole('option', {
+        name: m.people_stat_without_ministry(),
+      }),
+    );
+    await waitFor(() =>
+      expect(listPeople).toHaveBeenLastCalledWith({ withoutMinistry: 'true' }),
+    );
+  });
+
+  it('drops a malformed without-Ministry value', async () => {
+    listPeople.mockResolvedValue(page([person({})]));
+    renderPeople('/people?withoutMinistry=maybe');
+    await rows();
+    expect(listPeople).toHaveBeenCalledWith({});
+  });
+
   it('retries a failed next page in place', async () => {
     const user = userEvent.setup();
     listPeople

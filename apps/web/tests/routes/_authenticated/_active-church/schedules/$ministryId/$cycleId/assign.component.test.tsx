@@ -78,6 +78,20 @@ beforeEach(() => {
 });
 
 describe('Assign board route', () => {
+  it('shows a busy skeleton, never an empty page, while the board loads', async () => {
+    getCycleBuilderData.mockReturnValue(new Promise(() => {}));
+    renderRoute({
+      initialPath: '/schedules/ministry-1/cycle-1/assign',
+      churchTimezone: 'UTC',
+    });
+    const loading = await screen.findByTestId('assign-loading');
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+    expect(screen.queryByTestId('event-builder-route')).toBeNull();
+  });
+
   it('renders the board as its own page, without the Prepare workspace', async () => {
     renderRoute({
       initialPath: '/schedules/ministry-1/cycle-1/assign',

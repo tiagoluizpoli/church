@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { pluralMessage } from '@/shared/utils/plural';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
@@ -101,6 +102,7 @@ export function CycleDeleteDialog({
               remove.mutate();
             }}
           >
+            {remove.isPending ? <Spinner /> : null}
             {remove.isPending
               ? m.cycles_delete_pending()
               : m.cycles_delete_confirm()}

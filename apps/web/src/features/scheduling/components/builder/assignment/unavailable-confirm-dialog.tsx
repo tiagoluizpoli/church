@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 interface UnavailableConfirmDialogProps {
@@ -65,6 +66,7 @@ export function UnavailableConfirmDialog({
               onConfirm();
             }}
           >
+            {isPending ? <Spinner /> : null}
             {isPending
               ? m.builder_unavailable_confirm_saving()
               : m.builder_unavailable_confirm_action()}

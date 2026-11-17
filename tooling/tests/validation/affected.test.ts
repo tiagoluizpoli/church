@@ -192,6 +192,7 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
       'tests/identity/invitation-journey.spec.ts',
+      'tests/ministries/ministries-directory.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
   });
@@ -670,6 +671,7 @@ describe('classifyChanges', () => {
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/route-protection.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
+      'tests/ministries/ministries-directory.spec.ts',
       'tests/people/people-journey.spec.ts',
       'tests/scheduling/a11y-builder.spec.ts',
       'tests/scheduling/a11y-planning-nav.spec.ts',

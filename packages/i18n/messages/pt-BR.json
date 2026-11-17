@@ -170,6 +170,7 @@
   "shell_search_close": "Fechar busca",
   "shell_search_go_to": "Ir para {label}",
   "shell_table_loading": "Carregando…",
+  "shell_route_loading": "Carregando página",
   "shell_table_empty": "Nenhum dado disponível.",
   "shell_table_empty_title": "Nenhum dado encontrado",
   "shell_table_empty_description": "Nenhuma informação disponível nesta seção no momento.",

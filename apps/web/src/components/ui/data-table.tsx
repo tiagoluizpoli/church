@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import type { ReactNode } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import type { TableProps as TablePrimitiveProps } from 'react-aria-components/Table';
+import { Pending } from '@/components/ui/pending';
 import {
   Table,
   TableBody,
@@ -152,7 +153,7 @@ export function DataTable<T extends object>({
   ];
 
   if (isLoading) {
-    return <div className={className}>{loadingContent}</div>;
+    return <Pending className={className}>{loadingContent}</Pending>;
   }
 
   if (items.length === 0) {

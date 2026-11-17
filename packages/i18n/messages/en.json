@@ -170,6 +170,7 @@
   "shell_search_close": "Close search",
   "shell_search_go_to": "Go to {label}",
   "shell_table_loading": "Loading…",
+  "shell_route_loading": "Loading page",
   "shell_table_empty": "No data available.",
   "shell_table_empty_title": "No data found",
   "shell_table_empty_description": "No information is currently available in this section.",

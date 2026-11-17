@@ -12,10 +12,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { buildValidationSteps } from '../../validation/affected';
 import {
   CRITICAL_SMOKE_SPEC_PATHS,
+  DELIBERATE_SMOKE_FALLBACK_PATHS,
   JOURNEY_MAP,
 } from '../../validation/journey-map';
 import {
   discoverPlaywrightSpecPaths,
+  getDeliberateFallbackFailures,
   getJourneyMapFailures,
 } from '../../validation/journey-map-guard';
 import { hasFailure, runLanes } from '../../validation/run-lanes';
@@ -173,6 +175,34 @@ const REFERENCED_SPEC_PATHS = [
   ]),
 ];
 
+describe('deliberate smoke fallback guard', () => {
+  const wiring = 'apps/server/src/main/di/build-controllers.ts';
+  const exists = (known: string[]) => (path: string) => known.includes(path);
+
+  it('accepts an existing file no mapping covers', () => {
+    expect(
+      getDeliberateFallbackFailures({
+        fallbackPaths: [wiring],
+        journeyMap: [mapping(A)],
+        fileExists: exists([wiring]),
+      }),
+    ).toEqual([]);
+  });
+
+  it('reports a missing file and a path a mapping covers', () => {
+    expect(
+      getDeliberateFallbackFailures({
+        fallbackPaths: ['apps/web/src/gone.ts'],
+        journeyMap: [mapping(A)],
+        fileExists: exists([]),
+      }),
+    ).toEqual([
+      'apps/web/src/gone.ts: stale DELIBERATE_SMOKE_FALLBACK_PATHS entry: no such file',
+      'apps/web/src/gone.ts: DELIBERATE_SMOKE_FALLBACK_PATHS entry is covered by JOURNEY_MAP (sourcePathPrefix apps/web/src/): remove one of them',
+    ]);
+  });
+});
+
 describe('journey map guard command', () => {
   let webRoot: string;
 
@@ -258,6 +288,15 @@ describe('journey map repository contract', () => {
         specPaths: discoverPlaywrightSpecPaths(),
         journeyMap: JOURNEY_MAP,
         criticalSmokeSpecPaths: CRITICAL_SMOKE_SPEC_PATHS,
+      }),
+    ).toEqual([]);
+  });
+
+  it('keeps every deliberate smoke fallback real and unmapped', () => {
+    expect(
+      getDeliberateFallbackFailures({
+        fallbackPaths: DELIBERATE_SMOKE_FALLBACK_PATHS.map(({ path }) => path),
+        journeyMap: JOURNEY_MAP,
       }),
     ).toEqual([]);
   });

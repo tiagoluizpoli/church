@@ -41,7 +41,19 @@ export function MyServingSection({ churchId, userId }: HomeSectionProps) {
   );
   const next = dashboard.data?.nextAssignment;
   return (
-    <HomeWidget title={m.home_section_serving()}>
+    <HomeWidget
+      title={m.home_section_serving()}
+      action={
+        dashboard.data?.upcomingAssignmentGroups.length ? (
+          <Link
+            to="/my-schedule"
+            className="inline-flex min-h-11 items-center underline"
+          >
+            {m.home_see_all()}
+          </Link>
+        ) : undefined
+      }
+    >
       {dashboard.isPending ? (
         <p role="status">{m.my_schedule_loading()}</p>
       ) : dashboard.isError ? (
@@ -55,7 +67,7 @@ export function MyServingSection({ churchId, userId }: HomeSectionProps) {
           <Link
             to="/my-schedule/$assignmentId"
             params={{ assignmentId: next.assignmentId }}
-            className="block min-h-11 rounded-md border p-4 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            className="-mx-2 block min-h-11 rounded-md px-2 py-3 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
           >
             <span className="block font-semibold">{next.eventTitle}</span>
             <span className="block">
@@ -90,13 +102,13 @@ export function MyServingSection({ churchId, userId }: HomeSectionProps) {
       ) : pending.length ? (
         <div className="space-y-2">
           <h3 className="font-semibold">{m.home_pending_checks()}</h3>
-          <ul className="space-y-2">
+          <ul className="divide-y">
             {pending.map((check) => (
               <li key={check.id}>
                 <Link
                   to="/availability/$checkId"
                   params={{ checkId: check.id }}
-                  className="block min-h-11 rounded-md border p-4 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                  className="-mx-2 block min-h-11 rounded-md px-2 py-3 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
                 >
                   <span className="block font-semibold">
                     {check.ministryName} · {check.cycleName}
@@ -114,14 +126,14 @@ export function MyServingSection({ churchId, userId }: HomeSectionProps) {
       {dashboard.data?.upcomingAssignmentGroups.length ? (
         <div className="space-y-2">
           <h3 className="font-semibold">{m.home_upcoming_assignments()}</h3>
-          <ul className="space-y-2">
+          <ul className="divide-y">
             {dashboard.data.upcomingAssignmentGroups.map((group) =>
               group.assignments.map((assignment) => (
                 <li key={assignment.assignmentId}>
                   <Link
                     to="/my-schedule/$assignmentId"
                     params={{ assignmentId: assignment.assignmentId }}
-                    className="block min-h-11 rounded-md border p-3 hover:bg-accent"
+                    className="-mx-2 block min-h-11 rounded-md px-2 py-3 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
                   >
                     {group.eventTitle} ·{' '}
                     {formatInstantRangeOf({
@@ -135,12 +147,6 @@ export function MyServingSection({ churchId, userId }: HomeSectionProps) {
               )),
             )}
           </ul>
-          <Link
-            to="/my-schedule"
-            className="inline-flex min-h-11 items-center underline"
-          >
-            {m.home_see_all()}
-          </Link>
         </div>
       ) : null}
     </HomeWidget>

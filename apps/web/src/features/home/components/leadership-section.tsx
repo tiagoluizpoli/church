@@ -44,13 +44,15 @@ export function LeadershipSection(props: LeadershipSectionProps) {
           : undefined
       }
       action={
-        <Link
-          to="/schedules"
-          search={{ attention: true }}
-          className="inline-flex min-h-11 items-center underline"
-        >
-          {m.home_see_all()}
-        </Link>
+        schedules.length > 0 ? (
+          <Link
+            to="/schedules"
+            search={{ attention: true }}
+            className="inline-flex min-h-11 items-center underline"
+          >
+            {m.home_see_all()}
+          </Link>
+        ) : undefined
       }
     >
       {schedules.length ? (

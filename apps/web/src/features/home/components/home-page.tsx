@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { formatCalendarDay, now, today } from '@church/time';
+import { getLocale } from '@church/i18n/runtime';
+import { formatLongCalendarDay, now, today } from '@church/time';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
@@ -170,7 +171,7 @@ export function HomePage({ search }: HomePageProps) {
       <header>
         <h1 className="font-semibold text-3xl">{churchName ?? m.nav_home()}</h1>
         <p className="text-muted-foreground">
-          {formatCalendarDay({ day: churchDay })}
+          {formatLongCalendarDay({ day: churchDay, locale: getLocale() })}
         </p>
       </header>
       <HomeBanners search={search} />
@@ -192,7 +193,7 @@ export function HomePage({ search }: HomePageProps) {
           {homeWidgets
             .filter((widget) => widget.capacity(capacities))
             .map(({ id, span, Component }) => (
-              <div key={id} className={widgetSpanClass[span]}>
+              <div key={id} className={`${widgetSpanClass[span]} empty:hidden`}>
                 <Component {...sectionProps} />
               </div>
             ))}

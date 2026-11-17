@@ -217,7 +217,9 @@ describe('LeadershipSection', () => {
     renderHomePage();
 
     expect(await screen.findByText(m.home_leadership_empty())).toBeVisible();
-    expect(screen.getByRole('link', { name: m.home_see_all() })).toBeVisible();
+    expect(
+      screen.queryByRole('link', { name: m.home_see_all() }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps Asking and Assigning rows with a zero outstanding count', async () => {

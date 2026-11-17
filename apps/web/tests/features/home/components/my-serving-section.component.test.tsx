@@ -159,13 +159,13 @@ describe('MyServingSection', () => {
       within(section).queryByText('Ministry done'),
     ).not.toBeInTheDocument();
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/my-schedule',
       '/my-schedule/a-1',
       '/availability/open',
       '/availability/late',
       '/my-schedule/a-1',
       '/my-schedule/a-2',
       '/my-schedule/a-3',
-      '/my-schedule',
     ]);
     expect(
       within(section).getAllByText(m.home_answer_availability()),

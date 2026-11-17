@@ -18,21 +18,21 @@ function widgets(capacities: Partial<HomeCapacities>) {
 describe('Home widget registry', () => {
   it('selects widgets by additive capacity', () => {
     expect(widgets({})).toEqual(['notifications']);
-    expect(widgets({ serving: true })).toEqual(['serving', 'notifications']);
+    expect(widgets({ serving: true })).toEqual(['notifications', 'serving']);
     expect(widgets({ leadership: true })).toEqual([
+      'notifications',
       'schedule-summary',
       'leadership',
-      'notifications',
     ]);
     expect(widgets({ church: true, leadership: true })).toEqual([
+      'notifications',
       'schedule-summary',
       'admin-summary',
       'cycles',
       'setup',
       'leadership',
-      'notifications',
     ]);
-    expect(widgets({ church: true, leadership: true, serving: true })[0]).toBe(
+    expect(widgets({ church: true, leadership: true, serving: true })[1]).toBe(
       'serving',
     );
   });

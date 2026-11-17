@@ -37,6 +37,19 @@ export function formatCalendarDay({ day }: CalendarDayFormatInput): string {
   return `${dayOfMonth}/${month}/${year}`;
 }
 
+/** A full weekday and month without a year, in the supplied locale. */
+export function formatLongCalendarDay({
+  day,
+  locale,
+}: CalendarDayLocaleInput): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T00:00:00Z`));
+}
+
 /** `Monday, 04/01/2027` / `Segunda-feira, 04/01/2027`. */
 export function formatCalendarDayWithWeekday({
   day,

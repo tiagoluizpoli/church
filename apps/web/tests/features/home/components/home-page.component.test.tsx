@@ -16,6 +16,12 @@ import {
   callerCapabilitiesApiMock,
   callerCapabilitiesFixture,
 } from '@/tests/setup/caller-capabilities';
+import {
+  adminApi,
+  invitationsApi,
+  notificationsApi,
+  peopleApi,
+} from '@/utils/api-instances';
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
@@ -65,8 +71,24 @@ vi.mock('@/utils/api-instances', async () => ({
 
 vi.mock('@tanstack/react-router', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-router')>()),
-  Link: ({ children }: { children: React.ReactNode }) => (
-    <a href="/">{children}</a>
+  Link: ({
+    children,
+    to,
+    search,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    search?: Record<string, unknown>;
+  }) => (
+    <a
+      href={
+        search
+          ? `${to}?${new URLSearchParams(Object.entries(search).map(([key, value]) => [key, String(value)]))}`
+          : to
+      }
+    >
+      {children}
+    </a>
   ),
 }));
 
@@ -143,7 +165,7 @@ describe('HomePage', () => {
     expect(leadershipSection()).not.toBeInTheDocument();
     expect(servingSection()).not.toBeInTheDocument();
     expect(
-      await screen.findByRole('heading', { name: m.home_notifications() }),
+      await screen.findByRole('link', { name: /Notificações · 0 não lidas/ }),
     ).toBeVisible();
   });
 
@@ -173,7 +195,7 @@ describe('HomePage', () => {
     givenCapabilities(input);
     renderHomePage();
 
-    await screen.findByRole('heading', { name: m.home_notifications() });
+    await screen.findByRole('link', { name: /Notificações · 0 não lidas/ });
     expect(Boolean(churchSection())).toBe(church);
     expect(Boolean(leadershipSection())).toBe(leadership);
     expect(Boolean(servingSection())).toBe(serving);
@@ -220,6 +242,50 @@ describe('HomePage', () => {
     expect(
       screen.getByRole('link', { name: /1 Ministérios sem setores/ }),
     ).toHaveAttribute('href', '/ministries?status=no-sectors');
+  });
+
+  it('collapses zero attention counts while retaining the People group', async () => {
+    givenCapabilities({ isChurchAdmin: true });
+    vi.mocked(peopleApi.listPeople).mockResolvedValueOnce({
+      items: [],
+      options: { ministries: [] },
+      counts: {
+        total: 12,
+        admins: 1,
+        leaders: 2,
+        volunteers: 7,
+        withoutMinistry: 0,
+      },
+    });
+    vi.mocked(invitationsApi.listInvitations).mockResolvedValueOnce({
+      items: [],
+      options: { ministries: [], invitedAs: [] },
+      counts: { pending: 0, expired: 0, accepted: 0, declined: 0, revoked: 0 },
+    });
+    vi.mocked(adminApi.listMinistryDirectory).mockResolvedValueOnce({
+      ministries: [],
+      counts: { total: 1, review: 0, noSectors: 0 },
+    });
+    renderHomePage();
+    expect(await screen.findByText(m.home_all_clear())).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: m.home_people_group() }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('link', { name: /Pessoas sem ministério/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('uses singular unread wording in the compact notification link', async () => {
+    givenCapabilities({});
+    vi.mocked(notificationsApi.getNotifications).mockResolvedValueOnce({
+      items: [],
+      unreadCount: 1,
+    });
+    renderHomePage();
+    expect(
+      await screen.findByRole('link', { name: 'Notificações · 1 não lida' }),
+    ).toBeVisible();
   });
 
   it('drops a section’s cached reads when its capacity is lost, keeping held ones', async () => {

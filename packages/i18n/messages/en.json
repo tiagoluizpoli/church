@@ -187,7 +187,6 @@
   "notification_bell_description": "Recent updates and reminders.",
   "notification_inbox_title": "Notifications",
   "notification_inbox_description": "Everything your Church has told you, newest first.",
-  "notification_unread_count": "{count} unread",
   "notification_unread_badge": "Unread",
   "notification_mark_all_read": "Mark all as read",
   "notification_mark_read": "Mark as read",
@@ -1617,5 +1616,10 @@
   "home_ministries_review": "Ministries to review",
   "home_ministries_no_sectors": "Ministries without sectors",
   "home_cycles": "Cycles",
-  "home_setup_section": "Initial setup"
+  "home_setup_section": "Initial setup",
+  "home_people_group": "People",
+  "home_attention_group": "Needs attention",
+  "home_all_clear": "All caught up",
+  "notification_unread_one": "1 unread",
+  "notification_unread_other": "{count} unread"
 }

@@ -41,6 +41,14 @@ interface WidgetDefinition {
 }
 
 export const homeWidgets: WidgetDefinition[] = [
+  // A slim unread line first, right under the page header; the shell bell carries the same count.
+  {
+    id: 'notifications',
+    capacity: () => true,
+    span: 12,
+    Component: NotificationSummary,
+    universal: true,
+  },
   {
     id: 'serving',
     capacity: (caps) => caps.serving,
@@ -82,12 +90,5 @@ export const homeWidgets: WidgetDefinition[] = [
     span: 12,
     Component: LeadershipSection,
     cacheSection: 'leadership',
-  },
-  {
-    id: 'notifications',
-    capacity: () => true,
-    span: 6,
-    Component: NotificationSummary,
-    universal: true,
   },
 ];

@@ -313,6 +313,28 @@ describe('ChurchSection next-Cycle card', () => {
     ).toBeVisible();
   });
 
+  it('links the current and nearest upcoming sent cycles separately', async () => {
+    givenProgress({ hasEverSentCycle: true });
+    givenCycles([{ ...DECEMBER_DRAFT, state: 'sent' }, NOVEMBER_SENT]);
+    renderSection(true);
+    expect(
+      await screen.findByRole('link', {
+        name: m.home_next_cycle_sent({
+          cycleName: 'November',
+          endDate: '30/11/2026',
+        }),
+      }),
+    ).toHaveAttribute('href', '/cycles/november');
+    expect(
+      screen.getByRole('link', {
+        name: m.home_next_cycle_sent({
+          cycleName: 'December',
+          endDate: '31/12/2026',
+        }),
+      }),
+    ).toHaveAttribute('href', '/cycles/december');
+  });
+
   it('counts the last day in the Church Timezone, whatever the ambient zone', async () => {
     givenProgress({ hasEverSentCycle: true });
     // Its last day is the Church's today, though UTC and Kolkata are already on the 11th.

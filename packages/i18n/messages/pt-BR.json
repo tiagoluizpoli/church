@@ -187,7 +187,6 @@
   "notification_bell_description": "Atualizações e lembretes recentes.",
   "notification_inbox_title": "Notificações",
   "notification_inbox_description": "Tudo o que a sua Igreja avisou, da mais recente para a mais antiga.",
-  "notification_unread_count": "{count} não lidas",
   "notification_unread_badge": "Não lida",
   "notification_mark_all_read": "Marcar todas como lidas",
   "notification_mark_read": "Marcar como lida",
@@ -1617,5 +1616,10 @@
   "home_ministries_review": "Ministérios para revisar",
   "home_ministries_no_sectors": "Ministérios sem setores",
   "home_cycles": "Ciclos",
-  "home_setup_section": "Configuração inicial"
+  "home_setup_section": "Configuração inicial",
+  "home_people_group": "Pessoas",
+  "home_attention_group": "Precisa de atenção",
+  "home_all_clear": "Tudo em ordem",
+  "notification_unread_one": "1 não lida",
+  "notification_unread_other": "{count} não lidas"
 }

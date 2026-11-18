@@ -47,6 +47,8 @@
   --sidebar-ring: oklch(0.532 0.082 254);
 
   /* Layout / spacing tokens */
+  /* Top bar height: the shell's headers and anything sized against the visible workspace. */
+  --app-topbar-h: 4rem;
   --workspace-pad-x: 0.75rem;
   --workspace-pad-y: 1rem;
   --workspace-gap: 1rem;

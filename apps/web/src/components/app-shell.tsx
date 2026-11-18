@@ -510,7 +510,7 @@ export function AppShell({
       {/* 1. Mobile Sticky Top Header */}
       <header
         data-testid="mobile-top-header"
-        className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-sidebar-border border-b bg-sidebar/95 px-4 backdrop-blur md:hidden"
+        className="sticky top-0 z-40 flex h-(--app-topbar-h) shrink-0 items-center justify-between border-sidebar-border border-b bg-sidebar/95 px-4 backdrop-blur md:hidden"
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="radius-icon flex h-10 w-10 shrink-0 items-center justify-center bg-primary/12 text-primary shadow-sm">
@@ -561,7 +561,7 @@ export function AppShell({
       >
         {/* Sidebar Header */}
         <div
-          className={`flex h-16 items-center border-sidebar-border border-b ${isCollapsed ? 'px-2' : 'px-4'}`}
+          className={`flex h-(--app-topbar-h) items-center border-sidebar-border border-b ${isCollapsed ? 'px-2' : 'px-4'}`}
         >
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
@@ -607,7 +607,7 @@ export function AppShell({
       {/* 3. Main Content Container */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Desktop Topbar */}
-        <header className="relative hidden h-16 shrink-0 items-center justify-between border-border/70 border-b bg-background/92 px-(--workspace-pad-x) backdrop-blur md:flex">
+        <header className="relative hidden h-(--app-topbar-h) shrink-0 items-center justify-between border-border/70 border-b bg-background/92 px-(--workspace-pad-x) backdrop-blur md:flex">
           {/* Sidebar toggle + Breadcrumbs */}
           <div className="flex min-w-0 items-center gap-3">
             <button

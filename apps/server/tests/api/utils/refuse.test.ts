@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { RefusalCode } from '@/api/utils/error-table';
 import { refuse } from '@/api/utils/refuse';
 import { createFastify } from '@/main/fastify/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -11,7 +12,10 @@ vi.mock('@/main/di/server-auth', () => ({
 
 let app: Awaited<ReturnType<typeof createFastify>>;
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   app.get<{ Params: { code: RefusalCode } }>('/:code', (request, reply) =>
     refuse({ reply, request, code: request.params.code }),
   );

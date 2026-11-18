@@ -1,4 +1,4 @@
-/** The request facts a report may carry; the privacy scrubber trims them. */
+/** The request facts a report or log line may carry; the privacy module trims them. */
 export interface ReportedRequest {
   method: string;
   url: string;

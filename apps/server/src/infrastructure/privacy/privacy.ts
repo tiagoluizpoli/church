@@ -1,5 +1,6 @@
 // biome-ignore-all lint/style/useNamingConvention: Sentry event fields are snake_case on the wire
 import { z } from 'zod';
+import type { ReportedRequest } from '../../domain/contracts/infrastructure/error-reporter';
 
 /**
  * The one server privacy module (ADR 0014). Framework-free so log shipping and
@@ -60,14 +61,8 @@ export function allowedHeaders({
   );
 }
 
-interface LoggedRequest {
-  method: string;
-  url: string;
-  headers: Record<string, unknown>;
-}
-
 /** pino `req` serializer: method, masked path, allowlisted headers. No IP, no body. */
-export function serializeRequest(request: LoggedRequest) {
+export function serializeRequest(request: ReportedRequest) {
   return {
     method: request.method,
     url: redactUrl({ url: request.url }),

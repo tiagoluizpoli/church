@@ -8,6 +8,7 @@ import type {
   RoleId,
   UserId,
 } from '@/domain/branded-ids';
+import type { Tracing } from '@/domain/contracts/infrastructure/tracing';
 import { EmailSendError } from '@/domain/errors/email-send-error';
 import { SentryErrorReporter } from '@/infrastructure/services/sentry-error-reporter';
 import {
@@ -45,6 +46,15 @@ const emailSender = {
   })),
   deliver: vi.fn(),
 };
+const DELIVERY_TRACE_ID = 'd'.repeat(32);
+const spanNames: string[] = [];
+const tracing: Tracing = {
+  inSpan: ({ name, run }) => {
+    spanNames.push(name);
+    return run();
+  },
+  activeTraceId: () => DELIVERY_TRACE_ID,
+};
 const unitOfWork = { run: vi.fn((fn: (tx: unknown) => unknown) => fn(fakeTx)) };
 
 function createDrainer(): DbOutboxDrainer {
@@ -62,6 +72,7 @@ function createDrainer(): DbOutboxDrainer {
     config: appConfig,
     webBaseUrl: 'https://app.test',
     errorReporter: new SentryErrorReporter(),
+    tracing,
   });
 }
 
@@ -103,6 +114,7 @@ function buildInvitation(overrides: Partial<Record<string, unknown>> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   reports.clear();
+  spanNames.length = 0;
   // Like the repository: the stored delivery, nothing confirmed yet.
   outboxRepository.recordEmailPrepared.mockImplementation(
     async ({ tx: _tx, id: _id, ...delivery }) => ({
@@ -281,7 +293,9 @@ describe('DbOutboxDrainer.drainOnce', () => {
 
     const events = await reports.settle();
     expect(events).toHaveLength(1);
+    expect(spanNames).toEqual(['outbox.delivery']);
     expect(events[0]?.tags).toMatchObject({
+      trace_id: DELIVERY_TRACE_ID,
       outbox_message_id: 'outbox_1',
       outbox_kind: 'invitation.chained',
     });

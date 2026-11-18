@@ -14,6 +14,7 @@ import { AssignmentAccessDeniedError } from '@/domain/errors/assignment-access-d
 import { CancelWindowClosedError } from '@/domain/errors/cancel-window-closed';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -39,7 +40,10 @@ const activeChurchResolver = {
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new VolunteerController({
     volunteerManager: volunteerManager as never,
     activeChurchResolver: activeChurchResolver as never,

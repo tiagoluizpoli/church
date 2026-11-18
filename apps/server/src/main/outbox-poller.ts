@@ -1,7 +1,8 @@
 import { trace } from '@opentelemetry/api';
 import type { IOutboxDrainer } from '../domain/contracts/application/outbox-drainer';
+import { SERVICE_NAME } from '../infrastructure/services/otel-tracing';
 
-const tracer = trace.getTracer('church-server');
+const tracer = trace.getTracer(SERVICE_NAME);
 
 export interface OutboxPollerOptions {
   drainer: IOutboxDrainer;

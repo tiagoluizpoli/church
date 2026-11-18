@@ -55,6 +55,7 @@ import {
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { DeliveryModeEmailSender } from '@/infrastructure/services/delivery-mode-email-sender';
+import { OtelTracing } from '@/infrastructure/services/otel-tracing';
 import { provisionChurch } from '@/scripts/provision-church';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
@@ -116,6 +117,7 @@ function buildDrainer({ emailSender }: BuildDrainerInput): DbOutboxDrainer {
     config: appConfig,
     webBaseUrl: 'https://app.test',
     errorReporter: { report: () => undefined },
+    tracing: new OtelTracing(),
   });
 }
 
@@ -1253,6 +1255,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       config,
       webBaseUrl: 'https://app.test',
       errorReporter: { report: () => undefined },
+      tracing: new OtelTracing(),
     });
   }
 

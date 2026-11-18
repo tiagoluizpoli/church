@@ -1,4 +1,5 @@
 // biome-ignore-all lint/style/useNamingConvention: Sentry envelope fields are snake_case on the wire
+
 import {
   createServer,
   type IncomingMessage,
@@ -11,6 +12,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { registerErrorReportTunnel } from '@/main/fastify/error-report-tunnel';
 import { createFastify, DESKTOP_ORIGIN } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 const ERROR_REPORT_TUNNEL_PATH = appConfig.errorReportTunnel.path;
@@ -73,7 +75,10 @@ interface TunnelAppInput {
 async function tunnelApp({
   dsn,
 }: TunnelAppInput): Promise<FastifyTypedInstance> {
-  const app = await createFastify({ locale: testLocale });
+  const app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   registerErrorReportTunnel({
     app,
     dsn,

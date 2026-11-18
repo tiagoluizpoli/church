@@ -10,6 +10,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildAuthenticatableUser } from '@/seeds/builders/identity';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 const EMAIL = 'forgetful@example.test';
@@ -33,7 +34,10 @@ beforeEach(async () => {
   });
   capture = captureEmailSender as CaptureEmailSender;
   capture.sent.length = 0;
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   await app.ready();
 });
 

@@ -42,6 +42,7 @@ import {
   type DevelopmentRecipeResult,
 } from '@/seeds/recipes/development';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 const ANCHOR = parseCalendarDay({ value: '2026-03-15' });
@@ -432,7 +433,10 @@ describe('development seed recipe', () => {
   });
 
   it('signs every key persona in through Better Auth with the shared password', async () => {
-    const app = await createFastify({ locale: testLocale });
+    const app = await createFastify({
+      locale: testLocale,
+      errorReporter: testErrorReporter,
+    });
     try {
       await app.ready();
       for (const persona of seeded.keyPersonas) {

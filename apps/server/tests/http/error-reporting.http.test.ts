@@ -17,6 +17,7 @@ import {
   captureErrorReports,
   REPORT_ENVIRONMENT,
   REPORT_REVISION,
+  testErrorReporter,
 } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -38,7 +39,10 @@ let reports: CapturedReports;
 
 beforeAll(async () => {
   reports = captureErrorReports();
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   app.addHook('preHandler', async (request) => {
     request.userId = 'user_1';
     request.churchId = 'church_1';

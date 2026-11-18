@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 const TOKEN = 'reset-token-SECRET';
@@ -15,6 +16,7 @@ beforeEach(async () => {
   lines = [];
   app = await createFastify({
     locale: testLocale,
+    errorReporter: testErrorReporter,
     logStream: { write: (line: string) => lines.push(line) },
   });
   await app.ready();
@@ -57,6 +59,7 @@ describe('server log redaction', () => {
   it('logs an unhandled error by type and stack frames, never its message', async () => {
     app = await createFastify({
       locale: testLocale,
+      errorReporter: testErrorReporter,
       logStream: { write: (line: string) => lines.push(line) },
     });
     app.get('/boom', async () => {

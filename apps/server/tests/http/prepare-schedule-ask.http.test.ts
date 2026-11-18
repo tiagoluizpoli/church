@@ -78,6 +78,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
   pauseCall,
@@ -107,7 +108,10 @@ let app: FastifyTypedInstance;
 const { participationManager, assignmentManager } = createSchedulingManagers();
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   // Real managers, repositories, resolver and AuthorityService: only the
   // Better Auth session is a seam.
   const actorRepository = new DrizzleAuthorityActorResolver({ db });

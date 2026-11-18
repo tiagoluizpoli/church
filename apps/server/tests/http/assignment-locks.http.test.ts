@@ -86,6 +86,7 @@ import {
   resetSchedulingPhase3Db,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 let app: FastifyTypedInstance;
@@ -93,7 +94,10 @@ let managers: SchedulingManagers;
 let membershipManager: DbMinistryMembershipManager;
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const unitOfWork = new DrizzleUnitOfWork({ db });
   const ministryRepository = new DrizzleMinistryRepository({ db });

@@ -38,12 +38,12 @@ import {
 import { errorStatus } from '../../api/utils/error-table';
 import { requestLocale } from '../../api/utils/request-locale';
 import { HardConstraintError } from '../../domain/conflict/errors/hard-constraint-error';
+import type { ErrorReporter } from '../../domain/contracts/infrastructure/error-reporter';
 import {
   redactUrl,
   serializeError,
   serializeRequest,
 } from '../../infrastructure/privacy/privacy';
-import { SentryErrorReporter } from '../../infrastructure/services/sentry-error-reporter';
 import { auth } from '../di/server-auth';
 import { fastifyOtel } from '../instrumentation';
 import { requestId } from './request-id';
@@ -60,6 +60,8 @@ export interface LocaleSettings {
 
 interface CreateFastifyInput {
   locale: LocaleSettings;
+  /** The composition root's reporter, for unexpected 500s. */
+  errorReporter: ErrorReporter;
   /** Forces logging to this stream in any mode; tests capture log lines here. */
   logStream?: DestinationStream;
 }
@@ -69,10 +71,12 @@ const logSerializers = { req: serializeRequest, err: serializeError };
 /** The Electrobun desktop app serves the web bundle from this origin. */
 export const DESKTOP_ORIGIN = 'views://mainview';
 
-const errorReporter = new SentryErrorReporter();
-
 /** Unexpected 500s only; expected outcomes and 503s are never reported. */
-function reportUnexpected({ error, request }: ReportUnexpectedInput): void {
+function reportUnexpected({
+  errorReporter,
+  error,
+  request,
+}: ReportUnexpectedInput): void {
   const { id, userId, churchId, method, url, headers } = request;
   errorReporter.report({
     error,
@@ -84,43 +88,42 @@ function reportUnexpected({ error, request }: ReportUnexpectedInput): void {
 }
 
 interface ReportUnexpectedInput {
+  errorReporter: ErrorReporter;
   error: unknown;
   request: FastifyRequest;
 }
 
+interface LoggingOptionsInput {
+  logStream: DestinationStream | undefined;
+  isTest: boolean;
+  isProd: boolean;
+}
+
+/** Fastify's logger options for the mode; a given stream wins in any mode. */
+function loggingOptions({ logStream, isTest, isProd }: LoggingOptionsInput) {
+  const loggerOptions = { level: env.LOG_LEVEL, serializers: logSerializers };
+  if (logStream) return { loggerInstance: pino(loggerOptions, logStream) };
+  if (isTest) return { logger: false };
+  if (isProd) return { logger: loggerOptions };
+  // Bun doesn't support pino worker-thread transports — use a synchronous
+  // pino-pretty stream in dev instead of the transport API.
+  const prettyStream = PinoPretty({
+    colorize: true,
+    translateTime: 'HH:MM:ss',
+  });
+  return { loggerInstance: pino(loggerOptions, prettyStream) };
+}
+
 export async function createFastify({
   locale: localeSettings,
+  errorReporter,
   logStream,
 }: CreateFastifyInput) {
   const isTest = env.NODE_ENV === 'test';
   const isProd = env.NODE_ENV === 'production';
 
-  // Bun doesn't support pino worker-thread transports — use a synchronous
-  // pino-pretty stream in dev instead of the transport API.
-  const devLogger = pino(
-    { level: env.LOG_LEVEL, serializers: logSerializers },
-    PinoPretty({ colorize: true, translateTime: 'HH:MM:ss' }),
-  );
-
-  const app = logStream
-    ? createFastifyInstance({
-        genReqId: requestId,
-        loggerInstance: pino(
-          { level: env.LOG_LEVEL, serializers: logSerializers },
-          logStream,
-        ),
-      })
-    : isTest
-      ? createFastifyInstance({ genReqId: requestId, logger: false })
-      : isProd
-        ? createFastifyInstance({
-            genReqId: requestId,
-            logger: { level: env.LOG_LEVEL, serializers: logSerializers },
-          })
-        : createFastifyInstance({
-            genReqId: requestId,
-            loggerInstance: devLogger,
-          });
+  const logging = loggingOptions({ logStream, isTest, isProd });
+  const app = createFastifyInstance({ genReqId: requestId, ...logging });
 
   // First, so its onRequest hook runs right after genReqId (see request-id.ts).
   await app.register(fastifyOtel.plugin());
@@ -223,6 +226,7 @@ export async function createFastify({
 
   app.setErrorHandler((error, request, reply) => {
     const { locale } = request;
+    const url = redactUrl({ url: request.url });
     const genericError = m.common_generic_error({}, { locale });
     if (error instanceof DomainError) {
       const status = errorStatus({ code: error.code }) ?? 500;
@@ -281,10 +285,10 @@ export async function createFastify({
 
     if (isResponseSerializationError(error)) {
       request.log.error(
-        { issues: error.cause.issues, url: redactUrl({ url: request.url }) },
+        { issues: error.cause.issues, url },
         'Serialization error',
       );
-      reportUnexpected({ error, request });
+      reportUnexpected({ errorReporter, error, request });
       return reply.code(500).send({
         error: 'INTERNAL_SERVER_ERROR',
         message: genericError,
@@ -296,7 +300,7 @@ export async function createFastify({
     if (connectionCode) {
       // Log the code only: the error message may carry the connection string.
       request.log.error(
-        { code: connectionCode, url: redactUrl({ url: request.url }) },
+        { code: connectionCode, url },
         'Database connection failure',
       );
       return reply.status(503).header('Retry-After', '5').send({
@@ -305,11 +309,8 @@ export async function createFastify({
       });
     }
 
-    request.log.error(
-      { err: error, url: redactUrl({ url: request.url }) },
-      'Unhandled error',
-    );
-    reportUnexpected({ error, request });
+    request.log.error({ err: error, url }, 'Unhandled error');
+    reportUnexpected({ errorReporter, error, request });
     return reply.status(500).send({
       error: 'INTERNAL_SERVER_ERROR',
       message: genericError,
@@ -318,9 +319,10 @@ export async function createFastify({
   });
 
   app.addHook('onResponse', (request, reply, done) => {
+    const url = redactUrl({ url: request.url });
     request.log.info({
       method: request.method,
-      url: redactUrl({ url: request.url }),
+      url,
       statusCode: reply.statusCode,
       durationMs: reply.elapsedTime,
     });

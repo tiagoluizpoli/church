@@ -10,13 +10,17 @@ import {
 import { serverAuthOptions } from '@/main/di/server-auth';
 import { registerControllers } from '@/main/fastify/register-controllers';
 import { createFastify } from '@/main/fastify/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 async function registeredRoutes(
   overrides?: Partial<CompositionRootDependencies>,
 ): Promise<string[]> {
   const { controllers } = createCompositionRoot(overrides);
-  const app = await createFastify({ locale: testLocale });
+  const app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const routes: string[] = [];
   app.addHook('onRoute', (route) => {
     for (const method of [route.method].flat()) {
@@ -87,7 +91,10 @@ describe('composition root', () => {
         }),
       } as unknown as MinistryInvitationRepository,
     });
-    const app = await createFastify({ locale: testLocale });
+    const app = await createFastify({
+      locale: testLocale,
+      errorReporter: testErrorReporter,
+    });
     await app.register(
       async (instance) => registerControllers({ app: instance, controllers }),
       { prefix: '/api/v1' },
@@ -116,7 +123,10 @@ describe('composition root', () => {
       locale: 'en',
     });
     const { controllers } = createCompositionRoot({ emailSender });
-    const app = await createFastify({ locale: testLocale });
+    const app = await createFastify({
+      locale: testLocale,
+      errorReporter: testErrorReporter,
+    });
     await app.register(
       async (instance) => registerControllers({ app: instance, controllers }),
       { prefix: '/api/v1' },

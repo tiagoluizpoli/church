@@ -74,6 +74,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -109,7 +110,10 @@ beforeAll(async () => {
     db,
   });
   const templateRepository = new DrizzleEventTemplateRepository({ db });
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new ChurchAdminController({
     cycleManager: new DbCycleManager({
       cycleRepository,

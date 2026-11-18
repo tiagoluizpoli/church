@@ -782,7 +782,7 @@ export function InvitationListPage({
           <CardContent>
             <Pending
               className="grid gap-3 md:gap-0"
-              data-testid="invitations-loading"
+              label={m.invitations_loading()}
             >
               <Skeleton className="hidden h-[41px] w-full md:block" />
               {[0, 1, 2].map((row) => (

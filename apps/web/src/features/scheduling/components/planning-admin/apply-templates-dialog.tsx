@@ -166,7 +166,7 @@ export function ApplyTemplatesDialog({
             </Button>
           </div>
         ) : templates === undefined ? (
-          <Pending data-testid="apply-templates-loading" className="space-y-2">
+          <Pending label={m.cycle_apply_loading()} className="space-y-2">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </Pending>

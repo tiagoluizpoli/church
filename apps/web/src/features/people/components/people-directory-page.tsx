@@ -353,10 +353,7 @@ export function PeopleDirectoryPage({
         <Card className="surface-panel">
           {/* The real table's header and 41px rows on desktop, the card height on mobile, so the list does not jump in. */}
           <CardContent>
-            <Pending
-              className="grid gap-3 md:gap-0"
-              data-testid="people-loading"
-            >
+            <Pending className="grid gap-3 md:gap-0" label={m.people_loading()}>
               <Skeleton className="hidden h-[41px] w-full md:block" />
               {SKELETON_ROWS.map((row) => (
                 <Skeleton

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { focusManager, QueryClient } from '@tanstack/react-query';
 import { act, screen, waitFor } from '@testing-library/react';
@@ -303,7 +304,9 @@ describe('ApplyTemplatesDialog loading', () => {
   it('shows a busy skeleton while templates load', async () => {
     listEventTemplates.mockReturnValue(new Promise(() => undefined));
     renderDialog();
-    const loading = await screen.findByTestId('apply-templates-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.cycle_apply_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
@@ -320,6 +323,8 @@ describe('ApplyTemplatesDialog loading', () => {
     });
 
     expect(screen.getAllByTestId('template-select-checkbox')).toHaveLength(2);
-    expect(screen.queryByTestId('apply-templates-loading')).toBeNull();
+    expect(
+      screen.queryByRole('status', { name: m.cycle_apply_loading() }),
+    ).toBeNull();
   });
 });

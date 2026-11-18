@@ -29,14 +29,13 @@ describe('CyclePreparePicker loading', () => {
   it('shows a busy skeleton on first load', async () => {
     listMinistries.mockReturnValue(new Promise(() => undefined));
     renderPicker();
-    const loading = await screen.findByTestId('cycle-picker-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.prepare_cycle_picker_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
     );
-    expect(
-      screen.getByText(m.prepare_cycle_picker_loading()),
-    ).toBeInTheDocument();
   });
 
   it('keeps the Ministries on screen while a refetch is in flight', async () => {
@@ -49,6 +48,8 @@ describe('CyclePreparePicker loading', () => {
     await startHangingRefetch({ queryClient, read: listMinistries });
 
     expect(screen.getByText('Kids')).toBeInTheDocument();
-    expect(screen.queryByTestId('cycle-picker-loading')).toBeNull();
+    expect(
+      screen.queryByRole('status', { name: m.prepare_cycle_picker_loading() }),
+    ).toBeNull();
   });
 });

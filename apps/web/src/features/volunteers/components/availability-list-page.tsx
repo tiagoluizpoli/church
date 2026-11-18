@@ -28,7 +28,7 @@ function AvailabilityListContent() {
     <div className="mx-auto w-full max-w-2xl space-y-6">
       <h1 className="font-semibold text-xl">{m.nav_availability()}</h1>
       {checksQuery.isLoading ? (
-        <Pending role="status" aria-label={m.availability_list_loading()}>
+        <Pending label={m.availability_list_loading()}>
           <Skeleton className="h-32 w-full" />
         </Pending>
       ) : checksQuery.isError ? (

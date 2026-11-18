@@ -101,7 +101,7 @@ export function TemplateDeleteDialog({
           ) : null
         ) : (
           <Pending
-            data-testid="template-delete-usage-loading"
+            label={m.event_templates_delete_usage_loading()}
             className="space-y-2"
           >
             <Skeleton className="h-4 w-full" />

@@ -96,7 +96,10 @@ export function TemplateEditPage({ templateId }: TemplateEditPageProps) {
             />
           )
         ) : (
-          <Pending data-testid="template-detail-loading" className="space-y-3">
+          <Pending
+            label={m.event_templates_detail_loading()}
+            className="space-y-3"
+          >
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-40 w-full" />
           </Pending>

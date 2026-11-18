@@ -61,7 +61,7 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
 
   if (ministryQuery.isLoading) {
     return (
-      <Pending className="space-y-3">
+      <Pending label={m.ministry_loading()} className="space-y-3">
         <Skeleton className="h-10 w-full max-w-64" />
         <Skeleton className="h-8 w-full max-w-96" />
       </Pending>

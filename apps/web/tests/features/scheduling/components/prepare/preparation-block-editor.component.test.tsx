@@ -939,7 +939,9 @@ it('keeps loading distinct from an empty or editable block', async () => {
     initialPath: EDITOR_PATH,
     churchTimezone: 'America/Sao_Paulo',
   });
-  const loading = await screen.findByTestId('prepare-loading');
+  const loading = await screen.findByRole('status', {
+    name: m.schedules_loading(),
+  });
   expect(loading).toHaveAttribute('aria-busy', 'true');
   await waitFor(() =>
     expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
@@ -961,9 +963,11 @@ it('keeps the editor on screen while a refetch is in flight', async () => {
   });
 
   expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
-  expect(screen.queryByTestId('prepare-loading')).not.toBeInTheDocument();
   expect(
-    screen.queryByTestId('preparation-block-loading'),
+    screen.queryByRole('status', { name: m.schedules_loading() }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('status', { name: m.prepare_block_loading() }),
   ).not.toBeInTheDocument();
 });
 

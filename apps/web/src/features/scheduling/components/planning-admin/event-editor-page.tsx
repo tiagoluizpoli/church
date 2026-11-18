@@ -118,7 +118,7 @@ export function EventEditorPage({
             />
           )
         ) : (
-          <Pending data-testid="event-editor-loading" className="space-y-3">
+          <Pending label={m.event_editor_loading()} className="space-y-3">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-40 w-full" />
           </Pending>

@@ -69,7 +69,7 @@ export function MyMinistrySchedulePage({
 
   if (query.isPending) {
     return (
-      <Pending role="status" aria-label={m.my_schedule_ministry_loading()}>
+      <Pending label={m.my_schedule_ministry_loading()}>
         <Skeleton className="h-40 w-full" />
       </Pending>
     );

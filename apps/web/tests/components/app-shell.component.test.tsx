@@ -781,7 +781,9 @@ describe('AppShell Church header (F9)', () => {
     expect(
       within(sidebar).queryByRole('button', { name: m.nav_switch_church() }),
     ).toBeNull();
-    const pending = within(sidebar).getByTestId('church-name-skeleton');
+    const pending = within(sidebar).getByRole('status', {
+      name: m.shell_church_loading(),
+    });
     expect(pending).toHaveAttribute('aria-busy', 'true');
     await waitFor(() => {
       expect(pending.querySelector('[data-slot="skeleton"]')).not.toBeNull();

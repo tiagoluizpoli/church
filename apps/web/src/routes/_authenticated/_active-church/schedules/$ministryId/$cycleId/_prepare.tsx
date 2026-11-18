@@ -229,8 +229,7 @@ function PrepareWorkspaceRoute() {
       ) : failed && !ready ? (
         retryAlert
       ) : !ready ? (
-        <Pending data-testid="prepare-loading">
-          <span className="sr-only">{m.schedules_loading()}</span>
+        <Pending label={m.schedules_loading()}>
           <Skeleton className="h-64 w-full" />
         </Pending>
       ) : (

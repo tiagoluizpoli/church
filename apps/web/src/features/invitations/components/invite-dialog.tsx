@@ -136,7 +136,7 @@ export function RolePicker({
   if (rolesQuery.isLoading) {
     return (
       <Pending
-        aria-label={m.invitations_invite_roles_loading()}
+        label={m.invitations_invite_roles_loading()}
         className="space-y-2"
       >
         <Skeleton className="h-9 w-full" />

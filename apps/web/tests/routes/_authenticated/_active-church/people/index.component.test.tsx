@@ -107,7 +107,9 @@ describe('People directory', () => {
     );
     const { queryClient } = renderPeople();
 
-    const busy = await screen.findByTestId('people-loading');
+    const busy = await screen.findByRole('status', {
+      name: m.people_loading(),
+    });
     expect(busy).toHaveAttribute('aria-busy', 'true');
     await waitFor(() => {
       expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();

@@ -1628,5 +1628,18 @@
   "home_attention_group": "Precisa de atenção",
   "home_all_clear": "Tudo em ordem",
   "notification_unread_one": "1 não lida",
-  "notification_unread_other": "{count} não lidas"
+  "notification_unread_other": "{count} não lidas",
+  "shell_church_loading": "Carregando igreja…",
+  "shell_account_loading": "Carregando conta…",
+  "builder_board_loading": "Carregando quadro da escala…",
+  "prepare_block_loading": "Carregando horário…",
+  "event_editor_loading": "Carregando evento…",
+  "ministries_loading": "Carregando ministérios…",
+  "ministry_loading": "Carregando ministério…",
+  "invitations_loading": "Carregando convites…",
+  "people_loading": "Carregando pessoas…",
+  "person_loading": "Carregando pessoa…",
+  "usual_setup_loading": "Carregando configuração padrão…",
+  "usual_setup_block_loading": "Carregando horário…",
+  "auth_session_loading": "Verificando sua sessão…"
 }

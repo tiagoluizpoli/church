@@ -121,7 +121,7 @@ export function PreparationBlockEditor({
   if (!schedule || !block || !event || !sectors.data || !roles.data)
     return (
       loadError || (
-        <Pending data-testid="preparation-block-loading" className="space-y-3">
+        <Pending label={m.prepare_block_loading()} className="space-y-3">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-24 w-full" />
         </Pending>

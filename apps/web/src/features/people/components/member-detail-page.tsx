@@ -92,7 +92,7 @@ export function MemberDetailPage({ memberId }: MemberDetailPageProps) {
 
   if (query.isLoading) {
     return (
-      <Pending className="space-y-3" data-testid="person-loading">
+      <Pending className="space-y-3" label={m.person_loading()}>
         <Skeleton className="h-10 w-full max-w-64" />
         <Skeleton className="h-8 w-full max-w-96" />
       </Pending>

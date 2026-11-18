@@ -186,7 +186,9 @@ describe('CycleListCard table view (US1)', () => {
 
     render();
 
-    const loading = await screen.findByTestId('cycles-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.cycles_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
@@ -226,7 +228,9 @@ describe('CycleListCard table view (US1)', () => {
     expect(
       screen.getByRole('row', { name: /August 2026/ }),
     ).toBeInTheDocument();
-    expect(screen.queryByTestId('cycles-loading')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: m.cycles_loading() }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows a retryable error, never the empty state, when the read fails', async () => {

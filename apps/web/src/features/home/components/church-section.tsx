@@ -37,7 +37,7 @@ export function ChurchSection({ churchId, userId }: HomeSectionProps) {
           onRetry={() => progressQuery.refetch()}
         />
       ) : !progress ? (
-        <Pending role="status" aria-label={m.home_setup_loading()}>
+        <Pending label={m.home_setup_loading()}>
           <Skeleton className="h-24 w-full" />
         </Pending>
       ) : (

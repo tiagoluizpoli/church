@@ -200,10 +200,7 @@ export function CycleSendDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         {summary.isPending ? (
-          <Pending
-            data-testid="cycle-send-summary-loading"
-            className="space-y-2"
-          >
+          <Pending label={m.cycle_send_summary_loading()} className="space-y-2">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-2/3" />
           </Pending>

@@ -67,7 +67,7 @@ export function AuditLogPanel({
 
         <div className="space-y-2 text-sm">
           {auditQuery.isLoading ? (
-            <Pending data-testid="audit-log-loading" className="space-y-2">
+            <Pending label={m.builder_ui_audit_loading()} className="space-y-2">
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
             </Pending>

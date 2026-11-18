@@ -246,7 +246,7 @@ export function CycleReviewCard({
             />
           )
         ) : cycleDetailsLoading || !reviewedCycle ? (
-          <Pending data-testid="cycle-review-loading" className="space-y-3">
+          <Pending label={m.cycle_review_loading()} className="space-y-3">
             <Skeleton className="h-6 w-1/2" />
             <Skeleton className="h-32 w-full" />
           </Pending>

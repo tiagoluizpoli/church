@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -166,7 +167,9 @@ describe('TemplateDeleteDialog loading', () => {
   it('shows a busy skeleton while usage loads', async () => {
     getEventTemplateUsage.mockReturnValue(new Promise(() => undefined));
     renderDialog();
-    const loading = await screen.findByTestId('template-delete-usage-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.event_templates_delete_usage_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
@@ -183,6 +186,10 @@ describe('TemplateDeleteDialog loading', () => {
     await startHangingRefetch({ queryClient, read: getEventTemplateUsage });
 
     expect(screen.getByText(line)).toBeInTheDocument();
-    expect(screen.queryByTestId('template-delete-usage-loading')).toBeNull();
+    expect(
+      screen.queryByRole('status', {
+        name: m.event_templates_delete_usage_loading(),
+      }),
+    ).toBeNull();
   });
 });

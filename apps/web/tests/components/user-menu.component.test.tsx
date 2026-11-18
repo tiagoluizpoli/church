@@ -41,11 +41,14 @@ describe('UserMenu (F8)', () => {
   it('shows a loading skeleton while the session is pending', async () => {
     mockedUseSession.mockReturnValue({ data: null, isPending: true } as never);
 
-    const { container } = renderUserMenu();
+    renderUserMenu();
 
-    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    const loading = screen.getByRole('status', {
+      name: m.shell_account_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() => {
-      expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
     });
   });
 

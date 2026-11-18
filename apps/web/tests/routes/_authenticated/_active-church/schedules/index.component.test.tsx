@@ -312,7 +312,9 @@ describe('Schedules list', () => {
     expect(
       (await scheduleList()).getByRole('link', { name: /Kids · Outubro/ }),
     ).toBeInTheDocument();
-    expect(screen.queryByTestId('schedules-loading')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: m.schedules_loading() }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps a failed read distinct from empty and retries into the real list', async () => {
@@ -339,9 +341,10 @@ describe('Schedules list', () => {
       }),
     );
     renderPrepareIndex();
-    const loading = await screen.findByTestId('schedules-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.schedules_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
-    expect(await screen.findByText(m.schedules_loading())).toBeInTheDocument();
     expect(screen.queryByText(m.schedules_empty())).not.toBeInTheDocument();
     resolve(page([]));
     expect(await screen.findByText(m.schedules_empty())).toBeVisible();

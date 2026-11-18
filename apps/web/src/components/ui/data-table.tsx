@@ -153,7 +153,11 @@ export function DataTable<T extends object>({
   ];
 
   if (isLoading) {
-    return <Pending className={className}>{loadingContent}</Pending>;
+    return (
+      <Pending className={className} label={m.shell_table_loading()}>
+        {loadingContent}
+      </Pending>
+    );
   }
 
   if (items.length === 0) {

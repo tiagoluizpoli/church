@@ -170,7 +170,7 @@ export function CycleListCard({
           </p>
         ) : null}
         {cyclesLoading ? (
-          <Pending data-testid="cycles-loading" className="space-y-2">
+          <Pending label={m.cycles_loading()} className="space-y-2">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />
           </Pending>

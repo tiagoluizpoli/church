@@ -130,7 +130,9 @@ describe('Member detail', () => {
     );
     const { queryClient } = open();
 
-    const busy = await screen.findByTestId('person-loading');
+    const busy = await screen.findByRole('status', {
+      name: m.person_loading(),
+    });
     expect(busy).toHaveAttribute('aria-busy', 'true');
     await waitFor(() => {
       expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();

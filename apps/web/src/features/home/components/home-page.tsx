@@ -82,7 +82,7 @@ function PlainWelcome({ churchId }: PlainWelcomeProps) {
   }
   if (optionsQuery.isPending)
     return (
-      <Pending>
+      <Pending label={m.shell_church_loading()}>
         <Skeleton className="h-6 w-72" />
       </Pending>
     );
@@ -188,7 +188,7 @@ export function HomePage({ search }: HomePageProps) {
       {state.status === 'error' ? (
         <HomeError message={m.home_load_error()} onRetry={state.retry} />
       ) : !capacities || !sectionProps ? (
-        <Pending role="status" aria-label={m.home_loading()}>
+        <Pending label={m.home_loading()}>
           <Skeleton className="h-24 w-full" />
         </Pending>
       ) : (

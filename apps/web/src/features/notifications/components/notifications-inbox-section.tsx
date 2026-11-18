@@ -74,7 +74,7 @@ function NoNotificationsAlert({
 }: NotificationsInboxLoadState) {
   if (isLoading) {
     return (
-      <Pending aria-label={m.notification_loading()} className="space-y-3">
+      <Pending label={m.notification_loading()} className="space-y-3">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-20 w-full" />

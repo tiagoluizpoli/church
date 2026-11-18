@@ -247,7 +247,7 @@ export function MinistryListPage({
           </AlertDescription>
         </Alert>
       ) : loading ? (
-        <Pending className="grid gap-3">
+        <Pending label={m.ministries_loading()} className="grid gap-3">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
         </Pending>

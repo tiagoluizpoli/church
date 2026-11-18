@@ -120,7 +120,9 @@ describe('Send to Ministries confirmation', () => {
     const user = await openConfirmation();
     const confirm = await screen.findByTestId('confirm-cycle-send-button');
 
-    const loading = screen.getByTestId('cycle-send-summary-loading');
+    const loading = screen.getByRole('status', {
+      name: m.cycle_send_summary_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
@@ -319,6 +321,8 @@ describe('Send to Ministries summary refetch', () => {
     expect(
       screen.getByText(m.cycle_send_events_other({ count: 3 })),
     ).toBeVisible();
-    expect(screen.queryByTestId('cycle-send-summary-loading')).toBeNull();
+    expect(
+      screen.queryByRole('status', { name: m.cycle_send_summary_loading() }),
+    ).toBeNull();
   });
 });

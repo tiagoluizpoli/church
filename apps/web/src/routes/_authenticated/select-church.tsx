@@ -196,7 +196,7 @@ function SelectChurchRoute() {
 
         {optionsQuery.isLoading ? (
           <Pending
-            aria-label={m.select_church_loading()}
+            label={m.select_church_loading()}
             className="space-y-3 px-5 pb-8 md:px-8"
           >
             <Skeleton className="h-20 w-full" />

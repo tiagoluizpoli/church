@@ -240,7 +240,7 @@ export function EventCancelDialog({
               </div>
             </div>
           ) : preview.isPending ? (
-            <Pending data-testid="event-cancel-loading" className="space-y-2">
+            <Pending label={m.event_cancel_loading()} className="space-y-2">
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-2/3" />
             </Pending>

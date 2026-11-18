@@ -261,7 +261,7 @@ interface ChurchNameProps {
 
 function ChurchName({ name }: ChurchNameProps) {
   return name === null ? (
-    <Pending data-testid="church-name-skeleton">
+    <Pending label={m.shell_church_loading()}>
       <Skeleton className="h-5 w-28" />
     </Pending>
   ) : (

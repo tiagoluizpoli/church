@@ -920,7 +920,9 @@ describe('CycleReviewCard resolution states', () => {
       </PlanningAdminProvider>,
     );
 
-    const loading = await screen.findByTestId('cycle-review-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.cycle_review_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
@@ -952,7 +954,7 @@ describe('CycleReviewCard resolution states', () => {
       screen.getByRole('grid', { name: m.cycle_review_title() }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId('cycle-review-loading'),
+      screen.queryByRole('status', { name: m.cycle_review_loading() }),
     ).not.toBeInTheDocument();
   });
 

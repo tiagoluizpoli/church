@@ -63,7 +63,10 @@ export function UsualSetupBlockEditor({
 
   if (reads.some((read) => read.isPending)) {
     return (
-      <Pending className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10">
+      <Pending
+        label={m.usual_setup_block_loading()}
+        className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10"
+      >
         <div className="space-y-3">
           <Skeleton className="h-6 w-64" />
           <Skeleton className="h-5 w-40" />

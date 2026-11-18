@@ -109,7 +109,9 @@ describe('route crash fallback', () => {
 
     await userEvent.click(screen.getByRole('link', { name: 'Shell nav link' }));
 
-    expect(await screen.findByTestId('capability-gate-skeleton')).toBeVisible();
+    expect(
+      await screen.findByRole('status', { name: m.shell_route_loading() }),
+    ).toBeVisible();
     expect(router.state.location.pathname).toBe('/my-schedule');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });

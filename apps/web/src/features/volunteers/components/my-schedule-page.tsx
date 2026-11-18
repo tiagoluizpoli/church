@@ -164,7 +164,7 @@ export function MySchedulePage() {
   });
   if (query.isLoading)
     return (
-      <Pending role="status" aria-label={m.my_schedule_loading()}>
+      <Pending label={m.my_schedule_loading()}>
         <Skeleton className="h-64 w-full" />
       </Pending>
     );

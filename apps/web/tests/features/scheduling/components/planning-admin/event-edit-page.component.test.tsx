@@ -597,7 +597,9 @@ describe('EventEditPage loading', () => {
   it('shows a busy skeleton on first load', async () => {
     getCycle.mockReturnValue(new Promise(() => undefined));
     renderPage();
-    const loading = await screen.findByTestId('event-editor-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.event_editor_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
@@ -616,6 +618,8 @@ describe('EventEditPage loading', () => {
 
     expect(title).toBeInTheDocument();
     expect(titleInput()).toBeInTheDocument();
-    expect(screen.queryByTestId('event-editor-loading')).toBeNull();
+    expect(
+      screen.queryByRole('status', { name: m.event_editor_loading() }),
+    ).toBeNull();
   });
 });

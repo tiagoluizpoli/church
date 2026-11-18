@@ -1628,5 +1628,18 @@
   "home_attention_group": "Needs attention",
   "home_all_clear": "All caught up",
   "notification_unread_one": "1 unread",
-  "notification_unread_other": "{count} unread"
+  "notification_unread_other": "{count} unread",
+  "shell_church_loading": "Loading Church…",
+  "shell_account_loading": "Loading account…",
+  "builder_board_loading": "Loading Cycle board…",
+  "prepare_block_loading": "Loading Time block…",
+  "event_editor_loading": "Loading Event…",
+  "ministries_loading": "Loading Ministries…",
+  "ministry_loading": "Loading Ministry…",
+  "invitations_loading": "Loading invitations…",
+  "people_loading": "Loading people…",
+  "person_loading": "Loading person…",
+  "usual_setup_loading": "Loading Usual setup…",
+  "usual_setup_block_loading": "Loading Time block…",
+  "auth_session_loading": "Checking your session…"
 }

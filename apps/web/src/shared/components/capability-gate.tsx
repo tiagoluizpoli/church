@@ -26,7 +26,7 @@ export function CapabilityGate({
 
   if (capabilities.isResolving) {
     return (
-      <Pending className="space-y-3" data-testid="capability-gate-skeleton">
+      <Pending className="space-y-3" label={m.shell_route_loading()}>
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-72" />
       </Pending>

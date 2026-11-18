@@ -185,7 +185,9 @@ describe('Invitations page', () => {
     );
     const { queryClient } = renderInvitations();
 
-    const busy = await screen.findByTestId('invitations-loading');
+    const busy = await screen.findByRole('status', {
+      name: m.invitations_loading(),
+    });
     expect(busy).toHaveAttribute('aria-busy', 'true');
     await waitFor(() => {
       expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
@@ -555,9 +557,13 @@ describe('Invitations page', () => {
 
     renderInvitations();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Nenhum convite pendente.',
-    );
+    expect(
+      (
+        await screen.findByText(
+          'Nenhum convite pendente. Convites oferecem acesso à igreja ou a um ministério.',
+        )
+      ).closest('[role="status"]'),
+    ).not.toBeNull();
   });
 
   it('shows a loading state, then recovers from an error with retry', async () => {
@@ -652,9 +658,11 @@ describe('Invitations filters and history', () => {
       '/invitations?status=bad&email=%20%20&ministryId=bad&invitedAs=bad',
     );
     await waitFor(() => expect(listInvitations).toHaveBeenCalledWith({}));
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      m.invitations_empty(),
-    );
+    expect(
+      (await screen.findByText(m.invitations_empty())).closest(
+        '[role="status"]',
+      ),
+    ).not.toBeNull();
   });
 
   it.each([
@@ -667,7 +675,9 @@ describe('Invitations filters and history', () => {
   ])('shows the %s empty copy and exactly one invitation action', async (status, copy) => {
     listInvitations.mockResolvedValue(page([]));
     renderInvitations(`/invitations?status=${status}`);
-    expect(await screen.findByRole('status')).toHaveTextContent(copy());
+    expect(
+      (await screen.findByText(copy())).closest('[role="status"]'),
+    ).not.toBeNull();
     expect(
       screen.getAllByRole('button', { name: m.invitations_invite_open() }),
     ).toHaveLength(1);
@@ -750,14 +760,18 @@ describe('Invitations filters and history', () => {
 
     renderInvitations();
     await pick(m.invitations_filter_status(), m.invitations_status_declined());
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      m.invitations_empty_declined(),
-    );
+    expect(
+      (await screen.findByText(m.invitations_empty_declined())).closest(
+        '[role="status"]',
+      ),
+    ).not.toBeNull();
 
     await pick(m.invitations_filter_invited_as(), m.join_church_access_admin());
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      m.invitations_empty_filtered(),
-    );
+    expect(
+      (await screen.findByText(m.invitations_empty_filtered())).closest(
+        '[role="status"]',
+      ),
+    ).not.toBeNull();
     await user.click(
       screen.getByRole('button', { name: m.invitations_clear_filters() }),
     );

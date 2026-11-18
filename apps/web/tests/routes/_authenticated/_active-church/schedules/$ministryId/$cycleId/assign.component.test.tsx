@@ -84,7 +84,9 @@ describe('Assign board route', () => {
       initialPath: '/schedules/ministry-1/cycle-1/assign',
       churchTimezone: 'UTC',
     });
-    const loading = await screen.findByTestId('assign-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.builder_board_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),

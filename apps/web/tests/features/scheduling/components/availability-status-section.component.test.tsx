@@ -427,7 +427,9 @@ it('keeps the Answers on screen while a refetch is in flight', async () => {
     expect(api.getCycleAvailabilityStatus).toHaveBeenCalledTimes(2),
   );
   expect(screen.getByText('Ana')).toBeVisible();
-  expect(screen.queryByTestId('availability-status-loading')).toBeNull();
+  expect(
+    screen.queryByRole('status', { name: m.answers_loading() }),
+  ).toBeNull();
 });
 
 it('shows loading and failed reads distinctly from an empty Answers list and allows retry', async () => {
@@ -435,7 +437,7 @@ it('shows loading and failed reads distinctly from an empty Answers list and all
   const view = renderWithProviders(
     <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
   );
-  const loading = screen.getByTestId('availability-status-loading');
+  const loading = screen.getByRole('status', { name: m.answers_loading() });
   expect(loading).toHaveAttribute('aria-busy', 'true');
   expect(loading.querySelector('[data-slot="skeleton"]')).toBeNull();
   await waitFor(() =>

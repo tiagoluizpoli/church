@@ -139,9 +139,14 @@ describe('Reconnecting banner', () => {
 
     renderMinistries();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      m.common_reconnecting(),
-    );
+    await screen.findByText(m.common_reconnecting());
+    // The page's own loading region is a status too; the banner is the one
+    // whose text is the reconnecting message.
+    expect(
+      screen
+        .getAllByRole('status')
+        .filter((region) => region.textContent === m.common_reconnecting()),
+    ).toHaveLength(1);
     expect(banner()).toHaveLength(1);
     await waitFor(() => expect(calls.directory).toBeGreaterThanOrEqual(2), {
       timeout: 3000,

@@ -153,7 +153,7 @@ function TransferReview({
 
   if (previewQuery.isLoading) {
     return (
-      <Pending role="status" aria-label={m.volunteer_transfer_checking()}>
+      <Pending label={m.volunteer_transfer_checking()}>
         <Skeleton className="h-40 w-full" />
       </Pending>
     );

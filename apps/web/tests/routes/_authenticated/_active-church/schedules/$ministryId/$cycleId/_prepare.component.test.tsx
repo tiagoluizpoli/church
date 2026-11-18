@@ -333,11 +333,9 @@ it('shows translated loading feedback until the prepare read resolves', async ()
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
-  expect(await screen.findByTestId('prepare-loading')).toHaveAttribute(
-    'aria-busy',
-    'true',
-  );
-  expect(await screen.findByText(m.schedules_loading())).toBeInTheDocument();
+  expect(
+    await screen.findByRole('status', { name: m.schedules_loading() }),
+  ).toHaveAttribute('aria-busy', 'true');
   expect(screen.queryByText(m.prepare_empty())).not.toBeInTheDocument();
   await act(async () => resolveRead({ events: [EVENT] }));
   expect(
@@ -362,7 +360,9 @@ it('keeps the prepare rows on screen while a refetch is in flight', async () => 
   });
 
   expect(screen.getByTestId(rowId)).toBeVisible();
-  expect(screen.queryByTestId('prepare-loading')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('status', { name: m.schedules_loading() }),
+  ).not.toBeInTheDocument();
 });
 
 it.each([
@@ -386,7 +386,7 @@ it.each([
       initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}#event-time-block-${BLOCK.eventTimeBlock.id}`,
       churchTimezone: 'America/Sao_Paulo',
     });
-    await screen.findByTestId('prepare-loading');
+    await screen.findByRole('status', { name: m.schedules_loading() });
     await waitFor(() => expect(router.state.status).toBe('idle'));
     await waitFor(() =>
       expect(lookup).toHaveBeenCalledWith(
@@ -731,7 +731,9 @@ it('keeps the Ask control on screen, disabled, while the preview refetches', asy
     screen.getByRole('status', { name: m.prepare_ask_loading() }),
   ).toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  expect(screen.queryByTestId('prepare-loading')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('status', { name: m.schedules_loading() }),
+  ).not.toBeInTheDocument();
 });
 
 it('keeps Ask disabled while the preview loads, then retries a failed preview', async () => {

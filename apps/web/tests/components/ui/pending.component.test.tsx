@@ -8,7 +8,7 @@ describe('Pending', () => {
 
   it('renders no skeleton before the delay and the skeleton after it', () => {
     render(
-      <Pending data-testid="region">
+      <Pending label="Loading things">
         <span>skeleton</span>
       </Pending>,
     );
@@ -17,7 +17,9 @@ describe('Pending', () => {
       vi.advanceTimersByTime(PENDING_DELAY_MS - 1);
     });
     expect(screen.queryByText('skeleton')).not.toBeInTheDocument();
-    expect(screen.getByTestId('region')).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('status', { name: 'Loading things' }),
+    ).toHaveAttribute('aria-busy', 'true');
 
     act(() => {
       vi.advanceTimersByTime(1);

@@ -117,10 +117,12 @@ describe('/ministries/$ministryId workspace', () => {
     asAdmin();
     const { queryClient } = renderWorkspace('/operational');
 
+    const loading = await screen.findByRole('status', {
+      name: m.ministry_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() => {
-      expect(
-        document.querySelector('[aria-busy="true"] [data-slot="skeleton"]'),
-      ).not.toBeNull();
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
     });
 
     getMinistry.mockReturnValue(new Promise(() => undefined));

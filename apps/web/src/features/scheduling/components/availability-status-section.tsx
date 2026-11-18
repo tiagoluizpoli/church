@@ -159,7 +159,7 @@ export function AvailabilityStatusSection({
       </CardHeader>
       <CardContent className="space-y-6">
         {statusQuery.isLoading ? (
-          <Pending data-testid="availability-status-loading">
+          <Pending label={m.answers_loading()}>
             <Skeleton className="h-16 w-full" />
           </Pending>
         ) : statusQuery.isError ? (

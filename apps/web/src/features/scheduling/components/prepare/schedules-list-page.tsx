@@ -345,10 +345,9 @@ export function SchedulesListPage({
             <Card className="surface-panel">
               <CardContent>
                 <Pending
-                  data-testid="schedules-loading"
+                  label={m.schedules_loading()}
                   className="grid gap-3 md:gap-0"
                 >
-                  <span className="sr-only">{m.schedules_loading()}</span>
                   <Skeleton className="hidden h-[41px] w-full md:block" />
                   {[0, 1, 2].map((row) => (
                     <Skeleton

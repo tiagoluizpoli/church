@@ -88,7 +88,7 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
         {m.usual_setup_description()}
       </p>
       {setup.isPending ? (
-        <Pending className="space-y-2">
+        <Pending label={m.usual_setup_loading()} className="space-y-2">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-14 w-full" />
           <Skeleton className="h-14 w-full" />

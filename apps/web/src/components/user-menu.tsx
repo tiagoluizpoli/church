@@ -35,7 +35,7 @@ export default function UserMenu() {
 
   if (isPending) {
     return (
-      <Pending data-testid="user-menu-pending">
+      <Pending label={m.shell_account_loading()}>
         <Skeleton className="h-9 w-24" />
       </Pending>
     );

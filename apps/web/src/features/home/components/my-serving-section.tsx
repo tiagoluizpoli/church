@@ -99,7 +99,7 @@ export function NextAssignmentWidget(props: HomeSectionProps) {
       }
     >
       {dashboard.isPending ? (
-        <Pending role="status" aria-label={m.my_schedule_loading()}>
+        <Pending label={m.my_schedule_loading()}>
           <Skeleton className="h-20 w-full" />
         </Pending>
       ) : next ? (
@@ -199,7 +199,7 @@ export function PendingChecksWidget(props: HomeSectionProps) {
       }
     >
       {query.isPending ? (
-        <Pending role="status" aria-label={m.availability_list_loading()}>
+        <Pending label={m.availability_list_loading()}>
           <Skeleton className="h-20 w-full" />
         </Pending>
       ) : (

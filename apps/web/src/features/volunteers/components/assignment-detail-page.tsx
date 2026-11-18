@@ -186,7 +186,7 @@ export function AssignmentDetailPage({
   });
   if (query.isLoading)
     return (
-      <Pending role="status" aria-label={m.assignment_detail_loading()}>
+      <Pending label={m.assignment_detail_loading()}>
         <Skeleton className="h-64 w-full" />
       </Pending>
     );

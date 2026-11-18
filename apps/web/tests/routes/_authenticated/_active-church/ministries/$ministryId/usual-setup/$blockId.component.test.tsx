@@ -121,10 +121,12 @@ describe('/ministries/$ministryId/usual-setup/$blockId', () => {
     );
     const { queryClient } = renderEditor(SERVICE_ID);
 
+    const loading = await screen.findByRole('status', {
+      name: m.usual_setup_block_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() => {
-      expect(
-        document.querySelector('[aria-busy="true"] [data-slot="skeleton"]'),
-      ).not.toBeNull();
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
     });
 
     listSectors.mockReturnValue(new Promise(() => undefined));

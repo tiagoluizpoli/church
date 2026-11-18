@@ -191,7 +191,7 @@ function SwitchChurchConfirmRoute() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
         <Pending
-          aria-label={m.switch_church_loading()}
+          label={m.switch_church_loading()}
           className="w-full max-w-md space-y-4"
         >
           <Skeleton className="h-6 w-2/3" />

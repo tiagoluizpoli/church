@@ -89,7 +89,7 @@ function EventBuilderRoute() {
 
   if (query.isLoading || !query.data || !data) {
     return (
-      <Pending data-testid="assign-loading" className="space-y-3">
+      <Pending label={m.builder_board_loading()} className="space-y-3">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-80 w-full" />
       </Pending>

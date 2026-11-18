@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -368,7 +369,9 @@ describe('TemplateEditPage loading', () => {
   it('shows a busy skeleton on first load', async () => {
     getEventTemplate.mockReturnValue(new Promise(() => undefined));
     renderWithProviders(<TemplateEditPage templateId="template-1" />);
-    const loading = await screen.findByTestId('template-detail-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.event_templates_detail_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
@@ -382,6 +385,10 @@ describe('TemplateEditPage loading', () => {
     await startHangingRefetch({ queryClient, read: getEventTemplate });
 
     expect(screen.getByDisplayValue('Sunday')).toBeInTheDocument();
-    expect(screen.queryByTestId('template-detail-loading')).toBeNull();
+    expect(
+      screen.queryByRole('status', {
+        name: m.event_templates_detail_loading(),
+      }),
+    ).toBeNull();
   });
 });

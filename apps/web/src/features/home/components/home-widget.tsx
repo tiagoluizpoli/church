@@ -27,7 +27,7 @@ export function HomeWidget({
         {action}
       </div>
       {loading ? (
-        <Pending role="status" aria-label={title}>
+        <Pending label={title}>
           <Skeleton className="h-20 w-full" />
         </Pending>
       ) : error ? (

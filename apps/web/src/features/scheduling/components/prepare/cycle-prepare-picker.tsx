@@ -63,8 +63,10 @@ export function CyclePreparePicker({
           </AlertDescription>
         </Alert>
       ) : ministriesQuery.isPending ? (
-        <Pending data-testid="cycle-picker-loading" className="grid gap-3">
-          <span className="sr-only">{m.prepare_cycle_picker_loading()}</span>
+        <Pending
+          label={m.prepare_cycle_picker_loading()}
+          className="grid gap-3"
+        >
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
         </Pending>

@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -45,7 +46,9 @@ describe('AuditLogPanel loading', () => {
   it('shows a busy skeleton on first load', async () => {
     getCycleAuditLog.mockReturnValue(new Promise(() => undefined));
     renderPanel();
-    const loading = await screen.findByTestId('audit-log-loading');
+    const loading = await screen.findByRole('status', {
+      name: m.builder_ui_audit_loading(),
+    });
     expect(loading).toHaveAttribute('aria-busy', 'true');
     await waitFor(() =>
       expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
@@ -60,6 +63,8 @@ describe('AuditLogPanel loading', () => {
     await startHangingRefetch({ queryClient, read: getCycleAuditLog });
 
     expect(screen.getByText('assignment-1')).toBeInTheDocument();
-    expect(screen.queryByTestId('audit-log-loading')).toBeNull();
+    expect(
+      screen.queryByRole('status', { name: m.builder_ui_audit_loading() }),
+    ).toBeNull();
   });
 });

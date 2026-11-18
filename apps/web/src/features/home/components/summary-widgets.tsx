@@ -262,7 +262,7 @@ export function NotificationSummary({ churchId, userId }: HomeSectionProps) {
   });
   if (query.isPending)
     return (
-      <Pending role="status" aria-label={m.home_notifications()}>
+      <Pending label={m.home_notifications()}>
         <Skeleton className="h-6 w-48" />
       </Pending>
     );

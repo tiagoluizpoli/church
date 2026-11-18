@@ -462,7 +462,9 @@ jobs:
     name: Fast Gate
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The full unit + integration suite, not just the affected part: 390-470s
+    # on a typical runner, past 600s on a slow one (Nov 2026).
+    timeout-minutes: 20
 
     services:
       postgres:

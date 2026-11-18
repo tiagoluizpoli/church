@@ -130,7 +130,9 @@ describe('CI setup phase bounds and reporting', () => {
           SHARED_SETUP_ACTION_LIMIT_MINUTES,
         );
         expect(job['timeout-minutes']).toBe(
-          ['release-gate', 'e2e', 'fast-gate'].includes(name) ? 20 : 10,
+          ['release-gate', 'e2e', 'fast-gate', 'develop-fast'].includes(name)
+            ? 20
+            : 10,
         );
       });
 

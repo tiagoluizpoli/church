@@ -962,7 +962,7 @@ it('keeps the editor on screen while a refetch is in flight', async () => {
     read: api.getCycleParticipation,
   });
 
-  expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
+  expect(screen.getAllByRole('checkbox')).toHaveLength(1);
   expect(
     screen.queryByRole('status', { name: m.schedules_loading() }),
   ).not.toBeInTheDocument();

@@ -14,7 +14,7 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
-import pino from 'pino';
+import pino, { type DestinationStream } from 'pino';
 import PinoPretty from 'pino-pretty';
 import { connectionErrorCode } from '../../api/utils/connection-error';
 import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
@@ -38,6 +38,10 @@ import {
 import { errorStatus } from '../../api/utils/error-table';
 import { requestLocale } from '../../api/utils/request-locale';
 import { HardConstraintError } from '../../domain/conflict/errors/hard-constraint-error';
+import {
+  redactUrl,
+  serializeRequest,
+} from '../../infrastructure/privacy/privacy';
 import { auth } from '../di/server-auth';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
@@ -52,10 +56,15 @@ export interface LocaleSettings {
 
 interface CreateFastifyInput {
   locale: LocaleSettings;
+  /** Forces logging to this stream in any mode; tests capture log lines here. */
+  logStream?: DestinationStream;
 }
+
+const logSerializers = { req: serializeRequest };
 
 export async function createFastify({
   locale: localeSettings,
+  logStream,
 }: CreateFastifyInput) {
   const isTest = env.NODE_ENV === 'test';
   const isProd = env.NODE_ENV === 'production';
@@ -63,15 +72,22 @@ export async function createFastify({
   // Bun doesn't support pino worker-thread transports — use a synchronous
   // pino-pretty stream in dev instead of the transport API.
   const devLogger = pino(
-    { level: 'info' },
+    { level: 'info', serializers: logSerializers },
     PinoPretty({ colorize: true, translateTime: 'HH:MM:ss' }),
   );
 
-  const app = isTest
-    ? createFastifyInstance({ logger: false })
-    : isProd
-      ? createFastifyInstance({ logger: true })
-      : createFastifyInstance({ loggerInstance: devLogger });
+  const app = logStream
+    ? createFastifyInstance({
+        loggerInstance: pino(
+          { level: 'info', serializers: logSerializers },
+          logStream,
+        ),
+      })
+    : isTest
+      ? createFastifyInstance({ logger: false })
+      : isProd
+        ? createFastifyInstance({ logger: { serializers: logSerializers } })
+        : createFastifyInstance({ loggerInstance: devLogger });
 
   registerE2eTargetHeader({ app, enabled: debugEndpointsEnabled() });
 
@@ -222,7 +238,7 @@ export async function createFastify({
 
     if (isResponseSerializationError(error)) {
       request.log.error(
-        { issues: error.cause.issues, url: request.url },
+        { issues: error.cause.issues, url: redactUrl({ url: request.url }) },
         'Serialization error',
       );
       return reply.code(500).send({
@@ -235,7 +251,7 @@ export async function createFastify({
     if (connectionCode) {
       // Log the code only: the error message may carry the connection string.
       request.log.error(
-        { code: connectionCode, url: request.url },
+        { code: connectionCode, url: redactUrl({ url: request.url }) },
         'Database connection failure',
       );
       return reply.status(503).header('Retry-After', '5').send({
@@ -244,7 +260,10 @@ export async function createFastify({
       });
     }
 
-    request.log.error({ err: error, url: request.url }, 'Unhandled error');
+    request.log.error(
+      { err: error, url: redactUrl({ url: request.url }) },
+      'Unhandled error',
+    );
     return reply.status(500).send({
       error: 'INTERNAL_SERVER_ERROR',
       message: genericError,
@@ -254,7 +273,7 @@ export async function createFastify({
   app.addHook('onResponse', (request, reply, done) => {
     request.log.info({
       method: request.method,
-      url: request.url,
+      url: redactUrl({ url: request.url }),
       statusCode: reply.statusCode,
       durationMs: reply.elapsedTime,
     });

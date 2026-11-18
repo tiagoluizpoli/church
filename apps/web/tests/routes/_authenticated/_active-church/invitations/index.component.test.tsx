@@ -176,6 +176,32 @@ beforeEach(() => {
 });
 
 describe('Invitations page', () => {
+  it('shows a skeleton on first load, then keeps the data during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    listInvitations.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { queryClient } = renderInvitations();
+
+    const busy = await screen.findByTestId('invitations-loading');
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    listInvitations.mockReturnValue(new Promise(() => undefined));
+    release(page([row({})]));
+    expect(await rows()).toHaveLength(1);
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() => expect(listInvitations).toHaveBeenCalledTimes(2));
+    expect(await rows()).toHaveLength(1);
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
   it('retains delivery and closure evidence in the desktop row and labels creation accurately', async () => {
     listInvitations.mockResolvedValue(
       page([

@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { authClient } from '@/lib/auth-client';
 import { useSignOut } from '@/shared/hooks/use-sign-out';
@@ -33,7 +34,11 @@ export default function UserMenu() {
   const signOut = useSignOut();
 
   if (isPending) {
-    return <Skeleton className="h-9 w-24" />;
+    return (
+      <Pending data-testid="user-menu-pending">
+        <Skeleton className="h-9 w-24" />
+      </Pending>
+    );
   }
 
   if (!session) {

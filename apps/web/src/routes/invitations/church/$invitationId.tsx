@@ -21,6 +21,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import type {
   PreviewChurchInvitation200,
   PreviewChurchInvitation200ChurchAccessLevel,
@@ -244,7 +247,11 @@ function ChurchInvitationJoinRoute() {
   if (previewQuery.isLoading) {
     return (
       <RedemptionShell>
-        <p className="text-muted-foreground text-sm">{m.join_loading()}</p>
+        <Pending aria-label={m.join_loading()} className="space-y-4">
+          <Skeleton className="h-6 w-2/3" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </Pending>
       </RedemptionShell>
     );
   }
@@ -343,7 +350,7 @@ function ChurchInvitationJoinRoute() {
             disabled={requestCodeMutation.isPending}
             onClick={() => requestCodeMutation.mutate()}
           >
-            <MailCheck />
+            {requestCodeMutation.isPending ? <Spinner /> : <MailCheck />}
             {requestCodeMutation.isPending
               ? m.join_sending_code()
               : m.join_send_code()}
@@ -380,6 +387,7 @@ function ChurchInvitationJoinRoute() {
                   disabled={declineMutation.isPending}
                   onClick={() => declineMutation.mutate()}
                 >
+                  {declineMutation.isPending ? <Spinner /> : null}
                   {declineMutation.isPending
                     ? m.join_declining()
                     : m.join_decline_confirm()}
@@ -495,6 +503,7 @@ function ChurchInvitationJoinRoute() {
             className="w-full"
             disabled={redeemMutation.isPending || failure?.canRetry === false}
           >
+            {redeemMutation.isPending ? <Spinner /> : null}
             {redeemMutation.isPending
               ? m.join_submitting()
               : outcome?.kind === 'retryable-failure'

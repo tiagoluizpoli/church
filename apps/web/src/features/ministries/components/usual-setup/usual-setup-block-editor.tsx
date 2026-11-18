@@ -16,7 +16,9 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { useSectorList } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
 import {
@@ -61,17 +63,14 @@ export function UsualSetupBlockEditor({
 
   if (reads.some((read) => read.isPending)) {
     return (
-      <div
-        className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10"
-        aria-busy="true"
-      >
+      <Pending className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10">
         <div className="space-y-3">
           <Skeleton className="h-6 w-64" />
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-16 w-full" />
         </div>
         <Skeleton className="h-48 w-full" />
-      </div>
+      </Pending>
     );
   }
 
@@ -301,6 +300,7 @@ function UsualSetupBlockForm({
 
           <div className="flex gap-2">
             <Button type="submit" disabled={!canSave}>
+              {save.isPending ? <Spinner /> : null}
               {save.isPending ? m.usual_setup_saving() : m.usual_setup_save()}
             </Button>
             <Button

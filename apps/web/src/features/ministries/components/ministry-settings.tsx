@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { MinistryArchive } from '@/features/ministries/components/ministry-archive';
 import { MinistryNameForm } from '@/features/ministries/components/ministry-name-form';
 import {
@@ -49,6 +50,7 @@ export function MinistrySettings({ ministryId }: MinistrySettingsProps) {
                 onSave={rename}
                 renderActions={(pending) => (
                   <Button type="submit" disabled={pending}>
+                    {pending ? <Spinner /> : null}
                     {pending
                       ? m.ministry_settings_saving()
                       : m.ministry_settings_save()}

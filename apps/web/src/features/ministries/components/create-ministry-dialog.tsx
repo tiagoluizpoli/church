@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
 import { DialogFooter } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { MinistryNameForm } from '@/features/ministries/components/ministry-name-form';
 import { invalidateMinistryReads } from '@/features/ministries/ministry-queries';
 import { useMediaQuery } from '@/hooks/use-media-query';
@@ -64,6 +65,7 @@ export function CreateMinistryDialog() {
                   {m.ministries_cancel()}
                 </Button>
                 <Button type="submit" disabled={pending}>
+                  {pending ? <Spinner /> : null}
                   {m.ministries_create_submit()}
                 </Button>
               </DialogFooter>

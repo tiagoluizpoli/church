@@ -8,6 +8,9 @@ import { ArrowRight, CircleAlert, ShieldAlert } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { VolunteerTransferFlow } from '@/features/volunteer-transfer';
 import type {
   AcceptMinistryInvitation200,
@@ -189,9 +192,14 @@ function MinistryInvitationContent({
 
   if (statusQuery.isLoading) {
     return (
-      <p className="text-muted-foreground text-sm">
-        {m.ministry_invitation_loading()}
-      </p>
+      <Pending
+        aria-label={m.ministry_invitation_loading()}
+        className="space-y-4"
+      >
+        <Skeleton className="h-6 w-2/3" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </Pending>
     );
   }
 
@@ -379,7 +387,7 @@ function AlreadyAcceptedNotice({
       </p>
       <Button className="w-full" disabled={isPending} onClick={onContinue}>
         {m.ministry_invitation_continue_home()}
-        <ArrowRight />
+        {isPending ? <Spinner /> : <ArrowRight />}
       </Button>
     </div>
   );
@@ -560,6 +568,7 @@ function RedeemableInvitationCard({
         }
         onClick={onAccept}
       >
+        {isAccepting ? <Spinner /> : null}
         {isAccepting
           ? m.ministry_invitation_accepting()
           : m.ministry_invitation_accept()}
@@ -581,6 +590,7 @@ function RedeemableInvitationCard({
               disabled={isDeclining}
               onClick={onConfirmDecline}
             >
+              {isDeclining ? <Spinner /> : null}
               {isDeclining
                 ? m.ministry_invitation_declining()
                 : m.ministry_invitation_decline_confirm()}

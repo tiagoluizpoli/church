@@ -6,6 +6,7 @@ import {
 } from './ministry-setup-guide';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
 import { classifyMinistryReadError } from '@/features/ministries/ministry-name';
@@ -60,10 +61,10 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
 
   if (ministryQuery.isLoading) {
     return (
-      <div className="space-y-3">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-8 w-96" />
-      </div>
+      <Pending className="space-y-3">
+        <Skeleton className="h-10 w-full max-w-64" />
+        <Skeleton className="h-8 w-full max-w-96" />
+      </Pending>
     );
   }
 

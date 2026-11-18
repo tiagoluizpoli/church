@@ -699,13 +699,43 @@ export class DbVolunteerManager implements IVolunteerManager {
       }),
     );
 
+    const listed = items
+      .filter((item): item is VolunteerScheduleAssignment => item != null)
+      .sort((a, b) =>
+        compareInstants({ left: a.startTime, right: b.startTime }),
+      );
+    // `yyyy-MM` of the Church-Timezone day.
+    const monthOf = (item: VolunteerScheduleAssignment) =>
+      today({ instant: item.startTime, timeZone }).slice(0, 7);
+    const currentMonth = churchToday.slice(0, 7);
+    const { search, month, ministryId } = input.filters ?? {};
+    const needle = search?.toLocaleLowerCase();
+    // shortcut: filters run over the assembled list, not in SQL; a Volunteer's own upcoming Assignments stay few. Move into the repository read if that list ever pages.
+    const filtered = listed.filter(
+      (item) =>
+        (!needle || item.eventTitle.toLocaleLowerCase().includes(needle)) &&
+        (!month || monthOf(item) === month) &&
+        (!ministryId || item.ministryId === ministryId),
+    );
     return {
-      assignments: items
-        .filter((item): item is VolunteerScheduleAssignment => item != null)
-        .sort((a, b) =>
-          compareInstants({ left: a.startTime, right: b.startTime }),
-        ),
+      assignments: filtered,
       schedules: scheduleList,
+      counts: {
+        upcoming: listed.length,
+        thisMonth: listed.filter((item) => monthOf(item) === currentMonth)
+          .length,
+        openSwaps: listed.filter((item) => item.swapRequested).length,
+      },
+      next: listed[0] ?? null,
+      options: {
+        months: [...new Set(listed.map(monthOf))],
+        ministries: memberMinistryIds
+          .map((id) => ({
+            id: id as string,
+            name: ministryNames.get(id as string) ?? '',
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      },
     };
   }
 

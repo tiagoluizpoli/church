@@ -318,6 +318,7 @@ function AvailabilityAnswer({
   const publishedDays =
     openDays.length > 0 ? upcomingDays.filter(isPublishedDay) : [];
   const shownDays = publishedDays.length > 0 ? openDays : upcomingDays;
+  const publishedDayCount = upcomingDays.filter(isPublishedDay).length;
   const markedDays = dayEntries
     .filter(([, shifts]) =>
       shifts.some(
@@ -482,7 +483,7 @@ function AvailabilityAnswer({
                 key={shift.shiftId}
                 className={cn(
                   'flex items-center justify-between gap-3',
-                  touch && 'py-2.5',
+                  touch ? 'py-2.5' : 'min-h-10 py-1.5',
                 )}
               >
                 {/* Desktop reads one line: title · time · note, the answer flush right. */}
@@ -691,7 +692,7 @@ function AvailabilityAnswer({
           description={description}
           autoFocusTitle
           aside={
-            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:max-w-xl xl:justify-end">
               {allPublished && !check.readOnly ? (
                 <HeaderStatChip
                   testId="availability-published-chip"
@@ -769,6 +770,39 @@ function AvailabilityAnswer({
                   />
                 </>
               )}
+              {/* Counters, like every workspace header: where the cycle stands at a glance. */}
+              {openDays.length > 0 ? (
+                <HeaderStatChip
+                  testId="availability-open-days-chip"
+                  label={m.availability_detail_stat_open()}
+                  value={openDays.length}
+                />
+              ) : null}
+              {totalCount > 0 ? (
+                <HeaderStatChip
+                  testId="availability-available-shifts-chip"
+                  label={m.availability_detail_stat_available()}
+                  value={
+                    <span className="tabular-nums">
+                      {totalCount - unavailableCount}/{totalCount}
+                    </span>
+                  }
+                />
+              ) : null}
+              {pastDays.length > 0 ? (
+                <HeaderStatChip
+                  testId="availability-past-days-chip"
+                  label={m.availability_detail_stat_past()}
+                  value={pastDays.length}
+                />
+              ) : null}
+              {publishedDayCount > 0 ? (
+                <HeaderStatChip
+                  testId="availability-published-days-chip"
+                  label={m.availability_detail_stat_published()}
+                  value={publishedDayCount}
+                />
+              ) : null}
             </div>
           }
         />

@@ -176,6 +176,27 @@ describe('Availability check page', () => {
     expect(api.answerAvailabilityCheck).not.toHaveBeenCalled();
   });
 
+  it('counts open days and available Shifts in the header and follows each toggle', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const openDays = await screen.findByTestId('availability-open-days-chip');
+    const available = screen.getByTestId('availability-available-shifts-chip');
+    expect(openDays).toHaveTextContent('Dias em aberto2');
+    expect(available).toHaveTextContent('Turnos disponíveis3/3');
+    expect(
+      screen.queryByTestId('availability-past-days-chip'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('availability-published-days-chip'),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('switch', { name: /disponibilidade.*culto da manhã/i }),
+    );
+
+    expect(available).toHaveTextContent('Turnos disponíveis2/3');
+  });
+
   it('reaches a named Shift switch and confirms using the keyboard', async () => {
     const user = userEvent.setup();
     api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));

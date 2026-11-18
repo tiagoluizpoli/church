@@ -1149,11 +1149,7 @@ describe('Availability check page', () => {
     // Nothing to send yet: a calm done state instead of a save button.
     expect(await screen.findByText(m.availability_detail_done())).toBeVisible();
     // The answering rule stays in view for a returning volunteer.
-    expect(
-      screen.getByText(
-        `${m.availability_detail_help_covers()} ${m.availability_detail_change_until({ date: '01/10/2026' })}`,
-      ),
-    ).toBeVisible();
+    expect(screen.getByText(m.availability_detail_help_covers())).toBeVisible();
     expect(
       screen.queryByRole('button', {
         name: m.availability_detail_save_changes(),
@@ -1403,11 +1399,7 @@ describe('Availability check page', () => {
     expect(
       screen.getByText(m.availability_detail_available_everywhere()),
     ).toBeVisible();
-    expect(
-      screen.getByText(
-        `${m.availability_detail_help_covers()} ${m.availability_detail_change_until({ date: '01/10/2026' })}`,
-      ),
-    ).toBeVisible();
+    expect(screen.getByText(m.availability_detail_help_covers())).toBeVisible();
     expect(api.getAvailabilityCheck).toHaveBeenCalledWith('check-1');
   });
 });
@@ -1468,6 +1460,38 @@ describe('decision-first layout', () => {
     ).toBeVisible();
   });
 
+  it('only points to the schedule once every Shift is published', async () => {
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({ ...shift, published: true })),
+    });
+    renderPage();
+    await screen.findByText('Kids · Outubro 2026');
+    expect(screen.getByText(m.availability_detail_help_locked())).toBeVisible();
+    expect(
+      screen.queryByText(m.availability_detail_help_covers()),
+    ).not.toBeInTheDocument();
+    // One status in the header, not a notice per day.
+    expect(
+      within(screen.getByTestId('availability-published-chip')).getByRole(
+        'link',
+        { name: m.availability_detail_published_link() },
+      ),
+    ).toHaveAttribute('href', '/my-schedule');
+    expect(
+      screen.getAllByRole('link', {
+        name: m.availability_detail_published_link(),
+      }),
+    ).toHaveLength(1);
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: m.availability_detail_confirm() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(m.availability_detail_available_everywhere()),
+    ).not.toBeInTheDocument();
+  });
+
   it('undoes unsent changes on a confirmed answer back to the saved one', async () => {
     api.getAvailabilityCheck.mockResolvedValue({
       ...CHECK,
@@ -1492,7 +1516,7 @@ describe('decision-first layout', () => {
 });
 
 describe('everything-available shortcut', () => {
-  it('stays disabled until a Shift is marked, clears the marks without sending, and can be undone', async () => {
+  it('appears once a Shift is marked, clears the marks without sending, and can be undone', async () => {
     const onAnswered = vi.fn();
     api.answerAvailabilityCheck.mockResolvedValue({
       ...CHECK,
@@ -1501,10 +1525,10 @@ describe('everything-available shortcut', () => {
     renderPage(onAnswered);
     await screen.findByText('Kids · Outubro 2026');
     expect(
-      screen.getByRole('button', {
+      screen.queryByRole('button', {
         name: m.availability_detail_confirm_all(),
       }),
-    ).toBeDisabled();
+    ).not.toBeInTheDocument();
     const morning = screen.getByRole('switch', { name: /culto da manhã/i });
     await userEvent.click(morning);
     expect(

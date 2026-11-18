@@ -16982,9 +16982,33 @@ paths:
       summary: Get the caller's published schedule
       tags:
         - volunteer
-      description: List the current Volunteer's upcoming and in-progress Assignments
+      description: "List the current Volunteer's upcoming and in-progress Assignments
         from published MinistryParticipations, with the published Schedules of
-        every Ministry they serve in.
+        every Ministry they serve in. Search (trimmed, case-insensitive literal
+        Event-title substring), `month` (`yyyy-MM` of the Shift start in the
+        Church Timezone) and `ministryId` narrow `assignments` only: `counts`,
+        `next` and `options` cover the whole list."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+          in: query
+          name: search
+          required: false
+        - schema:
+            type: string
+            pattern: ^\d{4}-(0[1-9]|1[0-2])$
+          in: query
+          name: month
+          required: false
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: query
+          name: ministryId
+          required: false
       responses:
         "200":
           description: Default Response
@@ -17066,9 +17090,109 @@ paths:
                         - cycleId
                         - cycleName
                       additionalProperties: false
+                  counts:
+                    type: object
+                    properties:
+                      upcoming:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                      thisMonth:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                      openSwaps:
+                        type: integer
+                        minimum: 0
+                        maximum: 9007199254740991
+                    required:
+                      - upcoming
+                      - thisMonth
+                      - openSwaps
+                    additionalProperties: false
+                  next:
+                    nullable: true
+                    type: object
+                    properties:
+                      assignmentId:
+                        type: string
+                      eventId:
+                        type: string
+                      eventTitle:
+                        type: string
+                      shiftId:
+                        type: string
+                      startTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      endTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      ministryId:
+                        type: string
+                      ministryName:
+                        type: string
+                      sectorName:
+                        type: string
+                      roleId:
+                        type: string
+                      roleName:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - pending
+                          - confirmed
+                          - declined
+                      swapRequested:
+                        type: boolean
+                    required:
+                      - assignmentId
+                      - eventId
+                      - eventTitle
+                      - shiftId
+                      - startTime
+                      - endTime
+                      - ministryId
+                      - ministryName
+                      - sectorName
+                      - roleId
+                      - roleName
+                      - status
+                      - swapRequested
+                    additionalProperties: false
+                  options:
+                    type: object
+                    properties:
+                      months:
+                        type: array
+                        items:
+                          type: string
+                      ministries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                          additionalProperties: false
+                    required:
+                      - months
+                      - ministries
+                    additionalProperties: false
                 required:
                   - assignments
                   - schedules
+                  - counts
+                  - next
+                  - options
                 additionalProperties: false
   /api/v1/volunteer/assignments/{assignmentId}/swap-requests:
     post:

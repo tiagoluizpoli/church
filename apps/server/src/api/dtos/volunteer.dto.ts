@@ -145,24 +145,33 @@ export const dashboardResponseSchema = z.object({
 });
 export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
 
+export const volunteerScheduleQuerystringSchema = z.object({
+  search: z.string().trim().min(1).max(200).optional(),
+  month: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
+  ministryId: z.string().uuid().optional(),
+});
+
+const volunteerScheduleAssignmentSchema = z.object({
+  assignmentId: z.string(),
+  eventId: z.string(),
+  eventTitle: z.string(),
+  shiftId: z.string(),
+  startTime: instantSchema,
+  endTime: instantSchema,
+  ministryId: z.string(),
+  ministryName: z.string(),
+  sectorName: z.string(),
+  roleId: z.string(),
+  roleName: z.string(),
+  status: z.enum(['pending', 'confirmed', 'declined']),
+  swapRequested: z.boolean(),
+});
+
 export const volunteerScheduleResponseSchema = z.object({
-  assignments: z.array(
-    z.object({
-      assignmentId: z.string(),
-      eventId: z.string(),
-      eventTitle: z.string(),
-      shiftId: z.string(),
-      startTime: instantSchema,
-      endTime: instantSchema,
-      ministryId: z.string(),
-      ministryName: z.string(),
-      sectorName: z.string(),
-      roleId: z.string(),
-      roleName: z.string(),
-      status: z.enum(['pending', 'confirmed', 'declined']),
-      swapRequested: z.boolean(),
-    }),
-  ),
+  assignments: z.array(volunteerScheduleAssignmentSchema),
   schedules: z.array(
     z.object({
       ministryId: z.string(),
@@ -171,6 +180,17 @@ export const volunteerScheduleResponseSchema = z.object({
       cycleName: z.string(),
     }),
   ),
+  /** Over the listed Assignments; `thisMonth` uses the Church Timezone. */
+  counts: z.object({
+    upcoming: z.number().int().nonnegative(),
+    thisMonth: z.number().int().nonnegative(),
+    openSwaps: z.number().int().nonnegative(),
+  }),
+  next: volunteerScheduleAssignmentSchema.nullable(),
+  options: z.object({
+    months: z.array(z.string()),
+    ministries: z.array(z.object({ id: z.string(), name: z.string() })),
+  }),
 });
 
 const ministryScheduleEventResponseSchema = z.object({

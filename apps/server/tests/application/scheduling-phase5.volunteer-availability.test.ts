@@ -67,6 +67,7 @@ const instant = (value: string) => parseInstant({ value });
 const shifts: [CheckShiftRow, CheckShiftRow] = [
   {
     published: false,
+    assigned: false,
     shiftId: morning,
     eventId,
     eventTitle: 'Service',
@@ -75,6 +76,7 @@ const shifts: [CheckShiftRow, CheckShiftRow] = [
   },
   {
     published: false,
+    assigned: false,
     shiftId: evening,
     eventId,
     eventTitle: 'Service',

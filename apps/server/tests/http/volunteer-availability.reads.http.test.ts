@@ -28,6 +28,7 @@ import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry } from '@/seeds/builders/ministry';
+import { buildAssignment } from '@/seeds/builders/scheduling';
 import {
   buildAvailabilityCheck,
   buildUnavailableShift,
@@ -236,12 +237,22 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       endTime: new Date('2026-09-06T14:00:00Z'),
       label: 'Morning',
     });
-    await seedRequirement({
+    const heldRequirement = await seedRequirement({
       churchId,
       participationId: graph.participation.id,
       shiftId: held.id,
       roleId: role.id,
       peopleNeeded: 1,
+    });
+    await buildAssignment({
+      db,
+      churchId,
+      participationId: graph.participation.id,
+      shiftId: held.id,
+      volunteerId: member.volunteer.id,
+      roleId: role.id,
+      shiftRequirementId: heldRequirement.id,
+      status: 'pending',
     });
     const secondHeldRole = await seedRole({
       churchId,
@@ -300,6 +311,8 @@ describe('Volunteer availability reads through PostgreSQL', () => {
           label: 'Morning',
           available: true,
           published: false,
+          // A draft schedule never reveals the Assignment.
+          assigned: false,
         },
       ],
     });
@@ -370,8 +383,18 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       answerBy: '2026-09-05',
       readOnly: true,
       shifts: [
-        { shiftId: held.id, available: false, published: true },
-        { shiftId: later.id, available: true, published: false },
+        {
+          shiftId: held.id,
+          available: false,
+          published: true,
+          assigned: true,
+        },
+        {
+          shiftId: later.id,
+          available: true,
+          published: false,
+          assigned: false,
+        },
       ],
     });
   });

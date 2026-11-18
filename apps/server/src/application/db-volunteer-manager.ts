@@ -1081,6 +1081,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         endTime: shift.endTime,
         label: shift.label,
         published: shift.published,
+        assigned: shift.assigned,
         available: availableByShiftId.get(shift.shiftId) ?? true,
       }),
     );

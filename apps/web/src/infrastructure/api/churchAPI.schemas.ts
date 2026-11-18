@@ -7141,6 +7141,7 @@ export type GetAvailabilityCheck200ShiftsItem = {
   label?: string;
   available: boolean;
   published: boolean;
+  assigned: boolean;
 };
 
 export type GetAvailabilityCheck200 = {
@@ -7192,6 +7193,7 @@ export type AnswerAvailabilityCheck200ShiftsItem = {
   label?: string;
   available: boolean;
   published: boolean;
+  assigned: boolean;
 };
 
 export type AnswerAvailabilityCheck200 = {

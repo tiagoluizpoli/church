@@ -52,6 +52,7 @@ const availabilityCheckShiftSchema = z.object({
   label: z.string().optional(),
   available: z.boolean(),
   published: z.boolean(),
+  assigned: z.boolean(),
 });
 
 export const availabilityCheckDetailResponseSchema = z.object({
@@ -281,6 +282,7 @@ function availabilityCheckDetailToResponse(
       label: shift.label,
       available: shift.available,
       published: shift.published,
+      assigned: shift.assigned,
     })),
   };
 }

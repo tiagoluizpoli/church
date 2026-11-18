@@ -173,6 +173,8 @@ export interface VolunteerAvailabilityCheckSummary {
 
 export interface VolunteerCheckShift {
   published: boolean;
+  /** On the published schedule for this Shift. */
+  assigned: boolean;
   shiftId: string;
   eventId: string;
   eventTitle: string;

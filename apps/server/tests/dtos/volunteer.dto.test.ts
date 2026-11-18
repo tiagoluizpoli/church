@@ -252,6 +252,7 @@ describe('volunteerMapper', () => {
             label: 'Morning',
             available: true,
             published: false,
+            assigned: false,
           },
           {
             shiftId: 'sh2',
@@ -261,6 +262,7 @@ describe('volunteerMapper', () => {
             endTime,
             available: false,
             published: false,
+            assigned: false,
           },
         ],
       });

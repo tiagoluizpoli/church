@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import {
+  assignment,
   availabilityAsk,
   availabilityCheck,
   church,
@@ -636,6 +637,18 @@ export class DrizzleAvailabilityCheckRepository
         endTime: shift.endTime,
         label: shift.label,
         participationState: ministryParticipation.state,
+        assigned: exists(
+          db
+            .select({ id: assignment.id })
+            .from(assignment)
+            .where(
+              and(
+                eq(assignment.shiftId, shift.id),
+                eq(assignment.volunteerId, ministryMembership.volunteerId),
+                inArray(assignment.status, ['pending', 'confirmed']),
+              ),
+            ),
+        ).mapWith(Boolean),
       })
       .from(availabilityCheck)
       .innerJoin(
@@ -697,6 +710,8 @@ export class DrizzleAvailabilityCheckRepository
       endTime: fromDate({ date: row.endTime }),
       label: row.label ?? undefined,
       published: row.participationState === 'published',
+      // Only a published Assignment puts the Volunteer on the schedule.
+      assigned: row.participationState === 'published' && row.assigned,
     }));
   }
 

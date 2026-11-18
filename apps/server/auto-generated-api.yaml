@@ -16730,6 +16730,8 @@ paths:
                           type: boolean
                         published:
                           type: boolean
+                        assigned:
+                          type: boolean
                       required:
                         - shiftId
                         - eventId
@@ -16738,6 +16740,7 @@ paths:
                         - endTime
                         - available
                         - published
+                        - assigned
                       additionalProperties: false
                 required:
                   - answerBy
@@ -16859,6 +16862,8 @@ paths:
                           type: boolean
                         published:
                           type: boolean
+                        assigned:
+                          type: boolean
                       required:
                         - shiftId
                         - eventId
@@ -16867,6 +16872,7 @@ paths:
                         - endTime
                         - available
                         - published
+                        - assigned
                       additionalProperties: false
                 required:
                   - answerBy

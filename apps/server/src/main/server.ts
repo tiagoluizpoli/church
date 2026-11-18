@@ -3,6 +3,7 @@ import { env } from '@church/env/server';
 import { sql } from 'drizzle-orm';
 import { initErrorReporting } from '../infrastructure/services/sentry-error-reporter';
 import { createCompositionRoot } from './di/composition-root';
+import { registerErrorReportTunnel } from './fastify/error-report-tunnel';
 import { registerReadiness } from './fastify/readiness';
 import { registerControllers } from './fastify/register-controllers';
 import { createFastify } from './fastify/setup';
@@ -28,6 +29,13 @@ async function start(): Promise<void> {
     },
     { prefix: '/api/v1' },
   );
+
+  registerErrorReportTunnel({
+    app,
+    dsn: env.ERROR_REPORTING_ENABLED ? env.SENTRY_DSN : undefined,
+    environment: env.CHURCH_ENVIRONMENT,
+    settings: root.errorReportTunnel,
+  });
 
   registerReadiness({
     app,

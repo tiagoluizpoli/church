@@ -376,7 +376,7 @@ describe('Volunteer availability reads through PostgreSQL', () => {
     });
   });
 
-  it('orders pending checks by nearest Deadline, undated last, then Cycle start, with confirmed checks after', async () => {
+  it('orders pending checks by nearest Deadline, undated last, then Cycle start, with confirmed checks after, most recent Cycle first', async () => {
     const { churchId, ministryId, member, check } = await seedCheck();
     async function checkFor({
       name,
@@ -426,6 +426,13 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       answerBy: '2026-08-15',
       state: 'confirmed',
     });
+    // A later Deadline would sort it last if answered checks followed the Deadline.
+    const latestConfirmed = await checkFor({
+      name: 'February',
+      startDate: '2027-02-01',
+      answerBy: '2026-08-20',
+      state: 'confirmed',
+    });
     const november = await checkFor({
       name: 'November',
       startDate: '2026-11-01',
@@ -447,6 +454,7 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       check.id,
       november.id,
       december.id,
+      latestConfirmed.id,
       confirmed.id,
     ]);
   });

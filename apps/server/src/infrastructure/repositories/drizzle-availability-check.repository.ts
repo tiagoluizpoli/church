@@ -611,11 +611,13 @@ export class DrizzleAvailabilityCheckRepository
           }),
         ),
       )
-      // Enum order puts pending first; then the nearest Deadline, undated last.
+      // Enum order puts pending first, by nearest Deadline (undated last) then
+      // Cycle start; answered checks follow, most recent Cycle first.
       .orderBy(
         asc(availabilityCheck.state),
-        sql`${availabilityAsk.answerBy} asc nulls last`,
-        asc(cycle.startDate),
+        sql`case when ${availabilityCheck.state} = 'pending' then ${availabilityAsk.answerBy} end asc nulls last`,
+        sql`case when ${availabilityCheck.state} = 'pending' then ${cycle.startDate} end asc`,
+        sql`case when ${availabilityCheck.state} = 'confirmed' then ${cycle.startDate} end desc`,
         asc(availabilityCheck.id),
       );
 

@@ -41,6 +41,12 @@ export type AvailabilityCheckSummaryResponse = z.infer<
 
 export const availabilityCheckListResponseSchema = z.object({
   checks: z.array(availabilityCheckSummarySchema),
+  /** Header totals; the list is never paged or filtered, so it is the whole scope. */
+  counts: z.object({
+    total: z.number().int(),
+    pending: z.number().int(),
+    confirmed: z.number().int(),
+  }),
 });
 
 const availabilityCheckShiftSchema = z.object({
@@ -378,7 +384,17 @@ export const volunteerMapper = {
   availabilityCheckListToResponse(
     summaries: VolunteerAvailabilityCheckSummary[],
   ) {
-    return { checks: summaries.map(availabilityCheckSummaryToResponse) };
+    const pending = summaries.filter(
+      (summary) => summary.state === 'pending',
+    ).length;
+    return {
+      checks: summaries.map(availabilityCheckSummaryToResponse),
+      counts: {
+        total: summaries.length,
+        pending,
+        confirmed: summaries.length - pending,
+      },
+    };
   },
   availabilityCheckDetailToResponse,
   assignmentToResponse,

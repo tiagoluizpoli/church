@@ -3,6 +3,7 @@ import { type CalendarDay, now, today } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { CheckDeadline } from './check-deadline';
+import { HeaderStatChip } from '@/components/header-stat-chip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -191,9 +192,8 @@ function AvailabilityListContent() {
     meta: { showsOwnError: true },
   });
   const checks = checksQuery.data?.checks ?? [];
-  const pendingCount = checks.filter(
-    (check) => check.state === 'pending',
-  ).length;
+  const counts = checksQuery.data?.counts;
+  const pendingCount = counts?.pending ?? 0;
 
   // The empty and error states carry their own message, so no instruction precedes them.
   const description = checksQuery.isError
@@ -215,6 +215,27 @@ function AvailabilityListContent() {
       <WorkspaceIntroPanel
         title={m.nav_availability()}
         description={description}
+        aside={
+          counts && counts.total > 0 ? (
+            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
+              <HeaderStatChip
+                testId="availability-total-chip"
+                label={m.availability_list_chip_total()}
+                value={counts.total}
+              />
+              <HeaderStatChip
+                testId="availability-pending-chip"
+                label={m.availability_list_chip_pending()}
+                value={counts.pending}
+              />
+              <HeaderStatChip
+                testId="availability-confirmed-chip"
+                label={m.availability_list_chip_confirmed()}
+                value={counts.confirmed}
+              />
+            </div>
+          ) : undefined
+        }
       />
       {checksQuery.isError ? (
         <Alert variant="destructive">

@@ -38,6 +38,19 @@ const CHECK: ListAvailabilityChecks200ChecksItem = {
   unavailableShiftCount: 3,
 };
 
+/** The list response as the server sends it, header counts included. */
+function listOf(checks: ListAvailabilityChecks200ChecksItem[]) {
+  const pending = checks.filter((check) => check.state === 'pending').length;
+  return {
+    checks,
+    counts: {
+      total: checks.length,
+      pending,
+      confirmed: checks.length - pending,
+    },
+  };
+}
+
 function renderPage(
   content = <AvailabilityListPage />,
   queryClient?: QueryClient,
@@ -72,7 +85,7 @@ beforeEach(() => {
     ledMinistries: [],
     hasVolunteerMembership: true,
   });
-  api.listAvailabilityChecks.mockResolvedValue({ checks: [CHECK] });
+  api.listAvailabilityChecks.mockResolvedValue(listOf([CHECK]));
   api.getVolunteerDashboard.mockReturnValue(new Promise(() => {}));
   setTestClock({ instant: parseInstant({ value: '2026-10-02T01:00:00Z' }) });
 });
@@ -87,8 +100,8 @@ function desktopTable() {
 
 describe('Availability checks list', () => {
   it('lists the checks in server order as one standard table and as mobile cards, with a state badge and one action each', async () => {
-    api.listAvailabilityChecks.mockResolvedValue({
-      checks: [
+    api.listAvailabilityChecks.mockResolvedValue(
+      listOf([
         CHECK,
         { ...CHECK, id: 'kids-december', cycleName: 'Dezembro 2026' },
         {
@@ -100,8 +113,8 @@ describe('Availability checks list', () => {
           confirmedAt: '2026-09-20T15:00:00Z',
           unavailableShiftCount: 0,
         },
-      ],
-    });
+      ]),
+    );
     renderPage();
     const cards = within(
       await screen.findByTestId('data-table-mobile-list'),
@@ -111,6 +124,15 @@ describe('Availability checks list', () => {
         `${m.availability_list_pending_count({ count: 2 })} ${m.availability_list_help()}`,
       ),
     ).toBeVisible();
+    expect(screen.getByTestId('availability-total-chip')).toHaveTextContent(
+      `${m.availability_list_chip_total()}3`,
+    );
+    expect(screen.getByTestId('availability-pending-chip')).toHaveTextContent(
+      `${m.availability_list_chip_pending()}2`,
+    );
+    expect(screen.getByTestId('availability-confirmed-chip')).toHaveTextContent(
+      `${m.availability_list_chip_confirmed()}1`,
+    );
     // The intro panel and the table card are separate surfaces, as on every list page.
     expect(
       screen
@@ -209,8 +231,8 @@ describe('Availability checks list', () => {
     [1, 0, m.availability_list_available()],
     [1, 1, m.availability_list_unavailable()],
   ])('summarises an answer for %i shifts with %i unavailable plainly', async (totalShiftCount, unavailableShiftCount, text) => {
-    api.listAvailabilityChecks.mockResolvedValue({
-      checks: [
+    api.listAvailabilityChecks.mockResolvedValue(
+      listOf([
         {
           ...CHECK,
           state: 'confirmed',
@@ -218,8 +240,8 @@ describe('Availability checks list', () => {
           totalShiftCount,
           unavailableShiftCount,
         },
-      ],
-    });
+      ]),
+    );
     renderPage();
     expect(
       await within(
@@ -230,16 +252,16 @@ describe('Availability checks list', () => {
   });
 
   it('says every check is answered when none is pending', async () => {
-    api.listAvailabilityChecks.mockResolvedValue({
-      checks: [
+    api.listAvailabilityChecks.mockResolvedValue(
+      listOf([
         {
           ...CHECK,
           state: 'confirmed',
           totalShiftCount: 1,
           unavailableShiftCount: 1,
         },
-      ],
-    });
+      ]),
+    );
     renderPage();
     expect(
       await screen.findByText(m.availability_list_all_answered()),
@@ -271,9 +293,9 @@ describe('Availability checks list', () => {
       m.availability_list_due_in_days({ date: 'dom 4 out', days: 3 }),
     ],
   ])('marks a pending Deadline on %s as due soon in amber', async (answerBy, text) => {
-    api.listAvailabilityChecks.mockResolvedValue({
-      checks: [{ ...CHECK, answerBy }],
-    });
+    api.listAvailabilityChecks.mockResolvedValue(
+      listOf([{ ...CHECK, answerBy }]),
+    );
     renderPage();
     await screen.findByTestId('data-table-mobile-list');
     expect(within(mobileList()).getByText(text).parentElement).toHaveClass(
@@ -283,9 +305,9 @@ describe('Availability checks list', () => {
   });
 
   it('keeps a pending Deadline beyond three days muted', async () => {
-    api.listAvailabilityChecks.mockResolvedValue({
-      checks: [{ ...CHECK, answerBy: '2026-10-05' }],
-    });
+    api.listAvailabilityChecks.mockResolvedValue(
+      listOf([{ ...CHECK, answerBy: '2026-10-05' }]),
+    );
     renderPage();
     await screen.findByTestId('data-table-mobile-list');
     expect(
@@ -296,9 +318,9 @@ describe('Availability checks list', () => {
   });
 
   it('names the Deadline by weekday, adding the year only outside the current one', async () => {
-    api.listAvailabilityChecks.mockResolvedValue({
-      checks: [{ ...CHECK, answerBy: '2027-01-05' }],
-    });
+    api.listAvailabilityChecks.mockResolvedValue(
+      listOf([{ ...CHECK, answerBy: '2027-01-05' }]),
+    );
     renderPage();
     await screen.findByTestId('data-table-mobile-list');
     expect(m.availability_list_answer_by({ date: 'ter 5 jan 2027' })).toBe(
@@ -333,9 +355,9 @@ describe('Availability checks list', () => {
   });
 
   it('says a check has no Deadline when the leader has not set one', async () => {
-    api.listAvailabilityChecks.mockResolvedValue({
-      checks: [{ ...CHECK, answerBy: null }],
-    });
+    api.listAvailabilityChecks.mockResolvedValue(
+      listOf([{ ...CHECK, answerBy: null }]),
+    );
     renderPage();
     await screen.findByTestId('data-table-mobile-list');
     expect(document.querySelector('time')).toBeNull();
@@ -348,7 +370,7 @@ describe('Availability checks list', () => {
   });
 
   it('shows the localized empty state for a response without current checks, with no instruction to act', async () => {
-    api.listAvailabilityChecks.mockResolvedValue({ checks: [] });
+    api.listAvailabilityChecks.mockResolvedValue(listOf([]));
     renderPage();
     expect(await screen.findByText(m.availability_list_empty())).toBeVisible();
     expect(
@@ -370,7 +392,7 @@ describe('Availability checks list', () => {
   });
 
   it('offers a localized retry after a failed list request, showing loading while it refetches', async () => {
-    let resolveRetry: (value: { checks: (typeof CHECK)[] }) => void = () => {};
+    let resolveRetry: (value: ReturnType<typeof listOf>) => void = () => {};
     api.listAvailabilityChecks
       .mockRejectedValueOnce(new Error('Network unavailable'))
       .mockReturnValueOnce(
@@ -398,7 +420,7 @@ describe('Availability checks list', () => {
       }),
     ).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull();
-    act(() => resolveRetry({ checks: [CHECK] }));
+    act(() => resolveRetry(listOf([CHECK])));
     expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
   });
 
@@ -432,7 +454,7 @@ describe('loading states', () => {
 
   it('keeps the shown data, with no skeleton, while a refetch is in flight', async () => {
     const queryClient = new QueryClient();
-    api.listAvailabilityChecks.mockResolvedValue({ checks: [CHECK] });
+    api.listAvailabilityChecks.mockResolvedValue(listOf([CHECK]));
     renderPage(undefined, queryClient);
     expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
     api.listAvailabilityChecks.mockClear();

@@ -210,6 +210,7 @@ describe('Volunteer availability reads through PostgreSQL', () => {
           answerBy: '2026-09-05',
         },
       ],
+      counts: { total: 2, pending: 1, confirmed: 1 },
     });
     const deadlineQueries = queries.mock.calls.filter(([query]) =>
       JSON.stringify(query).includes('availability_ask'),

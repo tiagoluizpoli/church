@@ -82,11 +82,11 @@ function mobileList() {
 }
 
 function desktopTable() {
-  return screen.getByRole('grid', { name: m.availability_list_to_answer() });
+  return screen.getByRole('grid', { name: m.nav_availability() });
 }
 
 describe('Availability checks list', () => {
-  it('splits the server order into checks to answer and answered checks, as mobile cards and desktop rows', async () => {
+  it('lists the checks in server order as one standard table and as mobile cards, with a state badge and one action each', async () => {
     api.listAvailabilityChecks.mockResolvedValue({
       checks: [
         CHECK,
@@ -100,165 +100,106 @@ describe('Availability checks list', () => {
           confirmedAt: '2026-09-20T15:00:00Z',
           unavailableShiftCount: 0,
         },
-        {
-          ...CHECK,
-          id: 'next-check',
-          state: 'confirmed',
-          confirmedAt: '2026-09-21T15:00:00Z',
-          cycleName: 'Novembro 2026',
-        },
       ],
     });
     renderPage();
-    const [toAnswer, answered] = await screen.findAllByTestId(
-      'data-table-mobile-list',
-    );
+    const cards = within(
+      await screen.findByTestId('data-table-mobile-list'),
+    ).getAllByRole('listitem');
     expect(
       screen.getByText(
-        `${m.availability_list_pending_count({ count: 2 })} ${m.availability_list_description()}`,
+        `${m.availability_list_pending_count({ count: 2 })} ${m.availability_list_help()}`,
       ),
     ).toBeVisible();
-    expect(toAnswer).toHaveAccessibleName(m.availability_list_to_answer());
-    expect(screen.getByText(m.availability_list_help())).toBeVisible();
-    expect(answered).toHaveAccessibleName(m.availability_list_answered());
+    // The intro panel and the table card are separate surfaces, as on every list page.
     expect(
       screen
-        .getAllByRole('heading', { level: 2 })
-        .map((heading) => heading.textContent),
-    ).toEqual([
-      m.availability_list_to_answer(),
-      m.availability_list_answered(),
-    ]);
+        .getByRole('heading', { level: 1 })
+        .closest('section')
+        ?.contains(desktopTable()),
+    ).toBe(false);
 
-    const pendingCards = within(toAnswer).getAllByRole('listitem');
-    expect(pendingCards.map((card) => card.dataset.testid)).toEqual([
+    expect(cards.map((card) => card.dataset.testid)).toEqual([
       'availability-check-kids-check',
       'availability-check-kids-december',
+      'availability-check-music-check',
     ]);
+    expect(within(cards[0]).getByText('Infantil')).toBeVisible();
     expect(
-      within(pendingCards[0]).getByRole('heading', {
-        level: 3,
-        name: 'Infantil',
-      }),
-    ).toBeVisible();
+      within(cards[0]).getByText(m.availability_list_pending()),
+    ).toHaveClass('text-amber-700');
     expect(
-      within(pendingCards[0]).getByText(
+      within(cards[0]).getByText(
         `Outubro 2026 · ${m.availability_list_shift_count({ count: 12 })}`,
       ),
     ).toBeVisible();
     expect(
-      within(pendingCards[0]).getByRole('link', {
+      within(cards[0]).getByRole('link', {
         name: m.availability_list_answer_label({
           name: 'Infantil · Outubro 2026',
         }),
       }),
     ).toHaveAttribute('href', '/availability/kids-check');
-
-    const answeredCards = within(answered).getAllByRole('listitem');
-    expect(answeredCards.map((card) => card.dataset.testid)).toEqual([
-      'availability-check-music-check',
-      'availability-check-next-check',
-    ]);
     expect(
-      within(answeredCards[0]).getByText(m.availability_list_available_all()),
+      within(cards[2]).getByText(m.availability_detail_confirmed()),
+    ).toHaveClass('text-green-700');
+    expect(
+      within(cards[2]).getByText(m.availability_list_available_all()),
     ).toBeVisible();
     expect(
-      within(answeredCards[0]).getByText(
-        m.availability_list_answered_on({ date: '20/09/2026' }),
-      ),
-    ).toBeVisible();
-    expect(
-      within(answeredCards[0]).getByRole('link', {
+      within(cards[2]).getByRole('link', {
         name: m.availability_list_review_label({
           name: 'Louvor · Outubro 2026',
         }),
       }),
     ).toHaveAttribute('href', '/availability/music-check');
-    expect(
-      within(answeredCards[1]).getByText(
-        m.availability_list_available_count({ available: 9, total: 12 }),
-      ),
-    ).toBeVisible();
 
-    const pendingRows = within(
-      screen.getByRole('grid', { name: m.availability_list_to_answer() }),
-    )
-      .getAllByRole('row')
-      .slice(1);
-    expect(pendingRows.map((row) => row.dataset.testid)).toEqual([
+    const grid = desktopTable();
+    expect(
+      within(grid)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual([
+      m.availability_list_column_ministry(),
+      m.schedules_column_cycle(),
+      m.cycles_column_status(),
+      m.availability_list_column_detail(),
+      m.availability_list_column_actions(),
+    ]);
+    const rows = within(grid).getAllByRole('row').slice(1);
+    expect(rows.map((row) => row.dataset.testid)).toEqual([
       'availability-check-kids-check',
       'availability-check-kids-december',
+      'availability-check-music-check',
     ]);
-    const pendingName = within(pendingRows[0]).getByRole('rowheader');
-    expect(pendingName).toHaveTextContent(
-      `Infantil · Outubro 2026 · ${m.availability_list_shift_count({ count: 12 })}`,
-    );
-    // The shift count, then the Cycle, give way before the Ministry when the name does not fit.
-    expect(within(pendingName).getByText('Infantil')).not.toHaveClass(
-      'shrink-[1000]',
-    );
-    expect(within(pendingName).getByText('Infantil')).toHaveClass(
-      'font-semibold',
+    expect(within(rows[0]).getByRole('rowheader')).toHaveTextContent(
+      'Infantil',
     );
     expect(
-      within(pendingName).getByText(
+      within(rows[0]).getByText(
         `· ${m.availability_list_shift_count({ count: 12 })}`,
       ),
-    ).toHaveClass('shrink-[100000]', 'truncate');
-    expect(within(pendingName).getByText('· Outubro 2026')).toHaveClass(
-      'shrink-[1000]',
-      'truncate',
-    );
+    ).toHaveClass('text-muted-foreground');
     expect(
-      within(pendingRows[0]).getByRole('link', {
+      within(rows[0]).getByText(m.availability_list_pending()),
+    ).toBeVisible();
+    expect(
+      within(rows[0]).getByRole('link', {
         name: m.availability_list_answer_label({
           name: 'Infantil · Outubro 2026',
         }),
       }),
     ).toHaveTextContent(m.availability_list_answer());
-
-    const answeredGrid = screen.getByRole('grid', {
-      name: m.availability_list_answered(),
-    });
     expect(
-      within(answeredGrid)
-        .getAllByRole('columnheader')
-        .map((header) => header.textContent),
-    ).toEqual([
-      m.availability_list_column_ministry(),
-      m.availability_list_column_answer(),
-      m.availability_list_column_answered_on(),
-      m.availability_list_column_actions(),
-    ]);
-    const answeredRows = within(answeredGrid).getAllByRole('row').slice(1);
-    expect(answeredRows.map((row) => row.dataset.testid)).toEqual([
-      'availability-check-music-check',
-      'availability-check-next-check',
-    ]);
-    expect(within(answeredRows[0]).getByText('20/09/2026')).toHaveClass(
-      'text-muted-foreground',
-    );
+      within(rows[2]).getByText(m.availability_list_available_all()),
+    ).toHaveClass('text-muted-foreground');
     expect(
-      within(answeredRows[0]).getByRole('link', {
+      within(rows[2]).getByRole('link', {
         name: m.availability_list_review_label({
           name: 'Louvor · Outubro 2026',
         }),
       }),
     ).toHaveTextContent(m.availability_list_review());
-  });
-
-  it('opens a check from its desktop row with Enter', async () => {
-    const { router } = renderPage();
-    const grid = await screen.findByRole('grid', {
-      name: m.availability_list_to_answer(),
-    });
-    const row = within(grid).getAllByRole('row')[1];
-    act(() => row.focus());
-    expect(row).toHaveFocus();
-    await userEvent.keyboard('{Enter}');
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/availability/kids-check'),
-    );
   });
 
   it.each([
@@ -285,13 +226,10 @@ describe('Availability checks list', () => {
         await screen.findByTestId('data-table-mobile-list'),
       ).findByText(text),
     ).toBeVisible();
-    const grid = screen.getByRole('grid', {
-      name: m.availability_list_answered(),
-    });
-    expect(within(grid).getByText(text)).toBeVisible();
+    expect(within(desktopTable()).getByText(text)).toBeVisible();
   });
 
-  it('says every check is answered and shows no list to answer when none is pending', async () => {
+  it('says every check is answered when none is pending', async () => {
     api.listAvailabilityChecks.mockResolvedValue({
       checks: [
         {
@@ -307,27 +245,12 @@ describe('Availability checks list', () => {
       await screen.findByText(m.availability_list_all_answered()),
     ).toBeVisible();
     expect(
-      screen.queryByRole('grid', { name: m.availability_list_to_answer() }),
-    ).toBeNull();
-    expect(
       within(mobileList()).getByText(m.availability_list_unavailable()),
     ).toBeVisible();
+    expect(screen.queryByText(m.availability_list_pending())).toBeNull();
     expect(
-      screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent),
-    ).toEqual([m.availability_list_answered()]);
-    // One panel holds the title and the answered list, so no orphan header card is left.
-    expect(
-      screen
-        .getByRole('heading', { level: 1 })
-        .closest('section')
-        ?.contains(
-          screen.getByRole('heading', {
-            level: 2,
-            name: m.availability_list_answered(),
-          }),
-        ),
-    ).toBe(true);
-    expect(screen.queryByText(m.availability_list_help())).toBeNull();
+      screen.queryByText(m.availability_list_help(), { exact: false }),
+    ).toBeNull();
   });
 
   it('keeps the Deadline current through its Church day even when UTC is tomorrow', async () => {
@@ -464,9 +387,7 @@ describe('Availability checks list', () => {
     expect(
       screen.queryByText(m.availability_list_description(), { exact: false }),
     ).toBeNull();
-    expect(within(alert).getByText(m.availability_list_error())).toHaveClass(
-      'text-destructive',
-    );
+    expect(alert).toHaveClass('text-destructive');
     await userEvent.click(
       within(alert).getByRole('button', { name: m.common_retry() }),
     );

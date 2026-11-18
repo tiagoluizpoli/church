@@ -1,9 +1,12 @@
 import { m } from '@church/i18n/messages';
 import { type CalendarDay, now, today } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { CheckDeadline } from './check-deadline';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,13 +17,18 @@ import {
 import type { ListAvailabilityChecks200ChecksItem as Check } from '@/infrastructure/api/churchAPI.schemas';
 import { CapabilityGate } from '@/shared/components/capability-gate';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatDayOf } from '@/shared/utils/church-time';
 import { shouldRetry } from '@/utils/api';
 import { volunteerApi } from '@/utils/api-instances';
 
 interface CheckProps {
   check: Check;
 }
+
+interface CheckOnDayProps extends CheckProps {
+  churchDay: CalendarDay;
+}
+
+const ACTION_SIZE = 'min-h-11 min-w-11 md:min-h-0 md:min-w-0';
 
 function titleOf(check: Check): string {
   return `${check.ministryName} · ${check.cycleName}`;
@@ -45,22 +53,22 @@ function answerSummary({ check }: CheckProps): string {
   return m.availability_list_available_count({ available, total });
 }
 
-interface AnsweredOnProps extends CheckProps {
-  churchTimezone: string;
-  /** Spells out "Respondida em" where no column header says it. */
-  labelled: boolean;
-}
-
-function AnsweredOn({ check, churchTimezone, labelled }: AnsweredOnProps) {
-  if (!check.confirmedAt) return null;
-  const date = formatDayOf({
-    value: check.confirmedAt,
-    timeZone: churchTimezone,
-  });
-  return (
-    <time dateTime={check.confirmedAt} className="text-muted-foreground">
-      {labelled ? m.availability_list_answered_on({ date }) : date}
-    </time>
+/** Pending and confirmed use the Traffic-Light Exception's amber and green. */
+function StateBadge({ check }: CheckProps) {
+  return check.state === 'confirmed' ? (
+    <Badge
+      variant="outline"
+      className="border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400"
+    >
+      {m.availability_detail_confirmed()}
+    </Badge>
+  ) : (
+    <Badge
+      variant="outline"
+      className="border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+    >
+      {m.availability_list_pending()}
+    </Badge>
   );
 }
 
@@ -68,7 +76,7 @@ function CheckAction({ check }: CheckProps) {
   const confirmed = check.state === 'confirmed';
   const name = titleOf(check);
   return (
-    <div className="mt-3 xl:mt-0">
+    <div className="flex justify-end max-md:ml-auto md:w-full">
       <Link
         to="/availability/$checkId"
         params={{ checkId: check.id }}
@@ -77,12 +85,10 @@ function CheckAction({ check }: CheckProps) {
             ? m.availability_list_review_label({ name })
             : m.availability_list_answer_label({ name })
         }
-        // A 44px target on touch layouts, the default 32px button on desktop
-        // (volunteers skew older, so no dense 12px row action here).
         className={buttonVariants({
           variant: confirmed ? 'outline' : 'default',
-          size: 'touch',
-          className: 'min-w-32 xl:h-8 xl:min-w-24 xl:px-3',
+          size: 'xs',
+          className: ACTION_SIZE,
         })}
       >
         {confirmed
@@ -93,166 +99,90 @@ function CheckAction({ check }: CheckProps) {
   );
 }
 
-interface CheckListProps {
+/** A pending check's Deadline; an answered one shows what the volunteer said. */
+function CheckDetail({ check, churchDay }: CheckOnDayProps) {
+  return check.state === 'confirmed' ? (
+    <p className="text-muted-foreground">{answerSummary({ check })}</p>
+  ) : (
+    <CheckDeadline check={check} churchDay={churchDay} />
+  );
+}
+
+function checkColumns(): DataTableColumn[] {
+  return [
+    {
+      id: 'ministry',
+      name: m.availability_list_column_ministry(),
+      isRowHeader: true,
+    },
+    { id: 'cycle', name: m.schedules_column_cycle() },
+    { id: 'status', name: m.cycles_column_status() },
+    { id: 'detail', name: m.availability_list_column_detail() },
+    { id: 'actions', name: m.availability_list_column_actions() },
+  ];
+}
+
+interface CheckTableProps {
   checks: Check[];
   churchDay: CalendarDay;
-  churchTimezone: string;
-  label: string;
 }
 
-/** One flat row per check on phones and tablets; the action follows it. */
-function CheckCard({
-  check,
-  churchDay,
-  churchTimezone,
-}: CheckProps & Omit<CheckListProps, 'checks' | 'label'>) {
-  const pending = check.state === 'pending';
-  return (
-    <div className="space-y-1 border-t pt-4 text-sm">
-      <h3 className="break-words font-semibold text-base">
-        {check.ministryName}
-      </h3>
-      <p className="text-muted-foreground">
-        {pending
-          ? `${check.cycleName} · ${shiftCount({ check })}`
-          : check.cycleName}
-      </p>
-      {pending ? (
-        <CheckDeadline check={check} churchDay={churchDay} />
-      ) : (
-        <>
-          <p>{answerSummary({ check })}</p>
-          <p>
-            <AnsweredOn
-              check={check}
-              churchTimezone={churchTimezone}
-              labelled
-            />
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
-
-/** The shift count gives way first, then the Cycle, so the Ministry and Cycle,
- * which tell checks apart, stay whole longest; the Ministry truncates last. */
-function NameCell({ check }: CheckProps) {
-  return (
-    <span className="flex min-w-0" title={titleOf(check)}>
-      <span className="min-w-0 truncate font-semibold">
-        {check.ministryName}
-      </span>
-      <span className="min-w-0 shrink-[1000] truncate whitespace-pre text-muted-foreground">
-        {` · ${check.cycleName}`}
-      </span>
-      {check.state === 'pending' ? (
-        <span className="min-w-0 shrink-[100000] truncate whitespace-pre text-muted-foreground">
-          {` · ${shiftCount({ check })}`}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-const nameColumn: DataTableColumn = {
-  id: 'ministry',
-  name: m.availability_list_column_ministry(),
-  isRowHeader: true,
-  className: 'max-w-0',
-};
-
-// Fixed widths line the two stacked tables up: Prazo spans Sua resposta plus
-// Respondida em, both action columns match, and the name column takes the rest.
-const deadlineColumn: DataTableColumn = {
-  id: 'deadline',
-  name: m.availability_list_column_deadline(),
-  className: 'w-96 whitespace-nowrap',
-};
-const answerColumns: DataTableColumn[] = [
-  {
-    id: 'answer',
-    name: m.availability_list_column_answer(),
-    className: 'w-60 whitespace-nowrap',
-  },
-  {
-    id: 'answeredOn',
-    name: m.availability_list_column_answered_on(),
-    className: 'w-36 whitespace-nowrap',
-  },
-];
-const actionsColumn: DataTableColumn = {
-  id: 'actions',
-  name: m.availability_list_column_actions(),
-  className: 'w-32',
-};
-
-function CheckList({
-  checks,
-  churchDay,
-  churchTimezone,
-  label,
-}: CheckListProps) {
-  const navigate = useNavigate();
-  const pending = checks[0]?.state === 'pending';
+function CheckTable({ checks, churchDay }: CheckTableProps) {
   return (
     <DataTable<Check>
-      aria-label={label}
-      // Below xl the touch cards keep every name whole: a 1024px workspace
-      // would clip the Ministry and Cycle with only a hover title to recover them.
-      tableFrom="xl"
-      columns={[
-        nameColumn,
-        ...(pending ? [deadlineColumn] : answerColumns),
-        actionsColumn,
-      ]}
+      aria-label={m.nav_availability()}
+      columns={checkColumns()}
       items={checks}
       rowId={({ item }) => item.id}
       rowTestId={({ item }) => `availability-check-${item.id}`}
-      onRowAction={({ item }) =>
-        navigate({ to: '/availability/$checkId', params: { checkId: item.id } })
-      }
-      renderCell={({ item, column }) => (
-        <>
-          {column.id === 'ministry' ? <NameCell check={item} /> : null}
-          {column.id === 'deadline' ? (
-            <CheckDeadline check={item} churchDay={churchDay} />
-          ) : null}
-          {column.id === 'answer' ? answerSummary({ check: item }) : null}
-          {column.id === 'answeredOn' ? (
-            <AnsweredOn
-              check={item}
-              churchTimezone={churchTimezone}
-              labelled={false}
-            />
-          ) : null}
-        </>
-      )}
-      rowActions={({ item }) => <CheckAction check={item} />}
+      renderCell={({ item, column }) => {
+        switch (column.id) {
+          case 'ministry':
+            return <span className="font-medium">{item.ministryName}</span>;
+          case 'cycle':
+            return (
+              <span>
+                {item.cycleName}
+                {item.state === 'pending' ? (
+                  <span className="text-muted-foreground">
+                    {` · ${shiftCount({ check: item })}`}
+                  </span>
+                ) : null}
+              </span>
+            );
+          case 'status':
+            return <StateBadge check={item} />;
+          case 'detail':
+            return <CheckDetail check={item} churchDay={churchDay} />;
+          default:
+            return <CheckAction check={item} />;
+        }
+      }}
       renderMobileCard={({ item }) => (
-        <CheckCard
-          check={item}
-          churchDay={churchDay}
-          churchTimezone={churchTimezone}
-        />
+        <div className="surface-subtle workspace-panel flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          <div className="min-w-0 flex-1 basis-40 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="break-words font-medium">{item.ministryName}</p>
+              <StateBadge check={item} />
+            </div>
+            <p className="text-muted-foreground text-xs">
+              {item.state === 'pending'
+                ? `${item.cycleName} · ${shiftCount({ check: item })}`
+                : item.cycleName}
+            </p>
+            <CheckDetail check={item} churchDay={churchDay} />
+          </div>
+          <CheckAction check={item} />
+        </div>
       )}
     />
-  );
-}
-
-function ListSkeleton() {
-  return (
-    <Pending label={m.availability_list_loading()} className="space-y-3">
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-    </Pending>
   );
 }
 
 function AvailabilityListContent() {
   const { churchTimezone } = useTimezone();
   const churchDay = today({ instant: now(), timeZone: churchTimezone });
+  // The server orders the checks: pending first by Deadline, then answered.
   const checksQuery = useQuery({
     queryKey: ['availability-checks'],
     queryFn: () => volunteerApi.listAvailabilityChecks(),
@@ -261,97 +191,62 @@ function AvailabilityListContent() {
     meta: { showsOwnError: true },
   });
   const checks = checksQuery.data?.checks ?? [];
-  // The server orders pending before confirmed, so splitting keeps its order.
-  const toAnswer = checks.filter((check) => check.state === 'pending');
-  const answered = checks.filter((check) => check.state === 'confirmed');
-  const listProps = { churchDay, churchTimezone };
+  const pendingCount = checks.filter(
+    (check) => check.state === 'pending',
+  ).length;
 
   // The empty and error states carry their own message, so no instruction precedes them.
   const description = checksQuery.isError
     ? undefined
-    : toAnswer.length > 0
+    : pendingCount > 0
       ? `${
-          toAnswer.length === 1
+          pendingCount === 1
             ? m.availability_list_pending_count_one()
-            : m.availability_list_pending_count({ count: toAnswer.length })
-        } ${m.availability_list_description()}`
-      : answered.length > 0
+            : m.availability_list_pending_count({ count: pendingCount })
+        } ${m.availability_list_help()}`
+      : checks.length > 0
         ? m.availability_list_all_answered()
         : checksQuery.isSuccess
-          ? m.availability_list_empty()
+          ? undefined
           : m.availability_list_description();
 
   return (
-    // Capped so a row's ministry, deadline and action stay one glance apart on wide screens.
-    <WorkspacePage className="max-w-5xl">
+    <WorkspacePage>
       <WorkspaceIntroPanel
         title={m.nav_availability()}
         description={description}
-      >
-        {checksQuery.isLoading ? (
-          <ListSkeleton />
-        ) : checksQuery.isError ? (
-          <div
-            role="alert"
-            className="flex flex-wrap items-center gap-3 border-t pt-4"
-          >
-            <p className="text-destructive text-sm">
-              {m.availability_list_error()}
-            </p>
+      />
+      {checksQuery.isError ? (
+        <Alert variant="destructive">
+          <AlertDescription className="flex flex-wrap items-center gap-3">
+            <span>{m.availability_list_error()}</span>
             <Button
+              type="button"
+              size="sm"
               variant="outline"
-              size="touch"
+              className="min-h-11 md:min-h-0"
               onClick={() => checksQuery.refetch()}
             >
               {m.common_retry()}
             </Button>
-          </div>
-        ) : (
-          <>
-            {toAnswer.length > 0 ? (
-              <section
-                aria-labelledby="availability-to-answer"
-                className="space-y-4 pt-4"
-              >
-                <div className="workspace-section-header">
-                  <h2
-                    id="availability-to-answer"
-                    className="workspace-section-title"
-                  >
-                    {m.availability_list_to_answer()}
-                  </h2>
-                  <p className="workspace-section-description">
-                    {m.availability_list_help()}
-                  </p>
-                </div>
-                <CheckList
-                  checks={toAnswer}
-                  label={m.availability_list_to_answer()}
-                  {...listProps}
-                />
-              </section>
-            ) : null}
-            {answered.length > 0 ? (
-              <section
-                aria-labelledby="availability-answered"
-                className="space-y-4 pt-4"
-              >
-                <h2
-                  id="availability-answered"
-                  className="workspace-section-title"
-                >
-                  {m.availability_list_answered()}
-                </h2>
-                <CheckList
-                  checks={answered}
-                  label={m.availability_list_answered()}
-                  {...listProps}
-                />
-              </section>
-            ) : null}
-          </>
-        )}
-      </WorkspaceIntroPanel>
+          </AlertDescription>
+        </Alert>
+      ) : checksQuery.isLoading ? (
+        <Pending label={m.availability_list_loading()} className="grid gap-3">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </Pending>
+      ) : checks.length === 0 ? (
+        <p className="text-muted-foreground" role="status">
+          {m.availability_list_empty()}
+        </p>
+      ) : (
+        <Card className="surface-panel">
+          <CardContent>
+            <CheckTable checks={checks} churchDay={churchDay} />
+          </CardContent>
+        </Card>
+      )}
     </WorkspacePage>
   );
 }

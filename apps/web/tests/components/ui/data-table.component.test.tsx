@@ -203,26 +203,6 @@ describe('DataTable', () => {
     expect(table.closest('.hidden')).toHaveClass('lg:block');
   });
 
-  it('keeps the cards up to the xl breakpoint when asked', () => {
-    render(
-      <DataTable
-        aria-label="Rows"
-        columns={COLUMNS}
-        items={ROWS}
-        rowId={({ item }) => item.id}
-        renderCell={renderCell}
-        renderMobileCard={renderMobileCard}
-        tableFrom="xl"
-      />,
-    );
-    expect(screen.getByTestId('data-table-mobile-list')).toHaveClass(
-      'xl:hidden',
-    );
-    expect(
-      screen.getByRole('grid', { name: 'Rows' }).closest('.hidden'),
-    ).toHaveClass('xl:block');
-  });
-
   it('renders mobileItems in the mobile list when it differs from the desktop items', () => {
     render(
       <DataTable

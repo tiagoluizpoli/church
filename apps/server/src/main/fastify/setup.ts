@@ -43,6 +43,7 @@ import {
   serializeRequest,
 } from '../../infrastructure/privacy/privacy';
 import { auth } from '../di/server-auth';
+import { fastifyOtel } from '../instrumentation';
 import { requestId } from './request-id';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
@@ -73,7 +74,7 @@ export async function createFastify({
   // Bun doesn't support pino worker-thread transports — use a synchronous
   // pino-pretty stream in dev instead of the transport API.
   const devLogger = pino(
-    { level: 'info', serializers: logSerializers },
+    { level: env.LOG_LEVEL, serializers: logSerializers },
     PinoPretty({ colorize: true, translateTime: 'HH:MM:ss' }),
   );
 
@@ -81,7 +82,7 @@ export async function createFastify({
     ? createFastifyInstance({
         genReqId: requestId,
         loggerInstance: pino(
-          { level: 'info', serializers: logSerializers },
+          { level: env.LOG_LEVEL, serializers: logSerializers },
           logStream,
         ),
       })
@@ -90,12 +91,15 @@ export async function createFastify({
       : isProd
         ? createFastifyInstance({
             genReqId: requestId,
-            logger: { serializers: logSerializers },
+            logger: { level: env.LOG_LEVEL, serializers: logSerializers },
           })
         : createFastifyInstance({
             genReqId: requestId,
             loggerInstance: devLogger,
           });
+
+  // First, so its onRequest hook runs right after genReqId (see request-id.ts).
+  await app.register(fastifyOtel.plugin());
 
   registerE2eTargetHeader({ app, enabled: debugEndpointsEnabled() });
 

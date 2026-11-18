@@ -32,7 +32,12 @@ function deadlineCopy({ date, days }: DeadlineCopyInput): string {
 /** A pending check's Deadline, urgent within three Church days and overdue after it.
  * Answers stay open past the Deadline until the Cycle ends, so overdue still invites one. */
 export function CheckDeadline({ check, churchDay }: CheckDeadlineProps) {
-  if (!check.answerBy) return null;
+  if (!check.answerBy)
+    return (
+      <p className="text-muted-foreground">
+        {m.availability_list_no_deadline()}
+      </p>
+    );
   const date = formatCalendarDateOnly({ value: check.answerBy });
   const days = calendarDaysBetween({
     start: churchDay,

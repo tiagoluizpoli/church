@@ -433,6 +433,7 @@ const TableRow = <T extends object>({
             striped && 'even:bg-muted',
             (props.href || props.onAction || selectionMode === 'multiple') &&
               'hover:bg-(--table-selected-bg) hover:text-fg',
+            (props.href || props.onAction) && 'cursor-pointer',
             (props.href || props.onAction || selectionMode === 'multiple') &&
               isFocusVisibleWithin &&
               'bg-(--table-selected-bg)/50 selected:bg-(--table-selected-bg)/50 text-fg',
@@ -486,7 +487,7 @@ const TableCell = ({ className, ref, ...props }: TableCellProps) => {
       {...props}
       className={cx(
         twJoin(
-          'group px-4 py-(--gutter-y) align-middle outline-hidden first:ps-(--gutter,--spacing(2)) last:pe-(--gutter,--spacing(2)) group-has-data-focus-visible-within:text-fg',
+          'group px-4 py-(--gutter-y) align-middle outline-hidden data-focus-visible:ring-2 data-focus-visible:ring-ring data-focus-visible:ring-inset first:ps-(--gutter,--spacing(2)) last:pe-(--gutter,--spacing(2)) group-has-data-focus-visible-within:text-fg',
           !striped && 'border-b',
           grid && 'border-l first:border-l-0',
           !bleed && 'sm:last:pe-1 sm:first:ps-1',

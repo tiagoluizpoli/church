@@ -27,6 +27,9 @@ export interface DataTableColumn {
    * `actionsColumnId` column, whose buttons name themselves; pass `false` to
    * show it. */
   hideName?: boolean;
+  /** Extra classes for the column's header and body cells on desktop, e.g.
+   * `w-full max-w-0` so a long name truncates instead of widening the table. */
+  className?: string;
 }
 
 export interface DataTableItemInput<T> {
@@ -65,6 +68,9 @@ export interface DataTableProps<T extends object> {
    * consumers write a row's actions once instead of duplicating them per
    * layout. */
   rowActions?: (input: DataTableItemInput<T>) => ReactNode;
+  /** Opens a desktop row on click or Enter, so the focused row is the
+   * keyboard path to it instead of arrowing across to its action. */
+  onRowAction?: (input: DataTableItemInput<T>) => void;
   /** Column id that `rowActions` renders into on desktop. Defaults to
    * `'actions'`; ignored if `rowActions` is omitted. */
   actionsColumnId?: string;
@@ -81,6 +87,9 @@ export interface DataTableProps<T extends object> {
    * e.g. a mobile-only "add" trigger that belongs to this list rather than
    * to any one row. */
   mobileListHeader?: ReactNode;
+  /** Breakpoint where the cards give way to the table. `lg` keeps touch
+   * cards on tablets when the row's facts can't fit a 768px workspace. */
+  tableFrom?: 'md' | 'lg';
   sortDescriptor?: SortDescriptor;
   onSortChange?: (sortDescriptor: SortDescriptor) => void;
   isLoading?: boolean;
@@ -93,6 +102,11 @@ export interface DataTableProps<T extends object> {
   onSelectionChange?: (keys: Selection) => void;
   className?: string;
 }
+
+const breakpointClasses = {
+  md: { cards: 'md:hidden', table: 'hidden md:block' },
+  lg: { cards: 'lg:hidden', table: 'hidden lg:block' },
+} as const;
 
 const defaultLoadingContent = () => (
   <p
@@ -127,12 +141,14 @@ export function DataTable<T extends object>({
   renderCell,
   renderMobileCard,
   rowActions,
+  onRowAction,
   actionsColumnId = 'actions',
   rowSpansColumns,
   rowTestId,
   rowClassName,
   mobileListTestId = 'data-table-mobile-list',
   mobileListHeader,
+  tableFrom = 'md',
   sortDescriptor,
   onSortChange,
   isLoading = false,
@@ -167,7 +183,7 @@ export function DataTable<T extends object>({
   return (
     <div className={cn('space-y-3', className)}>
       <div
-        className="space-y-3 md:hidden"
+        className={cn('space-y-3', breakpointClasses[tableFrom].cards)}
         role={isSelectable ? 'listbox' : 'list'}
         aria-label={ariaLabel}
         data-testid={mobileListTestId}
@@ -188,7 +204,7 @@ export function DataTable<T extends object>({
         })}
       </div>
 
-      <div className="hidden md:block">
+      <div className={breakpointClasses[tableFrom].table}>
         <Table
           aria-label={ariaLabel}
           sortDescriptor={sortDescriptor}
@@ -204,9 +220,10 @@ export function DataTable<T extends object>({
               <TableColumn
                 isRowHeader={column.isRowHeader}
                 allowsSorting={column.allowsSorting}
-                className={
-                  column.id === actionsColumnId ? 'text-end' : undefined
-                }
+                className={cn(
+                  column.id === actionsColumnId && 'text-end',
+                  column.className,
+                )}
               >
                 {(column.hideName ?? column.id === actionsColumnId) ? (
                   <span className="sr-only">{column.name}</span>
@@ -228,16 +245,20 @@ export function DataTable<T extends object>({
                   columns={spans ? orderedColumns.slice(0, 1) : orderedColumns}
                   data-testid={rowTestId?.({ item })}
                   className={rowClassName?.({ item })}
+                  onAction={
+                    onRowAction ? () => onRowAction({ item }) : undefined
+                  }
                 >
                   {(column) => (
                     <TableCell
                       colSpan={spans ? columns.length : undefined}
                       // Row actions always sit flush right, never centered or at the start.
-                      className={
-                        !spans && column.id === actionsColumnId
-                          ? 'text-end *:justify-end'
-                          : undefined
-                      }
+                      className={cn(
+                        !spans &&
+                          column.id === actionsColumnId &&
+                          'text-end *:justify-end',
+                        !spans && column.className,
+                      )}
                     >
                       {rowActions && column.id === actionsColumnId
                         ? rowActions({ item })

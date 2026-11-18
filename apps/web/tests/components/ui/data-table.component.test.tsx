@@ -149,6 +149,60 @@ describe('DataTable', () => {
     );
   });
 
+  it('opens a desktop row on click and on Enter when onRowAction is set', async () => {
+    const onRowAction = vi.fn();
+    render(
+      <DataTable
+        aria-label="Rows"
+        columns={COLUMNS}
+        items={ROWS}
+        rowId={({ item }) => item.id}
+        renderCell={renderCell}
+        renderMobileCard={renderMobileCard}
+        onRowAction={onRowAction}
+      />,
+    );
+    const [, first, second] = within(
+      screen.getByRole('grid', { name: 'Rows' }),
+    ).getAllByRole('row');
+    expect(first).toHaveClass('cursor-pointer');
+    await userEvent.click(within(first).getByText('Alpha'));
+    expect(onRowAction).toHaveBeenLastCalledWith({ item: ROWS[0] });
+    act(() => second.focus());
+    await userEvent.keyboard('{Enter}');
+    expect(onRowAction).toHaveBeenLastCalledWith({ item: ROWS[1] });
+    expect(onRowAction).toHaveBeenCalledTimes(2);
+  });
+
+  it('applies a column className to its header and body cells, and switches layouts at the chosen breakpoint', () => {
+    render(
+      <DataTable
+        aria-label="Rows"
+        columns={[{ ...COLUMNS[0], className: 'w-full max-w-0' }, COLUMNS[1]]}
+        items={ROWS}
+        rowId={({ item }) => item.id}
+        renderCell={renderCell}
+        renderMobileCard={renderMobileCard}
+        tableFrom="lg"
+      />,
+    );
+    const table = screen.getByRole('grid', { name: 'Rows' });
+    expect(
+      within(table).getByRole('columnheader', { name: 'Name' }),
+    ).toHaveClass('w-full', 'max-w-0');
+    expect(within(table).getByRole('rowheader', { name: 'Alpha' })).toHaveClass(
+      'w-full',
+      'max-w-0',
+    );
+    expect(within(table).getAllByRole('gridcell')[0]).not.toHaveClass(
+      'max-w-0',
+    );
+    expect(screen.getByTestId('data-table-mobile-list')).toHaveClass(
+      'lg:hidden',
+    );
+    expect(table.closest('.hidden')).toHaveClass('lg:block');
+  });
+
   it('renders mobileItems in the mobile list when it differs from the desktop items', () => {
     render(
       <DataTable

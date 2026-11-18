@@ -266,7 +266,7 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **Primary:** solid Deep Chapel Blue with `primary-foreground` text. A primary rendered as a link (`<a>`) dims to `primary/80` on hover; a primary `<button>` has no hover fill change.
 - **Outline:** `background` fill with a `border` stroke, hover to `muted`. **Secondary:** `secondary` fill, hover to `secondary/80`. **Ghost:** transparent, hover to `muted`. **Link:** `primary` text, underline on hover.
 - **Destructive:** a soft `destructive/10` tint with red text at rest, `destructive/20` on hover. It doesn't read as an alarm until interacted with.
-- **Focus:** border shifts to `ring` plus a 1px `ring/50` ring, consistent across variants. Disabled is 50% opacity with pointer events off.
+- **Focus:** border shifts to `ring` plus a solid 2px `ring` ring set 2px off the control on a `background` gap, consistent across variants, so focus on a filled primary still measures above 3:1. Disabled is 50% opacity with pointer events off.
 - **Context-driven sizing:** a `Button` with no explicit `size` reads `FormControlSizeProvider` context and resolves to `touch` inside a mobile sheet, `default` everywhere else.
 
 ### Badges
@@ -301,7 +301,7 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **DatePickerField:** an outline `Button` trigger (calendar icon plus the formatted date or a placeholder) that opens the `Calendar` in a `Popover`, replacing the OS date picker so the calendar matches the rest of the system in both themes.
 
 ### Lists & Tables
-- **DataTable:** renders as a `listbox` only when a selection mode is set; otherwise it is a plain `list` with `listitem` rows and an `aria-label`. Loading and empty states default to localized one-line messages. The actions column (`actionsColumnId`, default `actions`) keeps its title for screen readers only; pass `hideName: false` to show it.
+- **DataTable:** renders as a `listbox` only when a selection mode is set; otherwise it is a plain `list` with `listitem` rows and an `aria-label`. Loading and empty states default to localized one-line messages. The actions column (`actionsColumnId`, default `actions`) keeps its title for screen readers only; pass `hideName: false` to show it. A focused cell shows an inset 2px `ring`, never color alone. With `onRowAction` a row opens on click or Enter and gets a pointer cursor and hover fill. `tableFrom="lg"` keeps the touch cards on tablets when a row's facts can't fit a 768px workspace.
 
 ### Sheets & Overlays
 - **Drawer (base-ui):** the mobile counterpart to `Dialog`, used directly and via `ResponsiveFormSurface`. Bottom sheet by default (`swipeDirection="down"`), sheet-top corners, a pill grab handle, and no shadow (see Elevation & Depth).

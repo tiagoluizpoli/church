@@ -76,10 +76,19 @@ beforeEach(() => {
   setTestClock({ instant: parseInstant({ value: '2026-10-02T01:00:00Z' }) });
 });
 
+function mobileList() {
+  return screen.getByTestId('data-table-mobile-list');
+}
+
+function desktopTable() {
+  return screen.getByRole('grid', { name: m.nav_availability() });
+}
+
 describe('Availability checks list', () => {
-  it('shows an independent card per Ministry with pending first and the three answer states', async () => {
+  it('keeps the server order and shows each check as a mobile card and a desktop row', async () => {
     api.listAvailabilityChecks.mockResolvedValue({
       checks: [
+        CHECK,
         {
           ...CHECK,
           id: 'music-check',
@@ -88,7 +97,6 @@ describe('Availability checks list', () => {
           state: 'confirmed',
           unavailableShiftCount: 0,
         },
-        CHECK,
         {
           ...CHECK,
           id: 'next-check',
@@ -98,44 +106,136 @@ describe('Availability checks list', () => {
       ],
     });
     renderPage();
-    const cards = await screen.findAllByRole('link');
+    const cards = within(
+      await screen.findByTestId('data-table-mobile-list'),
+    ).getAllByRole('listitem');
     expect(cards).toHaveLength(3);
-    expect(cards[0]).toHaveAttribute('href', '/availability/kids-check');
-    expect(within(cards[0]).getByText('Infantil')).toBeVisible();
-    expect(within(cards[0]).getByText('Outubro 2026')).toBeVisible();
     expect(
-      within(cards[0]).getByText(m.availability_list_not_confirmed()),
+      within(cards[0]).getByRole('heading', {
+        name: 'Infantil · Outubro 2026',
+      }),
     ).toBeVisible();
     expect(
-      within(cards[1]).getByText(m.availability_list_confirmed_all()),
+      within(cards[0]).getByText(m.availability_list_pending()),
     ).toBeVisible();
+    expect(
+      within(cards[0]).getByRole('link', {
+        name: m.availability_list_answer_label({
+          name: 'Infantil · Outubro 2026',
+        }),
+      }),
+    ).toHaveAttribute('href', '/availability/kids-check');
+    expect(
+      within(cards[1]).getByText(m.availability_detail_confirmed()),
+    ).toBeVisible();
+    expect(
+      within(cards[1]).getByText(m.availability_list_available_all()),
+    ).toBeVisible();
+    expect(
+      within(cards[1]).getByRole('link', {
+        name: m.availability_list_review_label({
+          name: 'Louvor · Outubro 2026',
+        }),
+      }),
+    ).toHaveAttribute('href', '/availability/music-check');
     expect(
       within(cards[2]).getByText(
-        m.availability_list_confirmed_count({ unavailable: 3, total: 12 }),
+        m.availability_list_unavailable_count({ unavailable: 3, total: 12 }),
       ),
     ).toBeVisible();
-    expect(cards[1]).toHaveAttribute('href', '/availability/music-check');
+
+    const rows = within(desktopTable()).getAllByRole('row').slice(1);
+    expect(rows.map((row) => row.dataset.testid)).toEqual([
+      'availability-check-kids-check',
+      'availability-check-music-check',
+      'availability-check-next-check',
+    ]);
+    expect(within(rows[0]).getByRole('rowheader')).toHaveTextContent(
+      'Infantil',
+    );
+    expect(within(rows[0]).getByText('Outubro 2026')).toBeVisible();
+    expect(
+      within(rows[0]).getByRole('link', {
+        name: m.availability_list_answer_label({
+          name: 'Infantil · Outubro 2026',
+        }),
+      }),
+    ).toHaveTextContent(m.availability_list_answer());
+    expect(
+      within(rows[1]).getByRole('link', {
+        name: m.availability_list_review_label({
+          name: 'Louvor · Outubro 2026',
+        }),
+      }),
+    ).toHaveTextContent(m.availability_list_review());
   });
+
+  it('shows a confirmed check its met Deadline as a muted date, never as a call to answer', async () => {
+    api.listAvailabilityChecks.mockResolvedValue({
+      checks: [{ ...CHECK, state: 'confirmed', answerBy: '2026-10-10' }],
+    });
+    renderPage();
+    await screen.findByTestId('data-table-mobile-list');
+    expect(
+      screen.queryByText(m.availability_list_answer_by({ date: '10/10/2026' })),
+    ).not.toBeInTheDocument();
+    expect(within(mobileList()).queryByText('10/10/2026')).toBeNull();
+    expect(within(desktopTable()).getByText('10/10/2026')).toHaveClass(
+      'text-muted-foreground',
+    );
+  });
+
   it('keeps the Deadline current through its Church day even when UTC is tomorrow', async () => {
     renderPage();
+    await screen.findByTestId('data-table-mobile-list');
     expect(
-      await screen.findByText(
-        m.availability_list_answer_by({ date: '01/10/2026' }),
-      ),
+      within(mobileList()).getByText(m.availability_list_due_today()),
     ).toBeVisible();
     expect(
       screen.queryByText(m.availability_list_overdue({ date: '01/10/2026' })),
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['2026-10-02', m.availability_list_due_tomorrow()],
+    [
+      '2026-10-04',
+      m.availability_list_due_in_days({ date: '04/10/2026', days: 3 }),
+    ],
+  ])('marks a pending Deadline on %s as due soon in amber', async (answerBy, text) => {
+    api.listAvailabilityChecks.mockResolvedValue({
+      checks: [{ ...CHECK, answerBy }],
+    });
+    renderPage();
+    await screen.findByTestId('data-table-mobile-list');
+    expect(within(mobileList()).getByText(text).parentElement).toHaveClass(
+      'text-yellow-700',
+    );
+    expect(within(desktopTable()).getByText(text)).toBeVisible();
+  });
+
+  it('keeps a pending Deadline beyond three days muted', async () => {
+    api.listAvailabilityChecks.mockResolvedValue({
+      checks: [{ ...CHECK, answerBy: '2026-10-05' }],
+    });
+    renderPage();
+    await screen.findByTestId('data-table-mobile-list');
+    expect(
+      within(mobileList()).getByText(
+        m.availability_list_answer_by({ date: '05/10/2026' }),
+      ).parentElement,
+    ).toHaveClass('text-muted-foreground');
+  });
+
   it('shows overdue once the Church CalendarDay passes the Deadline', async () => {
     setTestClock({ instant: parseInstant({ value: '2026-10-02T03:00:00Z' }) });
     renderPage();
+    await screen.findByTestId('data-table-mobile-list');
     expect(
-      await screen.findByText(
+      within(mobileList()).getByText(
         m.availability_list_overdue({ date: '01/10/2026' }),
-      ),
-    ).toBeVisible();
+      ).parentElement,
+    ).toHaveClass('text-destructive');
   });
 
   it('omits the Deadline when the leader has not set one', async () => {
@@ -143,10 +243,8 @@ describe('Availability checks list', () => {
       checks: [{ ...CHECK, answerBy: null }],
     });
     renderPage();
-    await screen.findByText('Infantil');
-    expect(
-      screen.queryByText(m.availability_list_answer_by({ date: '01/10/2026' })),
-    ).not.toBeInTheDocument();
+    await screen.findByTestId('data-table-mobile-list');
+    expect(document.querySelector('time')).toBeNull();
   });
 
   it('shows the localized empty state for a response without current checks', async () => {
@@ -179,7 +277,7 @@ describe('Availability checks list', () => {
     await userEvent.click(
       screen.getByRole('button', { name: m.schedules_retry() }),
     );
-    expect(await screen.findByText('Infantil')).toBeVisible();
+    expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
   });
 
   it('shows loading while the API request is pending', async () => {
@@ -214,14 +312,14 @@ describe('loading states', () => {
     const queryClient = new QueryClient();
     api.listAvailabilityChecks.mockResolvedValue({ checks: [CHECK] });
     renderPage(undefined, queryClient);
-    expect(await screen.findByText('Infantil')).toBeVisible();
+    expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
     api.listAvailabilityChecks.mockClear();
     api.listAvailabilityChecks.mockReturnValue(new Promise(() => {}));
     void queryClient.invalidateQueries();
     await waitFor(() =>
       expect(api.listAvailabilityChecks).toHaveBeenCalledTimes(1),
     );
-    expect(screen.getByText('Infantil')).toBeVisible();
+    expect(screen.getByTestId('data-table-mobile-list')).toBeVisible();
     expect(
       screen.queryByRole('status', { name: m.availability_list_loading() }),
     ).toBeNull();

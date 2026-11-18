@@ -29,10 +29,12 @@ The deployment workflows build and push them for you; see
 develop pipeline, its checks and the deployment runbook.
 
 `APP_REVISION` is the only build argument, and the build fails without it.
-The web build also needs the error tracker settings as build secrets
+The web build takes the error tracker settings as optional build secrets
 (`tooling/deployment/.env.schema`): it uploads the web source maps under the
 revision and deletes them before the served stage, so no `.map` is ever
-served, and it fails if the upload fails (#929). Repository variables
+served, and it fails if the upload fails (#929). Without any of them it
+skips the upload with a warning (crash stacks stay minified); with only some
+of them it fails. Repository variables
 `SENTRY_URL`, `SENTRY_ORG`, `SENTRY_PROJECT` and the secret
 `SENTRY_AUTH_TOKEN` supply them in the workflows.
 `bun install --frozen-lockfile` pins the dependencies, and the base images

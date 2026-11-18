@@ -252,7 +252,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   );
   await page.getByRole('button', { name: 'Confirmar disponibilidade' }).click();
   expect((await answerResponse).status()).toBe(200);
-  await expect(worshipCard).toContainText('Indisponível para 1 de');
+  await expect(worshipCard).toContainText('Disponível em 3 de 4 turnos');
   expect(answerRequests).toHaveLength(1);
 
   // The remaining Worship shifts overlap Care's shifts; confirming Care must succeed.
@@ -264,7 +264,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   );
   await page.getByRole('button', { name: 'Confirmar disponibilidade' }).click();
   expect((await overlapResponse).status()).toBe(200);
-  await expect(careCard).toContainText('Disponível para tudo');
+  await expect(careCard).toContainText('Disponível em todos os turnos');
   expect(answerRequests).toHaveLength(2);
 
   const volunteerContext = await newPersonaContext({
@@ -290,6 +290,6 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
     .getByRole('button', { name: 'Confirmar disponibilidade' })
     .click();
   expect((await cleanResponse).status()).toBe(200);
-  await expect(volunteerCard).toContainText(/Disponível(?! em \d)/);
+  await expect(volunteerCard).toContainText('Disponível em todos os turnos');
   await volunteerContext.close();
 });

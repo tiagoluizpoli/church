@@ -1,7 +1,9 @@
+import type * as React from 'react';
+
 interface HeaderStatChipProps {
   testId: string;
   label: string;
-  value: string | number;
+  value: React.ReactNode;
   testIdOnValue?: boolean;
 }
 export function HeaderStatChip({

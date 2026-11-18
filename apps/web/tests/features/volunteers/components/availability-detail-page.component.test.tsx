@@ -171,7 +171,7 @@ describe('Availability check page', () => {
       screen.getByRole('switch', { name: /disponibilidade.*culto da manhã/i }),
     ).toBeChecked();
     expect(
-      screen.getByRole('button', { name: 'Confirmar disponibilidade' }),
+      screen.getByRole('button', { name: 'Enviar resposta' }),
     ).toBeEnabled();
     expect(api.answerAvailabilityCheck).not.toHaveBeenCalled();
   });
@@ -621,7 +621,7 @@ describe('Availability check page', () => {
     );
     api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
     renderPage(vi.fn(), 'person', 'check-1', false, queryClient);
-    await screen.findByText('Kids');
+    await screen.findByText('Kids · Outubro 2026');
     await act(async () =>
       resolveDetail({
         ...CHECK,
@@ -849,7 +849,9 @@ describe('Availability check page', () => {
       name: m.availability_leave_title(),
     });
     await userEvent.click(
-      within(dialog).getByRole('button', { name: m.availability_leave_send() }),
+      within(dialog).getByRole('button', {
+        name: m.availability_detail_confirm(),
+      }),
     );
     await waitFor(() => expect(onAnswered).toHaveBeenCalledOnce());
     expect(api.answerAvailabilityCheck).toHaveBeenCalledWith('check-1', {
@@ -908,7 +910,7 @@ describe('Availability check page', () => {
       })),
     });
     renderPage();
-    await screen.findByText('Kids');
+    await screen.findByText('Kids · Outubro 2026');
     expect(
       screen.queryByText(m.availability_draft_restored()),
     ).not.toBeInTheDocument();
@@ -1022,7 +1024,7 @@ describe('Availability check page', () => {
   it('renders a Past-Cycle check with disabled switches, a read-only notice and no buttons', async () => {
     api.getAvailabilityCheck.mockResolvedValue({ ...CHECK, readOnly: true });
     renderPage();
-    await screen.findByText('Kids');
+    await screen.findByText('Kids · Outubro 2026');
     for (const toggle of screen.getAllByRole('switch'))
       expect(toggle).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByText(m.availability_detail_read_only())).toBeVisible();
@@ -1268,7 +1270,10 @@ describe('Availability check page', () => {
     );
     renderPage();
     expect(await screen.findByText(m.error_not_found())).toBeVisible();
-    expect(screen.queryByText('Kids')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: m.availability_detail_back() }),
+    ).toHaveAttribute('href', '/availability');
+    expect(screen.queryByText('Kids · Outubro 2026')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
@@ -1283,7 +1288,7 @@ describe('Availability check page', () => {
     await userEvent.click(
       screen.getByRole('button', { name: m.schedules_retry() }),
     );
-    expect(await screen.findByText('Kids')).toBeVisible();
+    expect(await screen.findByText('Kids · Outubro 2026')).toBeVisible();
   });
 
   it('keeps every mark after failure and retries through one atomic answer call', async () => {
@@ -1408,7 +1413,7 @@ describe('Availability check page', () => {
 });
 
 describe('decision-first layout', () => {
-  it('keeps fully published days in date order with their outcome, and counts only open Shifts', async () => {
+  it('puts days left to answer first, folds fully published days with their outcome, and counts only open Shifts', async () => {
     api.getAvailabilityCheck.mockResolvedValue({
       ...CHECK,
       shifts: CHECK.shifts.map((shift) => ({
@@ -1422,8 +1427,12 @@ describe('decision-first layout', () => {
       screen
         .getAllByRole('region')
         .map((region) => region.getAttribute('aria-label')),
-    ).toEqual([SUNDAY, MONDAY]);
+    ).toEqual([MONDAY, SUNDAY]);
     const sunday = screen.getByRole('region', { name: SUNDAY });
+    expect(sunday).not.toBeVisible();
+    await userEvent.click(
+      screen.getByText(m.availability_detail_published_days_one()),
+    );
     // The day states the schedule outcome and points to it once.
     expect(
       within(sunday).getByText(m.availability_detail_published_day()),
@@ -1490,7 +1499,7 @@ describe('everything-available shortcut', () => {
       state: 'confirmed',
     });
     renderPage(onAnswered);
-    await screen.findByText('Kids');
+    await screen.findByText('Kids · Outubro 2026');
     expect(
       screen.getByRole('button', {
         name: m.availability_detail_confirm_all(),

@@ -75,6 +75,27 @@ export function serializeRequest(request: LoggedRequest) {
   };
 }
 
+const STACK_FRAME = /^\s+at /;
+
+/**
+ * pino `err` serializer: the error's type, code and stack frames. The message
+ * (and the stack's first line, which repeats it) may quote an email, so it is
+ * never logged, as error reports never send it.
+ */
+export function serializeError(error: unknown) {
+  if (!(error instanceof Error)) return { type: typeof error };
+  const code = 'code' in error ? error.code : undefined;
+  const frames = (error.stack ?? '')
+    .split('\n')
+    .filter((line) => STACK_FRAME.test(line))
+    .join('\n');
+  return {
+    type: error.name,
+    ...(typeof code === 'string' && { code }),
+    ...(frames && { stack: frames }),
+  };
+}
+
 // Report tags carry ids and deployment facts only.
 const ALLOWED_TAGS: ReadonlySet<string> = new Set([
   'environment',

@@ -40,6 +40,7 @@ import { requestLocale } from '../../api/utils/request-locale';
 import { HardConstraintError } from '../../domain/conflict/errors/hard-constraint-error';
 import {
   redactUrl,
+  serializeError,
   serializeRequest,
 } from '../../infrastructure/privacy/privacy';
 import { SentryErrorReporter } from '../../infrastructure/services/sentry-error-reporter';
@@ -63,7 +64,7 @@ interface CreateFastifyInput {
   logStream?: DestinationStream;
 }
 
-const logSerializers = { req: serializeRequest };
+const logSerializers = { req: serializeRequest, err: serializeError };
 
 /** The Electrobun desktop app serves the web bundle from this origin. */
 export const DESKTOP_ORIGIN = 'views://mainview';

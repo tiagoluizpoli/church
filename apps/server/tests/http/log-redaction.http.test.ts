@@ -53,4 +53,25 @@ describe('server log redaction', () => {
       expect(log).not.toContain(secret);
     }
   });
+
+  it('logs an unhandled error by type and stack frames, never its message', async () => {
+    app = await createFastify({
+      locale: testLocale,
+      logStream: { write: (line: string) => lines.push(line) },
+    });
+    app.get('/boom', async () => {
+      throw new TypeError('failed for a@b.test');
+    });
+    await app.ready();
+
+    const res = await app.inject({ method: 'GET', url: '/boom' });
+
+    expect(res.statusCode).toBe(500);
+    const entry = lines
+      .map((line) => JSON.parse(line))
+      .find((parsed) => parsed.msg === 'Unhandled error');
+    expect(entry?.err.type).toBe('TypeError');
+    expect(entry?.err.stack).toMatch(/^ {4}at /);
+    expect(lines.join('')).not.toContain('a@b.test');
+  });
 });

@@ -4,6 +4,7 @@ import {
   allowedHeaders,
   redactUrl,
   scrubEvent,
+  serializeError,
   serializeRequest,
 } from '@/infrastructure/privacy/privacy';
 
@@ -73,6 +74,28 @@ describe('serializeRequest', () => {
       url: '/api/auth/reset-password/:redacted',
       headers: {},
     });
+  });
+});
+
+describe('serializeError', () => {
+  it('keeps the type, code and stack frames, never the message', () => {
+    const error = Object.assign(new TypeError('failed for a@b.test'), {
+      code: 'E_X',
+      detail: 'a@b.test',
+    });
+
+    const serialized = serializeError(error);
+
+    expect(serialized).toEqual({
+      type: 'TypeError',
+      code: 'E_X',
+      stack: expect.stringMatching(/^ {4}at /),
+    });
+    expect(JSON.stringify(serialized)).not.toContain('a@b.test');
+  });
+
+  it('names a thrown non-error by its type only', () => {
+    expect(serializeError('a@b.test')).toEqual({ type: 'string' });
   });
 });
 

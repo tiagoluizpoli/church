@@ -171,9 +171,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Trust the checked-out workspace
+      # The checkout is the host runner's; the container runs as root. Owning
+      # it keeps git's ownership check passing for every process, including
+      # tests that isolate git from global config (safe.directory).
+      - name: Own the checked-out workspace
         timeout-minutes: 2
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        run: chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
 
       # skip-migrate: this job doesn't know yet whether it needs a database
       # at all — the plan step right below decides that — and migrations
@@ -332,9 +335,12 @@ jobs:
         timeout-minutes: 2
         uses: actions/checkout@v4
 
-      - name: Trust the checked-out workspace
+      # The checkout is the host runner's; the container runs as root. Owning
+      # it keeps git's ownership check passing for every process, including
+      # tests that isolate git from global config (safe.directory).
+      - name: Own the checked-out workspace
         timeout-minutes: 2
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        run: chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
 
       - id: setup
         name: Shared CI setup
@@ -532,9 +538,12 @@ jobs:
         timeout-minutes: 2
         uses: actions/checkout@v4
 
-      - name: Trust the checked-out workspace
+      # The checkout is the host runner's; the container runs as root. Owning
+      # it keeps git's ownership check passing for every process, including
+      # tests that isolate git from global config (safe.directory).
+      - name: Own the checked-out workspace
         timeout-minutes: 2
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        run: chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
 
       - id: setup
         name: Shared CI setup

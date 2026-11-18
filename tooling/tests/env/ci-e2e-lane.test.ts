@@ -49,8 +49,8 @@ const SETUP_ACTION = './.github/actions/setup-church-ci';
 const VALUE_FILE_WRITE = /(>>?|tee)\s*\S*\.env\b/;
 const PLAYWRIGHT_IMAGE_REPOSITORY = 'mcr.microsoft.com/playwright';
 const PLAYWRIGHT_IMAGE_PLATFORM = 'noble';
-const CHECKOUT_WORKSPACE_TRUST_COMMAND =
-  'git config --global --add safe.directory "$GITHUB_WORKSPACE"';
+const CHECKOUT_WORKSPACE_OWNERSHIP_COMMAND =
+  'chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"';
 const POSTGRES_HEALTH_COMMAND = 'pg_isready -U postgres';
 const CHECKOUT_TIMEOUT_MINUTES = 2;
 
@@ -105,8 +105,8 @@ describe('CI E2E lane', () => {
         const trustWorkspace = steps[checkoutIndex + 1];
 
         expect(trustWorkspace).toMatchObject({
-          name: 'Trust the checked-out workspace',
-          run: CHECKOUT_WORKSPACE_TRUST_COMMAND,
+          name: 'Own the checked-out workspace',
+          run: CHECKOUT_WORKSPACE_OWNERSHIP_COMMAND,
           'timeout-minutes': CHECKOUT_TIMEOUT_MINUTES,
         });
         expect(job?.services?.postgres?.options).toContain(

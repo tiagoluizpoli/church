@@ -18,14 +18,23 @@ Build both from the repository root at the commit being deployed:
 
 ```sh
 docker build -f deployment/server.Dockerfile --build-arg APP_REVISION="$(git rev-parse HEAD)" -t <registry>/church-server .
-docker build -f deployment/web.Dockerfile --build-arg APP_REVISION="$(git rev-parse HEAD)" -t <registry>/church-web .
+docker build -f deployment/web.Dockerfile --build-arg APP_REVISION="$(git rev-parse HEAD)" \
+  --secret id=SENTRY_URL,env=SENTRY_URL --secret id=SENTRY_ORG,env=SENTRY_ORG \
+  --secret id=SENTRY_PROJECT,env=SENTRY_PROJECT --secret id=SENTRY_AUTH_TOKEN,env=SENTRY_AUTH_TOKEN \
+  -t <registry>/church-web .
 ```
 
 The deployment workflows build and push them for you; see
 [docs/operations/deployments.md](../docs/operations/deployments.md) for the
 develop pipeline, its checks and the deployment runbook.
 
-`APP_REVISION` is the only build input, and the build fails without it.
+`APP_REVISION` is the only build argument, and the build fails without it.
+The web build also needs the error tracker settings as build secrets
+(`tooling/deployment/.env.schema`): it uploads the web source maps under the
+revision and deletes them before the served stage, so no `.map` is ever
+served, and it fails if the upload fails (#929). Repository variables
+`SENTRY_URL`, `SENTRY_ORG`, `SENTRY_PROJECT` and the secret
+`SENTRY_AUTH_TOKEN` supply them in the workflows.
 `bun install --frozen-lockfile` pins the dependencies, and the base images
 are pinned to versions. `.dockerignore` keeps every `.env*` value file out of
 the build context. Only the Varlock `.env.schema` contracts go in. Each

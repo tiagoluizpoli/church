@@ -34,7 +34,8 @@ const job = (name: string): Job => {
   return found;
 };
 
-const route = (output: string) => `$${'{{'} needs.route.outputs.${output} }}`;
+const expression = (name: string) => `$${'{{'} ${name} }}`;
+const route = (output: string) => expression(`needs.route.outputs.${output}`);
 
 describe('deploy-release workflow', () => {
   it('starts only on a published release', () => {
@@ -64,6 +65,19 @@ describe('deploy-release workflow', () => {
     ).toEqual([
       `APP_REVISION=${route('revision')}`,
       `APP_REVISION=${route('revision')}`,
+    ]);
+  });
+
+  it('hands the web build the tracker settings as build secrets (#929)', () => {
+    const web = job('staging-images').steps.find(
+      (s) => s.with?.file === 'deployment/web.Dockerfile',
+    );
+
+    expect(web?.with?.secrets?.trim().split('\n')).toEqual([
+      `SENTRY_URL=${expression('vars.SENTRY_URL')}`,
+      `SENTRY_ORG=${expression('vars.SENTRY_ORG')}`,
+      `SENTRY_PROJECT=${expression('vars.SENTRY_PROJECT')}`,
+      `SENTRY_AUTH_TOKEN=${expression('secrets.SENTRY_AUTH_TOKEN')}`,
     ]);
   });
 

@@ -212,20 +212,20 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   await page.goto('/availability');
 
   const worshipCard = page
-    .getByRole('link')
+    .getByRole('row')
     .filter({
       hasText: journey.ministries.worship.name,
     })
     .filter({ hasText: CYCLE_NAME });
   const careCard = page
-    .getByRole('link')
+    .getByRole('row')
     .filter({
       hasText: journey.ministries.care.name,
     })
     .filter({ hasText: CYCLE_NAME });
   await expect(worshipCard).toHaveCount(1);
   await expect(careCard).toHaveCount(1);
-  await worshipCard.click();
+  await worshipCard.getByRole('link').click();
 
   const shifts = page.getByRole('switch', {
     name: /Disponibilidade:/,
@@ -252,11 +252,11 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   );
   await page.getByRole('button', { name: 'Enviar resposta' }).click();
   expect((await answerResponse).status()).toBe(200);
-  await expect(worshipCard).toContainText('Confirmada · indisponível em 1 de');
+  await expect(worshipCard).toContainText('Disponível em 3 de 4 turnos');
   expect(answerRequests).toHaveLength(1);
 
   // The remaining Worship shifts overlap Care's shifts; confirming Care must succeed.
-  await careCard.click();
+  await careCard.getByRole('link').click();
   const overlapResponse = page.waitForResponse(
     (response) =>
       response.url().endsWith('/answer') &&
@@ -264,7 +264,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   );
   await page.getByRole('button', { name: 'Enviar resposta' }).click();
   expect((await overlapResponse).status()).toBe(200);
-  await expect(careCard).toContainText('Confirmada, disponível para tudo');
+  await expect(careCard).toContainText('Disponível em todos os turnos');
   expect(answerRequests).toHaveLength(2);
 
   const volunteerContext = await newPersonaContext({
@@ -274,13 +274,13 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   const volunteerPage = await volunteerContext.newPage();
   await volunteerPage.goto('/availability');
   const volunteerCard = volunteerPage
-    .getByRole('link')
+    .getByRole('row')
     .filter({
       hasText: journey.ministries.worship.name,
     })
     .filter({ hasText: CYCLE_NAME });
   await expect(volunteerCard).toHaveCount(1);
-  await volunteerCard.click();
+  await volunteerCard.getByRole('link').click();
   const cleanResponse = volunteerPage.waitForResponse(
     (response) =>
       response.url().endsWith('/answer') &&
@@ -288,6 +288,6 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   );
   await volunteerPage.getByRole('button', { name: 'Enviar resposta' }).click();
   expect((await cleanResponse).status()).toBe(200);
-  await expect(volunteerCard).toContainText('Confirmada, disponível para tudo');
+  await expect(volunteerCard).toContainText('Disponível em todos os turnos');
   await volunteerContext.close();
 });

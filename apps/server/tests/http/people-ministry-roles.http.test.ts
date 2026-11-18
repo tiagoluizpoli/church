@@ -2208,7 +2208,10 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
 
       await removeFrom({ as: 'ada', member: 'val', membership: ws('val') });
 
-      expect((await asVal('GET', '')).json()).toEqual({ checks: [] });
+      expect((await asVal('GET', '')).json()).toEqual({
+        checks: [],
+        counts: { total: 0, pending: 0, confirmed: 0 },
+      });
       for (const id of [pending, confirmed]) {
         for (const [method, path] of [
           ['GET', `/${id}`],

@@ -425,7 +425,7 @@ const TableRow = <T extends object>({
           twMerge(
             'group relative cursor-default outline outline-transparent',
             isFocusVisible &&
-              'bg-primary/5 outline-primary ring-3 ring-ring/20 hover:bg-primary/10',
+              'bg-primary/5 outline-2 -outline-offset-2 outline-primary hover:bg-primary/10',
             isDragging &&
               'cursor-grabbing bg-primary/10 text-fg outline-primary',
             isSelected &&
@@ -486,7 +486,7 @@ const TableCell = ({ className, ref, ...props }: TableCellProps) => {
       {...props}
       className={cx(
         twJoin(
-          'group px-4 py-(--gutter-y) align-middle outline-hidden first:ps-(--gutter,--spacing(2)) last:pe-(--gutter,--spacing(2)) group-has-data-focus-visible-within:text-fg',
+          'group px-4 py-(--gutter-y) align-middle outline-hidden data-focus-visible:ring-2 data-focus-visible:ring-ring data-focus-visible:ring-inset first:ps-(--gutter,--spacing(2)) last:pe-(--gutter,--spacing(2)) group-has-data-focus-visible-within:text-fg',
           !striped && 'border-b',
           grid && 'border-l first:border-l-0',
           !bleed && 'sm:last:pe-1 sm:first:ps-1',

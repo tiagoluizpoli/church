@@ -7118,8 +7118,27 @@ export type ListAvailabilityChecks200ChecksItem = {
   unavailableShiftCount: number;
 };
 
+export type ListAvailabilityChecks200Counts = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  total: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  pending: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  confirmed: number;
+};
+
 export type ListAvailabilityChecks200 = {
   checks: ListAvailabilityChecks200ChecksItem[];
+  counts: ListAvailabilityChecks200Counts;
 };
 
 export type GetAvailabilityCheck200State = typeof GetAvailabilityCheck200State[keyof typeof GetAvailabilityCheck200State];

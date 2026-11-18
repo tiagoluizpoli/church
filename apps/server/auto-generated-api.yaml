@@ -16654,8 +16654,29 @@ paths:
                         - totalShiftCount
                         - unavailableShiftCount
                       additionalProperties: false
+                  counts:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      pending:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      confirmed:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                    required:
+                      - total
+                      - pending
+                      - confirmed
+                    additionalProperties: false
                 required:
                   - checks
+                  - counts
                 additionalProperties: false
   /api/v1/volunteer/availability-checks/{checkId}:
     get:

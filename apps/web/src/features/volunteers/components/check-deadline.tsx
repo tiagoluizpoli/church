@@ -1,11 +1,12 @@
 import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
 import {
   type CalendarDay,
   calendarDaysBetween,
+  formatDayLabel,
   parseCalendarDay,
 } from '@church/time';
 import type { ListAvailabilityChecks200ChecksItem } from '@/infrastructure/api/churchAPI.schemas';
-import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
 /** Days left at which a pending Deadline turns amber. */
 const DUE_SOON_DAYS = 3;
@@ -29,7 +30,7 @@ function deadlineCopy({ date, days }: DeadlineCopyInput): string {
   return m.availability_list_answer_by({ date });
 }
 
-/** A pending check's Deadline, urgent within three Church days and overdue after it.
+/** A pending check's Deadline, amber within three Church days and once overdue.
  * Answers stay open past the Deadline until the Cycle ends, so overdue still invites one. */
 export function CheckDeadline({ check, churchDay }: CheckDeadlineProps) {
   if (!check.answerBy)
@@ -38,19 +39,21 @@ export function CheckDeadline({ check, churchDay }: CheckDeadlineProps) {
         {m.availability_list_no_deadline()}
       </p>
     );
-  const date = formatCalendarDateOnly({ value: check.answerBy });
-  const days = calendarDaysBetween({
-    start: churchDay,
-    end: parseCalendarDay({ value: check.answerBy }),
-  });
+  const answerBy = parseCalendarDay({ value: check.answerBy });
+  const days = calendarDaysBetween({ start: churchDay, end: answerBy });
+  // Volunteers plan by weekday ("sex 20 nov"); the year only when it is not this one.
+  const label = formatDayLabel({ day: answerBy, locale: getLocale() });
+  const date =
+    answerBy.slice(0, 4) === churchDay.slice(0, 4)
+      ? label
+      : `${label} ${answerBy.slice(0, 4)}`;
   return (
     <p
       className={
-        days < 0
-          ? 'font-medium text-destructive'
-          : days <= DUE_SOON_DAYS
-            ? 'font-medium text-yellow-700 dark:text-yellow-300'
-            : 'text-muted-foreground'
+        // Amber, not red: an overdue check is still open, so it needs attention, not alarm.
+        days <= DUE_SOON_DAYS
+          ? 'font-semibold text-amber-700 dark:text-amber-300'
+          : 'text-muted-foreground'
       }
     >
       <time dateTime={check.answerBy}>{deadlineCopy({ date, days })}</time>

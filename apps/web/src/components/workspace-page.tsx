@@ -8,7 +8,7 @@ interface WorkspaceIntroPanelProps {
   autoFocusTitle?: boolean;
   children?: React.ReactNode;
   className?: string;
-  description: string;
+  description?: string;
   title: string;
   titleTestId?: string;
 }
@@ -58,7 +58,9 @@ export function WorkspaceIntroPanel({
           >
             {title}
           </h1>
-          <p className="workspace-section-description">{description}</p>
+          {description ? (
+            <p className="workspace-section-description">{description}</p>
+          ) : null}
         </div>
         {aside ? <div className="w-full xl:w-auto">{aside}</div> : null}
       </div>

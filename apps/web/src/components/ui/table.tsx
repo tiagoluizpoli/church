@@ -425,7 +425,7 @@ const TableRow = <T extends object>({
           twMerge(
             'group relative cursor-default outline outline-transparent',
             isFocusVisible &&
-              'bg-primary/5 outline-primary ring-3 ring-ring/20 hover:bg-primary/10',
+              'bg-primary/5 outline-2 -outline-offset-2 outline-primary hover:bg-primary/10',
             isDragging &&
               'cursor-grabbing bg-primary/10 text-fg outline-primary',
             isSelected &&

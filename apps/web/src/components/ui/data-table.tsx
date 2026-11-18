@@ -88,8 +88,9 @@ export interface DataTableProps<T extends object> {
    * to any one row. */
   mobileListHeader?: ReactNode;
   /** Breakpoint where the cards give way to the table. `lg` keeps touch
-   * cards on tablets when the row's facts can't fit a 768px workspace. */
-  tableFrom?: 'md' | 'lg';
+   * cards on tablets when the row's facts can't fit a 768px workspace, `xl`
+   * also on small laptops when they can't fit a 1024px one. */
+  tableFrom?: 'md' | 'lg' | 'xl';
   sortDescriptor?: SortDescriptor;
   onSortChange?: (sortDescriptor: SortDescriptor) => void;
   isLoading?: boolean;
@@ -106,6 +107,7 @@ export interface DataTableProps<T extends object> {
 const breakpointClasses = {
   md: { cards: 'md:hidden', table: 'hidden md:block' },
   lg: { cards: 'lg:hidden', table: 'hidden lg:block' },
+  xl: { cards: 'xl:hidden', table: 'hidden xl:block' },
 } as const;
 
 const defaultLoadingContent = () => (

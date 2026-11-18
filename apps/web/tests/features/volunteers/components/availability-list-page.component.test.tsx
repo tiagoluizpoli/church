@@ -119,6 +119,7 @@ describe('Availability checks list', () => {
       ),
     ).toBeVisible();
     expect(toAnswer).toHaveAccessibleName(m.availability_list_to_answer());
+    expect(screen.getByText(m.availability_list_help())).toBeVisible();
     expect(answered).toHaveAccessibleName(m.availability_list_answered());
     expect(
       screen
@@ -192,10 +193,18 @@ describe('Availability checks list', () => {
     expect(pendingName).toHaveTextContent(
       `Infantil · Outubro 2026 · ${m.availability_list_shift_count({ count: 12 })}`,
     );
-    // The Cycle gives way before the Ministry when the name does not fit.
+    // The shift count, then the Cycle, give way before the Ministry when the name does not fit.
     expect(within(pendingName).getByText('Infantil')).not.toHaveClass(
       'shrink-[1000]',
     );
+    expect(within(pendingName).getByText('Infantil')).toHaveClass(
+      'font-semibold',
+    );
+    expect(
+      within(pendingName).getByText(
+        `· ${m.availability_list_shift_count({ count: 12 })}`,
+      ),
+    ).toHaveClass('shrink-[100000]', 'truncate');
     expect(within(pendingName).getByText('· Outubro 2026')).toHaveClass(
       'shrink-[1000]',
       'truncate',
@@ -306,6 +315,19 @@ describe('Availability checks list', () => {
     expect(
       screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent),
     ).toEqual([m.availability_list_answered()]);
+    // One panel holds the title and the answered list, so no orphan header card is left.
+    expect(
+      screen
+        .getByRole('heading', { level: 1 })
+        .closest('section')
+        ?.contains(
+          screen.getByRole('heading', {
+            level: 2,
+            name: m.availability_list_answered(),
+          }),
+        ),
+    ).toBe(true);
+    expect(screen.queryByText(m.availability_list_help())).toBeNull();
   });
 
   it('keeps the Deadline current through its Church day even when UTC is tomorrow', async () => {
@@ -315,7 +337,7 @@ describe('Availability checks list', () => {
       within(mobileList()).getByText(m.availability_list_due_today()),
     ).toBeVisible();
     expect(
-      screen.queryByText(m.availability_list_overdue({ date: '01/10/2026' })),
+      screen.queryByText(m.availability_list_overdue({ date: 'qui 1 out' })),
     ).not.toBeInTheDocument();
   });
 
@@ -323,7 +345,7 @@ describe('Availability checks list', () => {
     ['2026-10-02', m.availability_list_due_tomorrow()],
     [
       '2026-10-04',
-      m.availability_list_due_in_days({ date: '04/10/2026', days: 3 }),
+      m.availability_list_due_in_days({ date: 'dom 4 out', days: 3 }),
     ],
   ])('marks a pending Deadline on %s as due soon in amber', async (answerBy, text) => {
     api.listAvailabilityChecks.mockResolvedValue({
@@ -332,7 +354,7 @@ describe('Availability checks list', () => {
     renderPage();
     await screen.findByTestId('data-table-mobile-list');
     expect(within(mobileList()).getByText(text).parentElement).toHaveClass(
-      'text-yellow-700',
+      'text-amber-700',
     );
     expect(within(desktopTable()).getByText(text)).toBeVisible();
   });
@@ -345,23 +367,39 @@ describe('Availability checks list', () => {
     await screen.findByTestId('data-table-mobile-list');
     expect(
       within(mobileList()).getByText(
-        m.availability_list_answer_by({ date: '05/10/2026' }),
+        m.availability_list_answer_by({ date: 'seg 5 out' }),
       ).parentElement,
     ).toHaveClass('text-muted-foreground');
   });
 
-  it('shows overdue once the Church CalendarDay passes the Deadline, still inviting an answer', async () => {
-    setTestClock({ instant: parseInstant({ value: '2026-10-02T03:00:00Z' }) });
+  it('names the Deadline by weekday, adding the year only outside the current one', async () => {
+    api.listAvailabilityChecks.mockResolvedValue({
+      checks: [{ ...CHECK, answerBy: '2027-01-05' }],
+    });
     renderPage();
     await screen.findByTestId('data-table-mobile-list');
-    expect(m.availability_list_overdue({ date: '01/10/2026' })).toBe(
-      'Prazo era 01/10/2026 · ainda dá tempo',
+    expect(m.availability_list_answer_by({ date: 'ter 5 jan 2027' })).toBe(
+      'Responda até ter 5 jan 2027',
     );
     expect(
       within(mobileList()).getByText(
-        m.availability_list_overdue({ date: '01/10/2026' }),
-      ).parentElement,
-    ).toHaveClass('text-destructive');
+        m.availability_list_answer_by({ date: 'ter 5 jan 2027' }),
+      ),
+    ).toBeVisible();
+  });
+
+  it('shows overdue in amber, not alarm red, once the Church CalendarDay passes the Deadline, still inviting an answer', async () => {
+    setTestClock({ instant: parseInstant({ value: '2026-10-02T03:00:00Z' }) });
+    renderPage();
+    await screen.findByTestId('data-table-mobile-list');
+    expect(m.availability_list_overdue({ date: 'qui 1 out' })).toBe(
+      'Prazo passou (qui 1 out) · ainda dá para responder',
+    );
+    const overdue = within(mobileList()).getByText(
+      m.availability_list_overdue({ date: 'qui 1 out' }),
+    ).parentElement;
+    expect(overdue).toHaveClass('text-amber-700', 'font-semibold');
+    expect(overdue).not.toHaveClass('text-destructive');
     expect(
       within(mobileList()).getByRole('link', {
         name: m.availability_list_answer_label({
@@ -386,10 +424,13 @@ describe('Availability checks list', () => {
     ).toBeVisible();
   });
 
-  it('shows the localized empty state for a response without current checks', async () => {
+  it('shows the localized empty state for a response without current checks, with no instruction to act', async () => {
     api.listAvailabilityChecks.mockResolvedValue({ checks: [] });
     renderPage();
     expect(await screen.findByText(m.availability_list_empty())).toBeVisible();
+    expect(
+      screen.queryByText(m.availability_list_description(), { exact: false }),
+    ).toBeNull();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
@@ -417,6 +458,12 @@ describe('Availability checks list', () => {
     renderPage();
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(m.availability_list_error());
+    expect(m.availability_list_error()).toBe(
+      'Não foi possível carregar as consultas de disponibilidade. Verifique sua conexão.',
+    );
+    expect(
+      screen.queryByText(m.availability_list_description(), { exact: false }),
+    ).toBeNull();
     expect(within(alert).getByText(m.availability_list_error())).toHaveClass(
       'text-destructive',
     );

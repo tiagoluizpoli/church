@@ -68,7 +68,7 @@ function CheckAction({ check }: CheckProps) {
   const confirmed = check.state === 'confirmed';
   const name = titleOf(check);
   return (
-    <div className="mt-3 lg:mt-0">
+    <div className="mt-3 xl:mt-0">
       <Link
         to="/availability/$checkId"
         params={{ checkId: check.id }}
@@ -82,7 +82,7 @@ function CheckAction({ check }: CheckProps) {
         className={buttonVariants({
           variant: confirmed ? 'outline' : 'default',
           size: 'touch',
-          className: 'min-w-32 lg:h-8 lg:min-w-24 lg:px-3',
+          className: 'min-w-32 xl:h-8 xl:min-w-24 xl:px-3',
         })}
       >
         {confirmed
@@ -135,17 +135,19 @@ function CheckCard({
   );
 }
 
-/** The Cycle truncates first so the Ministry, which tells checks apart, stays
- * whole; the Ministry only truncates once the Cycle is gone. */
+/** The shift count gives way first, then the Cycle, so the Ministry and Cycle,
+ * which tell checks apart, stay whole longest; the Ministry truncates last. */
 function NameCell({ check }: CheckProps) {
   return (
     <span className="flex min-w-0" title={titleOf(check)}>
-      <span className="min-w-0 truncate font-medium">{check.ministryName}</span>
+      <span className="min-w-0 truncate font-semibold">
+        {check.ministryName}
+      </span>
       <span className="min-w-0 shrink-[1000] truncate whitespace-pre text-muted-foreground">
         {` · ${check.cycleName}`}
       </span>
       {check.state === 'pending' ? (
-        <span className="shrink-0 whitespace-pre text-muted-foreground">
+        <span className="min-w-0 shrink-[100000] truncate whitespace-pre text-muted-foreground">
           {` · ${shiftCount({ check })}`}
         </span>
       ) : null}
@@ -157,26 +159,26 @@ const nameColumn: DataTableColumn = {
   id: 'ministry',
   name: m.availability_list_column_ministry(),
   isRowHeader: true,
-  className: 'w-full max-w-0',
+  className: 'max-w-0',
 };
 
-// From xl, fixed widths line the two stacked tables up: Prazo spans Sua resposta plus
-// Respondida em, and both action columns match.
+// Fixed widths line the two stacked tables up: Prazo spans Sua resposta plus
+// Respondida em, both action columns match, and the name column takes the rest.
 const deadlineColumn: DataTableColumn = {
   id: 'deadline',
   name: m.availability_list_column_deadline(),
-  className: 'whitespace-nowrap xl:w-96',
+  className: 'w-96 whitespace-nowrap',
 };
 const answerColumns: DataTableColumn[] = [
   {
     id: 'answer',
     name: m.availability_list_column_answer(),
-    className: 'whitespace-nowrap xl:w-60',
+    className: 'w-60 whitespace-nowrap',
   },
   {
     id: 'answeredOn',
     name: m.availability_list_column_answered_on(),
-    className: 'whitespace-nowrap xl:w-36',
+    className: 'w-36 whitespace-nowrap',
   },
 ];
 const actionsColumn: DataTableColumn = {
@@ -196,8 +198,9 @@ function CheckList({
   return (
     <DataTable<Check>
       aria-label={label}
-      // Tablets keep the touch cards: a 768px workspace can't fit the row.
-      tableFrom="lg"
+      // Below xl the touch cards keep every name whole: a 1024px workspace
+      // would clip the Ministry and Cycle with only a hover title to recover them.
+      tableFrom="xl"
       columns={[
         nameColumn,
         ...(pending ? [deadlineColumn] : answerColumns),
@@ -263,8 +266,10 @@ function AvailabilityListContent() {
   const answered = checks.filter((check) => check.state === 'confirmed');
   const listProps = { churchDay, churchTimezone };
 
-  const description =
-    toAnswer.length > 0
+  // The empty and error states carry their own message, so no instruction precedes them.
+  const description = checksQuery.isError
+    ? undefined
+    : toAnswer.length > 0
       ? `${
           toAnswer.length === 1
             ? m.availability_list_pending_count_one()
@@ -272,10 +277,13 @@ function AvailabilityListContent() {
         } ${m.availability_list_description()}`
       : answered.length > 0
         ? m.availability_list_all_answered()
-        : m.availability_list_description();
+        : checksQuery.isSuccess
+          ? m.availability_list_empty()
+          : m.availability_list_description();
 
   return (
-    <WorkspacePage>
+    // Capped so a row's ministry, deadline and action stay one glance apart on wide screens.
+    <WorkspacePage className="max-w-5xl">
       <WorkspaceIntroPanel
         title={m.nav_availability()}
         description={description}
@@ -298,41 +306,52 @@ function AvailabilityListContent() {
               {m.common_retry()}
             </Button>
           </div>
-        ) : checks.length === 0 ? (
-          <p className="border-t pt-4 text-muted-foreground text-sm">
-            {m.availability_list_empty()}
-          </p>
-        ) : toAnswer.length > 0 ? (
-          <section
-            aria-labelledby="availability-to-answer"
-            className="space-y-4 pt-2"
-          >
-            <h2 id="availability-to-answer" className="workspace-section-title">
-              {m.availability_list_to_answer()}
-            </h2>
-            <CheckList
-              checks={toAnswer}
-              label={m.availability_list_to_answer()}
-              {...listProps}
-            />
-          </section>
-        ) : null}
+        ) : (
+          <>
+            {toAnswer.length > 0 ? (
+              <section
+                aria-labelledby="availability-to-answer"
+                className="space-y-4 pt-4"
+              >
+                <div className="workspace-section-header">
+                  <h2
+                    id="availability-to-answer"
+                    className="workspace-section-title"
+                  >
+                    {m.availability_list_to_answer()}
+                  </h2>
+                  <p className="workspace-section-description">
+                    {m.availability_list_help()}
+                  </p>
+                </div>
+                <CheckList
+                  checks={toAnswer}
+                  label={m.availability_list_to_answer()}
+                  {...listProps}
+                />
+              </section>
+            ) : null}
+            {answered.length > 0 ? (
+              <section
+                aria-labelledby="availability-answered"
+                className="space-y-4 pt-4"
+              >
+                <h2
+                  id="availability-answered"
+                  className="workspace-section-title"
+                >
+                  {m.availability_list_answered()}
+                </h2>
+                <CheckList
+                  checks={answered}
+                  label={m.availability_list_answered()}
+                  {...listProps}
+                />
+              </section>
+            ) : null}
+          </>
+        )}
       </WorkspaceIntroPanel>
-      {answered.length > 0 ? (
-        <section
-          aria-labelledby="availability-answered"
-          className="surface-panel workspace-panel-lg space-y-4"
-        >
-          <h2 id="availability-answered" className="workspace-section-title">
-            {m.availability_list_answered()}
-          </h2>
-          <CheckList
-            checks={answered}
-            label={m.availability_list_answered()}
-            {...listProps}
-          />
-        </section>
-      ) : null}
     </WorkspacePage>
   );
 }

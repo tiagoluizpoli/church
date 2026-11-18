@@ -1122,6 +1122,7 @@ export class DbVolunteerManager implements IVolunteerManager {
             availabilityCheckId: checkId,
           }),
         ]);
+        const openShifts = shifts.filter((shift) => !shift.published);
 
         return {
           id: checkId as string,
@@ -1132,8 +1133,9 @@ export class DbVolunteerManager implements IVolunteerManager {
           state: context.check.state,
           confirmedAt: context.check.confirmedAt,
           answerBy: context.answerBy,
-          totalShiftCount: shifts.length,
-          unavailableShiftCount: shifts.filter((shift) =>
+          // Counts only the Shifts still open to answer, matching the detail page.
+          totalShiftCount: openShifts.length,
+          unavailableShiftCount: openShifts.filter((shift) =>
             unavailableShifts.some((mark) => mark.shiftId === shift.shiftId),
           ).length,
         };

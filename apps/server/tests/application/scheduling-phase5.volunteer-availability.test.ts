@@ -35,6 +35,7 @@ import { Notification } from '@/domain/entities/notification';
 import { Role } from '@/domain/entities/role';
 import { Shift } from '@/domain/entities/shift';
 import { ShiftRequirement } from '@/domain/entities/shift-requirement';
+import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import {
   createAssignmentRepositoryFake,
@@ -184,6 +185,37 @@ describe('volunteer availability', () => {
     ]);
     const detail = await manager.getAvailabilityCheck(input);
     expect(detail.shifts.map((shift) => shift.available)).toEqual([true, true]);
+  });
+  it('counts only the Shifts still open to answer in the list summary', async () => {
+    const { manager, availabilityCheckRepo, unavailableShiftRepo } =
+      createHarness();
+    availabilityCheckRepo.listCheckShifts.mockResolvedValue([
+      { ...shifts[0], published: true },
+      shifts[1],
+    ]);
+    unavailableShiftRepo.listUnavailableShiftsByCheck.mockResolvedValue(
+      shifts.map(
+        (shift) =>
+          new UnavailableShift({
+            props: {
+              churchId,
+              availabilityCheckId: checkId,
+              shiftId: shift.shiftId,
+              volunteerId,
+              shiftStartTime: shift.startTime,
+              shiftEndTime: shift.endTime,
+            },
+          }),
+      ),
+    );
+    expect(
+      await manager.listAvailabilityChecks({ churchId, volunteerId }),
+    ).toEqual([
+      expect.objectContaining({
+        totalShiftCount: 1,
+        unavailableShiftCount: 1,
+      }),
+    ]);
   });
   it('denies a ministry schedule to a non-member', async () => {
     const { manager } = createHarness();

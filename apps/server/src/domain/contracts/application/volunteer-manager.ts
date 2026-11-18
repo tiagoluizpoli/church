@@ -167,6 +167,7 @@ export interface VolunteerAvailabilityCheckSummary {
   ministryName: string;
   state: AvailabilityCheckState;
   confirmedAt?: Instant;
+  /** Unpublished Shifts only: the ones the Volunteer can still answer. */
   totalShiftCount: number;
   unavailableShiftCount: number;
 }

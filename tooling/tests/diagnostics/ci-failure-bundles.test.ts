@@ -96,6 +96,7 @@ describe('CI failure bundles', () => {
       'e2e',
       'fast-gate',
       'release-gate',
+      'release-integration',
     ]);
   });
 

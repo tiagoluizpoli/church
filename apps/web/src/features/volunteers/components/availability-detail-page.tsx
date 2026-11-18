@@ -109,6 +109,12 @@ function formatShiftTimes({ shift, timeZone }: ShiftTimesInput): string {
 
 type DayEntry = [CalendarDay, GetAvailabilityCheck200ShiftsItem[]];
 
+interface DayFold {
+  entries: DayEntry[];
+  note?: ReactNode;
+  summary: string;
+}
+
 interface DeadlineCountdownInput {
   daysLeft: number;
 }
@@ -602,7 +608,7 @@ function AvailabilityAnswer({
     </div>
   );
 
-  const fold = (summary: string, entries: DayEntry[], note?: ReactNode) => (
+  const fold = ({ summary, entries, note }: DayFold) => (
     <details className="group">
       <summary
         className={cn(
@@ -789,35 +795,39 @@ function AvailabilityAnswer({
             )}
           >
             {pastDays.length > 0
-              ? fold(
-                  pastDays.length === 1
-                    ? m.availability_detail_past_days_one()
-                    : m.availability_detail_past_days({
-                        count: pastDays.length,
-                      }),
-                  pastDays,
-                )
+              ? fold({
+                  summary:
+                    pastDays.length === 1
+                      ? m.availability_detail_past_days_one()
+                      : m.availability_detail_past_days({
+                          count: pastDays.length,
+                        }),
+                  entries: pastDays,
+                })
               : null}
             {dayGrid(shownDays)}
             {publishedDays.length > 0
-              ? fold(
-                  publishedDays.length === 1
-                    ? m.availability_detail_published_days_one()
-                    : m.availability_detail_published_days({
-                        count: publishedDays.length,
-                      }),
-                  publishedDays,
-                  <p
-                    className={cn(
-                      'flex items-center gap-1.5',
-                      touch ? 'text-sm' : 'text-xs',
-                      SECONDARY_TONE,
-                    )}
-                  >
-                    <Lock aria-hidden className="size-3.5 shrink-0" />
-                    {m.availability_detail_help_locked()}
-                  </p>,
-                )
+              ? fold({
+                  summary:
+                    publishedDays.length === 1
+                      ? m.availability_detail_published_days_one()
+                      : m.availability_detail_published_days({
+                          count: publishedDays.length,
+                        }),
+                  entries: publishedDays,
+                  note: (
+                    <p
+                      className={cn(
+                        'flex items-center gap-1.5',
+                        touch ? 'text-sm' : 'text-xs',
+                        SECONDARY_TONE,
+                      )}
+                    >
+                      <Lock aria-hidden className="size-3.5 shrink-0" />
+                      {m.availability_detail_help_locked()}
+                    </p>
+                  ),
+                })
               : null}
           </div>
           {canEdit ? (

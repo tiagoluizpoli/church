@@ -14,6 +14,11 @@ While the database is down the API answers every request with a generic 500, the
 - **Logging.** A connection failure is logged at `error` with its code only, never the message, credentials or connection string.
 - **Client.** A request with no response, or a 502/503/504, is an **outage** and is retried without limit (exponential backoff, capped at about 30s). Any other status is not an outage.
 
+## Amendments
+
+- **The session guard is stricter.** A failed session call (no response or any 5xx) never redirects to login; it shows the reconnecting state, because only a successful "no session" answer proves the user is signed out (spec [#903](https://github.com/tiagoluizpoli/church/issues/903), [#906](https://github.com/tiagoluizpoli/church/issues/906)). Every other query, the active-church guard included, keeps the no-response/502/503/504 outage rule.
+- **Socket errors cover any upstream.** `ECONNREFUSED`, `ETIMEDOUT` and `ECONNRESET` are matched on any error in the chain, so an unreachable upstream dependency, not only the database, also answers 503. That is intended: it is temporary unavailability, not a bug.
+
 ## Considered Options
 
 - **The client probes readiness after any 500.** Rejected: the server already knows the cause at failure time, so a probe adds a second call that can race the first (the database may recover or fail between them). The client rule stays simple with the status alone, and the same signal serves error reporting in [#902](https://github.com/tiagoluizpoli/church/issues/902).

@@ -41,7 +41,9 @@ export function AvailabilityAnswerBar({
               type="button"
               aria-describedby={markedDaysId}
               className="radius-control self-start text-left font-medium text-sm underline decoration-foreground/40 underline-offset-3 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
-              onClick={() => jumpToDay(idPrefix, firstMarked.date)}
+              onClick={() =>
+                jumpToDay({ prefix: idPrefix, date: firstMarked.date })
+              }
             >
               {answer.summary}
             </button>

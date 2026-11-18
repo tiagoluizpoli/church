@@ -1753,7 +1753,7 @@ describe('everything-available shortcut', () => {
     await waitFor(() => expect(onAnswered).toHaveBeenCalledOnce());
   });
 
-  it('stays hidden beside the done state; editing the saved answer offers it next to its discard', async () => {
+  it('offers the shortcut on a sent answer with marks, and next to the discard while editing it', async () => {
     api.getAvailabilityCheck.mockResolvedValue({
       ...CHECK,
       state: 'confirmed',
@@ -1765,11 +1765,12 @@ describe('everything-available shortcut', () => {
     });
     renderPage();
     expect(await screen.findByText(m.availability_detail_done())).toBeVisible();
+    // A returning volunteer can clear the sent marks in one step.
     expect(
-      screen.queryByRole('button', {
+      screen.getByRole('button', {
         name: m.availability_detail_confirm_all(),
       }),
-    ).not.toBeInTheDocument();
+    ).toBeVisible();
     await userEvent.click(screen.getByRole('switch', { name: /encontro/i }));
     expect(
       screen.queryByText(m.availability_detail_done()),

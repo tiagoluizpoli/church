@@ -299,6 +299,22 @@ describe('volunteer availability', () => {
       }),
     ]);
   });
+  it('reports the whole answer in the list summary once no Shift is left to answer', async () => {
+    const { manager, unavailableShiftRepo } = createHarness();
+    // Both Shifts have ended: the summary must still show the unavailable one.
+    setTestClock({ instant: instant('2026-08-03T12:00:00Z') });
+    unavailableShiftRepo.listUnavailableShiftsByCheck.mockResolvedValue([
+      markOf(morning),
+    ]);
+    expect(
+      await manager.listAvailabilityChecks({ churchId, volunteerId }),
+    ).toEqual([
+      expect.objectContaining({
+        totalShiftCount: 2,
+        unavailableShiftCount: 1,
+      }),
+    ]);
+  });
   it('denies a ministry schedule to a non-member', async () => {
     const { manager } = createHarness();
     await expect(

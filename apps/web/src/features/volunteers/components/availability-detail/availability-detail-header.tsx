@@ -139,7 +139,11 @@ export function AvailabilityDetailHeader({
 }
 
 /** Where the cycle stands; the server counts the days, the live toggles fill in "available". */
-function AvailabilityCounters({ answer }: AvailabilityDetailHeaderProps) {
+interface AvailabilityCountersProps {
+  answer: AvailabilityAnswer;
+}
+
+function AvailabilityCounters({ answer }: AvailabilityCountersProps) {
   const { counts } = answer.check;
   return (
     <>
@@ -149,7 +153,7 @@ function AvailabilityCounters({ answer }: AvailabilityDetailHeaderProps) {
           label={m.availability_detail_stat_days_available()}
           value={
             <span className="tabular-nums">
-              {answer.counts.availableDays}/{counts.openDays}
+              {answer.live.availableDays}/{counts.openDays}
             </span>
           }
         />
@@ -160,7 +164,7 @@ function AvailabilityCounters({ answer }: AvailabilityDetailHeaderProps) {
           label={m.availability_detail_stat_available()}
           value={
             <span className="tabular-nums">
-              {answer.counts.availableShifts}/{counts.openShifts}
+              {answer.live.availableShifts}/{counts.openShifts}
             </span>
           }
         />

@@ -37,6 +37,11 @@ export interface UseAvailabilityAnswerInput {
   onAnswered: () => void | Promise<void>;
 }
 
+export interface SetDayUnavailableInput {
+  day: GetAvailabilityCheck200DaysItem;
+  unavailable: boolean;
+}
+
 /** One day with only the Shifts the draft marks unavailable. */
 export interface MarkedDay {
   date: GetAvailabilityCheck200DaysItem['date'];
@@ -156,10 +161,7 @@ export function useAvailabilityAnswer({
       }),
     );
   /** Flips every answerable Shift on the day to the same side. */
-  const setDayUnavailable = (
-    day: GetAvailabilityCheck200DaysItem,
-    unavailable: boolean,
-  ) =>
+  const setDayUnavailable = ({ day, unavailable }: SetDayUnavailableInput) =>
     editDraft((current) =>
       day.shifts
         .filter(
@@ -197,8 +199,10 @@ export function useAvailabilityAnswer({
     .filter((day) => day.shifts.length > 0);
 
   const confirmed = check.state === 'confirmed';
-  const allPublished = check.counts.openShifts === 0;
-  const canEdit = !check.readOnly && !allPublished;
+  const nothingOpen = check.counts.openShifts === 0;
+  // Every day still ahead is on the published schedule: the page only points there.
+  const allPublished = nothingOpen && check.counts.publishedDays > 0;
+  const canEdit = !check.readOnly && !nothingOpen;
   const hasMarks = unavailableCount > 0;
   const pending = send.isPending;
   const done = confirmed && !hasUnsentChanges && !pending;
@@ -230,15 +234,16 @@ export function useAvailabilityAnswer({
     hasMarks,
     summary,
     markedDays,
-    counts: {
+    /** Live numerators over the server's `check.counts`, following the unsent toggles. */
+    live: {
       availableShifts: total - unavailableCount,
       availableDays: availableDayCount,
     },
     isAvailable,
     toggleShift,
     setDayUnavailable,
-    /** "Disponível para tudo": clears every mark, undoable until the next edit. Hidden only beside the done state. */
-    canMarkAllAvailable: canEdit && hasMarks && !pending && !done,
+    /** "Disponível para tudo": clears every mark, undoable until the next edit. Shown whenever there is a mark to clear. */
+    canMarkAllAvailable: canEdit && hasMarks && !pending,
     markAllAvailable: () => {
       setUndoDraft(draft);
       setDraft(NO_MARKS);

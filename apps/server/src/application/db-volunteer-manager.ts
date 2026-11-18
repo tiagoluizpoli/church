@@ -76,7 +76,6 @@ import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 import { ShiftPublishedError } from '../domain/errors/shift-published';
 import {
   groupCheckDays,
-  hasShiftEnded,
   isShiftAnswerable,
 } from '../domain/services/availability-check-days';
 import {
@@ -1138,6 +1137,9 @@ export class DbVolunteerManager implements IVolunteerManager {
         const openShifts = shifts.filter((shift) =>
           isShiftAnswerable({ readOnly: context.readOnly, shift, now }),
         );
+        // While Shifts are open the summary counts those, like the detail page;
+        // once none are, it reports the whole answer as it stands.
+        const countedShifts = openShifts.length > 0 ? openShifts : shifts;
 
         return {
           id: checkId as string,
@@ -1148,9 +1150,8 @@ export class DbVolunteerManager implements IVolunteerManager {
           state: context.check.state,
           confirmedAt: context.check.confirmedAt,
           answerBy: context.answerBy,
-          // Counts only the Shifts still open to answer, matching the detail page.
-          totalShiftCount: openShifts.length,
-          unavailableShiftCount: openShifts.filter((shift) =>
+          totalShiftCount: countedShifts.length,
+          unavailableShiftCount: countedShifts.filter((shift) =>
             unavailableShifts.some((mark) => mark.shiftId === shift.shiftId),
           ).length,
         };
@@ -1234,7 +1235,10 @@ export class DbVolunteerManager implements IVolunteerManager {
       const now = nowInstant();
       const lockedShiftIds = new Set(
         scopedShifts
-          .filter((shift) => shift.published || hasShiftEnded({ shift, now }))
+          // A read-only check never gets here, so "not answerable" means published or ended.
+          .filter(
+            (shift) => !isShiftAnswerable({ readOnly: false, shift, now }),
+          )
           .map((shift) => shift.shiftId),
       );
       const preservedShiftIds = existingMarks

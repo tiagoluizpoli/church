@@ -1,4 +1,6 @@
 import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
+import { formatCalendarDayWithWeekday, parseCalendarDay } from '@church/time';
 import type { CheckShift } from './unavailable-shifts';
 import {
   dayOf,
@@ -21,6 +23,14 @@ export function formatShiftTimes({
   return dayOf({ value: start, timeZone }) === dayOf({ value: end, timeZone })
     ? `${formatTimeOf({ value: start, timeZone })} – ${formatTimeOf({ value: end, timeZone })}`
     : formatInstantRangeOf({ start, end, timeZone });
+}
+
+/** "Domingo, 22/11/2026" for a day the server sends. */
+export function formatCheckDay(date: string): string {
+  return formatCalendarDayWithWeekday({
+    day: parseCalendarDay({ value: date }),
+    locale: getLocale(),
+  });
 }
 
 /** "Faltam 8 dias" style countdown to the answer deadline. */

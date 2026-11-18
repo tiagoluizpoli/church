@@ -1,6 +1,4 @@
 import { m } from '@church/i18n/messages';
-import { getLocale } from '@church/i18n/runtime';
-import { formatCalendarDayWithWeekday, parseCalendarDay } from '@church/time';
 import { CircleX } from 'lucide-react';
 import { AvailabilityShiftRow } from './availability-shift-row';
 import { dayAnchorId } from './day-anchor';
@@ -9,6 +7,7 @@ import { SECONDARY_TONE } from './style';
 import { Button } from '@/components/ui/button';
 import { useFormControlSize } from '@/components/ui/form-control-size';
 import type { AvailabilityAnswer } from '@/features/volunteers/hooks/use-availability-answer';
+import { formatCheckDay } from '@/features/volunteers/lib/availability-format';
 import type { GetAvailabilityCheck200DaysItem } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
 
@@ -25,10 +24,7 @@ export function AvailabilityDay({
   idPrefix,
 }: AvailabilityDayProps) {
   const touch = useFormControlSize() === 'touch';
-  const dayLabel = formatCalendarDayWithWeekday({
-    day: parseCalendarDay({ value: day.date }),
-    locale: getLocale(),
-  });
+  const dayLabel = formatCheckDay(day.date);
   const open = day.shifts.filter((shift) => shift.answerable);
   const hasPublished = day.shifts.some((shift) => shift.published);
   const wholeDayUnavailable =
@@ -57,7 +53,7 @@ export function AvailabilityDay({
 
   return (
     <section
-      id={dayAnchorId(idPrefix, day.date)}
+      id={dayAnchorId({ prefix: idPrefix, date: day.date })}
       aria-label={dayLabel}
       className="min-w-0 scroll-mt-24 md:max-w-xl"
     >
@@ -80,7 +76,12 @@ export function AvailabilityDay({
             }
             disabled={answer.pending}
             className="max-md:h-auto max-md:min-h-11 max-md:whitespace-normal"
-            onClick={() => answer.setDayUnavailable(day, !wholeDayUnavailable)}
+            onClick={() =>
+              answer.setDayUnavailable({
+                day,
+                unavailable: !wholeDayUnavailable,
+              })
+            }
           >
             <span className="md:hidden">
               {wholeDayUnavailable

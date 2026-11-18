@@ -1,11 +1,17 @@
+export interface DayAnchor {
+  /** The page's `useId` prefix, so two pages never share ids. */
+  prefix: string;
+  date: string;
+}
+
 /** The element id of a day section, so the answer summary can jump to it. */
-export function dayAnchorId(prefix: string, date: string): string {
+export function dayAnchorId({ prefix, date }: DayAnchor): string {
   return `${prefix}-day-${date}`;
 }
 
 /** Scrolls to a day (opening its fold), then focuses its heading. */
-export function jumpToDay(prefix: string, date: string): void {
-  const section = document.getElementById(dayAnchorId(prefix, date));
+export function jumpToDay(anchor: DayAnchor): void {
+  const section = document.getElementById(dayAnchorId(anchor));
   if (!section) return;
   const folded = section.closest('details');
   if (folded) folded.open = true;

@@ -1,6 +1,4 @@
 import { m } from '@church/i18n/messages';
-import { getLocale } from '@church/i18n/runtime';
-import { formatCalendarDayWithWeekday, parseCalendarDay } from '@church/time';
 import { CircleX } from 'lucide-react';
 import { useId } from 'react';
 import {
@@ -10,7 +8,10 @@ import {
 import { jumpToDay } from './day-anchor';
 import { SECONDARY_TONE } from './style';
 import type { AvailabilityAnswer } from '@/features/volunteers/hooks/use-availability-answer';
-import { formatShiftTimes } from '@/features/volunteers/lib/availability-format';
+import {
+  formatCheckDay,
+  formatShiftTimes,
+} from '@/features/volunteers/lib/availability-format';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
@@ -26,13 +27,12 @@ export function AvailabilityAnswerPanel({
 }: AvailabilityAnswerPanelProps) {
   const { churchTimezone } = useTimezone();
   const titleId = useId();
-  const locale = getLocale();
   return (
     <aside
       aria-labelledby={titleId}
       data-testid="availability-answer-panel"
-      // Fits the visible workspace: the viewport less the shell's top bar and the page padding.
-      className="surface-panel sticky top-0 flex max-h-[calc(100dvh-var(--app-topbar-h)-2*var(--workspace-pad-y))] flex-col gap-3 p-4"
+      // Never taller than the visible workspace, which the shell measures for its pages.
+      className="surface-panel sticky top-0 flex max-h-(--workspace-visible-h) flex-col gap-3 p-4"
     >
       <div className="space-y-0.5">
         <h2 id={titleId} className={cn('font-medium text-xs', SECONDARY_TONE)}>
@@ -55,12 +55,9 @@ export function AvailabilityAnswerPanel({
               <button
                 type="button"
                 className="radius-control text-left font-medium text-xs underline decoration-foreground/30 underline-offset-3 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
-                onClick={() => jumpToDay(idPrefix, day.date)}
+                onClick={() => jumpToDay({ prefix: idPrefix, date: day.date })}
               >
-                {formatCalendarDayWithWeekday({
-                  day: parseCalendarDay({ value: day.date }),
-                  locale,
-                })}
+                {formatCheckDay(day.date)}
               </button>
               <ul className="mt-1 space-y-1">
                 {day.shifts.map((shift) => (

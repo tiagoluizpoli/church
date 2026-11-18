@@ -489,6 +489,45 @@ describe('deploy checks', () => {
     expect(result.githubOutput).toBe('deploy=true\n');
   });
 
+  it('ignores a skipped run of the check, such as an open PR run of the same revision', async () => {
+    state.checkRuns = () => [
+      { id: 1, name: 'Fast Gate', status: 'completed', conclusion: 'success' },
+      { id: 2, name: 'Fast Gate', status: 'completed', conclusion: 'skipped' },
+    ];
+
+    const result = await runDeploy(CHECKS);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.githubOutput).toBe('deploy=true\n');
+  });
+
+  it('still judges a re-run by its newest run that was not skipped', async () => {
+    state.checkRuns = () => [
+      { id: 1, name: 'Fast Gate', status: 'completed', conclusion: 'success' },
+      { id: 2, name: 'Fast Gate', status: 'completed', conclusion: 'failure' },
+      { id: 3, name: 'Fast Gate', status: 'completed', conclusion: 'skipped' },
+    ];
+
+    const result = await runDeploy(CHECKS);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('"Fast Gate" concluded failure');
+    expect(result.githubOutput).toBe('');
+  });
+
+  it('waits rather than deploys when the check was only skipped', async () => {
+    state.checkRuns = () => [
+      { id: 1, name: 'Fast Gate', status: 'completed', conclusion: 'skipped' },
+    ];
+
+    const result = await runDeploy(CHECKS);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.output).toContain('did not complete');
+    expect(result.output).toContain('.github/workflows/ci.yml');
+    expect(result.githubOutput).toBe('');
+  });
+
   it('skips an obsolete revision once the branch has moved on', async () => {
     state.branchHead = OLD_REVISION;
 

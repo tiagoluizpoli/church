@@ -458,8 +458,12 @@ class GitHub {
 }
 
 // A re-run adds a newer check run with the same name; the newest one counts.
+// A skipped run never ran (e.g. the push-only Fast Gate in an open
+// develop → master PR's run of the same revision), so it is no verdict.
 function latestRun(runs: CheckRun[], name: string): CheckRun | undefined {
-  const named = runs.filter((run) => run.name === name);
+  const named = runs.filter(
+    (run) => run.name === name && run.conclusion !== 'skipped',
+  );
   return named.sort((a, b) => b.id - a.id)[0];
 }
 
@@ -500,7 +504,8 @@ async function awaitChecks(command: ChecksCommand): Promise<void> {
     await sleep(pollIntervalMs);
   }
   throw new DeployFailure(
-    `Required checks did not complete for ${revision}; not deploying.`,
+    `Required checks did not complete for ${revision}; not deploying. ` +
+      'If a check only ever reported skipped, its job did not run on this push: check its trigger in .github/workflows/ci.yml.',
   );
 }
 

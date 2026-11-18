@@ -39,7 +39,14 @@ export interface WorkflowJob {
   'timeout-minutes'?: number;
 }
 
+export interface WorkflowTrigger {
+  branches?: string[];
+  paths?: string[];
+  'paths-ignore'?: string[];
+}
+
 export interface Workflow {
+  on: Record<string, WorkflowTrigger | null>;
   jobs: Record<string, WorkflowJob>;
 }
 

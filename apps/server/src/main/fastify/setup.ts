@@ -65,6 +65,9 @@ interface CreateFastifyInput {
 
 const logSerializers = { req: serializeRequest };
 
+/** The Electrobun desktop app serves the web bundle from this origin. */
+export const DESKTOP_ORIGIN = 'views://mainview';
+
 const errorReporter = new SentryErrorReporter();
 
 /** Unexpected 500s only; expected outcomes and 503s are never reported. */
@@ -124,7 +127,7 @@ export async function createFastify({
   registerE2eTargetHeader({ app, enabled: debugEndpointsEnabled() });
 
   await app.register(fastifyCors, {
-    origin: env.CORS_ORIGIN,
+    origin: [env.CORS_ORIGIN, DESKTOP_ORIGIN],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',

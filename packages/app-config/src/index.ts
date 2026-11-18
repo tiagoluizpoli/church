@@ -36,6 +36,13 @@ export const appConfigSchema = z.object({
     windowMs: positiveInt,
     maxRequests: positiveInt,
   }),
+  /** Browser crash reports relayed to the error tracker (ADR 0014). */
+  errorReportTunnel: z.object({
+    windowMs: positiveInt,
+    maxRequests: positiveInt,
+    /** A tracker that takes longer is dropped; the browser never waits on it. */
+    forwardTimeoutMs: positiveInt,
+  }),
   outbox: z.object({
     maxAttempts: positiveInt,
     backoffCapMinutes: positiveInt,
@@ -115,6 +122,11 @@ export const appConfig = appConfigSchema.parse({
   },
   passwordReset: { ttlMs: HOUR_MS },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
+  errorReportTunnel: {
+    windowMs: MINUTE_MS,
+    maxRequests: 10,
+    forwardTimeoutMs: 3 * SECOND_MS,
+  },
   outbox: {
     maxAttempts: 5,
     backoffCapMinutes: 60,

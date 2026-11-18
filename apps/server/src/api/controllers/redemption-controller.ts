@@ -1,5 +1,5 @@
 import type { AppConfig } from '@church/app-config';
-import { fromDate, nowAsDate } from '@church/time';
+import { fromDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
 import {
@@ -40,6 +40,7 @@ import {
 } from '../dtos/redemption.dto';
 import { debugEndpointsEnabled } from '../utils/debug-endpoints';
 import { headersFromRequest } from '../utils/headers';
+import { isRateLimited } from '../utils/rate-limit';
 import { refuse } from '../utils/refuse';
 
 type RedemptionParams = z.infer<typeof redemptionParamsSchema>;
@@ -75,18 +76,9 @@ interface RedemptionControllerDependencies {
 
 type ConfirmTransferBody = z.infer<typeof confirmTransferBodySchema>;
 
-interface RateLimitInput {
-  key: string;
-  windowMs: number;
-  maxRequests: number;
-  now?: number;
-}
-
 interface ControllerRateLimitInput {
   key: string;
 }
-
-const publicRateLimit = new Map<string, number[]>();
 
 export class RedemptionController implements FastifyController {
   readonly prefix = '/redemption';
@@ -108,7 +100,7 @@ export class RedemptionController implements FastifyController {
 
   private isRateLimitedRequest({ key }: ControllerRateLimitInput): boolean {
     const { windowMs, maxRequests } = this.rateLimit;
-    return isRateLimited({ key, windowMs, maxRequests });
+    return isRateLimited({ key: `redemption:${key}`, windowMs, maxRequests });
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -521,20 +513,6 @@ export class RedemptionController implements FastifyController {
     }
     return { userId: UserId.from(session.user.id), sessionCookie };
   }
-}
-
-function isRateLimited({
-  key,
-  windowMs,
-  maxRequests,
-  now = nowAsDate().getTime(),
-}: RateLimitInput): boolean {
-  const attempts = (publicRateLimit.get(key) ?? []).filter(
-    (attempt) => attempt > now - windowMs,
-  );
-  attempts.push(now);
-  publicRateLimit.set(key, attempts);
-  return attempts.length > maxRequests;
 }
 
 /** The public Church Invitation preview: the Ministry block only for a paired invitation. */

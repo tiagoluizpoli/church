@@ -1,7 +1,9 @@
+// biome-ignore-all lint/style/useNamingConvention: Sentry event fields are snake_case on the wire
 import { describe, expect, it } from 'vitest';
 import {
   allowedHeaders,
   redactUrl,
+  scrubEvent,
   serializeRequest,
 } from '@/infrastructure/privacy/privacy';
 
@@ -63,5 +65,104 @@ describe('serializeRequest', () => {
       url: '/api/auth/reset-password/:redacted',
       headers: {},
     });
+  });
+});
+
+describe('scrubEvent', () => {
+  const frame = {
+    filename: '/app/src/x.ts',
+    function: 'handler',
+    lineno: 3,
+    colno: 7,
+    in_app: true,
+    vars: { email: 'a@b.test' },
+  };
+  const event = {
+    event_id: 'e1',
+    timestamp: 1,
+    level: 'error',
+    platform: 'javascript',
+    environment: 'staging',
+    release: 'rev-1',
+    server_name: 'host-1',
+    message: 'Hello a@b.test',
+    tags: { trace_id: 't1', revision: 'rev-1', person: 'Ana' },
+    user: {
+      id: 'user_1',
+      email: 'a@b.test',
+      ip_address: '203.0.113.9',
+      username: 'Ana',
+    },
+    request: {
+      method: 'POST',
+      url: 'https://api.test/api/auth/reset-password/TOKEN?email=a@b.test',
+      query_string: 'email=a@b.test',
+      cookies: { session: 'SESSION' },
+      data: { password: 'BODY' },
+      headers: {
+        'user-agent': 'ua',
+        cookie: 'SESSION',
+        authorization: 'Bearer X',
+      },
+      env: { REMOTE_ADDR: '203.0.113.9' },
+    },
+    exception: {
+      values: [
+        {
+          type: 'TypeError',
+          value: 'failed for a@b.test',
+          mechanism: { type: 'generic', handled: true },
+          stacktrace: { frames: [frame] },
+        },
+      ],
+    },
+    breadcrumbs: [{ message: 'a@b.test' }],
+    extra: { body: 'BODY' },
+    contexts: {
+      trace: { trace_id: 't1', span_id: 's1' },
+      os: { name: 'linux' },
+    },
+  };
+
+  it('keeps ids, error type, stack and allowed request facts only', () => {
+    expect(scrubEvent({ event })).toEqual({
+      event_id: 'e1',
+      timestamp: 1,
+      level: 'error',
+      platform: 'javascript',
+      environment: 'staging',
+      release: 'rev-1',
+      tags: { trace_id: 't1', revision: 'rev-1' },
+      user: { id: 'user_1' },
+      request: {
+        method: 'POST',
+        url: 'https://api.test/api/auth/reset-password/:redacted',
+        headers: { 'user-agent': 'ua' },
+      },
+      exception: {
+        values: [
+          {
+            type: 'TypeError',
+            mechanism: { type: 'generic', handled: true },
+            stacktrace: {
+              frames: [
+                {
+                  filename: '/app/src/x.ts',
+                  function: 'handler',
+                  lineno: 3,
+                  colno: 7,
+                  in_app: true,
+                },
+              ],
+            },
+          },
+        ],
+      },
+      contexts: { trace: { trace_id: 't1', span_id: 's1' } },
+    });
+  });
+
+  it('drops an event that is not an object', () => {
+    expect(scrubEvent({ event: 'nope' })).toBeNull();
   });
 });

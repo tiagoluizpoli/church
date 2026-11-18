@@ -40,6 +40,10 @@ export const env = createEnv({
     /** Source revision baked into a deployed image and reported by readiness;
      * local and test runs have none. */
     APP_REVISION: z.string().min(1).default('unversioned'),
+    /** Error tracker (GlitchTip) DSN; unset keeps error reporting off. */
+    SENTRY_DSN: z.url().optional(),
+    /** Turns error reporting off even with a DSN set. */
+    ERROR_REPORTING_ENABLED: z.stringbool().default(true),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

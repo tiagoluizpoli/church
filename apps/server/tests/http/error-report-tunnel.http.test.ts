@@ -6,15 +6,14 @@ import {
   type ServerResponse,
 } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { appConfig } from '@church/app-config';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  ERROR_REPORT_TUNNEL_PATH,
-  registerErrorReportTunnel,
-} from '@/main/fastify/error-report-tunnel';
+import { registerErrorReportTunnel } from '@/main/fastify/error-report-tunnel';
 import { createFastify, DESKTOP_ORIGIN } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
+const ERROR_REPORT_TUNNEL_PATH = appConfig.errorReportTunnel.path;
 const TRACE_ID = '4bf92f3577b34da6a3ce929d0e0e4736';
 const EMAIL = 'ana.member@example.test';
 const IP = '203.0.113.9';
@@ -80,6 +79,7 @@ async function tunnelApp({
     dsn,
     environment: 'staging',
     settings: {
+      path: ERROR_REPORT_TUNNEL_PATH,
       windowMs: 60_000,
       maxRequests: MAX_REQUESTS,
       forwardTimeoutMs: FORWARD_TIMEOUT_MS,

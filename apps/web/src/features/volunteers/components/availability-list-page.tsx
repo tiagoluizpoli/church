@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import { type CalendarDay, now, today } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { CircleCheck } from 'lucide-react';
 import { CheckDeadline } from './check-deadline';
 import { HeaderStatChip } from '@/components/header-stat-chip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -23,6 +24,21 @@ import { volunteerApi } from '@/utils/api-instances';
 
 interface CheckProps {
   check: Check;
+}
+
+export interface AvailabilityListPageProps {
+  /** The check the volunteer just answered, acknowledged until they leave the list. */
+  answeredCheckId?: string;
+}
+
+/** Marks the row the volunteer just sent, so they see where their answer landed. */
+function SentNow() {
+  return (
+    <span className="inline-flex items-center gap-1 font-medium text-green-700 text-xs dark:text-green-400">
+      <CircleCheck aria-hidden className="size-3.5" />
+      {m.availability_list_sent_now()}
+    </span>
+  );
 }
 
 interface CheckOnDayProps extends CheckProps {
@@ -126,9 +142,10 @@ function checkColumns(): DataTableColumn[] {
 interface CheckTableProps {
   checks: Check[];
   churchDay: CalendarDay;
+  answeredCheckId?: string;
 }
 
-function CheckTable({ checks, churchDay }: CheckTableProps) {
+function CheckTable({ checks, churchDay, answeredCheckId }: CheckTableProps) {
   return (
     <DataTable<Check>
       aria-label={m.nav_availability()}
@@ -139,7 +156,12 @@ function CheckTable({ checks, churchDay }: CheckTableProps) {
       renderCell={({ item, column }) => {
         switch (column.id) {
           case 'ministry':
-            return <span className="font-medium">{item.ministryName}</span>;
+            return (
+              <span className="flex flex-wrap items-center gap-x-2">
+                <span className="font-medium">{item.ministryName}</span>
+                {item.id === answeredCheckId ? <SentNow /> : null}
+              </span>
+            );
           case 'cycle':
             return (
               <span>
@@ -165,6 +187,7 @@ function CheckTable({ checks, churchDay }: CheckTableProps) {
             <div className="flex flex-wrap items-center gap-2">
               <p className="break-words font-medium">{item.ministryName}</p>
               <StateBadge check={item} />
+              {item.id === answeredCheckId ? <SentNow /> : null}
             </div>
             <p className="text-muted-foreground text-xs">
               {item.state === 'pending'
@@ -180,7 +203,9 @@ function CheckTable({ checks, churchDay }: CheckTableProps) {
   );
 }
 
-function AvailabilityListContent() {
+function AvailabilityListContent({
+  answeredCheckId,
+}: AvailabilityListPageProps) {
   const { churchTimezone } = useTimezone();
   const churchDay = today({ instant: now(), timeZone: churchTimezone });
   // The server orders the checks: pending first by Deadline, then answered.
@@ -194,6 +219,7 @@ function AvailabilityListContent() {
   const checks = checksQuery.data?.checks ?? [];
   const counts = checksQuery.data?.counts;
   const pendingCount = counts?.pending ?? 0;
+  const answered = checks.find((check) => check.id === answeredCheckId);
 
   // The empty and error states carry their own message, so no instruction precedes them.
   const description = checksQuery.isError
@@ -237,6 +263,15 @@ function AvailabilityListContent() {
           ) : undefined
         }
       />
+      {answered ? (
+        <p
+          role="status"
+          className="radius-control flex items-center gap-2 bg-green-600/10 p-3 font-medium text-green-700 text-sm dark:text-green-400"
+        >
+          <CircleCheck aria-hidden className="size-5 shrink-0" />
+          {m.availability_list_answered({ ministry: answered.ministryName })}
+        </p>
+      ) : null}
       {checksQuery.isError ? (
         <Alert variant="destructive">
           <AlertDescription className="flex flex-wrap items-center gap-3">
@@ -264,7 +299,11 @@ function AvailabilityListContent() {
       ) : (
         <Card className="surface-panel">
           <CardContent>
-            <CheckTable checks={checks} churchDay={churchDay} />
+            <CheckTable
+              checks={checks}
+              churchDay={churchDay}
+              answeredCheckId={answeredCheckId}
+            />
           </CardContent>
         </Card>
       )}
@@ -272,13 +311,13 @@ function AvailabilityListContent() {
   );
 }
 
-export function AvailabilityListPage() {
+export function AvailabilityListPage(props: AvailabilityListPageProps) {
   return (
     <CapabilityGate
       allow={(capabilities) => capabilities.hasVolunteerMembership}
       refusal="not-serving"
     >
-      <AvailabilityListContent />
+      <AvailabilityListContent {...props} />
     </CapabilityGate>
   );
 }

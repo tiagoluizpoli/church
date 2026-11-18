@@ -199,7 +199,8 @@ describe('Volunteer route access', () => {
       ministryName: 'Kids',
       state: 'pending',
       confirmedAt: undefined,
-      shifts: [],
+      days: [],
+      counts: { openDays: 0, pastDays: 0, publishedDays: 0, openShifts: 0 },
     });
 
     const response = await app.inject({

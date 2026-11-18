@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { z } from 'zod';
 import {
+  answerableShifts,
   createInitialUnavailableShiftDraft,
   type UnavailableShiftDraft,
 } from '../lib/unavailable-shifts';
@@ -41,10 +42,7 @@ export function useLocalAvailabilityDraft({
   hasFreshDetail,
 }: LocalAvailabilityDraftInput) {
   const storageKey = `availability-draft:${userId}:${check.id}`;
-  const editableShifts = useMemo(
-    () => check.shifts.filter((shift) => !shift.published),
-    [check.shifts],
-  );
+  const editableShifts = useMemo(() => answerableShifts(check), [check]);
   const serverDraft = useMemo(
     () =>
       createInitialUnavailableShiftDraft({ shifts: editableShifts, timeZone }),
@@ -88,7 +86,8 @@ export function useLocalAvailabilityDraft({
     baselineArrived
   ) {
     const { check: previousCheck } = snapshot;
-    const previousShiftEntries = previousCheck.shifts.map(
+    // Only rows the volunteer could answer before can carry a local edit.
+    const previousShiftEntries = answerableShifts(previousCheck).map(
       (shift) => [shift.shiftId, shift] as const,
     );
     const previousShifts = new Map(previousShiftEntries);
@@ -99,7 +98,6 @@ export function useLocalAvailabilityDraft({
       const marked = draft.markedShiftIds.has(shift.shiftId);
       const locallyEdited =
         previous &&
-        !previous.published &&
         (snapshot.awaitingBaseline || marked === previous.available);
       return {
         ...shift,

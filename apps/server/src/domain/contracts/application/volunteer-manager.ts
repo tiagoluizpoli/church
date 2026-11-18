@@ -12,6 +12,7 @@ import type {
 import type { Assignment } from '../../entities/assignment';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
 import type { Notification } from '../../entities/notification';
+import type { CheckDayState } from '../../services/availability-check-days';
 
 export interface DashboardAssignmentItem {
   assignmentId: string;
@@ -197,12 +198,15 @@ export interface VolunteerAvailabilityCheckSummary {
   ministryName: string;
   state: AvailabilityCheckState;
   confirmedAt?: Instant;
+  /** Answerable Shifts only: unpublished and not yet ended. */
   totalShiftCount: number;
   unavailableShiftCount: number;
 }
 
 export interface VolunteerCheckShift {
   published: boolean;
+  /** On the published schedule for this Shift. */
+  assigned: boolean;
   shiftId: string;
   eventId: string;
   eventTitle: string;
@@ -210,6 +214,22 @@ export interface VolunteerCheckShift {
   endTime: Instant;
   label?: string;
   available: boolean;
+  /** The Volunteer can still change this answer: open check, unpublished and not ended. */
+  answerable: boolean;
+}
+
+export interface VolunteerCheckDay {
+  /** Church-local day the Shifts start on. */
+  date: CalendarDay;
+  state: CheckDayState;
+  shifts: VolunteerCheckShift[];
+}
+
+export interface VolunteerAvailabilityCheckCounts {
+  openDays: number;
+  pastDays: number;
+  publishedDays: number;
+  openShifts: number;
 }
 
 export interface VolunteerAvailabilityCheckDetail {
@@ -222,7 +242,9 @@ export interface VolunteerAvailabilityCheckDetail {
   ministryName: string;
   state: AvailabilityCheckState;
   confirmedAt?: Instant;
-  shifts: VolunteerCheckShift[];
+  /** Ascending date; Shifts inside keep their start-time order. */
+  days: VolunteerCheckDay[];
+  counts: VolunteerAvailabilityCheckCounts;
 }
 
 export interface ListAvailabilityChecksInput {

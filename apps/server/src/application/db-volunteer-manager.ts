@@ -78,6 +78,10 @@ import { IllegalStateTransitionError } from '../domain/errors/illegal-state-tran
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 import { ShiftPublishedError } from '../domain/errors/shift-published';
 import {
+  groupCheckDays,
+  isShiftAnswerable,
+} from '../domain/services/availability-check-days';
+import {
   assertUnavailableShiftsWithinScope,
   expandWholeDayShiftIds,
   resolveShiftAvailability,
@@ -1148,7 +1152,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       resolutions.map((entry) => [entry.shiftId, entry.available]),
     );
 
-    const checkShifts: VolunteerCheckShift[] = shifts.map(
+    const checkShifts: Omit<VolunteerCheckShift, 'answerable'>[] = shifts.map(
       (shift: CheckShiftRow) => ({
         shiftId: shift.shiftId as string,
         eventId: shift.eventId as string,
@@ -1157,9 +1161,16 @@ export class DbVolunteerManager implements IVolunteerManager {
         endTime: shift.endTime,
         label: shift.label,
         published: shift.published,
+        assigned: shift.assigned,
         available: availableByShiftId.get(shift.shiftId) ?? true,
       }),
     );
+    const { days, counts } = groupCheckDays({
+      readOnly: context.readOnly,
+      shifts: checkShifts,
+      now: nowInstant(),
+      timeZone: context.timeZone,
+    });
 
     return {
       id: context.check.id as string,
@@ -1171,7 +1182,8 @@ export class DbVolunteerManager implements IVolunteerManager {
       confirmedAt: context.check.confirmedAt,
       answerBy: context.answerBy,
       readOnly: context.readOnly,
-      shifts: checkShifts,
+      days,
+      counts,
     };
   }
 
@@ -1197,6 +1209,13 @@ export class DbVolunteerManager implements IVolunteerManager {
             availabilityCheckId: checkId,
           }),
         ]);
+        const now = nowInstant();
+        const openShifts = shifts.filter((shift) =>
+          isShiftAnswerable({ readOnly: context.readOnly, shift, now }),
+        );
+        // While Shifts are open the summary counts those, like the detail page;
+        // once none are, it reports the whole answer as it stands.
+        const countedShifts = openShifts.length > 0 ? openShifts : shifts;
 
         return {
           id: checkId as string,
@@ -1207,8 +1226,8 @@ export class DbVolunteerManager implements IVolunteerManager {
           state: context.check.state,
           confirmedAt: context.check.confirmedAt,
           answerBy: context.answerBy,
-          totalShiftCount: shifts.length,
-          unavailableShiftCount: shifts.filter((shift) =>
+          totalShiftCount: countedShifts.length,
+          unavailableShiftCount: countedShifts.filter((shift) =>
             unavailableShifts.some((mark) => mark.shiftId === shift.shiftId),
           ).length,
         };
@@ -1275,7 +1294,8 @@ export class DbVolunteerManager implements IVolunteerManager {
         throw new ShiftPublishedError({ shiftIds: publishedShiftIds });
       }
 
-      // Published answers are locked history, even when their Role is no longer held.
+      // Published and ended answers are locked history, even when their Role is no longer held;
+      // new requests for them are ignored.
       const [existingMarks, scopedShifts] = await Promise.all([
         this.unavailableShiftRepo.listUnavailableShiftsByCheck({
           churchId: input.churchId,
@@ -1288,15 +1308,22 @@ export class DbVolunteerManager implements IVolunteerManager {
           tx,
         }),
       ]);
+      const now = nowInstant();
       const lockedShiftIds = new Set(
         scopedShifts
-          .filter((shift) => shift.published)
+          // A read-only check never gets here, so "not answerable" means published or ended.
+          .filter(
+            (shift) => !isShiftAnswerable({ readOnly: false, shift, now }),
+          )
           .map((shift) => shift.shiftId),
       );
       const preservedShiftIds = existingMarks
         .filter((mark) => lockedShiftIds.has(mark.shiftId))
         .map((mark) => mark.shiftId);
-      const nextShiftIds = [...preservedShiftIds, ...requestedShiftIds];
+      const nextShiftIds = [
+        ...preservedShiftIds,
+        ...requestedShiftIds.filter((shiftId) => !lockedShiftIds.has(shiftId)),
+      ];
       await this.unavailableShiftRepo.replaceUnavailableShiftsForCheck({
         churchId: input.churchId,
         availabilityCheckId: input.checkId,

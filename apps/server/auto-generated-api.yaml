@@ -16878,40 +16878,83 @@ paths:
                     type: string
                     format: date-time
                     pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                  shifts:
+                  days:
                     type: array
                     items:
                       type: object
                       properties:
-                        shiftId:
+                        date:
                           type: string
-                        eventId:
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                        state:
                           type: string
-                        eventTitle:
-                          type: string
-                        startTime:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        endTime:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        label:
-                          type: string
-                        available:
-                          type: boolean
-                        published:
-                          type: boolean
+                          enum:
+                            - open
+                            - past
+                            - published
+                        shifts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              shiftId:
+                                type: string
+                              eventId:
+                                type: string
+                              eventTitle:
+                                type: string
+                              startTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              endTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              label:
+                                type: string
+                              available:
+                                type: boolean
+                              published:
+                                type: boolean
+                              assigned:
+                                type: boolean
+                              answerable:
+                                type: boolean
+                            required:
+                              - shiftId
+                              - eventId
+                              - eventTitle
+                              - startTime
+                              - endTime
+                              - available
+                              - published
+                              - assigned
+                              - answerable
+                            additionalProperties: false
                       required:
-                        - shiftId
-                        - eventId
-                        - eventTitle
-                        - startTime
-                        - endTime
-                        - available
-                        - published
+                        - date
+                        - state
+                        - shifts
                       additionalProperties: false
+                  counts:
+                    type: object
+                    properties:
+                      openDays:
+                        type: number
+                      pastDays:
+                        type: number
+                      publishedDays:
+                        type: number
+                      openShifts:
+                        type: number
+                    required:
+                      - openDays
+                      - pastDays
+                      - publishedDays
+                      - openShifts
+                    additionalProperties: false
                 required:
                   - answerBy
                   - readOnly
@@ -16921,7 +16964,8 @@ paths:
                   - ministryId
                   - ministryName
                   - state
-                  - shifts
+                  - days
+                  - counts
                 additionalProperties: false
         "404":
           description: Default Response
@@ -17007,40 +17051,83 @@ paths:
                     type: string
                     format: date-time
                     pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                  shifts:
+                  days:
                     type: array
                     items:
                       type: object
                       properties:
-                        shiftId:
+                        date:
                           type: string
-                        eventId:
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                        state:
                           type: string
-                        eventTitle:
-                          type: string
-                        startTime:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        endTime:
-                          type: string
-                          format: date-time
-                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                        label:
-                          type: string
-                        available:
-                          type: boolean
-                        published:
-                          type: boolean
+                          enum:
+                            - open
+                            - past
+                            - published
+                        shifts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              shiftId:
+                                type: string
+                              eventId:
+                                type: string
+                              eventTitle:
+                                type: string
+                              startTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              endTime:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              label:
+                                type: string
+                              available:
+                                type: boolean
+                              published:
+                                type: boolean
+                              assigned:
+                                type: boolean
+                              answerable:
+                                type: boolean
+                            required:
+                              - shiftId
+                              - eventId
+                              - eventTitle
+                              - startTime
+                              - endTime
+                              - available
+                              - published
+                              - assigned
+                              - answerable
+                            additionalProperties: false
                       required:
-                        - shiftId
-                        - eventId
-                        - eventTitle
-                        - startTime
-                        - endTime
-                        - available
-                        - published
+                        - date
+                        - state
+                        - shifts
                       additionalProperties: false
+                  counts:
+                    type: object
+                    properties:
+                      openDays:
+                        type: number
+                      pastDays:
+                        type: number
+                      publishedDays:
+                        type: number
+                      openShifts:
+                        type: number
+                    required:
+                      - openDays
+                      - pastDays
+                      - publishedDays
+                      - openShifts
+                    additionalProperties: false
                 required:
                   - answerBy
                   - readOnly
@@ -17050,7 +17137,8 @@ paths:
                   - ministryId
                   - ministryName
                   - state
-                  - shifts
+                  - days
+                  - counts
                 additionalProperties: false
         "404":
           description: Default Response

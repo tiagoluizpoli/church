@@ -250,6 +250,46 @@ describe('Availability checks list', () => {
     ).toBeVisible();
     expect(within(desktopTable()).getByText(text)).toBeVisible();
   });
+  it('acknowledges the check just answered with a banner and a marker on its row', async () => {
+    api.listAvailabilityChecks.mockResolvedValue(
+      listOf([
+        CHECK,
+        {
+          ...CHECK,
+          id: 'music-check',
+          ministryName: 'Louvor',
+          state: 'confirmed',
+        },
+      ]),
+    );
+    renderPage(<AvailabilityListPage answeredCheckId="music-check" />);
+    expect(
+      await screen.findByText(
+        m.availability_list_answered({ ministry: 'Louvor' }),
+      ),
+    ).toHaveAttribute('role', 'status');
+    const rows = within(desktopTable()).getAllByRole('row').slice(1);
+    expect(
+      within(rows[1]).getByText(m.availability_list_sent_now()),
+    ).toBeVisible();
+    expect(
+      within(rows[0]).queryByText(m.availability_list_sent_now()),
+    ).not.toBeInTheDocument();
+    expect(
+      within(mobileList()).getAllByText(m.availability_list_sent_now()),
+    ).toHaveLength(1);
+  });
+
+  it('shows no acknowledgement without a just-answered check', async () => {
+    renderPage();
+    await screen.findAllByRole('row');
+    expect(
+      screen.queryByText(m.availability_list_sent_now()),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(m.availability_list_answered({ ministry: 'Kids' })),
+    ).not.toBeInTheDocument();
+  });
 
   it('says every check is answered when none is pending', async () => {
     api.listAvailabilityChecks.mockResolvedValue(

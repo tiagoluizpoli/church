@@ -7225,7 +7225,16 @@ export const GetAvailabilityCheck200State = {
   confirmed: 'confirmed',
 } as const;
 
-export type GetAvailabilityCheck200ShiftsItem = {
+export type GetAvailabilityCheck200DaysItemState = typeof GetAvailabilityCheck200DaysItemState[keyof typeof GetAvailabilityCheck200DaysItemState];
+
+
+export const GetAvailabilityCheck200DaysItemState = {
+  open: 'open',
+  past: 'past',
+  published: 'published',
+} as const;
+
+export type GetAvailabilityCheck200DaysItemShiftsItem = {
   shiftId: string;
   eventId: string;
   eventTitle: string;
@@ -7236,6 +7245,22 @@ export type GetAvailabilityCheck200ShiftsItem = {
   label?: string;
   available: boolean;
   published: boolean;
+  assigned: boolean;
+  answerable: boolean;
+};
+
+export type GetAvailabilityCheck200DaysItem = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  date: string;
+  state: GetAvailabilityCheck200DaysItemState;
+  shifts: GetAvailabilityCheck200DaysItemShiftsItem[];
+};
+
+export type GetAvailabilityCheck200Counts = {
+  openDays: number;
+  pastDays: number;
+  publishedDays: number;
+  openShifts: number;
 };
 
 export type GetAvailabilityCheck200 = {
@@ -7253,7 +7278,8 @@ export type GetAvailabilityCheck200 = {
   state: GetAvailabilityCheck200State;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   confirmedAt?: string;
-  shifts: GetAvailabilityCheck200ShiftsItem[];
+  days: GetAvailabilityCheck200DaysItem[];
+  counts: GetAvailabilityCheck200Counts;
 };
 
 export type GetAvailabilityCheck404 = {
@@ -7276,7 +7302,16 @@ export const AnswerAvailabilityCheck200State = {
   confirmed: 'confirmed',
 } as const;
 
-export type AnswerAvailabilityCheck200ShiftsItem = {
+export type AnswerAvailabilityCheck200DaysItemState = typeof AnswerAvailabilityCheck200DaysItemState[keyof typeof AnswerAvailabilityCheck200DaysItemState];
+
+
+export const AnswerAvailabilityCheck200DaysItemState = {
+  open: 'open',
+  past: 'past',
+  published: 'published',
+} as const;
+
+export type AnswerAvailabilityCheck200DaysItemShiftsItem = {
   shiftId: string;
   eventId: string;
   eventTitle: string;
@@ -7287,6 +7322,22 @@ export type AnswerAvailabilityCheck200ShiftsItem = {
   label?: string;
   available: boolean;
   published: boolean;
+  assigned: boolean;
+  answerable: boolean;
+};
+
+export type AnswerAvailabilityCheck200DaysItem = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  date: string;
+  state: AnswerAvailabilityCheck200DaysItemState;
+  shifts: AnswerAvailabilityCheck200DaysItemShiftsItem[];
+};
+
+export type AnswerAvailabilityCheck200Counts = {
+  openDays: number;
+  pastDays: number;
+  publishedDays: number;
+  openShifts: number;
 };
 
 export type AnswerAvailabilityCheck200 = {
@@ -7304,7 +7355,8 @@ export type AnswerAvailabilityCheck200 = {
   state: AnswerAvailabilityCheck200State;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   confirmedAt?: string;
-  shifts: AnswerAvailabilityCheck200ShiftsItem[];
+  days: AnswerAvailabilityCheck200DaysItem[];
+  counts: AnswerAvailabilityCheck200Counts;
 };
 
 export type AnswerAvailabilityCheck404 = {

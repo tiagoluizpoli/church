@@ -49,6 +49,15 @@
   --sidebar-ring: oklch(0.532 0.082 254);
 
   /* Layout / spacing tokens */
+  /* Top bar height: the shell's headers and anything sized against the visible workspace. */
+  --app-topbar-h: 4rem;
+  /* The scrolling workspace's inner height, for page regions that stick inside it. */
+  --workspace-visible-h: calc(
+    100dvh -
+    var(--app-topbar-h) -
+    2 *
+    var(--workspace-pad-y)
+  );
   --workspace-pad-x: 1rem;
   --workspace-pad-y: 1rem;
   --workspace-gap: 1rem;

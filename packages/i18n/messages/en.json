@@ -1649,7 +1649,6 @@
   "availability_detail_past_days": "Days already past ({count})",
   "availability_detail_past_days_one": "Day already past (1)",
   "availability_detail_summary": "Your answer",
-  "availability_detail_day_count_one": "{available} of {total} available",
   "availability_detail_all_marked_available": "Everything marked available.",
   "availability_detail_undo": "Undo",
   "availability_detail_help_covers": "Switch off the shifts you can't serve.",

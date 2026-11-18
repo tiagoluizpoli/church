@@ -1337,7 +1337,8 @@ describe('Availability check page', () => {
     const monday = screen.getByRole('region', { name: MONDAY });
     // A one-Shift day has no whole-day control; its switch does the job.
     expect(within(monday).queryByRole('button')).not.toBeInTheDocument();
-    expect(within(monday).getByText('1 de 1 disponível')).toBeVisible();
+    // Its switch is the whole answer, so the day heading repeats no count.
+    expect(within(monday).queryByText(/de 1 disponív/)).not.toBeInTheDocument();
     const shifts = within(sunday).getAllByRole('switch', {
       name: /disponibilidade:/i,
     });
@@ -1444,12 +1445,14 @@ describe('decision-first layout', () => {
       screen.getByRole('link', { name: m.availability_detail_back() }),
     ).toHaveAttribute('href', '/availability');
     await userEvent.click(within(monday).getByRole('switch'));
+    // The one Shift's own state says it; no whole-day status on top.
     expect(
-      within(monday).getByText(m.availability_detail_whole_day()),
+      within(monday).getByText(m.availability_detail_unavailable()),
     ).toBeVisible();
     expect(
-      within(monday).queryByText('0 de 1 disponível'),
+      within(monday).queryByText(m.availability_detail_whole_day()),
     ).not.toBeInTheDocument();
+    expect(within(monday).queryByText(/de 1 disponív/)).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', {
         name: m.availability_detail_open_count_one({
@@ -1574,6 +1577,34 @@ describe('everything-available shortcut', () => {
       wholeDayDates: [],
     });
     await waitFor(() => expect(onAnswered).toHaveBeenCalledOnce());
+  });
+
+  it('stays hidden beside the done state; editing the saved answer offers its discard instead', async () => {
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      state: 'confirmed',
+      confirmedAt: '2026-10-01T12:00:00Z',
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId !== 'morning',
+      })),
+    });
+    renderPage();
+    expect(await screen.findByText(m.availability_detail_done())).toBeVisible();
+    expect(
+      screen.queryByRole('button', {
+        name: m.availability_detail_confirm_all(),
+      }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('switch', { name: /encontro/i }));
+    expect(
+      screen.queryByText(m.availability_detail_done()),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: m.availability_detail_discard_changes(),
+      }),
+    ).toBeVisible();
   });
 
   it('drops the undo offer once the volunteer edits again', async () => {

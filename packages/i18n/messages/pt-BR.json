@@ -1649,7 +1649,6 @@
   "availability_detail_past_days": "Dias que já passaram ({count})",
   "availability_detail_past_days_one": "Dia que já passou (1)",
   "availability_detail_summary": "Sua resposta",
-  "availability_detail_day_count_one": "{available} de {total} disponível",
   "availability_detail_all_marked_available": "Tudo marcado como disponível.",
   "availability_detail_undo": "Desfazer",
   "availability_detail_help_covers": "Desligue os turnos em que você não pode servir.",

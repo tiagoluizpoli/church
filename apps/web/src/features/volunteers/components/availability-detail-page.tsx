@@ -367,15 +367,13 @@ function AvailabilityAnswer({
         key={day}
         id={dayId(day)}
         aria-label={dayLabel}
-        className={cn(
-          'min-w-0 scroll-mt-24',
-          !touch && 'mb-3 break-inside-avoid last:mb-0',
-        )}
+        className={cn('min-w-0 scroll-mt-24', !touch && 'max-w-xl')}
       >
         <div
           className={cn(
             'flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b',
-            touch ? 'pb-2' : 'pb-1',
+            // Desktop: one header height with or without the whole-day button, so columns line up.
+            touch ? 'pb-2' : 'min-h-7 pb-1',
           )}
         >
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -390,7 +388,8 @@ function AvailabilityAnswer({
               allPublished ? null : (
                 publishedNotice
               )
-            ) : wholeDayUnavailable && !hasPublished ? (
+            ) : dayShifts.length < 2 ? null : wholeDayUnavailable &&
+              !hasPublished ? (
               <p
                 className={cn(
                   'flex items-center gap-1.5',
@@ -413,9 +412,7 @@ function AvailabilityAnswer({
                   SECONDARY_TONE,
                 )}
               >
-                {(dayShifts.length === 1
-                  ? m.availability_detail_day_count_one
-                  : m.availability_detail_day_count)({
+                {m.availability_detail_day_count({
                   available: dayShifts.filter(isAvailable).length,
                   total: dayShifts.length,
                 })}
@@ -424,7 +421,7 @@ function AvailabilityAnswer({
           </div>
           {!check.readOnly && dayShifts.length > 1 ? (
             <Button
-              variant={touch ? 'outline' : 'ghost'}
+              variant="outline"
               size={touch ? undefined : 'xs'}
               aria-label={
                 wholeDayUnavailable
@@ -434,11 +431,7 @@ function AvailabilityAnswer({
                     })
               }
               disabled={answer.isPending}
-              className={
-                touch
-                  ? 'h-auto min-h-11 whitespace-normal'
-                  : cn(SECONDARY_TONE, 'hover:text-foreground')
-              }
+              className={cn(touch && 'h-auto min-h-11 whitespace-normal')}
               onClick={() => {
                 editDraft((current) => {
                   let next = current;
@@ -597,10 +590,12 @@ function AvailabilityAnswer({
   };
 
   const dayGrid = (entries: DayEntry[]) => (
-    // Desktop days flow down each column, so the month reads top to bottom.
+    // Desktop days fill row by row, so the month reads left to right, then down.
     <div
       className={
-        touch ? 'space-y-7' : 'columns-1 gap-x-10 xl:columns-2 2xl:columns-3'
+        touch
+          ? 'space-y-7'
+          : 'grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] items-start gap-x-10 gap-y-4'
       }
     >
       {entries.map(renderDay)}
@@ -655,7 +650,7 @@ function AvailabilityAnswer({
     >
       {m.availability_detail_undo()}
     </Button>
-  ) : !hasMarks ? null : (
+  ) : !hasMarks || done ? null : (
     // A draft reset, never a submit: the main button still sends the answer.
     <Button
       variant="outline"
@@ -699,9 +694,11 @@ function AvailabilityAnswer({
                 />
               ) : (
                 <>
+                  {/* Mobile: the values speak for themselves, so both chips share one line. */}
                   <HeaderStatChip
                     testId="availability-answer-chip"
                     label={m.availability_detail_summary()}
+                    labelClassName="max-md:sr-only"
                     value={
                       confirmed ? (
                         <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
@@ -727,6 +724,7 @@ function AvailabilityAnswer({
                   <HeaderStatChip
                     testId="availability-deadline-chip"
                     label={m.answers_deadline()}
+                    labelClassName="max-md:sr-only"
                     value={
                       <>
                         {check.answerBy ? (
@@ -825,7 +823,7 @@ function AvailabilityAnswer({
           {canEdit ? (
             // Mobile: fixed to the viewport. Desktop: the panel's flush sticky footer.
             // Same rows in every state, so the first change never grows the bar over a row.
-            <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:sticky md:z-10 md:rounded-b-[inherit] md:px-(--workspace-panel-pad-lg) md:py-2">
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:sticky md:bottom-[calc(-1*var(--workspace-pad-y))] md:z-10 md:rounded-b-[inherit] md:px-(--workspace-panel-pad-lg) md:py-2">
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-6">
                 <div
                   className={cn(

@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import {
   type ArchiveBlocker,
   ArchiveBlockerList,
@@ -216,6 +217,7 @@ export function SectorRegistry({ ministryId }: SectorRegistryProps) {
                       {m.ministries_cancel()}
                     </Button>
                     <Button type="submit" disabled={pending}>
+                      {pending ? <Spinner /> : null}
                       {m.sectors_add_submit()}
                     </Button>
                   </DialogFooter>
@@ -266,6 +268,7 @@ export function SectorRegistry({ ministryId }: SectorRegistryProps) {
                         {m.ministries_cancel()}
                       </Button>
                       <Button type="submit" disabled={pending}>
+                        {pending ? <Spinner /> : null}
                         {m.sectors_rename_submit()}
                       </Button>
                     </span>
@@ -389,6 +392,7 @@ function ArchiveSectorDialog({
                 disabled={pending}
                 onClick={archive}
               >
+                {pending ? <Spinner /> : null}
                 {pending
                   ? m.sectors_archiving()
                   : alternative

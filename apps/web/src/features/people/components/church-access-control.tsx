@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { resetAfterSelfDemotion } from '@/features/people/authority-refresh';
 import { peopleQueryKey } from '@/features/people/people-queries';
 import type {
@@ -144,6 +145,7 @@ export function ChurchAccessControl({
               disabled={pending}
               onClick={confirm}
             >
+              {pending ? <Spinner /> : null}
               {pending ? m.people_access_saving() : actionLabel}
             </AlertDialogAction>
           </AlertDialogFooter>

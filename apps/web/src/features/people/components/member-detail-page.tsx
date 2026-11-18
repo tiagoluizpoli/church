@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
 import { InviteDialog } from '@/features/invitations/components/invite-dialog';
@@ -91,10 +92,10 @@ export function MemberDetailPage({ memberId }: MemberDetailPageProps) {
 
   if (query.isLoading) {
     return (
-      <div className="space-y-3" data-testid="person-loading">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-8 w-96" />
-      </div>
+      <Pending className="space-y-3" data-testid="person-loading">
+        <Skeleton className="h-10 w-full max-w-64" />
+        <Skeleton className="h-8 w-full max-w-96" />
+      </Pending>
     );
   }
   if (query.isError) {

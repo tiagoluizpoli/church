@@ -140,6 +140,45 @@ describe('the public Church Invitation join route', () => {
     vi.unstubAllGlobals();
   });
 
+  it('shows a skeleton on first load, then keeps the content during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    previewChurchInvitation.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { queryClient } = renderRoute({
+      initialPath: INITIAL_PATH,
+      churchTimezone: 'UTC',
+    });
+
+    const busy = await screen.findByLabelText(m.join_loading());
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    previewChurchInvitation.mockReturnValue(new Promise(() => undefined));
+    release(PLAIN_PREVIEW);
+    expect(
+      await screen.findByText(
+        m.join_church_access({ accessLevel: m.join_church_access_admin() }),
+      ),
+    ).toBeVisible();
+    expect(screen.queryByLabelText(m.join_loading())).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(previewChurchInvitation).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.getByText(
+        m.join_church_access({ accessLevel: m.join_church_access_admin() }),
+      ),
+    ).toBeVisible();
+    expect(screen.queryByLabelText(m.join_loading())).toBeNull();
+  });
+
   it('shows a plain first-admin invitation in step 1 with Send code and Decline but no Ministry', async () => {
     previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
 

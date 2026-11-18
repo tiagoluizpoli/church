@@ -95,14 +95,17 @@ function refusal(status: number, data: Record<string, unknown>) {
 
 async function openInvite() {
   const user = userEvent.setup();
-  renderRoute({ initialPath: '/invitations', churchTimezone: 'UTC' });
+  const { queryClient } = renderRoute({
+    initialPath: '/invitations',
+    churchTimezone: 'UTC',
+  });
   await user.click(
     await screen.findByRole('button', { name: m.invitations_invite_open() }),
   );
   const dialog = await screen.findByRole('dialog', {
     name: m.invitations_invite_title(),
   });
-  return { user, dialog };
+  return { user, dialog, queryClient };
 }
 
 interface ChooseMinistryInput {
@@ -136,6 +139,40 @@ beforeEach(() => {
 });
 
 describe('Invite dialog', () => {
+  it('shows a skeleton while the Roles first load, then keeps them during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    listMinistryRoles.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { user, dialog, queryClient } = await openInvite();
+    await chooseMinistry({ user, dialog, name: 'Worship' });
+
+    const busy = await within(dialog).findByLabelText(
+      m.invitations_invite_roles_loading(),
+    );
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    listMinistryRoles.mockReturnValue(new Promise(() => undefined));
+    release({ roles: ROLES['m-worship'] });
+    expect(
+      await within(dialog).findByRole('checkbox', { name: 'Singer' }),
+    ).toBeVisible();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() => expect(listMinistryRoles).toHaveBeenCalledTimes(2));
+    expect(
+      within(dialog).getByRole('checkbox', { name: 'Singer' }),
+    ).toBeVisible();
+    expect(
+      within(dialog).queryByLabelText(m.invitations_invite_roles_loading()),
+    ).toBeNull();
+  });
+
   it('lets an admin invite a Volunteer with Select all, then closes, toasts and refreshes the list', async () => {
     const { user, dialog } = await openInvite();
 

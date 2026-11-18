@@ -3,6 +3,7 @@ import { CloudOff, RefreshCw } from 'lucide-react';
 import type { MyScheduleRefreshState } from '../hooks/use-my-schedule-refresh';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
 
@@ -30,15 +31,24 @@ export function MyScheduleOfflineBanner({
     ? formatInstantOf({ value: lastUpdatedAt, timeZone: churchTimezone })
     : undefined;
 
+  // Offline is a known, calm state (amber); only a failed refresh is an error.
+  const tone =
+    isOffline && refreshState !== 'error'
+      ? 'border-amber-500/30 bg-amber-500/8 text-amber-800 dark:text-amber-200 *:data-[slot=alert-description]:text-amber-800/90 dark:*:data-[slot=alert-description]:text-amber-200/90'
+      : undefined;
+
   return (
-    <Alert variant={isOffline ? 'destructive' : 'default'}>
+    <Alert
+      variant={refreshState === 'error' ? 'destructive' : 'default'}
+      className={cn('rounded-lg px-3 py-3 text-sm', tone)}
+    >
       <CloudOff className="size-4" />
       <AlertTitle>
         {isOffline
           ? m.my_schedule_offline_title()
           : m.my_schedule_cached_title()}
       </AlertTitle>
-      <AlertDescription className="space-y-3">
+      <AlertDescription className="space-y-3 text-sm">
         <p>
           {isOffline
             ? m.my_schedule_offline_body()
@@ -53,10 +63,11 @@ export function MyScheduleOfflineBanner({
         <Button
           type="button"
           variant="outline"
+          size="touch"
           onClick={onRefresh}
           disabled={refreshState === 'refreshing'}
         >
-          <RefreshCw className="mr-2 size-4" />
+          <RefreshCw className="size-4" />
           {refreshState === 'refreshing'
             ? m.my_schedule_refreshing()
             : m.my_schedule_refresh()}

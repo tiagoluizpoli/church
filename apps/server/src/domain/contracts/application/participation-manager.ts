@@ -1,4 +1,4 @@
-import type { Instant, TimeOfDay } from '@church/time';
+import type { CalendarDay, Instant, TimeOfDay } from '@church/time';
 import type {
   ChurchId,
   CycleId,
@@ -257,6 +257,46 @@ export interface ScheduleListFilters {
   attention?: boolean;
 }
 
+export interface GetScheduleInsightsInput {
+  churchId: ChurchId;
+  /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
+  ministryIds?: MinistryId[];
+}
+
+/** Requirement headcount and seats held; `filled` never exceeds `needed` per requirement. */
+export interface StaffingView {
+  needed: number;
+  filled: number;
+}
+
+export interface CycleInsightView extends StaffingView {
+  cycleId: string;
+  name: string;
+  startDate: CalendarDay;
+  endDate: CalendarDay;
+  asked: number;
+  answered: number;
+}
+
+export interface MinistryInsightView extends StaffingView {
+  ministryId: string;
+  name: string;
+}
+
+export interface FocusCycleInsightView {
+  cycleId: string;
+  name: string;
+  /** Serving Ministries, least covered first. */
+  ministries: MinistryInsightView[];
+}
+
+export interface ScheduleInsightsView {
+  /** The latest Sent or Past Cycles in scope, oldest first. */
+  cycles: CycleInsightView[];
+  /** The Cycle running on the Church's today, else the latest one; null without any. */
+  focus: FocusCycleInsightView | null;
+}
+
 export interface ListSchedulesInput {
   churchId: ChurchId;
   /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
@@ -403,6 +443,10 @@ export interface IParticipationManager {
   ): Promise<ScheduleSummaryView[]>;
   /** Newest Cycle first, then Ministries alphabetically. */
   listSchedules(input: ListSchedulesInput): Promise<ScheduleListPage>;
+  /** Staffing and availability totals of the latest Cycles plus per-Ministry coverage of the focus Cycle. */
+  getScheduleInsights(
+    input: GetScheduleInsightsInput,
+  ): Promise<ScheduleInsightsView>;
   /** Throws NotFoundError when the pair is out of scope or its Cycle is a Draft. */
   getSchedule(input: GetScheduleInput): Promise<ScheduleView>;
 }

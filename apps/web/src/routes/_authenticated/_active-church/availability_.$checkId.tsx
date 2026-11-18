@@ -14,7 +14,9 @@ function AvailabilityCheckPage() {
     <AvailabilityDetailPage
       key={checkId}
       checkId={checkId}
-      onAnswered={() => navigate({ to: '/availability' })}
+      onAnswered={() =>
+        navigate({ to: '/availability', search: { answered: checkId } })
+      }
     />
   );
 }

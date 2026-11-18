@@ -30,6 +30,7 @@ vi.mock('@/utils/api-instances', async () => ({
       counts: { ['to_prepare']: 2, asking: 3, assigning: 4, published: 5 },
     }),
     getCycleAnchors: vi.fn().mockResolvedValue({ current: null, next: null }),
+    getScheduleInsights: vi.fn().mockResolvedValue({ cycles: [], focus: null }),
     listMinistryDirectory: vi
       .fn()
       .mockResolvedValue({ counts: { review: 3, noSectors: 1 } }),
@@ -221,26 +222,26 @@ describe('HomePage', () => {
     givenCapabilities({ isChurchAdmin: true });
     renderHomePage();
     expect(
-      await screen.findByRole('link', { name: /2 A preparar/ }),
+      await screen.findByRole('link', { name: /A preparar 2/ }),
     ).toHaveAttribute('href', '/schedules?stage=to_prepare');
-    expect(screen.getByRole('link', { name: /3 Consultando/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Consultando 3/ })).toHaveAttribute(
       'href',
       '/schedules?stage=asking',
     );
     expect(
-      screen.getByRole('link', { name: /3 Pessoas sem ministério/ }),
+      screen.getByRole('link', { name: /Pessoas sem ministério 3/ }),
     ).toHaveAttribute('href', '/people?withoutMinistry=true');
     expect(
-      screen.getByRole('link', { name: /4 Convites pendentes/ }),
+      screen.getByRole('link', { name: /Convites pendentes 4/ }),
     ).toHaveAttribute('href', '/invitations?status=pending');
     expect(
-      screen.getByRole('link', { name: /2 Convites vencidos/ }),
+      screen.getByRole('link', { name: /Convites vencidos 2/ }),
     ).toHaveAttribute('href', '/invitations?status=expired');
     expect(
-      screen.getByRole('link', { name: /3 Ministérios para revisar/ }),
+      screen.getByRole('link', { name: /Ministérios para revisar 3/ }),
     ).toHaveAttribute('href', '/ministries?status=review');
     expect(
-      screen.getByRole('link', { name: /1 Ministérios sem setores/ }),
+      screen.getByRole('link', { name: /Ministérios sem setores 1/ }),
     ).toHaveAttribute('href', '/ministries?status=no-sectors');
   });
 

@@ -6,6 +6,7 @@ import {
   ministryMembership,
   ministryParticipation,
 } from '@church/db';
+import { parseInstant, setTestClock } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -28,6 +29,7 @@ import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry } from '@/seeds/builders/ministry';
+import { buildAssignment } from '@/seeds/builders/scheduling';
 import {
   buildAvailabilityCheck,
   buildUnavailableShift,
@@ -91,6 +93,8 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.resetAllMocks();
   await resetSchedulingPhase3Db();
+  // Before every seeded Shift ends, so they stay answerable.
+  setTestClock({ instant: parseInstant({ value: '2026-09-01T12:00:00Z' }) });
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -214,6 +218,7 @@ describe('Volunteer availability reads through PostgreSQL', () => {
           answerBy: '2026-09-05',
         },
       ],
+      counts: { total: 2, pending: 1, confirmed: 1 },
     });
     const deadlineQueries = queries.mock.calls.filter(([query]) =>
       JSON.stringify(query).includes('availability_ask'),
@@ -240,12 +245,22 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       endTime: new Date('2026-09-06T14:00:00Z'),
       label: 'Morning',
     });
-    await seedRequirement({
+    const heldRequirement = await seedRequirement({
       churchId,
       participationId: graph.participation.id,
       shiftId: held.id,
       roleId: role.id,
       peopleNeeded: 1,
+    });
+    await buildAssignment({
+      db,
+      churchId,
+      participationId: graph.participation.id,
+      shiftId: held.id,
+      volunteerId: member.volunteer.id,
+      roleId: role.id,
+      shiftRequirementId: heldRequirement.id,
+      status: 'pending',
     });
     const secondHeldRole = await seedRole({
       churchId,
@@ -294,18 +309,28 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       state: 'pending',
       answerBy: '2026-09-05',
       readOnly: false,
-      shifts: [
+      days: [
         {
-          shiftId: held.id,
-          eventId: graph.event.id,
-          eventTitle: 'Sunday Service',
-          startTime: '2026-09-06T12:00:00.000Z',
-          endTime: '2026-09-06T14:00:00.000Z',
-          label: 'Morning',
-          available: true,
-          published: false,
+          date: '2026-09-06',
+          state: 'open',
+          shifts: [
+            {
+              shiftId: held.id,
+              eventId: graph.event.id,
+              eventTitle: 'Sunday Service',
+              startTime: '2026-09-06T12:00:00.000Z',
+              endTime: '2026-09-06T14:00:00.000Z',
+              label: 'Morning',
+              available: true,
+              published: false,
+              // A draft schedule never reveals the Assignment.
+              assigned: false,
+              answerable: true,
+            },
+          ],
         },
       ],
+      counts: { openDays: 1, pastDays: 0, publishedDays: 0, openShifts: 1 },
     });
     // Legacy marks for a Role no longer held do not inflate the read totals.
     await buildUnavailableShift({
@@ -325,8 +350,8 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       payload: { shiftIds: [held.id] },
     });
     expect(saved.statusCode).toBe(200);
-    expect(saved.json().shifts).toMatchObject([
-      { shiftId: held.id, available: false },
+    expect(saved.json().days).toMatchObject([
+      { shifts: [{ shiftId: held.id, available: false }] },
     ]);
     const marked = await app.inject({ method: 'GET', url: ROOT });
     expect(marked.json().checks[0]).toMatchObject({
@@ -373,11 +398,120 @@ describe('Volunteer availability reads through PostgreSQL', () => {
     expect(past.json()).toMatchObject({
       answerBy: '2026-09-05',
       readOnly: true,
-      shifts: [
-        { shiftId: held.id, available: false, published: true },
-        { shiftId: later.id, available: true, published: false },
+      days: [
+        {
+          date: '2026-09-06',
+          state: 'published',
+          shifts: [
+            {
+              shiftId: held.id,
+              available: false,
+              published: true,
+              assigned: true,
+              answerable: false,
+            },
+          ],
+        },
+        {
+          date: '2026-09-13',
+          // A read-only check locks even its unpublished Shifts.
+          state: 'published',
+          shifts: [
+            {
+              shiftId: later.id,
+              available: true,
+              published: false,
+              assigned: false,
+              answerable: false,
+            },
+          ],
+        },
       ],
+      counts: { openDays: 0, pastDays: 0, publishedDays: 2, openShifts: 0 },
     });
+  });
+
+  it('orders pending checks by nearest Deadline, undated last, then Cycle start, with confirmed checks after, most recent Cycle first', async () => {
+    const { churchId, ministryId, member, check } = await seedCheck();
+    async function checkFor({
+      name,
+      startDate,
+      answerBy,
+      state,
+    }: {
+      name: string;
+      startDate: string;
+      answerBy: string | null;
+      state: 'pending' | 'confirmed';
+    }) {
+      const period = await createSchedulingPhase3Cycle({
+        churchId,
+        name,
+        startDate: new Date(startDate),
+        endDate: new Date(startDate.replace(/-01$/, '-28')),
+        state: 'sent',
+      });
+      if (answerBy) {
+        await db.insert(availabilityAsk).values({
+          churchId,
+          ministryId,
+          cycleId: period.id,
+          askedAt: new Date('2026-08-01'),
+          answerBy,
+        });
+      }
+      return buildAvailabilityCheck({
+        db,
+        churchId,
+        cycleId: period.id,
+        ministryMembershipId: member.membership.id,
+        state,
+      });
+    }
+    // Created out of order so insertion order cannot pass for the ORDER BY.
+    const december = await checkFor({
+      name: 'December',
+      startDate: '2026-12-01',
+      answerBy: null,
+      state: 'pending',
+    });
+    const confirmed = await checkFor({
+      name: 'January',
+      startDate: '2027-01-01',
+      answerBy: '2026-08-15',
+      state: 'confirmed',
+    });
+    // A later Deadline would sort it last if answered checks followed the Deadline.
+    const latestConfirmed = await checkFor({
+      name: 'February',
+      startDate: '2027-02-01',
+      answerBy: '2026-08-20',
+      state: 'confirmed',
+    });
+    const november = await checkFor({
+      name: 'November',
+      startDate: '2026-11-01',
+      answerBy: null,
+      state: 'pending',
+    });
+    const october = await checkFor({
+      name: 'October',
+      startDate: '2026-10-01',
+      answerBy: '2026-09-03',
+      state: 'pending',
+    });
+
+    const response = await app.inject({ method: 'GET', url: ROOT });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().checks.map(({ id }: { id: string }) => id)).toEqual([
+      october.id,
+      check.id,
+      november.id,
+      december.id,
+      latestConfirmed.id,
+      confirmed.id,
+    ]);
   });
 
   it('keeps Deadlines scoped to each Ministry of the Cycle and hides another Church’s checks', async () => {

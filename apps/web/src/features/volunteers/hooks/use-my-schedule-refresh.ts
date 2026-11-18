@@ -14,6 +14,10 @@ export interface MyScheduleRefreshVisibleData {
 export interface UseMyScheduleRefreshOptions {
   visibleData: MyScheduleRefreshVisibleData;
   onRefresh: () => Promise<void>;
+  /** A new scope (e.g. other filters) is a fresh baseline, not a background update. */
+  scopeKey?: string;
+  /** The data on screen is a previous scope's, kept while the new one loads. */
+  isStale?: boolean;
 }
 
 export type MyScheduleRefreshState = 'idle' | 'refreshing' | 'error';
@@ -27,6 +31,8 @@ function serializeVisibleData(
 export function useMyScheduleRefresh({
   visibleData,
   onRefresh,
+  scopeKey = '',
+  isStale = false,
 }: UseMyScheduleRefreshOptions) {
   const isOnline = useOnlineState();
   const [refreshState, setRefreshState] =
@@ -35,13 +41,16 @@ export function useMyScheduleRefresh({
   const lastVisibleDataRef = useRef<string | undefined>(undefined);
   const isManualRefreshRef = useRef(false);
   const hasLoadedVisibleDataRef = useRef(false);
+  const scopeKeyRef = useRef(scopeKey);
 
   useEffect(() => {
+    if (isStale) return;
     const nextVisibleData = serializeVisibleData(visibleData);
 
-    if (!hasLoadedVisibleDataRef.current) {
+    if (!hasLoadedVisibleDataRef.current || scopeKeyRef.current !== scopeKey) {
       lastVisibleDataRef.current = nextVisibleData;
       hasLoadedVisibleDataRef.current = true;
+      scopeKeyRef.current = scopeKey;
       return;
     }
 
@@ -61,7 +70,7 @@ export function useMyScheduleRefresh({
     }
 
     lastVisibleDataRef.current = nextVisibleData;
-  }, [visibleData]);
+  }, [visibleData, scopeKey, isStale]);
 
   useEffect(() => {
     if (!hasBackgroundUpdate) {

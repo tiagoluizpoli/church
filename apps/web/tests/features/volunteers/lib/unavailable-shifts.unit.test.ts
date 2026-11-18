@@ -1,12 +1,12 @@
 import { parseCalendarDay, parseTimeOfDay, toInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import {
+  type CheckShift,
   createInitialUnavailableShiftDraft,
   getShiftDate,
   toggleShiftUnavailable,
   toggleWholeDayUnavailable,
 } from '@/features/volunteers/lib/unavailable-shifts';
-import type { GetAvailabilityCheck200ShiftsItem } from '@/infrastructure/api/churchAPI.schemas';
 
 const SAO_PAULO = 'America/Sao_Paulo'; // west of UTC
 const KOLKATA = 'Asia/Kolkata'; // east of UTC
@@ -15,14 +15,15 @@ function shift(
   shiftId: string,
   startTime: string,
   endTime: string,
-): GetAvailabilityCheck200ShiftsItem {
+): CheckShift {
   return {
     shiftId,
     eventTitle: 'Sunday',
     startTime,
     endTime,
     available: true,
-  } as GetAvailabilityCheck200ShiftsItem;
+    answerable: true,
+  } as CheckShift;
 }
 
 // Both on 4 Jan in São Paulo; the evening one is already 5 Jan in UTC.

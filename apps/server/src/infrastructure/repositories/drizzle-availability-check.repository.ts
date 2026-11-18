@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import {
+  assignment,
   availabilityAsk,
   availabilityCheck,
   church,
@@ -68,6 +69,7 @@ import type {
   StampRemindedInput,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import { PUBLISHED_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
 import { mapAvailabilityCheck } from '../mappers/availability-check.mapper';
 import { getClient, withChurchIsolation } from './helpers';
@@ -611,7 +613,15 @@ export class DrizzleAvailabilityCheckRepository
           }),
         ),
       )
-      .orderBy(asc(availabilityCheck.state), asc(availabilityCheck.id));
+      // Enum order puts pending first, by nearest Deadline (undated last) then
+      // Cycle start; answered checks follow, most recent Cycle first.
+      .orderBy(
+        asc(availabilityCheck.state),
+        sql`case when ${availabilityCheck.state} = 'pending' then ${availabilityAsk.answerBy} end asc nulls last`,
+        sql`case when ${availabilityCheck.state} = 'pending' then ${cycle.startDate} end asc`,
+        sql`case when ${availabilityCheck.state} = 'confirmed' then ${cycle.startDate} end desc`,
+        asc(availabilityCheck.id),
+      );
 
     return rows.map((row) => ({
       check: mapAvailabilityCheck(row.check),
@@ -636,6 +646,22 @@ export class DrizzleAvailabilityCheckRepository
         endTime: shift.endTime,
         label: shift.label,
         participationState: ministryParticipation.state,
+        // Only a published Assignment puts the Volunteer on the schedule.
+        assigned:
+          sql<boolean>`(${eq(ministryParticipation.state, 'published')} and ${exists(
+            db
+              .select({ id: assignment.id })
+              .from(assignment)
+              .where(
+                and(
+                  eq(assignment.shiftId, shift.id),
+                  eq(assignment.volunteerId, ministryMembership.volunteerId),
+                  inArray(assignment.status, [
+                    ...PUBLISHED_ASSIGNMENT_STATUSES,
+                  ]),
+                ),
+              ),
+          )})`.mapWith(Boolean),
       })
       .from(availabilityCheck)
       .innerJoin(
@@ -697,6 +723,7 @@ export class DrizzleAvailabilityCheckRepository
       endTime: fromDate({ date: row.endTime }),
       label: row.label ?? undefined,
       published: row.participationState === 'published',
+      assigned: row.assigned,
     }));
   }
 

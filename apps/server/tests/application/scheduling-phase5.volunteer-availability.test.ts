@@ -1,6 +1,6 @@
 import { appConfig } from '@church/app-config';
-import { parseCalendarDay, parseInstant } from '@church/time';
-import { describe, expect, it, vi } from 'vitest';
+import { parseCalendarDay, parseInstant, setTestClock } from '@church/time';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import {
   AssignmentId,
@@ -35,6 +35,7 @@ import { Notification } from '@/domain/entities/notification';
 import { Role } from '@/domain/entities/role';
 import { Shift } from '@/domain/entities/shift';
 import { ShiftRequirement } from '@/domain/entities/shift-requirement';
+import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import {
   createAssignmentRepositoryFake,
@@ -67,6 +68,7 @@ const instant = (value: string) => parseInstant({ value });
 const shifts: [CheckShiftRow, CheckShiftRow] = [
   {
     published: false,
+    assigned: false,
     shiftId: morning,
     eventId,
     eventTitle: 'Service',
@@ -75,6 +77,7 @@ const shifts: [CheckShiftRow, CheckShiftRow] = [
   },
   {
     published: false,
+    assigned: false,
     shiftId: evening,
     eventId,
     eventTitle: 'Service',
@@ -167,7 +170,25 @@ function createHarness() {
   };
 }
 
+function markOf(shiftId: ShiftId) {
+  const shift = shifts.find((row) => row.shiftId === shiftId) ?? shifts[0];
+  return new UnavailableShift({
+    props: {
+      churchId,
+      availabilityCheckId: checkId,
+      shiftId,
+      volunteerId,
+      shiftStartTime: shift.startTime,
+      shiftEndTime: shift.endTime,
+    },
+  });
+}
+
 describe('volunteer availability', () => {
+  beforeEach(() => {
+    // Before both Shifts end, so they stay answerable.
+    setTestClock({ instant: instant('2026-08-01T12:00:00Z') });
+  });
   it('lists and resolves shifts as available by default', async () => {
     const { manager } = createHarness();
     expect(
@@ -181,7 +202,118 @@ describe('volunteer availability', () => {
       }),
     ]);
     const detail = await manager.getAvailabilityCheck(input);
-    expect(detail.shifts.map((shift) => shift.available)).toEqual([true, true]);
+    expect(
+      detail.days.flatMap((day) => day.shifts.map((shift) => shift.available)),
+    ).toEqual([true, true]);
+  });
+  it('locks an ended Shift out of the list summary, the day counts and new answers', async () => {
+    const { manager, unavailableShiftRepo } = createHarness();
+    // The morning Shift has ended; the evening one is still ahead.
+    setTestClock({ instant: instant('2026-08-02T16:00:00Z') });
+    unavailableShiftRepo.listUnavailableShiftsByCheck.mockResolvedValue([
+      markOf(morning),
+    ]);
+    expect(
+      await manager.listAvailabilityChecks({ churchId, volunteerId }),
+    ).toEqual([
+      expect.objectContaining({
+        totalShiftCount: 1,
+        unavailableShiftCount: 0,
+      }),
+    ]);
+    const detail = await manager.getAvailabilityCheck(input);
+    expect(detail.days).toEqual([
+      {
+        date: parseCalendarDay({ value: '2026-08-02' }),
+        state: 'open',
+        shifts: [
+          expect.objectContaining({
+            shiftId: morning,
+            available: false,
+            answerable: false,
+          }),
+          expect.objectContaining({
+            shiftId: evening,
+            available: true,
+            answerable: true,
+          }),
+        ],
+      },
+    ]);
+    expect(detail.counts).toEqual({
+      openDays: 1,
+      pastDays: 0,
+      publishedDays: 0,
+      openShifts: 1,
+    });
+  });
+  it('keeps the mark on an ended Shift when the answer leaves it out', async () => {
+    const { manager, unavailableShiftRepo, tx } = createHarness();
+    setTestClock({ instant: instant('2026-08-02T16:00:00Z') });
+    unavailableShiftRepo.listUnavailableShiftsByCheck.mockResolvedValue([
+      markOf(morning),
+    ]);
+    await manager.answerAvailabilityCheck({ ...input, shiftIds: [] });
+    expect(
+      unavailableShiftRepo.replaceUnavailableShiftsForCheck,
+    ).toHaveBeenCalledWith({
+      churchId,
+      availabilityCheckId: checkId,
+      shiftIds: [morning],
+      tx,
+    });
+  });
+  it('ignores a new answer for an ended Shift, explicit or whole-day, without refusing it', async () => {
+    const { manager, unavailableShiftRepo, tx } = createHarness();
+    setTestClock({ instant: instant('2026-08-02T16:00:00Z') });
+    await manager.answerAvailabilityCheck({
+      ...input,
+      shiftIds: [morning],
+      wholeDayDates: ['2026-08-02'],
+    });
+    expect(
+      unavailableShiftRepo.replaceUnavailableShiftsForCheck,
+    ).toHaveBeenCalledWith({
+      churchId,
+      availabilityCheckId: checkId,
+      shiftIds: [evening],
+      tx,
+    });
+  });
+  it('counts only the Shifts still open to answer in the list summary', async () => {
+    const { manager, availabilityCheckRepo, unavailableShiftRepo } =
+      createHarness();
+    availabilityCheckRepo.listCheckShifts.mockResolvedValue([
+      { ...shifts[0], published: true },
+      shifts[1],
+    ]);
+    unavailableShiftRepo.listUnavailableShiftsByCheck.mockResolvedValue(
+      shifts.map((shift) => markOf(shift.shiftId)),
+    );
+    expect(
+      await manager.listAvailabilityChecks({ churchId, volunteerId }),
+    ).toEqual([
+      expect.objectContaining({
+        totalShiftCount: 1,
+        unavailableShiftCount: 1,
+      }),
+    ]);
+  });
+  it('reports the whole answer in the list summary once no Shift is left to answer', async () => {
+    const { manager, unavailableShiftRepo } = createHarness();
+    // Both Shifts have ended: the summary must still show the unavailable one.
+    setTestClock({ instant: instant('2026-08-03T12:00:00Z') });
+    unavailableShiftRepo.listUnavailableShiftsByCheck.mockResolvedValue([
+      markOf(morning),
+    ]);
+    expect(
+      await manager.listAvailabilityChecks({ churchId, volunteerId }),
+    ).toEqual([
+      expect.objectContaining({
+        totalShiftCount: 2,
+        unavailableShiftCount: 1,
+      }),
+    ]);
   });
   it('denies a ministry schedule to a non-member', async () => {
     const { manager } = createHarness();

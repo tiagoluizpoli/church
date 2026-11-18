@@ -8,6 +8,7 @@ import {
   formatInstant,
   formatInstantPrecise,
   formatLongCalendarDay,
+  formatMonthShort,
   formatMonthYear,
   formatRecency,
   formatRelative,
@@ -39,6 +40,17 @@ function timeOfDay(value: string): TimeOfDay {
 describe('formatCalendarDay', () => {
   it('renders dd/MM/yyyy', () => {
     expect(formatCalendarDay({ day: day('2027-01-04') })).toBe('04/01/2027');
+  });
+});
+
+describe('formatMonthShort', () => {
+  it('abbreviates the month without a trailing period', () => {
+    expect(formatMonthShort({ day: day('2026-11-01'), locale: 'pt-BR' })).toBe(
+      'nov',
+    );
+    expect(formatMonthShort({ day: day('2026-11-30'), locale: 'en' })).toBe(
+      'Nov',
+    );
   });
 });
 

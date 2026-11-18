@@ -246,6 +246,8 @@ function createRepos(): Repos {
     countScheduleOpenSwapRequests: vi.fn(),
     countScheduleGaps: vi.fn(),
     countScheduleChecks: vi.fn(),
+    listCycleStaffing: vi.fn(),
+    listMinistryStaffing: vi.fn(),
   };
 
   const authorityManager = {

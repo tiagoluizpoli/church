@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   addCalendarDays,
+  addCalendarMonths,
   addMilliseconds,
   addMinutes,
   calendarDaysBetween,
   enumerateCalendarDays,
+  firstOfMonth,
   millisecondsBetween,
   minutesBetween,
   parseCalendarDay,
@@ -116,5 +118,25 @@ describe('CalendarDay arithmetic', () => {
         end: parseCalendarDay({ value: '2027-03-15' }),
       }),
     ).toBe(2);
+  });
+});
+
+describe('CalendarDay months', () => {
+  const day = (value: string) => parseCalendarDay({ value });
+
+  it('finds the first day of the month', () => {
+    expect(firstOfMonth({ day: day('2026-02-28') })).toBe('2026-02-01');
+  });
+
+  it('steps whole months across year boundaries, from any day of the month', () => {
+    expect(addCalendarMonths({ day: day('2026-01-31'), months: -1 })).toBe(
+      '2025-12-01',
+    );
+    expect(addCalendarMonths({ day: day('2026-11-30'), months: 2 })).toBe(
+      '2027-01-01',
+    );
+    expect(addCalendarMonths({ day: day('2026-03-15'), months: 0 })).toBe(
+      '2026-03-01',
+    );
   });
 });

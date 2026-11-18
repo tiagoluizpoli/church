@@ -51,6 +51,13 @@ export interface DashboardNextAssignment extends DashboardAssignmentItem {
   ministryName: string;
 }
 
+/** Published, non-declined Assignments whose Shift starts in one Church month. */
+export interface DashboardServingMonth {
+  /** First day of the month. */
+  month: CalendarDay;
+  served: number;
+}
+
 export interface VolunteerDashboard {
   nextAssignment: DashboardNextAssignment | null;
   upcomingAssignmentGroups: DashboardAssignmentGroup[];
@@ -59,6 +66,8 @@ export interface VolunteerDashboard {
   notificationPreview: Notification[];
   defaultMinistryId?: string;
   ministryOptions: DashboardMinistryOption[];
+  /** The latest months up to the Church's current one, oldest first. */
+  servingHistory: DashboardServingMonth[];
 }
 
 export interface VolunteerScheduleAssignment {

@@ -142,6 +142,9 @@ export const dashboardResponseSchema = z.object({
   notificationPreview: z.array(memberNotificationResponseSchema),
   defaultMinistryId: z.string().optional(),
   ministryOptions: z.array(dashboardMinistryOptionSchema),
+  servingHistory: z.array(
+    z.object({ month: calendarDaySchema, served: z.number() }),
+  ),
 });
 export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
 
@@ -365,6 +368,7 @@ function dashboardToResponse(dashboard: VolunteerDashboard): DashboardResponse {
     ),
     defaultMinistryId: dashboard.defaultMinistryId,
     ministryOptions: dashboard.ministryOptions,
+    servingHistory: dashboard.servingHistory,
   };
 }
 

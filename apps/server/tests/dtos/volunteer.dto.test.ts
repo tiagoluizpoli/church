@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { isInstant, parseInstant } from '@church/time';
+import { isInstant, parseCalendarDay, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { volunteerMapper } from '@/api/dtos/volunteer.dto';
 import { Assignment } from '@/domain/entities/assignment';
@@ -15,6 +15,9 @@ describe('volunteerMapper', () => {
         notificationPreview: [],
         defaultMinistryId: 'm1',
         ministryOptions: [],
+        servingHistory: [
+          { month: parseCalendarDay({ value: '2026-05-01' }), served: 2 },
+        ],
       };
 
       const response = volunteerMapper.dashboardToResponse(dashboard);
@@ -29,6 +32,7 @@ describe('volunteerMapper', () => {
         unreadNotificationCount: 0,
         notificationPreview: [],
         ministryOptions: [],
+        servingHistory: [],
       };
 
       const response = volunteerMapper.dashboardToResponse(dashboard);
@@ -86,6 +90,7 @@ describe('volunteerMapper', () => {
           }),
         ],
         ministryOptions: [],
+        servingHistory: [],
       };
 
       const response = volunteerMapper.dashboardToResponse(dashboard);

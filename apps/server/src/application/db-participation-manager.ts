@@ -3,6 +3,7 @@ import {
   compareCalendarDays,
   compareInstants,
   fromDate,
+  fromDateColumn,
   type Instant,
   now,
   today,
@@ -34,6 +35,7 @@ import type {
   GetCycleParticipationInput,
   GetParticipationCompletionInput,
   GetScheduleInput,
+  GetScheduleInsightsInput,
   IParticipationManager,
   ListEligibleVolunteersInput,
   ListScheduleSummariesInput,
@@ -48,6 +50,7 @@ import type {
   PublishCycleView,
   SavePreparationInput,
   SaveUsualSetupBlockInput,
+  ScheduleInsightsView,
   ScheduleListPage,
   ScheduleListPeriod,
   ScheduleStageCounts,
@@ -430,6 +433,9 @@ interface ScheduleKeyInput {
 function scheduleKey({ ministryId, cycleId }: ScheduleKeyInput): string {
   return `${ministryId}:${cycleId}`;
 }
+
+/** Cycles the Home trend charts read: about half a year of monthly Cycles. */
+const SCHEDULE_INSIGHTS_CYCLE_LIMIT = 6;
 
 const SCHEDULE_LIST_PERIOD_CYCLE_STATES: Record<
   ScheduleListPeriod,
@@ -2180,6 +2186,42 @@ export class DbParticipationManager implements IParticipationManager {
       options: {
         ministries: ministries.map(({ id, name }) => ({ id, name })),
       },
+    };
+  }
+
+  async getScheduleInsights({
+    churchId,
+    ministryIds,
+  }: GetScheduleInsightsInput): Promise<ScheduleInsightsView> {
+    const [church, rows] = await Promise.all([
+      this.churchRepository.getById({ id: churchId }),
+      this.participationRepository.listCycleStaffing({
+        churchId,
+        ministryIds,
+        cycleLimit: SCHEDULE_INSIGHTS_CYCLE_LIMIT,
+      }),
+    ]);
+    const cycles = rows.map(({ startDate, endDate, ...row }) => ({
+      ...row,
+      startDate: fromDateColumn({ date: startDate }),
+      endDate: fromDateColumn({ date: endDate }),
+    }));
+    const churchDay = today({ instant: now(), timeZone: church.timezone });
+    const focus =
+      cycles.find(
+        ({ startDate, endDate }) =>
+          compareCalendarDays({ left: startDate, right: churchDay }) <= 0 &&
+          compareCalendarDays({ left: churchDay, right: endDate }) <= 0,
+      ) ?? cycles.at(-1);
+    if (!focus) return { cycles, focus: null };
+    const ministries = await this.participationRepository.listMinistryStaffing({
+      churchId,
+      ministryIds,
+      cycleId: focus.cycleId as CycleId,
+    });
+    return {
+      cycles,
+      focus: { cycleId: focus.cycleId, name: focus.name, ministries },
     };
   }
 

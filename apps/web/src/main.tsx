@@ -5,10 +5,14 @@ import ReactDOM from 'react-dom/client';
 import { initLocale } from './locale-init';
 import { routeTree } from './routeTree.gen';
 import { routeFallbackOptions } from './shared/components/route-fallbacks';
+import { initErrorReporting } from './shared/utils/error-reporting';
 import { queryClient } from './utils/api';
 
 // Must run before the router is created so ?lang= never reaches route search schemas.
 initLocale();
+
+// Best-effort and never blocks the first render.
+void initErrorReporting();
 
 interface WrapComponentProps {
   children: React.ReactNode;

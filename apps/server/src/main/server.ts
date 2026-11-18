@@ -33,6 +33,7 @@ async function start(): Promise<void> {
   registerErrorReportTunnel({
     app,
     dsn: env.ERROR_REPORTING_ENABLED ? env.SENTRY_DSN : undefined,
+    environment: env.CHURCH_ENVIRONMENT,
     settings: root.errorReportTunnel,
   });
 

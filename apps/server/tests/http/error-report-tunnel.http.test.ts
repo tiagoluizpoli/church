@@ -78,6 +78,7 @@ async function tunnelApp({
   registerErrorReportTunnel({
     app,
     dsn,
+    environment: 'staging',
     settings: {
       windowMs: 60_000,
       maxRequests: MAX_REQUESTS,
@@ -233,6 +234,19 @@ describe(`POST ${ERROR_REPORT_TUNNEL_PATH}`, () => {
     expect(report.body).not.toContain('inv_secret');
   });
 
+  it('tells the web app where and as which environment to report', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: ERROR_REPORT_TUNNEL_PATH,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      dsn: tracker.dsn,
+      environment: 'staging',
+    });
+  });
+
   it('refuses an envelope for a foreign DSN and forwards nothing', async () => {
     const response = await post({
       app,
@@ -369,5 +383,15 @@ describe('with error reporting off', () => {
     });
 
     expect(response.statusCode).toBe(204);
+  });
+
+  it('tells the web app not to report', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: ERROR_REPORT_TUNNEL_PATH,
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.body).toBe('');
   });
 });

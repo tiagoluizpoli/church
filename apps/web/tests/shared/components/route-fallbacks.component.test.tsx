@@ -1,8 +1,11 @@
+// biome-ignore-all lint/style/useNamingConvention: Sentry event fields are snake_case on the wire
 import { m } from '@church/i18n/messages';
+import * as Sentry from '@sentry/react';
 import { Link } from '@tanstack/react-router';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { initErrorReporting } from '@/shared/utils/error-reporting';
 import {
   activeChurchApiMock,
   resolvedActiveChurchStatus,
@@ -12,6 +15,7 @@ import {
   callerCapabilitiesFixture,
 } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
+import { serveTunnel } from '@/tests/setup/error-report-tunnel';
 import { renderRoute } from '@/tests/setup/render-route';
 
 // Home (`/`) stands in for any page: while `homeCrash` holds an error, its
@@ -250,5 +254,57 @@ describe('chunk-load failure after a deploy', () => {
 
     await screen.findByRole('alert');
     expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe('crash reporting', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    callerCapabilitiesApiMock.getCallerCapabilities.mockReturnValue(
+      new Promise(() => {}),
+    );
+  });
+
+  afterEach(async () => {
+    await Sentry.close();
+  });
+
+  it('reports the crash through the tunnel and shows its reference code', async () => {
+    const tunnel = serveTunnel({ reporting: 'on' });
+    await initErrorReporting();
+    page.homeCrash = new TypeError('boom');
+    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+
+    const alert = await screen.findByRole('alert');
+    await expect.poll(() => tunnel.items.length).toBe(1);
+    const [item] = tunnel.items;
+    const traceId = (item?.payload.contexts as { trace: { trace_id: string } })
+      .trace.trace_id;
+    expect(item?.type).toBe('event');
+    expect(item?.payload.tags).toMatchObject({ trace_id: traceId });
+    expect(item?.payload.exception).toMatchObject({
+      values: [
+        {
+          type: 'TypeError',
+          mechanism: { type: 'crash_fallback', handled: true },
+        },
+      ],
+    });
+    expect(traceId).toMatch(/^[0-9a-f]{32}$/);
+    expect(alert).toHaveTextContent(
+      m.common_reference_code({ code: traceId.slice(0, 8) }),
+    );
+  });
+
+  it('shows no reference code while reporting is off', async () => {
+    serveTunnel({ reporting: 'off' });
+    await initErrorReporting();
+    page.homeCrash = new Error('boom');
+    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).not.toHaveTextContent(
+      m.common_reference_code({ code: '' }).trim(),
+    );
   });
 });

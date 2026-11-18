@@ -11,6 +11,9 @@ export const env = createEnv({
     // An absolute API origin (local/worktree development, tests) or `/`: the
     // deployed image calls the API on its own origin, whatever its hostname.
     VITE_SERVER_URL: z.union([z.url(), z.literal('/')]),
+    // The source revision baked in at build; error reports carry it so they
+    // resolve against that build's source maps.
+    VITE_APP_REVISION: z.string().min(1).default('unversioned'),
   },
   runtimeEnv: (import.meta as unknown as ViteImportMeta).env,
   emptyStringAsUndefined: true,

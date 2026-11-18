@@ -8,7 +8,7 @@ RUN bun install --frozen-lockfile
 ARG APP_REVISION
 RUN test -n "$APP_REVISION"
 WORKDIR /app/apps/web
-RUN VITE_SERVER_URL=/ bun run build \
+RUN VITE_SERVER_URL=/ VITE_APP_REVISION=$APP_REVISION bun run build \
  && printf '%s\n' "$APP_REVISION" > dist/revision.txt
 
 FROM nginxinc/nginx-unprivileged:1.28-alpine

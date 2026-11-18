@@ -26,6 +26,8 @@ export interface RegisterErrorReportTunnelInput {
   app: FastifyInstance;
   /** Our DSN, or undefined while error reporting is off. */
   dsn: string | undefined;
+  /** CHURCH_ENVIRONMENT; the web app reports under it. */
+  environment: string;
   settings: AppConfig['errorReportTunnel'];
 }
 
@@ -34,15 +36,26 @@ export interface RegisterErrorReportTunnelInput {
  * (over the tailnet) only through here, scrubbed under ADR 0014. The answer
  * never waits for the tracker. While reporting is off it answers 204 and
  * drops the report: nothing is relayed, and a web build that still reports
- * gets no error to retry or log.
+ * gets no error to retry or log. A GET answers the web SDK's settings, or
+ * 204 while off.
  */
 export function registerErrorReportTunnel({
   app,
   dsn,
+  environment,
   settings,
 }: RegisterErrorReportTunnelInput): void {
   const { windowMs, maxRequests, forwardTimeoutMs } = settings;
   const url = dsn && envelopeUrl({ dsn });
+
+  // The web image is built once for every environment, so it learns the DSN
+  // and environment here at runtime. The DSN's host is tailnet-only.
+  app.get(
+    ERROR_REPORT_TUNNEL_PATH,
+    { schema: { hide: true } },
+    (_request, reply) =>
+      dsn ? reply.send({ dsn, environment }) : reply.code(NO_CONTENT).send(),
+  );
 
   app.post(
     ERROR_REPORT_TUNNEL_PATH,

@@ -15,6 +15,7 @@ import {
   isChunkLoadError,
   reloadPage,
 } from '@/shared/utils/chunk-reload';
+import { reportCrash } from '@/shared/utils/error-reporting';
 import { isOutageError } from '@/shared/utils/outage';
 import { watchReadiness } from '@/shared/utils/readiness';
 
@@ -27,16 +28,16 @@ function ErrorFallback({ error, fullScreen }: ErrorFallbackProps) {
   const router = useRouter();
   // A chunk error renders nothing until the effect decides: reload once, or fall back.
   const [reloading, setReloading] = useState(() => isChunkLoadError(error));
+  const [referenceCode, setReferenceCode] = useState<string>();
 
   useEffect(() => {
-    if (!isChunkLoadError(error)) {
+    if (isChunkLoadError(error) && claimChunkReload()) {
+      reloadPage();
       return;
     }
-    if (claimChunkReload()) {
-      reloadPage();
-    } else {
-      setReloading(false);
-    }
+    setReloading(false);
+    // Only a crash the Person actually sees is reported.
+    setReferenceCode(reportCrash({ error }));
   }, [error]);
 
   if (reloading) {
@@ -50,6 +51,11 @@ function ErrorFallback({ error, fullScreen }: ErrorFallbackProps) {
       title={m.shell_error_title()}
       description={m.shell_error_description()}
     >
+      {referenceCode ? (
+        <p className="text-muted-foreground text-sm">
+          {m.common_reference_code({ code: referenceCode })}
+        </p>
+      ) : null}
       <div className="flex flex-wrap justify-center gap-3">
         {/* Re-runs the route's loaders and guards; the new load resets the boundary. */}
         <Button className="min-h-11" onClick={() => router.invalidate()}>

@@ -85,6 +85,9 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
       const { churches } = await context.queryClient.ensureQueryData({
         queryKey: ['active-church', 'options'],
         queryFn: () => activeChurchApi.listActiveChurchOptions(),
+        // Fail fast: an outage must reach the full-screen reconnecting state,
+        // not retry forever behind the guard (#906).
+        retry: false,
       });
       const decision = resolveCrossChurchDeepLink({
         requestedChurchId,

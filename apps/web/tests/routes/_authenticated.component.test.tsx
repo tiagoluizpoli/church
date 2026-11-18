@@ -140,6 +140,42 @@ describe('the session guard (_authenticated)', () => {
       });
     });
 
+    it('shows the reconnecting state when a cross-church deep link cannot list churches, then lands on the link', async () => {
+      serverIsDown();
+      getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
+      activeChurchApiMock.getActiveChurchStatus.mockResolvedValue({
+        status: 'selection_required',
+      });
+      activeChurchApiMock.listActiveChurchOptions.mockRejectedValue(
+        new AxiosError('Network Error'),
+      );
+      activeChurchApiMock.selectActiveChurch.mockResolvedValue(
+        resolvedActiveChurchStatus({ churchId: 'church-2' }),
+      );
+
+      const { router } = renderRoute({ initialPath: '/?church=church-2' });
+      await screen.findByText(m.shell_reconnecting_title());
+
+      activeChurchApiMock.listActiveChurchOptions.mockResolvedValue({
+        churches: [{ churchId: 'church-2', name: 'Second Church' }],
+      });
+      serverIsBack();
+      window.dispatchEvent(new Event('online'));
+
+      await waitFor(() => {
+        expect(activeChurchApiMock.selectActiveChurch).toHaveBeenCalledWith({
+          churchId: 'church-2',
+        });
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByText(m.shell_reconnecting_title()),
+        ).not.toBeInTheDocument();
+      });
+      expect(router.state.location.pathname).toBe('/');
+      expect(router.state.location.search).toEqual({ church: 'church-2' });
+    });
+
     it('still shows the ordinary error fallback for a non-outage failure', async () => {
       getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
       activeChurchApiMock.getActiveChurchStatus.mockRejectedValue(

@@ -116,6 +116,41 @@ describe('Availability checks list', () => {
     ).toBeVisible();
     expect(cards[1]).toHaveAttribute('href', '/availability/music-check');
   });
+  it('acknowledges the check just answered with a banner and a marker on its card', async () => {
+    api.listAvailabilityChecks.mockResolvedValue({
+      checks: [
+        CHECK,
+        {
+          ...CHECK,
+          id: 'music-check',
+          ministryName: 'Louvor',
+          state: 'confirmed',
+        },
+      ],
+    });
+    renderPage(<AvailabilityListPage answeredCheckId="music-check" />);
+    expect(
+      await screen.findByText(
+        m.availability_list_answered({ ministry: 'Louvor' }),
+      ),
+    ).toHaveAttribute('role', 'status');
+    const cards = screen.getAllByRole('link');
+    expect(
+      within(cards[1]).getByText(m.availability_list_sent_now()),
+    ).toBeVisible();
+    expect(
+      within(cards[0]).queryByText(m.availability_list_sent_now()),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no acknowledgement without a just-answered check', async () => {
+    renderPage();
+    await screen.findAllByRole('link');
+    expect(
+      screen.queryByText(m.availability_list_sent_now()),
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps the Deadline current through its Church day even when UTC is tomorrow', async () => {
     renderPage();
     expect(

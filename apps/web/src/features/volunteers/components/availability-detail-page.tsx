@@ -16,12 +16,12 @@ import { isAxiosError } from 'axios';
 import {
   ChevronRight,
   CircleCheck,
+  CircleX,
   Clock,
   Lock,
   TriangleAlert,
 } from 'lucide-react';
 import { useId, useState } from 'react';
-import { toast } from 'sonner';
 import { z } from 'zod';
 import { useLocalAvailabilityDraft } from '../hooks/use-local-availability-draft';
 import {
@@ -31,6 +31,16 @@ import {
   toggleShiftUnavailable,
   type UnavailableShiftDraft,
 } from '../lib/unavailable-shifts';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -127,20 +137,21 @@ function AvailabilityAnswer({
     userId,
     timeZone: churchTimezone,
   });
-  useBlocker({
-    shouldBlockFn: () =>
-      hasUnsentChanges &&
-      !cleared.current &&
-      !window.confirm(m.availability_draft_leave()),
+  const blocker = useBlocker({
+    shouldBlockFn: () => hasUnsentChanges && !cleared.current,
     enableBeforeUnload: () => hasUnsentChanges && !cleared.current,
+    withResolver: true,
   });
+  // The marks the "everything available" shortcut cleared, until the next edit.
+  const [undoDraft, setUndoDraft] = useState<UnavailableShiftDraft | null>(
+    null,
+  );
   const queryClient = useQueryClient();
   const [publishedRefusal, setPublishedRefusal] = useState(false);
   const confirmed = check.state === 'confirmed';
   const answer = useMutation({
-    // The shortcut sends its own draft; the main button sends the current one.
-    mutationFn: (override?: UnavailableShiftDraft) => {
-      const body = buildUnavailableShiftsBody({ draft: override ?? draft });
+    mutationFn: () => {
+      const body = buildUnavailableShiftsBody({ draft });
       // A whole day containing a published Shift must be sent as individual marks.
       body.wholeDayDates = body.wholeDayDates?.filter((day) =>
         check.shifts.every(
@@ -192,16 +203,12 @@ function AvailabilityAnswer({
     },
     onSuccess: async (updated) => {
       clear();
-      queryClient.setQueryData(['availability-check', check.id], updated);
       await queryClient.invalidateQueries({
         queryKey: ['availability-checks'],
       });
-      toast.success(
-        confirmed
-          ? m.availability_detail_saved_toast()
-          : m.availability_detail_confirmed_toast(),
-      );
       await onAnswered();
+      // After navigation, so this page never flips to "Confirmada" mid-submit.
+      queryClient.setQueryData(['availability-check', check.id], updated);
     },
   });
   const locale = getLocale();
@@ -244,9 +251,29 @@ function AvailabilityAnswer({
             total: totalCount,
           });
   const canEdit = !check.readOnly && editableShifts.length > 0;
-  const showShortcut =
-    canEdit &&
-    editableShifts.some((shift) => draft.markedShiftIds.has(shift.shiftId));
+  const hasMarks = editableShifts.some((shift) =>
+    draft.markedShiftIds.has(shift.shiftId),
+  );
+  // A draft reset, never a submit: the main button still sends the answer.
+  const showShortcut = canEdit && !confirmed && hasMarks;
+  const showUndo = undoDraft !== null && !answer.isPending;
+  const editDraft: typeof setDraft = (next) => {
+    setUndoDraft(null);
+    setDraft(next);
+  };
+  const done = confirmed && !hasUnsentChanges && !answer.isPending;
+  const changeUntil =
+    check.answerBy && !overdue
+      ? m.availability_detail_change_until({
+          date: formatCalendarDateOnly({ value: check.answerBy }),
+        })
+      : null;
+  const help = [
+    confirmed ? null : m.availability_detail_help_covers(),
+    changeUntil,
+  ]
+    .filter(Boolean)
+    .join(' ');
   // Shifts arrive in the backend's start-time order; grouping keeps it.
   const days = new Map<CalendarDay, GetAvailabilityCheck200ShiftsItem[]>();
   for (const shift of check.shifts) {
@@ -271,75 +298,64 @@ function AvailabilityAnswer({
     const dayLabel = formatCalendarDayWithWeekday({ day, locale });
     const dayShifts = shifts.filter((shift) => !shift.published);
     const hasPublished = dayShifts.length < shifts.length;
+    const wholeDayUnavailable = dayShifts.every((shift) =>
+      draft.markedShiftIds.has(shift.shiftId),
+    );
     return (
       <section key={day} aria-label={dayLabel} className="space-y-3">
         <div className="space-y-3 border-b pb-3">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 className="font-semibold text-base">{dayLabel}</h2>
-            <p className={cn('text-sm tabular-nums', SECONDARY_TONE)}>
-              {m.availability_detail_day_count({
-                available: shifts.filter(isAvailable).length,
-                total: shifts.length,
-              })}
-            </p>
-          </div>
-          {!check.readOnly && dayShifts.length > 0 ? (
-            <div className="radius-control flex w-full bg-muted p-1 sm:w-fit">
-              {[true, false].map((available) => {
-                const pressed = dayShifts.every(
-                  (shift) =>
-                    !draft.markedShiftIds.has(shift.shiftId) === available,
-                );
-                return (
-                  <Button
-                    key={String(available)}
-                    variant="ghost"
-                    size="touch"
-                    aria-pressed={pressed}
-                    aria-label={
-                      available
-                        ? m.availability_detail_day_all_available({
-                            day: dayLabel,
-                          })
-                        : m.availability_detail_day_all_unavailable({
-                            day: dayLabel,
-                          })
-                    }
-                    disabled={answer.isPending}
-                    className={cn(
-                      'h-auto min-h-11 flex-1 whitespace-normal font-normal sm:flex-none',
-                      pressed
-                        ? 'bg-card text-foreground ring-1 ring-foreground/10 hover:bg-card'
-                        : SECONDARY_TONE,
-                    )}
-                    onClick={() => {
-                      setDraft((current) => {
-                        let next = current;
-                        for (const shift of dayShifts) {
-                          if (
-                            !next.markedShiftIds.has(shift.shiftId) !==
-                            available
-                          ) {
-                            next = toggleShiftUnavailable({
-                              draft: next,
-                              shifts: editableShifts,
-                              shiftId: shift.shiftId,
-                              timeZone: churchTimezone,
-                            });
-                          }
-                        }
-                        return next;
-                      });
-                    }}
-                  >
-                    {available
-                      ? m.availability_detail_all_available()
-                      : m.availability_detail_all_unavailable()}
-                  </Button>
-                );
-              })}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <div className="space-y-0.5">
+              <h2 className="font-semibold text-base">{dayLabel}</h2>
+              <p className={cn('text-sm tabular-nums', SECONDARY_TONE)}>
+                {(shifts.length === 1
+                  ? m.availability_detail_day_count_one
+                  : m.availability_detail_day_count)({
+                  available: shifts.filter(isAvailable).length,
+                  total: shifts.length,
+                })}
+              </p>
             </div>
-          ) : null}
+            {!check.readOnly && dayShifts.length > 1 ? (
+              <Button
+                variant="ghost"
+                size="touch"
+                aria-label={
+                  wholeDayUnavailable
+                    ? m.availability_detail_day_all_available({ day: dayLabel })
+                    : m.availability_detail_day_all_unavailable({
+                        day: dayLabel,
+                      })
+                }
+                disabled={answer.isPending}
+                className="-mr-4 h-auto min-h-11 whitespace-normal font-normal text-primary"
+                onClick={() => {
+                  editDraft((current) => {
+                    let next = current;
+                    for (const shift of dayShifts) {
+                      // Flip only the rows not already on the target side.
+                      if (
+                        next.markedShiftIds.has(shift.shiftId) ===
+                        wholeDayUnavailable
+                      ) {
+                        next = toggleShiftUnavailable({
+                          draft: next,
+                          shifts: editableShifts,
+                          shiftId: shift.shiftId,
+                          timeZone: churchTimezone,
+                        });
+                      }
+                    }
+                    return next;
+                  });
+                }}
+              >
+                {wholeDayUnavailable
+                  ? m.availability_detail_whole_day_available()
+                  : m.availability_detail_whole_day()}
+              </Button>
+            ) : null}
+          </div>
           {hasPublished ? (
             <p className={cn('flex gap-2 text-sm', SECONDARY_TONE)}>
               <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -400,14 +416,19 @@ function AvailabilityAnswer({
                     htmlFor={switchId}
                     className="flex min-h-11 cursor-pointer items-center gap-3 text-sm"
                   >
-                    <span
-                      aria-hidden
-                      className={available ? undefined : SECONDARY_TONE}
-                    >
-                      {available
-                        ? m.availability_detail_available()
-                        : m.availability_detail_unavailable()}
-                    </span>
+                    {available ? (
+                      <span aria-hidden>
+                        {m.availability_detail_available()}
+                      </span>
+                    ) : (
+                      <span
+                        aria-hidden
+                        className="flex items-center gap-1.5 font-medium"
+                      >
+                        <CircleX className="size-4 shrink-0 text-destructive" />
+                        {m.availability_detail_unavailable()}
+                      </span>
+                    )}
                     <Switch
                       aria-label={m.availability_detail_switch_name({
                         shift: shift.eventTitle,
@@ -422,7 +443,7 @@ function AvailabilityAnswer({
                       disabled={check.readOnly || answer.isPending}
                       checked={available}
                       onCheckedChange={() =>
-                        setDraft((current) =>
+                        editDraft((current) =>
                           toggleShiftUnavailable({
                             draft: current,
                             shifts: editableShifts,
@@ -447,7 +468,7 @@ function AvailabilityAnswer({
     <div
       className={cn(
         'mx-auto flex w-full max-w-2xl flex-col gap-6 lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,1fr)_22rem]',
-        !check.readOnly && 'pb-44 md:pb-0',
+        !check.readOnly && 'pb-64 md:pb-0',
       )}
     >
       <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
@@ -559,46 +580,78 @@ function AvailabilityAnswer({
               <p>{m.availability_detail_read_only()}</p>
             </div>
           ) : null}
-          {confirmed && hasUnsentChanges ? (
-            <p role="status" className="text-sm">
-              {m.availability_detail_unsaved()}
-            </p>
-          ) : null}
         </div>
         {!check.readOnly ? (
           <div className="fixed inset-x-0 bottom-0 z-30 order-4 space-y-2 border-t bg-card px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:sticky md:inset-x-auto md:z-10 md:bg-background md:px-0 lg:static lg:space-y-3 lg:bg-transparent lg:pt-5 lg:pb-0">
-            <p className="font-medium text-sm">{answerSummary}</p>
-            {showShortcut ? (
+            {confirmed && hasUnsentChanges ? (
+              <p
+                role="status"
+                className="font-medium text-amber-700 text-sm dark:text-amber-300"
+              >
+                {m.availability_detail_unsaved()}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap items-center justify-between gap-x-3 pb-2">
+              <p className="py-2.5 font-medium text-sm">{answerSummary}</p>
+              {showShortcut ? (
+                <Button
+                  variant="ghost"
+                  size="touch"
+                  className="-mx-4 h-auto min-h-11 whitespace-normal font-normal text-primary"
+                  disabled={answer.isPending}
+                  onClick={() => {
+                    setUndoDraft(draft);
+                    setDraft(NO_MARKS);
+                  }}
+                >
+                  {m.availability_detail_confirm_all()}
+                </Button>
+              ) : showUndo ? (
+                <p role="status" className="flex items-center gap-1 text-sm">
+                  <span className={SECONDARY_TONE}>
+                    {m.availability_detail_all_marked_available()}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="touch"
+                    className="-mr-4 text-primary"
+                    onClick={() => {
+                      setDraft(undoDraft);
+                      setUndoDraft(null);
+                    }}
+                  >
+                    {m.availability_detail_undo()}
+                  </Button>
+                </p>
+              ) : null}
+            </div>
+            {done ? (
+              <p className="flex min-h-11 items-center gap-2 font-medium text-green-700 text-sm dark:text-green-400">
+                <CircleCheck aria-hidden className="size-5 shrink-0" />
+                {m.availability_detail_done()}
+              </p>
+            ) : (
               <Button
-                variant="outline"
                 size="touch"
                 className="h-auto min-h-11 w-full whitespace-normal"
                 disabled={answer.isPending}
-                onClick={() => {
-                  setDraft(NO_MARKS);
-                  answer.mutate(NO_MARKS);
-                }}
+                onClick={() => answer.mutate()}
               >
-                {m.availability_detail_confirm_all()}
-              </Button>
-            ) : null}
-            <Button
-              size="touch"
-              className="h-auto min-h-11 w-full whitespace-normal"
-              disabled={answer.isPending}
-              onClick={() => answer.mutate(undefined)}
-            >
-              {answer.isPending ? <Spinner /> : null}
-              {answer.isPending
-                ? confirmed
-                  ? m.availability_detail_saving()
-                  : m.availability_detail_pending()
-                : answer.isError
+                {answer.isPending ? <Spinner /> : null}
+                {answer.isPending
                   ? confirmed
-                    ? m.availability_detail_save_error()
-                    : m.availability_detail_answer_error()
-                  : label}
-            </Button>
+                    ? m.availability_detail_saving()
+                    : m.availability_detail_pending()
+                  : answer.isError
+                    ? confirmed
+                      ? m.availability_detail_save_error()
+                      : m.availability_detail_answer_error()
+                    : label}
+              </Button>
+            )}
+            {help ? (
+              <p className={cn('text-sm', SECONDARY_TONE)}>{help}</p>
+            ) : null}
             {answer.isError ? (
               // One announcement: the button already reads the generic failure.
               <p
@@ -617,6 +670,45 @@ function AvailabilityAnswer({
           </div>
         ) : null}
       </div>
+      <AlertDialog
+        open={blocker.status === 'blocked'}
+        onOpenChange={(open) => {
+          if (!open) blocker.reset?.();
+        }}
+      >
+        <AlertDialogContent className="data-[size=default]:max-w-sm data-[size=default]:sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base">
+              {m.availability_leave_title()}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              {confirmed
+                ? m.availability_leave_body_changes()
+                : m.availability_leave_body()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{m.availability_leave_stay()}</AlertDialogCancel>
+            <Button
+              variant="outline"
+              size="touch"
+              onClick={() => blocker.proceed?.()}
+            >
+              {m.availability_leave_exit()}
+            </Button>
+            <AlertDialogAction
+              disabled={answer.isPending}
+              onClick={() => {
+                // Sending ends on the list, like the main button.
+                blocker.reset?.();
+                answer.mutate();
+              }}
+            >
+              {m.availability_leave_send()}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

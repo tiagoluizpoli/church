@@ -290,8 +290,6 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
     .getByRole('button', { name: 'Confirmar disponibilidade' })
     .click();
   expect((await cleanResponse).status()).toBe(200);
-  await expect(volunteerCard).toContainText(
-    /Disponível em (\d+) de \1 turnos?/,
-  );
+  await expect(volunteerCard).toContainText(/Disponível(?! em \d)/);
   await volunteerContext.close();
 });

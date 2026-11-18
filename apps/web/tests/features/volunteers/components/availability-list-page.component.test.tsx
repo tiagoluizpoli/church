@@ -121,11 +121,13 @@ describe('Availability checks list', () => {
     expect(toAnswer).toHaveAccessibleName(m.availability_list_to_answer());
     expect(answered).toHaveAccessibleName(m.availability_list_answered());
     expect(
-      screen.getByRole('heading', {
-        level: 2,
-        name: m.availability_list_answered(),
-      }),
-    ).toBeVisible();
+      screen
+        .getAllByRole('heading', { level: 2 })
+        .map((heading) => heading.textContent),
+    ).toEqual([
+      m.availability_list_to_answer(),
+      m.availability_list_answered(),
+    ]);
 
     const pendingCards = within(toAnswer).getAllByRole('listitem');
     expect(pendingCards.map((card) => card.dataset.testid)).toEqual([
@@ -157,9 +159,7 @@ describe('Availability checks list', () => {
       'availability-check-next-check',
     ]);
     expect(
-      within(answeredCards[0]).getByText(
-        m.availability_list_available_count({ available: 12, total: 12 }),
-      ),
+      within(answeredCards[0]).getByText(m.availability_list_available_all()),
     ).toBeVisible();
     expect(
       within(answeredCards[0]).getByText(
@@ -188,8 +188,17 @@ describe('Availability checks list', () => {
       'availability-check-kids-check',
       'availability-check-kids-december',
     ]);
-    expect(within(pendingRows[0]).getByRole('rowheader')).toHaveTextContent(
+    const pendingName = within(pendingRows[0]).getByRole('rowheader');
+    expect(pendingName).toHaveTextContent(
       `Infantil · Outubro 2026 · ${m.availability_list_shift_count({ count: 12 })}`,
+    );
+    // The Cycle gives way before the Ministry when the name does not fit.
+    expect(within(pendingName).getByText('Infantil')).not.toHaveClass(
+      'shrink-[1000]',
+    );
+    expect(within(pendingName).getByText('· Outubro 2026')).toHaveClass(
+      'shrink-[1000]',
+      'truncate',
     );
     expect(
       within(pendingRows[0]).getByRole('link', {
@@ -243,6 +252,36 @@ describe('Availability checks list', () => {
     );
   });
 
+  it.each([
+    [12, 3, m.availability_list_available_count({ available: 9, total: 12 })],
+    [12, 0, m.availability_list_available_all()],
+    [12, 12, m.availability_list_unavailable_all()],
+    [1, 0, m.availability_list_available()],
+    [1, 1, m.availability_list_unavailable()],
+  ])('summarises an answer for %i shifts with %i unavailable plainly', async (totalShiftCount, unavailableShiftCount, text) => {
+    api.listAvailabilityChecks.mockResolvedValue({
+      checks: [
+        {
+          ...CHECK,
+          state: 'confirmed',
+          confirmedAt: '2026-09-20T15:00:00Z',
+          totalShiftCount,
+          unavailableShiftCount,
+        },
+      ],
+    });
+    renderPage();
+    expect(
+      await within(
+        await screen.findByTestId('data-table-mobile-list'),
+      ).findByText(text),
+    ).toBeVisible();
+    const grid = screen.getByRole('grid', {
+      name: m.availability_list_answered(),
+    });
+    expect(within(grid).getByText(text)).toBeVisible();
+  });
+
   it('says every check is answered and shows no list to answer when none is pending', async () => {
     api.listAvailabilityChecks.mockResolvedValue({
       checks: [
@@ -262,10 +301,11 @@ describe('Availability checks list', () => {
       screen.queryByRole('grid', { name: m.availability_list_to_answer() }),
     ).toBeNull();
     expect(
-      within(mobileList()).getByText(
-        m.availability_list_available_count_one({ available: 0 }),
-      ),
+      within(mobileList()).getByText(m.availability_list_unavailable()),
     ).toBeVisible();
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent),
+    ).toEqual([m.availability_list_answered()]);
   });
 
   it('keeps the Deadline current through its Church day even when UTC is tomorrow', async () => {
@@ -365,10 +405,15 @@ describe('Availability checks list', () => {
     expect(api.listAvailabilityChecks).not.toHaveBeenCalled();
   });
 
-  it('offers a localized retry after a failed list request', async () => {
+  it('offers a localized retry after a failed list request, showing loading while it refetches', async () => {
+    let resolveRetry: (value: { checks: (typeof CHECK)[] }) => void = () => {};
     api.listAvailabilityChecks
       .mockRejectedValueOnce(new Error('Network unavailable'))
-      .mockResolvedValueOnce({ checks: [CHECK] });
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRetry = resolve;
+        }),
+      );
     renderPage();
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(m.availability_list_error());
@@ -378,6 +423,14 @@ describe('Availability checks list', () => {
     await userEvent.click(
       within(alert).getByRole('button', { name: m.common_retry() }),
     );
+    // The retry swaps the error for the loading region, so a tap is never silent.
+    expect(
+      await screen.findByRole('status', {
+        name: m.availability_list_loading(),
+      }),
+    ).toBeVisible();
+    expect(screen.queryByRole('alert')).toBeNull();
+    act(() => resolveRetry({ checks: [CHECK] }));
     expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
   });
 

@@ -32,14 +32,17 @@ function shiftCount({ check }: CheckProps): string {
     : m.availability_list_shift_count({ count: check.totalShiftCount });
 }
 
+/** Says "unavailable" outright instead of "available for 0 of N". */
 function answerSummary({ check }: CheckProps): string {
-  const available = check.totalShiftCount - check.unavailableShiftCount;
-  return check.totalShiftCount === 1
-    ? m.availability_list_available_count_one({ available })
-    : m.availability_list_available_count({
-        available,
-        total: check.totalShiftCount,
-      });
+  const total = check.totalShiftCount;
+  const available = total - check.unavailableShiftCount;
+  if (total === 1)
+    return available === 1
+      ? m.availability_list_available()
+      : m.availability_list_unavailable();
+  if (available === 0) return m.availability_list_unavailable_all();
+  if (available === total) return m.availability_list_available_all();
+  return m.availability_list_available_count({ available, total });
 }
 
 interface AnsweredOnProps extends CheckProps {
@@ -74,11 +77,12 @@ function CheckAction({ check }: CheckProps) {
             ? m.availability_list_review_label({ name })
             : m.availability_list_answer_label({ name })
         }
-        // A 44px target on touch layouts, the dense 28px row action on desktop.
+        // A 44px target on touch layouts, the default 32px button on desktop
+        // (volunteers skew older, so no dense 12px row action here).
         className={buttonVariants({
           variant: confirmed ? 'outline' : 'default',
           size: 'touch',
-          className: 'min-w-32 lg:h-7 lg:min-w-20 lg:px-2.5 lg:text-xs',
+          className: 'min-w-32 lg:h-8 lg:min-w-24 lg:px-3',
         })}
       >
         {confirmed
@@ -131,13 +135,14 @@ function CheckCard({
   );
 }
 
-/** The name truncates so the deadline and action always fit the row. */
+/** The Cycle truncates first so the Ministry, which tells checks apart, stays
+ * whole; the Ministry only truncates once the Cycle is gone. */
 function NameCell({ check }: CheckProps) {
   return (
     <span className="flex min-w-0" title={titleOf(check)}>
-      <span className="truncate">
-        <span className="font-medium">{check.ministryName}</span>
-        <span className="text-muted-foreground"> · {check.cycleName}</span>
+      <span className="min-w-0 truncate font-medium">{check.ministryName}</span>
+      <span className="min-w-0 shrink-[1000] truncate whitespace-pre text-muted-foreground">
+        {` · ${check.cycleName}`}
       </span>
       {check.state === 'pending' ? (
         <span className="shrink-0 whitespace-pre text-muted-foreground">
@@ -155,6 +160,31 @@ const nameColumn: DataTableColumn = {
   className: 'w-full max-w-0',
 };
 
+// From xl, fixed widths line the two stacked tables up: Prazo spans Sua resposta plus
+// Respondida em, and both action columns match.
+const deadlineColumn: DataTableColumn = {
+  id: 'deadline',
+  name: m.availability_list_column_deadline(),
+  className: 'whitespace-nowrap xl:w-96',
+};
+const answerColumns: DataTableColumn[] = [
+  {
+    id: 'answer',
+    name: m.availability_list_column_answer(),
+    className: 'whitespace-nowrap xl:w-60',
+  },
+  {
+    id: 'answeredOn',
+    name: m.availability_list_column_answered_on(),
+    className: 'whitespace-nowrap xl:w-36',
+  },
+];
+const actionsColumn: DataTableColumn = {
+  id: 'actions',
+  name: m.availability_list_column_actions(),
+  className: 'w-32',
+};
+
 function CheckList({
   checks,
   churchDay,
@@ -166,21 +196,12 @@ function CheckList({
   return (
     <DataTable<Check>
       aria-label={label}
-      className="xl:max-w-5xl"
       // Tablets keep the touch cards: a 768px workspace can't fit the row.
       tableFrom="lg"
       columns={[
         nameColumn,
-        ...(pending
-          ? [{ id: 'deadline', name: m.availability_list_column_deadline() }]
-          : [
-              { id: 'answer', name: m.availability_list_column_answer() },
-              {
-                id: 'answeredOn',
-                name: m.availability_list_column_answered_on(),
-              },
-            ]),
-        { id: 'actions', name: m.availability_list_column_actions() },
+        ...(pending ? [deadlineColumn] : answerColumns),
+        actionsColumn,
       ]}
       items={checks}
       rowId={({ item }) => item.id}
@@ -282,11 +303,19 @@ function AvailabilityListContent() {
             {m.availability_list_empty()}
           </p>
         ) : toAnswer.length > 0 ? (
-          <CheckList
-            checks={toAnswer}
-            label={m.availability_list_to_answer()}
-            {...listProps}
-          />
+          <section
+            aria-labelledby="availability-to-answer"
+            className="space-y-4 pt-2"
+          >
+            <h2 id="availability-to-answer" className="workspace-section-title">
+              {m.availability_list_to_answer()}
+            </h2>
+            <CheckList
+              checks={toAnswer}
+              label={m.availability_list_to_answer()}
+              {...listProps}
+            />
+          </section>
         ) : null}
       </WorkspaceIntroPanel>
       {answered.length > 0 ? (

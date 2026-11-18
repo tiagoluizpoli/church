@@ -16,7 +16,7 @@ colors:
   muted-foreground: "oklch(0.53 0.024 250)"
   accent: "oklch(0.948 0.018 247)"
   accent-foreground: "oklch(0.324 0.037 252)"
-  destructive: "oklch(0.58 0.207 26)"
+  destructive: "oklch(0.56 0.207 26)"
   border: "oklch(0.885 0.012 242)"
   input: "oklch(0.902 0.012 242)"
   ring: "oklch(0.532 0.082 254)"
@@ -65,7 +65,7 @@ rounded:
   4xl: "1.625rem"
   pill: "999px"
 spacing:
-  workspace-pad-x: "0.75rem"
+  workspace-pad-x: "1rem"
   workspace-pad-y: "1rem"
   workspace-gap: "1rem"
   workspace-panel-pad: "1rem"
@@ -175,7 +175,7 @@ Restrained by default: tinted cool-blue neutrals carry almost the entire surface
 ### Status (outside the brand palette, by design)
 - **Confirmed Green** (`status-success`, Tailwind `green-600`): staffing meter bar at 100%, confirmed-assignment icon, positive suggestion markers. Its text form is `green-700` in light mode and `green-400` in dark mode.
 - **Pending Amber** (`status-warning`, Tailwind `yellow-500`): staffing meter bar at 50–99%, pending-confirmation icon. Its text form is `yellow-700` / `yellow-300`. A sibling `amber` family (`amber-500/8` fill, `amber-600`/`amber-700` text) carries needs-attention notices such as "removed from this church" and a usual setup that needs review.
-- **Conflict Red** (`destructive`): staffing under 50%, declined assignments, destructive actions, unavailable/double-booked conflict chips. Lightness was lowered to 0.58 so it measures 4.66:1 on `card` and passes AA as small text; at the old 0.614 it measured 4.05:1.
+- **Conflict Red** (`destructive`): staffing under 50%, declined assignments, destructive actions, unavailable/double-booked conflict chips. Lightness was lowered to 0.56 so it measures 5.1:1 on `card` and 4.85:1 on `background`, passing AA as small text on every surface; at 0.614 it measured 4.05:1 on `card`, and at 0.58 4.46:1 on `background`.
 
 ### Dark Mode
 Dark mode is a deliberate re-tuning, not a straight invert. `background` drops to a near-black cool slate (`oklch(0.205 0.018 252)`) rather than pure black. `primary` lightens and desaturates to `oklch(0.72 0.066 238)`, because Deep Chapel Blue would fail contrast as a fill on a dark surface, and `primary-foreground` stays dark (`oklch(0.226 0.022 254)`) instead of flipping to white. `card` sits one step lighter than `background` (`oklch(0.24 0.018 252)`) and `sidebar` one step darker (`oklch(0.186 0.016 252)`), so the chrome still reads as its own layer. `destructive` lightens to `oklch(0.682 0.183 24)`. The green and amber meter bars keep the same fill in both themes; only their text forms shift lighter.
@@ -210,7 +210,7 @@ The shell is a fixed sidebar plus a scrolling workspace on desktop, and a sticky
 
 - **Desktop sidebar:** 240px expanded, 64px collapsed, animated on a spring (`stiffness 300, damping 30`). The desktop top bar and the sidebar head are both 64px tall (`h-16`).
 - **Mobile chrome:** a 64px sticky top header (`z-40`, `sidebar/95` with backdrop blur) and a fixed bottom tab bar. Toasts on mobile are offset 80px from the top so they clear the header.
-- **Workspace rhythm:** pages use `.workspace-page`, a single column whose sections are separated by `workspace-gap` (1rem). Page padding is responsive: `workspace-pad-x` is 0.75rem on mobile, 1.25rem from 768px, and 1.5rem from 1280px; `workspace-pad-y` is 1rem, then 1.25rem from 768px. Panels pad at `workspace-panel-pad` (1rem) or `workspace-panel-pad-lg` (1.25rem, then 1.5rem from 1280px).
+- **Workspace rhythm:** pages use `.workspace-page`, a single column whose sections are separated by `workspace-gap` (1rem). Page padding is responsive: `workspace-pad-x` is 1rem on mobile (a 16px phone gutter), 1.25rem from 768px, and 1.5rem from 1280px; `workspace-pad-y` is 1rem, then 1.25rem from 768px. Panels pad at `workspace-panel-pad` (1rem) or `workspace-panel-pad-lg` (1.25rem, then 1.5rem from 1280px).
 - **Section headers:** title and description stacked with a 0.5rem gap (`.workspace-section-header`); descriptions never run wider than 72ch.
 - **Density:** desktop controls are 32px tall with `text-xs`; mobile sheets and volunteer controls are 44px with `text-sm`. The density shift is driven by `FormControlSizeProvider`, not by per-screen breakpoints.
 
@@ -266,7 +266,7 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **Primary:** solid Deep Chapel Blue with `primary-foreground` text. A primary rendered as a link (`<a>`) dims to `primary/80` on hover; a primary `<button>` has no hover fill change.
 - **Outline:** `background` fill with a `border` stroke, hover to `muted`. **Secondary:** `secondary` fill, hover to `secondary/80`. **Ghost:** transparent, hover to `muted`. **Link:** `primary` text, underline on hover.
 - **Destructive:** a soft `destructive/10` tint with red text at rest, `destructive/20` on hover. It doesn't read as an alarm until interacted with.
-- **Focus:** border shifts to `ring` plus a 1px `ring/50` ring, consistent across variants. Disabled is 50% opacity with pointer events off.
+- **Focus:** border shifts to `ring` plus a solid 2px `ring` ring set 2px off the control on a `background` gap, consistent across variants, so focus on a filled primary still measures above 3:1. Disabled is 50% opacity with pointer events off.
 - **Context-driven sizing:** a `Button` with no explicit `size` reads `FormControlSizeProvider` context and resolves to `touch` inside a mobile sheet, `default` everywhere else.
 
 ### Badges
@@ -301,7 +301,7 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **DatePickerField:** an outline `Button` trigger (calendar icon plus the formatted date or a placeholder) that opens the `Calendar` in a `Popover`, replacing the OS date picker so the calendar matches the rest of the system in both themes.
 
 ### Lists & Tables
-- **DataTable:** renders as a `listbox` only when a selection mode is set; otherwise it is a plain `list` with `listitem` rows and an `aria-label`. Loading and empty states default to localized one-line messages. The actions column (`actionsColumnId`, default `actions`) keeps its title for screen readers only; pass `hideName: false` to show it.
+- **DataTable:** renders as a `listbox` only when a selection mode is set; otherwise it is a plain `list` with `listitem` rows and an `aria-label`. Loading and empty states default to localized one-line messages. The actions column (`actionsColumnId`, default `actions`) keeps its title for screen readers only; pass `hideName: false` to show it. A focused cell shows an inset 2px `ring` and a focused row an inset 2px `primary` outline, never color alone.
 
 ### Sheets & Overlays
 - **Drawer (base-ui):** the mobile counterpart to `Dialog`, used directly and via `ResponsiveFormSurface`. Bottom sheet by default (`swipeDirection="down"`), sheet-top corners, a pill grab handle, and no shadow (see Elevation & Depth).

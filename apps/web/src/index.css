@@ -25,9 +25,11 @@
   --accent-foreground: oklch(0.324 0.037 252);
   /* Lightness lowered from 0.614: at 0.614 this red measures 4.05:1 on the
      card surface, so every use as small text failed WCAG AA (4.5:1). 0.58
-     measures 4.66:1. Hue and chroma are unchanged, and destructive-as-a-
-     background only gains contrast against its white foreground. */
-  --destructive: oklch(0.58 0.207 26);
+     still measured only 4.46:1 on the panel/page background, so 0.56: 5.1:1
+     on card, 4.85:1 on background. Hue and chroma are unchanged, and
+     destructive-as-a-background only gains contrast against its white
+     foreground. */
+  --destructive: oklch(0.56 0.207 26);
   --border: oklch(0.885 0.012 242);
   --input: oklch(0.902 0.012 242);
   --ring: oklch(0.532 0.082 254);
@@ -47,7 +49,7 @@
   --sidebar-ring: oklch(0.532 0.082 254);
 
   /* Layout / spacing tokens */
-  --workspace-pad-x: 0.75rem;
+  --workspace-pad-x: 1rem;
   --workspace-pad-y: 1rem;
   --workspace-gap: 1rem;
   --workspace-panel-pad: 1rem;

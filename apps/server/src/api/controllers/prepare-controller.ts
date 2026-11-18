@@ -38,6 +38,7 @@ import {
   remindScheduleResponseSchema,
   type SavePreparationBody,
   savePreparationBodySchema,
+  scheduleInsightsResponseSchema,
   scheduleListQuerystringSchema,
   scheduleListResponseSchema,
   scheduleResponseSchema,
@@ -191,6 +192,43 @@ export class PrepareController implements FastifyController {
           limit,
         });
         return reply.send(participationMapper.scheduleListToResponse(page));
+      },
+    );
+
+    app.get(
+      '/insights',
+      {
+        schema: {
+          tags: ['prepare'],
+          operationId: 'getScheduleInsights',
+          summary: "Staffing trends of the caller's Schedules",
+          description:
+            "Totals over the caller's Ministries (every active one for a ChurchAdmin, the led ones for a leader): for each of the latest six Sent or Past Cycles, oldest first, the requirement headcount (`needed`), the seats held by a draft, pending or confirmed assignment (`filled`, capped per requirement), assignments by response, and availability checks asked and answered; plus, for the Cycle running on the Church's today (else the latest), the same staffing totals per serving Ministry, least covered first, then by name. Cancelled Events, inactive blocks and archived Ministries, Sectors and Roles are left out.",
+          response: {
+            200: scheduleInsightsResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const churchId = ChurchId.from(request.churchId);
+        const { isChurchAdmin, ledMinistries } =
+          await this.authorityGuard.resolveCallerCapabilities({
+            churchId,
+            userId: UserId.from(request.userId),
+          });
+        if (!isChurchAdmin && ledMinistries.length === 0) {
+          refuse({ reply, request, code: 'FORBIDDEN' });
+          return;
+        }
+        const insights = await this.participationManager.getScheduleInsights({
+          churchId,
+          ministryIds: isChurchAdmin
+            ? undefined
+            : ledMinistries.map(({ ministryId }) => ministryId),
+        });
+        return reply.send(insights);
       },
     );
 

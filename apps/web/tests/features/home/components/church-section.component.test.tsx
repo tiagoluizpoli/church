@@ -261,7 +261,7 @@ describe('ChurchSection next-Cycle card', () => {
     expect(planCycle()).toHaveAttribute('href', '/cycles');
   });
 
-  it('offers Continue on the latest draft', async () => {
+  it('links the latest draft and says it is still a draft', async () => {
     givenProgress({ hasEverSentCycle: true });
     givenAnchors({ next: DECEMBER_DRAFT });
     renderSection(true);
@@ -271,26 +271,22 @@ describe('ChurchSection next-Cycle card', () => {
         m.home_next_cycle_draft({ cycleName: 'December' }),
       ),
     ).toBeVisible();
-    expect(
-      screen.getByRole('link', {
-        name: m.home_next_cycle_draft({ cycleName: 'December' }),
-      }),
-    ).toHaveAttribute('href', '/cycles/december');
+    expect(screen.getByRole('link', { name: 'December' })).toHaveAttribute(
+      'href',
+      '/cycles/december',
+    );
   });
 
-  it('shows the end date of a Sent Cycle', async () => {
+  it('shows the running Sent Cycle as a timeline from its first to its last day', async () => {
     givenProgress({ hasEverSentCycle: true });
     givenAnchors({ current: NOVEMBER_SENT });
     renderSection(true);
 
     expect(
-      await screen.findByText(
-        m.home_next_cycle_sent({
-          cycleName: 'November',
-          endDate: '30/11/2026',
-        }),
-      ),
-    ).toBeVisible();
+      await screen.findByRole('link', { name: 'November' }),
+    ).toHaveAttribute('href', '/cycles/november');
+    expect(screen.getByText('01/11/2026')).toBeVisible();
+    expect(screen.getByText('30/11/2026')).toBeVisible();
     expect(planCycle()).toHaveAttribute('href', '/cycles');
   });
 
@@ -304,14 +300,7 @@ describe('ChurchSection next-Cycle card', () => {
         m.home_next_cycle_draft({ cycleName: 'December' }),
       ),
     ).toBeVisible();
-    expect(
-      screen.getByText(
-        m.home_next_cycle_sent({
-          cycleName: 'November',
-          endDate: '30/11/2026',
-        }),
-      ),
-    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'November' })).toBeVisible();
   });
 
   it('links the current and nearest upcoming sent cycles separately', async () => {
@@ -322,21 +311,15 @@ describe('ChurchSection next-Cycle card', () => {
     });
     renderSection(true);
     expect(
-      await screen.findByRole('link', {
-        name: m.home_next_cycle_sent({
-          cycleName: 'November',
-          endDate: '30/11/2026',
-        }),
-      }),
+      await screen.findByRole('link', { name: 'November' }),
     ).toHaveAttribute('href', '/cycles/november');
+    expect(screen.getByRole('link', { name: 'December' })).toHaveAttribute(
+      'href',
+      '/cycles/december',
+    );
     expect(
-      screen.getByRole('link', {
-        name: m.home_next_cycle_sent({
-          cycleName: 'December',
-          endDate: '31/12/2026',
-        }),
-      }),
-    ).toHaveAttribute('href', '/cycles/december');
+      screen.getByText(m.home_cycle_starts({ date: '01/12/2026' })),
+    ).toBeVisible();
   });
 
   it('shows a retryable error, never Plan a cycle, when the Cycle read fails', async () => {
@@ -353,13 +336,8 @@ describe('ChurchSection next-Cycle card', () => {
     await userEvent.click(screen.getByRole('button', { name: m.home_retry() }));
 
     expect(
-      await screen.findByText(
-        m.home_next_cycle_sent({
-          cycleName: 'November',
-          endDate: '30/11/2026',
-        }),
-      ),
-    ).toBeVisible();
+      await screen.findByRole('link', { name: 'November' }),
+    ).toHaveAttribute('href', '/cycles/november');
   });
 
   it('renders in pt-BR from the catalog', async () => {

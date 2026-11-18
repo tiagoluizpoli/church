@@ -93,6 +93,35 @@ describe.each([
   });
 });
 
+describe('MyScheduleOfflineBanner tone', () => {
+  const render = (
+    props: Partial<React.ComponentProps<typeof MyScheduleOfflineBanner>>,
+  ) =>
+    renderWithProviders(
+      <MyScheduleOfflineBanner
+        isOffline
+        isUsingCachedData
+        onRefresh={vi.fn()}
+        refreshState="idle"
+        {...props}
+      />,
+    );
+
+  it('keeps being offline calm: amber, not the destructive error tone', () => {
+    render({});
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveClass('bg-amber-500/8');
+    expect(alert).not.toHaveClass('text-destructive');
+  });
+
+  it('keeps the destructive tone for a failed refresh, even offline', () => {
+    render({ refreshState: 'error' });
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveClass('text-destructive');
+    expect(alert).not.toHaveClass('bg-amber-500/8');
+  });
+});
+
 describe('MyScheduleOfflineBanner (T157)', () => {
   it('renders the last-updated instant as dd/MM/yyyy HH:mm in the Church Timezone, not the ambient TZ', () => {
     renderWithProviders(

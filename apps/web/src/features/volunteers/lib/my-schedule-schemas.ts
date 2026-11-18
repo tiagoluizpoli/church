@@ -29,13 +29,35 @@ const scheduleSummarySchema = z.object({
   cycleName: z.string(),
 });
 
-export type CachedMySchedule = GetPublishedVolunteerSchedule200 & {
-  fetchedAt: string;
-};
+export type CachedMySchedule = Omit<
+  GetPublishedVolunteerSchedule200,
+  'counts' | 'next' | 'options'
+> &
+  Partial<
+    Pick<GetPublishedVolunteerSchedule200, 'counts' | 'next' | 'options'>
+  > & {
+    fetchedAt: string;
+  };
 
 export const cachedMyScheduleSchema = z.object({
   assignments: z.array(assignmentSchema),
   schedules: z.array(scheduleSummarySchema),
+  // Absent in copies stored before the header counts existed.
+  counts: z
+    .object({
+      upcoming: z.number(),
+      thisMonth: z.number(),
+      openSwaps: z.number(),
+    })
+    .optional(),
+  // Absent in copies stored before the filters existed.
+  next: assignmentSchema.nullable().optional(),
+  options: z
+    .object({
+      months: z.array(z.string()),
+      ministries: z.array(z.object({ id: z.string(), name: z.string() })),
+    })
+    .optional(),
   fetchedAt: z.string(),
 }) satisfies z.ZodType<CachedMySchedule>;
 

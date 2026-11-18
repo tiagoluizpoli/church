@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { setLocale } from '@church/i18n/runtime';
 import { QueryClient } from '@tanstack/react-query';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MyMinistrySchedulePage } from '@/features/volunteers/components/my-ministry-schedule-page';
@@ -10,6 +10,11 @@ import { renderWithProviders } from '@/tests/setup/render';
 
 const api = vi.hoisted(() => ({ getMinistrySchedule: vi.fn() }));
 vi.mock('@/utils/api-instances', () => ({ volunteerApi: api }));
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
 
 const SCHEDULE: GetMinistrySchedule200 = {
   ministryId: 'kids',
@@ -114,6 +119,9 @@ describe.each([
     expect(
       await screen.findByText(m.my_schedule_ministry_unpublished()),
     ).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: m.nav_my_schedule() }),
+    ).toHaveAttribute('href', '/my-schedule');
   });
 
   it('shows the neutral message on the concealed-scope 404', async () => {
@@ -126,6 +134,48 @@ describe.each([
     expect(
       await screen.findByText(m.my_schedule_ministry_unavailable()),
     ).toBeTruthy();
+    // A refusal cannot be retried, but it still leads back.
+    expect(
+      screen.queryByRole('button', { name: m.schedules_retry() }),
+    ).toBeNull();
+    expect(
+      screen.getByRole('link', { name: m.nav_my_schedule() }),
+    ).toHaveAttribute('href', '/my-schedule');
+  });
+
+  it('offers a retry and the way back when the load fails', async () => {
+    api.getMinistrySchedule.mockRejectedValueOnce(new Error('offline'));
+    api.getMinistrySchedule.mockResolvedValue(SCHEDULE);
+    renderPage();
+    expect(
+      await screen.findByText(m.my_schedule_ministry_load_failed()),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: m.nav_my_schedule() }),
+    ).toHaveAttribute('href', '/my-schedule');
+    fireEvent.click(screen.getByRole('button', { name: m.schedules_retry() }));
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Kids · Outubro 2026',
+      }),
+    ).toBeTruthy();
+  });
+});
+
+describe('MyMinistrySchedulePage layout', () => {
+  it('heads each Event in the My schedule day and time format, with a way back', async () => {
+    api.getMinistrySchedule.mockResolvedValue(SCHEDULE);
+    renderWithProviders(
+      <MyMinistrySchedulePage ministryId="kids" cycleId="october" />,
+      { churchTimezone: 'America/Sao_Paulo' },
+    );
+    // The suite renders in pt-BR, the shipped default.
+    expect(await screen.findByText('dom 11 out · 09:00–11:00')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Minha escala' })).toHaveAttribute(
+      'href',
+      '/my-schedule',
+    );
   });
 });
 

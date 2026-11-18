@@ -13,7 +13,7 @@ colors:
   secondary: "oklch(0.962 0.01 240)"
   secondary-foreground: "oklch(0.336 0.028 252)"
   muted: "oklch(0.955 0.008 236)"
-  muted-foreground: "oklch(0.53 0.024 250)"
+  muted-foreground: "oklch(0.48 0.024 250)"
   accent: "oklch(0.948 0.018 247)"
   accent-foreground: "oklch(0.324 0.037 252)"
   destructive: "oklch(0.56 0.207 26)"
@@ -167,7 +167,7 @@ Restrained by default: tinted cool-blue neutrals carry almost the entire surface
 - **Chapel Mist** (`card`): card and popover surfaces, a hair lighter than the page so panels lift without a shadow.
 - **Quiet Blue** (`secondary`): secondary buttons, badge backgrounds, tab rail.
 - **Whisper Gray** (`muted`): disabled states, subtle section backgrounds, hover fills for outline and ghost buttons.
-- **Muted Slate** (`muted-foreground`): descriptions, secondary metadata, section descriptions.
+- **Muted Slate** (`muted-foreground`): descriptions, secondary metadata, section descriptions. Lightness is 0.48 (was 0.53) so a 14px section description keeps 4.5:1 on the lifted `.surface-panel`, not only on flat `card`.
 - **Hairline Blue** (`border`, `input`): strokes and field borders; `input` also fills the unchecked `Switch` track.
 - **Focus Blue** (`ring`): focus borders and focus rings.
 - **Sidebar Fog** (`sidebar`): the desktop sidebar and the mobile top header and bottom tab bar. One step cooler than the content area, so the wayfinding chrome reads as its own layer.
@@ -316,7 +316,7 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **Breadcrumbs:** desktop-only, derived from the route path. Opaque IDs (UUIDs) are dropped from the trail unless the segment resolves to a real name through live data, such as a cycle ID rendering as the cycle's name once fetched.
 
 ### Staffing Meter (signature component)
-A dedicated component with two renderings: a compact percentage `Badge` per event-time-block and a full `Progress` bar per event, both colored by the status vocabulary. The bar is `destructive` under 50%, `yellow-500` from 50–99% and `green-600` at 100%; a slot with no requirement shows a neutral `muted-foreground/30` bar. This is the main home of the Traffic-Light Exception.
+A dedicated component with two renderings: a compact percentage `Badge` per event-time-block and a full `Progress` bar per event, both colored by the status vocabulary. The bar is `destructive` under 50%, `yellow-500` from 50–99% and `green-600` at 100%; a slot with no requirement shows a neutral `muted-foreground/30` bar. This is the main home of the Traffic-Light Exception. On the Home dashboard the meter runs softened: the same three hues at 60–70% opacity (bar and coverage ring alike), with the open-spot count as plain muted text, so a page of meters reads calm rather than loud.
 
 ## Do's and Don'ts
 

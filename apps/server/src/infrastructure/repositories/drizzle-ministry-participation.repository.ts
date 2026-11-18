@@ -42,11 +42,14 @@ import type {
   AddInclusionInput,
   CountSchedulesByStageInput,
   CreateParticipationInput,
+  CycleStaffingRow,
   FindAvailabilityRequestedAtInput,
   FindParticipationByMinistryEventInput,
   GetParticipationInput,
   HasCycleStaffingInput,
+  ListCycleStaffingInput,
   ListInclusionsInput,
+  ListMinistryStaffingInput,
   ListParticipationsByEventInput,
   ListParticipationsByIdsInput,
   ListParticipationsByMinistryInput,
@@ -57,6 +60,7 @@ import type {
   LockParticipationInput,
   LockScheduleParticipationsInput,
   MinistryParticipationRepository,
+  MinistryStaffingRow,
   RemoveInclusionInput,
   SaveScheduleLastToldInput,
   ScheduleCheckCountRow,
@@ -70,6 +74,7 @@ import type {
   UpdateParticipationStateInput,
 } from '../../domain/contracts/infrastructure/ministry-participation.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import type { AssignmentStatus } from '../../domain/entities/assignment';
 import type { CycleState } from '../../domain/entities/cycle';
 import type { MinistryParticipation } from '../../domain/entities/ministry-participation';
 import {
@@ -134,6 +139,39 @@ function caseOfStep({ step, literalOf }: StepCaseInput): SQL {
     ),
     sql` `,
   )} else ${sql.raw(literalOf(NOT_SERVING))} end`;
+}
+
+interface AssignmentCountInput {
+  statuses: AssignmentStatus[];
+}
+
+/** Assignments of one requirement row in the given statuses; correlated, so a grouped query sums it. */
+function assignmentCount({ statuses }: AssignmentCountInput): SQL<number> {
+  return sql<number>`(select count(*) from ${assignment} where ${assignment.shiftRequirementId} = ${shiftRequirement.id} and ${inArray(assignment.status, statuses)})`;
+}
+
+/** A seat counts as filled while an assignment holds it, as the Schedule gap count does. */
+const LIVE_ASSIGNMENT_STATUSES: AssignmentStatus[] = [
+  'draft',
+  'pending',
+  'confirmed',
+];
+
+/** Requirement headcount and seats held, summed over the grouped rows. */
+function staffingTotals() {
+  const sum = (value: SQL) =>
+    sql<number>`coalesce(sum(${value}), 0)::int`.mapWith(Number);
+  return {
+    needed: sum(sql`${shiftRequirement.peopleNeeded}`).as('needed'),
+    filled: sum(
+      sql`least(${shiftRequirement.peopleNeeded}, ${assignmentCount({ statuses: LIVE_ASSIGNMENT_STATUSES })})`,
+    ).as('filled'),
+  };
+}
+
+interface RequirementStaffingScopeInput {
+  churchId: ChurchId;
+  ministryIds?: MinistryId[];
 }
 
 interface ListKey {
@@ -1189,5 +1227,158 @@ export class DrizzleMinistryParticipationRepository
         asc(ministryMembership.ministryId),
         asc(availabilityCheck.cycleId),
       );
+  }
+
+  async listCycleStaffing({
+    churchId,
+    ministryIds,
+    cycleLimit,
+    tx,
+  }: ListCycleStaffingInput): Promise<CycleStaffingRow[]> {
+    if (ministryIds?.length === 0) return [];
+    const client = getClient({ db: this.db, tx });
+    const recent = await client
+      .select({ id: cycle.id })
+      .from(cycle)
+      .where(
+        and(
+          withChurchIsolation({ table: cycle, churchId }),
+          inArray(cycle.state, ['sent', 'past']),
+        ),
+      )
+      .orderBy(desc(cycle.startDate), desc(cycle.id))
+      .limit(cycleLimit);
+    if (recent.length === 0) return [];
+    const cycleIds = recent.map(({ id }) => id);
+    const staffing = client
+      .select({ cycleId: event.cycleId, ...staffingTotals() })
+      .from(shiftRequirement)
+      .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, shiftRequirement.participationId),
+      )
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
+      .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+      .where(
+        and(
+          this.requirementStaffingScope({ churchId, ministryIds }),
+          inArray(event.cycleId, cycleIds),
+        ),
+      )
+      .groupBy(event.cycleId)
+      .as('staffing');
+    const checks = client
+      .select({
+        cycleId: availabilityCheck.cycleId,
+        asked: sql<number>`count(*)::int`.as('asked'),
+        answered:
+          sql<number>`(count(*) filter (where ${availabilityCheck.state} = 'confirmed'))::int`.as(
+            'answered',
+          ),
+      })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
+      .where(
+        and(
+          withChurchIsolation({ table: availabilityCheck, churchId }),
+          withChurchIsolation({ table: ministryMembership, churchId }),
+          eq(ministryMembership.status, 'active'),
+          isNull(availabilityCheck.withdrawnAt),
+          isNull(ministry.deletedAt),
+          ministryIds
+            ? inArray(ministryMembership.ministryId, ministryIds)
+            : undefined,
+          inArray(availabilityCheck.cycleId, cycleIds),
+        ),
+      )
+      .groupBy(availabilityCheck.cycleId)
+      .as('checks');
+    const total = (value: SQLWrapper) =>
+      sql<number>`coalesce(${value}, 0)`.mapWith(Number);
+    return client
+      .select({
+        cycleId: cycle.id,
+        name: cycle.name,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
+        needed: total(staffing.needed),
+        filled: total(staffing.filled),
+        asked: total(checks.asked),
+        answered: total(checks.answered),
+      })
+      .from(cycle)
+      .leftJoin(staffing, eq(staffing.cycleId, cycle.id))
+      .leftJoin(checks, eq(checks.cycleId, cycle.id))
+      .where(
+        and(
+          withChurchIsolation({ table: cycle, churchId }),
+          inArray(cycle.id, cycleIds),
+        ),
+      )
+      .orderBy(asc(cycle.startDate), asc(cycle.id));
+  }
+
+  async listMinistryStaffing({
+    churchId,
+    ministryIds,
+    cycleId,
+    tx,
+  }: ListMinistryStaffingInput): Promise<MinistryStaffingRow[]> {
+    if (ministryIds?.length === 0) return [];
+    return getClient({ db: this.db, tx })
+      .select({
+        ministryId: ministry.id,
+        name: ministry.name,
+        ...staffingTotals(),
+      })
+      .from(shiftRequirement)
+      .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, shiftRequirement.participationId),
+      )
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .innerJoin(ministry, eq(ministry.id, ministryParticipation.ministryId))
+      .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
+      .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+      .where(
+        and(
+          this.requirementStaffingScope({ churchId, ministryIds }),
+          eq(event.cycleId, cycleId),
+        ),
+      )
+      .groupBy(ministry.id, ministry.name)
+      .orderBy(
+        sql`sum(least(${shiftRequirement.peopleNeeded}, ${assignmentCount({ statuses: LIVE_ASSIGNMENT_STATUSES })}))::float / nullif(sum(${shiftRequirement.peopleNeeded}), 0) asc nulls last`,
+        asc(ministry.name),
+        asc(ministry.id),
+      );
+  }
+
+  /** Active blocks of Events not cancelled, in live Ministries, Sectors and Roles. */
+  private requirementStaffingScope({
+    churchId,
+    ministryIds,
+  }: RequirementStaffingScopeInput): SQL | undefined {
+    return and(
+      withChurchIsolation({ table: shiftRequirement, churchId }),
+      eq(eventTimeBlock.status, 'active'),
+      ne(event.status, 'cancelled'),
+      isNull(ministry.deletedAt),
+      isNull(sector.archivedAt),
+      isNull(role.archivedAt),
+      ministryIds
+        ? inArray(ministryParticipation.ministryId, ministryIds)
+        : undefined,
+    );
   }
 }

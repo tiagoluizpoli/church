@@ -3387,6 +3387,75 @@ export type ListSchedules403 = {
   message: string;
 };
 
+export type GetScheduleInsights200CyclesItem = {
+  cycleId: string;
+  name: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDate: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  needed: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  filled: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  asked: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  answered: number;
+};
+
+export type GetScheduleInsights200FocusMinistriesItem = {
+  ministryId: string;
+  name: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  needed: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  filled: number;
+};
+
+/**
+ * @nullable
+ */
+export type GetScheduleInsights200Focus = {
+  cycleId: string;
+  name: string;
+  ministries: GetScheduleInsights200FocusMinistriesItem[];
+} | null;
+
+export type GetScheduleInsights200 = {
+  cycles: GetScheduleInsights200CyclesItem[];
+  /** @nullable */
+  focus: GetScheduleInsights200Focus;
+};
+
+export type GetScheduleInsights401 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleInsights403 = {
+  error: string;
+  message: string;
+};
+
 export type GetSchedule200Ministry = {
   id: string;
   name: string;
@@ -6931,6 +7000,12 @@ export type GetVolunteerDashboard200MinistryOptionsItem = {
   name: string;
 };
 
+export type GetVolunteerDashboard200ServingHistoryItem = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  month: string;
+  served: number;
+};
+
 export type GetVolunteerDashboard200 = {
   upcomingAssignmentGroups: GetVolunteerDashboard200UpcomingAssignmentGroupsItem[];
   /** @nullable */
@@ -6939,6 +7014,7 @@ export type GetVolunteerDashboard200 = {
   notificationPreview: GetVolunteerDashboard200NotificationPreviewItem[];
   defaultMinistryId?: string;
   ministryOptions: GetVolunteerDashboard200MinistryOptionsItem[];
+  servingHistory: GetVolunteerDashboard200ServingHistoryItem[];
 };
 
 export type GetAssignmentDetail200RosterItemPeopleItem = {
@@ -7317,6 +7393,22 @@ export type CancelOwnAssignment404 = {
   message: string;
 };
 
+export type GetPublishedVolunteerScheduleParams = {
+/**
+ * @minLength 1
+ * @maxLength 200
+ */
+search?: string;
+/**
+ * @pattern ^\d{4}-(0[1-9]|1[0-2])$
+ */
+month?: string;
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+ */
+ministryId?: string;
+};
+
 export type GetPublishedVolunteerSchedule200AssignmentsItemStatus = typeof GetPublishedVolunteerSchedule200AssignmentsItemStatus[keyof typeof GetPublishedVolunteerSchedule200AssignmentsItemStatus];
 
 
@@ -7351,9 +7443,71 @@ export type GetPublishedVolunteerSchedule200SchedulesItem = {
   cycleName: string;
 };
 
+export type GetPublishedVolunteerSchedule200Counts = {
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  upcoming: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  thisMonth: number;
+  /**
+     * @minimum 0
+     * @maximum 9007199254740991
+     */
+  openSwaps: number;
+};
+
+export type GetPublishedVolunteerSchedule200NextStatus = typeof GetPublishedVolunteerSchedule200NextStatus[keyof typeof GetPublishedVolunteerSchedule200NextStatus];
+
+
+export const GetPublishedVolunteerSchedule200NextStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  declined: 'declined',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetPublishedVolunteerSchedule200Next = {
+  assignmentId: string;
+  eventId: string;
+  eventTitle: string;
+  shiftId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  ministryId: string;
+  ministryName: string;
+  sectorName: string;
+  roleId: string;
+  roleName: string;
+  status: GetPublishedVolunteerSchedule200NextStatus;
+  swapRequested: boolean;
+} | null;
+
+export type GetPublishedVolunteerSchedule200OptionsMinistriesItem = {
+  id: string;
+  name: string;
+};
+
+export type GetPublishedVolunteerSchedule200Options = {
+  months: string[];
+  ministries: GetPublishedVolunteerSchedule200OptionsMinistriesItem[];
+};
+
 export type GetPublishedVolunteerSchedule200 = {
   assignments: GetPublishedVolunteerSchedule200AssignmentsItem[];
   schedules: GetPublishedVolunteerSchedule200SchedulesItem[];
+  counts: GetPublishedVolunteerSchedule200Counts;
+  /** @nullable */
+  next: GetPublishedVolunteerSchedule200Next;
+  options: GetPublishedVolunteerSchedule200Options;
 };
 
 export type RaiseSwapRequestBody = {

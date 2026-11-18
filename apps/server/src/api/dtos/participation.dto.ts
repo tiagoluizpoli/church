@@ -289,6 +289,40 @@ export const scheduleListResponseSchema = z.object({
   }),
 });
 
+const staffingResponseShape = {
+  needed: z.number().int(),
+  filled: z.number().int(),
+};
+
+export const scheduleInsightsResponseSchema = z.object({
+  /** The latest Sent or Past Cycles in scope, oldest first. */
+  cycles: z.array(
+    z.object({
+      cycleId: z.string(),
+      name: z.string(),
+      startDate: calendarDaySchema,
+      endDate: calendarDaySchema,
+      ...staffingResponseShape,
+      asked: z.number().int(),
+      answered: z.number().int(),
+    }),
+  ),
+  /** The Cycle running on the Church's today, else the latest; its serving Ministries least covered first. */
+  focus: z
+    .object({
+      cycleId: z.string(),
+      name: z.string(),
+      ministries: z.array(
+        z.object({
+          ministryId: z.string(),
+          name: z.string(),
+          ...staffingResponseShape,
+        }),
+      ),
+    })
+    .nullable(),
+});
+
 export const scheduleRouteParamsSchema = z.object({
   ministryId: z.uuid(),
   cycleId: z.uuid(),

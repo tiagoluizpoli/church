@@ -15,6 +15,9 @@ describe('volunteerMapper', () => {
         notificationPreview: [],
         defaultMinistryId: 'm1',
         ministryOptions: [],
+        servingHistory: [
+          { month: parseCalendarDay({ value: '2026-05-01' }), served: 2 },
+        ],
       };
 
       const response = volunteerMapper.dashboardToResponse(dashboard);
@@ -29,6 +32,7 @@ describe('volunteerMapper', () => {
         unreadNotificationCount: 0,
         notificationPreview: [],
         ministryOptions: [],
+        servingHistory: [],
       };
 
       const response = volunteerMapper.dashboardToResponse(dashboard);
@@ -86,6 +90,7 @@ describe('volunteerMapper', () => {
           }),
         ],
         ministryOptions: [],
+        servingHistory: [],
       };
 
       const response = volunteerMapper.dashboardToResponse(dashboard);

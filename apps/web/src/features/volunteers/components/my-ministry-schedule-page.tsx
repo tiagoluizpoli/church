@@ -2,16 +2,22 @@ import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useOnlineState } from '../hooks/use-online-state';
+import {
+  assignmentDayLabel,
+  relativeDayName,
+} from '../lib/assignment-day-label';
 import { cachedReadOptions, fetchAndCache } from '../lib/my-schedule-cache';
 import { cachedMinistryScheduleSchema } from '../lib/my-schedule-schemas';
+import { MyScheduleBackLink } from './my-schedule-back-link';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GetMinistrySchedule200 } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatInstantRangeOf } from '@/shared/utils/church-time';
+import { formatTimeOf } from '@/shared/utils/church-time';
 import { volunteerApi } from '@/utils/api-instances';
 
 export interface MyMinistrySchedulePageProps {
@@ -27,6 +33,20 @@ export const myMinistryScheduleKey = ({
   cycleId,
 }: MyMinistrySchedulePageProps) =>
   ['my-ministry-schedule', ministryId, cycleId] as const;
+
+interface EventWhenInput {
+  start: string;
+  end: string;
+  timeZone: string;
+}
+
+/** `Sun 22 Nov · 18:00–20:00`, the day and time format of My schedule. */
+function eventWhen({ start, end, timeZone }: EventWhenInput): string {
+  const day =
+    relativeDayName({ startTime: start, timeZone }) ??
+    assignmentDayLabel({ startTime: start, timeZone });
+  return `${day} · ${formatTimeOf({ value: start, timeZone })}–${formatTimeOf({ value: end, timeZone })}`;
+}
 
 function groupByShift(rows: ScheduleRow[]) {
   const shifts = new Map<string, { label: string; rows: ScheduleRow[] }>();
@@ -79,30 +99,47 @@ export function MyMinistrySchedulePage({
     // 404 is the concealed-scope refusal (another Ministry or unknown Cycle).
     const notAvailable =
       isAxiosError(query.error) && query.error.response?.status === 404;
+    // Every dead end keeps the way back; only a failure (not a refusal) can be retried.
     return (
-      <Alert>
-        <AlertDescription>
-          {notAvailable
-            ? m.my_schedule_ministry_unavailable()
-            : m.my_schedule_ministry_load_failed()}
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-4">
+        <MyScheduleBackLink />
+        <Alert>
+          <AlertDescription>
+            {notAvailable
+              ? m.my_schedule_ministry_unavailable()
+              : m.my_schedule_ministry_load_failed()}
+          </AlertDescription>
+        </Alert>
+        {notAvailable ? null : (
+          <Button
+            variant="outline"
+            size="touch"
+            onClick={() => query.refetch()}
+          >
+            {m.schedules_retry()}
+          </Button>
+        )}
+      </div>
     );
   }
 
   const schedule = query.data;
   if (!schedule.published) {
     return (
-      <Alert>
-        <AlertDescription>
-          {m.my_schedule_ministry_unpublished()}
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-4">
+        <MyScheduleBackLink />
+        <Alert>
+          <AlertDescription>
+            {m.my_schedule_ministry_unpublished()}
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <MyScheduleBackLink />
       {query.isRefetchError ? (
         <Alert>
           <AlertDescription>{m.my_schedule_refresh_failed()}</AlertDescription>
@@ -114,9 +151,9 @@ export function MyMinistrySchedulePage({
       {schedule.events.map((event) => (
         <Card key={event.eventId}>
           <CardHeader>
-            <CardTitle>{event.title}</CardTitle>
-            <p className="text-muted-foreground text-sm">
-              {formatInstantRangeOf({
+            <h2 className="font-semibold text-base">{event.title}</h2>
+            <p className="text-muted-foreground text-sm tabular-nums">
+              {eventWhen({
                 start: event.start,
                 end: event.end,
                 timeZone: churchTimezone,
@@ -132,7 +169,7 @@ export function MyMinistrySchedulePage({
                     <li
                       // Rows repeat per place; position within the shift is the only identity.
                       key={index}
-                      className="flex justify-between gap-3 border px-3 py-2"
+                      className="surface-subtle flex justify-between gap-3 px-3 py-2"
                     >
                       <span>
                         {m.my_schedule_ministry_sector_role({

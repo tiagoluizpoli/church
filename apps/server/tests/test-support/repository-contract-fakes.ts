@@ -232,6 +232,10 @@ export function createMinistryParticipationRepositoryFake() {
       vi.fn<MinistryParticipationRepository['countScheduleGaps']>(),
     countScheduleChecks:
       vi.fn<MinistryParticipationRepository['countScheduleChecks']>(),
+    listCycleStaffing:
+      vi.fn<MinistryParticipationRepository['listCycleStaffing']>(),
+    listMinistryStaffing:
+      vi.fn<MinistryParticipationRepository['listMinistryStaffing']>(),
   } satisfies MinistryParticipationRepository;
 }
 

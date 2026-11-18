@@ -1,6 +1,18 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
 import { Link, type LinkProps, linkOptions } from '@tanstack/react-router';
+import {
+  Check,
+  ClipboardCheck,
+  HandHeart,
+  Layers,
+  type LucideIcon,
+  Mail,
+  MailX,
+  ShieldCheck,
+  UserCog,
+  UserX,
+} from 'lucide-react';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HomeError } from '@/features/home/components/home-error';
@@ -21,44 +33,47 @@ import {
 interface SummaryProps extends HomeSectionProps {
   scope: string;
 }
-interface MetricProps {
-  label: string;
-  count: number;
-  link: LinkProps;
-  attention?: boolean;
-}
-/** One stat cell: the whole cell is the link; a zero is muted, a non-zero needing attention gets the accent. */
-function Metric({ label, count, link, attention }: MetricProps) {
-  return (
-    <Link
-      {...link}
-      className={cn(
-        'flex min-h-11 rounded-md px-2 py-1 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring',
-        attention
-          ? 'items-center gap-3 xl:flex-col xl:items-start xl:justify-center xl:gap-0'
-          : 'flex-col justify-center',
-      )}
-    >
-      <span
-        className={cn(
-          'font-semibold tabular-nums',
-          attention ? 'min-w-6 text-xl xl:text-3xl' : 'text-3xl',
-          count === 0 && 'text-muted-foreground',
-          attention && count > 0 && 'text-primary',
-        )}
-      >
-        {count}
-      </span>{' '}
-      <span className="text-muted-foreground text-sm">{label}</span>
-    </Link>
-  );
-}
+
+const STAGES = [
+  {
+    stage: 'to_prepare',
+    fill: 'bg-primary/25',
+    label: () => m.schedules_to_prepare(),
+  },
+  {
+    stage: 'asking',
+    fill: 'bg-primary/50',
+    label: () => m.schedules_asking_stage(),
+  },
+  {
+    stage: 'assigning',
+    fill: 'bg-primary/75',
+    label: () => m.schedules_assigning(),
+  },
+  {
+    stage: 'published',
+    fill: 'bg-primary',
+    label: () => m.schedules_published(),
+  },
+] as const;
+
+/** Current Schedules by stage as one pipeline: segment widths are the counts, darker means further along. */
 export function ScheduleSummary(props: SummaryProps) {
   const query = useHomeSchedules(props);
   const counts = query.data?.counts;
+  const total = counts
+    ? STAGES.reduce((sum, { stage }) => sum + counts[stage], 0)
+    : 0;
   return (
     <HomeWidget
       title={m.home_summary()}
+      action={
+        counts ? (
+          <span className="text-muted-foreground text-sm tabular-nums">
+            {m.home_pipeline_total({ count: total })}
+          </span>
+        ) : undefined
+      }
       loading={query.isPending}
       error={
         query.isError
@@ -67,44 +82,130 @@ export function ScheduleSummary(props: SummaryProps) {
       }
     >
       {counts ? (
-        <div className="grid grid-cols-2 gap-x-2 gap-y-3 md:grid-cols-4">
-          <Metric
-            label={m.schedules_to_prepare()}
-            count={counts.to_prepare}
-            link={linkOptions({
-              to: '/schedules',
-              search: { stage: 'to_prepare' },
-            })}
-          />
-          <Metric
-            label={m.schedules_asking_stage()}
-            count={counts.asking}
-            link={linkOptions({
-              to: '/schedules',
-              search: { stage: 'asking' },
-            })}
-          />
-          <Metric
-            label={m.schedules_assigning()}
-            count={counts.assigning}
-            link={linkOptions({
-              to: '/schedules',
-              search: { stage: 'assigning' },
-            })}
-          />
-          <Metric
-            label={m.schedules_published()}
-            count={counts.published}
-            link={linkOptions({
-              to: '/schedules',
-              search: { stage: 'published' },
-            })}
-          />
+        <div className="space-y-3">
+          <div
+            aria-hidden
+            className="radius-control flex h-3 gap-0.5 overflow-hidden bg-muted"
+          >
+            {STAGES.map(({ stage, fill }) =>
+              counts[stage] > 0 ? (
+                <div
+                  key={stage}
+                  className={cn('h-full', fill)}
+                  style={{ flexGrow: counts[stage] }}
+                />
+              ) : null,
+            )}
+          </div>
+          <ul className="grid @3xl:grid-cols-4 @3xl:gap-x-6">
+            {STAGES.map(({ stage, fill, label }) => (
+              <li key={stage}>
+                <Link
+                  to="/schedules"
+                  search={{ stage }}
+                  className="radius-control -mx-2 flex min-h-11 items-center gap-3 px-2 py-1 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <span aria-hidden className={cn('size-3', fill)} />
+                  <span className="flex-1 text-sm">{label()}</span>{' '}
+                  <span
+                    className={cn(
+                      'font-semibold text-lg tabular-nums',
+                      counts[stage] === 0 && 'text-muted-foreground',
+                    )}
+                  >
+                    {counts[stage]}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
     </HomeWidget>
   );
 }
+
+interface AttentionRowProps {
+  label: string;
+  count: number;
+  link: LinkProps;
+  Icon: LucideIcon;
+}
+
+/** One needs-attention fact: amber count while something waits, a quiet check once clear. */
+function AttentionRow({ label, count, link, Icon }: AttentionRowProps) {
+  return (
+    <li>
+      <Link
+        {...link}
+        className="radius-control -mx-2 flex min-h-11 items-center gap-3 px-2 py-1.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        <span
+          aria-hidden
+          className={cn(
+            'radius-icon flex size-8 shrink-0 items-center justify-center',
+            count > 0
+              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+              : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {count > 0 ? (
+            <Icon className="size-4" />
+          ) : (
+            <Check className="size-4" />
+          )}
+        </span>
+        <span
+          className={cn(
+            'flex-1 text-sm',
+            count === 0 && 'text-muted-foreground',
+          )}
+        >
+          {label}
+        </span>{' '}
+        <span
+          className={cn(
+            'font-semibold tabular-nums',
+            count > 0
+              ? 'text-amber-700 text-lg dark:text-amber-400'
+              : 'text-muted-foreground',
+          )}
+        >
+          {count}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+interface PeopleRowProps {
+  label: string;
+  count: number;
+  link: LinkProps;
+  Icon: LucideIcon;
+}
+
+/** A plain count row with the same rhythm as the attention rows beside it. */
+function PeopleRow({ label, count, link, Icon }: PeopleRowProps) {
+  return (
+    <li>
+      <Link
+        {...link}
+        className="radius-control -mx-2 flex min-h-11 items-center gap-3 px-2 py-1.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        <span
+          aria-hidden
+          className="radius-icon flex size-8 shrink-0 items-center justify-center bg-primary/8 text-primary"
+        >
+          <Icon className="size-4" />
+        </span>
+        <span className="flex-1 text-sm">{label}</span>{' '}
+        <span className="font-semibold tabular-nums">{count}</span>
+      </Link>
+    </li>
+  );
+}
+
 export function AdminSummary({ churchId, userId }: HomeSectionProps) {
   const people = useQuery({
     queryKey: homeSectionQueryKey({
@@ -134,6 +235,58 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
     queryFn: () => adminApi.listMinistryDirectory({ limit: 1 }),
   });
   const error = people.isError || invitations.isError || ministries.isError;
+  const counts = people.data?.counts;
+  const serving = counts ? counts.total - counts.withoutMinistry : 0;
+  const attention =
+    people.data && invitations.data && ministries.data
+      ? [
+          {
+            label: m.home_people_without_ministry(),
+            count: people.data.counts.withoutMinistry,
+            link: linkOptions({
+              to: '/people',
+              search: { withoutMinistry: true },
+            }),
+            Icon: UserX,
+          },
+          {
+            label: m.home_invites_pending(),
+            count: invitations.data.counts.pending,
+            link: linkOptions({
+              to: '/invitations',
+              search: { status: 'pending' },
+            }),
+            Icon: Mail,
+          },
+          {
+            label: m.home_invites_expired(),
+            count: invitations.data.counts.expired,
+            link: linkOptions({
+              to: '/invitations',
+              search: { status: 'expired' },
+            }),
+            Icon: MailX,
+          },
+          {
+            label: m.home_ministries_review(),
+            count: ministries.data.counts.review,
+            link: linkOptions({
+              to: '/ministries',
+              search: { status: 'review' },
+            }),
+            Icon: ClipboardCheck,
+          },
+          {
+            label: m.home_ministries_no_sectors(),
+            count: ministries.data.counts.noSectors,
+            link: linkOptions({
+              to: '/ministries',
+              search: { status: 'no-sectors' },
+            }),
+            Icon: Layers,
+          },
+        ]
+      : null;
   return (
     <HomeWidget
       title={m.home_section_church()}
@@ -153,101 +306,85 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
           : undefined
       }
     >
-      {people.data && invitations.data && ministries.data ? (
-        <div className="space-y-4">
-          <section aria-label={m.home_people_group()} className="space-y-2">
-            <h3 className="font-medium">{m.home_people_group()}</h3>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-3 md:grid-cols-4">
-              <Metric
-                label={m.home_people_total()}
-                count={people.data.counts.total}
-                link={linkOptions({ to: '/people' })}
-              />
-              <Metric
+      {counts && attention ? (
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+          <section aria-label={m.home_people_group()} className="space-y-3">
+            <h3 className="font-medium text-sm">{m.home_people_group()}</h3>
+            <Link
+              to="/people"
+              className="radius-control -mx-2 block space-y-2 px-2 py-1.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="flex items-baseline gap-2">
+                  <span className="font-semibold text-2xl tabular-nums">
+                    {counts.total}
+                  </span>
+                  <span className="text-muted-foreground text-sm">
+                    {m.home_people_total()}
+                  </span>
+                </span>{' '}
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {m.home_people_serving({ count: serving })}
+                </span>
+              </span>
+              <span
+                aria-hidden
+                className="radius-control block h-1.5 overflow-hidden bg-muted"
+              >
+                <span
+                  className="radius-control block h-full bg-chart-1"
+                  style={{
+                    width: `${counts.total ? (serving * 100) / counts.total : 0}%`,
+                  }}
+                />
+              </span>
+            </Link>
+            <ul>
+              <PeopleRow
                 label={m.home_admins()}
-                count={people.data.counts.admins}
+                count={counts.admins}
                 link={linkOptions({
                   to: '/people',
                   search: { access: 'admin' },
                 })}
+                Icon={ShieldCheck}
               />
-              <Metric
+              <PeopleRow
                 label={m.home_leaders()}
-                count={people.data.counts.leaders}
+                count={counts.leaders}
                 link={linkOptions({
                   to: '/people',
                   search: { access: 'leader' },
                 })}
+                Icon={UserCog}
               />
-              <Metric
+              <PeopleRow
                 label={m.home_volunteers()}
-                count={people.data.counts.volunteers}
+                count={counts.volunteers}
                 link={linkOptions({
                   to: '/people',
                   search: { access: 'volunteer' },
                 })}
+                Icon={HandHeart}
               />
-            </div>
+            </ul>
           </section>
           <section
             aria-label={m.home_attention_group()}
-            className="space-y-2 border-t pt-4"
+            className="space-y-3 border-t pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8"
           >
-            <h3 className="font-medium">{m.home_attention_group()}</h3>
-            {people.data.counts.withoutMinistry === 0 &&
-            invitations.data.counts.pending === 0 &&
-            invitations.data.counts.expired === 0 &&
-            ministries.data.counts.review === 0 &&
-            ministries.data.counts.noSectors === 0 ? (
-              <p className="text-muted-foreground">{m.home_all_clear()}</p>
+            <h3 className="font-medium text-sm">{m.home_attention_group()}</h3>
+            {attention.every(({ count }) => count === 0) ? (
+              <p className="flex items-center gap-2 text-muted-foreground">
+                <Check aria-hidden className="size-4" />
+                {m.home_all_clear()}
+              </p>
             ) : (
-              <div className="grid grid-cols-1 gap-x-2 xl:grid-cols-5 xl:gap-y-3">
-                <Metric
-                  attention
-                  label={m.home_people_without_ministry()}
-                  count={people.data.counts.withoutMinistry}
-                  link={linkOptions({
-                    to: '/people',
-                    search: { withoutMinistry: true },
-                  })}
-                />
-                <Metric
-                  attention
-                  label={m.home_invites_pending()}
-                  count={invitations.data.counts.pending}
-                  link={linkOptions({
-                    to: '/invitations',
-                    search: { status: 'pending' },
-                  })}
-                />
-                <Metric
-                  attention
-                  label={m.home_invites_expired()}
-                  count={invitations.data.counts.expired}
-                  link={linkOptions({
-                    to: '/invitations',
-                    search: { status: 'expired' },
-                  })}
-                />
-                <Metric
-                  attention
-                  label={m.home_ministries_review()}
-                  count={ministries.data.counts.review}
-                  link={linkOptions({
-                    to: '/ministries',
-                    search: { status: 'review' },
-                  })}
-                />
-                <Metric
-                  attention
-                  label={m.home_ministries_no_sectors()}
-                  count={ministries.data.counts.noSectors}
-                  link={linkOptions({
-                    to: '/ministries',
-                    search: { status: 'no-sectors' },
-                  })}
-                />
-              </div>
+              <ul>
+                {attention.map((row) => (
+                  <AttentionRow key={row.label} {...row} />
+                ))}
+              </ul>
             )}
           </section>
         </div>
@@ -255,6 +392,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
     </HomeWidget>
   );
 }
+
 export function NotificationSummary({ churchId, userId }: HomeSectionProps) {
   const query = useQuery({
     queryKey: notificationQueryKey({ churchId, userId }),

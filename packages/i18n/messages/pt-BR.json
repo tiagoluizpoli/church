@@ -1652,6 +1652,7 @@
   "availability_detail_stat_open": "Dias em aberto",
   "availability_detail_stat_available": "Turnos disponíveis",
   "availability_detail_stat_published": "Dias publicados",
+  "availability_detail_panel_hint": "Desligue os turnos em que você não puder servir. Os demais contam como disponíveis.",
   "availability_detail_summary": "Sua resposta",
   "availability_detail_all_marked_available": "Tudo marcado como disponível.",
   "availability_detail_undo": "Desfazer",

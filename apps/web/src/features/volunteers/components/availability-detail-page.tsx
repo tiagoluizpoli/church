@@ -129,6 +129,8 @@ interface AvailabilityAnswerProps {
   check: GetAvailabilityCheck200;
   /** Mobile answers with 44px targets; desktop at the 32px density (DESIGN.md Density). */
   touch: boolean;
+  /** From lg up the answer sits in a side panel beside the days; below it, a bottom bar. */
+  wide: boolean;
   hasFreshDetail: boolean;
   userId: string;
   onAnswered: () => void | Promise<void>;
@@ -137,6 +139,7 @@ interface AvailabilityAnswerProps {
 function AvailabilityAnswer({
   check,
   touch,
+  wide,
   hasFreshDetail,
   userId,
   onAnswered,
@@ -319,13 +322,12 @@ function AvailabilityAnswer({
     openDays.length > 0 ? upcomingDays.filter(isPublishedDay) : [];
   const shownDays = publishedDays.length > 0 ? openDays : upcomingDays;
   const publishedDayCount = upcomingDays.filter(isPublishedDay).length;
-  const markedDays = dayEntries
-    .filter(([, shifts]) =>
-      shifts.some(
-        (shift) => !shift.published && draft.markedShiftIds.has(shift.shiftId),
-      ),
-    )
-    .map(([day]) => day);
+  const isMarked = (shift: GetAvailabilityCheck200ShiftsItem) =>
+    !shift.published && draft.markedShiftIds.has(shift.shiftId);
+  const markedDayEntries = dayEntries
+    .map(([day, shifts]): DayEntry => [day, shifts.filter(isMarked)])
+    .filter(([, shifts]) => shifts.length > 0);
+  const markedDays = markedDayEntries.map(([day]) => day);
   const dayId = (day: CalendarDay) => `${idPrefix}-day-${day}`;
   const markedDaysId = `${idPrefix}-marked-days`;
   const jumpToDay = (day: CalendarDay) => {
@@ -675,6 +677,114 @@ function AvailabilityAnswer({
   const markedDayNames = markedDays
     .map((day) => formatDayLabel({ day, locale }))
     .join(', ');
+  const sendButton = done ? (
+    <p className="flex items-center gap-1.5 font-medium text-green-700 text-sm dark:text-green-400">
+      <CircleCheck aria-hidden className="size-4 shrink-0" />
+      <span>{m.availability_detail_done()}</span>
+    </p>
+  ) : (
+    <Button
+      className={cn(touch && 'h-auto min-h-11 flex-1 whitespace-normal')}
+      disabled={answer.isPending}
+      onClick={() => answer.mutate()}
+    >
+      {answer.isPending ? <Spinner /> : null}
+      {answer.isPending
+        ? confirmed
+          ? m.availability_detail_saving()
+          : m.availability_detail_pending()
+        : label}
+    </Button>
+  );
+  const answerStatus = (
+    <>
+      {showUndo ? (
+        <p role="status" className="sr-only">
+          {m.availability_detail_all_marked_available()}
+        </p>
+      ) : null}
+      {answer.isError ? (
+        <p role="alert" className="pt-1 text-destructive text-sm">
+          {publishedRefusal
+            ? m.availability_detail_published_retry()
+            : m.availability_detail_send_error()}
+        </p>
+      ) : null}
+    </>
+  );
+  const answerPanelTitleId = `${idPrefix}-answer-title`;
+  // Desktop: the answer, the days it leaves out and the send buttons stay in view beside the days.
+  const answerPanel = (
+    <aside
+      aria-labelledby={answerPanelTitleId}
+      data-testid="availability-answer-panel"
+      className="surface-panel sticky top-0 flex max-h-[calc(100dvh-4rem-2*var(--workspace-pad-y))] flex-col gap-3 p-4"
+    >
+      <div className="space-y-0.5">
+        <h2
+          id={answerPanelTitleId}
+          className={cn('font-medium text-xs', SECONDARY_TONE)}
+        >
+          {m.availability_detail_summary()}
+        </h2>
+        <p className="font-semibold text-sm">{answerSummary}</p>
+        {unsaved ? (
+          <p
+            role="status"
+            className="font-medium text-amber-700 text-xs dark:text-amber-300"
+          >
+            {m.availability_detail_unsaved()}
+          </p>
+        ) : null}
+      </div>
+      {hasMarks ? (
+        <ul className="min-h-0 space-y-2.5 overflow-y-auto border-t pt-3">
+          {markedDayEntries.map(([day, shifts]) => (
+            <li key={day}>
+              <button
+                type="button"
+                className="radius-control text-left font-medium text-xs underline decoration-foreground/30 underline-offset-3 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                onClick={() => jumpToDay(day)}
+              >
+                {formatCalendarDayWithWeekday({ day, locale })}
+              </button>
+              <ul className="mt-1 space-y-1">
+                {shifts.map((shift) => (
+                  <li
+                    key={shift.shiftId}
+                    className="flex items-center gap-1.5 text-xs"
+                  >
+                    <CircleX
+                      aria-hidden
+                      className="size-3.5 shrink-0 text-destructive"
+                    />
+                    <span className="min-w-0 truncate">{shift.eventTitle}</span>
+                    <span
+                      className={cn(
+                        'ml-auto shrink-0 tabular-nums',
+                        SECONDARY_TONE,
+                      )}
+                    >
+                      {formatShiftTimes({ shift, timeZone: churchTimezone })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={cn('border-t pt-3 text-xs', SECONDARY_TONE)}>
+          {m.availability_detail_panel_hint()}
+        </p>
+      )}
+      <div className="flex flex-col gap-2 border-t pt-3 [&>button]:w-full">
+        {sendButton}
+        {secondaryAction}
+      </div>
+      {answerStatus}
+    </aside>
+  );
 
   return (
     <FormControlSizeProvider size={touch ? 'touch' : 'default'}>
@@ -821,137 +931,115 @@ function AvailabilityAnswer({
             </Button>
           </div>
         ) : null}
-        <div className="surface-panel">
-          <div
-            className={cn(
-              'workspace-panel-lg',
-              touch ? 'space-y-6' : 'space-y-4',
-            )}
-          >
-            {pastDays.length > 0
-              ? fold({
-                  summary:
-                    pastDays.length === 1
-                      ? m.availability_detail_past_days_one()
-                      : m.availability_detail_past_days({
-                          count: pastDays.length,
-                        }),
-                  entries: pastDays,
-                })
-              : null}
-            {dayGrid(shownDays)}
-            {publishedDays.length > 0
-              ? fold({
-                  summary:
-                    publishedDays.length === 1
-                      ? m.availability_detail_published_days_one()
-                      : m.availability_detail_published_days({
-                          count: publishedDays.length,
-                        }),
-                  entries: publishedDays,
-                  note: (
-                    <p
-                      className={cn(
-                        'flex items-center gap-1.5',
-                        touch ? 'text-sm' : 'text-xs',
-                        SECONDARY_TONE,
-                      )}
-                    >
-                      <Lock aria-hidden className="size-3.5 shrink-0" />
-                      {m.availability_detail_help_locked()}
-                    </p>
-                  ),
-                })
-              : null}
-          </div>
-          {canEdit ? (
-            // Mobile: fixed to the viewport. Desktop: the panel's flush sticky footer.
-            // Same rows in every state, so the first change never grows the bar over a row.
-            <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:sticky md:bottom-[calc(-1*var(--workspace-pad-y))] md:z-10 md:rounded-b-[inherit] md:px-(--workspace-panel-pad-lg) md:py-2">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-6">
-                <div
-                  className={cn(
-                    'flex min-w-0 flex-col justify-center',
-                    touch ? 'min-h-11' : 'min-h-8',
-                  )}
-                >
-                  {hasMarks ? (
-                    <button
-                      type="button"
-                      aria-describedby={markedDaysId}
-                      className="radius-control self-start text-left font-medium text-sm underline decoration-foreground/40 underline-offset-3 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
-                      onClick={() => jumpToDay(markedDays[0])}
-                    >
-                      {answerSummary}
-                    </button>
-                  ) : (
-                    <p className="font-medium text-sm">{answerSummary}</p>
-                  )}
-                  {unsaved || hasMarks ? (
-                    <p className="truncate text-xs">
-                      {unsaved ? (
-                        <span
-                          role="status"
-                          className="font-medium text-amber-700 dark:text-amber-300"
-                        >
-                          {m.availability_detail_unsaved()}
-                        </span>
-                      ) : null}
-                      {unsaved && hasMarks ? (
-                        <span aria-hidden> · </span>
-                      ) : null}
-                      {hasMarks ? (
-                        <span id={markedDaysId} className={SECONDARY_TONE}>
-                          {markedDayNames}
-                        </span>
-                      ) : null}
-                    </p>
-                  ) : null}
-                </div>
-                <div
-                  className={cn(
-                    'flex items-center gap-2 md:shrink-0',
-                    touch && 'min-h-11',
-                  )}
-                >
-                  {secondaryAction}
-                  {done ? (
-                    <p className="flex items-center gap-1.5 font-medium text-green-700 text-sm dark:text-green-400">
-                      <CircleCheck aria-hidden className="size-4 shrink-0" />
-                      <span>{m.availability_detail_done()}</span>
-                    </p>
-                  ) : (
-                    <Button
-                      className={cn(
-                        touch && 'h-auto min-h-11 flex-1 whitespace-normal',
-                      )}
-                      disabled={answer.isPending}
-                      onClick={() => answer.mutate()}
-                    >
-                      {answer.isPending ? <Spinner /> : null}
-                      {answer.isPending
-                        ? confirmed
-                          ? m.availability_detail_saving()
-                          : m.availability_detail_pending()
-                        : label}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {showUndo ? (
-                <p role="status" className="sr-only">
-                  {m.availability_detail_all_marked_available()}
-                </p>
-              ) : null}
-              {answer.isError ? (
-                <p role="alert" className="pt-1 text-destructive text-sm">
-                  {publishedRefusal
-                    ? m.availability_detail_published_retry()
-                    : m.availability_detail_send_error()}
-                </p>
-              ) : null}
+        <div
+          className={cn(
+            canEdit &&
+              wide &&
+              'grid grid-cols-[minmax(0,1fr)_18rem] items-start gap-4',
+          )}
+        >
+          <div className="surface-panel">
+            <div
+              className={cn(
+                'workspace-panel-lg',
+                touch ? 'space-y-6' : 'space-y-4',
+              )}
+            >
+              {pastDays.length > 0
+                ? fold({
+                    summary:
+                      pastDays.length === 1
+                        ? m.availability_detail_past_days_one()
+                        : m.availability_detail_past_days({
+                            count: pastDays.length,
+                          }),
+                    entries: pastDays,
+                  })
+                : null}
+              {dayGrid(shownDays)}
+              {publishedDays.length > 0
+                ? fold({
+                    summary:
+                      publishedDays.length === 1
+                        ? m.availability_detail_published_days_one()
+                        : m.availability_detail_published_days({
+                            count: publishedDays.length,
+                          }),
+                    entries: publishedDays,
+                    note: (
+                      <p
+                        className={cn(
+                          'flex items-center gap-1.5',
+                          touch ? 'text-sm' : 'text-xs',
+                          SECONDARY_TONE,
+                        )}
+                      >
+                        <Lock aria-hidden className="size-3.5 shrink-0" />
+                        {m.availability_detail_help_locked()}
+                      </p>
+                    ),
+                  })
+                : null}
             </div>
-          ) : null}
+            {canEdit && !wide ? (
+              // Mobile: fixed to the viewport. Desktop: the panel's flush sticky footer.
+              // Same rows in every state, so the first change never grows the bar over a row.
+              <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:sticky md:bottom-[calc(-1*var(--workspace-pad-y))] md:z-10 md:rounded-b-[inherit] md:px-(--workspace-panel-pad-lg) md:py-2">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-6">
+                  <div
+                    className={cn(
+                      'flex min-w-0 flex-col justify-center',
+                      touch ? 'min-h-11' : 'min-h-8',
+                    )}
+                  >
+                    {hasMarks ? (
+                      <button
+                        type="button"
+                        aria-describedby={markedDaysId}
+                        className="radius-control self-start text-left font-medium text-sm underline decoration-foreground/40 underline-offset-3 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                        onClick={() => jumpToDay(markedDays[0])}
+                      >
+                        {answerSummary}
+                      </button>
+                    ) : (
+                      <p className="font-medium text-sm">{answerSummary}</p>
+                    )}
+                    {unsaved || hasMarks ? (
+                      <p className="truncate text-xs">
+                        {unsaved ? (
+                          <span
+                            role="status"
+                            className="font-medium text-amber-700 dark:text-amber-300"
+                          >
+                            {m.availability_detail_unsaved()}
+                          </span>
+                        ) : null}
+                        {unsaved && hasMarks ? (
+                          <span aria-hidden> · </span>
+                        ) : null}
+                        {hasMarks ? (
+                          <span id={markedDaysId} className={SECONDARY_TONE}>
+                            {markedDayNames}
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div
+                    className={cn(
+                      'flex items-center gap-2 md:shrink-0',
+                      touch && 'min-h-11',
+                    )}
+                  >
+                    {secondaryAction}
+                    {sendButton}
+                  </div>
+                </div>
+                {answerStatus}
+              </div>
+            ) : null}
+          </div>
+          {canEdit && wide ? answerPanel : null}
         </div>
         <AlertDialog
           open={blocker.status === 'blocked'}
@@ -1005,6 +1093,7 @@ function AvailabilityDetailContent({
 }: AvailabilityDetailPageProps) {
   const scope = useCallerCapabilitiesScope();
   const touch = useMediaQuery('(max-width: 767px)');
+  const wide = useMediaQuery('(min-width: 1024px)') && !touch;
   const query = useQuery({
     queryKey: ['availability-check', checkId],
     queryFn: () => volunteerApi.getAvailabilityCheck(checkId),
@@ -1055,6 +1144,7 @@ function AvailabilityDetailContent({
       userId={scope.userId}
       check={query.data}
       touch={touch}
+      wide={wide}
       hasFreshDetail={query.isFetchedAfterMount}
       onAnswered={onAnswered}
     />

@@ -197,6 +197,42 @@ describe('Availability check page', () => {
     expect(available).toHaveTextContent('Turnos disponíveis2/3');
   });
 
+  it('lists the unavailable Shifts beside the days on a wide screen and sends from there', async () => {
+    const user = userEvent.setup();
+    // Desktop at lg and up: no touch query, the wide query matches.
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query.includes('min-width'),
+          media: query,
+          onchange: null,
+          addListener: () => {},
+          removeListener: () => {},
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    );
+    api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));
+    renderPage();
+    const panel = await screen.findByTestId('availability-answer-panel');
+    expect(panel).toHaveTextContent(m.availability_detail_panel_hint());
+
+    await user.click(
+      screen.getByRole('switch', { name: /disponibilidade.*culto da manhã/i }),
+    );
+
+    expect(panel).toHaveTextContent('Indisponível em 1 de 3 turnos');
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(panel).getByText('Culto da manhã')).toBeInTheDocument();
+    await user.click(
+      within(panel).getByRole('button', {
+        name: m.availability_detail_confirm(),
+      }),
+    );
+    expect(api.answerAvailabilityCheck).toHaveBeenCalledTimes(1);
+  });
+
   it('reaches a named Shift switch and confirms using the keyboard', async () => {
     const user = userEvent.setup();
     api.answerAvailabilityCheck.mockReturnValue(new Promise(() => {}));

@@ -77,6 +77,11 @@ jobs:
           context: .
           file: deployment/web.Dockerfile
           build-args: APP_REVISION=${{ needs.route.outputs.revision }}
+          secrets: |
+            SENTRY_URL=${{ vars.SENTRY_URL }}
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ vars.SENTRY_PROJECT }}
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: ${{ steps.names.outputs.web }}:${{ needs.route.outputs.tag }}
           push: true
       - id: refs

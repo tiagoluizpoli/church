@@ -1,9 +1,8 @@
 import { m } from '@church/i18n/messages';
 import { QueryCache, QueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { toast } from 'sonner';
 import { isOutageError } from '@/shared/utils/outage';
-import { requestErrorMessage } from '@/shared/utils/request-error-message';
+import { toastRequestError } from '@/shared/utils/toast-request-error';
 
 const SERVER_ERROR_RETRIES = 3;
 
@@ -16,10 +15,9 @@ export function createQueryClient(): QueryClient {
     queryCache: new QueryCache({
       onError: (error, query) => {
         if (isOutageError(error)) return;
-        const message = requestErrorMessage(error);
-        const retryLabel = m.common_retry();
-        toast.error(message, {
-          action: { label: retryLabel, onClick: query.invalidate },
+        toastRequestError({
+          error,
+          action: { label: m.common_retry(), onClick: query.invalidate },
         });
       },
     }),

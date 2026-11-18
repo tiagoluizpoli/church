@@ -283,9 +283,9 @@ function NavList({ groups, pathname, variant, onNavigate }: NavListProps) {
     <nav
       className={
         variant === 'collapsed'
-          ? 'flex-1 space-y-0.5 px-2 py-5'
+          ? 'min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 py-5'
           : variant === 'sidebar'
-            ? 'flex-1 space-y-1 px-3 py-5'
+            ? 'min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5'
             : 'flex flex-col space-y-1'
       }
     >
@@ -505,7 +505,8 @@ export function AppShell({
   }, [navigate, selectChurchDestination]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground md:flex-row">
+    // From md the shell is viewport-tall and <main> is the scroller, so sticky page regions work.
+    <div className="flex min-h-screen flex-col bg-background text-foreground md:h-dvh md:min-h-0 md:flex-row">
       {/* 1. Mobile Sticky Top Header */}
       <header
         data-testid="mobile-top-header"
@@ -604,7 +605,7 @@ export function AppShell({
       </motion.aside>
 
       {/* 3. Main Content Container */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Desktop Topbar */}
         <header className="relative hidden h-16 shrink-0 items-center justify-between border-border/70 border-b bg-background/92 px-(--workspace-pad-x) backdrop-blur md:flex">
           {/* Sidebar toggle + Breadcrumbs */}
@@ -680,7 +681,7 @@ export function AppShell({
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-auto px-(--workspace-pad-x) py-(--workspace-pad-y)">
+        <main className="min-h-0 flex-1 overflow-auto px-(--workspace-pad-x) py-(--workspace-pad-y)">
           <div className="w-full">{children}</div>
         </main>
       </div>

@@ -180,6 +180,8 @@
   "shell_error_description": "Try again, or head back to the home page.",
   "shell_error_try_again": "Try again",
   "shell_error_go_home": "Go to home",
+  "shell_reconnecting_title": "Can't reach the server, reconnecting…",
+  "shell_reconnecting_description": "We'll take you to your page as soon as the server is back.",
   "shell_error_details": "Error details",
   "shell_not_found_title": "This page doesn't exist",
   "shell_not_found_description": "The link may be wrong or out of date.",

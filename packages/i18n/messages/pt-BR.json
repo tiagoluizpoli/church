@@ -180,6 +180,8 @@
   "shell_error_description": "Tente de novo ou volte para a página inicial.",
   "shell_error_try_again": "Tentar de novo",
   "shell_error_go_home": "Ir para o início",
+  "shell_reconnecting_title": "Sem conexão com o servidor, reconectando…",
+  "shell_reconnecting_description": "Vamos levar você à sua página assim que o servidor voltar.",
   "shell_error_details": "Detalhes do erro",
   "shell_not_found_title": "Esta página não existe",
   "shell_not_found_description": "O link pode estar errado ou desatualizado.",

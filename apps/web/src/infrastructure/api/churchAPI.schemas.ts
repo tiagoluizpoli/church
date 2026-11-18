@@ -84,6 +84,7 @@ export type SelectActiveChurch403 = {
 export type SelectActiveChurch500 = {
   error: string;
   message: string;
+  requestId: string;
 };
 
 export type GetSetupProgress200 = {

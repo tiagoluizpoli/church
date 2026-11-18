@@ -114,7 +114,9 @@ describe('error handler locale', () => {
     expect(res.json()).toEqual({
       error: 'INTERNAL_SERVER_ERROR',
       message: m.common_generic_error({}, { locale: 'pt-BR' }),
+      requestId: res.headers['x-request-id'],
     });
+    expect(res.headers['x-request-id']).toMatch(/^[0-9a-f]{32}$/);
   });
 });
 

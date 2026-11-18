@@ -340,7 +340,6 @@
   "event_templates_column_weekday": "Dia da semana",
   "event_templates_column_blocks": "Blocos",
   "event_templates_column_actions": "Ações",
-  "event_templates_loading": "Carregando modelos de evento…",
   "event_templates_load_failed": "Não foi possível carregar os modelos de evento.",
   "event_templates_retry": "Tentar novamente",
   "event_templates_empty": "Nenhum modelo de evento ainda. Crie seu primeiro encontro reutilizável.",

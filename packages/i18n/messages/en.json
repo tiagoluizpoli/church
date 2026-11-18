@@ -340,7 +340,6 @@
   "event_templates_column_weekday": "Weekday",
   "event_templates_column_blocks": "Blocks",
   "event_templates_column_actions": "Actions",
-  "event_templates_loading": "Loading Event templates…",
   "event_templates_load_failed": "We couldn't load the Event templates.",
   "event_templates_retry": "Try again",
   "event_templates_empty": "No Event templates yet. Create your first reusable gathering.",

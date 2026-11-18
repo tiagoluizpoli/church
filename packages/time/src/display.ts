@@ -50,6 +50,16 @@ export function formatLongCalendarDay({
   }).format(new Date(`${day}T00:00:00Z`));
 }
 
+/** `Nov` / `nov`: the abbreviated month, without the trailing period some locales add. */
+export function formatMonthShort({
+  day,
+  locale,
+}: CalendarDayLocaleInput): string {
+  return new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' })
+    .format(new Date(`${day}T00:00:00Z`))
+    .replace('.', '');
+}
+
 /** `Monday, 04/01/2027` / `Segunda-feira, 04/01/2027`. */
 export function formatCalendarDayWithWeekday({
   day,

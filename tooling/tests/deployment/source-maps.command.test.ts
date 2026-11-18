@@ -123,7 +123,19 @@ describe('release source maps', () => {
     expect(maps()).toEqual([]);
   });
 
-  it('refuses without the tracker settings, naming each missing one', () => {
+  it('skips the upload loudly without any tracker setting, still leaving no map behind', () => {
+    const { exitCode, output } = run({ env: {} });
+
+    expect(exitCode).toBe(0);
+    expect(output).toContain(
+      'Source map upload skipped: SENTRY_URL, SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN not set',
+    );
+    expect(calls()).toEqual([]);
+    expect(maps()).toEqual([]);
+    expect(existsSync(join(dist, 'assets/index-abc.js'))).toBe(true);
+  });
+
+  it('refuses partial tracker settings, naming each missing one', () => {
     const { exitCode, output } = run({
       env: { SENTRY_URL: SETTINGS.SENTRY_URL },
     });
@@ -183,12 +195,12 @@ describe('web image build', () => {
     expect(build).toContain('--revision="$APP_REVISION"');
   });
 
-  it('reads the tracker settings as build secrets, never args or layers', () => {
+  it('reads the tracker settings as optional build secrets, never args or layers', () => {
     for (const name of Object.keys(SETTINGS)) {
-      expect(build).toContain(
-        `--mount=type=secret,id=${name},env=${name},required=true`,
-      );
+      // Optional, so an unconfigured build reaches the script and skips the upload.
+      expect(build).toContain(`--mount=type=secret,id=${name},env=${name} `);
       expect(dockerfile).not.toContain(`ARG ${name}`);
     }
+    expect(build).not.toContain('required=true');
   });
 });

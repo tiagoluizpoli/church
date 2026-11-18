@@ -1,8 +1,14 @@
 import { createTransport, flush } from '@sentry/bun';
-import { initErrorReporting } from '@/infrastructure/services/sentry-error-reporter';
+import {
+  initErrorReporting,
+  SentryErrorReporter,
+} from '@/infrastructure/services/sentry-error-reporter';
 
 export const REPORT_ENVIRONMENT = 'staging';
 export const REPORT_REVISION = 'rev-test';
+
+/** The production reporter; it sends nothing until `captureErrorReports` runs. */
+export const testErrorReporter = new SentryErrorReporter();
 
 export interface CapturedReports {
   /** Raw envelopes, for "never contains" checks. */

@@ -38,6 +38,8 @@ export const appConfigSchema = z.object({
   }),
   /** Browser crash reports relayed to the error tracker (ADR 0014). */
   errorReportTunnel: z.object({
+    /** The API route the web and desktop SDKs send crash reports to. */
+    path: z.string().startsWith('/'),
     windowMs: positiveInt,
     maxRequests: positiveInt,
     /** A tracker that takes longer is dropped; the browser never waits on it. */
@@ -123,6 +125,7 @@ export const appConfig = appConfigSchema.parse({
   passwordReset: { ttlMs: HOUR_MS },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
   errorReportTunnel: {
+    path: '/api/error-reports',
     windowMs: MINUTE_MS,
     maxRequests: 10,
     forwardTimeoutMs: 3 * SECOND_MS,

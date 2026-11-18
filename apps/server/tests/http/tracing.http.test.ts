@@ -186,6 +186,25 @@ describe('server traces', () => {
       spans.filter((s) => s.traceId === requestId),
     );
     expect(exported).not.toContain(SECRET_EMAIL);
+    // ADR 0014: no client address, user agent, query string or bound values.
+    const keys = spans
+      .filter((s) => s.traceId === requestId)
+      .flatMap((s) => s.attributes.map((a) => a.key));
+    for (const forbidden of [
+      'client.address',
+      'network.peer.address',
+      'net.peer.ip',
+      'http.client_ip',
+      'user_agent.original',
+      'http.user_agent',
+      'url.full',
+      'url.query',
+      'http.target',
+      'http.url',
+      'db.postgresql.values',
+    ]) {
+      expect(keys).not.toContain(forbidden);
+    }
   });
 
   it('honours a valid incoming traceparent', async () => {

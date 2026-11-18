@@ -13,6 +13,8 @@ interface RequestIdInput {
 
 // Fastify calls the first onRequest hook (the request span's) synchronously
 // after genReqId, so the root span takes this id before any other root span.
+// shortcut: relies on that synchronous handoff in one process; if a root span
+// could start between genReqId and the hook, carry the id on the request instead.
 let freshTraceId: string | undefined;
 
 /**

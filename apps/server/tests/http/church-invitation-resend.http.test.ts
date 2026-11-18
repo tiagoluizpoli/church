@@ -40,6 +40,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
@@ -66,7 +67,10 @@ const harness = createMinistryInvitationTestHarness({ db });
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new InvitationController({
     invitationListManager: {} as never,
     ministryInvitationManager: harness.manager,

@@ -8,18 +8,18 @@ import {
   parseErrorEnvelope,
 } from '../../infrastructure/services/error-report-tunnel';
 
-export const ERROR_REPORT_TUNNEL_PATH = '/api/error-reports';
-
 const ACCEPTED = 202;
+const BAD_REQUEST = 400;
+const FORBIDDEN = 403;
 const NO_CONTENT = 204;
 const TOO_MANY_REQUESTS = 429;
 // One browser event plus its stack; anything larger is not a crash report.
 const BODY_LIMIT_BYTES = 256 * 1024;
 
 const REFUSAL_STATUS: Record<EnvelopeRefusal, number> = {
-  malformed: 400,
-  notError: 400,
-  foreignDsn: 403,
+  malformed: BAD_REQUEST,
+  notError: BAD_REQUEST,
+  foreignDsn: FORBIDDEN,
 };
 
 export interface RegisterErrorReportTunnelInput {
@@ -45,20 +45,17 @@ export function registerErrorReportTunnel({
   environment,
   settings,
 }: RegisterErrorReportTunnelInput): void {
-  const { windowMs, maxRequests, forwardTimeoutMs } = settings;
+  const { path, windowMs, maxRequests, forwardTimeoutMs } = settings;
   const url = dsn && envelopeUrl({ dsn });
 
   // The web image is built once for every environment, so it learns the DSN
   // and environment here at runtime. The DSN's host is tailnet-only.
-  app.get(
-    ERROR_REPORT_TUNNEL_PATH,
-    { schema: { hide: true } },
-    (_request, reply) =>
-      dsn ? reply.send({ dsn, environment }) : reply.code(NO_CONTENT).send(),
+  app.get(path, { schema: { hide: true } }, (_request, reply) =>
+    dsn ? reply.send({ dsn, environment }) : reply.code(NO_CONTENT).send(),
   );
 
   app.post(
-    ERROR_REPORT_TUNNEL_PATH,
+    path,
     { bodyLimit: BODY_LIMIT_BYTES, schema: { hide: true } },
     async (request, reply) => {
       if (!(dsn && url)) return reply.code(NO_CONTENT).send();

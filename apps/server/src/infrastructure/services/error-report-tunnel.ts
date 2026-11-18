@@ -3,9 +3,18 @@ import { scrubEvent } from '../privacy/privacy';
 
 export type EnvelopeRefusal = 'malformed' | 'foreignDsn' | 'notError';
 
-export type ErrorEnvelopeOutcome =
-  | { accepted: true; envelope: string }
-  | { accepted: false; refusal: EnvelopeRefusal };
+/** The scrubbed envelope to forward. */
+export interface AcceptedEnvelope {
+  accepted: true;
+  envelope: string;
+}
+
+export interface RefusedEnvelope {
+  accepted: false;
+  refusal: EnvelopeRefusal;
+}
+
+export type ErrorEnvelopeOutcome = AcceptedEnvelope | RefusedEnvelope;
 
 export interface ParseErrorEnvelopeInput {
   body: unknown;

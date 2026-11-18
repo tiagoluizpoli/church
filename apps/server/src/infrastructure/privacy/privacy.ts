@@ -1,5 +1,6 @@
 // biome-ignore-all lint/style/useNamingConvention: Sentry event fields are snake_case on the wire
 import { z } from 'zod';
+import type { ReportedRequest } from '../../domain/contracts/infrastructure/error-reporter';
 
 /**
  * The one server privacy module (ADR 0014). Framework-free so log shipping and
@@ -12,9 +13,12 @@ const MASK = ':redacted';
 // - Better Auth: GET /api/auth/reset-password/:token (password-reset callback)
 // - Redemption: /redemption/{church,ministry,transfer}/:invitationId, the
 //   emailed invitation link's bearer id (and its /accept, /redeem, ... children)
+// - Web pages /invitations/{church,ministry}/:invitationId, the same bearer id
+//   in the page URL a browser crash report carries
 const TOKEN_SEGMENTS: readonly RegExp[] = [
   /(\/reset-password\/)[^/]+/,
   /(\/redemption\/(?:church|ministry|transfer)\/)[^/]+/,
+  /(\/invitations\/(?:church|ministry)\/)[^/]+/,
 ];
 
 // Headers carry no identity beyond these; cookie, authorization and referer
@@ -57,18 +61,33 @@ export function allowedHeaders({
   );
 }
 
-interface LoggedRequest {
-  method: string;
-  url: string;
-  headers: Record<string, unknown>;
-}
-
 /** pino `req` serializer: method, masked path, allowlisted headers. No IP, no body. */
-export function serializeRequest(request: LoggedRequest) {
+export function serializeRequest(request: ReportedRequest) {
   return {
     method: request.method,
     url: redactUrl({ url: request.url }),
     headers: allowedHeaders({ headers: request.headers }),
+  };
+}
+
+const STACK_FRAME = /^\s+at /;
+
+/**
+ * pino `err` serializer: the error's type, code and stack frames. The message
+ * (and the stack's first line, which repeats it) may quote an email, so it is
+ * never logged, as error reports never send it.
+ */
+export function serializeError(error: unknown) {
+  if (!(error instanceof Error)) return { type: typeof error };
+  const code = 'code' in error ? error.code : undefined;
+  const frames = (error.stack ?? '')
+    .split('\n')
+    .filter((line) => STACK_FRAME.test(line))
+    .join('\n');
+  return {
+    type: error.name,
+    ...(typeof code === 'string' && { code }),
+    ...(frames && { stack: frames }),
   };
 }
 
@@ -85,9 +104,15 @@ const ALLOWED_TAGS: ReadonlySet<string> = new Set([
 // Zod drops unknown keys, so each schema is the allowlist: the exception
 // value, message, breadcrumbs, extra, frame vars, user email/IP/name, request
 // body, cookies and query string never pass.
+// Browser frame paths are asset URLs; their query string is dropped.
+const framePath = z
+  .string()
+  .transform((url) => redactUrl({ url }))
+  .optional();
+
 const frameSchema = z.object({
-  filename: z.string().optional(),
-  abs_path: z.string().optional(),
+  filename: framePath,
+  abs_path: framePath,
   module: z.string().optional(),
   function: z.string().optional(),
   lineno: z.number().optional(),

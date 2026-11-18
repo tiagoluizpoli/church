@@ -10,7 +10,7 @@ import { createFastify } from './fastify/setup';
 import { OutboxPoller } from './outbox-poller';
 
 async function start(): Promise<void> {
-  initErrorReporting({
+  const reportingDsn = initErrorReporting({
     dsn: env.SENTRY_DSN,
     enabled: env.ERROR_REPORTING_ENABLED,
     environment: env.CHURCH_ENVIRONMENT,
@@ -18,7 +18,10 @@ async function start(): Promise<void> {
   });
   const root = createCompositionRoot();
 
-  const app = await createFastify({ locale: root.locale });
+  const app = await createFastify({
+    locale: root.locale,
+    errorReporter: root.errorReporter,
+  });
 
   await app.register(
     async (instance) => {
@@ -32,7 +35,7 @@ async function start(): Promise<void> {
 
   registerErrorReportTunnel({
     app,
-    dsn: env.ERROR_REPORTING_ENABLED ? env.SENTRY_DSN : undefined,
+    dsn: reportingDsn,
     environment: env.CHURCH_ENVIRONMENT,
     settings: root.errorReportTunnel,
   });

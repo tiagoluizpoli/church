@@ -29,10 +29,12 @@ The deployment workflows build and push them for you; see
 develop pipeline, its checks and the deployment runbook.
 
 `APP_REVISION` is the only build argument, and the build fails without it.
-The web build also needs the error tracker settings as build secrets
+The web build takes the error tracker settings as optional build secrets
 (`tooling/deployment/.env.schema`): it uploads the web source maps under the
 revision and deletes them before the served stage, so no `.map` is ever
-served, and it fails if the upload fails (#929). Repository variables
+served, and it fails if the upload fails (#929). Without any of them it
+skips the upload with a warning (crash stacks stay minified); with only some
+of them it fails. Repository variables
 `SENTRY_URL`, `SENTRY_ORG`, `SENTRY_PROJECT` and the secret
 `SENTRY_AUTH_TOKEN` supply them in the workflows.
 `bun install --frozen-lockfile` pins the dependencies, and the base images
@@ -61,6 +63,8 @@ contract in `packages/env/src/server.ts`.
 | `LOG_LEVEL` | no | `fatal`, `error`, `warn`, `info` (default), `debug` or `trace` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | OTLP/HTTP base URL of the tracing backend, e.g. `http://<tempo>:4318`; unset, no traces are exported |
 | `TRACE_SAMPLE_RATE` | no | share of new traces kept, `0` to `1` (default `1`); an incoming `traceparent`'s decision wins |
+| `SENTRY_DSN` | no | error tracker (GlitchTip) DSN, reachable over the tailnet; unset, no error is reported and the browser tunnel `/api/error-reports` answers 204 |
+| `ERROR_REPORTING_ENABLED` | no | `false` turns error reporting off even with `SENTRY_DSN` set (default `true`) |
 | `DATABASE_NETWORK` | no | Docker network that reaches the host's PostgreSQL (default `dokploy-network`) |
 
 The images set `NODE_ENV=production` for every environment, so debug

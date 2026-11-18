@@ -6,7 +6,6 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
-import { isSpanContextValid, trace } from '@opentelemetry/api';
 import type { ChurchId } from '../domain/branded-ids';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type {
@@ -35,6 +34,7 @@ import type {
   OutboxRepository,
 } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
+import type { Tracing } from '../domain/contracts/infrastructure/tracing';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerTransferRepository } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { EmailSendError } from '../domain/errors/email-send-error';
@@ -57,8 +57,6 @@ import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
 import { emailRoutingFor } from './email-routing';
 import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
 
-const tracer = trace.getTracer('church-server');
-
 /** The tracker sees the row id and kind; the reason may quote an email. */
 class OutboxDeliveryFailedError extends Error {
   override name = 'OutboxDeliveryFailedError';
@@ -76,6 +74,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly schedulingFacts: SchedulingNotificationFacts;
   private readonly unitOfWork: UnitOfWork;
   private readonly errorReporter: ErrorReporter;
+  private readonly tracing: Tracing;
   private readonly outboxPolicy: AppConfig['outbox'];
   private readonly emailIdempotencyRetentionMs: number;
   private readonly webBaseUrl: string;
@@ -95,8 +94,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     config,
     webBaseUrl,
     errorReporter,
+    tracing,
   }: DbOutboxDrainerDependencies) {
     this.errorReporter = errorReporter;
+    this.tracing = tracing;
     this.outboxRepository = outboxRepository;
     this.invitationRepository = invitationRepository;
     this.churchRepository = churchRepository;
@@ -128,16 +129,10 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     let failed = 0;
     for (const message of claimed) {
       // One span per delivery, so its SQL nests under it in the trace.
-      const outcome = await tracer.startActiveSpan(
-        'outbox.delivery',
-        async (span) => {
-          try {
-            return await this.processOne({ message });
-          } finally {
-            span.end();
-          }
-        },
-      );
+      const outcome = await this.tracing.inSpan({
+        name: 'outbox.delivery',
+        run: () => this.processOne({ message }),
+      });
       if (outcome === 'sent') sent += 1;
       else failed += 1;
     }
@@ -731,14 +726,13 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     });
   }
 
-  /** A message that will never be delivered: the maintainer must notice. */
+  /**
+   * A message that will never be delivered: the maintainer must notice.
+   * Terminal failures only; a retry is expected noise, a dead letter is not.
+   */
   private reportFailure({ message }: ReportFailureInput): void {
-    // Runs inside the outbox.delivery span; untraced runs have no valid id.
-    const spanContext = trace.getActiveSpan()?.spanContext();
-    const traceId =
-      spanContext && isSpanContextValid(spanContext)
-        ? spanContext.traceId
-        : undefined;
+    // Runs inside the outbox.delivery span.
+    const traceId = this.tracing.activeTraceId();
     this.errorReporter.report({
       error: new OutboxDeliveryFailedError(),
       traceId,
@@ -788,6 +782,7 @@ interface DbOutboxDrainerDependencies {
   /** Base URL of the web app, for deep links in emails. */
   webBaseUrl: string;
   errorReporter: ErrorReporter;
+  tracing: Tracing;
 }
 
 interface ReportFailureInput {

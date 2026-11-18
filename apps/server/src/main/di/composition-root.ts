@@ -2,6 +2,7 @@ import { type AppConfig, appConfig } from '@church/app-config';
 import { db } from '@church/db';
 import type { FastifyController } from '../../api/contracts/fastify-controller';
 import type { IOutboxDrainer } from '../../domain/contracts/application';
+import type { ErrorReporter } from '../../domain/contracts/infrastructure';
 import type { LocaleSettings } from '../fastify/setup';
 import { buildAuth } from './build-auth';
 import { buildControllers } from './build-controllers';
@@ -17,6 +18,8 @@ interface CompositionRoot {
   outboxDrainer: IOutboxDrainer;
   locale: LocaleSettings;
   errorReportTunnel: AppConfig['errorReportTunnel'];
+  /** The one reporter: the request error handler and the outbox share it. */
+  errorReporter: ErrorReporter;
 }
 
 export function createCompositionRoot(
@@ -41,6 +44,7 @@ export function createCompositionRoot(
     controllers,
     outboxDrainer: managers.outboxDrainer,
     errorReportTunnel: config.errorReportTunnel,
+    errorReporter: services.errorReporter,
     locale: {
       localeCookieName: config.localeCookieName,
       defaultLocale: config.defaultLocale,

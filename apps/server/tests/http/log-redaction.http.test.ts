@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 const TOKEN = 'reset-token-SECRET';
@@ -15,6 +16,7 @@ beforeEach(async () => {
   lines = [];
   app = await createFastify({
     locale: testLocale,
+    errorReporter: testErrorReporter,
     logStream: { write: (line: string) => lines.push(line) },
   });
   await app.ready();
@@ -52,5 +54,27 @@ describe('server log redaction', () => {
     ]) {
       expect(log).not.toContain(secret);
     }
+  });
+
+  it('logs an unhandled error by type and stack frames, never its message', async () => {
+    app = await createFastify({
+      locale: testLocale,
+      errorReporter: testErrorReporter,
+      logStream: { write: (line: string) => lines.push(line) },
+    });
+    app.get('/boom', async () => {
+      throw new TypeError('failed for a@b.test');
+    });
+    await app.ready();
+
+    const res = await app.inject({ method: 'GET', url: '/boom' });
+
+    expect(res.statusCode).toBe(500);
+    const entry = lines
+      .map((line) => JSON.parse(line))
+      .find((parsed) => parsed.msg === 'Unhandled error');
+    expect(entry?.err.type).toBe('TypeError');
+    expect(entry?.err.stack).toMatch(/^ {4}at /);
+    expect(lines.join('')).not.toContain('a@b.test');
   });
 });

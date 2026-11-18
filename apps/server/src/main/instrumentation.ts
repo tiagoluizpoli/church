@@ -11,6 +11,7 @@ import {
   TraceIdRatioBasedSampler,
 } from '@opentelemetry/sdk-trace-base';
 import { redactUrl } from '../infrastructure/privacy/privacy';
+import { SERVICE_NAME } from '../infrastructure/services/otel-tracing';
 import { requestTraceIds } from './fastify/request-id';
 
 const URL_PATH = 'url.path';
@@ -31,7 +32,7 @@ if (endpoint) {
     root: new TraceIdRatioBasedSampler(TRACE_SAMPLE_RATE),
   });
   new NodeSDK({
-    serviceName: 'church-server',
+    serviceName: SERVICE_NAME,
     traceExporter: new OTLPTraceExporter({ url: `${endpoint}/v1/traces` }),
     sampler,
     idGenerator: requestTraceIds,

@@ -15,9 +15,10 @@ export function createQueryClient(): QueryClient {
     queryCache: new QueryCache({
       onError: (error, query) => {
         if (isOutageError(error)) return;
+        const retryLabel = m.common_retry();
         toastRequestError({
           error,
-          action: { label: m.common_retry(), onClick: query.invalidate },
+          action: { label: retryLabel, onClick: query.invalidate },
         });
       },
     }),

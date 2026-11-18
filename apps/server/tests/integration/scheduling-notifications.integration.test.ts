@@ -64,6 +64,7 @@ import {
   DrizzleVolunteerRepository,
 } from '@/infrastructure/repositories';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
+import { OtelTracing } from '@/infrastructure/services/otel-tracing';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';
 import {
@@ -125,6 +126,7 @@ function buildDrainer(
     config: appConfig,
     webBaseUrl: 'https://app.test',
     errorReporter: { report: () => undefined },
+    tracing: new OtelTracing(),
   });
 }
 

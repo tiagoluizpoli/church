@@ -14,6 +14,7 @@ async function exportOpenApi(): Promise<void> {
       localeCookieName: appConfig.localeCookieName,
       defaultLocale: appConfig.defaultLocale,
     },
+    errorReporter: root.errorReporter,
   });
   await app.register(
     async (instance) => {

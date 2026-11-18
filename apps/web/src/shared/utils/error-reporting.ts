@@ -1,14 +1,16 @@
+import { appConfig } from '@church/app-config';
 import { env } from '@church/env/web';
 import * as Sentry from '@sentry/react';
 import { z } from 'zod';
 
-const REFERENCE_CODE_LENGTH = 8;
+/** A reference code is this many leading characters of a trace id. */
+export const REFERENCE_CODE_LENGTH = 8;
 
 /**
  * The API's error-report tunnel (same origin in the deployed image, absolute
  * for desktop and development). Reports never go to the tracker directly.
  */
-export const ERROR_REPORT_TUNNEL_URL = `${env.VITE_SERVER_URL.replace(/\/$/, '')}/api/error-reports`;
+export const ERROR_REPORT_TUNNEL_URL = `${env.VITE_SERVER_URL.replace(/\/$/, '')}${appConfig.errorReportTunnel.path}`;
 
 const settingsSchema = z.object({ dsn: z.string(), environment: z.string() });
 
@@ -31,7 +33,7 @@ export async function initErrorReporting(): Promise<void> {
   const settings = settingsSchema.safeParse(await response.json());
   if (!settings.success) return;
   const { dsn, environment } = settings.data;
-  const revision = env.VITE_APP_REVISION;
+  const { VITE_APP_REVISION: revision } = env;
   Sentry.init({
     dsn,
     environment,

@@ -51,6 +51,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -68,7 +69,10 @@ let app: FastifyTypedInstance;
 beforeAll(async () => {
   const db = schedulingTestDb;
   const ministryRepo = new DrizzleMinistryRepository({ db });
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   // Real manager, repositories and AuthorityService; only the session and
   // Active Church selection are seams.
   const controller = new MinistryController({

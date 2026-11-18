@@ -17,7 +17,8 @@ export interface InitErrorReportingInput {
 /**
  * Errors only: no tracing, no default integrations (reports are captured
  * explicitly), and every event goes through the privacy scrubber. Off unless
- * a DSN is set and the switch is on.
+ * a DSN is set and the switch is on. Returns the DSN reports go to, or
+ * undefined while reporting is off: the one place that rule lives.
  */
 export function initErrorReporting({
   dsn,
@@ -25,8 +26,8 @@ export function initErrorReporting({
   environment,
   revision,
   transport,
-}: InitErrorReportingInput): void {
-  if (!(dsn && enabled)) return;
+}: InitErrorReportingInput): string | undefined {
+  if (!(dsn && enabled)) return undefined;
   Sentry.init({
     dsn,
     environment,
@@ -38,6 +39,7 @@ export function initErrorReporting({
     // The scrubbed event is a field subset of the SDK's own event.
     beforeSend: (event) => scrubEvent({ event }) as Sentry.ErrorEvent | null,
   });
+  return dsn;
 }
 
 export class SentryErrorReporter implements ErrorReporter {
@@ -50,7 +52,11 @@ export class SentryErrorReporter implements ErrorReporter {
     tags,
   }: ErrorReport): void {
     Sentry.withScope((scope) => {
-      if (traceId) scope.setTag('trace_id', traceId);
+      if (traceId) {
+        // The event's trace context names the same trace as the tag.
+        scope.setPropagationContext({ traceId, sampleRand: Math.random() });
+        scope.setTag('trace_id', traceId);
+      }
       if (churchId) scope.setTag('church_id', churchId);
       if (userId) scope.setUser({ id: userId });
       if (tags) scope.setTags(tags);

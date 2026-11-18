@@ -12,6 +12,8 @@ import { parseArgs } from 'node:util';
  * through sentry-cli) under the revision the web SDK reports as its release,
  * then deletes every `.map` from the served output, whether or not the upload
  * succeeded. A failed upload fails the step, and with it the image build.
+ * A build with none of the tracker settings skips the upload with a warning
+ * (crash stacks stay minified); a partial set is a misconfiguration and fails.
  *
  * Files are uploaded as `~/<path in dist>`: `~` matches any scheme and host,
  * so web frames (https://<origin>/assets/…) and desktop frames
@@ -58,6 +60,12 @@ function main(): void {
     if (!(revision && REVISION.test(revision)))
       throw new ReleaseFailure('--revision must be a 40-character commit sha.');
     const missing = SETTINGS.filter((name) => !process.env[name]);
+    if (missing.length === SETTINGS.length) {
+      console.warn(
+        `⚠ Source map upload skipped: ${missing.join(', ')} not set. Crash reports for ${revision} will show minified stacks.`,
+      );
+      return;
+    }
     if (missing.length > 0)
       throw new ReleaseFailure(
         `Missing prerequisite: ${missing.join(', ')} not set.`,

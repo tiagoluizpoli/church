@@ -3,13 +3,17 @@ import { createCompositionRoot } from '@/main/di/composition-root';
 import { registerControllers } from '@/main/fastify/register-controllers';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   const root = createCompositionRoot();
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   await app.register(
     async (instance) => {
       await registerControllers({

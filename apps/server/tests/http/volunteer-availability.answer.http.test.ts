@@ -282,7 +282,7 @@ describe('Volunteer answers through PostgreSQL', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       state: 'confirmed',
-      shifts: [{ shiftId: shift.id, available: true }],
+      days: [{ shifts: [{ shiftId: shift.id, available: true }] }],
     });
     const [stored] = await db
       .select()
@@ -378,12 +378,13 @@ describe('Volunteer answers through PostgreSQL', () => {
     expect(initial.statusCode).toBe(200);
     expect(initial.json()).toMatchObject({
       state: 'confirmed',
-      shifts: [{ shiftId: shift.id, available: false }],
+      days: [{ shifts: [{ shiftId: shift.id, available: false }] }],
     });
     expect(initial.json().confirmedAt).toEqual(expect.any(String));
     const marked = await db.select().from(unavailableShift);
     expect(marked.map((mark) => mark.shiftId)).toEqual([shift.id]);
-    setTestClock({ instant: parseInstant({ value: '2026-09-08T12:00:00Z' }) });
+    // Still before the Shift ends: an ended Shift's mark is locked history.
+    setTestClock({ instant: parseInstant({ value: '2026-09-06T23:00:00Z' }) });
     const edited = await app.inject({
       method: 'PUT',
       url: `${ROOT}/${check.id}/answer`,
@@ -393,7 +394,7 @@ describe('Volunteer answers through PostgreSQL', () => {
     expect(edited.json()).toMatchObject({
       state: 'confirmed',
       confirmedAt: initial.json().confirmedAt,
-      shifts: [{ shiftId: shift.id, available: true }],
+      days: [{ shifts: [{ shiftId: shift.id, available: true }] }],
     });
     const [stored] = await db
       .select()
@@ -402,6 +403,49 @@ describe('Volunteer answers through PostgreSQL', () => {
     expect(stored?.confirmedAt?.toISOString()).toBe(initial.json().confirmedAt);
     expect(await db.select().from(unavailableShift)).toEqual([]);
     expect(await db.select().from(outboxMessage)).toEqual([]);
+  });
+
+  it('keeps the mark on an ended Shift and ignores a new answer for one', async () => {
+    const { check, shift } = await seedAnswer();
+    const initial = await app.inject({
+      method: 'PUT',
+      url: `${ROOT}/${check.id}/answer`,
+      payload: { shiftIds: [shift.id] },
+    });
+    expect(initial.statusCode).toBe(200);
+    // The Shift ended at 02:00Z on 2026-09-07.
+    setTestClock({ instant: parseInstant({ value: '2026-09-07T02:00:00Z' }) });
+    const cleared = await app.inject({
+      method: 'PUT',
+      url: `${ROOT}/${check.id}/answer`,
+      payload: { shiftIds: [] },
+    });
+    expect(cleared.statusCode).toBe(200);
+    expect(cleared.json()).toMatchObject({
+      days: [
+        {
+          date: '2026-09-06',
+          state: 'past',
+          shifts: [{ shiftId: shift.id, available: false, answerable: false }],
+        },
+      ],
+      counts: { openDays: 0, pastDays: 1, publishedDays: 0, openShifts: 0 },
+    });
+    expect(
+      (await db.select().from(unavailableShift)).map((mark) => mark.shiftId),
+    ).toEqual([shift.id]);
+
+    await db.delete(unavailableShift);
+    const late = await app.inject({
+      method: 'PUT',
+      url: `${ROOT}/${check.id}/answer`,
+      payload: { shiftIds: [shift.id], wholeDayDates: ['2026-09-06'] },
+    });
+    expect(late.statusCode).toBe(200);
+    expect(late.json()).toMatchObject({
+      days: [{ shifts: [{ shiftId: shift.id, available: true }] }],
+    });
+    expect(await db.select().from(unavailableShift)).toEqual([]);
   });
 
   it('preserves a published unavailable mark while editable marks change or are cleared', async () => {
@@ -452,12 +496,20 @@ describe('Volunteer answers through PostgreSQL', () => {
       expect(response.json()).toMatchObject({
         state: 'confirmed',
         confirmedAt: initial.json().confirmedAt,
-        shifts: [
-          { shiftId: shift.id, published: true, available: false },
+        days: [
           {
-            shiftId: editable.id,
-            published: false,
-            available: editableMarks.length === 0,
+            state: 'past',
+            shifts: [{ shiftId: shift.id, published: true, available: false }],
+          },
+          {
+            state: 'open',
+            shifts: [
+              {
+                shiftId: editable.id,
+                published: false,
+                available: editableMarks.length === 0,
+              },
+            ],
           },
         ],
       });
@@ -614,7 +666,7 @@ describe('Volunteer answers through PostgreSQL', () => {
     expect(response.json()).toMatchObject({
       state: 'confirmed',
       confirmedAt: '2026-09-06T12:00:00.000Z',
-      shifts: [{ shiftId: shift.id, available: false }],
+      days: [{ shifts: [{ shiftId: shift.id, available: false }] }],
     });
     const marks = await db.select().from(unavailableShift);
     expect(marks.map((mark) => mark.shiftId)).toEqual([shift.id]);

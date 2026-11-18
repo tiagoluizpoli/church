@@ -69,6 +69,7 @@ import type {
   StampRemindedInput,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import { PUBLISHED_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
 import { mapAvailabilityCheck } from '../mappers/availability-check.mapper';
 import { getClient, withChurchIsolation } from './helpers';
@@ -637,18 +638,22 @@ export class DrizzleAvailabilityCheckRepository
         endTime: shift.endTime,
         label: shift.label,
         participationState: ministryParticipation.state,
-        assigned: exists(
-          db
-            .select({ id: assignment.id })
-            .from(assignment)
-            .where(
-              and(
-                eq(assignment.shiftId, shift.id),
-                eq(assignment.volunteerId, ministryMembership.volunteerId),
-                inArray(assignment.status, ['pending', 'confirmed']),
+        // Only a published Assignment puts the Volunteer on the schedule.
+        assigned:
+          sql<boolean>`(${eq(ministryParticipation.state, 'published')} and ${exists(
+            db
+              .select({ id: assignment.id })
+              .from(assignment)
+              .where(
+                and(
+                  eq(assignment.shiftId, shift.id),
+                  eq(assignment.volunteerId, ministryMembership.volunteerId),
+                  inArray(assignment.status, [
+                    ...PUBLISHED_ASSIGNMENT_STATUSES,
+                  ]),
+                ),
               ),
-            ),
-        ).mapWith(Boolean),
+          )})`.mapWith(Boolean),
       })
       .from(availabilityCheck)
       .innerJoin(
@@ -710,8 +715,7 @@ export class DrizzleAvailabilityCheckRepository
       endTime: fromDate({ date: row.endTime }),
       label: row.label ?? undefined,
       published: row.participationState === 'published',
-      // Only a published Assignment puts the Volunteer on the schedule.
-      assigned: row.participationState === 'published' && row.assigned,
+      assigned: row.assigned,
     }));
   }
 

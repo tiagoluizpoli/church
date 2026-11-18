@@ -53,6 +53,20 @@ const availabilityCheckShiftSchema = z.object({
   available: z.boolean(),
   published: z.boolean(),
   assigned: z.boolean(),
+  answerable: z.boolean(),
+});
+
+const availabilityCheckDaySchema = z.object({
+  date: calendarDaySchema,
+  state: z.enum(['open', 'past', 'published']),
+  shifts: z.array(availabilityCheckShiftSchema),
+});
+
+const availabilityCheckCountsSchema = z.object({
+  openDays: z.number(),
+  pastDays: z.number(),
+  publishedDays: z.number(),
+  openShifts: z.number(),
 });
 
 export const availabilityCheckDetailResponseSchema = z.object({
@@ -65,7 +79,8 @@ export const availabilityCheckDetailResponseSchema = z.object({
   ministryName: z.string(),
   state: z.enum(['pending', 'confirmed']),
   confirmedAt: instantSchema.optional(),
-  shifts: z.array(availabilityCheckShiftSchema),
+  days: z.array(availabilityCheckDaySchema),
+  counts: availabilityCheckCountsSchema,
 });
 export type AvailabilityCheckDetailResponse = z.infer<
   typeof availabilityCheckDetailResponseSchema
@@ -273,17 +288,23 @@ function availabilityCheckDetailToResponse(
     confirmedAt: detail.confirmedAt,
     answerBy: detail.answerBy,
     readOnly: detail.readOnly,
-    shifts: detail.shifts.map((shift) => ({
-      shiftId: shift.shiftId,
-      eventId: shift.eventId,
-      eventTitle: shift.eventTitle,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      label: shift.label,
-      available: shift.available,
-      published: shift.published,
-      assigned: shift.assigned,
+    days: detail.days.map((day) => ({
+      date: day.date,
+      state: day.state,
+      shifts: day.shifts.map((shift) => ({
+        shiftId: shift.shiftId,
+        eventId: shift.eventId,
+        eventTitle: shift.eventTitle,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        label: shift.label,
+        available: shift.available,
+        published: shift.published,
+        assigned: shift.assigned,
+        answerable: shift.answerable,
+      })),
     })),
+    counts: detail.counts,
   };
 }
 

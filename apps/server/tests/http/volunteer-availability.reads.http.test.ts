@@ -6,6 +6,7 @@ import {
   ministryMembership,
   ministryParticipation,
 } from '@church/db';
+import { parseInstant, setTestClock } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -88,6 +89,8 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.resetAllMocks();
   await resetSchedulingPhase3Db();
+  // Before every seeded Shift ends, so they stay answerable.
+  setTestClock({ instant: parseInstant({ value: '2026-09-01T12:00:00Z' }) });
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -301,20 +304,28 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       state: 'pending',
       answerBy: '2026-09-05',
       readOnly: false,
-      shifts: [
+      days: [
         {
-          shiftId: held.id,
-          eventId: graph.event.id,
-          eventTitle: 'Sunday Service',
-          startTime: '2026-09-06T12:00:00.000Z',
-          endTime: '2026-09-06T14:00:00.000Z',
-          label: 'Morning',
-          available: true,
-          published: false,
-          // A draft schedule never reveals the Assignment.
-          assigned: false,
+          date: '2026-09-06',
+          state: 'open',
+          shifts: [
+            {
+              shiftId: held.id,
+              eventId: graph.event.id,
+              eventTitle: 'Sunday Service',
+              startTime: '2026-09-06T12:00:00.000Z',
+              endTime: '2026-09-06T14:00:00.000Z',
+              label: 'Morning',
+              available: true,
+              published: false,
+              // A draft schedule never reveals the Assignment.
+              assigned: false,
+              answerable: true,
+            },
+          ],
         },
       ],
+      counts: { openDays: 1, pastDays: 0, publishedDays: 0, openShifts: 1 },
     });
     // Legacy marks for a Role no longer held do not inflate the read totals.
     await buildUnavailableShift({
@@ -334,8 +345,8 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       payload: { shiftIds: [held.id] },
     });
     expect(saved.statusCode).toBe(200);
-    expect(saved.json().shifts).toMatchObject([
-      { shiftId: held.id, available: false },
+    expect(saved.json().days).toMatchObject([
+      { shifts: [{ shiftId: held.id, available: false }] },
     ]);
     const marked = await app.inject({ method: 'GET', url: ROOT });
     expect(marked.json().checks[0]).toMatchObject({
@@ -382,20 +393,36 @@ describe('Volunteer availability reads through PostgreSQL', () => {
     expect(past.json()).toMatchObject({
       answerBy: '2026-09-05',
       readOnly: true,
-      shifts: [
+      days: [
         {
-          shiftId: held.id,
-          available: false,
-          published: true,
-          assigned: true,
+          date: '2026-09-06',
+          state: 'published',
+          shifts: [
+            {
+              shiftId: held.id,
+              available: false,
+              published: true,
+              assigned: true,
+              answerable: false,
+            },
+          ],
         },
         {
-          shiftId: later.id,
-          available: true,
-          published: false,
-          assigned: false,
+          date: '2026-09-13',
+          // A read-only check locks even its unpublished Shifts.
+          state: 'published',
+          shifts: [
+            {
+              shiftId: later.id,
+              available: true,
+              published: false,
+              assigned: false,
+              answerable: false,
+            },
+          ],
         },
       ],
+      counts: { openDays: 0, pastDays: 0, publishedDays: 2, openShifts: 0 },
     });
   });
 

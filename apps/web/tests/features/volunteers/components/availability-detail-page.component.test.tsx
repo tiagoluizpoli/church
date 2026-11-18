@@ -1110,7 +1110,11 @@ describe('Availability check page', () => {
     const retry = await screen.findByRole('button', {
       name: m.availability_detail_save_error(),
     });
-    expect(screen.getByText(m.availability_detail_confirmed())).toBeVisible();
+    expect(
+      screen.getByText(
+        m.availability_detail_confirmed_on({ date: '01/10/2026' }),
+      ),
+    ).toBeVisible();
     expect(screen.getByText(m.availability_detail_unsaved())).toBeVisible();
     expect(
       screen
@@ -1142,10 +1146,18 @@ describe('Availability check page', () => {
         name: m.availability_detail_save_changes(),
       }),
     ).not.toBeInTheDocument();
-    const badge = screen.getByText(m.availability_detail_confirmed());
+    // One status line carries both the state and its date.
+    expect(
+      screen.queryByText(m.availability_detail_confirmed()),
+    ).not.toBeInTheDocument();
     const confirmation = screen.getByText(
       m.availability_detail_confirmed_on({ date: '01/10/2026' }),
     );
+    // The shortcut stays in reach after confirming, idle until something is marked.
+    const shortcut = screen.getByRole('button', {
+      name: m.availability_detail_confirm_all(),
+    });
+    expect(shortcut).toBeDisabled();
     await userEvent.click(
       screen.getAllByRole('switch', {
         name: /disponibilidade:/i,
@@ -1154,11 +1166,7 @@ describe('Availability check page', () => {
     expect(
       screen.queryByText(m.availability_detail_done()),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', {
-        name: m.availability_detail_confirm_all(),
-      }),
-    ).not.toBeInTheDocument();
+    expect(shortcut).toBeEnabled();
     await userEvent.click(
       screen.getByRole('button', {
         name: m.availability_detail_save_changes(),
@@ -1170,7 +1178,6 @@ describe('Availability check page', () => {
         wholeDayDates: [],
       }),
     );
-    expect(badge).toBeVisible();
     expect(confirmation).toBeVisible();
   });
 
@@ -1334,7 +1341,7 @@ describe('Availability check page', () => {
     ).toBeVisible();
     expect(
       screen.getByText(
-        m.answers_unavailable_count({ unavailable: 2, total: 3 }),
+        m.availability_detail_open_count({ unavailable: 2, total: 3 }),
       ),
     ).toBeVisible();
     await userEvent.click(
@@ -1375,8 +1382,69 @@ describe('Availability check page', () => {
   });
 });
 
+describe('decision-first layout', () => {
+  it('folds fully published days into one group and counts only open Shifts', async () => {
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        published: shift.shiftId !== 'next-day',
+      })),
+    });
+    renderPage();
+    const monday = await screen.findByRole('region', { name: MONDAY });
+    expect(
+      screen.getByText(m.availability_detail_published_days({ count: 2 })),
+    ).toBeVisible();
+    // The notice is said once, inside the folded group.
+    expect(
+      screen.getByText(m.availability_detail_published_group()),
+    ).not.toBeVisible();
+    expect(
+      screen.getByRole('link', { name: m.availability_detail_back() }),
+    ).toHaveAttribute('href', '/availability');
+    await userEvent.click(within(monday).getByRole('switch'));
+    expect(
+      within(monday).getByText(m.availability_detail_whole_day()),
+    ).toBeVisible();
+    expect(
+      within(monday).queryByText('0 de 1 disponível'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: m.availability_detail_open_count_one({
+          unavailable: 1,
+          total: 1,
+        }),
+      }),
+    ).toBeVisible();
+  });
+
+  it('undoes unsent changes on a confirmed answer back to the saved one', async () => {
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      state: 'confirmed',
+      confirmedAt: '2026-10-01T12:00:00Z',
+    });
+    renderPage();
+    const morning = await screen.findByRole('switch', {
+      name: /culto da manhã/i,
+    });
+    await userEvent.click(morning);
+    expect(screen.getByText(m.availability_detail_unsaved())).toBeVisible();
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.availability_detail_discard_changes(),
+      }),
+    );
+    expect(morning).toBeChecked();
+    expect(screen.getByText(m.availability_detail_done())).toBeVisible();
+    expect(api.answerAvailabilityCheck).not.toHaveBeenCalled();
+  });
+});
+
 describe('everything-available shortcut', () => {
-  it('appears once a Shift is marked, clears the marks without sending, and can be undone', async () => {
+  it('stays disabled until a Shift is marked, clears the marks without sending, and can be undone', async () => {
     const onAnswered = vi.fn();
     api.answerAvailabilityCheck.mockResolvedValue({
       ...CHECK,
@@ -1385,15 +1453,15 @@ describe('everything-available shortcut', () => {
     renderPage(onAnswered);
     await screen.findByText('Kids');
     expect(
-      screen.queryByRole('button', {
+      screen.getByRole('button', {
         name: m.availability_detail_confirm_all(),
       }),
-    ).not.toBeInTheDocument();
+    ).toBeDisabled();
     const morning = screen.getByRole('switch', { name: /culto da manhã/i });
     await userEvent.click(morning);
     expect(
       screen.getByText(
-        m.answers_unavailable_count({ unavailable: 1, total: 3 }),
+        m.availability_detail_open_count({ unavailable: 1, total: 3 }),
       ),
     ).toBeVisible();
     await userEvent.click(
@@ -1415,7 +1483,7 @@ describe('everything-available shortcut', () => {
     expect(morning).not.toBeChecked();
     expect(
       screen.getByText(
-        m.answers_unavailable_count({ unavailable: 1, total: 3 }),
+        m.availability_detail_open_count({ unavailable: 1, total: 3 }),
       ),
     ).toBeVisible();
     expect(

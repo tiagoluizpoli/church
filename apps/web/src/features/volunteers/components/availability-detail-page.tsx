@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useBlocker } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import {
+  ChevronLeft,
   ChevronRight,
   CircleCheck,
   CircleX,
@@ -75,6 +76,9 @@ export interface AvailabilityDetailPageProps {
 
 /** Secondary text on this volunteer screen sits above the AA minimum (PRODUCT.md). */
 const SECONDARY_TONE = 'text-foreground/75';
+
+const LINK_CLASS =
+  'font-medium text-primary underline underline-offset-3 hover:no-underline';
 
 const NO_MARKS: UnavailableShiftDraft = {
   markedShiftIds: new Set(),
@@ -234,34 +238,29 @@ function AvailabilityAnswer({
     shift.published
       ? shift.available
       : !draft.markedShiftIds.has(shift.shiftId);
-  const unavailableCount = check.shifts.filter(
+  // Published Shifts are not the volunteer's to answer, so the count leaves them out.
+  const unavailableCount = editableShifts.filter(
     (shift) => !isAvailable(shift),
   ).length;
-  const totalCount = check.shifts.length;
+  const totalCount = editableShifts.length;
   const answerSummary =
     unavailableCount === 0
       ? m.availability_detail_available_everywhere()
-      : totalCount === 1
-        ? m.answers_unavailable_count_one({
-            unavailable: unavailableCount,
-            total: totalCount,
-          })
-        : m.answers_unavailable_count({
-            unavailable: unavailableCount,
-            total: totalCount,
-          });
+      : (totalCount === 1
+          ? m.availability_detail_open_count_one
+          : m.availability_detail_open_count)({
+          unavailable: unavailableCount,
+          total: totalCount,
+        });
   const canEdit = !check.readOnly && editableShifts.length > 0;
-  const hasMarks = editableShifts.some((shift) =>
-    draft.markedShiftIds.has(shift.shiftId),
-  );
-  // A draft reset, never a submit: the main button still sends the answer.
-  const showShortcut = canEdit && !confirmed && hasMarks;
+  const hasMarks = unavailableCount > 0;
   const showUndo = undoDraft !== null && !answer.isPending;
   const editDraft: typeof setDraft = (next) => {
     setUndoDraft(null);
     setDraft(next);
   };
   const done = confirmed && !hasUnsentChanges && !answer.isPending;
+  const countdownUrgent = daysLeft !== null && daysLeft <= 1;
   const changeUntil =
     check.answerBy && !overdue
       ? m.availability_detail_change_until({
@@ -293,32 +292,86 @@ function AvailabilityAnswer({
     );
   const pastDays = dayEntries.filter(isPastDay);
   const upcomingDays = dayEntries.filter((entry) => !isPastDay(entry));
+  // With something left to answer, fully published days fold away so a switch leads the page.
+  const isLockedDay = ([, shifts]: DayEntry) =>
+    editableShifts.length > 0 && shifts.every((shift) => shift.published);
+  const lockedDays = upcomingDays.filter(isLockedDay);
+  const openDays = upcomingDays.filter((entry) => !isLockedDay(entry));
+  const lockedShiftCount = lockedDays.reduce(
+    (count, [, shifts]) => count + shifts.length,
+    0,
+  );
+  const markedDays = dayEntries
+    .filter(([, shifts]) =>
+      shifts.some(
+        (shift) => !shift.published && draft.markedShiftIds.has(shift.shiftId),
+      ),
+    )
+    .map(([day]) => day);
+  const dayId = (day: CalendarDay) => `${idPrefix}-day-${day}`;
+  const jumpToDay = (day: CalendarDay) => {
+    const section = document.getElementById(dayId(day));
+    if (!section) return;
+    const folded = section.closest('details');
+    if (folded) folded.open = true;
+    const reduceMotion = window.matchMedia?.(
+      '(prefers-reduced-motion: reduce)',
+    ).matches;
+    section.scrollIntoView?.({
+      block: 'start',
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+    section.querySelector('h2')?.focus({ preventScroll: true });
+  };
+  const foldSummaryClass = cn(
+    'radius-control flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-sm hover:text-foreground [&::-webkit-details-marker]:hidden',
+    SECONDARY_TONE,
+  );
 
-  const renderDay = ([day, shifts]: DayEntry) => {
+  const renderDay = ([day, shifts]: DayEntry, showLockNotice = true) => {
     const dayLabel = formatCalendarDayWithWeekday({ day, locale });
     const dayShifts = shifts.filter((shift) => !shift.published);
     const hasPublished = dayShifts.length < shifts.length;
-    const wholeDayUnavailable = dayShifts.every((shift) =>
-      draft.markedShiftIds.has(shift.shiftId),
-    );
+    const wholeDayUnavailable =
+      dayShifts.length > 0 &&
+      dayShifts.every((shift) => draft.markedShiftIds.has(shift.shiftId));
     return (
-      <section key={day} aria-label={dayLabel} className="space-y-3">
+      <section
+        key={day}
+        id={dayId(day)}
+        aria-label={dayLabel}
+        className="scroll-mt-24 space-y-3"
+      >
         <div className="space-y-3 border-b pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <div className="space-y-0.5">
-              <h2 className="font-semibold text-base">{dayLabel}</h2>
-              <p className={cn('text-sm tabular-nums', SECONDARY_TONE)}>
-                {(shifts.length === 1
-                  ? m.availability_detail_day_count_one
-                  : m.availability_detail_day_count)({
-                  available: shifts.filter(isAvailable).length,
-                  total: shifts.length,
-                })}
-              </p>
+              <h2 tabIndex={-1} className="font-semibold text-base">
+                {dayLabel}
+              </h2>
+              {wholeDayUnavailable && !hasPublished ? (
+                <p className="flex items-center gap-1.5 text-sm">
+                  <CircleX
+                    aria-hidden
+                    className="size-4 shrink-0 text-destructive"
+                  />
+                  <span className={SECONDARY_TONE}>
+                    {m.availability_detail_whole_day()}
+                  </span>
+                </p>
+              ) : (
+                <p className={cn('text-sm tabular-nums', SECONDARY_TONE)}>
+                  {(shifts.length === 1
+                    ? m.availability_detail_day_count_one
+                    : m.availability_detail_day_count)({
+                    available: shifts.filter(isAvailable).length,
+                    total: shifts.length,
+                  })}
+                </p>
+              )}
             </div>
             {!check.readOnly && dayShifts.length > 1 ? (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="touch"
                 aria-label={
                   wholeDayUnavailable
@@ -328,7 +381,7 @@ function AvailabilityAnswer({
                       })
                 }
                 disabled={answer.isPending}
-                className="-mr-4 h-auto min-h-11 whitespace-normal font-normal text-primary"
+                className="h-auto min-h-11 whitespace-normal"
                 onClick={() => {
                   editDraft((current) => {
                     let next = current;
@@ -351,23 +404,20 @@ function AvailabilityAnswer({
                 }}
               >
                 {wholeDayUnavailable
-                  ? m.availability_detail_whole_day_available()
-                  : m.availability_detail_whole_day()}
+                  ? m.availability_detail_mark_day_available()
+                  : m.availability_detail_mark_day_unavailable()}
               </Button>
             ) : null}
           </div>
-          {hasPublished ? (
-            <p className={cn('flex gap-2 text-sm', SECONDARY_TONE)}>
-              <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>
-                {m.availability_detail_published_day()}{' '}
-                <Link
-                  to="/my-schedule"
-                  className="font-medium text-primary underline underline-offset-3 hover:no-underline"
-                >
-                  {m.availability_detail_published_link()}
-                </Link>
-              </span>
+          {hasPublished && showLockNotice ? (
+            // Each locked chip already says "Publicado"; the day only points to the schedule.
+            <p
+              className={cn('flex items-center gap-2 text-sm', SECONDARY_TONE)}
+            >
+              <Lock aria-hidden className="size-4 shrink-0" />
+              <Link to="/my-schedule" className={LINK_CLASS}>
+                {m.availability_detail_published_link()}
+              </Link>
             </p>
           ) : null}
         </div>
@@ -467,14 +517,28 @@ function AvailabilityAnswer({
     // Below lg the two wrappers are `contents`, so `order` interleaves header, status and days.
     <div
       className={cn(
-        'mx-auto flex w-full max-w-2xl flex-col gap-6 lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,1fr)_22rem]',
-        !check.readOnly && 'pb-64 md:pb-0',
+        'mx-auto flex w-full max-w-2xl flex-col gap-6 lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,40rem)_20rem] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,40rem)_22rem]',
+        // Room for the fixed mobile bar, which only exists while something is left to send.
+        !check.readOnly && !done && (confirmed ? 'pb-64' : 'pb-40'),
+        'md:pb-0',
       )}
     >
       <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
         <header className="order-1 space-y-1 lg:order-none">
+          <Link
+            to="/availability"
+            className="-ml-1 inline-flex min-h-11 items-center gap-1 font-medium text-primary text-sm md:hidden"
+          >
+            <ChevronLeft aria-hidden className="size-4" />
+            {m.availability_detail_back()}
+          </Link>
           <h1 className="font-semibold text-xl">{check.ministryName}</h1>
           <p className={SECONDARY_TONE}>{check.cycleName}</p>
+          {!check.readOnly && help ? (
+            <p className={cn('max-w-prose pt-1 text-sm', SECONDARY_TONE)}>
+              {help}
+            </p>
+          ) : null}
         </header>
         <div className="order-3 space-y-8 lg:order-none">
           {restored ? (
@@ -493,26 +557,54 @@ function AvailabilityAnswer({
               </Button>
             </div>
           ) : null}
-          {pastDays.length > 0 ? (
-            <details className="group">
-              <summary
-                className={cn(
-                  'radius-control flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-sm hover:text-foreground [&::-webkit-details-marker]:hidden',
-                  SECONDARY_TONE,
-                )}
-              >
-                <ChevronRight
-                  aria-hidden
-                  className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
-                />
-                {pastDays.length === 1
-                  ? m.availability_detail_past_days_one()
-                  : m.availability_detail_past_days({ count: pastDays.length })}
-              </summary>
-              <div className="space-y-8 pt-4">{pastDays.map(renderDay)}</div>
-            </details>
+          {pastDays.length > 0 || lockedDays.length > 0 ? (
+            <div className="space-y-1">
+              {pastDays.length > 0 ? (
+                <details className="group">
+                  <summary className={foldSummaryClass}>
+                    <ChevronRight
+                      aria-hidden
+                      className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                    />
+                    {pastDays.length === 1
+                      ? m.availability_detail_past_days_one()
+                      : m.availability_detail_past_days({
+                          count: pastDays.length,
+                        })}
+                  </summary>
+                  <div className="space-y-8 pt-4">
+                    {pastDays.map((entry) => renderDay(entry))}
+                  </div>
+                </details>
+              ) : null}
+              {lockedDays.length > 0 ? (
+                <details className="group">
+                  <summary className={foldSummaryClass}>
+                    <ChevronRight
+                      aria-hidden
+                      className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                    />
+                    <Lock aria-hidden className="size-4" />
+                    {lockedShiftCount === 1
+                      ? m.availability_detail_published_days_one()
+                      : m.availability_detail_published_days({
+                          count: lockedShiftCount,
+                        })}
+                  </summary>
+                  <div className="space-y-8 pt-4">
+                    <p className={cn('text-sm', SECONDARY_TONE)}>
+                      {m.availability_detail_published_group()}{' '}
+                      <Link to="/my-schedule" className={LINK_CLASS}>
+                        {m.availability_detail_published_link()}
+                      </Link>
+                    </p>
+                    {lockedDays.map((entry) => renderDay(entry, false))}
+                  </div>
+                </details>
+              ) : null}
+            </div>
           ) : null}
-          {upcomingDays.map(renderDay)}
+          {openDays.map((entry) => renderDay(entry))}
         </div>
       </div>
       <div className="surface-panel contents lg:sticky lg:top-5 lg:flex lg:flex-col lg:gap-5 lg:p-5">
@@ -524,7 +616,15 @@ function AvailabilityAnswer({
             {confirmed ? (
               <p className="flex items-center gap-1.5 font-medium text-green-700 dark:text-green-400">
                 <CircleCheck aria-hidden className="size-4" />
-                {m.availability_detail_confirmed()}
+                {check.confirmedAt && confirmationDate ? (
+                  <time dateTime={check.confirmedAt}>
+                    {m.availability_detail_confirmed_on({
+                      date: confirmationDate,
+                    })}
+                  </time>
+                ) : (
+                  m.availability_detail_confirmed()
+                )}
               </p>
             ) : (
               <p className="flex items-center gap-1.5 font-medium text-yellow-700 dark:text-yellow-300">
@@ -542,20 +642,23 @@ function AvailabilityAnswer({
                 m.answers_no_deadline()
               )}
               {daysLeft !== null && !overdue && !check.readOnly ? (
-                <span className={SECONDARY_TONE}>
+                <span
+                  className={
+                    countdownUrgent
+                      ? 'font-medium text-amber-700 dark:text-amber-300'
+                      : SECONDARY_TONE
+                  }
+                >
                   {' · '}
                   {formatDeadlineCountdown({ daysLeft })}
                 </span>
               ) : null}
             </p>
           </div>
-          {confirmed && check.confirmedAt && confirmationDate ? (
-            <p className={cn('text-sm', SECONDARY_TONE)}>
-              <time dateTime={check.confirmedAt}>
-                {m.availability_detail_confirmed_on({
-                  date: confirmationDate,
-                })}
-              </time>
+          {done ? (
+            <p className="flex items-center gap-2 font-medium text-green-700 text-sm dark:text-green-400">
+              <CircleCheck aria-hidden className="size-5 shrink-0" />
+              {m.availability_detail_done()}
             </p>
           ) : null}
           {overdue ? (
@@ -582,39 +685,86 @@ function AvailabilityAnswer({
           ) : null}
         </div>
         {!check.readOnly ? (
-          <div className="fixed inset-x-0 bottom-0 z-30 order-4 space-y-2 border-t bg-card px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:sticky md:inset-x-auto md:z-10 md:bg-background md:px-0 lg:static lg:space-y-3 lg:bg-transparent lg:pt-5 lg:pb-0">
+          <div
+            className={cn(
+              'space-y-2 lg:static lg:space-y-3 lg:border-t lg:bg-transparent lg:pt-5 lg:pb-0',
+              // A sent answer needs no bar; it comes back with the first unsent change.
+              done
+                ? 'order-2 lg:order-none'
+                : 'fixed inset-x-0 bottom-0 z-30 order-4 border-t bg-card px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:sticky md:inset-x-auto md:z-10 md:bg-background md:px-0',
+            )}
+          >
             {confirmed && hasUnsentChanges ? (
-              <p
-                role="status"
-                className="font-medium text-amber-700 text-sm dark:text-amber-300"
-              >
-                {m.availability_detail_unsaved()}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap items-center justify-between gap-x-3 pb-2">
-              <p className="py-2.5 font-medium text-sm">{answerSummary}</p>
-              {showShortcut ? (
-                <Button
-                  variant="ghost"
-                  size="touch"
-                  className="-mx-4 h-auto min-h-11 whitespace-normal font-normal text-primary"
-                  disabled={answer.isPending}
-                  onClick={() => {
-                    setUndoDraft(draft);
-                    setDraft(NO_MARKS);
-                  }}
+              <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-start">
+                <p
+                  role="status"
+                  className="min-w-0 flex-1 font-medium text-amber-700 text-sm dark:text-amber-300"
                 >
-                  {m.availability_detail_confirm_all()}
-                </Button>
-              ) : showUndo ? (
-                <p role="status" className="flex items-center gap-1 text-sm">
-                  <span className={SECONDARY_TONE}>
-                    {m.availability_detail_all_marked_available()}
-                  </span>
+                  {m.availability_detail_unsaved()}
+                </p>
+                {restored ? null : (
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="touch"
-                    className="-mr-4 text-primary"
+                    className="shrink-0"
+                    disabled={answer.isPending}
+                    onClick={() => {
+                      setUndoDraft(null);
+                      discard();
+                    }}
+                  >
+                    {m.availability_detail_discard_changes()}
+                  </Button>
+                )}
+              </div>
+            ) : null}
+            <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-stretch">
+              <div className="min-w-0 space-y-1">
+                {hasMarks ? (
+                  <button
+                    type="button"
+                    className="radius-control min-h-11 min-w-0 text-left font-medium text-sm underline decoration-foreground/40 underline-offset-3 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-ring"
+                    onClick={() => jumpToDay(markedDays[0])}
+                  >
+                    {answerSummary}
+                  </button>
+                ) : (
+                  <p className="flex min-h-11 min-w-0 items-center font-medium text-sm">
+                    {answerSummary}
+                  </p>
+                )}
+                {markedDays.length > 0 ? (
+                  <ul
+                    aria-label={m.availability_detail_marked_days()}
+                    className="hidden space-y-1 text-sm lg:block"
+                  >
+                    {markedDays.map((day) => (
+                      <li key={day}>
+                        <button
+                          type="button"
+                          className={cn(
+                            'radius-control flex min-h-8 items-center gap-1.5 text-left focus-visible:outline-2 focus-visible:outline-ring',
+                            LINK_CLASS,
+                          )}
+                          onClick={() => jumpToDay(day)}
+                        >
+                          <CircleX
+                            aria-hidden
+                            className="size-4 shrink-0 text-destructive"
+                          />
+                          {formatCalendarDayWithWeekday({ day, locale })}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              {canEdit ? (
+                showUndo ? (
+                  <Button
+                    variant="outline"
+                    size="touch"
+                    className="shrink-0"
                     onClick={() => {
                       setDraft(undoDraft);
                       setUndoDraft(null);
@@ -622,15 +772,29 @@ function AvailabilityAnswer({
                   >
                     {m.availability_detail_undo()}
                   </Button>
-                </p>
+                ) : (
+                  // A draft reset, never a submit: the main button still sends the answer.
+                  <Button
+                    variant="outline"
+                    size="touch"
+                    className="shrink-0"
+                    disabled={!hasMarks || answer.isPending}
+                    onClick={() => {
+                      setUndoDraft(draft);
+                      setDraft(NO_MARKS);
+                    }}
+                  >
+                    {m.availability_detail_confirm_all()}
+                  </Button>
+                )
               ) : null}
             </div>
-            {done ? (
-              <p className="flex min-h-11 items-center gap-2 font-medium text-green-700 text-sm dark:text-green-400">
-                <CircleCheck aria-hidden className="size-5 shrink-0" />
-                {m.availability_detail_done()}
+            {showUndo ? (
+              <p role="status" className="sr-only">
+                {m.availability_detail_all_marked_available()}
               </p>
-            ) : (
+            ) : null}
+            {done ? null : (
               <Button
                 size="touch"
                 className="h-auto min-h-11 w-full whitespace-normal"
@@ -649,9 +813,6 @@ function AvailabilityAnswer({
                     : label}
               </Button>
             )}
-            {help ? (
-              <p className={cn('text-sm', SECONDARY_TONE)}>{help}</p>
-            ) : null}
             {answer.isError ? (
               // One announcement: the button already reads the generic failure.
               <p

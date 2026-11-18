@@ -43,6 +43,7 @@ import {
   serializeRequest,
 } from '../../infrastructure/privacy/privacy';
 import { auth } from '../di/server-auth';
+import { requestId } from './request-id';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
 // Cast to a concrete factory type so TypeScript knows the return value is a FastifyInstance.
@@ -78,23 +79,36 @@ export async function createFastify({
 
   const app = logStream
     ? createFastifyInstance({
+        genReqId: requestId,
         loggerInstance: pino(
           { level: 'info', serializers: logSerializers },
           logStream,
         ),
       })
     : isTest
-      ? createFastifyInstance({ logger: false })
+      ? createFastifyInstance({ genReqId: requestId, logger: false })
       : isProd
-        ? createFastifyInstance({ logger: { serializers: logSerializers } })
-        : createFastifyInstance({ loggerInstance: devLogger });
+        ? createFastifyInstance({
+            genReqId: requestId,
+            logger: { serializers: logSerializers },
+          })
+        : createFastifyInstance({
+            genReqId: requestId,
+            loggerInstance: devLogger,
+          });
 
   registerE2eTargetHeader({ app, enabled: debugEndpointsEnabled() });
 
   await app.register(fastifyCors, {
     origin: env.CORS_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'traceparent',
+    ],
+    exposedHeaders: ['x-request-id'],
     credentials: true,
     maxAge: 86400,
   });
@@ -106,7 +120,8 @@ export async function createFastify({
   app.decorateRequest('volunteerId', '');
   app.decorateRequest('churchId', '');
   app.decorateRequest('locale', localeSettings.defaultLocale);
-  app.addHook('onRequest', async (request) => {
+  app.addHook('onRequest', async (request, reply) => {
+    reply.header('x-request-id', request.id);
     request.locale = requestLocale({
       cookieHeader: request.headers.cookie,
       ...localeSettings,
@@ -244,6 +259,7 @@ export async function createFastify({
       return reply.code(500).send({
         error: 'INTERNAL_SERVER_ERROR',
         message: genericError,
+        requestId: request.id,
       });
     }
 
@@ -267,6 +283,7 @@ export async function createFastify({
     return reply.status(500).send({
       error: 'INTERNAL_SERVER_ERROR',
       message: genericError,
+      requestId: request.id,
     });
   });
 

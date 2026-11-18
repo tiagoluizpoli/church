@@ -372,7 +372,9 @@ describe('POST /api/v1/active-church/select', () => {
     expect(response.json()).toEqual({
       error: 'INTERNAL_SERVER_ERROR',
       message: m.common_generic_error({}, { locale: testLocale.defaultLocale }),
+      requestId: response.headers['x-request-id'],
     });
+    expect(response.headers['x-request-id']).toMatch(/^[0-9a-f]{32}$/);
     expect(response.body).not.toContain('session store unavailable');
     expect(response.body).not.toContain(OTHER_CHURCH_ID);
   });

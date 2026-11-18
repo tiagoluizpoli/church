@@ -7,6 +7,26 @@ const instance = axios.create({
   withCredentials: true,
 });
 
+interface RandomHexInput {
+  bytes: number;
+}
+
+function randomHex({ bytes }: RandomHexInput): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+}
+
+// A fresh W3C trace per call: the server takes its trace id as the request id.
+// shortcut: an all-zero id (odds 2^-128) is invalid and the server mints its own.
+instance.interceptors.request.use((config) => {
+  config.headers.set(
+    'traceparent',
+    `00-${randomHex({ bytes: 16 })}-${randomHex({ bytes: 8 })}-01`,
+  );
+  return config;
+});
+
 export const apiClient = <T>(config: AxiosRequestConfig): Promise<T> => {
   return instance.request<T>(config).then((res) => res.data);
 };

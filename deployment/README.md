@@ -61,6 +61,8 @@ contract in `packages/env/src/server.ts`.
 | `LOG_LEVEL` | no | `fatal`, `error`, `warn`, `info` (default), `debug` or `trace` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | OTLP/HTTP base URL of the tracing backend, e.g. `http://<tempo>:4318`; unset, no traces are exported |
 | `TRACE_SAMPLE_RATE` | no | share of new traces kept, `0` to `1` (default `1`); an incoming `traceparent`'s decision wins |
+| `SENTRY_DSN` | no | error tracker (GlitchTip) DSN, reachable over the tailnet; unset, no error is reported and the browser tunnel `/api/error-reports` answers 204 |
+| `ERROR_REPORTING_ENABLED` | no | `false` turns error reporting off even with `SENTRY_DSN` set (default `true`) |
 | `DATABASE_NETWORK` | no | Docker network that reaches the host's PostgreSQL (default `dokploy-network`) |
 
 The images set `NODE_ENV=production` for every environment, so debug

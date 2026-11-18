@@ -49,6 +49,9 @@ contract in `packages/env/src/server.ts`.
 | `PUBLIC_ORIGIN` | yes | the environment's public origin, e.g. `https://staging.example.org`; it becomes `BETTER_AUTH_URL` and `CORS_ORIGIN` |
 | `RESEND_API_KEY` | yes, secret | Resend key for outgoing email |
 | `RESEND_FROM_EMAIL` | yes | sender, e.g. `Church <noreply@example.org>` |
+| `LOG_LEVEL` | no | `fatal`, `error`, `warn`, `info` (default), `debug` or `trace` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | no | OTLP/HTTP base URL of the tracing backend, e.g. `http://<tempo>:4318`; unset, no traces are exported |
+| `TRACE_SAMPLE_RATE` | no | share of new traces kept, `0` to `1` (default `1`); an incoming `traceparent`'s decision wins |
 | `DATABASE_NETWORK` | no | Docker network that reaches the host's PostgreSQL (default `dokploy-network`) |
 
 The images set `NODE_ENV=production` for every environment, so debug
@@ -58,6 +61,21 @@ Resend. Development and staging deploy with
 `-f compose.yml -f compose.mailpit.yml` and route email by the database
 setting described in
 [docs/deployment/email-delivery.md](../docs/deployment/email-delivery.md).
+
+## Tracing
+
+`start:deployment` runs the server from source with
+`bun --preload ./src/main/instrumentation.ts`, which starts OpenTelemetry
+before `pg` and `fastify` load ([ADR 0015](../docs/adr/0015-self-hosted-observability-on-the-homelab.md)).
+`tests/http/tracing.http.test.ts` fails if request or SQL spans stop appearing
+under Bun.
+
+- If production ever runs the bundle (`build`/`compile`) instead, `pg` and
+  `fastify` must stay external to it, or their instrumentation sees no module
+  load and records nothing.
+- If a Bun upgrade breaks the spans and pinning Bun is not enough, the
+  fallback is running the server on Node with the same preload
+  (`node --import tsx/esm --import ./src/main/instrumentation.ts src/main/server.ts`).
 
 ## Local versus deployed
 

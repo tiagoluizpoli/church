@@ -433,7 +433,6 @@ const TableRow = <T extends object>({
             striped && 'even:bg-muted',
             (props.href || props.onAction || selectionMode === 'multiple') &&
               'hover:bg-(--table-selected-bg) hover:text-fg',
-            (props.href || props.onAction) && 'cursor-pointer',
             (props.href || props.onAction || selectionMode === 'multiple') &&
               isFocusVisibleWithin &&
               'bg-(--table-selected-bg)/50 selected:bg-(--table-selected-bg)/50 text-fg',

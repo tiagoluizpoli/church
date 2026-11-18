@@ -1,0 +1,105 @@
+import { NotFoundError } from '@church/core';
+import { church, member, organization, user } from '@church/db';
+import { and, asc, eq } from 'drizzle-orm';
+import type { UserId } from '../../domain/branded-ids';
+import type {
+  ChurchMemberContact,
+  ChurchRepository,
+  FindChurchMemberEmailInput,
+  FindUserNameInput,
+  GetChurchByIdInput,
+  GetChurchBySlugInput,
+  ListChurchAdminUserIdsInput,
+} from '../../domain/contracts/infrastructure/church.repository';
+import type { Church } from '../../domain/entities/church';
+import { mapChurch } from '../mappers/church.mapper';
+import { getClient, isValidUuid } from './helpers';
+import type { AnyDrizzleDb } from './types';
+
+// Church identity lives on the `organization` row and the rest on the `church`
+// extension row keyed by the same id, so every read joins the two.
+const churchJoinShape = { church, organization };
+
+interface DrizzleChurchRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
+export class DrizzleChurchRepository implements ChurchRepository {
+  constructor({ db }: DrizzleChurchRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
+
+  async getById({ id }: GetChurchByIdInput): Promise<Church> {
+    if (!isValidUuid(id)) {
+      throw new NotFoundError(`Church not found: ${id}`);
+    }
+    const [row] = await getClient({ db: this.db })
+      .select(churchJoinShape)
+      .from(church)
+      .innerJoin(organization, eq(organization.id, church.id))
+      .where(eq(church.id, id));
+    if (!row) throw new NotFoundError(`Church not found: ${id}`);
+    return mapChurch(row);
+  }
+
+  async getBySlug({ slug }: GetChurchBySlugInput): Promise<Church> {
+    const [row] = await getClient({ db: this.db })
+      .select(churchJoinShape)
+      .from(church)
+      .innerJoin(organization, eq(organization.id, church.id))
+      .where(eq(organization.slug, slug));
+    if (!row) throw new NotFoundError(`Church not found: ${slug}`);
+    return mapChurch(row);
+  }
+
+  /**
+   * Church-wide administration has no domain table of its own — it's read
+   * from Better Auth's `member.role = 'admin'` for the organization whose id
+   * equals the Church id (spec §4.5).
+   */
+  async listAdminUserIds({
+    id,
+    tx,
+  }: ListChurchAdminUserIdsInput): Promise<UserId[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({ userId: member.userId })
+      .from(member)
+      .where(and(eq(member.organizationId, id), eq(member.role, 'admin')))
+      .orderBy(asc(member.userId));
+    return rows.map((row) => row.userId as UserId);
+  }
+
+  async findMemberEmail({
+    id,
+    userId,
+  }: FindChurchMemberEmailInput): Promise<string | null> {
+    const [row] = await getClient({ db: this.db })
+      .select({ email: user.email })
+      .from(member)
+      .innerJoin(user, eq(user.id, member.userId))
+      .where(and(eq(member.organizationId, id), eq(member.userId, userId)));
+    return row?.email ?? null;
+  }
+
+  async findMemberContact({
+    id,
+    userId,
+  }: FindChurchMemberEmailInput): Promise<ChurchMemberContact | null> {
+    const [row] = await getClient({ db: this.db })
+      .select({ email: user.email, name: user.name })
+      .from(member)
+      .innerJoin(user, eq(user.id, member.userId))
+      .where(and(eq(member.organizationId, id), eq(member.userId, userId)));
+    return row ?? null;
+  }
+
+  async findUserName({ userId }: FindUserNameInput): Promise<string | null> {
+    const [row] = await getClient({ db: this.db })
+      .select({ name: user.name })
+      .from(user)
+      .where(eq(user.id, userId));
+    return row?.name.trim() || null;
+  }
+}

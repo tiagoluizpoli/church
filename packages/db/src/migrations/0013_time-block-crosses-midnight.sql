@@ -1,0 +1,2 @@
+ALTER TABLE "time_block" DROP CONSTRAINT "time_block_time_check";--> statement-breakpoint
+ALTER TABLE "time_block" ADD CONSTRAINT "time_block_time_not_empty_check" CHECK ("time_block"."start_time" != "time_block"."end_time");

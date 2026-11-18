@@ -5,8 +5,393 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1775420578972,
-      "tag": "0000_dashing_madripoor",
+      "when": 1785212547845,
+      "tag": "0000_sturdy_red_wolf",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785213115918,
+      "tag": "0001_planning-cycle-overlap-and-shift-bounds-guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785365953114,
+      "tag": "0002_fuzzy_wrecker",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785428459011,
+      "tag": "0003_wild_devos",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785470631701,
+      "tag": "0004_ministry-invitation-rewrite-and-outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785523655199,
+      "tag": "0005_robust_the_watchers",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785538938711,
+      "tag": "0006_pink_norman_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785553619220,
+      "tag": "0007_shiny_vanisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785724596041,
+      "tag": "0008_cuddly_omega_sentinel",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786254008660,
+      "tag": "0009_worried_psylocke",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786510989397,
+      "tag": "0010_jittery_newton_destine",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786512649711,
+      "tag": "0011_special_mac_gargan",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789086294680,
+      "tag": "0012_volunteer-transfer-and-membership-left-at",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789621544569,
+      "tag": "0013_time-block-crosses-midnight",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789700000000,
+      "tag": "0014_event-start-end-rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791922609024,
+      "tag": "0015_lean_scarlet_witch",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791928243677,
+      "tag": "0016_safe_bushwacker",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791934418936,
+      "tag": "0017_jittery_vanisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792029932121,
+      "tag": "0018_cycle-words-rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792042117141,
+      "tag": "0019_block-words-rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792123350937,
+      "tag": "0020_sectors",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792243333968,
+      "tag": "0021_gorgeous_sabretooth",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793469383247,
+      "tag": "0022_outbox-email-delivery-snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793470358993,
+      "tag": "0023_blue_rage",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793471722265,
+      "tag": "0024_aberrant_the_twelve",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793473875850,
+      "tag": "0025_drop-volunteer-notification",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793475834059,
+      "tag": "0026_drop-legacy-outbox-kinds",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793505145197,
+      "tag": "0027_freezing_johnny_blaze",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793514858875,
+      "tag": "0028_noisy_gunslinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793518769615,
+      "tag": "0029_drop-redemption-accepted-kind",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793547189692,
+      "tag": "0030_verification-code-by-church-invitation",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793577336961,
+      "tag": "0031_ministry-active-name",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793579079488,
+      "tag": "0032_sector-archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793582094147,
+      "tag": "0033_role-archive",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793595237806,
+      "tag": "0034_usual-setup-indexed-headcounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793637907344,
+      "tag": "0035_invitation-closure-facts",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793640258463,
+      "tag": "0036_invitation-church-email-pending",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793692276899,
+      "tag": "0037_church-invitation-resend-throttle",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793695386009,
+      "tag": "0038_invitation-revocation-facts",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793714088571,
+      "tag": "0039_church-access-audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793727842735,
+      "tag": "0040_ministry-membership-audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793730944419,
+      "tag": "0041_availability-check-withdrawn-at",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793835130520,
+      "tag": "0042_cycle-inclusive-end-date",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794025725475,
+      "tag": "0043_availability-ask",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794268195879,
+      "tag": "0044_fast_thaddeus_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794318191680,
+      "tag": "0045_boring_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794319642115,
+      "tag": "0046_narrow_black_crow",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794333607556,
+      "tag": "0047_schedule_last_told_told_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794346788189,
+      "tag": "0048_assignment_audit_outlives_assignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794365576265,
+      "tag": "0049_event_time_block_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794366456441,
+      "tag": "0050_audit_action_event_cancelled",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1794377061226,
+      "tag": "0051_cycle_has_been_sent",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1794456669644,
+      "tag": "0052_ministry_default_direction_all_out",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1794475749865,
+      "tag": "0053_assignment_proposal_application",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1794535778441,
+      "tag": "0054_runtime_email_delivery",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794937969619,
+      "tag": "0055_home_lookup_indexes",
       "breakpoints": true
     }
   ]

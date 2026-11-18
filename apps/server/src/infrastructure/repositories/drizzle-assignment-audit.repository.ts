@@ -1,0 +1,185 @@
+import {
+  assignment,
+  assignmentAudit,
+  event,
+  eventTimeBlock,
+  ministryParticipation,
+  role,
+  shift,
+  user,
+  volunteer,
+} from '@church/db';
+import { fromDate, nowAsDate } from '@church/time';
+import { aliasedTable, and, desc, eq } from 'drizzle-orm';
+import type {
+  AssignmentAuditLogEntry,
+  AssignmentAuditRepository,
+  CreateAssignmentAuditRepositoryInput,
+  ListAuditByActorInput,
+  ListAuditByChurchInput,
+  ListAuditByCycleInput,
+  ListAuditByEventInput,
+} from '../../domain/contracts/infrastructure/assignment-audit.repository';
+import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
+import { mapAssignmentAudit } from '../mappers/assignment-audit.mapper';
+import { getClient, withChurchIsolation } from './helpers';
+import type { AnyDrizzleDb } from './types';
+
+interface DrizzleAssignmentAuditRepositoryInput {
+  db: AnyDrizzleDb;
+}
+
+export class DrizzleAssignmentAuditRepository
+  implements AssignmentAuditRepository
+{
+  constructor({ db }: DrizzleAssignmentAuditRepositoryInput) {
+    this.db = db;
+  }
+
+  private readonly db: AnyDrizzleDb;
+
+  async create({
+    churchId,
+    input,
+    tx,
+  }: CreateAssignmentAuditRepositoryInput): Promise<AssignmentAudit> {
+    const [row] = await getClient({ db: this.db, tx })
+      .insert(assignmentAudit)
+      .values({
+        churchId,
+        assignmentId: input.assignmentId,
+        actorId: input.actorId,
+        action:
+          input.action === 'event_published' ? 'status_change' : input.action,
+        reason: input.reason ?? null,
+        correlationId: input.correlationId ?? null,
+        timestamp: nowAsDate(),
+      })
+      .returning();
+    if (!row) throw new Error('AssignmentAudit insert failed');
+    return mapAssignmentAudit(row);
+  }
+
+  async listByCycle(input: ListAuditByCycleInput): Promise<AssignmentAudit[]> {
+    const rows = await getClient({ db: this.db, tx: input.tx })
+      .select({
+        id: assignmentAudit.id,
+        churchId: assignmentAudit.churchId,
+        assignmentId: assignmentAudit.assignmentId,
+        actorId: assignmentAudit.actorId,
+        action: assignmentAudit.action,
+        reason: assignmentAudit.reason,
+        correlationId: assignmentAudit.correlationId,
+        timestamp: assignmentAudit.timestamp,
+      })
+      .from(assignmentAudit)
+      .innerJoin(assignment, eq(assignmentAudit.assignmentId, assignment.id))
+      .innerJoin(
+        ministryParticipation,
+        eq(assignment.participationId, ministryParticipation.id),
+      )
+      .innerJoin(event, eq(ministryParticipation.eventId, event.id))
+      .where(
+        and(
+          withChurchIsolation({
+            table: assignmentAudit,
+            churchId: input.churchId,
+          }),
+          eq(event.cycleId, input.cycleId),
+          eq(ministryParticipation.ministryId, input.ministryId),
+        ),
+      )
+      .orderBy(desc(assignmentAudit.timestamp), desc(assignmentAudit.id));
+    return rows.map(mapAssignmentAudit);
+  }
+
+  async listByChurch({
+    churchId,
+    tx,
+  }: ListAuditByChurchInput): Promise<AssignmentAudit[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select()
+      .from(assignmentAudit)
+      .where(withChurchIsolation({ table: assignmentAudit, churchId }))
+      .orderBy(desc(assignmentAudit.timestamp), desc(assignmentAudit.id));
+    return rows.map(mapAssignmentAudit);
+  }
+
+  async listByActor({
+    churchId,
+    actorId,
+    tx,
+  }: ListAuditByActorInput): Promise<AssignmentAudit[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select()
+      .from(assignmentAudit)
+      .where(
+        and(
+          withChurchIsolation({ table: assignmentAudit, churchId }),
+          eq(assignmentAudit.actorId, actorId),
+        ),
+      )
+      .orderBy(desc(assignmentAudit.timestamp), desc(assignmentAudit.id));
+    return rows.map(mapAssignmentAudit);
+  }
+
+  async listByEvent({
+    churchId,
+    eventId,
+    tx,
+  }: ListAuditByEventInput): Promise<AssignmentAuditLogEntry[]> {
+    const db = getClient({ db: this.db, tx });
+    const volunteerUser = aliasedTable(user, 'volunteer_user');
+    const actorUser = aliasedTable(user, 'actor_user');
+
+    const rows = await db
+      .select({
+        id: assignmentAudit.id,
+        assignmentId: assignmentAudit.assignmentId,
+        volunteerId: assignment.volunteerId,
+        volunteerName: volunteerUser.name,
+        eventTimeBlockId: eventTimeBlock.id,
+        eventTimeBlockLabel: eventTimeBlock.label,
+        eventTimeBlockStart: eventTimeBlock.startTime,
+        roleId: role.id,
+        roleName: role.name,
+        action: assignmentAudit.action,
+        reason: assignmentAudit.reason,
+        actorId: assignmentAudit.actorId,
+        actorName: actorUser.name,
+        timestamp: assignmentAudit.timestamp,
+      })
+      .from(assignmentAudit)
+      .innerJoin(assignment, eq(assignmentAudit.assignmentId, assignment.id))
+      .innerJoin(shift, eq(assignment.shiftId, shift.id))
+      .innerJoin(eventTimeBlock, eq(shift.eventTimeBlockId, eventTimeBlock.id))
+      .innerJoin(role, eq(assignment.roleId, role.id))
+      .innerJoin(volunteer, eq(assignment.volunteerId, volunteer.id))
+      .leftJoin(volunteerUser, eq(volunteer.userId, volunteerUser.id))
+      .leftJoin(actorUser, eq(assignmentAudit.actorId, actorUser.id))
+      .where(
+        and(
+          withChurchIsolation({ table: assignmentAudit, churchId }),
+          eq(eventTimeBlock.eventId, eventId),
+        ),
+      )
+      .orderBy(desc(assignmentAudit.timestamp), desc(assignmentAudit.id));
+
+    return rows.map((r) => ({
+      id: r.id,
+      assignmentId: r.assignmentId,
+      volunteerId: r.volunteerId,
+      volunteerName: r.volunteerName ?? r.volunteerId,
+      eventTimeBlockId: r.eventTimeBlockId,
+      eventTimeBlockLabel:
+        r.eventTimeBlockLabel ?? fromDate({ date: r.eventTimeBlockStart }),
+      roleId: r.roleId,
+      roleName: r.roleName,
+      action: r.action as AssignmentAuditLogEntry['action'],
+      reason: r.reason ?? null,
+      actorId: r.actorId,
+      actorName: r.actorName ?? r.actorId,
+      timestamp: r.timestamp,
+    }));
+  }
+}

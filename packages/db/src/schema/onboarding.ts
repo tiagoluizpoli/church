@@ -1,0 +1,392 @@
+import { sql } from 'drizzle-orm';
+import {
+  check,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
+import { user } from './auth';
+import { church } from './church';
+import { ministry, role, volunteer } from './core';
+import {
+  identityAuditActionEnum,
+  invitationRevocationReasonEnum,
+  ministryAccessLevelEnum,
+  ministryInvitationStatusEnum,
+  outboxMessageKindEnum,
+  outboxMessageStatusEnum,
+  securityLogEventEnum,
+} from './enums';
+import { invitation as churchInvitation } from './organization';
+
+/**
+ * A Ministry Invitation is targeted, never a bearer link: exactly one of
+ * `inviteeUserId` (an existing Church Member) or `churchInvitationId` (the
+ * chained Better Auth invitation for someone outside the Church) is set,
+ * enforced by a check constraint rather than an application convention.
+ * There is no `expired` status — expiry is evaluated lazily against
+ * `expiresAt` at read time, matching Better Auth rather than diverging
+ * from it.
+ */
+export const ministryInvitation = pgTable(
+  'ministry_invitation',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    ministryId: uuid('ministry_id')
+      .notNull()
+      .references(() => ministry.id, { onDelete: 'cascade' }),
+    inviteeUserId: text('invitee_user_id').references(() => user.id, {
+      onDelete: 'cascade',
+    }),
+    churchInvitationId: text('church_invitation_id').references(
+      () => churchInvitation.id,
+      { onDelete: 'cascade' },
+    ),
+    ministryAccessLevel: ministryAccessLevelEnum(
+      'ministry_access_level',
+    ).notNull(),
+    status: ministryInvitationStatusEnum('status').default('pending').notNull(),
+    inviterId: text('inviter_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    acceptedAt: timestamp('accepted_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    /** Revocation facts; null on rows revoked before they were recorded. */
+    canceledAt: timestamp('canceled_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    canceledById: text('canceled_by_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    cancelReason: invitationRevocationReasonEnum('cancel_reason'),
+    /** Set by every decline path; the actor lives in `identity_audit` and is absent for a public decline. */
+    declinedAt: timestamp('declined_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    lastResendAt: timestamp('last_resend_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    resendCount: integer('resend_count').default(0).notNull(),
+    resendWindowStartedAt: timestamp('resend_window_started_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('ministry_invitation_ministry_invitee_pending_idx')
+      .on(table.ministryId, table.inviteeUserId)
+      .where(sql`${table.status} = 'pending'`),
+    uniqueIndex('ministry_invitation_ministry_church_invitation_pending_idx')
+      .on(table.ministryId, table.churchInvitationId)
+      .where(sql`${table.status} = 'pending'`),
+    check(
+      'ministry_invitation_exactly_one_addressee_check',
+      sql`(${table.inviteeUserId} IS NOT NULL) <> (${table.churchInvitationId} IS NOT NULL)`,
+    ),
+  ],
+);
+
+/**
+ * One replaceable verification-code lifecycle per pending Church Invitation,
+ * plain or paired: a new person proves the addressed mailbox before joining.
+ * Only the SHA-256 digest persists. A resend replaces the digest, expiry and
+ * attempt count, deliberately invalidating every previously issued code.
+ */
+export const invitationVerificationCode = pgTable(
+  'invitation_verification_code',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchInvitationId: text('church_invitation_id')
+      .notNull()
+      .references(() => churchInvitation.id, { onDelete: 'cascade' })
+      .unique(),
+    codeHash: text('code_hash').notNull(),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    failedAttempts: integer('failed_attempts').default(0).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true, mode: 'date' }),
+    redemptionIdempotencyKey: text('redemption_idempotency_key'),
+    lastSentAt: timestamp('last_sent_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+);
+
+/**
+ * Mirrors `ministry_membership_role` with real FKs rather than a `uuid[]`
+ * column, so a Role deleted between mint and acceptance cascades out of
+ * the pending invitation instead of needing existence checking at
+ * acceptance time. Under-granting is the deliberately lenient default —
+ * acceptance proceeds regardless.
+ */
+export const ministryInvitationRole = pgTable(
+  'ministry_invitation_role',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    ministryInvitationId: uuid('ministry_invitation_id')
+      .notNull()
+      .references(() => ministryInvitation.id, { onDelete: 'cascade' }),
+    roleId: uuid('role_id')
+      .notNull()
+      .references(() => role.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('ministry_invitation_role_invitation_role_idx').on(
+      table.ministryInvitationId,
+      table.roleId,
+    ),
+  ],
+);
+
+/**
+ * One general, Church-scoped outbox serving invitation emails and
+ * Volunteer-Transfer notifications alike — one worker, one retry policy,
+ * one place support looks. The payload references its subject by id and is
+ * rendered once, before the first email attempt, and that prepared copy is
+ * what every retry resends.
+ */
+export const outboxMessage = pgTable('outbox_message', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  churchId: uuid('church_id')
+    .notNull()
+    .references(() => church.id, { onDelete: 'cascade' }),
+  kind: outboxMessageKindEnum('kind').notNull(),
+  payload: jsonb('payload').notNull(),
+  status: outboxMessageStatusEnum('status').default('pending').notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  scheduledFor: timestamp('scheduled_for', {
+    withTimezone: true,
+    mode: 'date',
+  }).notNull(),
+  lastError: text('last_error'),
+  providerMessageId: text('provider_message_id'),
+  correlationId: text('correlation_id').notNull(),
+  sentAt: timestamp('sent_at', { withTimezone: true, mode: 'date' }),
+  /** The operator's `email_delivery_mode` value as it was when the row was
+   * written; null on rows written before it existed or while it was unset. */
+  emailDeliveryMode: jsonb('email_delivery_mode'),
+  /** Destinations ('mailpit' | 'resend') that confirmed this email; a retry
+   * skips them. */
+  emailConfirmedDestinations: jsonb('email_confirmed_destinations')
+    .$type<string[]>()
+    .default([])
+    .notNull(),
+  /** The exact prepared email, persisted before its first external attempt
+   * and replayed unchanged on retry. Private server data. */
+  emailRequest: jsonb('email_request'),
+  emailIdempotencyKey: text('email_idempotency_key'),
+  emailFirstAttemptAt: timestamp('email_first_attempt_at', {
+    withTimezone: true,
+    mode: 'date',
+  }),
+  /** Confirmed provider receipt: a replay skips an already-delivered email. */
+  emailDeliveredAt: timestamp('email_delivered_at', {
+    withTimezone: true,
+    mode: 'date',
+  }),
+  /** Settled per-sink outcomes of a `notification` row (sink name →
+   * delivered | skipped | failed); a whole-row retry skips settled sinks. */
+  channelOutcomes: jsonb('channel_outcomes'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+/**
+ * The audit boundary from spec §7.6, modeled on `assignment_audit`'s shape
+ * but not sharing the table — that one is foreign-keyed to `assignment` and
+ * cannot represent an identity act. `ministryInvitationId` is nullable so a
+ * future Volunteer Transfer row (no invitation) can share this table too.
+ * Carries `correlationId` (unlike `assignment_audit`) so one attempt's audit
+ * row and outbox rows are traceable together. Ordinary preview visits, and
+ * failed identity checks / throttling, are deliberately never written here —
+ * those belong to the security log instead.
+ */
+/** `church_access_changed` details: which Church Membership moved between which levels. */
+export interface ChurchAccessChangedDetails {
+  churchMembershipId: string;
+  before: 'member' | 'admin';
+  after: 'member' | 'admin';
+}
+
+/** `ministry_roles_changed` details: one Ministry Membership's complete Role set before and after, ids sorted. */
+export interface MinistryRolesChangedDetails {
+  churchMembershipId: string;
+  ministryMembershipId: string;
+  ministryId: string;
+  beforeRoleIds: string[];
+  afterRoleIds: string[];
+}
+
+export interface MinistryMembershipEndedDetails {
+  churchMembershipId: string;
+  ministryMembershipId: string;
+  ministryId: string;
+  /** Kept as history on the ended membership. */
+  retainedRoleIds: string[];
+  withdrawnAvailabilityCheckIds: string[];
+  beforeStatus: 'active';
+  afterStatus: 'inactive';
+}
+
+/** `ministry_access_changed` details: the level, plus the complete Role set when the same operation changed it. */
+export interface MinistryAccessChangedDetails {
+  churchMembershipId: string;
+  ministryMembershipId: string;
+  ministryId: string;
+  beforeAccessLevel: 'leader' | 'volunteer';
+  afterAccessLevel: 'leader' | 'volunteer';
+  beforeRoleIds?: string[];
+  afterRoleIds?: string[];
+}
+
+/** Structured per-action facts; null on rows whose action records none. */
+export type IdentityAuditDetails =
+  | ChurchAccessChangedDetails
+  | MinistryRolesChangedDetails
+  | MinistryMembershipEndedDetails
+  | MinistryAccessChangedDetails;
+
+export const identityAudit = pgTable('identity_audit', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  churchId: uuid('church_id')
+    .notNull()
+    .references(() => church.id, { onDelete: 'cascade' }),
+  ministryInvitationId: uuid('ministry_invitation_id').references(
+    () => ministryInvitation.id,
+    { onDelete: 'cascade' },
+  ),
+  actorId: text('actor_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  action: identityAuditActionEnum('action').notNull(),
+  /** The User the act was done to, when not the actor; null on older actions. */
+  subjectId: text('subject_id').references(() => user.id, {
+    onDelete: 'cascade',
+  }),
+  details: jsonb('details').$type<IdentityAuditDetails>(),
+  reason: text('reason'),
+  correlationId: text('correlation_id').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .notNull(),
+});
+
+/**
+ * Spec §7.6's security log: failed identity checks and throttling, kept out
+ * of `identity_audit` because they are not domain acts — a support/security
+ * tool, not a business record. `churchId` and `ministryInvitationId` are
+ * nullable because a throttled *public* request (session 2) may never
+ * resolve either.
+ */
+export const securityLog = pgTable('security_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  churchId: uuid('church_id').references(() => church.id, {
+    onDelete: 'cascade',
+  }),
+  ministryInvitationId: uuid('ministry_invitation_id').references(
+    () => ministryInvitation.id,
+    { onDelete: 'cascade' },
+  ),
+  actorId: text('actor_id').references(() => user.id, {
+    onDelete: 'cascade',
+  }),
+  event: securityLogEventEnum('event').notNull(),
+  correlationId: text('correlation_id').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true, mode: 'date' })
+    .defaultNow()
+    .notNull(),
+});
+
+/**
+ * Spec §4.4/§8: both the domain audit record of a Volunteer Transfer **and**
+ * its idempotency key, so a replayed confirm cannot half-exist. The unique
+ * `(userId, ministryInvitationId)` index is what guarantees a second confirm
+ * returns the original outcome rather than re-executing (§8.6) — the
+ * client-supplied idempotency key rides along the redemption API but is not
+ * what makes this correct. Per-assignment detail is not duplicated here; it is
+ * reached through `assignment_audit` by `correlationId`.
+ */
+export const volunteerTransfer = pgTable(
+  'volunteer_transfer',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    sourceChurchId: uuid('source_church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    destinationChurchId: uuid('destination_church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    sourceVolunteerId: uuid('source_volunteer_id')
+      .notNull()
+      .references(() => volunteer.id, { onDelete: 'cascade' }),
+    destinationVolunteerId: uuid('destination_volunteer_id')
+      .notNull()
+      .references(() => volunteer.id, { onDelete: 'cascade' }),
+    ministryInvitationId: uuid('ministry_invitation_id')
+      .notNull()
+      .references(() => ministryInvitation.id, { onDelete: 'cascade' }),
+    withdrawnAssignmentCount: integer('withdrawn_assignment_count').notNull(),
+    endedMembershipCount: integer('ended_membership_count').notNull(),
+    confirmedAt: timestamp('confirmed_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    correlationId: text('correlation_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('volunteer_transfer_user_invitation_idx').on(
+      table.userId,
+      table.ministryInvitationId,
+    ),
+  ],
+);

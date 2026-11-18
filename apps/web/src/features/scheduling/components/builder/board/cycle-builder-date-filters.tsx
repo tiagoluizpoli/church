@@ -1,0 +1,258 @@
+import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
+import { formatWeekdayPluralOfIndex } from '@church/time';
+import { ChevronDownIcon, ChevronUpIcon, FilterIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
+import type {
+  DateMode,
+  DateSpanMode,
+} from '../../../utils/builder/cycle-builder-date.utils';
+import { DatePickerField } from '@/components/date-picker-field';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+/** `Label`'s type treatment for a `<legend>`, which names a group of controls. */
+const GROUP_LABEL_CLASS =
+  'flex select-none items-center gap-2 text-xs leading-none';
+
+interface CycleBuilderDateFiltersProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  eventQuery: string;
+  onEventQueryChange: (value: string) => void;
+  dateMode: DateMode;
+  onDateModeChange: (mode: DateMode) => void;
+  dateSpanMode: DateSpanMode;
+  onDateSpanModeChange: (mode: DateSpanMode) => void;
+  rangeStart: string;
+  onRangeStartChange: (value: string) => void;
+  rangeEnd: string;
+  onRangeEndChange: (value: string) => void;
+  cycleStartDate: string;
+  cycleEndDate: string;
+  weekdayFilters: number[];
+  weekday: number | null;
+  onWeekdayChange: (weekday: number | null) => void;
+  activeDateFilterCount: number;
+  filtersAreDefault: boolean;
+  onClearFilters: () => void;
+  visibleDateCount: number;
+  totalDateCount: number;
+  /** Audit/publish controls — live here so they share the toolbar's row
+   * instead of stretching the header for no reason. */
+  actions?: ReactNode;
+}
+
+/**
+ * The date-filter toolbar. Search and "Show" (event dates vs. all cycle
+ * dates) stay visible — a leader touches those every session — while
+ * everything date-shaped (span mode, range, weekday) folds behind one
+ * disclosure that says how many of its filters are on, so a folded filter
+ * still announces itself instead of silently hiding dates (B-4).
+ */
+export function CycleBuilderDateFilters({
+  open,
+  onOpenChange,
+  eventQuery,
+  onEventQueryChange,
+  dateMode,
+  onDateModeChange,
+  dateSpanMode,
+  onDateSpanModeChange,
+  rangeStart,
+  onRangeStartChange,
+  rangeEnd,
+  onRangeEndChange,
+  cycleStartDate,
+  cycleEndDate,
+  weekdayFilters,
+  weekday,
+  onWeekdayChange,
+  activeDateFilterCount,
+  filtersAreDefault,
+  onClearFilters,
+  visibleDateCount,
+  totalDateCount,
+  actions,
+}: CycleBuilderDateFiltersProps) {
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={onOpenChange}
+      className="space-y-3 border-b pb-3"
+    >
+      <section className="flex flex-wrap items-end gap-x-6 gap-y-3">
+        <div className="space-y-1">
+          <Label htmlFor="cycle-builder-event-search">
+            {m.builder_ui_search_events()}
+          </Label>
+          <Input
+            id="cycle-builder-event-search"
+            value={eventQuery}
+            onChange={(event) => onEventQueryChange(event.target.value)}
+            placeholder={m.builder_ui_search_events_placeholder()}
+            aria-label={m.builder_ui_search_events()}
+            className="w-40"
+          />
+        </div>
+        {/* A fieldset, not a `Label`: "Show" names a group of toggles, and a
+            <label> that owns no control is announced with nothing attached
+            to it (B-3). */}
+        <fieldset className="space-y-1">
+          <legend className={GROUP_LABEL_CLASS}>{m.builder_ui_show()}</legend>
+          <div className="flex gap-1">
+            <Button
+              type="button"
+              variant={dateMode === 'event_dates' ? 'secondary' : 'ghost'}
+              aria-pressed={dateMode === 'event_dates'}
+              onClick={() => onDateModeChange('event_dates')}
+            >
+              {m.builder_ui_event_dates()}
+            </Button>
+            <Button
+              type="button"
+              variant={dateMode === 'all_cycle_dates' ? 'secondary' : 'ghost'}
+              aria-pressed={dateMode === 'all_cycle_dates'}
+              onClick={() => onDateModeChange('all_cycle_dates')}
+            >
+              {m.builder_ui_all_cycle_dates()}
+            </Button>
+          </div>
+        </fieldset>
+        <CollapsibleTrigger
+          data-testid="cycle-builder-date-filters"
+          render={<Button type="button" variant="outline" />}
+        >
+          <FilterIcon className="size-3.5" />
+          {m.builder_ui_date_filters()}
+          {activeDateFilterCount > 0 ? (
+            <Badge variant="secondary">{activeDateFilterCount}</Badge>
+          ) : null}
+          {open ? (
+            <ChevronUpIcon className="size-3.5" />
+          ) : (
+            <ChevronDownIcon className="size-3.5" />
+          )}
+        </CollapsibleTrigger>
+        <div className="ml-auto flex items-end gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={filtersAreDefault}
+            onClick={onClearFilters}
+          >
+            {m.builder_ui_clear_filters()}
+          </Button>
+          <span className="pb-1.5 text-muted-foreground text-xs">
+            {m.builder_ui_dates_visible({
+              visible: visibleDateCount,
+              total: totalDateCount,
+            })}
+          </span>
+        </div>
+        {actions ? (
+          <div className="flex flex-wrap items-end gap-2">{actions}</div>
+        ) : null}
+      </section>
+      <CollapsibleContent className="flex flex-wrap items-end gap-x-6 gap-y-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1">
+            <Label htmlFor="cycle-builder-date-span-mode">
+              {m.builder_ui_date_range()}
+            </Label>
+            {/* No height-forcing wrapper: `SelectTrigger` now reads the
+                surrounding `FormControlSizeProvider` like every other
+                control on this row (B-7). */}
+            <Select
+              value={dateSpanMode}
+              onValueChange={(value) => {
+                if (
+                  value === 'starts' ||
+                  value === 'ends' ||
+                  value === 'within'
+                )
+                  onDateSpanModeChange(value);
+              }}
+            >
+              <SelectTrigger
+                id="cycle-builder-date-span-mode"
+                data-testid="cycle-builder-date-span-mode"
+                className="w-32"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="starts">{m.builder_ui_starts()}</SelectItem>
+                <SelectItem value="ends">{m.builder_ui_ends()}</SelectItem>
+                <SelectItem value="within">{m.builder_ui_within()}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cycle-builder-date-start-filter">
+              {m.builder_ui_from()}
+            </Label>
+            <DatePickerField
+              id="cycle-builder-date-start-filter"
+              value={rangeStart}
+              onChange={onRangeStartChange}
+              placeholder={m.builder_ui_from()}
+              minDate={cycleStartDate}
+              maxDate={cycleEndDate}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cycle-builder-date-end-filter">
+              {m.builder_ui_to()}
+            </Label>
+            <DatePickerField
+              id="cycle-builder-date-end-filter"
+              value={rangeEnd}
+              onChange={onRangeEndChange}
+              placeholder={m.builder_ui_to()}
+              minDate={cycleStartDate}
+              maxDate={cycleEndDate}
+            />
+          </div>
+        </div>
+        {weekdayFilters.length > 0 ? (
+          <fieldset className="space-y-1">
+            <legend className={GROUP_LABEL_CLASS}>
+              {m.builder_ui_repeats()}
+            </legend>
+            <div className="flex flex-wrap gap-1">
+              {weekdayFilters.map((day) => (
+                <Button
+                  key={day}
+                  type="button"
+                  variant={weekday === day ? 'secondary' : 'ghost'}
+                  aria-pressed={weekday === day}
+                  onClick={() => onWeekdayChange(weekday === day ? null : day)}
+                >
+                  {formatWeekdayPluralOfIndex({
+                    index: day as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+                    locale: getLocale(),
+                  })}
+                </Button>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}

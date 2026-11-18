@@ -1,0 +1,265 @@
+import { randomUUID } from 'node:crypto';
+import {
+  ministryMembership,
+  ministryMembershipRole,
+  ministryMembershipTeam,
+  volunteer,
+} from '@church/db';
+import { type Instant, toDate } from '@church/time';
+import type { SeedWriter } from '../recipe';
+import { deriveSeedId } from './derived-id';
+import { buildUser, type SeededUser } from './identity';
+import { requireInsertedRow } from './require-inserted-row';
+
+export type SeededVolunteer = typeof volunteer.$inferSelect;
+export type SeededMinistryMembership = typeof ministryMembership.$inferSelect;
+export type MinistryAccessLevel =
+  SeededMinistryMembership['ministryAccessLevel'];
+export type TeamAccessLevel =
+  (typeof ministryMembershipTeam.$inferSelect)['accessLevel'];
+
+export interface BuildVolunteerInput {
+  db: SeedWriter;
+  churchId: string;
+  userId: string;
+  id?: string;
+  /** Set to retire the profile: it keeps its Church but stops being active. */
+  leftAt?: Instant;
+}
+
+/** The User's Volunteer profile in `churchId`: active unless `leftAt` retires it. */
+export async function buildVolunteer({
+  db,
+  churchId,
+  userId,
+  id,
+  leftAt,
+}: BuildVolunteerInput): Promise<SeededVolunteer> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(volunteer)
+      .values({
+        id,
+        churchId,
+        userId,
+        status: 'active',
+        leftAt: leftAt === undefined ? undefined : toDate({ instant: leftAt }),
+      })
+      .returning(),
+    description: `Volunteer for User ${userId}`,
+  });
+}
+
+export interface SeedTeamMembership {
+  teamId: string;
+  accessLevel: TeamAccessLevel;
+}
+
+export interface BuildMinistryMembershipInput {
+  db: SeedWriter;
+  churchId: string;
+  volunteerId: string;
+  ministryId: string;
+  id?: string;
+  ministryAccessLevel: MinistryAccessLevel;
+  /** Active unless a fixture needs an inactive Ministry Membership. */
+  status?: SeededMinistryMembership['status'];
+  /** When an ended membership left; pair it with `status: 'inactive'`. */
+  leftAt?: Instant;
+  /** Role qualifications — explicit grants; membership alone qualifies for nothing. */
+  roleIds: string[];
+  /** Parked Team data (BL-033); dev seeds no longer create it. */
+  teams?: SeedTeamMembership[];
+}
+
+/** A Ministry Membership with its Role qualifications and Team Memberships. */
+export async function buildMinistryMembership({
+  db,
+  churchId,
+  volunteerId,
+  ministryId,
+  id,
+  ministryAccessLevel,
+  status = 'active',
+  leftAt,
+  roleIds,
+  teams = [],
+}: BuildMinistryMembershipInput): Promise<SeededMinistryMembership> {
+  const membership = requireInsertedRow({
+    rows: await db
+      .insert(ministryMembership)
+      .values({
+        id,
+        churchId,
+        volunteerId,
+        ministryId,
+        ministryAccessLevel,
+        status,
+        leftAt: leftAt && toDate({ instant: leftAt }),
+      })
+      .returning(),
+    description: `Ministry Membership ${id}`,
+  });
+
+  if (roleIds.length > 0) {
+    await db.insert(ministryMembershipRole).values(
+      roleIds.map((roleId) => ({
+        id: deriveSeedId({
+          kind: 'ministry-membership-role',
+          parentIds: [membership.id, roleId],
+        }),
+        churchId,
+        ministryMembershipId: membership.id,
+        roleId,
+      })),
+    );
+  }
+
+  if (teams.length > 0) {
+    await db.insert(ministryMembershipTeam).values(
+      teams.map((teamMembership) => ({
+        id: deriveSeedId({
+          kind: 'ministry-membership-team',
+          parentIds: [membership.id, teamMembership.teamId],
+        }),
+        churchId,
+        ministryMembershipId: membership.id,
+        teamId: teamMembership.teamId,
+        accessLevel: teamMembership.accessLevel,
+      })),
+    );
+  }
+
+  return membership;
+}
+
+export interface BuildVolunteerWithMembershipInput {
+  db: SeedWriter;
+  churchId: string;
+  ministryId: string;
+  name: string;
+  email: string;
+  userId?: string;
+  volunteerId?: string;
+  membershipId?: string;
+  ministryAccessLevel?: MinistryAccessLevel;
+  status?: SeededMinistryMembership['status'];
+  roleIds?: string[];
+  teams?: SeedTeamMembership[];
+}
+
+export interface SeededVolunteerWithMembership {
+  user: SeededUser;
+  volunteer: SeededVolunteer;
+  membership: SeededMinistryMembership;
+}
+
+/**
+ * A fresh User, its Volunteer profile in `churchId` and a Ministry Membership
+ * in `ministryId`: the chain every schedule fixture needs. Ids default to random
+ * UUIDs, the access level to `volunteer`, qualifications and teams to none.
+ */
+export async function buildVolunteerWithMembership({
+  db,
+  churchId,
+  ministryId,
+  name,
+  email,
+  userId = randomUUID(),
+  volunteerId = randomUUID(),
+  membershipId,
+  ministryAccessLevel = 'volunteer',
+  status,
+  roleIds = [],
+  teams = [],
+}: BuildVolunteerWithMembershipInput): Promise<SeededVolunteerWithMembership> {
+  const seededUser = await buildUser({ db, id: userId, name, email });
+  const seededVolunteer = await buildVolunteer({
+    db,
+    id: volunteerId,
+    churchId,
+    userId,
+  });
+  const membership = await buildMinistryMembership({
+    db,
+    id: membershipId,
+    churchId,
+    ministryId,
+    volunteerId,
+    ministryAccessLevel,
+    status,
+    roleIds,
+    teams,
+  });
+
+  return { user: seededUser, volunteer: seededVolunteer, membership };
+}
+
+export type SeededRoleQualification =
+  typeof ministryMembershipRole.$inferSelect;
+export type SeededTeamMembership = typeof ministryMembershipTeam.$inferSelect;
+
+export interface BuildRoleQualificationInput {
+  db: SeedWriter;
+  churchId: string;
+  ministryMembershipId: string;
+  roleId: string;
+}
+
+/** One explicit Role qualification added to an existing Ministry Membership. */
+export async function buildRoleQualification({
+  db,
+  churchId,
+  ministryMembershipId,
+  roleId,
+}: BuildRoleQualificationInput): Promise<SeededRoleQualification> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(ministryMembershipRole)
+      .values({
+        id: deriveSeedId({
+          kind: 'ministry-membership-role',
+          parentIds: [ministryMembershipId, roleId],
+        }),
+        churchId,
+        ministryMembershipId,
+        roleId,
+      })
+      .returning(),
+    description: `Role qualification ${roleId}`,
+  });
+}
+
+export interface BuildTeamMembershipInput {
+  db: SeedWriter;
+  churchId: string;
+  ministryMembershipId: string;
+  teamId: string;
+  accessLevel: TeamAccessLevel;
+}
+
+/** One Team Membership added to an existing Ministry Membership. */
+export async function buildTeamMembership({
+  db,
+  churchId,
+  ministryMembershipId,
+  teamId,
+  accessLevel,
+}: BuildTeamMembershipInput): Promise<SeededTeamMembership> {
+  return requireInsertedRow({
+    rows: await db
+      .insert(ministryMembershipTeam)
+      .values({
+        id: deriveSeedId({
+          kind: 'ministry-membership-team',
+          parentIds: [ministryMembershipId, teamId],
+        }),
+        churchId,
+        ministryMembershipId,
+        teamId,
+        accessLevel,
+      })
+      .returning(),
+    description: `Team Membership ${teamId}`,
+  });
+}

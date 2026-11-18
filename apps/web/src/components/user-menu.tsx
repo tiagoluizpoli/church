@@ -1,4 +1,7 @@
-import { Button } from '@base-fullstack-template/ui/components/button';
+import { m } from '@church/i18n/messages';
+import { Link } from '@tanstack/react-router';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,52 +10,78 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@base-fullstack-template/ui/components/dropdown-menu';
-import { Skeleton } from '@base-fullstack-template/ui/components/skeleton';
-import { Link, useNavigate } from '@tanstack/react-router';
+} from '@/components/ui/dropdown-menu';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import { authClient } from '@/lib/auth-client';
+import { useSignOut } from '@/shared/hooks/use-sign-out';
+
+interface GetInitialsInput {
+  name: string;
+}
+
+function getInitials({ name }: GetInitialsInput): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const initials = [parts[0], parts[parts.length - 1]]
+    .filter(Boolean)
+    .map((part) => part?.[0])
+    .join('');
+  return initials.toUpperCase() || '?';
+}
 
 export default function UserMenu() {
-  const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
+  const signOut = useSignOut();
 
   if (isPending) {
-    return <Skeleton className="h-9 w-24" />;
+    return (
+      <Pending label={m.shell_account_loading()}>
+        <Skeleton className="h-9 w-24" />
+      </Pending>
+    );
   }
 
   if (!session) {
     return (
       <Link to="/login">
-        <Button variant="outline">Sign In</Button>
+        <Button variant="outline">{m.user_menu_sign_in()}</Button>
       </Link>
     );
   }
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" />}>
-        {session.user.name}
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            aria-label={m.user_menu_account_label({ name: session.user.name })}
+            className="radius-icon flex h-9 w-9 shrink-0 items-center justify-center transition-opacity hover:opacity-80"
+          />
+        }
+      >
+        <Avatar className="size-9 rounded-md after:rounded-md">
+          <AvatarFallback className="rounded-md bg-primary/12 font-medium text-primary">
+            {getInitials({ name: session.user.name })}
+          </AvatarFallback>
+        </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-card">
+      <DropdownMenuContent align="end" className="w-72 bg-card">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel className="flex flex-col gap-0.5 py-2">
+            <span className="font-semibold text-foreground text-sm">
+              {session.user.name}
+            </span>
+            <span className="font-normal text-muted-foreground text-xs">
+              {session.user.email}
+            </span>
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>{session.user.email}</DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
-            onClick={() => {
-              authClient.signOut({
-                fetchOptions: {
-                  onSuccess: () => {
-                    navigate({
-                      to: '/',
-                    });
-                  },
-                },
-              });
-            }}
+            onClick={() => signOut({ to: '/' })}
           >
-            Sign Out
+            {m.user_menu_sign_out()}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

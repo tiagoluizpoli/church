@@ -1,0 +1,184 @@
+import {
+  db,
+  ministry,
+  ministryMembership,
+  organization,
+  user,
+  volunteer,
+} from '@church/db';
+import { sql } from 'drizzle-orm';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DbMinistryManager } from '@/application/db-ministry-manager';
+import { ChurchId, MinistryId, VolunteerId } from '@/domain/branded-ids';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
+import { buildChurch } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
+import { buildMinistry } from '@/seeds/builders/ministry';
+import {
+  buildMinistryMembership,
+  buildVolunteer,
+} from '@/seeds/builders/volunteer';
+
+const CHURCH = ChurchId.from('11111111-1111-1111-1111-111111111111');
+const LEADER_VOL = VolunteerId.from('aaaa0001-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+const NON_LEADER_VOL = VolunteerId.from('bbbb0002-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+const MINISTRY_A = 'cccc0001-cccc-cccc-cccc-cccccccccccc';
+const MINISTRY_B = 'dddd0002-dddd-dddd-dddd-dddddddddddd';
+const MV_LEADER_A = 'eeee0001-eeee-eeee-eeee-eeeeeeeeeeee';
+const MV_MEMBER_B = 'ffff0002-ffff-ffff-ffff-ffffffffffff';
+
+async function truncate() {
+  await db.delete(ministryMembership);
+  await db.delete(volunteer);
+  await db.delete(ministry);
+  // Delete the organization, not the church extension row: cascading from the
+  // extension leaves the organization and its members behind.
+  await db.delete(organization).where(sql`id = ${CHURCH}`);
+  await db.delete(user).where(sql`id IN ('user-leader-1', 'user-member-2')`);
+}
+
+beforeAll(async () => {
+  await truncate();
+
+  await buildChurch({
+    db,
+    id: CHURCH,
+    name: 'Behavior Test Church',
+    slug: 'behavior-test-church',
+    timezone: 'America/New_York',
+  });
+
+  await buildUser({
+    db,
+    id: 'user-leader-1',
+    name: 'Leader One',
+    email: 'leader1@test.test',
+    emailVerified: false,
+  });
+  await buildUser({
+    db,
+    id: 'user-member-2',
+    name: 'Member Two',
+    email: 'member2@test.test',
+    emailVerified: false,
+  });
+
+  await buildMinistry({
+    db,
+    id: MINISTRY_A,
+    churchId: CHURCH,
+    name: 'Worship',
+  });
+  await buildMinistry({
+    db,
+    id: MINISTRY_B,
+    churchId: CHURCH,
+    name: 'Kids',
+  });
+
+  await buildVolunteer({
+    db,
+    id: LEADER_VOL,
+    churchId: CHURCH,
+    userId: 'user-leader-1',
+  });
+  await buildVolunteer({
+    db,
+    id: NON_LEADER_VOL,
+    churchId: CHURCH,
+    userId: 'user-member-2',
+  });
+
+  await buildMinistryMembership({
+    db,
+    id: MV_LEADER_A,
+    churchId: CHURCH,
+    volunteerId: LEADER_VOL,
+    ministryId: MINISTRY_A,
+    ministryAccessLevel: 'leader',
+    roleIds: [],
+    teams: [],
+  });
+  await buildMinistryMembership({
+    db,
+    id: MV_MEMBER_B,
+    churchId: CHURCH,
+    volunteerId: NON_LEADER_VOL,
+    ministryId: MINISTRY_B,
+    ministryAccessLevel: 'volunteer',
+    roleIds: [],
+    teams: [],
+  });
+});
+
+afterAll(async () => {
+  await truncate();
+});
+
+describe('DbMinistryManager.listByLeader (T032)', () => {
+  const ministryRepo = new DrizzleMinistryRepository({ db: db });
+  const volunteerRepo = new DrizzleVolunteerRepository({ db: db });
+  const manager = new DbMinistryManager({
+    ministryRepo,
+    volunteerRepo,
+    invitationRepo: {} as never,
+    unitOfWork: new DrizzleUnitOfWork({ db }),
+    sectorRepo: {} as never,
+    roleRepo: {} as never,
+    usualSetupRepo: {} as never,
+    templateRepo: {} as never,
+  });
+
+  it('returns ministries where volunteer is leader', async () => {
+    const result = await manager.listByLeader({
+      leaderId: LEADER_VOL,
+      churchId: CHURCH,
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.name).toBe('Worship');
+  });
+
+  it('returns empty array when volunteer is not a leader in any ministry', async () => {
+    const result = await manager.listByLeader({
+      leaderId: NON_LEADER_VOL,
+      churchId: CHURCH,
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it('does not cross church boundaries', async () => {
+    const otherChurch = ChurchId.from('22222222-2222-2222-2222-222222222222');
+    const result = await manager.listByLeader({
+      leaderId: LEADER_VOL,
+      churchId: otherChurch,
+    });
+    expect(result).toHaveLength(0);
+  });
+});
+
+describe('DbMinistryManager.setDefaultDirection', () => {
+  const ministryRepo = new DrizzleMinistryRepository({ db: db });
+  const volunteerRepo = new DrizzleVolunteerRepository({ db: db });
+  const manager = new DbMinistryManager({
+    ministryRepo,
+    volunteerRepo,
+    invitationRepo: {} as never,
+    unitOfWork: new DrizzleUnitOfWork({ db }),
+    sectorRepo: {} as never,
+    roleRepo: {} as never,
+    usualSetupRepo: {} as never,
+    templateRepo: {} as never,
+  });
+
+  it('updates the ministry default direction', async () => {
+    const updated = await manager.setDefaultDirection({
+      churchId: CHURCH,
+      ministryId: MinistryId.from(MINISTRY_A),
+      defaultDirection: 'all_in',
+    });
+
+    expect(updated.defaultDirection).toBe('all_in');
+  });
+});

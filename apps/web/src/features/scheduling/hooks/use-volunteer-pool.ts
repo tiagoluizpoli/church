@@ -1,0 +1,109 @@
+import { useMemo, useState } from 'react';
+import { answerStateRank } from '../utils/builder/cycle-builder-answer-state.utils';
+import { isActiveAssignment } from './use-cycle-builder';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
+
+export type AvailabilityStatus =
+  | 'available'
+  | 'partial'
+  | 'unanswered'
+  | 'not_asked'
+  | 'unavailable'
+  | 'no_response';
+
+export interface PoolVolunteer {
+  volunteerId: string;
+  volunteerName: string;
+  status: AvailabilityStatus;
+  conflictReason?: string;
+  membership?: AssigneeMembership;
+  /**
+   * Role names this volunteer is qualified for, already resolved from ids so
+   * the card stays presentational. Empty when the member has no qualifications.
+   */
+  qualifiedRoleNames?: string[];
+  /**
+   * ISO instant of this volunteer's most recent serving assignment, carried
+   * straight off the wire. Absent when they have never served.
+   */
+  lastServedAt?: string;
+}
+
+interface PoolAssignment {
+  volunteerId: string;
+  roleId: string;
+  status: string;
+}
+
+const NO_RESPONSE_RANK = 4;
+
+function availabilityRank(status: AvailabilityStatus): number {
+  if (status === 'partial') return answerStateRank('unanswered');
+  if (status === 'no_response') return NO_RESPONSE_RANK;
+  return answerStateRank(status);
+}
+
+export interface VolunteerPoolItem extends PoolVolunteer {
+  workloadCount: number;
+}
+
+export interface UseVolunteerPoolInput {
+  volunteers: PoolVolunteer[];
+  assignments: PoolAssignment[];
+}
+
+/**
+ * Sidebar filter + sort logic. Sort order:
+ *   availability tier (available → partial → unavailable → no_response)
+ *   → least-assigned (workloadCount asc) → alphabetical.
+ * Name + role filters are both active simultaneously (AND logic).
+ *
+ * The role filter keys on **qualification** (a role name from
+ * `qualifiedRoleNames`), the same basis "group by role" uses — not on who is
+ * currently assigned to the role. `'all'` is the no-filter sentinel.
+ */
+export function useVolunteerPool({
+  volunteers,
+  assignments,
+}: UseVolunteerPoolInput) {
+  const [nameFilter, setNameFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+
+  const workload = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of assignments) {
+      if (!isActiveAssignment({ status: a.status })) continue;
+      map.set(a.volunteerId, (map.get(a.volunteerId) ?? 0) + 1);
+    }
+    return map;
+  }, [assignments]);
+
+  const sortedFilteredVolunteers = useMemo<VolunteerPoolItem[]>(() => {
+    const name = nameFilter.trim().toLowerCase();
+
+    return volunteers
+      .filter((v) => {
+        if (name && !v.volunteerName.toLowerCase().includes(name)) return false;
+        if (roleFilter !== 'all' && !v.qualifiedRoleNames?.includes(roleFilter))
+          return false;
+        return true;
+      })
+      .map((v) => ({ ...v, workloadCount: workload.get(v.volunteerId) ?? 0 }))
+      .sort((a, b) => {
+        const tier = availabilityRank(a.status) - availabilityRank(b.status);
+        if (tier !== 0) return tier;
+        if (a.workloadCount !== b.workloadCount)
+          return a.workloadCount - b.workloadCount;
+        return a.volunteerName.localeCompare(b.volunteerName);
+      });
+  }, [volunteers, workload, nameFilter, roleFilter]);
+
+  return {
+    nameFilter,
+    roleFilter,
+    setNameFilter,
+    setRoleFilter,
+    sortedFilteredVolunteers,
+    workload,
+  };
+}

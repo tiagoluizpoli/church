@@ -1,0 +1,62 @@
+name: Setup Church CI environment
+description: >-
+  Install the Bun and Node toolchain (mise.toml), install dependencies, and run database
+  migrations. It writes no value file: every job injects its configuration
+  through the job environment (ADR-0005). Runs after
+  actions/checkout@v4, which callers must run first (a local composite action
+  can't be loaded before the repo it lives in is checked out).
+
+inputs:
+  skip-migrate:
+    description: >-
+      Set to 'true' to skip the migration step. Deps/env setup here doesn't
+      need a database, but migrations do — a caller whose database need is
+      conditional (e.g. only when browser journeys are selected) skips this
+      step and runs its own migration step once its database is actually up.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Install Bun and Node from mise.toml
+      id: toolchain
+      uses: jdx/mise-action@v5
+
+    - name: Cache bun dependencies
+      id: dependency-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.bun/install/cache
+        key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: bun-${{ runner.os }}-
+
+    - name: Install dependencies
+      id: dependencies
+      shell: bash
+      run: bun install --frozen-lockfile
+
+    - name: Keep failure bundles in runner-temporary storage
+      id: failure-bundles
+      # ADR-0005: CI has no shared Git directory to keep bundles in; the
+      # calling job uploads this directory only when it fails.
+      shell: bash
+      run: echo "CHURCH_FAILURE_BUNDLES_DIR=$RUNNER_TEMP/church-failure-bundles" >> "$GITHUB_ENV"
+
+    - name: Run database migrations
+      id: migrate
+      if: inputs.skip-migrate != 'true'
+      shell: bash
+      run: bun run db:migrate
+
+    - name: Report setup failure phase
+      id: report-setup-failure
+      if: failure() || cancelled()
+      shell: bash
+      run: >-
+        bash tooling/ci/report-failure-phase.sh --setup-only
+        "${{ steps.toolchain.outcome }}:toolchain"
+        "${{ steps.dependency-cache.outcome }}:dependency cache"
+        "${{ steps.dependencies.outcome }}:dependency installation"
+        "${{ steps.failure-bundles.outcome }}:failure-bundle setup"
+        "${{ steps.migrate.outcome }}:database migration"

@@ -1,0 +1,70 @@
+import { Button as ButtonPrimitive } from '@base-ui/react/button';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { useFormControlSize } from '@/components/ui/form-control-size';
+import { cn } from '@/lib/utils';
+
+const buttonVariantClasses = cva(
+  "group/button radius-control inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap border border-transparent bg-clip-padding font-medium text-xs outline-none transition-all focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground [a]:hover:bg-primary/80',
+        outline:
+          'border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
+        secondary:
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground',
+        ghost:
+          'hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
+        destructive:
+          'bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 dark:hover:bg-destructive/30',
+        link: 'text-primary underline-offset-4 hover:underline',
+      },
+      size: {
+        default:
+          'h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
+        xs: "h-6 gap-1 px-2 text-xs has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: 'h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3',
+        touch:
+          'h-11 gap-2 px-4 text-sm has-data-[icon=inline-end]:pr-3.5 has-data-[icon=inline-start]:pl-3.5',
+        icon: 'size-8',
+        'icon-xs': "size-6 [&_svg:not([class*='size-'])]:size-3",
+        'icon-sm': 'size-7',
+        'icon-lg': 'size-9',
+        'icon-touch': 'size-11',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
+  },
+);
+
+type ButtonVariantsInput = Parameters<typeof buttonVariantClasses>[0];
+
+/** Merged like `Button` does, so a `<Link>` styled as a button resolves the
+ * base `border-transparent` against its variant's border instead of keeping both. */
+function buttonVariants(input?: ButtonVariantsInput) {
+  return cn(buttonVariantClasses(input));
+}
+
+function Button({
+  className,
+  variant = 'default',
+  size,
+  ...props
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariantClasses>) {
+  const contextSize = useFormControlSize();
+  const resolvedSize = size ?? (contextSize === 'touch' ? 'touch' : 'default');
+
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      className={buttonVariants({ variant, size: resolvedSize, className })}
+      {...props}
+    />
+  );
+}
+
+export { Button, buttonVariants };

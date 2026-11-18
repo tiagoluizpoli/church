@@ -1,0 +1,326 @@
+import { type AppConfig, appConfig } from '@church/app-config';
+import { compareInstants, fromDate, millisecondsBetween } from '@church/time';
+import { describe, expect, it } from 'vitest';
+import {
+  hashVerificationCode,
+  InvitationVerificationCodeManager,
+} from '@/application/invitation-verification-code-manager';
+import { ChurchInvitationId } from '@/domain/branded-ids';
+import type {
+  EmailSender,
+  SendEmailInput,
+} from '@/domain/contracts/infrastructure/email-sender';
+import type { InvitationVerificationCodeRepository } from '@/domain/contracts/infrastructure/invitation-verification-code.repository';
+import type { VerificationCodeState } from '@/domain/entities/invitation-verification-code';
+import { VerificationCodeError } from '@/domain/errors/verification-code-error';
+
+interface TestHarness {
+  manager: InvitationVerificationCodeManager;
+  sent: SendEmailInput[];
+  state: VerificationCodeState | null;
+}
+
+interface CreateHarnessInput {
+  send?: () => Promise<void>;
+  config?: AppConfig;
+}
+
+const ONE_SECOND_MS = 1_000;
+
+function createHarness({
+  send,
+  config = appConfig,
+}: CreateHarnessInput = {}): TestHarness {
+  const { resendCooldownMs, maxAttempts } = appConfig.verificationCode;
+  let state: VerificationCodeState | null = null;
+  const sent: SendEmailInput[] = [];
+  const repository: InvitationVerificationCodeRepository = {
+    async find() {
+      return state;
+    },
+    async claimDelivery({ codeHash, expiresAt, sentAt }) {
+      const sentAtInstant = fromDate({ date: sentAt });
+      if (state) {
+        const sinceLastSentMs = millisecondsBetween({
+          start: state.lastSentAt,
+          end: sentAtInstant,
+        });
+        if (sinceLastSentMs < resendCooldownMs) return false;
+      }
+      state = {
+        codeHash,
+        expiresAt: fromDate({ date: expiresAt }),
+        lastSentAt: sentAtInstant,
+        failedAttempts: 0,
+        consumedAt: null,
+        redemptionIdempotencyKey: null,
+      };
+      return true;
+    },
+    async releaseDeliveryClaim({ codeHash, sentAt }) {
+      if (
+        state?.codeHash === codeHash &&
+        state.lastSentAt === fromDate({ date: sentAt })
+      ) {
+        state = null;
+      }
+    },
+    async consumeIfValid({
+      candidateHash,
+      consumedAt,
+      now,
+      redemptionIdempotencyKey,
+    }) {
+      const nowInstant = fromDate({ date: now });
+      if (
+        state?.codeHash === candidateHash &&
+        !state.consumedAt &&
+        compareInstants({ left: state.expiresAt, right: nowInstant }) > 0 &&
+        state.failedAttempts < maxAttempts
+      ) {
+        state.consumedAt = fromDate({ date: consumedAt });
+        state.redemptionIdempotencyKey = redemptionIdempotencyKey ?? null;
+        return true;
+      }
+      return false;
+    },
+    async recordFailedAttemptIfAllowed({ candidateHash, now }) {
+      const currentState = state;
+      const nowInstant = fromDate({ date: now });
+      if (
+        currentState !== null &&
+        currentState.codeHash !== candidateHash &&
+        !currentState.consumedAt &&
+        compareInstants({ left: currentState.expiresAt, right: nowInstant }) >
+          0 &&
+        currentState.failedAttempts < maxAttempts
+      ) {
+        currentState.failedAttempts += 1;
+        return true;
+      }
+      return false;
+    },
+  };
+  const emailSender: Pick<EmailSender, 'send'> = {
+    async send(input) {
+      await send?.();
+      sent.push(input);
+      return {};
+    },
+  };
+  return {
+    manager: new InvitationVerificationCodeManager({
+      repository,
+      emailSender,
+      generateCode: () => '123456',
+      verificationCodeSecret: 'test-secret',
+      config,
+    }),
+    sent,
+    get state() {
+      return state;
+    },
+  };
+}
+
+describe('InvitationVerificationCodeManager', () => {
+  it('uses the secret-keyed digest rather than an unkeyed code digest', () => {
+    expect(
+      hashVerificationCode({ code: '123456', secret: 'first-secret' }),
+    ).not.toBe(
+      hashVerificationCode({ code: '123456', secret: 'second-secret' }),
+    );
+  });
+
+  it('hashes a code with its secret, sends it synchronously, and consumes it only once', async () => {
+    const harness = createHarness();
+    const invitationId = ChurchInvitationId.from(
+      '00000000-0000-4000-8000-000000000001',
+    );
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    await harness.manager.issue({
+      churchInvitationId: invitationId,
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Church',
+      now,
+    });
+    expect(harness.state?.codeHash).not.toBe('123456');
+    expect(harness.sent).toHaveLength(1);
+    await harness.manager.verify({
+      churchInvitationId: invitationId,
+      code: '123456',
+      now,
+    });
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '123456',
+        now,
+      }),
+    ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
+  });
+
+  it('allows the max failed attempts and blocks the next', async () => {
+    const harness = createHarness();
+    const invitationId = ChurchInvitationId.from(
+      '00000000-0000-4000-8000-000000000002',
+    );
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    await harness.manager.issue({
+      churchInvitationId: invitationId,
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Church',
+      now,
+    });
+    const { maxAttempts } = appConfig.verificationCode;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      await expect(
+        harness.manager.verify({
+          churchInvitationId: invitationId,
+          code: '000000',
+          now,
+        }),
+      ).rejects.toBeInstanceOf(VerificationCodeError);
+    }
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '123456',
+        now,
+      }),
+    ).rejects.toMatchObject({
+      code: 'VERIFICATION_CODE_ATTEMPT_LIMIT_REACHED',
+    });
+  });
+
+  it('allows a consumed code to resume only the same redemption request', async () => {
+    const harness = createHarness();
+    const invitationId = ChurchInvitationId.from(
+      '00000000-0000-4000-8000-000000000005',
+    );
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    await harness.manager.issue({
+      churchInvitationId: invitationId,
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Church',
+      now,
+    });
+
+    await harness.manager.verify({
+      churchInvitationId: invitationId,
+      code: '123456',
+      idempotencyKey: '11111111-1111-4111-8111-111111111111',
+      now,
+    });
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '123456',
+        idempotencyKey: '11111111-1111-4111-8111-111111111111',
+        now,
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '123456',
+        idempotencyKey: '22222222-2222-4222-8222-222222222222',
+        now,
+      }),
+    ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
+  });
+
+  it('replaces the code and resets its attempt budget only after the sixty-second cooldown', async () => {
+    const harness = createHarness();
+    const invitationId = ChurchInvitationId.from(
+      '00000000-0000-4000-8000-000000000003',
+    );
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    const { resendCooldownMs } = appConfig.verificationCode;
+    const justBeforeCooldownEnds = new Date(
+      now.getTime() + resendCooldownMs - ONE_SECOND_MS,
+    );
+    const whenCooldownEnds = new Date(now.getTime() + resendCooldownMs);
+    await harness.manager.issue({
+      churchInvitationId: invitationId,
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Church',
+      now,
+    });
+    await expect(
+      harness.manager.issue({
+        churchInvitationId: invitationId,
+        recipientEmail: 'invitee@example.test',
+        churchName: 'Church',
+        now: justBeforeCooldownEnds,
+      }),
+    ).rejects.toMatchObject({
+      code: 'VERIFICATION_CODE_RESEND_COOLDOWN_ACTIVE',
+    });
+    await harness.manager.issue({
+      churchInvitationId: invitationId,
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Church',
+      now: whenCooldownEnds,
+    });
+    expect(harness.state?.failedAttempts).toBe(0);
+    expect(harness.sent).toHaveLength(2);
+  });
+
+  it('sends the code with the policy lifetime in the address recipient locale', async () => {
+    const config: AppConfig = {
+      ...appConfig,
+      defaultLocale: 'en',
+      verificationCode: {
+        ...appConfig.verificationCode,
+        ttlMs: 15 * 60_000,
+      },
+    };
+    const harness = createHarness({ config });
+
+    await harness.manager.issue({
+      churchInvitationId: ChurchInvitationId.from(
+        '00000000-0000-4000-8000-000000000005',
+      ),
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Grace Church',
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    expect(harness.sent).toEqual([
+      {
+        payload: {
+          kind: 'invitation.verification-code',
+          to: 'invitee@example.test',
+          churchName: 'Grace Church',
+          code: '123456',
+          codeLifetime: { minutes: 15 },
+        },
+        locale: 'en',
+      },
+    ]);
+  });
+
+  it('releases its delivery claim when synchronous dispatch fails so a retry is safe', async () => {
+    const harness = createHarness({
+      send: async () => {
+        throw new Error('delivery unavailable');
+      },
+    });
+    const invitationId = ChurchInvitationId.from(
+      '00000000-0000-4000-8000-000000000004',
+    );
+    const now = new Date('2026-01-01T00:00:00.000Z');
+
+    await expect(
+      harness.manager.issue({
+        churchInvitationId: invitationId,
+        recipientEmail: 'invitee@example.test',
+        churchName: 'Church',
+        now,
+      }),
+    ).rejects.toThrow('delivery unavailable');
+
+    expect(harness.state).toBeNull();
+  });
+});

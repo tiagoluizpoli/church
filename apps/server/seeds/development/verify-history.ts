@@ -1,0 +1,722 @@
+import {
+  assignment,
+  assignmentAudit,
+  availabilityCheck,
+  cycle,
+  event,
+  eventTemplate,
+  ministry,
+  ministryMembership,
+  ministryMembershipRole,
+  ministryParticipation,
+  notification,
+  participationEventTimeBlockInclusion,
+  role,
+  scheduleLastTold,
+  sector,
+  shift,
+  shiftRequirement,
+  templateTimeBlock,
+  unavailableShift,
+  user,
+  usualSetup,
+  volunteer,
+} from '@church/db';
+import {
+  type CalendarDay,
+  enumerateCalendarDays,
+  weekdayIndex,
+} from '@church/time';
+import { sql } from 'drizzle-orm';
+import type { DevelopmentBlueprint } from '../blueprints/development';
+import type { ChurchDirectoryBlueprint } from '../blueprints/directory/types';
+import type { StaffingNeed } from '../blueprints/gatherings';
+import type { SeedWriter } from '../recipe';
+import type { DevelopmentRecipeResult } from '../recipes/development';
+import { historicalCycleWindow } from './history-window';
+
+export interface HistoryProblemsInput {
+  db: SeedWriter;
+  seeded: DevelopmentRecipeResult;
+  blueprint: DevelopmentBlueprint;
+}
+
+/** `type`s, not interfaces: `execute` rows must be index-signature records. */
+type KeyRow = {
+  key: string;
+};
+
+type CountRow = {
+  value: string;
+};
+
+interface RowsInput {
+  db: SeedWriter;
+  query: ReturnType<typeof sql>;
+}
+
+async function keysOf({ db, query }: RowsInput): Promise<string[]> {
+  const result = await db.execute<KeyRow>(query);
+  return result.rows.map((row) => row.key).sort();
+}
+
+async function countOf({ db, query }: RowsInput): Promise<number> {
+  const result = await db.execute<CountRow>(query);
+  return Number(result.rows[0]?.value ?? 0);
+}
+
+interface DifferenceInput {
+  label: string;
+  actual: readonly string[];
+  expected: readonly string[];
+}
+
+/** Both sides as sorted multisets; reports what is missing and unexpected. */
+function difference({ label, actual, expected }: DifferenceInput): string[] {
+  const remaining = [...actual];
+  const missing: string[] = [];
+  for (const key of expected) {
+    const index = remaining.indexOf(key);
+    if (index === -1) missing.push(key);
+    else remaining.splice(index, 1);
+  }
+  if (missing.length === 0 && remaining.length === 0) return [];
+  return [
+    `${label} differ from the blueprint (missing [${missing.slice(0, 5).join('; ')}], unexpected [${remaining.slice(0, 5).join('; ')}])`,
+  ];
+}
+
+interface NeedKeyInput {
+  ministryName: string;
+  need: StaffingNeed;
+}
+
+function needKey({ ministryName, need }: NeedKeyInput): string {
+  return `${ministryName}|${need.role}|${need.sector}|${need.peopleNeeded}`;
+}
+
+/** One gathering occurrence the cycle must hold. */
+interface ExpectedGathering {
+  title: string;
+  day: CalendarDay;
+  week: number;
+  eventTimeBlocks: ExpectedEventTimeBlock[];
+}
+
+interface ExpectedEventTimeBlock {
+  blockKey?: string;
+  /** `HH:mm` local start. */
+  startTime: string;
+  servers: ExpectedServer[];
+}
+
+interface ExpectedServer {
+  ministryName: string;
+  needs: readonly StaffingNeed[];
+}
+
+interface ExpectedGatheringsInput {
+  blueprint: DevelopmentBlueprint;
+  startDate: CalendarDay;
+  endDate: CalendarDay;
+}
+
+function expectedGatherings({
+  blueprint,
+  startDate,
+  endDate,
+}: ExpectedGatheringsInput): ExpectedGathering[] {
+  const { templates, servingRules, dynamicEvents } = blueprint.gatherings;
+  const gatherings: ExpectedGathering[] = [];
+  for (const day of enumerateCalendarDays({ start: startDate, end: endDate })) {
+    const weekday = weekdayIndex({ day });
+    const week = Math.floor((Number(day.slice(8, 10)) - 1) / 7) + 1;
+    for (const template of templates.filter((t) => t.weekday === weekday)) {
+      gatherings.push({
+        title: template.name,
+        day,
+        week,
+        eventTimeBlocks: template.blocks.map((block) => ({
+          blockKey: block.key,
+          startTime: block.startTime,
+          servers: servingRules.flatMap((rule) => {
+            const needs = rule.blocks[block.key];
+            return needs === null
+              ? []
+              : [{ ministryName: rule.ministry.name, needs }];
+          }),
+        })),
+      });
+    }
+    for (const dynamicEvent of dynamicEvents) {
+      if (dynamicEvent.weekday !== weekday) continue;
+      if (dynamicEvent.occurrence !== week) continue;
+      gatherings.push({
+        title: dynamicEvent.title,
+        day,
+        week,
+        eventTimeBlocks: [
+          {
+            startTime: dynamicEvent.startTime,
+            servers: dynamicEvent.participations.map((participation) => ({
+              ministryName: participation.ministry.name,
+              needs: participation.needs,
+            })),
+          },
+        ],
+      });
+    }
+  }
+  return gatherings;
+}
+
+interface ChurchScopedInput {
+  db: SeedWriter;
+  churchId: string;
+  blueprint: DevelopmentBlueprint;
+}
+
+/** EventTemplates, their TemplateTimeBlocks, and every UsualSetup. */
+async function standingRuleProblems({
+  db,
+  churchId,
+  blueprint,
+}: ChurchScopedInput): Promise<string[]> {
+  const { templates, servingRules } = blueprint.gatherings;
+  const problems = difference({
+    label: 'EventTemplate TemplateTimeBlocks',
+    actual: await keysOf({
+      db,
+      query: sql`select t.church_id || '|' || t.name || '|' || t.weekday || '|'
+          || to_char(b.start_time, 'HH24:MI') || '-' || to_char(b.end_time, 'HH24:MI') as key
+        from ${templateTimeBlock} b join ${eventTemplate} t on t.id = b.template_id`,
+    }),
+    expected: templates.flatMap((template) =>
+      template.blocks.map(
+        (block) =>
+          `${churchId}|${template.name}|${template.weekday}|${block.startTime}-${block.endTime}`,
+      ),
+    ),
+  });
+
+  problems.push(
+    ...difference({
+      label: 'UsualSetups',
+      actual: await keysOf({
+        db,
+        query: sql`select m.name || '|' || to_char(b.start_time, 'HH24:MI') || '|' || t.weekday
+            || '|' || p.serves || '|' || (p.shift_split ->> 'kind') || (p.shift_split ->> 'count')
+            || '|' || coalesce((select string_agg(r.name || '/' || sc.name || '/' || (h ->> 'peopleNeeded'), ',' order by r.name, sc.name)
+              from jsonb_array_elements(p.headcounts) h
+              join ${role} r on r.id = (h ->> 'roleId')::uuid
+              join ${sector} sc on sc.id = (h ->> 'sectorId')::uuid), '') as key
+          from ${usualSetup} p
+          join ${ministry} m on m.id = p.ministry_id
+          join ${templateTimeBlock} b on b.id = p.source_template_time_block_id
+          join ${eventTemplate} t on t.id = b.template_id
+          where p.church_id = ${churchId}`,
+      }),
+      expected: servingRules.flatMap((rule) =>
+        templates.flatMap((template) =>
+          template.blocks.map((block) => {
+            const needs = rule.blocks[block.key];
+            const headcounts = [...(needs ?? [])]
+              .sort((left, right) =>
+                `${left.role}/${left.sector}`.localeCompare(
+                  `${right.role}/${right.sector}`,
+                ),
+              )
+              .map((need) => `${need.role}/${need.sector}/${need.peopleNeeded}`)
+              .join(',');
+            return `${rule.ministry.name}|${block.startTime}|${template.weekday}|${needs !== null}|equal1|${headcounts}`;
+          }),
+        ),
+      ),
+    }),
+  );
+  return problems;
+}
+
+interface CycleProblemsInput extends ChurchScopedInput {
+  anchor: CalendarDay;
+}
+
+/** The one sent cycle, its Events, Participations, Shifts and requirements. */
+async function cycleProblems({
+  db,
+  churchId,
+  blueprint,
+  anchor,
+}: CycleProblemsInput): Promise<string[]> {
+  const window = historicalCycleWindow({ anchor });
+  const timeZone = blueprint.primary.church.timezone;
+  const problems = difference({
+    label:
+      'Cycles (only the previous complete month, sent; none from the anchor month on)',
+    actual: await keysOf({
+      db,
+      query: sql`select church_id || '|' || start_date || '|' || end_date || '|' || state as key
+        from ${cycle}`,
+    }),
+    expected: [`${churchId}|${window.startDate}|${window.endDate}|sent`],
+  });
+
+  const gatherings = expectedGatherings({ blueprint, ...window });
+  problems.push(
+    ...difference({
+      label: 'Events (every gathering of the month, past)',
+      actual: await keysOf({
+        db,
+        query: sql`select e.title || '|' || to_char(e.start at time zone ${timeZone}, 'YYYY-MM-DD HH24:MI')
+            || '|' || e.status || '|' || (e.source_template_id is not null)
+            || '|' || (e.cycle_id = c.id and c.church_id = ${churchId}) as key
+          from ${event} e join ${cycle} c on c.id = e.cycle_id`,
+      }),
+      expected: gatherings.map(
+        (gathering) =>
+          `${gathering.title}|${gathering.day} ${gathering.eventTimeBlocks[0]?.startTime}|past|${gathering.eventTimeBlocks[0]?.blockKey !== undefined}|true`,
+      ),
+    }),
+    ...difference({
+      label:
+        'MinistryParticipations (one published per serving Ministry and Event)',
+      actual: await keysOf({
+        db,
+        query: sql`select e.title || '|' || to_char(e.start at time zone ${timeZone}, 'YYYY-MM-DD')
+            || '|' || m.name || '|' || p.state || '|'
+            || (select string_agg(to_char(s.start_time at time zone ${timeZone}, 'HH24:MI'), ',' order by s.start_time)
+              from ${participationEventTimeBlockInclusion} i join event_time_block s on s.id = i.event_time_block_id
+              where i.participation_id = p.id) as key
+          from ${ministryParticipation} p
+          join ${event} e on e.id = p.event_id
+          join ${ministry} m on m.id = p.ministry_id`,
+      }),
+      expected: gatherings.flatMap((gathering) => {
+        const ministryNames = [
+          ...new Set(
+            gathering.eventTimeBlocks.flatMap((eventTimeBlock) =>
+              eventTimeBlock.servers.map((server) => server.ministryName),
+            ),
+          ),
+        ];
+        return ministryNames.map((ministryName) => {
+          const served = gathering.eventTimeBlocks
+            .filter((eventTimeBlock) =>
+              eventTimeBlock.servers.some(
+                (server) => server.ministryName === ministryName,
+              ),
+            )
+            .map((eventTimeBlock) => eventTimeBlock.startTime)
+            .join(',');
+          return `${gathering.title}|${gathering.day}|${ministryName}|published|${served}`;
+        });
+      }),
+    }),
+    ...difference({
+      label: 'ShiftRequirements (whole-event-time-block Shifts)',
+      actual: await keysOf({
+        db,
+        query: sql`select m.name || '|' || r.name || '|' || t.name || '|' || sr.people_needed
+            || '|' || coalesce(sr.notes, '') || '|' || to_char(sh.start_time at time zone ${timeZone}, 'YYYY-MM-DD HH24:MI')
+            || '|' || (sh.start_time = ts.start_time and sh.end_time = ts.end_time) as key
+          from ${shiftRequirement} sr
+          join ${shift} sh on sh.id = sr.shift_id
+          join event_time_block ts on ts.id = sh.event_time_block_id
+          join ${ministryParticipation} p on p.id = sr.participation_id
+          join ${ministry} m on m.id = p.ministry_id
+          join ${role} r on r.id = sr.role_id
+          join ${sector} t on t.id = sr.sector_id`,
+      }),
+      expected: gatherings.flatMap((gathering) =>
+        gathering.eventTimeBlocks.flatMap((eventTimeBlock) =>
+          eventTimeBlock.servers.flatMap((server) =>
+            server.needs.map(
+              (need) =>
+                `${needKey({ ministryName: server.ministryName, need })}|${need.notes ?? ''}|${gathering.day} ${eventTimeBlock.startTime}|true`,
+            ),
+          ),
+        ),
+      ),
+    }),
+  );
+
+  // Each Assignment fills its bound requirement; another Sector cannot cover its places.
+  const blockKeyOf = new Map(
+    blueprint.gatherings.templates.flatMap((template) =>
+      template.blocks.map((block) => [
+        `${template.weekday}|${block.startTime}`,
+        block.key,
+      ]),
+    ),
+  );
+  const staffing = await db.execute<StaffingRow>(sql`
+    select m.name as ministry, r.name as role,
+      to_char(sh.start_time at time zone ${timeZone}, 'YYYY-MM-DD') as day,
+      extract(dow from sh.start_time at time zone ${timeZone})::int as weekday,
+      to_char(sh.start_time at time zone ${timeZone}, 'HH24:MI') as "startTime",
+      sum(sr.people_needed)::int as required,
+      (select count(*) from ${assignment} a
+        where a.shift_requirement_id = sr.id
+          and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
+    from ${shiftRequirement} sr
+    join ${shift} sh on sh.id = sr.shift_id
+    join ${ministryParticipation} p on p.id = sr.participation_id
+    join ${ministry} m on m.id = p.ministry_id
+    join ${role} r on r.id = sr.role_id
+    group by m.name, r.name, sh.start_time, sr.id`);
+  const overfilled = staffing.rows.filter((row) => row.assigned > row.required);
+  if (overfilled.length > 0) {
+    problems.push(
+      `${overfilled.length} Shifts are staffed beyond their requirement`,
+    );
+  }
+  problems.push(
+    ...difference({
+      label:
+        'Shifts published below full (staffed except the declared shortfalls)',
+      actual: staffing.rows
+        .filter((row) => row.assigned < row.required)
+        .map((row) => {
+          const block =
+            blockKeyOf.get(`${row.weekday}|${row.startTime}`) ?? row.startTime;
+          const week = Math.floor((Number(row.day.slice(8, 10)) - 1) / 7) + 1;
+          return `${row.ministry}|${row.role}|${block}#${week}|${row.required - row.assigned}`;
+        }),
+      expected: blueprint.history.shortfalls.map(
+        (shortfall) =>
+          `${shortfall.post.ministry.name}|${shortfall.post.role}|${shortfall.post.gathering.block}#${shortfall.post.gathering.week}|${shortfall.missing}`,
+      ),
+    }),
+  );
+
+  return problems;
+}
+
+/** `type`, not an interface: `execute` rows must be index-signature records. */
+type StaffingRow = {
+  ministry: string;
+  role: string;
+  day: string;
+  weekday: number;
+  startTime: string;
+  required: number;
+  assigned: number;
+};
+
+interface AssignmentProblemsInput {
+  db: SeedWriter;
+  blueprint: DevelopmentBlueprint;
+  directory: ChurchDirectoryBlueprint;
+}
+
+/** Qualification, overlap, unavailability, and the blueprint's trail. */
+async function assignmentProblems({
+  db,
+  blueprint,
+  directory,
+}: AssignmentProblemsInput): Promise<string[]> {
+  const problems: string[] = [];
+  const active = sql.raw(`('draft', 'pending', 'confirmed')`);
+
+  const unqualified = await countOf({
+    db,
+    query: sql`select count(*) as value from ${assignment} a
+      join ${ministryParticipation} p on p.id = a.participation_id
+      where a.status in ${active}
+        and not exists (select 1 from ${ministryMembership} mv
+          join ${ministryMembershipRole} q on q.ministry_membership_id = mv.id
+          where mv.volunteer_id = a.volunteer_id and mv.ministry_id = p.ministry_id
+            and mv.status = 'active' and mv.left_at is null and q.role_id = a.role_id)`,
+  });
+  if (unqualified > 0) {
+    problems.push(
+      `${unqualified} active Assignments are not qualified for their Role`,
+    );
+  }
+
+  const overlapping = await countOf({
+    db,
+    query: sql`select count(*) as value from ${assignment} a
+      join ${shift} s on s.id = a.shift_id
+      join ${assignment} b on b.volunteer_id = a.volunteer_id and b.id < a.id
+      join ${shift} t on t.id = b.shift_id
+      where a.status in ${active} and b.status in ${active}
+        and s.start_time < t.end_time and t.start_time < s.end_time`,
+  });
+  if (overlapping > 0) {
+    problems.push(`${overlapping} unresolved overlaps double-book a Volunteer`);
+  }
+
+  const unavailableServing = await countOf({
+    db,
+    query: sql`select count(*) as value from ${assignment} a
+      join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
+      join ${availabilityCheck} c on c.ministry_membership_id = mv.id
+      join ${unavailableShift} u on u.availability_check_id = c.id
+      where a.status in ${active} and u.shift_id = a.shift_id`,
+  });
+  if (unavailableServing > 0) {
+    problems.push(
+      `${unavailableServing} active Assignments fall on a Shift their Volunteer marked unavailable`,
+    );
+  }
+
+  const memberships =
+    directory.ministries.reduce(
+      (total, ministryBlueprint) =>
+        total +
+        ministryBlueprint.schedule.reduce(
+          (sum, group) => sum + group.people.length,
+          0,
+        ),
+      0,
+    ) +
+    directory.crossMinistry.reduce(
+      (total, group) => total + group.emails.length,
+      0,
+    );
+  const { history } = blueprint;
+  const trail = {
+    'confirmed availability checks': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${availabilityCheck} where state = 'confirmed'`,
+      }),
+      expected: memberships,
+    },
+    'unavailable shifts (the blueprint incidents plus one side of each cross-Ministry overlap)':
+      {
+        actual: await countOf({
+          db,
+          query: sql`select count(*) as value from ${unavailableShift}`,
+        }),
+        expected:
+          history.unavailability.reduce(
+            (total, incident) => total + incident.gatherings.length,
+            0,
+          ) +
+          (await countOf({
+            db,
+            query: sql`with answered as (
+                select mv.volunteer_id, mv.ministry_id, s.start_time, s.end_time
+                from ${availabilityCheck} c
+                join ${ministryMembership} mv on mv.id = c.ministry_membership_id
+                join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
+                join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
+                join ${shift} s on s.participation_id = p.id)
+              select count(*) as value from answered a join answered b
+                on a.volunteer_id = b.volunteer_id and a.ministry_id < b.ministry_id
+                and a.start_time < b.end_time and b.start_time < a.end_time`,
+          })),
+      },
+    'confirmed checks the former confirmation operation would have refused (unmarked cross-Ministry overlaps)':
+      {
+        actual: await countOf({
+          db,
+          query: sql`with unmarked as (
+              select mv.volunteer_id, mv.ministry_id, s.start_time, s.end_time
+              from ${availabilityCheck} c
+              join ${ministryMembership} mv on mv.id = c.ministry_membership_id
+              join ${ministryParticipation} p on p.ministry_id = mv.ministry_id
+              join ${event} e on e.id = p.event_id and e.cycle_id = c.cycle_id
+              join ${shift} s on s.participation_id = p.id
+              where c.state = 'confirmed'
+                and not exists (select 1 from ${unavailableShift} u
+                  where u.availability_check_id = c.id and u.shift_id = s.id))
+            select count(distinct a.volunteer_id) as value from unmarked a join unmarked b
+              on a.volunteer_id = b.volunteer_id and a.ministry_id < b.ministry_id
+              and a.start_time < b.end_time and b.start_time < a.end_time`,
+        }),
+        expected: 0,
+      },
+    'declined Assignments': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${assignment} where status = 'declined'`,
+      }),
+      expected: history.declines.length,
+    },
+    'cancelled Assignments (a reassignment deletes the old one)': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${assignment} where status = 'cancelled'`,
+      }),
+      expected: 0,
+    },
+    'Assignments carrying a reassignment reason': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${assignment}
+          where status = 'confirmed' and reason is not null`,
+      }),
+      expected: history.resolvedOverlaps.length,
+    },
+    'Assignments without one created audit by whoever assigned it': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${assignment} a
+          where (select count(*) from ${assignmentAudit} au
+            where au.assignment_id = a.id and au.action = 'created'
+              and au.actor_id = a.assigned_by and au.timestamp = a.assigned_at) <> 1`,
+      }),
+      expected: 0,
+    },
+    'updated audits (one per reassignment)': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${assignmentAudit} where action = 'updated'`,
+      }),
+      expected: history.resolvedOverlaps.length,
+    },
+    'audits beyond created and updated': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${assignmentAudit}
+          where action not in ('created', 'updated')`,
+      }),
+      expected: 0,
+    },
+  };
+  for (const [label, { actual, expected }] of Object.entries(trail)) {
+    if (actual !== expected) {
+      problems.push(
+        `History trail has ${actual} ${label}, expected ${expected}`,
+      );
+    }
+  }
+
+  const crossMinistryServers = await countOf({
+    db,
+    query: sql`select count(*) as value from (
+        select a.volunteer_id from ${assignment} a
+        join ${ministryParticipation} p on p.id = a.participation_id
+        where a.status in ${active}
+        group by a.volunteer_id having count(distinct p.ministry_id) > 1
+      ) as cross_ministry`,
+  });
+  if (crossMinistryServers < history.crossMinistryService.length) {
+    problems.push(
+      `History trail has ${crossMinistryServers} Volunteers serving two Ministries, expected at least ${history.crossMinistryService.length}`,
+    );
+  }
+
+  return problems;
+}
+
+interface NotificationProblemsInput {
+  db: SeedWriter;
+  blueprint: DevelopmentBlueprint;
+}
+
+/**
+ * What publishing wrote: one `schedule_published` per
+ * Volunteer assigned in a Schedule when it was published, in the
+ * product's shape, read unless the blueprint says otherwise.
+ */
+async function notificationProblems({
+  db,
+  blueprint,
+}: NotificationProblemsInput): Promise<string[]> {
+  const { history } = blueprint;
+  const published = sql`(select min(created_at) from ${notification}
+    where kind = 'schedule_published')`;
+  const unreadEmails = sql.join(
+    history.unreadNotificationEmails.map((email) => sql`${email}`),
+    sql`, `,
+  );
+  const checks = {
+    'assigned Volunteers without their publish notification': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from (
+            select distinct e.cycle_id, p.ministry_id, a.volunteer_id from ${assignment} a
+            join ${ministryParticipation} p on p.id = a.participation_id
+            join ${event} e on e.id = p.event_id
+            where a.assigned_at <= ${published}) as assigned
+          where not exists (select 1 from ${notification} n
+            join ${volunteer} v on v.user_id = n.user_id
+            where n.data->>'cycleId' = assigned.cycle_id::text
+              and n.data->>'ministryId' = assigned.ministry_id::text
+              and v.id = assigned.volunteer_id and n.kind = 'schedule_published')`,
+      }),
+      expected: 0,
+    },
+    'snapshots without their publish notification': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${scheduleLastTold} s
+          join ${volunteer} v on v.id = s.volunteer_id
+          where not exists (select 1 from ${notification} n where n.kind = 'schedule_published'
+            and n.user_id = v.user_id and n.church_id = s.church_id
+            and n.data->>'cycleId' = s.cycle_id::text and n.data->>'ministryId' = s.ministry_id::text)`,
+      }),
+      expected: 0,
+    },
+    'publish notifications not in the shape publishing writes': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${notification} n
+          where n.kind = 'schedule_published'
+            and (not (n.data ? 'cycleName') or not (n.data ? 'churchTimezone')
+              or jsonb_array_length(n.data->'shifts') = 0)`,
+      }),
+      expected: 0,
+    },
+    'notifications of any other kind': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${notification}
+          where kind not in ('schedule_published', 'ministry_invitation')`,
+      }),
+      expected: 0,
+    },
+    'notifications whose read state contradicts the blueprint': {
+      actual: await countOf({
+        db,
+        query: sql`select count(*) as value from ${notification} n
+          join ${user} u on u.id = n.user_id
+          where n.kind = 'schedule_published'
+            and ((n.read_at is null) <> (u.email in (${unreadEmails}))
+              or n.read_at < n.created_at)`,
+      }),
+      expected: 0,
+    },
+  };
+
+  const problems: string[] = [];
+  for (const [label, { actual, expected }] of Object.entries(checks)) {
+    if (actual !== expected) {
+      problems.push(`History has ${actual} ${label}, expected ${expected}`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * The gatherings and sent historical cycle against the blueprint and the
+ * anchor: standing rules, the one sent cycle and nothing from the anchor's
+ * month on, published participation staffing, no unresolved overlap, and
+ * the history trail.
+ */
+export async function historyProblems({
+  db,
+  seeded,
+  blueprint,
+}: HistoryProblemsInput): Promise<string[]> {
+  const churchId = seeded.church.id;
+  return [
+    ...(await standingRuleProblems({ db, churchId, blueprint })),
+    ...(await cycleProblems({
+      db,
+      churchId,
+      blueprint,
+      anchor: seeded.anchor,
+    })),
+    ...(await assignmentProblems({
+      db,
+      blueprint,
+      directory: blueprint.primary,
+    })),
+    ...(await notificationProblems({ db, blueprint })),
+  ];
+}

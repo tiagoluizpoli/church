@@ -1,18 +1,28 @@
-import { Button } from '@base-fullstack-template/ui/components/button';
-import { Input } from '@base-fullstack-template/ui/components/input';
-import { Label } from '@base-fullstack-template/ui/components/label';
+import { m } from '@church/i18n/messages';
 import { useForm } from '@tanstack/react-form';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import z from 'zod';
-import Loader from './loader';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import { authClient } from '@/lib/auth-client';
+import { authErrorMessage } from '@/lib/auth-error-message';
+
+export interface SignInFormProps {
+  onSwitchToSignUp?: () => void;
+  redirectTo?: string;
+  /** Set by the password-reset flow when it returns here. */
+  notice?: 'password-changed';
+}
 
 export default function SignInForm({
   onSwitchToSignUp,
-}: {
-  onSwitchToSignUp: () => void;
-}) {
+  redirectTo,
+  notice,
+}: SignInFormProps) {
   const navigate = useNavigate({
     from: '/',
   });
@@ -32,31 +42,61 @@ export default function SignInForm({
         {
           onSuccess: () => {
             navigate({
-              to: '/dashboard',
+              href: redirectTo ?? '/',
             });
-            toast.success('Sign in successful');
+            toast.success(m.auth_sign_in_success());
           },
           onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
+            toast.error(authErrorMessage({ error: error.error }));
           },
         },
       );
     },
     validators: {
       onSubmit: z.object({
-        email: z.email('Invalid email address'),
-        password: z.string().min(8, 'Password must be at least 8 characters'),
+        email: z.email(m.password_recovery_invalid_email()),
+        password: z.string().min(8, m.password_recovery_password_too_short()),
       }),
     },
   });
 
   if (isPending) {
-    return <Loader />;
+    return (
+      <Pending
+        label={m.auth_session_loading()}
+        className="mx-auto mt-10 w-full max-w-md p-6"
+      >
+        <Skeleton className="mx-auto mb-2 h-9 w-48" />
+        <Skeleton className="mx-auto mb-6 h-4 w-64" />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <Skeleton className="h-9 w-full" />
+        </div>
+      </Pending>
+    );
   }
 
   return (
     <div className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="mb-6 text-center font-bold text-3xl">Welcome Back</h1>
+      <h1 className="mb-2 text-center font-bold text-3xl">
+        {m.auth_sign_in_title()}
+      </h1>
+      <p className="mb-6 text-center text-muted-foreground text-sm">
+        {m.auth_sign_in_invitation_only()}
+      </p>
+
+      {notice === 'password-changed' && (
+        <p role="status" className="mb-4 text-center text-sm">
+          {m.password_recovery_password_changed()}
+        </p>
+      )}
 
       <form
         onSubmit={(e) => {
@@ -70,7 +110,9 @@ export default function SignInForm({
           <form.Field name="email">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Email</Label>
+                <Label htmlFor={field.name}>
+                  {m.password_recovery_email_label()}
+                </Label>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -93,7 +135,7 @@ export default function SignInForm({
           <form.Field name="password">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Password</Label>
+                <Label htmlFor={field.name}>{m.auth_password_label()}</Label>
                 <Input
                   id={field.name}
                   name={field.name}
@@ -112,6 +154,15 @@ export default function SignInForm({
           </form.Field>
         </div>
 
+        <div className="text-right">
+          <Link
+            to="/forgot-password"
+            className="text-muted-foreground text-sm underline"
+          >
+            {m.password_recovery_forgot_link()}
+          </Link>
+        </div>
+
         <form.Subscribe
           selector={(state) => ({
             canSubmit: state.canSubmit,
@@ -124,21 +175,25 @@ export default function SignInForm({
               className="w-full"
               disabled={!canSubmit || isSubmitting}
             >
-              {isSubmitting ? 'Submitting...' : 'Sign In'}
+              {isSubmitting
+                ? m.auth_sign_in_submitting()
+                : m.auth_sign_in_submit()}
             </Button>
           )}
         </form.Subscribe>
       </form>
 
-      <div className="mt-4 text-center">
-        <Button
-          variant="link"
-          onClick={onSwitchToSignUp}
-          className="text-indigo-600 hover:text-indigo-800"
-        >
-          Need an account? Sign Up
-        </Button>
-      </div>
+      {onSwitchToSignUp && (
+        <div className="mt-4 text-center">
+          <Button
+            variant="link"
+            onClick={onSwitchToSignUp}
+            className="text-indigo-600 hover:text-indigo-800"
+          >
+            {m.auth_sign_in_switch_to_sign_up()}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

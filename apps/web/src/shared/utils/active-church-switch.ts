@@ -1,0 +1,158 @@
+import type { Query, QueryClient } from '@tanstack/react-query';
+import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
+
+export type ActiveChurchArea = 'dashboard' | 'scheduling';
+
+type ActiveChurchRoutePolicy =
+  | { pattern: RegExp; policy: 'fallback' }
+  | { pattern: RegExp; policy: 'preserve'; requiredArea: ActiveChurchArea };
+
+interface GetActiveChurchDestinationInput {
+  availableAreas: ActiveChurchArea[];
+  destination: string;
+}
+
+interface GetDestinationPathnameInput {
+  destination: string;
+}
+
+interface SelectActiveChurchInput {
+  churchId: string;
+}
+
+interface ActiveChurchNavigatorInput {
+  destination: string;
+}
+
+interface SwitchActiveChurchInput {
+  availableAreas: ActiveChurchArea[];
+  churchId: string;
+  churchName: string;
+  destination: string;
+  queryClient: QueryClient;
+  selectActiveChurch: (input: SelectActiveChurchInput) => Promise<void> | void;
+  navigate: (input: ActiveChurchNavigatorInput) => Promise<void> | void;
+}
+
+interface ClearActiveChurchScopedCacheInput {
+  queryClient: QueryClient;
+}
+
+const HOME_DESTINATION = '/';
+const DESTINATION_BASE_URL = 'https://church.local';
+
+// Every current Church-scoped route has an explicit policy. Parameterized
+// resource routes deliberately fall back because their identifiers are owned
+// by the previous Church context.
+const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
+  // Home is the common entry; it keeps dashboard-area Churches on `/`.
+  { pattern: /^\/$/, policy: 'preserve', requiredArea: 'dashboard' },
+  {
+    pattern: /^\/dashboard$/,
+    policy: 'preserve',
+    requiredArea: 'dashboard',
+  },
+  { pattern: /^\/availability$/, policy: 'fallback' },
+  { pattern: /^\/notifications$/, policy: 'fallback' },
+  {
+    pattern: /^\/cycles\/?$/,
+    policy: 'preserve',
+    requiredArea: 'scheduling',
+  },
+  {
+    pattern: /^\/event-templates$/,
+    policy: 'preserve',
+    requiredArea: 'scheduling',
+  },
+  { pattern: /^\/event-templates\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/cycles\/[^/]+$/, policy: 'fallback' },
+  {
+    pattern: /^\/schedules\/?$/,
+    policy: 'preserve',
+    requiredArea: 'scheduling',
+  },
+  { pattern: /^\/schedules\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/schedules\/[^/]+\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/schedules\/[^/]+\/[^/]+\/assign$/, policy: 'fallback' },
+];
+
+export function isChurchScopedQuery(query: Query): boolean {
+  return query.queryKey[0] !== 'active-church';
+}
+
+export async function clearActiveChurchScopedCache({
+  queryClient,
+}: ClearActiveChurchScopedCacheInput): Promise<void> {
+  await queryClient.cancelQueries({ predicate: isChurchScopedQuery });
+  queryClient.removeQueries({ predicate: isChurchScopedQuery });
+}
+
+function getDestinationPathname({
+  destination,
+}: GetDestinationPathnameInput): string | null {
+  try {
+    const parsedDestination = new URL(destination, DESTINATION_BASE_URL);
+    return parsedDestination.origin === DESTINATION_BASE_URL
+      ? parsedDestination.pathname
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function getActiveChurchDestination({
+  availableAreas,
+  destination,
+}: GetActiveChurchDestinationInput): string {
+  const pathname = getDestinationPathname({ destination });
+  if (!pathname) return HOME_DESTINATION;
+
+  const routePolicy = ACTIVE_CHURCH_ROUTE_POLICIES.find(({ pattern }) =>
+    pattern.test(pathname),
+  );
+
+  return routePolicy?.policy === 'preserve' &&
+    availableAreas.includes(routePolicy.requiredArea)
+    ? destination
+    : HOME_DESTINATION;
+}
+
+export async function switchActiveChurch({
+  availableAreas,
+  churchId,
+  churchName,
+  destination,
+  navigate,
+  queryClient,
+  selectActiveChurch,
+}: SwitchActiveChurchInput): Promise<void> {
+  await clearActiveChurchScopedCache({ queryClient });
+  await selectActiveChurch({ churchId });
+  postActiveChurchSwitched({ availableAreas, churchId, churchName });
+  await navigate({
+    destination: getActiveChurchDestination({ availableAreas, destination }),
+  });
+}
+
+interface FinishRedemptionAtHomeInput {
+  queryClient: QueryClient;
+  /** Typically `authClient.getSession` — refreshes the client's session cache. */
+  getSession: () => Promise<unknown>;
+  navigateToHome: () => void;
+}
+
+/**
+ * Lands a full-success redemption on Home (`/`) with a fresh session and
+ * no stale Church-scoped cache; the entry gate resolves its one Church. The
+ * cross-Church split's outcomes, which leave the User in several Churches,
+ * select the destination instead (`useContinueToChurch`).
+ */
+export async function finishRedemptionAtHome({
+  queryClient,
+  getSession,
+  navigateToHome,
+}: FinishRedemptionAtHomeInput): Promise<void> {
+  await getSession();
+  await clearActiveChurchScopedCache({ queryClient });
+  navigateToHome();
+}

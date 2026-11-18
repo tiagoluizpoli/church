@@ -1,0 +1,97 @@
+import type { SeedRecipeLoadInput } from '../../recipe';
+import {
+  type CreateJourneyRecipeInput,
+  E2E_JOURNEY_RECIPE_NAMES,
+  journeyIdentity,
+} from '../journey-keys';
+import type { E2eJourneyRecipe } from '../journey-recipe';
+import {
+  type AssignChurch,
+  type AssignChurchPlan,
+  assignChurchRootKinds,
+  buildAssignChurch,
+} from './assign-church';
+import {
+  cycleWindow,
+  type SchedulingJourneyDates,
+} from './scheduling-cycle-window';
+
+const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.liveChanges;
+
+/**
+ * One Worship Ministry with an Usher Role, its leader, and two qualified
+ * Usher personas: the owner who holds and cancels the assignments, and a
+ * Volunteer who may not cancel them and is the reassignment target. The
+ * journey creates its own Cycle, template and events through the
+ * API and publishes only to its own personas.
+ */
+const PLAN = {
+  ministries: {
+    worship: {
+      name: 'Louvor',
+      roles: { usher: 'Recepcionista' },
+      sectors: { stage: 'Palco' },
+    },
+  },
+  personas: {
+    leader: {
+      name: 'Lia Prado',
+      churchAccessLevel: 'admin',
+      memberships: [{ ministry: 'worship', accessLevel: 'leader', roles: [] }],
+    },
+    owner: {
+      name: 'Rafael Moura',
+      churchAccessLevel: 'member',
+      memberships: [
+        {
+          ministry: 'worship',
+          accessLevel: 'volunteer',
+          roles: ['usher'],
+        },
+      ],
+    },
+    volunteer: {
+      name: 'Tomas Reis',
+      churchAccessLevel: 'member',
+      memberships: [
+        {
+          ministry: 'worship',
+          accessLevel: 'volunteer',
+          roles: ['usher'],
+        },
+      ],
+    },
+  },
+  pool: {},
+} as const satisfies AssignChurchPlan;
+
+export interface LiveChangesJourney
+  extends AssignChurch<typeof PLAN>,
+    SchedulingJourneyDates {}
+
+export function createLiveChangesRecipe({
+  journeyKey,
+  anchor,
+}: CreateJourneyRecipeInput): E2eJourneyRecipe<LiveChangesJourney> {
+  const { idOf, tag, rootsOf } = journeyIdentity({
+    recipeName: RECIPE_NAME,
+    journeyKey,
+  });
+
+  async function load({
+    db,
+  }: SeedRecipeLoadInput): Promise<LiveChangesJourney> {
+    const graph = await buildAssignChurch({ db, idOf, tag, plan: PLAN });
+    return {
+      anchor,
+      ...graph,
+      cycleWindow: cycleWindow({ anchor }),
+    };
+  }
+
+  return {
+    name: RECIPE_NAME,
+    roots: rootsOf({ rootKinds: assignChurchRootKinds({ plan: PLAN }) }),
+    load,
+  };
+}

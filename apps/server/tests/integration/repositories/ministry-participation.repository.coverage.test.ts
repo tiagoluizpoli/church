@@ -1,0 +1,466 @@
+import { NotFoundError } from '@church/core';
+import {
+  ministryParticipation,
+  participationEventTimeBlockInclusion,
+} from '@church/db';
+import { eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  ChurchId,
+  MinistryId,
+  MinistryParticipationId,
+} from '@/domain/branded-ids';
+import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
+import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
+import {
+  createSchedulingPhase3Cycle,
+  createSchedulingPhase3EventGraph,
+  resetSchedulingPhase3Db,
+  schedulingTestDb,
+  seedSchedulingPhase3Base,
+} from '@/tests/scheduling-reshape/setup';
+
+describe('DrizzleMinistryParticipationRepository (extra coverage)', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('getById throws NotFoundError for an invalid uuid', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    await expect(
+      repo.getById({
+        churchId: ChurchId.from(seed.churchAId),
+        participationId: MinistryParticipationId.from('not-a-uuid'),
+      }),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('listByIds returns [] without querying when participationIds is empty', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    const result = await repo.listByIds({
+      churchId: ChurchId.from(seed.churchAId),
+      participationIds: [],
+    });
+    expect(result).toEqual([]);
+  });
+
+  it('updateState throws NotFoundError when the participation does not exist', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    await expect(
+      repo.updateState({
+        churchId: ChurchId.from(seed.churchAId),
+        participationId: MinistryParticipationId.from(
+          '99999999-9999-4999-8999-999999999999',
+        ),
+        state: 'published',
+      }),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('touch() sets touchedAt on first call and never overwrites it afterward', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { participation } = await seedCycleAndEvent({
+      seed,
+      state: 'sent',
+    });
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(participation.id);
+
+    await repo.touch({ churchId, participationId });
+    const [afterFirstTouch] = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.id, participation.id));
+    const firstTouchedAt = afterFirstTouch?.touchedAt;
+    expect(firstTouchedAt).not.toBeNull();
+
+    await repo.touch({ churchId, participationId });
+    const [afterSecondTouch] = await schedulingTestDb
+      .select()
+      .from(ministryParticipation)
+      .where(eq(ministryParticipation.id, participation.id));
+    expect(afterSecondTouch?.touchedAt).toEqual(firstTouchedAt);
+  });
+
+  it("hides another Church's participation from getById and scope resolution", async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const own = await seedCycleAndEvent({ seed });
+    const foreign = await seedCycleAndEvent({
+      seed,
+      churchId: seed.churchBId,
+      ministryId: seed.ministryBId,
+    });
+    const churchId = ChurchId.from(seed.churchAId);
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+    const scope = new DrizzleSchedulingScopeResolver({ db: schedulingTestDb });
+    const foreignId = MinistryParticipationId.from(foreign.participation.id);
+
+    await expect(
+      repo.getById({ churchId, participationId: foreignId }),
+    ).rejects.toThrow(NotFoundError);
+    await expect(
+      scope.resolveParticipationMinistry({
+        churchId,
+        participationId: foreignId,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      scope.resolveParticipationMinistry({
+        churchId,
+        participationId: MinistryParticipationId.from(own.participation.id),
+      }),
+    ).resolves.toBe(seed.ministryAId);
+  });
+});
+
+interface SeedCycleAndEventInput {
+  seed: Awaited<ReturnType<typeof seedSchedulingPhase3Base>>;
+  ministryId?: string;
+  churchId?: string;
+  state?: 'draft' | 'sent';
+}
+
+async function seedCycleAndEvent({
+  seed,
+  ministryId,
+  churchId,
+  state,
+}: SeedCycleAndEventInput) {
+  const targetChurchId = churchId ?? seed.churchAId;
+  const cycle = await createSchedulingPhase3Cycle({
+    churchId: targetChurchId,
+    name: `Cycle-${Math.random().toString(36).slice(2, 8)}`,
+    startDate: new Date('2026-08-01T00:00:00.000Z'),
+    endDate: new Date('2026-09-01T00:00:00.000Z'),
+    state: state ?? 'sent',
+  });
+  const graph = await createSchedulingPhase3EventGraph({
+    churchId: targetChurchId,
+    cycleId: cycle.id,
+    ministryId: ministryId ?? seed.ministryAId,
+    title: 'Sunday Service',
+    start: new Date('2026-08-02T12:00:00.000Z'),
+    end: new Date('2026-08-02T15:00:00.000Z'),
+    status: 'scheduled',
+  });
+
+  return { cycle, ...graph };
+}
+
+describe('DrizzleMinistryParticipationRepository.listScheduleSummaries (Iteration 3, T063/T063a)', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('returns isPartOf: false with 0 counts, not_started status, and availabilityRequestedForAll: false for a sent cycle the ministry has zero events in — never vacuously true', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    // Locked cycle with no events for ministryA at all.
+    await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Untouched Cycle',
+      startDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-11-01T00:00:00.000Z'),
+      state: 'sent',
+    });
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    const rows = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      name: 'Untouched Cycle',
+      isPartOf: false,
+      eventCount: 0,
+      eventTimeBlockCount: 0,
+      status: 'not_started',
+      availabilityRequestedForAll: false,
+    });
+  });
+
+  it('excludes cycles not in the locked state', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Draft Cycle',
+      startDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-11-01T00:00:00.000Z'),
+      state: 'draft',
+    });
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    const rows = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+
+    expect(rows).toHaveLength(0);
+  });
+
+  it('reads not_started when the ministry has events but none are touched', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycle } = await seedCycleAndEvent({ seed });
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    const rows = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+
+    const row = rows.find((r) => r.cycleId === cycle.id);
+    expect(row).toMatchObject({
+      isPartOf: true,
+      eventCount: 1,
+      status: 'not_started',
+      availabilityRequestedForAll: false,
+    });
+  });
+
+  it('reads in_progress when the ministry has touched some but not all of its events in the cycle', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Mixed Cycle',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-01T00:00:00.000Z'),
+      state: 'sent',
+    });
+    const graphA = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Event A',
+      start: new Date('2026-08-02T12:00:00.000Z'),
+      end: new Date('2026-08-02T15:00:00.000Z'),
+    });
+    await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Event B',
+      start: new Date('2026-08-03T12:00:00.000Z'),
+      end: new Date('2026-08-03T15:00:00.000Z'),
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ touchedAt: new Date() })
+      .where(eq(ministryParticipation.id, graphA.participation.id));
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    const rows = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+
+    const row = rows.find((r) => r.cycleId === cycle.id);
+    expect(row).toMatchObject({
+      eventCount: 2,
+      status: 'in_progress',
+      availabilityRequestedForAll: false,
+    });
+  });
+
+  it("sums eventTimeBlockCount across every ParticipationEventTimeBlockInclusion row across every event the ministry participates in for the cycle, not the events' total event time block count", async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Multi-Block Cycle',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-01T00:00:00.000Z'),
+      state: 'sent',
+    });
+    const graphA = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Event A',
+      start: new Date('2026-08-02T12:00:00.000Z'),
+      end: new Date('2026-08-02T15:00:00.000Z'),
+    });
+    const graphB = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Event B',
+      start: new Date('2026-08-03T12:00:00.000Z'),
+      end: new Date('2026-08-03T15:00:00.000Z'),
+    });
+    // Event A's participation includes its one event time block; Event B's participation
+    // is untouched (no inclusion row) — eventTimeBlockCount must sum only included
+    // event time blocks across both events (1), not the events' combined event time block count (2).
+    await schedulingTestDb.insert(participationEventTimeBlockInclusion).values({
+      churchId: seed.churchAId,
+      participationId: graphA.participation.id,
+      eventTimeBlockId: graphA.eventTimeBlock.id,
+    });
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    const rows = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+
+    const row = rows.find((r) => r.cycleId === cycle.id);
+    expect(row).toMatchObject({ eventCount: 2, eventTimeBlockCount: 1 });
+
+    // Now include Event B's event time block too — eventTimeBlockCount must sum to 2.
+    await schedulingTestDb.insert(participationEventTimeBlockInclusion).values({
+      churchId: seed.churchAId,
+      participationId: graphB.participation.id,
+      eventTimeBlockId: graphB.eventTimeBlock.id,
+    });
+
+    const rowsAfter = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+    const rowAfter = rowsAfter.find((r) => r.cycleId === cycle.id);
+    expect(rowAfter).toMatchObject({ eventCount: 2, eventTimeBlockCount: 2 });
+  });
+
+  it('reads published only when every participation in the cycle is published, and availabilityRequestedForAll independently of that boundary', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Finished Cycle',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-01T00:00:00.000Z'),
+      state: 'sent',
+    });
+    const { participation } = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Event A',
+      start: new Date('2026-08-02T12:00:00.000Z'),
+      end: new Date('2026-08-02T15:00:00.000Z'),
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ touchedAt: new Date(), state: 'published' })
+      .where(eq(ministryParticipation.id, participation.id));
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    const rows = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+
+    const row = rows.find((r) => r.cycleId === cycle.id);
+    expect(row).toMatchObject({
+      eventCount: 1,
+      status: 'published',
+      availabilityRequestedForAll: true,
+    });
+  });
+
+  it('availabilityRequestedForAny is true once any participation has been requested even while availabilityRequestedForAll stays false, and false for a zero-event cycle (R6 vacuous-truth guard)', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Partially Requested Cycle',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-09-01T00:00:00.000Z'),
+      state: 'sent',
+    });
+    const requestedGraph = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Requested Event',
+      start: new Date('2026-08-02T12:00:00.000Z'),
+      end: new Date('2026-08-02T15:00:00.000Z'),
+    });
+    await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Untouched Event',
+      start: new Date('2026-08-03T12:00:00.000Z'),
+      end: new Date('2026-08-03T15:00:00.000Z'),
+    });
+    // Request exactly one of the two participations.
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ touchedAt: new Date(), state: 'availability_requested' })
+      .where(eq(ministryParticipation.id, requestedGraph.participation.id));
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    const rows = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+    const row = rows.find((r) => r.cycleId === cycle.id);
+    expect(row).toMatchObject({
+      eventCount: 2,
+      availabilityRequestedForAll: false,
+      availabilityRequestedForAny: true,
+    });
+
+    // A cycle the ministry has zero events in must never be vacuously true.
+    await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'Empty Cycle',
+      startDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-11-01T00:00:00.000Z'),
+      state: 'sent',
+    });
+    const rowsAfter = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchAId),
+      ministryId: MinistryId.from(seed.ministryAId),
+    });
+    const emptyRow = rowsAfter.find((r) => r.name === 'Empty Cycle');
+    expect(emptyRow).toMatchObject({
+      eventCount: 0,
+      availabilityRequestedForAny: false,
+    });
+  });
+
+  it('church isolation: a query for church B never sees church A cycles/participations (Spec R2 §4)', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    await seedCycleAndEvent({ seed, state: 'sent' });
+    const repo = new DrizzleMinistryParticipationRepository({
+      db: schedulingTestDb,
+    });
+
+    const churchBRows = await repo.listScheduleSummaries({
+      churchId: ChurchId.from(seed.churchBId),
+      ministryId: MinistryId.from(seed.ministryBId),
+    });
+
+    expect(churchBRows).toEqual([]);
+  });
+});

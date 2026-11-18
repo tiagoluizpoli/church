@@ -1,5 +1,10 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "plugins": [
+    "./tooling/biome/date-time-seam.grit",
+    "./tooling/biome/no-whole-config.grit",
+    "./tooling/biome/no-app-config-import.grit"
+  ],
   "vcs": {
     "enabled": false,
     "clientKind": "git",
@@ -9,28 +14,53 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
-      "!**/.next",
-      "!**/dist",
-      "!**/.turbo",
-      "!**/.nx",
-      "!**/dev-dist",
-      "!**/.zed",
-      "!**/.vscode",
-      "!**/routeTree.gen.ts",
-      "!**/src-tauri",
-      "!**/.nuxt",
-      "!**/bts.jsonc",
-      "!**/.expo",
-      "!**/.wrangler",
-      "!**/.alchemy",
-      "!**/.svelte-kit",
-      "!**/wrangler.jsonc",
-      "!**/.source",
-      "!**/convex/_generated",
-      "!**/.react-router",
-      "!**/.react-router-v7",
-      "!**/.react-router-v7-linux-x64-gnu",
-      "!**/apps/desktop/build"
+      "!!**/.next",
+      "!!**/.impeccable",
+      "!!**/dist",
+      "!!**/.turbo",
+      "!!**/.nx",
+      "!!**/dev-dist",
+      "!!**/.zed",
+      "!!**/.vscode",
+      "!!**/routeTree.gen.ts",
+      "!!**/src/paraglide",
+      "!!**/project.inlang/.meta.json",
+      "!!**/src-tauri",
+      "!!**/.nuxt",
+      "!!**/bts.jsonc",
+      "!!**/.expo",
+      "!!**/.wrangler",
+      "!!**/.alchemy",
+      "!!**/.svelte-kit",
+      "!!**/wrangler.jsonc",
+      "!!**/.source",
+      "!!**/convex/_generated",
+      "!!**/.react-router",
+      "!!**/.react-router-v7",
+      "!!**/.react-router-v7-linux-x64-gnu",
+      "!!**/build",
+      "!**/*.md",
+      "!!**/.agent",
+      "!!**/.agents",
+      "!!**/.specify",
+      "!!**/.gemini",
+      "!!**/.claude",
+      "!!**/apps/fumadocs",
+      "!!**/public",
+      "!!**/node_modules",
+      "!!**/.git",
+      "!!**/.output",
+      "!!**/.vercel",
+      "!!**/playwright-report",
+      "!!**/coverage",
+      "!!**/test-results",
+      "!!**/tmp",
+      "!!**/packages/db/src/migrations",
+      "!!**/apps/web/src/infrastructure/api",
+      "!!**/skills-lock.json",
+      "!!**/seed-data.json",
+      "!!**/.github/skills",
+      "!!**/apps/web/tests/.auth"
     ]
   },
   "formatter": {
@@ -83,12 +113,74 @@
         "useNumberNamespace": "error",
         "noInferrableTypes": "error",
         "noUselessElse": "error",
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": false,
+            "conventions": [
+              {
+                "selector": { "kind": "variable" },
+                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
+              },
+              {
+                "selector": { "kind": "function" },
+                "formats": ["camelCase", "PascalCase"]
+              },
+              {
+                "selector": { "kind": "class" },
+                "formats": ["PascalCase"]
+              },
+              {
+                "selector": { "kind": "typeAlias" },
+                "formats": ["PascalCase"]
+              },
+              {
+                "selector": { "kind": "enum" },
+                "formats": ["PascalCase"]
+              },
+              {
+                "selector": { "kind": "interface" },
+                "formats": ["PascalCase"]
+              },
+              {
+                "selector": { "kind": "objectLiteralProperty" },
+                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
+              },
+              {
+                "selector": { "kind": "typeProperty" },
+                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
+              }
+            ]
+          }
+        },
         "useFilenamingConvention": {
           "level": "error",
           "options": {
             "strictCase": false,
             "requireAscii": true,
             "filenameCases": ["kebab-case"]
+          }
+        },
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": [
+                  "@church/server/**",
+                  "server/**",
+                  "**/apps/server",
+                  "**/apps/server/**"
+                ],
+                "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+              }
+            ],
+            "paths": {
+              "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+              "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003).",
+              "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+              "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+            }
           }
         }
       },
@@ -123,7 +215,299 @@
   },
   "overrides": [
     {
-      "includes": ["**/src/routes/**/*", "**/routeTree.gen.ts"],
+      "includes": ["apps/web/**", "apps/desktop/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@church/server/**",
+                      "server/**",
+                      "**/apps/server",
+                      "**/apps/server/**",
+                      "**/../../server",
+                      "**/../../server/**"
+                    ],
+                    "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003).",
+                  "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+                  "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/server/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/server/src/api/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/infrastructure/**", "!**/domain/**"],
+                    "message": "api/ → domain/ only. Direct infrastructure layer import forbidden."
+                  },
+                  {
+                    "group": ["**/application/**", "!**/domain/**"],
+                    "message": "api/ → domain/ only. Direct application layer import forbidden; import interfaces from domain/contracts/application/ instead."
+                  },
+                  {
+                    "group": ["**/domain/contracts/infrastructure/**"],
+                    "message": "api/ → domain/contracts/application/ only for contracts. Infrastructure contracts (repositories/services) are for application and infrastructure layers only."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/server/src/domain/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/infrastructure/**", "!**/domain/**"],
+                    "message": "domain/ → packages/* only. Infrastructure layer import forbidden from domain."
+                  },
+                  {
+                    "group": ["**/application/**", "!**/domain/**"],
+                    "message": "domain/ → packages/* only. Application layer import forbidden from domain."
+                  },
+                  {
+                    "group": ["**/api/**"],
+                    "message": "domain/ → packages/* only. API layer import forbidden from domain."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/server/src/application/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/infrastructure/**", "!**/domain/**"],
+                    "message": "application/ → domain/ only. Infrastructure layer import forbidden; consume infra interfaces via domain/contracts/infrastructure/."
+                  },
+                  {
+                    "group": ["**/api/**"],
+                    "message": "application/ → domain/ only. API layer import forbidden from application."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/time/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@church/server/**",
+                      "server/**",
+                      "**/apps/server",
+                      "**/apps/server/**"
+                    ],
+                    "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                  }
+                ],
+                "paths": {
+                  "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+                  "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/server/src/infrastructure/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/application/**", "!**/domain/**"],
+                    "message": "infrastructure/ → domain/ only. Application layer import forbidden from infrastructure."
+                  },
+                  {
+                    "group": ["**/api/**"],
+                    "message": "infrastructure/ → domain/ only. API layer import forbidden from infrastructure."
+                  },
+                  {
+                    "group": ["**/domain/contracts/application/**"],
+                    "message": "infrastructure/ → domain/contracts/infrastructure/ only for contracts. Manager interfaces (application contracts) are not for infrastructure layer."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "apps/web/src/components/**",
+        "apps/web/src/hooks/**",
+        "apps/web/src/lib/**",
+        "apps/web/src/utils/**",
+        "apps/web/src/shared/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@church/server/**",
+                      "server/**",
+                      "**/apps/server",
+                      "**/apps/server/**",
+                      "**/../../server",
+                      "**/../../server/**"
+                    ],
+                    "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                  },
+                  {
+                    "group": ["**/features/**"],
+                    "message": "shared/ → features/ import forbidden (Bulletproof React layering: shared → features → app)."
+                  },
+                  {
+                    "group": ["**/routes/**"],
+                    "message": "shared/ → routes/ import forbidden (Bulletproof React layering: shared → features → app)."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003).",
+                  "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+                  "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/features/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@church/server/**",
+                      "server/**",
+                      "**/apps/server",
+                      "**/apps/server/**",
+                      "**/../../server",
+                      "**/../../server/**"
+                    ],
+                    "message": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                  },
+                  {
+                    "group": ["**/routes/**"],
+                    "message": "features/ → routes/ import forbidden (Bulletproof React layering: shared → features → app)."
+                  }
+                ],
+                "paths": {
+                  "date-fns": "Only @church/time may import date-fns (ADR-0003).",
+                  "date-fns-tz": "Only @church/time may import date-fns-tz (ADR-0003).",
+                  "@church/server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries).",
+                  "server": "Only apps/server imports the server; clients use the orval-generated functions in apps/web/src/infrastructure/api/ (constitution, Monorepo Boundaries)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/src/routes/**/*",
+        "**/tests/routes/**/*",
+        "**/routeTree.gen.ts"
+      ],
       "linter": {
         "rules": {
           "style": {

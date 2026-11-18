@@ -1,0 +1,299 @@
+import {
+  cycle,
+  event,
+  ministry,
+  ministryMembership,
+  sector,
+  shiftRequirement,
+} from '@church/db';
+import { type CalendarDay, parseCalendarDay } from '@church/time';
+import { eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { qualifiedRoleIds, type VolunteerIdInput } from './qualified-role-ids';
+import { ensurePlatformOperator } from '@/scripts/ensure-platform-operator';
+import { SEED_PLATFORM_OPERATOR_ID } from '@/seeds/blueprints/credentials';
+import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
+import { createLeaderPrepareRecipe } from '@/seeds/e2e/recipes/leader-prepare';
+import { createLiveChangesRecipe } from '@/seeds/e2e/recipes/live-changes';
+import { createVolunteerAvailabilityRecipe } from '@/seeds/e2e/recipes/volunteer-availability';
+import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+
+const ANCHOR: CalendarDay = parseCalendarDay({ value: '2026-03-15' });
+/** After the legacy seed's last fixed date (2026-12-28). */
+const LATE_ANCHOR: CalendarDay = parseCalendarDay({ value: '2027-03-01' });
+
+interface AnchorInput {
+  anchor: CalendarDay;
+}
+
+interface JourneyKeyInput extends AnchorInput {
+  journeyKey: string;
+}
+
+interface ChurchIdInput {
+  churchId: string;
+}
+
+async function ministryNames({ churchId }: ChurchIdInput): Promise<string[]> {
+  const rows = await testDb
+    .select({ name: ministry.name })
+    .from(ministry)
+    .where(eq(ministry.churchId, churchId));
+  return rows.map((row) => row.name).sort();
+}
+
+async function sectorNamesByMinistry({
+  churchId,
+}: ChurchIdInput): Promise<Record<string, string[]>> {
+  const rows = await testDb
+    .select({ ministryId: sector.ministryId, name: sector.name })
+    .from(sector)
+    .where(eq(sector.churchId, churchId));
+  const byMinistry: Record<string, string[]> = {};
+  for (const row of rows) {
+    byMinistry[row.ministryId] = [
+      ...(byMinistry[row.ministryId] ?? []),
+      row.name,
+    ].sort();
+  }
+  return byMinistry;
+}
+
+async function datedRowCounts({ churchId }: ChurchIdInput): Promise<number[]> {
+  const cycles = await testDb
+    .select({ id: cycle.id })
+    .from(cycle)
+    .where(eq(cycle.churchId, churchId));
+  const events = await testDb
+    .select({ id: event.id })
+    .from(event)
+    .where(eq(event.churchId, churchId));
+  return [cycles.length, events.length];
+}
+
+async function ministryAccessLevels({
+  volunteerId,
+}: VolunteerIdInput): Promise<Record<string, string>> {
+  const rows = await testDb
+    .select({
+      ministryId: ministryMembership.ministryId,
+      accessLevel: ministryMembership.ministryAccessLevel,
+    })
+    .from(ministryMembership)
+    .where(eq(ministryMembership.volunteerId, volunteerId));
+  return Object.fromEntries(
+    rows.map((row) => [row.ministryId, row.accessLevel]),
+  );
+}
+
+async function loadAvailability({ journeyKey, anchor }: JourneyKeyInput) {
+  return await runE2eJourneyRecipe({
+    db: testDb,
+    recipe: createVolunteerAvailabilityRecipe({ journeyKey, anchor }),
+  });
+}
+
+async function loadLeaderPrepare({ journeyKey, anchor }: JourneyKeyInput) {
+  return await runE2eJourneyRecipe({
+    db: testDb,
+    recipe: createLeaderPrepareRecipe({ journeyKey, anchor }),
+  });
+}
+
+async function loadLiveChanges({ journeyKey, anchor }: JourneyKeyInput) {
+  return await runE2eJourneyRecipe({
+    db: testDb,
+    recipe: createLiveChangesRecipe({ journeyKey, anchor }),
+  });
+}
+
+describe('usual-setup journey recipes (#329 cluster B)', () => {
+  beforeEach(async () => {
+    await truncateAll();
+    await ensurePlatformOperator({
+      db: testDb,
+      id: SEED_PLATFORM_OPERATOR_ID,
+    });
+  });
+
+  it('leader-prepare gives the leader its own Ministry and needed-Role holders, nothing dated', async () => {
+    const journey = await loadLeaderPrepare({
+      journeyKey: 'alpha',
+      anchor: ANCHOR,
+    });
+
+    expect(await ministryNames({ churchId: journey.church.id })).toEqual([
+      'Louvor',
+    ]);
+    expect(
+      await ministryAccessLevels({
+        volunteerId: journey.personas.leader.volunteerId,
+      }),
+    ).toEqual({ [journey.ministries.worship.id]: 'leader' });
+    expect(Object.keys(journey.ministries.worship.roles)).toEqual(['usher']);
+    expect(Object.values(journey.pool).map(({ name }) => name)).toEqual([
+      'Ana Ramos',
+      'Bruno Lima',
+    ]);
+    for (const { volunteerId } of Object.values(journey.pool)) {
+      expect(await ministryAccessLevels({ volunteerId })).toEqual({
+        [journey.ministries.worship.id]: 'volunteer',
+      });
+      expect(await qualifiedRoleIds({ volunteerId })).toEqual([
+        journey.ministries.worship.roles.usher.id,
+      ]);
+    }
+    expect(
+      await qualifiedRoleIds({
+        volunteerId: journey.personas.leader.volunteerId,
+      }),
+    ).toEqual([]);
+    expect(await datedRowCounts({ churchId: journey.church.id })).toEqual([
+      0, 0,
+    ]);
+  });
+
+  it('volunteer-availability puts the leader in both Ministries and the Volunteer in Worship alone', async () => {
+    const journey = await loadAvailability({
+      journeyKey: 'alpha',
+      anchor: ANCHOR,
+    });
+    const { worship, care } = journey.ministries;
+
+    expect(await ministryNames({ churchId: journey.church.id })).toEqual([
+      'Cuidado',
+      'Louvor',
+    ]);
+    expect(
+      await ministryAccessLevels({
+        volunteerId: journey.personas.leader.volunteerId,
+      }),
+    ).toEqual({ [worship.id]: 'leader', [care.id]: 'volunteer' });
+    expect(
+      await qualifiedRoleIds({
+        volunteerId: journey.personas.leader.volunteerId,
+      }),
+    ).toEqual([worship.roles.usher.id, care.roles.careHost.id].sort());
+    expect(
+      await ministryAccessLevels({
+        volunteerId: journey.personas.volunteer.volunteerId,
+      }),
+    ).toEqual({ [worship.id]: 'volunteer' });
+  });
+
+  it('live-changes qualifies the owner and the Volunteer for Usher and keeps the leader unassigned', async () => {
+    const journey = await loadLiveChanges({
+      journeyKey: 'alpha',
+      anchor: ANCHOR,
+    });
+    const usherId = journey.ministries.worship.roles.usher.id;
+
+    expect(
+      await qualifiedRoleIds({
+        volunteerId: journey.personas.owner.volunteerId,
+      }),
+    ).toEqual([usherId]);
+    expect(
+      await qualifiedRoleIds({
+        volunteerId: journey.personas.volunteer.volunteerId,
+      }),
+    ).toEqual([usherId]);
+    expect(
+      await qualifiedRoleIds({
+        volunteerId: journey.personas.leader.volunteerId,
+      }),
+    ).toEqual([]);
+    expect(
+      new Set(Object.values(journey.personas).map((persona) => persona.name))
+        .size,
+    ).toBe(3);
+  });
+
+  it.each([
+    ['leader-prepare', loadLeaderPrepare, { worship: ['Palco'] }],
+    [
+      'volunteer-availability',
+      loadAvailability,
+      { worship: ['Palco'], care: ['Recepção'] },
+    ],
+    ['live-changes', loadLiveChanges, { worship: ['Palco'] }],
+  ] as const)('%s: every Ministry starts with its own Sector, and no requirement exists yet', async (_name, load, expected) => {
+    const journey = await load({ journeyKey: 'alpha', anchor: ANCHOR });
+    const ministries = journey.ministries as Record<
+      string,
+      { id: string; sectors: Record<string, { id: string }> }
+    >;
+
+    expect(
+      await sectorNamesByMinistry({ churchId: journey.church.id }),
+    ).toEqual(
+      Object.fromEntries(
+        Object.entries(expected).map(([key, names]) => [
+          ministries[key]?.id,
+          [...names],
+        ]),
+      ),
+    );
+    for (const key of Object.keys(expected)) {
+      expect(Object.keys(ministries[key]?.sectors ?? {})).toHaveLength(1);
+    }
+    // Requirements and headcounts, each carrying a Sector, are made through the API.
+    expect(
+      await testDb
+        .select({ id: shiftRequirement.id })
+        .from(shiftRequirement)
+        .where(eq(shiftRequirement.churchId, journey.church.id)),
+    ).toEqual([]);
+  });
+
+  it('keeps two keys on separate Ministries, so no usual setup is shared', async () => {
+    const alpha = await loadLiveChanges({
+      journeyKey: 'alpha',
+      anchor: ANCHOR,
+    });
+    const beta = await loadLiveChanges({ journeyKey: 'beta', anchor: ANCHOR });
+
+    expect(alpha.ministries.worship.id).not.toBe(beta.ministries.worship.id);
+    expect(alpha.church.id).not.toBe(beta.church.id);
+  });
+
+  it.each([
+    ['leader-prepare', loadLeaderPrepare],
+    ['volunteer-availability', loadAvailability],
+    ['live-changes', loadLiveChanges],
+  ] as const)('%s: every date follows the anchor, also after the legacy seed dates', async (_name, load) => {
+    const early = await load({ journeyKey: 'alpha', anchor: ANCHOR });
+    expect(early.anchor).toBe('2026-03-15');
+    expect(early.cycleWindow).toEqual({
+      startDate: '2026-03-20',
+      endDate: '2026-04-16',
+    });
+
+    const late = await load({ journeyKey: 'beta', anchor: LATE_ANCHOR });
+    expect(late.anchor).toBe('2027-03-01');
+    expect(late.cycleWindow).toEqual({
+      startDate: '2027-03-06',
+      endDate: '2027-04-02',
+    });
+    expect(await datedRowCounts({ churchId: late.church.id })).toEqual([0, 0]);
+  });
+
+  it.each([
+    ['a Saturday', '2026-03-14'],
+    ['a Sunday', '2026-03-15'],
+  ] as const)('the cycle window anchored on %s holds at least four Sundays', async (_label, day) => {
+    const journey = await loadAvailability({
+      journeyKey: 'alpha',
+      anchor: parseCalendarDay({ value: day }),
+    });
+    let sundays = 0;
+    for (
+      let cursor = new Date(`${journey.cycleWindow.startDate}T00:00:00Z`);
+      cursor < new Date(`${journey.cycleWindow.endDate}T00:00:00Z`);
+      cursor = new Date(cursor.getTime() + 86_400_000)
+    ) {
+      if (cursor.getUTCDay() === 0) sundays += 1;
+    }
+    expect(sundays).toBeGreaterThanOrEqual(4);
+  });
+});

@@ -1,0 +1,286 @@
+import { outboxMessage } from '@church/db';
+import { eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { testDb, truncateAll } from './setup';
+import {
+  ChurchId,
+  MinistryId,
+  type MinistryInvitationId,
+  RoleId,
+  UserId,
+} from '@/domain/branded-ids';
+import { DrizzleTransactionContext } from '@/infrastructure/repositories';
+import { asTxContext } from '@/infrastructure/repositories/drizzle-transaction-context';
+import {
+  seedTwoChurchIdentityFixture,
+  type TwoChurchIdentityFixture,
+} from '@/tests/test-support/identity-fixtures';
+import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
+
+const { outboxRepository, unitOfWork, manager } =
+  createMinistryInvitationTestHarness({ db: testDb });
+
+let fixture: TwoChurchIdentityFixture;
+
+beforeEach(async () => {
+  await truncateAll();
+  fixture = await seedTwoChurchIdentityFixture({ db: testDb });
+});
+
+async function mintOne() {
+  return manager.mint({
+    churchId: ChurchId.from(fixture.churchA.id),
+    ministryId: MinistryId.from(fixture.ministryOneA),
+    inviterId: UserId.from(fixture.adminA),
+    email: `${fixture.memberNoVolunteerA}@fixture.test`,
+    ministryAccessLevel: 'volunteer',
+    roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+  });
+}
+
+describe('DrizzleOutboxRepository', () => {
+  it('claims a due pending row enqueued by minting', async () => {
+    const invitation = await mintOne();
+
+    const claimed = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0]?.status).toBe('processing');
+    expect(claimed[0]?.kind).toBe('notification');
+    expect(claimed[0]?.payload).toMatchObject({
+      kind: 'ministry_invitation',
+      data: { ministryInvitationId: invitation.id },
+    });
+  });
+
+  it('no longer claims a row once marked sent', async () => {
+    await mintOne();
+    const [claimed] = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+    if (!claimed) throw new Error('Expected a claimed row');
+
+    await unitOfWork.run((tx) =>
+      outboxRepository.markSent({
+        id: claimed.id,
+        providerMessageId: 'provider-123',
+        sentAt: new Date(),
+        tx,
+      }),
+    );
+
+    const claimedAgain = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+    expect(claimedAgain).toHaveLength(0);
+  });
+
+  it('a retryable failure stays pending but is not due until its bumped schedule', async () => {
+    await mintOne();
+    const [claimed] = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+    if (!claimed) throw new Error('Expected a claimed row');
+
+    const retryAt = new Date(Date.now() + 60_000);
+    await unitOfWork.run((tx) =>
+      outboxRepository.markFailed({
+        id: claimed.id,
+        lastError: 'timeout',
+        attempts: claimed.attempts + 1,
+        status: 'pending',
+        scheduledFor: retryAt,
+        tx,
+      }),
+    );
+
+    const tooEarly = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+    expect(tooEarly).toHaveLength(0);
+
+    const onSchedule = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(retryAt.getTime() + 1),
+        tx,
+      }),
+    );
+    expect(onSchedule).toHaveLength(1);
+    expect(onSchedule[0]?.attempts).toBe(claimed.attempts + 1);
+    expect(onSchedule[0]?.lastError).toBe('timeout');
+  });
+
+  it('a terminal failure is never claimed again', async () => {
+    await mintOne();
+    const [claimed] = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+    if (!claimed) throw new Error('Expected a claimed row');
+
+    await unitOfWork.run((tx) =>
+      outboxRepository.markFailed({
+        id: claimed.id,
+        lastError: 'invalid recipient',
+        attempts: claimed.attempts + 1,
+        status: 'failed',
+        tx,
+      }),
+    );
+
+    const claimedAgain = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(Date.now() + 60 * 60_000),
+        tx,
+      }),
+    );
+    expect(claimedAgain).toHaveLength(0);
+  });
+
+  it('two concurrent claims never return the same row (FOR UPDATE SKIP LOCKED)', async () => {
+    await mintOne();
+    const now = new Date();
+
+    const claimOnce = () =>
+      testDb.transaction(async (tx) =>
+        outboxRepository.claimPending({
+          limit: 1,
+          now,
+          tx: asTxContext(new DrizzleTransactionContext({ tx })),
+        }),
+      );
+
+    const [first, second] = await Promise.all([claimOnce(), claimOnce()]);
+    const totalClaimed = first.length + second.length;
+
+    expect(totalClaimed).toBe(1);
+  });
+
+  it('returns claimed rows oldest-scheduled first, whatever their storage order', async () => {
+    const enqueue = (id: string, scheduledFor: Date) =>
+      testDb.insert(outboxMessage).values({
+        id,
+        churchId: fixture.churchA.id,
+        kind: 'notification',
+        payload: {},
+        scheduledFor,
+        correlationId: id,
+      });
+    const earlier = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+    const later = '00000000-0000-4000-8000-000000000000';
+    await enqueue(earlier, new Date('2026-01-01T00:00:00.000Z'));
+    await enqueue(later, new Date('2026-01-01T00:00:01.000Z'));
+    // A rewritten row's new tuple lands after `later`, and its id sorts after
+    // it too, so neither heap nor primary-key order is schedule order.
+    await testDb
+      .update(outboxMessage)
+      .set({ attempts: 0 })
+      .where(eq(outboxMessage.id, earlier));
+
+    const claimed = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+
+    expect(claimed.map(({ id }) => id)).toEqual([earlier, later]);
+  });
+});
+
+describe('DrizzleOutboxRepository.findLatestStatusForMinistryInvitation', () => {
+  it('reads the pending status enqueued by minting', async () => {
+    const invitation = await mintOne();
+
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: invitation.id,
+      },
+    );
+
+    expect(status).toBe('pending');
+  });
+
+  it('reflects sent once the claimed row is marked sent', async () => {
+    const invitation = await mintOne();
+    const [claimed] = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+    if (!claimed) throw new Error('Expected a claimed row');
+
+    await unitOfWork.run((tx) =>
+      outboxRepository.markSent({
+        id: claimed.id,
+        providerMessageId: 'provider-123',
+        sentAt: new Date(),
+        tx,
+      }),
+    );
+
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: invitation.id,
+      },
+    );
+
+    expect(status).toBe('sent');
+  });
+
+  it('returns the most recently enqueued row after a resend', async () => {
+    const invitation = await mintOne();
+    const [claimed] = await unitOfWork.run((tx) =>
+      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+    );
+    if (!claimed) throw new Error('Expected a claimed row');
+    await unitOfWork.run((tx) =>
+      outboxRepository.markSent({
+        id: claimed.id,
+        providerMessageId: 'provider-123',
+        sentAt: new Date(),
+        tx,
+      }),
+    );
+
+    await manager.resend({
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      ministryInvitationId: invitation.id,
+      callerId: UserId.from(fixture.adminA),
+    });
+
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: invitation.id,
+      },
+    );
+
+    expect(status).toBe('pending');
+  });
+
+  it('returns null when no outbox row exists for the invitation', async () => {
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryInvitationId: 'non-existent-invitation' as MinistryInvitationId,
+      },
+    );
+
+    expect(status).toBeNull();
+  });
+
+  it('is church-isolated: another Church cannot read this invitation delivery status', async () => {
+    const invitation = await mintOne();
+
+    const status = await outboxRepository.findLatestStatusForMinistryInvitation(
+      {
+        churchId: ChurchId.from(fixture.churchB.id),
+        ministryInvitationId: invitation.id,
+      },
+    );
+
+    expect(status).toBeNull();
+  });
+});

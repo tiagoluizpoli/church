@@ -1,31 +1,65 @@
 {
   "name": "server",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "src/main/server.ts",
+  "exports": {
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
   "scripts": {
     "build": "tsdown",
-    "check-types": "tsc -b",
-    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
-    "dev": "bun run --hot src/index.ts",
-    "start": "bun run dist/index.mjs"
+    "typecheck": "tsc -b",
+    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/main/server.ts --outfile server",
+    "dev": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- node --import tsx/esm --watch src/main/server.ts",
+    "start": "bun run dist/server.mjs",
+    "start:deployment": "CHURCH_EXEC_PURPOSE=deployment varlock run --path . -- bun src/main/server.ts",
+    "export:openapi": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun run src/scripts/export-openapi.ts",
+    "db:reseed:dev": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun seeds/development/reseed-dev.ts",
+    "operator": "CHURCH_EXEC_PURPOSE=deployment varlock run --path . -- bun src/scripts/operator.ts",
+    "environment:reset": "CHURCH_EXEC_PURPOSE=deployment varlock run --path . -- bun seeds/deployment/reset-environment.ts",
+    "db:init-system": "CHURCH_EXEC_PURPOSE=development varlock run --path . -- bun run src/scripts/init-system.ts",
+    "start:e2e": "CHURCH_EXEC_PURPOSE=e2e varlock run --path . -- sh -c 'bun --no-env-file ../../tooling/env/e2e-process-preflight.ts server && exec node --import tsx/esm src/main/server.ts'",
+    "test:unit": "vitest run --project unit",
+    "test:unit:related": "bun ../../tooling/validation/vitest-related.ts --project unit",
+    "test:integration": "CHURCH_EXEC_PURPOSE=integration bun ../../tooling/diagnostics/run-managed.ts test:integration --step server -- varlock run --path . -- bun vitest run --project integration",
+    "test": "bun run test:unit && bun run test:integration"
   },
   "dependencies": {
-    "@base-fullstack-template/api": "workspace:*",
-    "@base-fullstack-template/auth": "workspace:*",
-    "@base-fullstack-template/db": "workspace:*",
-    "@base-fullstack-template/env": "workspace:*",
+    "@church/app-config": "workspace:*",
+    "@church/auth": "workspace:*",
+    "@church/core": "workspace:*",
+    "@church/db": "workspace:*",
+    "@church/env": "workspace:*",
+    "@church/i18n": "workspace:*",
+    "@church/time": "workspace:*",
     "@fastify/cors": "^11.0.1",
-    "@hono/trpc-server": "^0.4.0",
-    "@trpc/server": "catalog:",
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^6.0.0",
+    "@scalar/fastify-api-reference": "^1.62.1",
+    "@types/pg": "catalog:",
     "better-auth": "catalog:",
-    "dotenv": "catalog:",
+    "date-fns": "^4.1.0",
+    "drizzle-orm": "catalog:",
     "fastify": "^5.3.3",
+    "fastify-type-provider-zod": "^7.0.0",
+    "nodemailer": "^10.5.0",
+    "pg": "^8.17.1",
+    "pino": "^10.3.1",
+    "pino-pretty": "^13.1.3",
+    "resend": "^6.18.1",
+    "tsx": "^4.22.4",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@base-fullstack-template/config": "workspace:*",
+    "@church/config": "workspace:*",
     "@types/bun": "catalog:",
+    "@types/nodemailer": "^8.0.2",
+    "@types/smtp-server": "^3.5.13",
+    "@vitest/coverage-v8": "^5.0.4",
+    "smtp-server": "^3.21.4",
     "tsdown": "^0.16.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "catalog:"
   }
 }

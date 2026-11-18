@@ -1,0 +1,3 @@
+# Scripts run Bun from this directory, where Bun would otherwise auto-load
+# `.env`/`.env.local`. Varlock alone loads value files (ADR-0005).
+env = false

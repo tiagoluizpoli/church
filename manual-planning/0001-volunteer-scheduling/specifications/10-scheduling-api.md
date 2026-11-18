@@ -15,9 +15,15 @@ Expose the system functionality via type-safe tRPC procedures.
 ---
 
 ## 2. Volunteer Procedures (Protected)
-- `submitAvailability(input: AvailabilitySchema)`
-- `getMySchedule(range: DateRange)`
-- `respondToAssignment(assignmentId, status, reason)`
+- `getVolunteerDashboard(input?: DashboardQuery)` -> Returns volunteer dashboard snapshot and summary counts.
+- `getMyUpcomingAssignments(input?: AssignmentWindowQuery)` -> Returns current/upcoming published assignments for the current volunteer.
+- `respondToAssignment(assignmentId, status)` -> Confirms or declines one assignment owned by the current volunteer.
+- `submitAvailability(input: AvailabilitySchema)` -> Saves event-scoped availability and may return overlap warnings.
+- `getMyAvailability(input?: AvailabilityQuery)`
+- `getMyNotifications(input?: NotificationCursorQuery)`
+- `markNotificationRead(notificationId)`
+- `markAllNotificationsRead()`
+- `getMinistrySchedule(ministryId, range?)`
 
 ---
 
@@ -30,3 +36,4 @@ Expose the system functionality via type-safe tRPC procedures.
 - **Integration**: Verify that `assignVolunteer` returns a `409` conflict when the volunteer is double-booked.
 - **Integration**: Verify that `publishSchedule` is idempotent (calling it twice doesn't send duplicate notifications).
 - **Security**: Verify that all `Leader` procedures use the RBAC middleware to check for `LEADER` or `SUB_LEADER` status.
+- **Security**: Verify that volunteer procedures never expose another volunteer's assignments, availability, notifications, or ministry schedule data beyond published volunteer-facing fields.

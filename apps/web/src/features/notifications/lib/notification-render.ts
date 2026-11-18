@@ -1,0 +1,507 @@
+interface ScheduleUpdateShift {
+  startsAt: string;
+  endsAt: string;
+  eventTitle: string;
+  roleName: string;
+  sectorName: string;
+}
+
+import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
+import {
+  formatDayLabel,
+  formatTimeOfDay,
+  parseInstant,
+  today,
+  toTimeOfDay,
+} from '@church/time';
+import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
+import {
+  formatCalendarDateOnly,
+  formatInstantOf,
+} from '@/shared/utils/church-time';
+import { pluralMessage } from '@/shared/utils/plural';
+
+interface FormatShiftLineInput {
+  shift: ScheduleUpdateShift;
+  timeZone: string;
+  locale: ReturnType<typeof getLocale>;
+}
+
+function formatShiftLine({ shift, timeZone, locale }: FormatShiftLineInput) {
+  const startsAt = parseInstant({ value: shift.startsAt });
+  const endsAt = parseInstant({ value: shift.endsAt });
+  const day = formatDayLabel({
+    day: today({ instant: startsAt, timeZone }),
+    locale,
+  });
+  const start = formatTimeOfDay({
+    time: toTimeOfDay({ instant: startsAt, timeZone }),
+  });
+  const end = formatTimeOfDay({
+    time: toTimeOfDay({ instant: endsAt, timeZone }),
+  });
+  return [
+    day,
+    `${start}–${end}`,
+    shift.eventTitle,
+    shift.roleName,
+    shift.sectorName,
+  ].join(' · ');
+}
+
+export interface RenderedNotification {
+  title: string;
+  body: string;
+  kindLabel: string;
+  /** The detail action's words when the kind names its own. */
+  actionLabel?: string;
+}
+
+/**
+ * Words for a Notification, rendered at read time from its kind and frozen
+ * data, so the cached history follows a locale change. A kind this build does
+ * not know yet (a later Flow, or a stale client) stays readable.
+ */
+export function renderNotification(
+  item: GetNotifications200ItemsItem,
+): RenderedNotification {
+  switch (item.kind) {
+    case 'ministry_invitation':
+      return {
+        ...ministryInvitationWords(item.data),
+        kindLabel: m.notification_kind_ministry_invitation(),
+        actionLabel: m.notification_ministry_invitation_action(),
+      };
+    case 'availability_opened':
+      return {
+        title: m.notification_availability_opened_title(item.data),
+        body: availabilityBody({ data: item.data, isReminder: false }),
+        kindLabel: m.notification_kind_availability_opened(),
+        actionLabel: m.email_availability_action(),
+      };
+    case 'availability_reminder':
+      return {
+        title: m.notification_availability_reminder_title(item.data),
+        body: availabilityBody({ data: item.data, isReminder: true }),
+        kindLabel: m.notification_kind_availability_reminder(),
+        actionLabel: m.email_availability_action(),
+      };
+    case 'schedule_updated': {
+      const { data } = item;
+      const timeZone = data.churchTimezone;
+      const format = (shift: ScheduleUpdateShift) =>
+        formatShiftLine({ shift, timeZone, locale: getLocale() });
+      const lines = data.changes.map((change) => {
+        if (change.kind === 'moved') {
+          const before =
+            format(change.before) +
+            (change.before.swapRequestCovered
+              ? m.notification_schedule_updated_covered()
+              : '');
+          return m.notification_schedule_updated_moved({
+            before,
+            after: format(change.after),
+          });
+        }
+        const shift =
+          format(change.assignment) +
+          (change.kind === 'removed' && change.assignment.swapRequestCovered
+            ? m.notification_schedule_updated_covered()
+            : '');
+        return change.kind === 'added'
+          ? m.notification_schedule_updated_added({ shift })
+          : m.notification_schedule_updated_removed({ shift });
+      });
+      return {
+        title: m.notification_schedule_updated_title({
+          ministryName: data.ministryName,
+        }),
+        body: [
+          m.notification_schedule_updated_body({
+            cycleName: data.cycleName,
+            ministryName: data.ministryName,
+          }),
+          ...lines,
+        ].join('\n'),
+        kindLabel: m.notification_kind_schedule_updated(),
+        actionLabel: m.email_schedule_published_action(),
+      };
+    }
+    case 'schedule_published': {
+      const { data } = item;
+      const timeZone = data.churchTimezone;
+      const shifts = data.shifts.map((shift) =>
+        formatShiftLine({ shift, timeZone, locale: getLocale() }),
+      );
+      return {
+        title: m.notification_schedule_published_title({
+          ministryName: data.ministryName,
+        }),
+        body: [
+          m.notification_schedule_published_body({
+            cycleName: data.cycleName,
+            ministryName: data.ministryName,
+          }),
+          ...shifts,
+        ].join('\n'),
+        kindLabel: m.notification_kind_schedule_published(),
+        actionLabel: m.email_schedule_published_action(),
+      };
+    }
+    case 'swap_request': {
+      const { data } = item;
+      const shift = formatShiftLine({
+        shift: data.shift,
+        timeZone: data.churchTimezone,
+        locale: getLocale(),
+      });
+      return {
+        title: m.notification_swap_request_title(data),
+        body: [
+          m.notification_swap_request_body({
+            ministryName: data.ministryName,
+            shift,
+          }),
+          ...(data.note
+            ? [m.notification_swap_request_note({ note: data.note })]
+            : []),
+        ].join('\n'),
+        kindLabel: m.notification_kind_swap_request(),
+        actionLabel: m.notification_swap_request_action(),
+      };
+    }
+    case 'cycle_ready_to_prepare':
+      return {
+        ...cycleReadyToPrepareWords(item.data),
+        kindLabel: m.notification_kind_cycle_ready_to_prepare(),
+        actionLabel: m.notification_cycle_ready_to_prepare_action(),
+      };
+    case 'event_cancelled': {
+      const { data } = item;
+      const locale = getLocale();
+      return {
+        title: eventCancelledTitle({ ...data, timeZone: data.churchTimezone }),
+        body: [
+          m.notification_event_cancelled_body(),
+          ...data.shifts.map((shift) =>
+            formatShiftLine({ shift, timeZone: data.churchTimezone, locale }),
+          ),
+        ].join('\n'),
+        kindLabel: m.notification_kind_event_cancelled(),
+        actionLabel: m.notification_event_cancelled_action(),
+      };
+    }
+    case 'event_changed':
+      return {
+        ...eventChangedWords(item.data),
+        kindLabel: m.notification_kind_event_changed(),
+        actionLabel: m.notification_event_changed_action(),
+      };
+    case 'swap_request_answered': {
+      const { data } = item;
+      return {
+        title: m.notification_swap_request_answered_title(),
+        body: [
+          m.notification_swap_request_answered_body({
+            leaderName: data.leaderName,
+          }),
+          formatShiftLine({
+            shift: data.shift,
+            timeZone: data.churchTimezone,
+            locale: getLocale(),
+          }),
+          ...(data.reply
+            ? [
+                m.notification_swap_request_answered_reply({
+                  reply: data.reply,
+                }),
+              ]
+            : []),
+          m.notification_swap_request_answered_ask_again(),
+        ].join('\n'),
+        kindLabel: m.notification_kind_swap_request_answered(),
+        actionLabel: m.notification_swap_request_answered_action(),
+      };
+    }
+    default:
+      return {
+        title: m.notification_unknown_title(),
+        body: m.notification_unknown_body(),
+        kindLabel: m.notification_unknown_kind(),
+      };
+  }
+}
+
+type MinistryInvitationData = Extract<
+  GetNotifications200ItemsItem,
+  { kind: 'ministry_invitation' }
+>['data'];
+
+/**
+ * T1's inviter-led offer from the frozen facts. A row stored before those
+ * facts existed keeps its original words rather than guessing them.
+ */
+function ministryInvitationWords(data: MinistryInvitationData) {
+  const { ministryName, churchName, churchTimezone, inviterName } = data;
+  const { ministryAccessLevel, roleNames, expiresAt } = data;
+  if (
+    churchName === undefined ||
+    churchTimezone === undefined ||
+    inviterName === undefined ||
+    ministryAccessLevel === undefined ||
+    roleNames === undefined ||
+    expiresAt === undefined
+  ) {
+    return {
+      title: m.notification_ministry_invitation_title({ ministryName }),
+      body: m.notification_ministry_invitation_body({ ministryName }),
+    };
+  }
+  const names = { inviterName, ministryName, churchName };
+  const isLeader = ministryAccessLevel === 'leader';
+  const expires = m.email_invitation_expires({
+    expiresAt: formatInstantOf({ value: expiresAt, timeZone: churchTimezone }),
+  });
+  return {
+    title: isLeader
+      ? m.email_invitation_lead_title(names)
+      : m.email_invitation_serve_title(names),
+    body: [
+      isLeader
+        ? m.email_invitation_lead_body_inviter(names)
+        : m.email_invitation_serve_body_inviter(names),
+      ...(roleNames.length > 0
+        ? [m.email_invitation_roles({ roles: roleNames.join(', ') })]
+        : []),
+      expires,
+    ].join('\n'),
+  };
+}
+
+interface AvailabilityData {
+  ministryName: string;
+  cycleName: string;
+  cycleStartDate: string;
+  cycleEndDate: string;
+  shiftCount?: number;
+  answerBy?: string;
+  deadlinePassed?: boolean;
+}
+
+interface AvailabilityBodyInput {
+  data: AvailabilityData;
+  isReminder: boolean;
+}
+
+/**
+ * The email's fact lines; rows frozen before the count and Deadline lack them.
+ * Only N4 says the Deadline was missed; N3 always says Answer by. Cycle bounds
+ * and the Deadline name days, so no timezone applies.
+ */
+function availabilityBody({ data, isReminder }: AvailabilityBodyInput) {
+  const { shiftCount, answerBy, deadlinePassed } = data;
+  const days = {
+    startDate: formatCalendarDateOnly({ value: data.cycleStartDate }),
+    endDate: formatCalendarDateOnly({ value: data.cycleEndDate }),
+  };
+  const body = (shifts: string) =>
+    isReminder
+      ? m.notification_availability_reminder_body({ shifts, ...days })
+      : m.notification_availability_opened_body({ shifts, ...days });
+  const shifts =
+    shiftCount === undefined
+      ? m.notification_availability_span(days)
+      : body(
+          pluralMessage({
+            count: shiftCount,
+            one: () => m.notification_availability_shifts_one(),
+            other: () =>
+              m.notification_availability_shifts_other({ count: shiftCount }),
+          }),
+        );
+  const markOnly = m.notification_availability_mark_only();
+  if (answerBy === undefined) return `${shifts}\n${markOnly}`;
+  const deadline = formatCalendarDateOnly({ value: answerBy });
+  const answerLine =
+    isReminder && deadlinePassed
+      ? m.notification_availability_deadline_passed({ deadline })
+      : m.notification_availability_answer_by({ deadline });
+  return `${shifts}\n${answerLine}\n${markOnly}`;
+}
+
+type CycleReadyToPrepareData = Extract<
+  GetNotifications200ItemsItem,
+  { kind: 'cycle_ready_to_prepare' }
+>['data'];
+
+/** N2: the sent Cycle, its days and Events, and the recipient's Ministries. */
+function cycleReadyToPrepareWords(data: CycleReadyToPrepareData) {
+  const { cycleName, eventCount, ministries } = data;
+  const events = pluralMessage({
+    count: eventCount,
+    one: m.notification_cycle_ready_to_prepare_events_one,
+    other: () =>
+      m.notification_cycle_ready_to_prepare_events_other({ count: eventCount }),
+  });
+  const ministryList = {
+    ministryNames: ministries.map((ministry) => ministry.name).join(', '),
+  };
+  return {
+    title: m.notification_cycle_ready_to_prepare_title({ cycleName }),
+    body: [
+      m.notification_cycle_ready_to_prepare_body({
+        cycleName,
+        startDate: formatCalendarDateOnly({ value: data.cycleStartDate }),
+        endDate: formatCalendarDateOnly({ value: data.cycleEndDate }),
+        events,
+      }),
+      pluralMessage({
+        count: ministries.length,
+        one: () =>
+          m.notification_cycle_ready_to_prepare_ministries_one(ministryList),
+        other: () =>
+          m.notification_cycle_ready_to_prepare_ministries_other(ministryList),
+      }),
+    ].join('\n'),
+  };
+}
+
+type EventChangedData = Extract<
+  GetNotifications200ItemsItem,
+  { kind: 'event_changed' }
+>['data'];
+
+/** N10: the Event, who changed it and the recipient's affected Ministries. */
+function eventChangedWords(data: EventChangedData) {
+  const { cycleName, eventTitle, ministries, change, churchTimezone } = data;
+  const { adminName } = data;
+  const when = eventWhen({ ...change, timeZone: churchTimezone });
+  if (change.kind === 'cancel') {
+    return {
+      title: eventCancelledTitle({
+        eventTitle,
+        start: change.start,
+        timeZone: churchTimezone,
+      }),
+      body: [
+        when,
+        ...change.impacts.map(({ ministryName, volunteerCount: count }) =>
+          pluralMessage({
+            count,
+            one: () =>
+              m.notification_event_changed_cancel_ministry_one({
+                ministryName,
+                adminName,
+              }),
+            other: () =>
+              m.notification_event_changed_cancel_ministry_other({
+                ministryName,
+                adminName,
+                count,
+              }),
+          }),
+        ),
+      ].join('\n'),
+    };
+  }
+  if (change.kind === 'move') {
+    const previous = eventWhen({
+      start: change.previousStart,
+      end: change.previousEnd,
+      timeZone: churchTimezone,
+    });
+    const { volunteerCount: count } = change;
+    return {
+      title: m.notification_event_changed_move_title({ eventTitle, when }),
+      body: [
+        pluralMessage({
+          count,
+          one: () =>
+            m.notification_event_changed_move_body_one({ adminName, previous }),
+          other: () =>
+            m.notification_event_changed_move_body_other({
+              adminName,
+              previous,
+              count,
+            }),
+        }),
+        ...change.impacts.map(eventMoveImpactLine),
+      ].join('\n'),
+    };
+  }
+  const ministryList = {
+    ministryNames: ministries.map((ministry) => ministry.name).join(', '),
+  };
+  return {
+    title: m.notification_event_changed_add_title({ cycleName, eventTitle }),
+    body: [
+      m.notification_event_changed_add_body({ adminName, when }),
+      pluralMessage({
+        count: ministries.length,
+        one: () => m.notification_event_changed_ministries_one(ministryList),
+        other: () =>
+          m.notification_event_changed_ministries_other(ministryList),
+      }),
+    ].join('\n'),
+  };
+}
+
+type EventMoveImpact = Extract<
+  EventChangedData['change'],
+  { kind: 'move' }
+>['impacts'][number];
+
+/** One Ministry's affected count, noting answers given for the old time. */
+function eventMoveImpactLine({
+  ministryName,
+  volunteerCount: count,
+  answersGiven,
+}: EventMoveImpact): string {
+  const line = pluralMessage({
+    count,
+    one: () => m.notification_event_changed_move_ministry_one({ ministryName }),
+    other: () =>
+      m.notification_event_changed_move_ministry_other({ ministryName, count }),
+  });
+  return answersGiven ? `${line} · ${m.prepare_answers_coverage_note()}` : line;
+}
+
+interface EventCancelledTitleInput {
+  eventTitle: string;
+  start: string;
+  timeZone: string;
+}
+
+/** N9 and N10 cancel share it: the scope's Church-Timezone day. */
+function eventCancelledTitle({
+  eventTitle,
+  start,
+  timeZone,
+}: EventCancelledTitleInput): string {
+  const startInstant = parseInstant({ value: start });
+  const startDay = today({ instant: startInstant, timeZone });
+  const locale = getLocale();
+  const day = formatDayLabel({ day: startDay, locale });
+  return m.notification_event_cancelled_title({ eventTitle, day });
+}
+
+interface EventWhenInput {
+  start: string;
+  end: string;
+  timeZone: string;
+}
+
+/** The Church-Timezone day and time range of an Event. */
+function eventWhen({ start, end, timeZone }: EventWhenInput): string {
+  const startInstant = parseInstant({ value: start });
+  const endInstant = parseInstant({ value: end });
+  const startDay = today({ instant: startInstant, timeZone });
+  const startTime = toTimeOfDay({ instant: startInstant, timeZone });
+  const endTime = toTimeOfDay({ instant: endInstant, timeZone });
+  const locale = getLocale();
+  const day = formatDayLabel({ day: startDay, locale });
+  const from = formatTimeOfDay({ time: startTime });
+  const to = formatTimeOfDay({ time: endTime });
+  return `${day} · ${from}–${to}`;
+}

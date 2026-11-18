@@ -1,0 +1,61 @@
+# Deployed topology (one Dokploy Compose application per environment). The
+# local topology stays in the root docker-compose.yml. Every value comes from
+# the environment's Dokploy configuration; a missing one stops the deployment.
+# Images are the immutable digests a deployment selects; nothing is built here.
+
+x-database-url: &database-url
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+
+services:
+  # Applies pending migrations once, before the new server starts. Never seeds.
+  migrate:
+    image: ${SERVER_IMAGE:?SERVER_IMAGE is required}
+    command: ["bun", "run", "--cwd", "/app/packages/db", "db:migrate:deployment"]
+    restart: "no"
+    environment:
+      <<: *database-url
+    networks: [database]
+
+  server:
+    image: ${SERVER_IMAGE:?SERVER_IMAGE is required}
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *database-url
+      # Names the server's database connections; environment:reset refuses while any exist.
+      PGAPPNAME: church-server
+      CHURCH_ENVIRONMENT: ${CHURCH_ENVIRONMENT:?CHURCH_ENVIRONMENT must be development, staging or production}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      BETTER_AUTH_URL: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      CORS_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      RESEND_API_KEY: ${RESEND_API_KEY:?RESEND_API_KEY is required}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:?RESEND_FROM_EMAIL is required}
+    healthcheck:
+      test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:3000/api/health'); process.exit(r.ok ? 0 : 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [default, database]
+
+  # The only public service: Dokploy routes the environment's domain to :8080.
+  web:
+    image: ${WEB_IMAGE:?WEB_IMAGE is required}
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/revision.txt"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks: [default]
+
+networks:
+  # Reaches the host's shared PostgreSQL instance. Only migrate and server join
+  # it, so `server` stays unambiguous for web on the project's own network.
+  database:
+    name: ${DATABASE_NETWORK:-dokploy-network}
+    external: true

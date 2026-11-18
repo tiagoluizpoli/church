@@ -1,0 +1,238 @@
+import { describe, expect, it } from 'vitest';
+import {
+  addOptimisticAssignment,
+  type CycleBuilderQueryData,
+  createOptimisticAssignmentId,
+  isOptimisticAssignmentId,
+  removeOptimisticAssignment,
+  replaceOptimisticAssignmentVolunteer,
+} from '@/features/scheduling/hooks/use-cycle-builder.optimistic';
+import type { GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem } from '@/infrastructure/api/churchAPI.schemas';
+
+type RawAssignment =
+  GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem;
+
+interface MakeDataInput {
+  assignments: RawAssignment[];
+}
+
+const EXISTING_ASSIGNMENT: RawAssignment = {
+  id: 'assignment-1',
+  churchId: 'church-1',
+  eventTimeBlockId: 'event-time-block-1',
+  participationId: 'participation-1',
+  shiftId: 'shift-1',
+  volunteerId: 'ana',
+  roleId: 'role-1',
+  shiftRequirementId: 'requirement-role-1',
+  status: 'confirmed',
+  assignedAt: '2026-07-01T10:00:00.000Z',
+  lateMark: false,
+};
+
+function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
+  return {
+    affectedVolunteerCount: 0,
+    cycle: {
+      id: 'cycle-1',
+      name: 'August',
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
+    },
+    roles: [{ id: 'role-1', name: 'Sound' }],
+    events: [
+      {
+        participation: {
+          id: 'participation-1',
+          churchId: 'church-1',
+          eventId: 'event-1',
+          ministryId: 'ministry-1',
+          state: 'assigning',
+        },
+        event: {
+          id: 'event-1',
+          churchId: 'church-1',
+          cycleId: 'cycle-1',
+          title: 'Sunday service',
+          start: '2026-07-05T09:00:00.000Z',
+          end: '2026-07-05T11:00:00.000Z',
+          status: 'scheduled',
+          createdAt: '2026-07-01T09:00:00.000Z',
+          updatedAt: '2026-07-01T09:00:00.000Z',
+        },
+        eventTimeBlocks: [
+          {
+            eventTimeBlock: {
+              id: 'event-time-block-1',
+              churchId: 'church-1',
+              eventId: 'event-1',
+              startTime: '2026-07-05T09:00:00.000Z',
+              endTime: '2026-07-05T11:00:00.000Z',
+              status: 'active',
+              requirements: [],
+            },
+            included: true,
+            shifts: [
+              {
+                shift: {
+                  id: 'shift-1',
+                  participationId: 'participation-1',
+                  eventTimeBlockId: 'event-time-block-1',
+                  startTime: '2026-07-05T09:00:00.000Z',
+                  endTime: '2026-07-05T11:00:00.000Z',
+                },
+                requirements: [
+                  {
+                    id: 'requirement-1',
+                    shiftId: 'shift-1',
+                    participationId: 'participation-1',
+                    sectorName: 'Main',
+                    sectorId: 'sector-1',
+                    roleId: 'role-1',
+                    peopleNeeded: 1,
+                  },
+                ],
+                assignments,
+                eligibleVolunteers: [],
+              },
+              {
+                shift: {
+                  id: 'shift-2',
+                  participationId: 'participation-1',
+                  eventTimeBlockId: 'event-time-block-1',
+                  startTime: '2026-07-05T09:00:00.000Z',
+                  endTime: '2026-07-05T11:00:00.000Z',
+                },
+                requirements: [],
+                assignments: [],
+                eligibleVolunteers: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+describe('addOptimisticAssignment', () => {
+  it('appends a pending row to the targeted shift only', () => {
+    const data = makeData({ assignments: [EXISTING_ASSIGNMENT] });
+
+    const next = addOptimisticAssignment({
+      data,
+      assignmentId: 'optimistic:1',
+      shiftId: 'shift-1',
+      body: { volunteerId: 'bruno', shiftRequirementId: 'requirement-1' },
+      assignedAt: '2026-07-02T10:00:00.000Z',
+    });
+
+    const shifts = next.events[0].eventTimeBlocks[0].shifts;
+    expect(shifts[0].assignments).toEqual([
+      EXISTING_ASSIGNMENT,
+      {
+        id: 'optimistic:1',
+        churchId: 'church-1',
+        eventTimeBlockId: 'event-time-block-1',
+        participationId: 'participation-1',
+        shiftId: 'shift-1',
+        volunteerId: 'bruno',
+        roleId: 'role-1',
+        shiftRequirementId: 'requirement-1',
+        status: 'pending',
+        assignedAt: '2026-07-02T10:00:00.000Z',
+        lateMark: false,
+      },
+    ]);
+    expect(shifts[1].assignments).toEqual([]);
+  });
+
+  it('leaves the previous cache untouched so a rollback can restore it', () => {
+    const data = makeData({ assignments: [EXISTING_ASSIGNMENT] });
+
+    addOptimisticAssignment({
+      data,
+      assignmentId: 'optimistic:1',
+      shiftId: 'shift-1',
+      body: { volunteerId: 'bruno', shiftRequirementId: 'requirement-1' },
+      assignedAt: '2026-07-02T10:00:00.000Z',
+    });
+
+    expect(data.events[0].eventTimeBlocks[0].shifts[0].assignments).toEqual([
+      EXISTING_ASSIGNMENT,
+    ]);
+  });
+
+  it('is a no-op when the shift is not in the cache', () => {
+    const data = makeData({ assignments: [EXISTING_ASSIGNMENT] });
+
+    const next = addOptimisticAssignment({
+      data,
+      assignmentId: 'optimistic:1',
+      shiftId: 'shift-missing',
+      body: { volunteerId: 'bruno', shiftRequirementId: 'requirement-1' },
+      assignedAt: '2026-07-02T10:00:00.000Z',
+    });
+
+    expect(next.events[0].eventTimeBlocks[0].shifts[0].assignments).toEqual([
+      EXISTING_ASSIGNMENT,
+    ]);
+  });
+});
+
+describe('removeOptimisticAssignment', () => {
+  it('drops the assignment from the shift that holds it', () => {
+    const data = makeData({ assignments: [EXISTING_ASSIGNMENT] });
+
+    const next = removeOptimisticAssignment({
+      data,
+      assignmentId: 'assignment-1',
+    });
+
+    expect(next.events[0].eventTimeBlocks[0].shifts[0].assignments).toEqual([]);
+  });
+
+  it('is a no-op for an unknown assignment id', () => {
+    const data = makeData({ assignments: [EXISTING_ASSIGNMENT] });
+
+    const next = removeOptimisticAssignment({
+      data,
+      assignmentId: 'assignment-missing',
+    });
+
+    expect(next.events[0].eventTimeBlocks[0].shifts[0].assignments).toEqual([
+      EXISTING_ASSIGNMENT,
+    ]);
+  });
+});
+
+describe('replaceOptimisticAssignmentVolunteer', () => {
+  it('swaps the volunteer in place', () => {
+    const data = makeData({ assignments: [EXISTING_ASSIGNMENT] });
+
+    const next = replaceOptimisticAssignmentVolunteer({
+      data,
+      assignmentId: 'assignment-1',
+      volunteerId: 'bruno',
+    });
+
+    expect(next.events[0].eventTimeBlocks[0].shifts[0].assignments[0]).toEqual({
+      ...EXISTING_ASSIGNMENT,
+      volunteerId: 'bruno',
+    });
+    expect(
+      data.events[0].eventTimeBlocks[0].shifts[0].assignments[0].volunteerId,
+    ).toBe('ana');
+  });
+});
+
+describe('optimistic assignment ids', () => {
+  it('marks generated ids as client-owned', () => {
+    const assignmentId = createOptimisticAssignmentId();
+
+    expect(isOptimisticAssignmentId({ assignmentId })).toBe(true);
+    expect(isOptimisticAssignmentId({ assignmentId: 'assignment-1' })).toBe(
+      false,
+    );
+  });
+});

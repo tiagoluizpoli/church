@@ -1,0 +1,174 @@
+import type { AppConfig } from '@church/app-config';
+import { invitationVerificationCode } from '@church/db';
+import { addMilliseconds, fromDate, toDate } from '@church/time';
+import { and, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import type {
+  ClaimVerificationCodeDeliveryInput,
+  ConsumeVerificationCodeIfValidInput,
+  FindVerificationCodeInput,
+  InvitationVerificationCodeRepository,
+  RecordFailedVerificationAttemptIfAllowedInput,
+  ReleaseVerificationCodeDeliveryClaimInput,
+} from '../../domain/contracts/infrastructure/invitation-verification-code.repository';
+import type { VerificationCodeState } from '../../domain/entities/invitation-verification-code';
+import type { AnyDrizzleDb } from './types';
+
+interface DrizzleInvitationVerificationCodeRepositoryInput {
+  db: AnyDrizzleDb;
+  config: AppConfig;
+}
+
+export class DrizzleInvitationVerificationCodeRepository
+  implements InvitationVerificationCodeRepository
+{
+  constructor({
+    db,
+    config,
+  }: DrizzleInvitationVerificationCodeRepositoryInput) {
+    this.db = db;
+    const { verificationCode } = config;
+    this.resendCooldownMs = verificationCode.resendCooldownMs;
+    this.maxAttempts = verificationCode.maxAttempts;
+  }
+
+  private readonly db: AnyDrizzleDb;
+  private readonly resendCooldownMs: number;
+  private readonly maxAttempts: number;
+
+  async find({
+    churchInvitationId,
+  }: FindVerificationCodeInput): Promise<VerificationCodeState | null> {
+    const [row] = await this.db
+      .select()
+      .from(invitationVerificationCode)
+      .where(
+        eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
+      )
+      .limit(1);
+    return row ? mapVerificationCode({ row }) : null;
+  }
+
+  async claimDelivery({
+    churchInvitationId,
+    codeHash,
+    expiresAt,
+    sentAt,
+  }: ClaimVerificationCodeDeliveryInput): Promise<boolean> {
+    const resendEligibleAtInstant = addMilliseconds({
+      instant: fromDate({ date: sentAt }),
+      milliseconds: -this.resendCooldownMs,
+    });
+    const resendEligibleAt = toDate({ instant: resendEligibleAtInstant });
+    const [row] = await this.db
+      .insert(invitationVerificationCode)
+      .values({
+        churchInvitationId,
+        codeHash,
+        expiresAt,
+        lastSentAt: sentAt,
+        failedAttempts: 0,
+        consumedAt: null,
+        redemptionIdempotencyKey: null,
+      })
+      .onConflictDoUpdate({
+        target: invitationVerificationCode.churchInvitationId,
+        set: {
+          codeHash,
+          expiresAt,
+          lastSentAt: sentAt,
+          failedAttempts: 0,
+          consumedAt: null,
+          redemptionIdempotencyKey: null,
+        },
+        where: or(
+          isNull(invitationVerificationCode.lastSentAt),
+          lt(invitationVerificationCode.lastSentAt, resendEligibleAt),
+          eq(invitationVerificationCode.lastSentAt, resendEligibleAt),
+        ),
+      })
+      .returning({ id: invitationVerificationCode.id });
+    return row != null;
+  }
+
+  async releaseDeliveryClaim({
+    churchInvitationId,
+    codeHash,
+    sentAt,
+  }: ReleaseVerificationCodeDeliveryClaimInput): Promise<void> {
+    await this.db
+      .delete(invitationVerificationCode)
+      .where(
+        and(
+          eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
+          eq(invitationVerificationCode.codeHash, codeHash),
+          eq(invitationVerificationCode.lastSentAt, sentAt),
+        ),
+      );
+  }
+
+  async consumeIfValid({
+    churchInvitationId,
+    candidateHash,
+    consumedAt,
+    now,
+    redemptionIdempotencyKey,
+  }: ConsumeVerificationCodeIfValidInput): Promise<boolean> {
+    const [row] = await this.db
+      .update(invitationVerificationCode)
+      .set({ consumedAt, redemptionIdempotencyKey })
+      .where(
+        and(
+          eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
+          eq(invitationVerificationCode.codeHash, candidateHash),
+          isNull(invitationVerificationCode.consumedAt),
+          gt(invitationVerificationCode.expiresAt, now),
+          lt(invitationVerificationCode.failedAttempts, this.maxAttempts),
+        ),
+      )
+      .returning({ id: invitationVerificationCode.id });
+    return row != null;
+  }
+
+  async recordFailedAttemptIfAllowed({
+    churchInvitationId,
+    candidateHash,
+    now,
+  }: RecordFailedVerificationAttemptIfAllowedInput): Promise<boolean> {
+    const [row] = await this.db
+      .update(invitationVerificationCode)
+      .set({
+        failedAttempts: sql`${invitationVerificationCode.failedAttempts} + 1`,
+      })
+      .where(
+        and(
+          eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
+          ne(invitationVerificationCode.codeHash, candidateHash),
+          isNull(invitationVerificationCode.consumedAt),
+          gt(invitationVerificationCode.expiresAt, now),
+          lt(invitationVerificationCode.failedAttempts, this.maxAttempts),
+        ),
+      )
+      .returning({ id: invitationVerificationCode.id });
+    return row != null;
+  }
+}
+
+type InvitationVerificationCodeRow =
+  typeof invitationVerificationCode.$inferSelect;
+
+interface MapVerificationCodeInput {
+  row: InvitationVerificationCodeRow;
+}
+
+function mapVerificationCode({
+  row,
+}: MapVerificationCodeInput): VerificationCodeState {
+  return {
+    codeHash: row.codeHash,
+    expiresAt: fromDate({ date: row.expiresAt }),
+    failedAttempts: row.failedAttempts,
+    consumedAt: row.consumedAt ? fromDate({ date: row.consumedAt }) : null,
+    redemptionIdempotencyKey: row.redemptionIdempotencyKey,
+    lastSentAt: fromDate({ date: row.lastSentAt }),
+  };
+}

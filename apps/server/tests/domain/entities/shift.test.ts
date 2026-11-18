@@ -1,0 +1,196 @@
+import { type Instant, parseInstant } from '@church/time';
+import { describe, expect, it } from 'vitest';
+import type {
+  ChurchId,
+  EventTimeBlockId,
+  MinistryParticipationId,
+} from '@/domain/branded-ids';
+import { Shift } from '@/domain/entities/shift';
+import { InvalidTimeRangeError, ShiftOutOfBoundsError } from '@/domain/errors';
+
+const churchId = '11111111-1111-4111-8111-111111111111' as ChurchId;
+const participationId =
+  '55555555-5555-4555-8555-555555555555' as MinistryParticipationId;
+const eventTimeBlockId =
+  '66666666-6666-4666-8666-666666666666' as EventTimeBlockId;
+
+const eventTimeBlockBounds = {
+  startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+  endTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
+};
+
+interface BuildShiftInput {
+  startTime: Instant;
+  endTime: Instant;
+  label?: string;
+}
+
+function buildShift({ startTime, endTime, label }: BuildShiftInput): Shift {
+  return new Shift({
+    props: {
+      churchId,
+      participationId,
+      eventTimeBlockId,
+      startTime,
+      endTime,
+      label,
+    },
+    eventTimeBlockBounds,
+  });
+}
+
+describe('Shift entity (DL1-SH)', () => {
+  it('DL1-SH-01 constructs a shift within event time block bounds', () => {
+    const shift = buildShift({
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+      label: 'First serve',
+    });
+
+    expect(shift.churchId).toBe(churchId);
+    expect(shift.participationId).toBe(participationId);
+    expect(shift.eventTimeBlockId).toBe(eventTimeBlockId);
+    expect(shift.label).toBe('First serve');
+  });
+
+  it('DL1-SH-02 accepts a shift equal to the whole event time block', () => {
+    const shift = buildShift({
+      startTime: eventTimeBlockBounds.startTime,
+      endTime: eventTimeBlockBounds.endTime,
+    });
+
+    expect(shift.startTime).toEqual(eventTimeBlockBounds.startTime);
+    expect(shift.endTime).toEqual(eventTimeBlockBounds.endTime);
+  });
+
+  it('DL1-SH-03 rejects a shift starting before the event time block', () => {
+    expect(() =>
+      buildShift({
+        startTime: parseInstant({ value: '2026-08-02T08:59:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+      }),
+    ).toThrow(ShiftOutOfBoundsError);
+  });
+
+  it('DL1-SH-04 rejects a shift ending after the event time block', () => {
+    expect(() =>
+      buildShift({
+        startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T12:01:00.000Z' }),
+      }),
+    ).toThrow(ShiftOutOfBoundsError);
+  });
+
+  it('DL1-SH-05 rejects a shift with start >= end', () => {
+    expect(() =>
+      buildShift({
+        startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+      }),
+    ).toThrow(InvalidTimeRangeError);
+
+    expect(() =>
+      buildShift({
+        startTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+      }),
+    ).toThrow(InvalidTimeRangeError);
+  });
+
+  it('DL1-SH-06 allows shifts touching event time block start and end exactly', () => {
+    const opening = buildShift({
+      startTime: eventTimeBlockBounds.startTime,
+      endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+    });
+    const closing = buildShift({
+      startTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+      endTime: eventTimeBlockBounds.endTime,
+    });
+
+    expect(opening.startTime).toEqual(eventTimeBlockBounds.startTime);
+    expect(closing.endTime).toEqual(eventTimeBlockBounds.endTime);
+  });
+
+  it('reconstructs a persisted shift without event time block bounds re-validation', () => {
+    const shift = new Shift({
+      props: {
+        churchId,
+        participationId,
+        eventTimeBlockId,
+        startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+      },
+      id: '77777777-7777-4777-8777-777777777777',
+    });
+
+    expect(shift.id).toBe('77777777-7777-4777-8777-777777777777');
+  });
+
+  it('updateBounds accepts new times within event time block bounds', () => {
+    const shift = buildShift({
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+    });
+    const previousUpdatedAt = shift.updatedAt;
+
+    shift.updateBounds({
+      startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:30:00.000Z' }),
+      eventTimeBlockBounds,
+    });
+
+    expect(shift.startTime).toEqual(
+      parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+    );
+    expect(shift.endTime).toEqual(
+      parseInstant({ value: '2026-08-02T11:30:00.000Z' }),
+    );
+    expect(shift.updatedAt.getTime()).toBeGreaterThanOrEqual(
+      previousUpdatedAt.getTime(),
+    );
+  });
+
+  it('updateBounds rejects a start that is not before the end', () => {
+    const shift = buildShift({
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+    });
+
+    expect(() =>
+      shift.updateBounds({
+        startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        eventTimeBlockBounds,
+      }),
+    ).toThrow(InvalidTimeRangeError);
+  });
+
+  it('updateBounds rejects times outside the event time block bounds', () => {
+    const shift = buildShift({
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+    });
+
+    expect(() =>
+      shift.updateBounds({
+        startTime: parseInstant({ value: '2026-08-02T08:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+        eventTimeBlockBounds,
+      }),
+    ).toThrow(ShiftOutOfBoundsError);
+  });
+
+  it('updateLabel replaces or clears the label', () => {
+    const shift = buildShift({
+      startTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+      label: 'First serve',
+    });
+
+    shift.updateLabel('Second serve');
+    expect(shift.label).toBe('Second serve');
+
+    shift.updateLabel(undefined);
+    expect(shift.label).toBeUndefined();
+  });
+});

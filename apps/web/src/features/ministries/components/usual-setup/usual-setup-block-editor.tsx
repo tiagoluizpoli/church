@@ -1,0 +1,414 @@
+import { m } from '@church/i18n/messages';
+import { parseTimeOfDay } from '@church/time';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { isAxiosError } from 'axios';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import {
+  formatTimeRange,
+  formatWeekday,
+  toGridValues,
+  toIndexedHeadcounts,
+  type UsualSetupBlock,
+  type UsualSetupEntry,
+} from './usual-setup.utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { useSectorList } from '@/features/ministries/ministry-queries';
+import { useMinistryRoles } from '@/features/ministries/role-queries';
+import {
+  useUsualSetup,
+  usualSetupQueryKey,
+} from '@/features/ministries/usual-setup-queries';
+import {
+  HeadcountGrid,
+  type HeadcountGridCatalogItem,
+  type HeadcountGridValues,
+  headcountGridKey,
+  normalizeHeadcountGrid,
+} from '@/features/scheduling/components/headcount-grid/headcount-grid';
+import {
+  isShiftSplitValid,
+  shiftSplitProblems,
+  splitShifts,
+  toShiftSplit,
+  toShiftSplitDraft,
+} from '@/features/scheduling/components/shift-split-editor/shift-split.utils';
+import { ShiftSplitEditor } from '@/features/scheduling/components/shift-split-editor/shift-split-editor';
+import type { SaveUsualSetupBlockBody } from '@/infrastructure/api/churchAPI.schemas';
+import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
+import { adminApi } from '@/utils/api-instances';
+
+const WHOLE_BLOCK: UsualSetupEntry['shiftSplit'] = { kind: 'equal', count: 1 };
+
+interface UsualSetupBlockEditorProps {
+  ministryId: string;
+  blockId: string;
+}
+
+/** The nested page for one Time block: loads what the form needs, then hands over. */
+export function UsualSetupBlockEditor({
+  ministryId,
+  blockId,
+}: UsualSetupBlockEditorProps) {
+  const setup = useUsualSetup({ ministryId });
+  const sectors = useSectorList({ ministryId });
+  const roles = useMinistryRoles({ ministryId });
+  const reads = [setup, sectors, roles];
+
+  if (reads.some((read) => read.isPending)) {
+    return (
+      <Pending
+        label={m.usual_setup_block_loading()}
+        className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10"
+      >
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-64" />
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+        <Skeleton className="h-48 w-full" />
+      </Pending>
+    );
+  }
+
+  if (!setup.data || !sectors.data || !roles.data) {
+    return (
+      <div className="space-y-2" role="alert">
+        <p className="text-muted-foreground">{m.usual_setup_load_failed()}</p>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            for (const read of reads) {
+              if (read.isError) void read.refetch();
+            }
+          }}
+        >
+          {m.usual_setup_retry()}
+        </Button>
+      </div>
+    );
+  }
+
+  const block = setup.data.blocks.find(
+    (candidate) => candidate.sourceTemplateTimeBlockId === blockId,
+  );
+  if (!block) {
+    return (
+      <div className="space-y-2" role="status">
+        <p className="text-muted-foreground">
+          {m.usual_setup_block_not_found()}
+        </p>
+        <Link
+          to="/ministries/$ministryId/usual-setup"
+          params={{ ministryId }}
+          className="text-sm underline underline-offset-2"
+        >
+          {m.usual_setup_back_to_list()}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    // Keyed by block: a focus refetch refreshes choices, never the open draft.
+    <UsualSetupBlockForm
+      key={blockId}
+      ministryId={ministryId}
+      block={block}
+      sectors={sectors.data.sectors}
+      roles={roles.data.roles}
+    />
+  );
+}
+
+interface UsualSetupBlockFormProps {
+  ministryId: string;
+  block: UsualSetupBlock;
+  sectors: HeadcountGridCatalogItem[];
+  roles: HeadcountGridCatalogItem[];
+}
+
+interface SaveErrorMessageInput {
+  error: unknown;
+}
+
+function saveErrorMessage({ error }: SaveErrorMessageInput): string {
+  const message = isAxiosError(error)
+    ? (error.response?.data as SaveErrorBody | undefined)?.message
+    : undefined;
+  return message ?? m.usual_setup_save_failed();
+}
+
+interface SaveErrorBody {
+  message?: string;
+}
+
+function UsualSetupBlockForm({
+  ministryId,
+  block,
+  sectors,
+  roles,
+}: UsualSetupBlockFormProps) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const churchId = useCallerCapabilitiesScope()?.churchId;
+  const [serves, setServes] = useState(block.entry?.serves ?? false);
+  const [draft, setDraft] = useState(() =>
+    toShiftSplitDraft({
+      shiftSplit: block.entry?.serves ? block.entry.shiftSplit : WHOLE_BLOCK,
+    }),
+  );
+  // Counts are keyed by Shift identity, so they outlive changes of split.
+  const bounds = {
+    startTime: parseTimeOfDay({ value: block.startTime }),
+    endTime: parseTimeOfDay({ value: block.endTime }),
+  };
+  const [values, setValues] = useState<HeadcountGridValues>(() =>
+    toGridValues({
+      headcounts: block.entry?.headcounts ?? [],
+      shifts: splitShifts({ draft, block: bounds }),
+    }),
+  );
+  const problems = shiftSplitProblems({ draft, block: bounds });
+  const splitValid = isShiftSplitValid({ problems });
+  const shifts = splitValid ? splitShifts({ draft, block: bounds }) : [];
+  const { entries, invalidKeys } = normalizeHeadcountGrid({
+    sectors,
+    roles,
+    shifts,
+    values,
+  });
+  const backToList = () =>
+    navigate({
+      to: '/ministries/$ministryId/usual-setup',
+      params: { ministryId },
+    });
+
+  const save = useMutation({
+    mutationFn: (body: SaveUsualSetupBlockBody) =>
+      adminApi.saveUsualSetupBlock(
+        ministryId,
+        block.sourceTemplateTimeBlockId,
+        body,
+      ),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: usualSetupQueryKey({ churchId, ministryId }),
+      });
+      toast.success(m.usual_setup_saved_toast());
+      await backToList();
+    },
+  });
+
+  const hasCatalogs = sectors.length > 0 && roles.length > 0;
+  const isEmpty = serves && entries.length === 0;
+  const hasInvalid = serves && invalidKeys.length > 0;
+  const canSave =
+    !save.isPending &&
+    (!serves || (splitValid && hasCatalogs && !isEmpty && !hasInvalid));
+
+  const submit = () => {
+    save.mutate(
+      serves
+        ? {
+            serves,
+            shiftSplit: toShiftSplit({ draft }),
+            headcounts: toIndexedHeadcounts({ entries, shifts }),
+          }
+        : { serves, shiftSplit: WHOLE_BLOCK, headcounts: [] },
+    );
+  };
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (canSave) submit();
+      }}
+    >
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-10">
+        {/* Left panel: block identity stays in view while editing numbers */}
+        <div className="space-y-4 lg:sticky lg:top-4">
+          <div className="space-y-1">
+            <h2 className="font-semibold text-lg">
+              {block.templateName} · {block.label}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              {formatWeekday(block)} · {formatTimeRange(block)}
+            </p>
+          </div>
+
+          {block.needsReview ? (
+            <Alert role="note">
+              <AlertDescription>
+                <strong>{m.usual_setup_needs_review()}.</strong>{' '}
+                {m.usual_setup_review_fallback()}{' '}
+                {m.usual_setup_review_repair({ range: formatTimeRange(block) })}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {/* Serves toggle — primary decision, elevated visually */}
+          <div className="surface-panel p-4">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="usual-setup-serves"
+                className="mt-0.5"
+                checked={serves}
+                disabled={save.isPending}
+                onCheckedChange={(checked) => setServes(checked)}
+                aria-describedby="usual-setup-serves-help"
+              />
+              <div className="space-y-1">
+                <label
+                  htmlFor="usual-setup-serves"
+                  className="font-medium text-sm"
+                >
+                  {m.usual_setup_serves_label()}
+                </label>
+                <p
+                  id="usual-setup-serves-help"
+                  className="text-muted-foreground text-xs"
+                >
+                  {m.usual_setup_serves_help()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {serves ? (
+            <ShiftSplitEditor
+              draft={draft}
+              block={bounds}
+              problems={problems}
+              disabled={save.isPending}
+              onChange={setDraft}
+            />
+          ) : null}
+
+          {save.isError ? (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {saveErrorMessage({ error: save.error })}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <div className="flex gap-2">
+            <Button type="submit" disabled={!canSave}>
+              {save.isPending ? <Spinner /> : null}
+              {save.isPending ? m.usual_setup_saving() : m.usual_setup_save()}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={save.isPending}
+              onClick={() => backToList()}
+            >
+              {m.usual_setup_cancel()}
+            </Button>
+          </div>
+        </div>
+
+        {/* Right panel: headcount grid */}
+        <div className="space-y-4">
+          {serves ? (
+            <>
+              <h3 className="font-medium text-sm">
+                {m.usual_setup_people_needed()}
+              </h3>
+              <MissingCatalogs
+                ministryId={ministryId}
+                hasSectors={sectors.length > 0}
+                hasRoles={roles.length > 0}
+              />
+              {hasCatalogs && !splitValid ? (
+                <p className="text-muted-foreground text-sm" role="status">
+                  {m.shift_split_fix_times()}
+                </p>
+              ) : null}
+              {hasCatalogs && splitValid ? (
+                <HeadcountGrid
+                  sectors={sectors}
+                  roles={roles}
+                  shifts={shifts}
+                  values={values}
+                  disabled={save.isPending}
+                  onChange={({ value, ...cell }) =>
+                    setValues((current) => ({
+                      ...current,
+                      [headcountGridKey(cell)]: value,
+                    }))
+                  }
+                />
+              ) : null}
+              {hasCatalogs && hasInvalid ? (
+                <p className="text-destructive text-sm">
+                  {m.usual_setup_fix_invalid()}
+                </p>
+              ) : null}
+              {hasCatalogs && splitValid && isEmpty ? (
+                <p className="text-muted-foreground text-sm">
+                  {m.error_validation_usual_setup_empty()}
+                </p>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      </div>
+    </form>
+  );
+}
+
+interface MissingCatalogsProps {
+  ministryId: string;
+  hasSectors: boolean;
+  hasRoles: boolean;
+}
+
+/** Prerequisite shortcuts open in a new tab, so this draft stays put. */
+function MissingCatalogs({
+  ministryId,
+  hasSectors,
+  hasRoles,
+}: MissingCatalogsProps) {
+  const missing = [
+    !hasSectors && {
+      text: m.usual_setup_missing_sectors(),
+      href: `/ministries/${ministryId}/sectors`,
+      link: m.prepare_set_up_sectors(),
+    },
+    !hasRoles && {
+      text: m.usual_setup_missing_roles(),
+      href: `/ministries/${ministryId}/roles`,
+      link: m.usual_setup_set_up_roles(),
+    },
+  ].filter((item) => item !== false);
+
+  if (missing.length === 0) return null;
+  return (
+    <div role="status" className="space-y-1">
+      {missing.map((item) => (
+        <p key={item.href} className="text-muted-foreground text-sm">
+          {item.text}{' '}
+          <a
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2"
+          >
+            {item.link}
+            <span className="sr-only"> {m.sectors_opens_new_tab()}</span>
+          </a>
+        </p>
+      ))}
+    </div>
+  );
+}

@@ -1,0 +1,635 @@
+import { type E2eImportGraph, selectSpecsReaching } from './e2e-import-graph';
+import { CRITICAL_SMOKE_SPEC_PATHS, JOURNEY_MAP } from './journey-map';
+import {
+  assessSeedImpact,
+  SEED_CONTRACT_TARGETS,
+  type SeedImpact,
+} from './seed-impact';
+
+export type TestLayer = 'test:unit' | 'test:integration';
+
+export interface ClassifyChangesInput {
+  changedPaths: string[];
+  /**
+   * Root `package.json` differs from the base only by newly added `scripts`
+   * entries (see `isScriptsOnlyAddition`). It then stays a tooling-test input
+   * but is not root infrastructure, so it selects no workspace layers.
+   */
+  packageJsonScriptsOnlyAddition?: boolean;
+  /**
+   * The daily gate (task-branch to develop) never requires the full E2E
+   * suite — per #210's Implementation Decisions, only a develop-to-master
+   * release gate does, and only once #121 is repeatedly green. Set this for
+   * that gate's invocation so a change to shared E2E infrastructure (e.g.
+   * playwright.config.ts) still selects its normal mapped/critical-journey
+   * specs, but never escalates to the full suite.
+   */
+  dailyGate?: boolean;
+  /**
+   * Changed paths that no longer exist in the working tree. A deletion keeps
+   * its workspace in scope (typecheck and tests still run) but there is no
+   * file left to test, and an unmapped deletion has no journey to fall back
+   * on: whatever imported it changed in the same diff and carries its own
+   * mapping.
+   */
+  deletedPaths?: string[];
+  e2eSpecPaths?: string[];
+  /** Web test file imports, so a changed fixture selects the specs reaching it. */
+  e2eImportGraph?: E2eImportGraph;
+  /**
+   * Reasons from `Seed-Impact: none - <reason>` commit trailers or
+   * `--no-seed-impact`: the explicit decision that a seed-relevant change
+   * needs no seed update.
+   */
+  seedImpactAcknowledgements?: string[];
+}
+
+export interface ValidationPlan {
+  /** Changed paths with no file left, sorted. */
+  deletedPaths?: string[];
+  e2eSpecPaths: string[];
+  journeySelectionReasons: JourneySelectionReason[];
+  lintPaths: string[];
+  missingJourneyMappings: string[];
+  requiresFullE2e: boolean;
+  seedImpact: SeedImpact;
+  testLayerSelectionReasons: TestLayerSelectionReason[];
+  testLayers: TestLayer[];
+  testTargets: TestTarget[];
+  /** Changed paths that selected the tooling tests, sorted. Empty = step skipped. */
+  toolingTestPaths: string[];
+  workspaceNames: string[];
+  workspaceSelectionReasons: WorkspaceSelectionReason[];
+}
+
+/**
+ * Why a browser journey spec was selected. `changedPath` is null for an
+ * explicitly requested spec (--e2e) or a critical-smoke-fallback entry, since
+ * those aren't tied to one specific mapping hit.
+ */
+export interface JourneySelectionReason {
+  changedPath: string | null;
+  detail:
+    | 'critical-smoke-fallback'
+    | 'explicit'
+    | `fixture:${string}`
+    | `mapped:${string}`;
+  specPath: string;
+}
+
+export interface WorkspaceSelectionReason {
+  changedPath: string;
+  detail: 'direct' | 'root-infrastructure' | `dependent-of:${string}`;
+  workspaceName: string;
+}
+
+/**
+ * Why a test layer was selected for a workspace, mirroring
+ * `WorkspaceSelectionReason`'s detail values — a test layer is only ever
+ * selected because its workspace was selected for that same reason.
+ */
+export interface TestLayerSelectionReason {
+  changedPath: string;
+  detail:
+    | 'direct'
+    | 'root-infrastructure'
+    | `dependent-of:${string}`
+    | `seed-contract:${string}`;
+  testLayer: TestLayer;
+  workspaceName: string;
+}
+
+export interface TestTarget {
+  testLayer: TestLayer;
+  testPath: string;
+  workspaceName: string;
+}
+
+interface Workspace {
+  name: string;
+  path: string;
+}
+
+interface AddTestLayersInput {
+  testLayers: Set<TestLayer>;
+  workspaceName: string;
+}
+
+interface GetTestLayersForWorkspaceInput {
+  workspaceName: string;
+}
+
+interface PushTestLayerSelectionReasonsInput {
+  changedPath: string;
+  detail: TestLayerSelectionReason['detail'];
+  testLayerSelectionReasons: TestLayerSelectionReason[];
+  testLayers: TestLayer[];
+  workspaceName: string;
+}
+
+interface AddWorkspaceAndDependentsInput {
+  changedPath: string;
+  testLayerSelectionReasons: TestLayerSelectionReason[];
+  workspaceName: string;
+  workspaceNames: Set<string>;
+  workspaceSelectionReasons: WorkspaceSelectionReason[];
+}
+
+interface GetTestLayerInput {
+  changedPath: string;
+  workspaceName: string;
+}
+
+interface GetTestTargetInput {
+  changedPath: string;
+  workspace: Workspace;
+}
+
+interface IsProductionSourcePathInput {
+  changedPath: string;
+  workspaceName: string;
+}
+
+export const WORKSPACES: Workspace[] = [
+  { name: 'server', path: 'apps/server/' },
+  { name: 'web', path: 'apps/web/' },
+  { name: '@church/auth', path: 'packages/auth/' },
+  { name: '@church/core', path: 'packages/core/' },
+  { name: '@church/db', path: 'packages/db/' },
+  { name: '@church/env', path: 'packages/env/' },
+  { name: '@church/config', path: 'packages/config/' },
+  { name: '@church/time', path: 'packages/time/' },
+];
+
+const DEPENDENTS: Record<string, string[]> = {
+  '@church/auth': ['server'],
+  '@church/config': [
+    '@church/auth',
+    '@church/core',
+    '@church/db',
+    '@church/env',
+    '@church/time',
+    'server',
+    'web',
+  ],
+  '@church/core': ['server'],
+  '@church/time': ['@church/auth', '@church/db', 'server', 'web'],
+  '@church/db': ['@church/auth', 'server'],
+  '@church/env': ['@church/auth', '@church/db', 'server', 'web'],
+  server: [],
+  web: [],
+};
+
+const FULL_E2E_PATHS = new Set([
+  'apps/web/playwright.config.ts',
+  'apps/web/tests/global-setup.ts',
+  'apps/web/tests/global-teardown.ts',
+  // What global setup loads before any worker starts: the suite's shared
+  // personas and the E2E database reset. A regression fails every spec.
+  'apps/server/seeds/e2e/recipes/shared-personas.ts',
+  'apps/server/seeds/e2e/reset-e2e-database.ts',
+  'apps/web/tests/fixtures/shared-personas.ts',
+  'packages/db/src/e2e-database-reset.ts',
+  // The E2E database target: which database every E2E process (server,
+  // seed, invitation minting and redemption) resolves and refuses. A
+  // regression breaks any journey, and #203 makes the redemption journeys
+  // the story gate for it; the daily gate's critical smoke set runs them.
+  'packages/db/src/database-target-resolver.ts',
+  'packages/db/src/e2e-database-url.ts',
+  'packages/db/src/purpose-database-url-guard.ts',
+  'tooling/env/e2e-environment.ts',
+  'tooling/env/e2e-local-lifecycle.ts',
+  'tooling/env/e2e-process-preflight.ts',
+]);
+
+const ROOT_INFRASTRUCTURE_PATHS = new Set([
+  'bun.lock',
+  'package.json',
+  'turbo.json',
+  'tsconfig.json',
+]);
+
+const SERVER_INTEGRATION_TEST_PATHS = new Set([
+  'apps/server/tests/application/event-builder.assign.integration.test.ts',
+  'apps/server/tests/application/planning-phase3.managers.test.ts',
+  'apps/server/tests/application/scheduling-phase4.managers.test.ts',
+  'apps/server/tests/application/scheduling-phase5.volunteer-availability.test.ts',
+  'apps/server/tests/application/scheduling-phase6.assign.test.ts',
+  'apps/server/tests/application/scheduling-phase7.live-changes.test.ts',
+  'apps/server/tests/transfer/volunteer-transfer.repository.test.ts',
+]);
+
+/** True when `head` is `base` plus new `scripts` entries and nothing else. */
+export function isScriptsOnlyAddition({
+  base,
+  head,
+}: {
+  base: string;
+  head: string;
+}): boolean {
+  try {
+    const { scripts: baseScripts = {}, ...baseRest } = JSON.parse(base);
+    const { scripts: headScripts = {}, ...headRest } = JSON.parse(head);
+    return (
+      JSON.stringify(baseRest) === JSON.stringify(headRest) &&
+      Object.entries(baseScripts).every(
+        ([name, command]) => headScripts[name] === command,
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+const TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
+
+export function classifyChanges({
+  changedPaths,
+  dailyGate = false,
+  deletedPaths = [],
+  e2eImportGraph = {},
+  e2eSpecPaths = [],
+  packageJsonScriptsOnlyAddition = false,
+  seedImpactAcknowledgements = [],
+}: ClassifyChangesInput): ValidationPlan {
+  const deletedPathSet = new Set(deletedPaths);
+  const workspaceNames = new Set<string>();
+  const testLayers = new Set<TestLayer>();
+  let testTargets: TestTarget[] = [];
+  const testTargetPaths = new Set<string>();
+  const selectedE2eSpecPaths = new Set(e2eSpecPaths);
+  const missingJourneyMappings = new Set<string>();
+  const workspaceSelectionReasons: WorkspaceSelectionReason[] = [];
+  const testLayerSelectionReasons: TestLayerSelectionReason[] = [];
+  const journeySelectionReasons: JourneySelectionReason[] = e2eSpecPaths.map(
+    (specPath) => ({ changedPath: null, detail: 'explicit', specPath }),
+  );
+  const toolingTestPaths = new Set<string>();
+  let requiresFullE2e = false;
+  let hasUnmappedProductionChange = false;
+
+  for (const changedPath of [...changedPaths, ...deletedPaths]) {
+    if (
+      changedPath.startsWith('tooling/') ||
+      ROOT_INFRASTRUCTURE_PATHS.has(changedPath)
+    ) {
+      toolingTestPaths.add(changedPath);
+    }
+  }
+
+  for (const changedPath of changedPaths) {
+    if (
+      ROOT_INFRASTRUCTURE_PATHS.has(changedPath) &&
+      !(changedPath === 'package.json' && packageJsonScriptsOnlyAddition)
+    ) {
+      for (const workspace of WORKSPACES) {
+        workspaceNames.add(workspace.name);
+        workspaceSelectionReasons.push({
+          changedPath,
+          detail: 'root-infrastructure',
+          workspaceName: workspace.name,
+        });
+        pushTestLayerSelectionReasons({
+          changedPath,
+          detail: 'root-infrastructure',
+          testLayerSelectionReasons,
+          testLayers: TEST_LAYERS,
+          workspaceName: workspace.name,
+        });
+      }
+      testLayers.add('test:unit');
+      testLayers.add('test:integration');
+      continue;
+    }
+
+    const isSharedE2eInfrastructure = FULL_E2E_PATHS.has(changedPath);
+    if (isSharedE2eInfrastructure) {
+      if (dailyGate) {
+        // Daily gate never escalates to the full suite, but a shared
+        // E2E-infrastructure change still needs *some* E2E coverage — the
+        // critical smoke set stands in for "its normal mapped run" here,
+        // same as an unmapped production change.
+        hasUnmappedProductionChange = true;
+      } else {
+        requiresFullE2e = true;
+      }
+    }
+
+    if (
+      !isSharedE2eInfrastructure &&
+      !deletedPathSet.has(changedPath) &&
+      changedPath.startsWith('apps/web/tests/') &&
+      !changedPath.includes('.test.')
+    ) {
+      for (const specPath of selectSpecsReaching({
+        changedPath,
+        graph: e2eImportGraph,
+      })) {
+        selectedE2eSpecPaths.add(specPath);
+        journeySelectionReasons.push({
+          changedPath,
+          detail: `fixture:${changedPath}`,
+          specPath,
+        });
+      }
+    }
+
+    const workspace = WORKSPACES.find(({ path }) =>
+      changedPath.startsWith(path),
+    );
+    if (!workspace) continue;
+
+    const isDeleted = deletedPathSet.has(changedPath);
+    const testTarget = isDeleted
+      ? null
+      : getTestTarget({ changedPath, workspace });
+    if (testTarget) {
+      testTargets.push(testTarget);
+      testTargetPaths.add(changedPath);
+    }
+
+    addWorkspaceAndDependents({
+      changedPath,
+      testLayerSelectionReasons,
+      workspaceName: workspace.name,
+      workspaceNames,
+      workspaceSelectionReasons,
+    });
+
+    if (
+      !isSharedE2eInfrastructure &&
+      isProductionSourcePath({ changedPath, workspaceName: workspace.name })
+    ) {
+      const journeyMappings = JOURNEY_MAP.filter(({ sourcePathPrefix }) =>
+        changedPath.startsWith(sourcePathPrefix),
+      );
+      if (journeyMappings.length > 0) {
+        for (const { sourcePathPrefix, specPaths } of journeyMappings) {
+          for (const specPath of specPaths) {
+            selectedE2eSpecPaths.add(specPath);
+            journeySelectionReasons.push({
+              changedPath,
+              detail: `mapped:${sourcePathPrefix}`,
+              specPath,
+            });
+          }
+        }
+      } else if (!isDeleted) {
+        hasUnmappedProductionChange = true;
+        missingJourneyMappings.add(changedPath);
+      }
+    }
+  }
+
+  if (hasUnmappedProductionChange) {
+    for (const specPath of CRITICAL_SMOKE_SPEC_PATHS) {
+      selectedE2eSpecPaths.add(specPath);
+      journeySelectionReasons.push({
+        changedPath: null,
+        detail: 'critical-smoke-fallback',
+        specPath,
+      });
+    }
+  }
+
+  // A workspace stays narrowed only when its changed test files alone selected it.
+  const wholeLayerWorkspaces = new Set(
+    workspaceSelectionReasons
+      .filter(
+        ({ changedPath, detail }) =>
+          detail !== 'direct' || !testTargetPaths.has(changedPath),
+      )
+      .map(({ workspaceName }) => workspaceName),
+  );
+  testTargets = testTargets.filter(
+    ({ workspaceName }) => !wholeLayerWorkspaces.has(workspaceName),
+  );
+
+  for (const workspaceName of workspaceNames) {
+    addTestLayers({ testLayers, workspaceName });
+  }
+
+  const seedImpact = assessSeedImpact({
+    acknowledgements: seedImpactAcknowledgements,
+    changedPaths,
+  });
+  if (seedImpact.contractsSelected) {
+    selectSeedContracts({
+      seedImpact,
+      testLayerSelectionReasons,
+      testTargets,
+      workspaceNames,
+    });
+  }
+
+  return {
+    deletedPaths: [...deletedPathSet].sort(),
+    e2eSpecPaths: [...selectedE2eSpecPaths].sort(),
+    journeySelectionReasons,
+    lintPaths: changedPaths.filter(isLintablePath),
+    missingJourneyMappings: [...missingJourneyMappings].sort(),
+    requiresFullE2e,
+    seedImpact,
+    testLayerSelectionReasons,
+    testLayers: TEST_LAYERS.filter((testLayer) => testLayers.has(testLayer)),
+    testTargets,
+    toolingTestPaths: [...toolingTestPaths].sort(),
+    workspaceNames: [...workspaceNames].sort(),
+    workspaceSelectionReasons,
+  };
+}
+
+interface SelectSeedContractsInput {
+  seedImpact: SeedImpact;
+  testLayerSelectionReasons: TestLayerSelectionReason[];
+  testTargets: TestTarget[];
+  workspaceNames: Set<string>;
+}
+
+/**
+ * A workspace layer with no targeted test file already runs everything,
+ * seed contracts included. One narrowed to changed test files would skip
+ * them, so the contracts join its targets.
+ */
+function selectSeedContracts({
+  seedImpact,
+  testLayerSelectionReasons,
+  testTargets,
+  workspaceNames,
+}: SelectSeedContractsInput): void {
+  for (const contract of SEED_CONTRACT_TARGETS) {
+    if (!workspaceNames.has(contract.workspaceName)) continue;
+    const isNarrowed = testTargets.some(
+      ({ testLayer, workspaceName }) =>
+        testLayer === contract.testLayer &&
+        workspaceName === contract.workspaceName,
+    );
+    const isListed = testTargets.some(
+      ({ testLayer, testPath, workspaceName }) =>
+        testLayer === contract.testLayer &&
+        testPath === contract.testPath &&
+        workspaceName === contract.workspaceName,
+    );
+    if (isNarrowed && !isListed) testTargets.push({ ...contract });
+  }
+
+  for (const { area, changedPath } of seedImpact.changes) {
+    testLayerSelectionReasons.push({
+      changedPath,
+      detail: `seed-contract:${area}`,
+      testLayer: 'test:integration',
+      workspaceName: 'server',
+    });
+  }
+}
+
+function isProductionSourcePath({
+  changedPath,
+  workspaceName,
+}: IsProductionSourcePathInput): boolean {
+  if (workspaceName !== 'web' && workspaceName !== 'server') return false;
+  if (!/\.tsx?$/.test(changedPath)) return false;
+  if (changedPath.includes('.test.')) return false;
+  if (changedPath.includes('/tests/')) return false;
+
+  return true;
+}
+
+function addWorkspaceAndDependents({
+  changedPath,
+  testLayerSelectionReasons,
+  workspaceName,
+  workspaceNames,
+  workspaceSelectionReasons,
+}: AddWorkspaceAndDependentsInput): void {
+  workspaceNames.add(workspaceName);
+  workspaceSelectionReasons.push({
+    changedPath,
+    detail: 'direct',
+    workspaceName,
+  });
+  pushTestLayerSelectionReasons({
+    changedPath,
+    detail: 'direct',
+    testLayerSelectionReasons,
+    testLayers: getTestLayersForWorkspace({ workspaceName }),
+    workspaceName,
+  });
+
+  for (const dependent of DEPENDENTS[workspaceName] ?? []) {
+    workspaceNames.add(dependent);
+    workspaceSelectionReasons.push({
+      changedPath,
+      detail: `dependent-of:${workspaceName}`,
+      workspaceName: dependent,
+    });
+    pushTestLayerSelectionReasons({
+      changedPath,
+      detail: `dependent-of:${workspaceName}`,
+      testLayerSelectionReasons,
+      testLayers: getTestLayersForWorkspace({ workspaceName: dependent }),
+      workspaceName: dependent,
+    });
+  }
+}
+
+function pushTestLayerSelectionReasons({
+  changedPath,
+  detail,
+  testLayerSelectionReasons,
+  testLayers,
+  workspaceName,
+}: PushTestLayerSelectionReasonsInput): void {
+  for (const testLayer of testLayers) {
+    testLayerSelectionReasons.push({
+      changedPath,
+      detail,
+      testLayer,
+      workspaceName,
+    });
+  }
+}
+
+function getTestLayersForWorkspace({
+  workspaceName,
+}: GetTestLayersForWorkspaceInput): TestLayer[] {
+  if (workspaceName === '@church/core' || workspaceName === 'web') {
+    return ['test:unit'];
+  }
+
+  if (workspaceName === '@church/auth' || workspaceName === '@church/db') {
+    return ['test:integration'];
+  }
+
+  if (workspaceName === 'server') {
+    return ['test:unit', 'test:integration'];
+  }
+
+  return [];
+}
+
+function addTestLayers({
+  testLayers,
+  workspaceName,
+}: AddTestLayersInput): void {
+  for (const testLayer of getTestLayersForWorkspace({ workspaceName })) {
+    testLayers.add(testLayer);
+  }
+}
+
+function isLintablePath(path: string): boolean {
+  return /\.(?:cjs|cts|js|json|jsonc|jsx|mjs|mts|ts|tsx)$/.test(path);
+}
+
+function getTestTarget({
+  changedPath,
+  workspace,
+}: GetTestTargetInput): TestTarget | null {
+  const testLayer = getTestLayer({
+    changedPath,
+    workspaceName: workspace.name,
+  });
+  if (!testLayer) return null;
+
+  return {
+    testLayer,
+    testPath: changedPath.slice(workspace.path.length),
+    workspaceName: workspace.name,
+  };
+}
+
+function getTestLayer({
+  changedPath,
+  workspaceName,
+}: GetTestLayerInput): TestLayer | null {
+  if (!changedPath.includes('.test.')) return null;
+
+  if (workspaceName === 'web') {
+    return changedPath.includes('.integration.test.')
+      ? 'test:integration'
+      : 'test:unit';
+  }
+
+  if (workspaceName === 'server') {
+    return SERVER_INTEGRATION_TEST_PATHS.has(changedPath) ||
+      changedPath.includes('/tests/behavior/') ||
+      changedPath.includes('/tests/http/') ||
+      changedPath.includes('/tests/integration/') ||
+      changedPath.includes('/tests/tenancy/') ||
+      changedPath.includes('/tests/transfer/') ||
+      // The seed contracts load real recipes into PostgreSQL; only the pure
+      // `.unit.test.ts` calculations beside them run in the unit project.
+      (changedPath.includes('/tests/seeds/') &&
+        !changedPath.includes('.unit.test.')) ||
+      changedPath.includes('.integration.test.')
+      ? 'test:integration'
+      : 'test:unit';
+  }
+
+  if (workspaceName === '@church/core') return 'test:unit';
+  if (workspaceName === '@church/auth' || workspaceName === '@church/db') {
+    return 'test:integration';
+  }
+
+  return null;
+}

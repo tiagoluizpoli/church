@@ -1,0 +1,116 @@
+import { m } from '@church/i18n/messages';
+import { screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ChildrenProps } from '@/tests/setup/children-props';
+import { renderRoute } from '@/tests/setup/render-route';
+
+const getSession = vi.fn();
+const getVolunteerDashboard = vi.fn();
+
+vi.mock('@/lib/auth-client', () => ({
+  authClient: {
+    getSession: (...args: unknown[]) => getSession(...args),
+    useSession: () => ({ isPending: false }),
+    organization: {
+      getActiveMember: vi.fn(),
+    },
+  },
+}));
+
+vi.mock('@/utils/api-instances', async () => ({
+  volunteerApi: {
+    getVolunteerDashboard: (...args: unknown[]) =>
+      getVolunteerDashboard(...args),
+  },
+  activeChurchApi: (await import('@/tests/setup/active-church'))
+    .activeChurchApiMock,
+}));
+
+vi.mock('@/components/app-shell', () => ({
+  AppShell: ({ children }: ChildrenProps) => children,
+}));
+
+vi.mock('@/components/theme-provider', () => ({
+  ThemeProvider: ({ children }: ChildrenProps) => children,
+}));
+
+vi.mock('@/components/ui/sonner', () => ({
+  Toaster: () => null,
+}));
+
+describe('the sign-in route (login)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders standalone for an unauthenticated visitor, with no redirect', async () => {
+    getSession.mockResolvedValue({ data: null });
+
+    const { router } = renderRoute({
+      initialPath: '/login',
+      churchTimezone: 'UTC',
+    });
+
+    expect(await screen.findByText(m.auth_sign_in_title())).toBeVisible();
+    expect(screen.getByText(m.auth_sign_in_invitation_only())).toBeVisible();
+    expect(screen.queryByText(m.auth_sign_up_title())).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(m.auth_sign_in_switch_to_sign_up()),
+    ).not.toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/login');
+  });
+
+  it('redirects an already-authenticated visitor onward to Home by default', async () => {
+    getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    getVolunteerDashboard.mockResolvedValue({
+      upcomingAssignmentGroups: [],
+      unreadNotificationCount: 0,
+      notificationPreview: [],
+      defaultMinistryId: undefined,
+      ministryOptions: [],
+    });
+
+    const { router } = renderRoute({
+      initialPath: '/login',
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/');
+    });
+  });
+
+  it('honors a validated same-origin redirect target', async () => {
+    getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
+
+    const { router } = renderRoute({
+      initialPath: '/login?redirect=%2Fno-access',
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/no-access');
+    });
+    expect(await screen.findByText(m.no_access_title())).toBeVisible();
+  });
+
+  it('falls back to Home when the redirect target is rejected', async () => {
+    getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    getVolunteerDashboard.mockResolvedValue({
+      upcomingAssignmentGroups: [],
+      unreadNotificationCount: 0,
+      notificationPreview: [],
+      defaultMinistryId: undefined,
+      ministryOptions: [],
+    });
+
+    const { router } = renderRoute({
+      initialPath: '/login?redirect=https%3A%2F%2Fevil.example%2Fx',
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/');
+    });
+  });
+});

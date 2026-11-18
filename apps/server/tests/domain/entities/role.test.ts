@@ -1,0 +1,14 @@
+import { describe, expect, it } from 'vitest';
+import { Role } from '@/domain/entities/role';
+
+describe('Role Entity', () => {
+  it('constructs with minimum props', () => {
+    const role = new Role({
+      props: { churchId: 'c1', ministryId: 'm1', name: 'Singer' },
+    });
+
+    expect(role.churchId).toBe('c1');
+    expect(role.name).toBe('Singer');
+    expect(role.ministryId).toBe('m1');
+  });
+});

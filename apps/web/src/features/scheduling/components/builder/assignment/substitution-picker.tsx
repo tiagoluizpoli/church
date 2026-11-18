@@ -1,0 +1,119 @@
+import { m } from '@church/i18n/messages';
+import { useMemo, useState } from 'react';
+import type { PickerVolunteer } from '../../../utils/builder/cycle-builder-candidate.types';
+import { AssigneeRoleBadge } from './assignee-role-badge';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
+import { formatVolunteerName } from '@/utils/format-volunteer-name';
+
+interface SubstitutionPickerProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  declinedVolunteerName: string;
+  declinedVolunteerMembership?: AssigneeMembership;
+  declinedVolunteerId: string;
+  volunteers: PickerVolunteer[];
+  onSelect: (newVolunteerId: string) => void;
+}
+
+export function SubstitutionPicker({
+  open,
+  onOpenChange,
+  declinedVolunteerName,
+  declinedVolunteerMembership,
+  declinedVolunteerId,
+  volunteers,
+  onSelect,
+}: SubstitutionPickerProps) {
+  const [search, setSearch] = useState('');
+
+  const available = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return volunteers
+      .filter(
+        (v) =>
+          v.id !== declinedVolunteerId &&
+          v.availabilityStatus === 'available' &&
+          (!q || v.name.toLowerCase().includes(q)),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [volunteers, declinedVolunteerId, search]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {m.builder_ui_find_replacement({
+              name: formatVolunteerName(declinedVolunteerName),
+            })}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div
+          className="flex items-center justify-between rounded border border-destructive/35 bg-destructive/10 px-2 py-1 text-xs"
+          data-testid="declined-pinned"
+        >
+          <span className="flex items-center gap-1">
+            {formatVolunteerName(declinedVolunteerName)}
+            <AssigneeRoleBadge
+              membership={declinedVolunteerMembership}
+              fullNameOnExpand={declinedVolunteerName}
+            />
+          </span>
+          <Badge variant="destructive">
+            {m.builder_ui_declined_replacement()}
+          </Badge>
+        </div>
+
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={m.builder_ui_search_available()}
+          className="h-7 text-xs"
+        />
+
+        <ul className="max-h-64 space-y-1 overflow-y-auto">
+          {available.length === 0 && (
+            <li className="px-1 py-2 text-muted-foreground text-xs">
+              {m.builder_ui_no_available()}
+            </li>
+          )}
+          {available.map((v) => (
+            <li key={v.id}>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded px-1 py-1 text-left text-xs hover:bg-muted/60"
+                onClick={() => {
+                  onSelect(v.id);
+                  onOpenChange(false);
+                }}
+              >
+                <span className="flex items-center gap-1">
+                  {formatVolunteerName(v.name)}
+                  <AssigneeRoleBadge
+                    membership={v.membership}
+                    fullNameOnExpand={v.name}
+                  />
+                </span>
+                <Badge
+                  variant="outline"
+                  className="border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400"
+                >
+                  {m.builder_state_available()}
+                </Badge>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </DialogContent>
+    </Dialog>
+  );
+}

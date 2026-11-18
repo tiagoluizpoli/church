@@ -1,0 +1,473 @@
+import { NotFoundError } from '@church/core';
+import { fromDate, parseInstant, toDate } from '@church/time';
+import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  ChurchId,
+  EventTimeBlockId,
+  MinistryParticipationId,
+  RoleId,
+  SectorId,
+  ShiftId,
+} from '@/domain/branded-ids';
+import { Shift } from '@/domain/entities/shift';
+import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
+import {
+  buildMinistry,
+  buildRole,
+  buildSector,
+} from '@/seeds/builders/ministry';
+import { buildMinistryParticipation } from '@/seeds/builders/scheduling';
+import {
+  createSchedulingPhase3Cycle,
+  createSchedulingPhase3EventGraph,
+  resetSchedulingPhase3Db,
+  schedulingTestDb,
+  seedSchedulingPhase3Base,
+} from '@/tests/scheduling-reshape/setup';
+
+async function seedParticipationGraph(churchId: string, ministryId: string) {
+  const cycle = await createSchedulingPhase3Cycle({
+    churchId,
+    name: `Cycle-${Math.random().toString(36).slice(2, 8)}`,
+    startDate: new Date('2026-08-01T00:00:00.000Z'),
+    endDate: new Date('2026-09-01T00:00:00.000Z'),
+  });
+  const graph = await createSchedulingPhase3EventGraph({
+    churchId,
+    cycleId: cycle.id,
+    ministryId,
+    title: 'Sunday Service',
+    start: new Date('2026-08-02T09:00:00.000Z'),
+    end: new Date('2026-08-02T11:00:00.000Z'),
+    status: 'scheduled',
+  });
+  return graph;
+}
+
+describe('DrizzleShiftRepository', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('createMany returns [] for an empty input and inserts shifts otherwise', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+
+    const empty = await repo.createMany({ churchId, shifts: [] });
+    expect(empty).toEqual([]);
+
+    const shiftEntity = new Shift({
+      props: {
+        churchId,
+        participationId: MinistryParticipationId.from(graph.participation.id),
+        eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+        startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+        endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+        label: 'Whole event time block',
+      },
+    });
+
+    const created = await repo.createMany({
+      churchId,
+      shifts: [shiftEntity],
+    });
+
+    expect(created).toHaveLength(1);
+    expect(created[0]?.id).toBe(shiftEntity.id);
+    expect(created[0]?.label).toBe('Whole event time block');
+  });
+
+  it('keeps shifts for two participations of the same event time block independent', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const ministry = await buildMinistry({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      name: 'Other ministry',
+    });
+    const other = await buildMinistryParticipation({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      ministryId: ministry.id,
+      eventId: graph.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [],
+    });
+    const churchId = ChurchId.from(seed.churchAId);
+    const eventTimeBlockId = EventTimeBlockId.from(graph.eventTimeBlock.id);
+    const firstId = MinistryParticipationId.from(graph.participation.id);
+    const secondId = MinistryParticipationId.from(other.id);
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const makeShift = (participationId: MinistryParticipationId) =>
+      new Shift({
+        props: {
+          churchId,
+          participationId,
+          eventTimeBlockId,
+          startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+          endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+        },
+      });
+    const first = makeShift(firstId);
+    const second = makeShift(secondId);
+    await repo.createMany({ churchId, shifts: [first, second] });
+    await repo.deleteByEventTimeBlock({
+      churchId,
+      participationId: firstId,
+      eventTimeBlockId,
+    });
+    expect(
+      await repo.listByEventTimeBlock({
+        churchId,
+        participationId: firstId,
+        eventTimeBlockId,
+      }),
+    ).toEqual([]);
+    expect(
+      (
+        await repo.listByEventTimeBlock({
+          churchId,
+          participationId: secondId,
+          eventTimeBlockId,
+        })
+      ).map((shift) => shift.id),
+    ).toEqual([second.id]);
+  });
+
+  it('getById throws NotFoundError for an invalid uuid and for a missing/foreign-church shift', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+
+    await expect(
+      repo.getById({ churchId, shiftId: ShiftId.from('not-a-uuid') }),
+    ).rejects.toThrow(NotFoundError);
+
+    await expect(
+      repo.getById({
+        churchId,
+        shiftId: ShiftId.from('99999999-9999-4999-8999-999999999999'),
+      }),
+    ).rejects.toThrow(NotFoundError);
+
+    const [created] = await repo.createMany({
+      churchId,
+      shifts: [
+        new Shift({
+          props: {
+            churchId,
+            participationId: MinistryParticipationId.from(
+              graph.participation.id,
+            ),
+            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+          },
+        }),
+      ],
+    });
+    if (!created) throw new Error('setup failed');
+
+    await expect(
+      repo.getById({
+        churchId: ChurchId.from(seed.churchBId),
+        shiftId: created.id,
+      }),
+    ).rejects.toThrow(NotFoundError);
+
+    const found = await repo.getById({ churchId, shiftId: created.id });
+    expect(found.id).toBe(created.id);
+  });
+
+  it('listByParticipation orders by startTime and listByEventTimeBlock filters by event time block', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(
+      graph.participation.id,
+    );
+    const eventTimeBlockId = EventTimeBlockId.from(graph.eventTimeBlock.id);
+
+    const later = new Shift({
+      props: {
+        churchId,
+        participationId,
+        eventTimeBlockId,
+        startTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T11:00:00.000Z' }),
+      },
+    });
+    const earlier = new Shift({
+      props: {
+        churchId,
+        participationId,
+        eventTimeBlockId,
+        startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+        endTime: parseInstant({ value: '2026-08-02T09:30:00.000Z' }),
+      },
+    });
+
+    await repo.createMany({ churchId, shifts: [later, earlier] });
+
+    const byParticipation = await repo.listByParticipation({
+      churchId,
+      participationId,
+    });
+    expect(byParticipation.map((s) => s.id)).toEqual([earlier.id, later.id]);
+
+    const byEventTimeBlock = await repo.listByEventTimeBlock({
+      churchId,
+      participationId,
+      eventTimeBlockId,
+    });
+    expect(byEventTimeBlock).toHaveLength(2);
+  });
+
+  it('update applies only provided fields and throws NotFoundError when missing', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+    const [created] = await repo.createMany({
+      churchId,
+      shifts: [
+        new Shift({
+          props: {
+            churchId,
+            participationId: MinistryParticipationId.from(
+              graph.participation.id,
+            ),
+            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+            label: 'Original',
+          },
+        }),
+      ],
+    });
+    if (!created) throw new Error('setup failed');
+
+    const updated = await repo.update({
+      churchId,
+      shiftId: created.id,
+      label: 'Renamed',
+    });
+    expect(updated.label).toBe('Renamed');
+    expect(updated.startTime).toEqual(created.startTime);
+
+    await expect(
+      repo.update({
+        churchId,
+        shiftId: ShiftId.from('99999999-9999-4999-8999-999999999999'),
+        label: 'Nope',
+      }),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('update applies startTime and endTime when label is omitted', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+    const [created] = await repo.createMany({
+      churchId,
+      shifts: [
+        new Shift({
+          props: {
+            churchId,
+            participationId: MinistryParticipationId.from(
+              graph.participation.id,
+            ),
+            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+            label: 'Keep me',
+          },
+        }),
+      ],
+    });
+    if (!created) throw new Error('setup failed');
+
+    const newStart = parseInstant({ value: '2026-08-02T10:00:00.000Z' });
+    const newEnd = parseInstant({ value: '2026-08-02T10:30:00.000Z' });
+    const updated = await repo.update({
+      churchId,
+      shiftId: created.id,
+      startTime: toDate({ instant: newStart }),
+      endTime: toDate({ instant: newEnd }),
+    });
+
+    expect(updated.startTime).toEqual(newStart);
+    expect(updated.endTime).toEqual(newEnd);
+    expect(updated.label).toBe('Keep me');
+  });
+
+  it('deleteById and deleteByEventTimeBlock remove shifts', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(
+      graph.participation.id,
+    );
+    const eventTimeBlockId = EventTimeBlockId.from(graph.eventTimeBlock.id);
+
+    const [toDelete] = await repo.createMany({
+      churchId,
+      shifts: [
+        new Shift({
+          props: {
+            churchId,
+            participationId,
+            eventTimeBlockId,
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+          },
+        }),
+      ],
+    });
+    if (!toDelete) throw new Error('setup failed');
+
+    await repo.deleteById({ churchId, shiftId: toDelete.id });
+    await expect(
+      repo.getById({ churchId, shiftId: toDelete.id }),
+    ).rejects.toThrow(NotFoundError);
+
+    await repo.createMany({
+      churchId,
+      shifts: [
+        new Shift({
+          props: {
+            churchId,
+            participationId,
+            eventTimeBlockId,
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+          },
+        }),
+      ],
+    });
+    await repo.deleteByEventTimeBlock({
+      churchId,
+      participationId,
+      eventTimeBlockId,
+    });
+    expect(
+      await repo.listByEventTimeBlock({
+        churchId,
+        participationId,
+        eventTimeBlockId,
+      }),
+    ).toEqual([]);
+  });
+
+  it('saveRequirement matches on (shift, sector, role) and lists each with its Sector', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const graph = await seedParticipationGraph(
+      seed.churchAId,
+      seed.ministryAId,
+    );
+    const repo = new DrizzleShiftRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+    const participationId = MinistryParticipationId.from(
+      graph.participation.id,
+    );
+    const [shift] = await repo.createMany({
+      churchId,
+      shifts: [
+        new Shift({
+          props: {
+            churchId,
+            participationId,
+            eventTimeBlockId: EventTimeBlockId.from(graph.eventTimeBlock.id),
+            startTime: fromDate({ date: graph.eventTimeBlock.startTime }),
+            endTime: fromDate({ date: graph.eventTimeBlock.endTime }),
+          },
+        }),
+      ],
+    });
+    if (!shift) throw new Error('setup failed');
+    const roleId = RoleId.from(
+      (
+        await buildRole({
+          db: schedulingTestDb,
+          churchId: seed.churchAId,
+          ministryId: seed.ministryAId,
+          name: 'Teacher',
+        })
+      ).id,
+    );
+    const [babiesRoom, kidsRoom] = await Promise.all(
+      ['Babies Room', 'Kids Room'].map((name) =>
+        buildSector({
+          db: schedulingTestDb,
+          churchId: seed.churchAId,
+          ministryId: seed.ministryAId,
+          name,
+        }),
+      ),
+    );
+    if (!babiesRoom || !kidsRoom) throw new Error('setup failed');
+    const place = { churchId, shiftId: shift.id, participationId, roleId };
+
+    const created = await repo.saveRequirement({
+      ...place,
+      sectorId: SectorId.from(babiesRoom.id),
+      peopleNeeded: 1,
+    });
+    const updated = await repo.saveRequirement({
+      ...place,
+      sectorId: SectorId.from(babiesRoom.id),
+      peopleNeeded: 3,
+    });
+    const otherSector = await repo.saveRequirement({
+      ...place,
+      sectorId: SectorId.from(kidsRoom.id),
+      peopleNeeded: 2,
+    });
+
+    expect(updated.id).toBe(created.id);
+    expect(otherSector.id).not.toBe(created.id);
+    const listed = await repo.listRequirementsByParticipation({
+      churchId,
+      participationId,
+    });
+    expect(
+      listed
+        .map(({ sectorId, sectorName, peopleNeeded }) => ({
+          sectorId,
+          sectorName,
+          peopleNeeded,
+        }))
+        .sort((a, b) => a.peopleNeeded - b.peopleNeeded),
+    ).toEqual([
+      { sectorId: kidsRoom.id, sectorName: 'Kids Room', peopleNeeded: 2 },
+      { sectorId: babiesRoom.id, sectorName: 'Babies Room', peopleNeeded: 3 },
+    ]);
+  });
+});

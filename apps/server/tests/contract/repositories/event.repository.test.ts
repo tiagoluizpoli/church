@@ -1,0 +1,211 @@
+import { NotFoundError } from '@church/core';
+import { compareInstants, fromDate, parseInstant } from '@church/time';
+import type {
+  ChurchId,
+  CycleId,
+  EventId,
+  EventTimeBlockId,
+  MinistryId,
+  RoleId,
+  SectorId,
+} from '@/domain/branded-ids';
+import type {
+  CreateEventRepositoryInput,
+  EventRepository,
+  GetEventInput,
+  ListEventsByMinistryInput,
+  UpdateEventRepositoryInput,
+  UpdateEventStatusRepositoryInput,
+} from '@/domain/contracts/infrastructure/event.repository';
+import { Event, type EventWithEventTimeBlocks } from '@/domain/entities/event';
+import { EventTimeBlock } from '@/domain/entities/event-time-block';
+import {
+  ShiftRequirement,
+  type ShiftRequirementId,
+} from '@/domain/entities/shift-requirement';
+import { runEventRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/event.contract-spec';
+
+class MockEventRepository implements EventRepository {
+  private events = new Map<string, Event>();
+  private eventTimeBlocks = new Map<string, EventTimeBlock[]>();
+  private ministries = new Map<string, MinistryId>();
+  private idCounter = 1;
+
+  constructor() {
+    const e1 = new Event({
+      props: {
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
+        title: 'Youth Gathering',
+        start: parseInstant({ value: '2024-06-05T10:00:00Z' }),
+        end: parseInstant({ value: '2024-06-05T12:00:00Z' }),
+        status: 'draft',
+      },
+      id: '66666666-6666-6666-6666-666666666661' as EventId,
+    });
+    const e2 = new Event({
+      props: {
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
+        title: 'Sunday Service',
+        start: parseInstant({ value: '2024-06-04T10:00:00Z' }),
+        end: parseInstant({ value: '2024-06-04T12:00:00Z' }),
+        status: 'scheduled',
+      },
+      id: '66666666-6666-6666-6666-666666666662' as EventId,
+    });
+
+    this.events.set(e1.id, e1);
+    this.events.set(e2.id, e2);
+    this.ministries.set(
+      e1.id,
+      '33333333-3333-3333-3333-333333333331' as MinistryId,
+    );
+    this.ministries.set(
+      e2.id,
+      '33333333-3333-3333-3333-333333333331' as MinistryId,
+    );
+
+    const req = new ShiftRequirement({
+      props: {
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        eventTimeBlockId:
+          '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
+        roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
+        sectorId: '55555555-5555-5555-5555-5555555555a1' as SectorId,
+        sectorName: 'Palco',
+        peopleNeeded: 1,
+      },
+      id: '88888888-8888-8888-8888-888888888881' as ShiftRequirementId,
+    });
+
+    const eventTimeBlock = new EventTimeBlock({
+      props: {
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        eventId: e1.id,
+        startTime: e1.start,
+        endTime: e1.end,
+        status: 'active',
+        requirements: [req],
+      },
+      id: '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
+    });
+
+    this.eventTimeBlocks.set(e1.id, [eventTimeBlock]);
+  }
+
+  async getById({ churchId, eventId: id }: GetEventInput): Promise<Event> {
+    const e = this.events.get(id);
+    if (!e || e.churchId !== churchId) {
+      throw new NotFoundError('Event not found');
+    }
+    return e;
+  }
+
+  async getWithEventTimeBlocks({
+    churchId,
+    eventId: id,
+  }: GetEventInput): Promise<EventWithEventTimeBlocks> {
+    const event = await this.getById({ churchId, eventId: id });
+    const eventTimeBlocks = this.eventTimeBlocks.get(id) ?? [];
+    return { event, eventTimeBlocks };
+  }
+
+  async getMinistryId({
+    churchId,
+    eventId: id,
+  }: GetEventInput): Promise<MinistryId> {
+    await this.getById({ churchId, eventId: id });
+    const ministryId = this.ministries.get(id);
+    if (!ministryId) throw new NotFoundError('Participation not found');
+    return ministryId;
+  }
+
+  async listByMinistry({
+    churchId,
+    ministryId,
+    status,
+  }: ListEventsByMinistryInput): Promise<Event[]> {
+    let list = Array.from(this.events.values()).filter(
+      (e) =>
+        e.churchId === churchId && this.ministries.get(e.id) === ministryId,
+    );
+    if (status) {
+      list = list.filter((e) => e.status === status);
+    }
+    return list.sort((a, b) =>
+      compareInstants({ left: a.start, right: b.start }),
+    );
+  }
+
+  async create({
+    churchId,
+    input,
+  }: CreateEventRepositoryInput): Promise<Event> {
+    const id = `event-gen-${this.idCounter++}` as EventId;
+    const e = new Event({
+      props: {
+        churchId,
+        cycleId: input.cycleId,
+        sourceTemplateId: input.sourceTemplateId,
+        title: input.title,
+        description: input.description,
+        location: input.location,
+        start: fromDate({ date: input.start }),
+        end: fromDate({ date: input.end }),
+        status: input.status ?? 'draft',
+      },
+      id,
+    });
+    this.events.set(e.id, e);
+    this.ministries.set(
+      e.id,
+      '33333333-3333-3333-3333-333333333331' as MinistryId,
+    );
+    return e;
+  }
+
+  async updateStatus({
+    churchId,
+    eventId: id,
+    input,
+  }: UpdateEventStatusRepositoryInput): Promise<void> {
+    const e = await this.getById({ churchId, eventId: id });
+    if (input.status === 'scheduled') {
+      e.markScheduled();
+    } else if (input.status === 'cancelled') {
+      e.cancel();
+    } else if (input.status === 'past') {
+      e.markAsPast();
+    }
+    this.events.set(e.id, e);
+  }
+
+  async update({
+    churchId,
+    eventId: id,
+    input,
+  }: UpdateEventRepositoryInput): Promise<Event> {
+    const e = await this.getById({ churchId, eventId: id });
+    const updated = new Event({
+      props: {
+        churchId: e.churchId,
+        cycleId: e.cycleId as CycleId,
+        title: input.title ?? e.title,
+        description: e.description,
+        location: e.location,
+        start: input.start ? fromDate({ date: input.start }) : e.start,
+        end: input.end ? fromDate({ date: input.end }) : e.end,
+        status: e.status,
+      },
+      id: e.id,
+    });
+    this.events.set(updated.id, updated);
+    return updated;
+  }
+}
+
+runEventRepositoryContractTests(
+  async () => new MockEventRepository(),
+  async () => {},
+);

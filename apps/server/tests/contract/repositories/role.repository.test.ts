@@ -1,0 +1,68 @@
+import { NotFoundError } from '@church/core';
+import type { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
+import type {
+  GetRoleByIdInput,
+  ListRolesByMinistryInput,
+} from '@/domain/contracts/infrastructure/role.repository';
+import { Role } from '@/domain/entities/role';
+import {
+  type RoleReadRepository,
+  runRoleRepositoryContractTests,
+} from '@/tests/domain/contracts/contract-tests/role.contract-spec';
+
+class MockRoleRepository implements RoleReadRepository {
+  private roles = new Map<string, Role>();
+
+  constructor() {
+    const r1 = new Role({
+      props: {
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
+        name: 'Usher',
+      },
+      id: '55555555-5555-5555-5555-555555555551' as RoleId,
+    });
+    const r2 = new Role({
+      props: {
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
+        name: 'Greeter',
+      },
+      id: '55555555-5555-5555-5555-555555555552' as RoleId,
+    });
+    const r3 = new Role({
+      props: {
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        ministryId: '33333333-3333-3333-3333-333333333332' as MinistryId,
+        name: 'Teacher',
+      },
+      id: 'role-3' as RoleId,
+    });
+    this.roles.set(r1.id, r1);
+    this.roles.set(r2.id, r2);
+    this.roles.set(r3.id, r3);
+  }
+
+  async getById({ churchId, id }: GetRoleByIdInput): Promise<Role> {
+    const role = this.roles.get(id);
+    if (!role || role.churchId !== churchId) {
+      throw new NotFoundError('Role not found');
+    }
+    return role;
+  }
+
+  async listByMinistry({
+    churchId,
+    ministryId,
+  }: ListRolesByMinistryInput): Promise<Role[]> {
+    const list = Array.from(this.roles.values()).filter(
+      (r) => r.churchId === churchId && r.ministryId === ministryId,
+    );
+    return list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+}
+
+runRoleRepositoryContractTests(
+  async () => new MockRoleRepository(),
+  async () => {},
+);

@@ -1,0 +1,244 @@
+import * as schema from '@church/db';
+import { clearPublicTables } from '@church/db/clear-public-tables';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
+import { ChurchId, UserId } from '@/domain/branded-ids';
+import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
+import { buildUser } from '@/seeds/builders/identity';
+
+const DATABASE_URL = getIntegrationDatabaseUrl();
+const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
+const testDb = drizzle(pool, { schema });
+
+const churchAId = ChurchId.from('11111111-1111-4111-8111-c11111111111');
+const churchBId = ChurchId.from('11111111-1111-4111-8111-c11111111112');
+const singleMemberUserId = UserId.from('active-resolver-single-user');
+const dualMemberUserId = UserId.from('active-resolver-dual-user');
+const strandedUserId = UserId.from('active-resolver-stranded-user');
+const removedSingleRemainUserId = UserId.from(
+  'active-resolver-removed-single-remain',
+);
+const removedNoneRemainUserId = UserId.from(
+  'active-resolver-removed-none-remain',
+);
+
+// Roots at `organization`/`user`: see the note on `truncateAll` in
+// `tests/integration/repositories/setup.ts`.
+async function resetDb(): Promise<void> {
+  await clearPublicTables({ pool });
+}
+
+async function seed(): Promise<void> {
+  await buildUser({
+    db: testDb,
+    id: singleMemberUserId,
+    name: 'Active Resolver Single',
+    email: 'active-resolver-single@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: dualMemberUserId,
+    name: 'Active Resolver Dual',
+    email: 'active-resolver-dual@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: strandedUserId,
+    name: 'Active Resolver Stranded',
+    email: 'active-resolver-stranded@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: removedSingleRemainUserId,
+    name: 'Active Resolver Removed Single Remain',
+    email: 'active-resolver-removed-single-remain@test.com',
+  });
+  await buildUser({
+    db: testDb,
+    id: removedNoneRemainUserId,
+    name: 'Active Resolver Removed None Remain',
+    email: 'active-resolver-removed-none-remain@test.com',
+  });
+
+  await buildChurch({
+    db: testDb,
+    id: churchAId,
+    name: 'Active Resolver Church A',
+    slug: 'active-resolver-church-a',
+    timezone: 'UTC',
+  });
+  await buildChurch({
+    db: testDb,
+    id: churchBId,
+    name: 'Active Resolver Church B',
+    slug: 'active-resolver-church-b',
+    timezone: 'UTC',
+  });
+
+  await buildChurchMembership({
+    db: testDb,
+    churchId: churchAId,
+    userId: singleMemberUserId,
+    accessLevel: 'member',
+  });
+  await buildChurchMembership({
+    db: testDb,
+    churchId: churchAId,
+    userId: dualMemberUserId,
+    accessLevel: 'member',
+  });
+  await buildChurchMembership({
+    db: testDb,
+    churchId: churchBId,
+    userId: dualMemberUserId,
+    accessLevel: 'admin',
+  });
+  // strandedUserId deliberately gets no Church Membership row.
+
+  await buildChurchMembership({
+    db: testDb,
+    churchId: churchBId,
+    userId: removedSingleRemainUserId,
+    accessLevel: 'member',
+  });
+  // removedSingleRemainUserId deliberately gets no Membership row in churchA —
+  // simulates a session still naming churchA as active after that Membership
+  // was removed, with exactly one Membership (churchB) remaining.
+
+  // removedNoneRemainUserId deliberately gets no Membership row anywhere —
+  // simulates a session naming churchA as active after that Membership was
+  // removed, with no Membership remaining at all.
+}
+
+function createResolver(): DbActiveChurchResolver {
+  return new DbActiveChurchResolver({
+    actorRepository: new DrizzleAuthorityActorResolver({ db: testDb }),
+    membershipRepository: new DrizzleChurchMembershipRepository({ db: testDb }),
+    churchRepository: new DrizzleChurchRepository({ db: testDb }),
+    unitOfWork: new DrizzleUnitOfWork({ db: testDb }),
+  });
+}
+
+describe('DbActiveChurchResolver (integration, real repeatable-read transaction)', () => {
+  beforeEach(async () => {
+    await resetDb();
+    await seed();
+  });
+
+  it('auto-selects the one Church for a User with exactly one Membership, through a real transaction', async () => {
+    const resolver = createResolver();
+
+    const result = await resolver.resolve({
+      userId: singleMemberUserId,
+      activeOrganizationId: null,
+    });
+
+    expect(result).toEqual({
+      status: 'resolved',
+      churchId: churchAId,
+      volunteerId: null,
+      hasVolunteerMembership: false,
+      autoSelected: true,
+    });
+  });
+
+  it('resolves concurrent auto-selects of the same Church without a serialization failure', async () => {
+    const resolver = createResolver();
+
+    // Each round opens two repeatable-read snapshots before either commits.
+    for (let round = 0; round < 10; round += 1) {
+      const results = await Promise.all([
+        resolver.resolve({
+          userId: singleMemberUserId,
+          activeOrganizationId: null,
+        }),
+        resolver.resolve({
+          userId: singleMemberUserId,
+          activeOrganizationId: null,
+        }),
+      ]);
+      expect(results.map((result) => result.status)).toEqual([
+        'resolved',
+        'resolved',
+      ]);
+    }
+  });
+
+  it('requires selection for a User with several Memberships and no active organization', async () => {
+    const resolver = createResolver();
+
+    const result = await resolver.resolve({
+      userId: dualMemberUserId,
+      activeOrganizationId: null,
+    });
+
+    expect(result).toEqual({ status: 'selection_required' });
+  });
+
+  it('resolves directly against a session-provided active organization without touching the membership list', async () => {
+    const resolver = createResolver();
+
+    const result = await resolver.resolve({
+      userId: dualMemberUserId,
+      activeOrganizationId: churchBId,
+    });
+
+    expect(result).toEqual({
+      status: 'resolved',
+      churchId: churchBId,
+      volunteerId: null,
+      hasVolunteerMembership: false,
+      autoSelected: false,
+    });
+  });
+
+  it('denies a User with no Church Membership at all', async () => {
+    const resolver = createResolver();
+
+    const result = await resolver.resolve({
+      userId: strandedUserId,
+      activeOrganizationId: null,
+    });
+
+    expect(result).toEqual({ status: 'no_membership' });
+  });
+
+  it('auto-selects the one remaining Church and reports the former Church name when the session names a Church whose Membership was removed', async () => {
+    const resolver = createResolver();
+
+    const result = await resolver.resolve({
+      userId: removedSingleRemainUserId,
+      activeOrganizationId: churchAId,
+    });
+
+    expect(result).toEqual({
+      status: 'resolved',
+      churchId: churchBId,
+      volunteerId: null,
+      hasVolunteerMembership: false,
+      autoSelected: true,
+      membershipRemovedFrom: 'Active Resolver Church A',
+    });
+  });
+
+  it('denies and reports the former Church name when the session names a Church whose Membership was removed and none remain', async () => {
+    const resolver = createResolver();
+
+    const result = await resolver.resolve({
+      userId: removedNoneRemainUserId,
+      activeOrganizationId: churchAId,
+    });
+
+    expect(result).toEqual({
+      status: 'no_membership',
+      membershipRemovedFrom: 'Active Resolver Church A',
+    });
+  });
+});

@@ -1,4 +1,4 @@
-import { Toaster } from '@base-fullstack-template/ui/components/sonner';
+import { m } from '@church/i18n/messages';
 import type { QueryClient } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import {
@@ -7,27 +7,30 @@ import {
   Outlet,
 } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
-import Header from '@/components/header';
+import { ReconnectingBanner } from '@/components/reconnecting-banner';
+import { RouteProgress } from '@/components/route-progress';
 import { ThemeProvider } from '@/components/theme-provider';
-import type { trpc } from '@/utils/trpc';
+import { Toaster } from '@/components/ui/sonner';
+import { ShellErrorFallback } from '@/shared/components/route-fallbacks';
 
 import '../index.css';
 
 export interface RouterAppContext {
-  trpc: typeof trpc;
   queryClient: QueryClient;
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootComponent,
+  errorComponent: ShellErrorFallback,
   head: () => ({
     meta: [
       {
-        title: 'base-fullstack-template',
+        // presentation-text-ignore: product name, not translatable copy
+        title: 'church',
       },
       {
         name: 'description',
-        content: 'base-fullstack-template is a web application',
+        content: m.shell_app_description(),
       },
     ],
     links: [
@@ -45,14 +48,13 @@ function RootComponent() {
       <HeadContent />
       <ThemeProvider
         attribute="class"
-        defaultTheme="dark"
+        defaultTheme="light"
         disableTransitionOnChange
         storageKey="vite-ui-theme"
       >
-        <div className="grid h-svh grid-rows-[auto_1fr]">
-          <Header />
-          <Outlet />
-        </div>
+        <RouteProgress />
+        <Outlet />
+        <ReconnectingBanner />
         <Toaster richColors />
       </ThemeProvider>
       <TanStackRouterDevtools position="bottom-left" />

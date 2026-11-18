@@ -41,6 +41,8 @@ A functional department within a church.
     - `enforcement_type`: "soft" | "hard" (default: "soft")
 - **created_at / updated_at**: Timestamps
 
+**Refined (017, 2026-07-02):** A Ministry no longer **owns** Events — Events are Church-owned and a Ministry participates via `MinistryParticipation`. Ministry now carries a `default_direction` ("all_in" | "all_out") — its ministry-wide participation default (overrides the church-wide global, is overridden by manual per-slot choices; not a template concept). The Event/Assignment/Availability entity reshapes referenced by this change are specified in [Spec 02](./02-event-slots.md) and [Spec 03](./03-assignments-availability.md) (church-owned Event + `planning_cycle_id`; Assignment/requirement keyed to `Shift` under a participation; Availability as a per-`Shift` mark under an `AvailabilityCheck`). (see ADR 0001 / ADR 0002 / CONTEXT.md)
+
 ---
 
 ## 4. Team Entity
@@ -51,7 +53,6 @@ A sub-group within a Ministry.
 - **church_id**: UUID (Foreign Key to Church)
 - **ministry_id**: UUID (Foreign Key to Ministry)
 - **name**: String
-- **leader_id**: UUID (Foreign Key to Volunteer - optional sub-leader)
 
 ---
 
@@ -80,7 +81,8 @@ graph TD
 - **volunteer_id**: UUID (Foreign Key to Volunteer)
 - **ministry_id**: UUID (Foreign Key to Ministry)
 - **team_id**: UUID (Optional - Foreign Key to Team)
-- **system_role**: "LEADER" | "SUB_LEADER" | "VOLUNTEER" (Default: "VOLUNTEER")
+- **system_role**: "leader" | "sub_leader" | "volunteer" (Default: "volunteer")
+  *Note: `system_role` is the sole mechanism for designating Ministry Leaders (`leader`) and Team Leaders (`sub_leader`).*
 - **status**: "active" | "inactive"
 - **joined_at**: Timestamp
 

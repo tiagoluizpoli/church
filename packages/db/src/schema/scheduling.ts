@@ -1,0 +1,174 @@
+import { sql } from 'drizzle-orm';
+import {
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
+import { church } from './church';
+import { role, sector } from './core';
+import { eventStatusEnum, eventTimeBlockStatusEnum } from './enums';
+import { ministryParticipation } from './participation';
+import { cycle, eventTemplate, templateTimeBlock } from './planning';
+
+export const event = pgTable(
+  'event',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    cycleId: uuid('cycle_id')
+      .notNull()
+      .references(() => cycle.id, { onDelete: 'cascade' }),
+    sourceTemplateId: uuid('source_template_id').references(
+      () => eventTemplate.id,
+      { onDelete: 'set null' },
+    ),
+    title: varchar('title', { length: 255 }).notNull(),
+    description: text('description'),
+    location: varchar('location', { length: 255 }),
+    start: timestamp('start', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    end: timestamp('end', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    status: eventStatusEnum('status').default('draft').notNull(),
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'date',
+    })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('event_church_cycle_idx').on(table.churchId, table.cycleId),
+    check('event_date_check', sql`${table.start} < ${table.end}`),
+  ],
+);
+
+export const eventTimeBlock = pgTable(
+  'event_time_block',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    eventId: uuid('event_id')
+      .notNull()
+      .references(() => event.id, { onDelete: 'cascade' }),
+    sourceTemplateTimeBlockId: uuid('source_template_time_block_id').references(
+      () => templateTimeBlock.id,
+      { onDelete: 'set null' },
+    ),
+    startTime: timestamp('start_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    endTime: timestamp('end_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    label: varchar('label', { length: 255 }),
+    // Cancelling one block; its Shifts are cancelled through it (no Shift status).
+    status: eventTimeBlockStatusEnum('status').default('active').notNull(),
+    createdAt: timestamp('created_at', {
+      withTimezone: true,
+      mode: 'date',
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('event_time_block_event_idx').on(table.eventId),
+    check(
+      'event_time_block_duration_check',
+      sql`${table.startTime} < ${table.endTime}`,
+    ),
+  ],
+);
+
+export const shift = pgTable(
+  'shift',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    participationId: uuid('participation_id')
+      .notNull()
+      .references(() => ministryParticipation.id, { onDelete: 'cascade' }),
+    eventTimeBlockId: uuid('event_time_block_id')
+      .notNull()
+      .references(() => eventTimeBlock.id, { onDelete: 'cascade' }),
+    startTime: timestamp('start_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    endTime: timestamp('end_time', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    label: varchar('label', { length: 255 }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    // Leads with participation_id, so it also serves participation-only lookups.
+    index('shift_participation_block_idx').on(
+      table.participationId,
+      table.eventTimeBlockId,
+    ),
+    index('shift_event_time_block_idx').on(table.eventTimeBlockId),
+    check('shift_duration_check', sql`${table.startTime} < ${table.endTime}`),
+  ],
+);
+
+export const shiftRequirement = pgTable(
+  'shift_requirement',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    participationId: uuid('participation_id')
+      .notNull()
+      .references(() => ministryParticipation.id, { onDelete: 'cascade' }),
+    shiftId: uuid('shift_id')
+      .notNull()
+      .references(() => shift.id, { onDelete: 'cascade' }),
+    roleId: uuid('role_id')
+      .notNull()
+      .references(() => role.id, { onDelete: 'cascade' }),
+    sectorId: uuid('sector_id')
+      .notNull()
+      .references(() => sector.id, { onDelete: 'cascade' }),
+    peopleNeeded: integer('people_needed').default(1).notNull(),
+    notes: text('notes'),
+  },
+  (table) => [
+    index('shift_requirement_participation_idx').on(table.participationId),
+    uniqueIndex('shift_requirement_shift_sector_role_idx').on(
+      table.shiftId,
+      table.sectorId,
+      table.roleId,
+    ),
+    check(
+      'shift_requirement_min_people_needed_check',
+      sql`${table.peopleNeeded} >= 1`,
+    ),
+  ],
+);

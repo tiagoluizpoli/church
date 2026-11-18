@@ -1,18 +1,33 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { z } from 'zod';
 import SignInForm from '@/components/sign-in-form';
-import SignUpForm from '@/components/sign-up-form';
+import { authClient } from '@/lib/auth-client';
+import { validateInternalReturnTarget } from '@/shared/utils/return-target';
+
+const HOME_PATH = '/';
+
+const loginSearchSchema = z.object({
+  redirect: z.string().optional(),
+  notice: z.literal('password-changed').optional().catch(undefined),
+});
 
 export const Route = createFileRoute('/login')({
+  validateSearch: (search) => loginSearchSchema.parse(search),
   component: RouteComponent,
+  beforeLoad: async ({ search }) => {
+    const session = await authClient.getSession();
+    if (session.data) {
+      const target =
+        validateInternalReturnTarget({ target: search.redirect }) ?? HOME_PATH;
+      throw redirect({ href: target });
+    }
+  },
 });
 
 function RouteComponent() {
-  const [showSignIn, setShowSignIn] = useState(false);
+  const { redirect: redirectSearch, notice } = Route.useSearch();
+  const redirectTo =
+    validateInternalReturnTarget({ target: redirectSearch }) ?? undefined;
 
-  return showSignIn ? (
-    <SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
-  ) : (
-    <SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
-  );
+  return <SignInForm redirectTo={redirectTo} notice={notice} />;
 }

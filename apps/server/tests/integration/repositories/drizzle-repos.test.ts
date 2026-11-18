@@ -1,0 +1,124 @@
+/**
+ * Integration test runner: executes all repository contract suites
+ * against concrete Drizzle implementations backed by a real PostgreSQL DB.
+ *
+ * Seed layout (stable IDs used by contract specs):
+ *   church-1, church-2
+ *   user-1, user-2
+ *   ministry-1 (Adult Ministry, church-1), ministry-2 (Youth Ministry, church-1)
+ *   volunteer-1 (user-1, church-1), volunteer-2 (user-2, church-1)
+ *   role-1 (Usher, ministry-1), role-2 (Greeter, ministry-1)
+ *   event-1 (draft, June 5), event-2 (published, June 4)
+ *   event-time-block-1 (event-1 event time block), shift-requirement-1
+ *   assignment-1 (confirmed, volunteer-1+event-time-block-1), assignment-2 (declined, volunteer-2+event-time-block-1)
+ *   availability-1 (volunteer-1)
+ *   audit-1, audit-2 (for assignment-1)
+ */
+
+import { seed, testDb, truncateAll } from './setup';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
+import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
+import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
+import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
+import {
+  runAssignmentAuditRepositoryContractTests,
+  runAssignmentRepositoryContractTests,
+  runChurchRepositoryContractTests,
+  runEventRepositoryContractTests,
+  runEventTimeBlockRepositoryContractTests,
+  runMinistryRepositoryContractTests,
+  runRoleRepositoryContractTests,
+  runVolunteerRepositoryContractTests,
+} from '@/tests/domain/contracts/contract-tests';
+
+runChurchRepositoryContractTests(
+  async () => {
+    await truncateAll();
+    await seed();
+    return new DrizzleChurchRepository({ db: testDb });
+  },
+  async () => {
+    await truncateAll();
+  },
+);
+
+runMinistryRepositoryContractTests(
+  async () => {
+    await truncateAll();
+    await seed();
+    return new DrizzleMinistryRepository({ db: testDb });
+  },
+  async () => {
+    await truncateAll();
+  },
+);
+
+runRoleRepositoryContractTests(
+  async () => {
+    await truncateAll();
+    await seed();
+    return new DrizzleRoleRepository({ db: testDb });
+  },
+  async () => {
+    await truncateAll();
+  },
+);
+
+runVolunteerRepositoryContractTests(
+  async () => {
+    await truncateAll();
+    await seed();
+    return new DrizzleVolunteerRepository({ db: testDb });
+  },
+  async () => {
+    await truncateAll();
+  },
+);
+
+runEventRepositoryContractTests(
+  async () => {
+    await truncateAll();
+    await seed();
+    return new DrizzleEventRepository({ db: testDb });
+  },
+  async () => {
+    await truncateAll();
+  },
+);
+
+runEventTimeBlockRepositoryContractTests(
+  async () => {
+    await truncateAll();
+    await seed();
+    return new DrizzleEventTimeBlockRepository({ db: testDb });
+  },
+  async () => {
+    await truncateAll();
+  },
+);
+
+runAssignmentRepositoryContractTests(
+  async () => {
+    await truncateAll();
+    await seed();
+    return new DrizzleAssignmentRepository({ db: testDb });
+  },
+  async () => {
+    await truncateAll();
+  },
+);
+
+runAssignmentAuditRepositoryContractTests(
+  async () => {
+    await truncateAll();
+    await seed();
+    return new DrizzleAssignmentAuditRepository({ db: testDb });
+  },
+  async () => {
+    await truncateAll();
+  },
+);

@@ -1,0 +1,39 @@
+import { env } from '@church/env/server';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
+import { getE2eDatabaseUrl } from './e2e-database-url';
+import { getIntegrationDatabaseUrl } from './integration-database-url';
+import * as schema from './schema';
+
+function resolveConnectionString(): string {
+  if (process.env.CHURCH_EXEC_PURPOSE === 'integration') {
+    return getIntegrationDatabaseUrl();
+  }
+
+  if (process.env.CHURCH_EXEC_PURPOSE === 'e2e') {
+    return getE2eDatabaseUrl();
+  }
+
+  // Development and production: the target Varlock (or the deployment)
+  // injected. `NODE_ENV` never selects a database (ADR-0005).
+  return env.DATABASE_URL;
+}
+
+export function createDb() {
+  const connectionString = resolveConnectionString();
+  const pool = new pg.Pool({
+    connectionString,
+    max: process.env.NODE_ENV === 'test' ? 2 : 10,
+    // Let short-lived scripts exit once idle instead of lingering on the 10 s idle timeout.
+    allowExitOnIdle: true,
+  });
+  // An idle connection the database drops (restart, failover) is discarded by
+  // the pool; unhandled, its error would end the process instead of letting
+  // the next query fail and readiness report the outage.
+  pool.on('error', (error) => {
+    console.error(`Idle database connection lost: ${error.message}`);
+  });
+  return drizzle(pool, { schema });
+}
+
+export const db = createDb();

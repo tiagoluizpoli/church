@@ -1,4 +1,4 @@
-# base-fullstack-template
+# church
 
 This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Router, Fastify, TRPC, and more.
 
@@ -17,7 +17,15 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Biome** - Linting and formatting
 - **Electrobun** - Lightweight desktop shell for web frontends
 - **PWA** - Progressive Web App support
+- **Timezone Policy** - Strict "UTC-First" storage with `timestamptz` and contextual local-time rendering
 - **Turborepo** - Optimized monorepo build system
+
+## Requirements
+
+- [mise](https://mise.jdx.dev): `mise install` pins Bun 1.4.3 and Node 26.11.1 from `mise.toml`. Root `package.json` `packageManager` and `mise.toml` must name the same Bun version.
+- Docker and Docker Compose: PostgreSQL 16 runs from `docker-compose.yml`.
+- Git.
+- [Worktrunk](https://worktrunk.dev) (`wt`): creates worktrees and runs the bootstrap hook; see [docs/agents/tooling.md](docs/agents/tooling.md).
 
 ## Getting Started
 
@@ -29,16 +37,26 @@ bun install
 
 ## Database Setup
 
-This project uses PostgreSQL with Drizzle ORM.
+This project uses PostgreSQL with Drizzle ORM, run from the root
+`docker-compose.yml` and shared by every worktree.
 
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
-
-3. Apply the schema to your database:
+Each worktree gets its own generated `.env.local` (ports, URL set, secret,
+and its development, integration, and E2E databases). Creating a worktree
+with Worktrunk (`wt switch --create <branch>`) prepares it automatically; in
+the primary checkout, run once:
 
 ```bash
-bun run db:push
+bun run worktree:bootstrap
 ```
+
+Machine-shared values (optional Resend, dev domain) live in `church-shared.env`
+in the shared Git directory. The committed `.env.schema` files declare every
+variable; there are no per-package value files. See
+[docs/agents/tooling.md](docs/agents/tooling.md), "Worktree bootstrap".
+
+Development email goes to the local Mailpit inbox by default. To send real
+email through Resend, set `DEV_EMAIL_SENDER=resend`; see "Development email"
+in [docs/agents/tooling.md](docs/agents/tooling.md).
 
 Then, run the development server:
 
@@ -46,8 +64,9 @@ Then, run the development server:
 bun run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+The web application and the API listen on the worktree's `CHURCH_WEB_PORT`
+and `CHURCH_SERVER_PORT` (see its `.env.local`), on its private
+`church-<worktree>.dev.home.arpa` hostname.
 
 ## UI Customization
 
@@ -68,7 +87,7 @@ npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
 Import shared components like this:
 
 ```tsx
-import { Button } from "@base-fullstack-template/ui/components/button";
+import { Button } from "@church/ui/components/button";
 ```
 
 ### Add app-specific blocks
@@ -77,21 +96,62 @@ If you want to add app-specific blocks instead of shared primitives, run the sha
 
 ## Git Hooks and Formatting
 
-- Format and lint fix: `bun run check`
+- Check formatting and lint: `bun run lint`
+- Apply formatting and lint fixes: `bun run lint:fix`
 
 ## Project Structure
 
 ```
-base-fullstack-template/
+church/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Router)
-│   └── server/      # Backend API (Fastify, TRPC)
+│   └── server/      # Backend API (Fastify, tRPC, domain & routers)
 ├── packages/
 │   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
 │   ├── auth/        # Authentication configuration & logic
 │   └── db/          # Database schema & queries
 ```
+
+## Data Cutover: Date & Time Seam (#171)
+
+The `@church/time` seam (ADR-0003) changed how `Event.start`/`Event.end` and
+related bounds are constructed. No live production data exists yet, so the
+cutover for this change is a **reset and reseed**, not a data-repair
+migration — schema changes (the TimeBlock crosses-midnight constraint drop,
+the `_date` column rename) already shipped as ordinary migrations in
+`packages/db/src/migrations/`.
+
+To cut a worktree's development database over to seam-correct data,
+rebuild it from clean:
+
+```bash
+bun run db:reseed:dev
+```
+
+It resets and migrates this worktree's development database, loads the
+deterministic development scenario, and verifies it (see
+[tooling](docs/agents/tooling.md)). Its Churches use the real Church
+Timezone `America/Sao_Paulo`, so their gatherings are stored as church-local
+Instants.
+
+E2E needs no manual step: `bun run test:e2e` resets its own database before
+every run, and each journey loads its own data from the server's E2E recipes
+(`apps/server/seeds/e2e/`).
+
+## Test Policy: What To Run
+
+See [ADR-0004](docs/adr/0004-test-strategy-and-ci-gate-policy.md) for the full
+policy and its trade-offs. Day to day, pick the command by what changed:
+
+| Change type | Command |
+| --- | --- |
+| One file, while iterating | `bun run --cwd <app or package> test <path>` |
+| Any local change, before a PR | `bun run validate:affected` |
+| A story's own E2E spec, once done | `bun run test:e2e -- tests/[path].spec.ts` |
+| Task branch → `develop` PR (CI) | fast gate + `validate:affected --daily-gate` |
+| `develop` → `master` PR (CI) | release gate (complete validation, incl. full E2E) |
+| Final handoff / merge validation | `bun run validate` |
+| New Playwright spec | only if critical-journey (ADR-0004); add its `JOURNEY_MAP` entry |
 
 ## Available Scripts
 
@@ -99,12 +159,22 @@ base-fullstack-template/
 - `bun run build`: Build all applications
 - `bun run dev:web`: Start only the web application
 - `bun run dev:server`: Start only the server
-- `bun run check-types`: Check TypeScript types across all apps
+- `bun run typecheck`: Check TypeScript types across all apps
+- `bun run test:unit`: Run unit and component tests
+- `bun run test:integration`: Run integration tests
+- `bun run validate:date-time-seam`: Fail on date-time seam suppressions and
+  `date-fns` locale format tokens before pushing
+- `bun run test:e2e -- tests/[path].spec.ts`: Run an affected end-to-end journey
+- `bun run test`: Run the complete test suite
+- `bun run validate:affected`: Validate the changed files and their affected workspaces
+- `bun run validate`: Run the full final validation gate
 - `bun run db:push`: Push schema changes to database
 - `bun run db:generate`: Generate database client/types
 - `bun run db:migrate`: Run database migrations
 - `bun run db:studio`: Open database studio UI
-- `bun run check`: Run Biome formatting and linting
+- `bun run db:init`: Initialize system with church, admin, and administration ministry
+- `bun run db:reseed:dev`: Rebuild this worktree's development database with the development scenario
+- `bun run db:clean`: Wipe all tables (truncate) for a fresh state
 - `cd apps/web && bun run generate-pwa-assets`: Generate PWA assets
 - `bun run dev:desktop`: Start the Electrobun desktop app with HMR
 - `bun run build:desktop`: Build the stable Electrobun desktop app

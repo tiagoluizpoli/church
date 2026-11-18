@@ -1,0 +1,513 @@
+import { fromTimeColumn } from '@church/time';
+import { AxiosError, type AxiosResponse } from 'axios';
+import { describe, expect, it } from 'vitest';
+import type {
+  CycleEventGroup,
+  CycleFormState,
+  SelectedCycle,
+  TemplateFormState,
+  TemplateTimeBlockDraft,
+} from '@/features/scheduling/components/planning-admin/planning-admin.types';
+import {
+  calculateTotalEventTimeBlocks,
+  canCreateCycle,
+  canSaveTemplate,
+  conflictingCyclesOf,
+  cycleIsReadOnly,
+  describeTemplateTimeBlockSpan,
+  eventSpanLabel,
+  eventStatusBadgeVariant,
+  groupCyclesForList,
+  groupRowsByWeek,
+  stateBadgeVariant,
+  suggestCycleName,
+  templateBlockErrors,
+  toTemplateRequestBlocks,
+} from '@/features/scheduling/components/planning-admin/planning-admin.utils';
+
+function makeCycle(overrides: Partial<SelectedCycle> = {}): SelectedCycle {
+  return {
+    id: 'cycle-1',
+    churchId: 'church-1',
+    name: 'Sunday cycle',
+    startDate: '2027-01-01',
+    endDate: '2027-01-31',
+    state: 'draft',
+    createdAt: '2027-01-01T00:00:00.000Z',
+    updatedAt: '2027-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+function makeEventGroup(eventTimeBlockCount: number): CycleEventGroup {
+  return {
+    event: {
+      id: 'event-1',
+      churchId: 'church-1',
+      cycleId: 'cycle-1',
+      title: 'Sunday Service',
+      start: '2027-01-03T09:00:00.000Z',
+      end: '2027-01-03T11:00:00.000Z',
+      status: 'scheduled',
+      createdAt: '2027-01-01T00:00:00.000Z',
+      updatedAt: '2027-01-01T00:00:00.000Z',
+    },
+    eventTimeBlocks: Array.from(
+      { length: eventTimeBlockCount },
+      (_unused, index) => ({
+        id: `event-time-block-${index}`,
+        churchId: 'church-1',
+        eventId: 'event-1',
+        startTime: '2027-01-03T09:00:00.000Z',
+        endTime: '2027-01-03T09:30:00.000Z',
+        status: 'active',
+        requirements: [],
+      }),
+    ),
+  };
+}
+
+function makeCycleForm(
+  overrides: Partial<CycleFormState> = {},
+): CycleFormState {
+  return {
+    name: 'Sunday cycle',
+    startDate: '2027-01-01',
+    endDate: '2027-01-31',
+    ...overrides,
+  };
+}
+
+function makeTemplateTimeBlock(
+  overrides: Partial<TemplateTimeBlockDraft> = {},
+): TemplateTimeBlockDraft {
+  return {
+    key: 'template-time-block-1',
+    label: 'Welcome',
+    startTime: fromTimeColumn({ value: '09:00:00' }),
+    endTime: fromTimeColumn({ value: '09:30:00' }),
+    ...overrides,
+  };
+}
+
+function makeTemplateForm(
+  overrides: Partial<TemplateFormState> = {},
+): TemplateFormState {
+  return {
+    name: 'Sunday',
+    weekday: '0',
+    blocks: [makeTemplateTimeBlock()],
+    ...overrides,
+  };
+}
+
+describe('canCreateCycle', () => {
+  it('allows a complete form whose start precedes its end', () => {
+    expect(canCreateCycle({ cycleForm: makeCycleForm() })).toBe(true);
+  });
+
+  it('rejects a blank name', () => {
+    expect(canCreateCycle({ cycleForm: makeCycleForm({ name: '  ' }) })).toBe(
+      false,
+    );
+  });
+
+  it('rejects a missing start or end date', () => {
+    expect(
+      canCreateCycle({ cycleForm: makeCycleForm({ startDate: '' }) }),
+    ).toBe(false);
+    expect(canCreateCycle({ cycleForm: makeCycleForm({ endDate: '' }) })).toBe(
+      false,
+    );
+  });
+
+  it('rejects an end date before the start date', () => {
+    expect(
+      canCreateCycle({
+        cycleForm: makeCycleForm({
+          startDate: '2027-01-31',
+          endDate: '2027-01-30',
+        }),
+      }),
+    ).toBe(false);
+  });
+
+  it('allows a one-day Cycle whose start and end are the same day', () => {
+    expect(
+      canCreateCycle({
+        cycleForm: makeCycleForm({
+          startDate: '2027-01-01',
+          endDate: '2027-01-01',
+        }),
+      }),
+    ).toBe(true);
+  });
+});
+
+describe('canCreateCycle name rules', () => {
+  it('accepts 255 characters after trimming and refuses 256', () => {
+    expect(
+      canCreateCycle({
+        cycleForm: makeCycleForm({ name: `  ${'a'.repeat(255)}  ` }),
+      }),
+    ).toBe(true);
+    expect(
+      canCreateCycle({ cycleForm: makeCycleForm({ name: 'a'.repeat(256) }) }),
+    ).toBe(false);
+  });
+});
+
+describe('suggestCycleName', () => {
+  it('names the start month and year in the locale', () => {
+    expect(suggestCycleName({ startDate: '2026-10-12', locale: 'en' })).toBe(
+      'October 2026',
+    );
+    expect(suggestCycleName({ startDate: '2026-10-12', locale: 'pt-BR' })).toBe(
+      'Outubro 2026',
+    );
+  });
+
+  it('suggests nothing until a start date is chosen', () => {
+    expect(suggestCycleName({ startDate: '', locale: 'en' })).toBe('');
+  });
+});
+
+function makeListedCycle(
+  id: string,
+  startDate: string,
+  state: 'draft' | 'sent' | 'past' = 'draft',
+) {
+  return makeCycle({ id, startDate, endDate: startDate, state });
+}
+
+describe('groupCyclesForList', () => {
+  it('splits Past from current and orders each newest start first, ties by end then id', () => {
+    const groups = groupCyclesForList({
+      cycles: [
+        makeListedCycle('a', '2026-09-01', 'past'),
+        makeListedCycle('b', '2026-10-01'),
+        makeListedCycle('c', '2026-11-01', 'sent'),
+        makeListedCycle('d', '2026-08-01', 'past'),
+        { ...makeListedCycle('e', '2026-10-01'), endDate: '2026-10-20' },
+      ],
+    });
+
+    expect(groups.current.map((cycle) => cycle.id)).toEqual(['c', 'e', 'b']);
+    expect(groups.past.map((cycle) => cycle.id)).toEqual(['a', 'd']);
+  });
+});
+
+describe('conflictingCyclesOf', () => {
+  const conflict = {
+    id: 'cycle-2',
+    name: 'October',
+    startDate: '2026-10-01',
+    endDate: '2026-10-31',
+  };
+
+  it('reads the Cycles named by a 409 envelope', () => {
+    const error = new AxiosError('conflict');
+    error.response = {
+      status: 409,
+      data: { error: 'OVERLAPPING_CYCLE', conflictingCycles: [conflict] },
+    } as AxiosResponse;
+
+    expect(conflictingCyclesOf({ error })).toEqual([conflict]);
+  });
+
+  it('finds none in any other failure', () => {
+    expect(conflictingCyclesOf({ error: new Error('boom') })).toEqual([]);
+  });
+});
+
+describe('canSaveTemplate', () => {
+  it('allows a named template whose blocks are all fully filled', () => {
+    expect(canSaveTemplate({ templateForm: makeTemplateForm() })).toBe(true);
+  });
+
+  it('rejects a blank name', () => {
+    expect(
+      canSaveTemplate({
+        templateForm: makeTemplateForm({ name: '  ' }),
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects a template with no blocks', () => {
+    expect(
+      canSaveTemplate({ templateForm: makeTemplateForm({ blocks: [] }) }),
+    ).toBe(false);
+  });
+
+  it('rejects a block missing its label or either time', () => {
+    expect(
+      canSaveTemplate({
+        templateForm: makeTemplateForm({
+          blocks: [makeTemplateTimeBlock({ label: '' })],
+        }),
+      }),
+    ).toBe(false);
+    expect(
+      canSaveTemplate({
+        templateForm: makeTemplateForm({
+          blocks: [makeTemplateTimeBlock({ startTime: null })],
+        }),
+      }),
+    ).toBe(false);
+    expect(
+      canSaveTemplate({
+        templateForm: makeTemplateForm({
+          blocks: [makeTemplateTimeBlock({ endTime: null })],
+        }),
+      }),
+    ).toBe(false);
+  });
+
+  it('allows an overnight block whose end time is earlier than its start time', () => {
+    expect(
+      canSaveTemplate({
+        templateForm: makeTemplateForm({
+          blocks: [
+            makeTemplateTimeBlock({
+              startTime: fromTimeColumn({ value: '22:00:00' }),
+              endTime: fromTimeColumn({ value: '06:00:00' }),
+            }),
+          ],
+        }),
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects a zero-length block whose start equals its end (ADR-0003)', () => {
+    const time = fromTimeColumn({ value: '09:00:00' });
+    expect(
+      canSaveTemplate({
+        templateForm: makeTemplateForm({
+          blocks: [makeTemplateTimeBlock({ startTime: time, endTime: time })],
+        }),
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('eventSpanLabel', () => {
+  const timeZone = 'America/Sao_Paulo';
+
+  it('labels a Sao Paulo single day hourly', () => {
+    expect(
+      eventSpanLabel({
+        start: '2026-06-28T03:00:00.000Z',
+        end: '2026-06-29T02:59:59.999Z',
+        timeZone,
+      }),
+    ).toBe('hourly');
+  });
+
+  it('labels a Sao Paulo evening event hourly', () => {
+    expect(
+      eventSpanLabel({
+        start: '2026-06-28T23:00:00.000Z',
+        end: '2026-06-29T02:00:00.000Z',
+        timeZone,
+      }),
+    ).toBe('hourly');
+  });
+
+  it('labels a two-day span day_based', () => {
+    expect(
+      eventSpanLabel({
+        start: '2026-06-28T03:00:00.000Z',
+        end: '2026-06-30T02:59:59.999Z',
+        timeZone,
+      }),
+    ).toBe('day_based');
+  });
+});
+
+describe('describeTemplateTimeBlockSpan', () => {
+  it('describes a same-day block by its duration', () => {
+    expect(
+      describeTemplateTimeBlockSpan({
+        startTime: fromTimeColumn({ value: '09:00:00' }),
+        endTime: fromTimeColumn({ value: '09:30:00' }),
+      }),
+    ).toBe('Dura 30 min');
+  });
+
+  it('marks an overnight block as ending the next day (ADR-0003)', () => {
+    expect(
+      describeTemplateTimeBlockSpan({
+        startTime: fromTimeColumn({ value: '22:00:00' }),
+        endTime: fromTimeColumn({ value: '02:00:00' }),
+      }),
+    ).toBe('Dura 4 h · termina no dia seguinte');
+  });
+});
+
+describe('calculateTotalEventTimeBlocks', () => {
+  it('sums time block counts across every event group', () => {
+    const events = [makeEventGroup(2), makeEventGroup(1)];
+
+    expect(calculateTotalEventTimeBlocks({ events })).toBe(3);
+  });
+
+  it('is zero for undefined events', () => {
+    expect(calculateTotalEventTimeBlocks({ events: undefined })).toBe(0);
+  });
+});
+
+describe('cycleIsReadOnly', () => {
+  it('is true for a sent or past cycle and false for a draft or none', () => {
+    expect(cycleIsReadOnly({ cycle: makeCycle({ state: 'sent' }) })).toBe(true);
+    expect(cycleIsReadOnly({ cycle: makeCycle({ state: 'past' }) })).toBe(true);
+    expect(cycleIsReadOnly({ cycle: makeCycle({ state: 'draft' }) })).toBe(
+      false,
+    );
+    expect(cycleIsReadOnly({ cycle: null })).toBe(false);
+    expect(cycleIsReadOnly({ cycle: undefined })).toBe(false);
+  });
+});
+
+describe('groupRowsByWeek', () => {
+  const row = (
+    eventId: string,
+    start: string,
+    end: string,
+    title = eventId,
+  ) => ({
+    eventId,
+    title,
+    start,
+    end,
+    status: 'scheduled' as const,
+    eventTimeBlocks: [],
+  });
+
+  it('groups by the Sunday-first Church week of the start day, in start order', () => {
+    const weeks = groupRowsByWeek({
+      timeZone: 'America/Sao_Paulo',
+      rows: [
+        row('next-sunday', '2026-10-18T13:00:00Z', '2026-10-18T15:00:00Z'),
+        row('saturday', '2026-10-17T13:00:00Z', '2026-10-17T15:00:00Z'),
+        row('sunday', '2026-10-11T13:00:00Z', '2026-10-11T15:00:00Z'),
+      ],
+    });
+
+    expect(
+      weeks.map(({ weekStart, weekEnd, rows }) => [
+        weekStart,
+        weekEnd,
+        rows.map((r) => r.eventId),
+      ]),
+    ).toEqual([
+      ['2026-10-11', '2026-10-17', ['sunday', 'saturday']],
+      ['2026-10-18', '2026-10-24', ['next-sunday']],
+    ]);
+  });
+
+  it('uses the Church day, not the UTC day, and shows a multi-day Event once in its start week', () => {
+    // 22:00 Saturday in Sao Paulo is already Sunday in UTC; it ends the next week.
+    const weeks = groupRowsByWeek({
+      timeZone: 'America/Sao_Paulo',
+      rows: [row('retreat', '2026-10-18T01:00:00Z', '2026-10-21T20:00:00Z')],
+    });
+
+    expect(weeks).toHaveLength(1);
+    expect(weeks[0]).toMatchObject({
+      weekStart: '2026-10-11',
+      rows: [expect.objectContaining({ eventId: 'retreat' })],
+    });
+  });
+
+  it('breaks start ties by end, title, then id', () => {
+    const start = '2026-10-14T13:00:00Z';
+    const weeks = groupRowsByWeek({
+      timeZone: 'UTC',
+      rows: [
+        row('b', start, '2026-10-14T16:00:00Z', 'Same'),
+        row('a2', start, '2026-10-14T15:00:00Z', 'Same'),
+        row('a1', start, '2026-10-14T15:00:00Z', 'Same'),
+        row('z', start, '2026-10-14T15:00:00Z', 'Alpha'),
+      ],
+    });
+
+    expect(weeks[0]?.rows.map((r) => r.eventId)).toEqual([
+      'z',
+      'a1',
+      'a2',
+      'b',
+    ]);
+  });
+});
+
+describe('stateBadgeVariant', () => {
+  it('maps each cycle state to its badge variant', () => {
+    expect(stateBadgeVariant({ state: 'sent' })).toBe('default');
+    expect(stateBadgeVariant({ state: 'past' })).toBe('outline');
+    expect(stateBadgeVariant({ state: 'draft' })).toBe('secondary');
+  });
+});
+
+describe('eventStatusBadgeVariant', () => {
+  it('maps each event status to its badge variant', () => {
+    expect(eventStatusBadgeVariant({ status: 'scheduled' })).toBe('default');
+    expect(eventStatusBadgeVariant({ status: 'cancelled' })).toBe(
+      'destructive',
+    );
+    expect(eventStatusBadgeVariant({ status: 'draft' })).toBe('secondary');
+  });
+});
+
+describe('templateBlockErrors', () => {
+  it('flags case-insensitive duplicate labels and equal endpoints by row key', () => {
+    const errors = templateBlockErrors({
+      blocks: [
+        makeTemplateTimeBlock({ key: 'a', label: 'Welcome' }),
+        makeTemplateTimeBlock({ key: 'b', label: ' welcome ' }),
+        makeTemplateTimeBlock({
+          key: 'c',
+          label: 'Same',
+          endTime: fromTimeColumn({ value: '09:00:00' }),
+        }),
+        makeTemplateTimeBlock({ key: 'd', label: '' }),
+        makeTemplateTimeBlock({ key: 'e', label: '' }),
+      ],
+    });
+
+    expect([...errors.duplicateLabelKeys].sort()).toEqual(['a', 'b']);
+    expect([...errors.equalTimeKeys]).toEqual(['c']);
+  });
+
+  it('keeps a template with duplicate labels from being saved', () => {
+    expect(
+      canSaveTemplate({
+        templateForm: makeTemplateForm({
+          blocks: [
+            makeTemplateTimeBlock({ key: 'a', label: 'Same' }),
+            makeTemplateTimeBlock({ key: 'b', label: 'same' }),
+          ],
+        }),
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('toTemplateRequestBlocks', () => {
+  it('trims labels, sends no order, and sends an id only for persisted blocks', () => {
+    expect(
+      toTemplateRequestBlocks({
+        blocks: [
+          makeTemplateTimeBlock({ key: 'row-1', label: ' New ' }),
+          makeTemplateTimeBlock({
+            key: 'row-2',
+            persistedId: 'stored-id',
+            label: 'Kept',
+          }),
+        ],
+      }),
+    ).toEqual([
+      { label: 'New', startTime: '09:00', endTime: '09:30' },
+      { id: 'stored-id', label: 'Kept', startTime: '09:00', endTime: '09:30' },
+    ]);
+  });
+});

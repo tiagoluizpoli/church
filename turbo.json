@@ -1,19 +1,80 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["TZ"],
   "ui": "tui",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "passThroughEnv": ["VITE_SERVER_URL"],
       "outputs": ["dist/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^lint"],
+      "cache": false
     },
-    "check-types": {
-      "dependsOn": ["^check-types"]
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "cache": false
+    },
+    "test:unit": {
+      "dependsOn": ["^test:unit"],
+      "cache": false
+    },
+    "test:unit:related": {
+      "cache": false
+    },
+    "test:integration": {
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "CORS_ORIGIN",
+        "NODE_ENV",
+        "ENABLE_DEBUG_ENDPOINTS",
+        "VITE_SERVER_URL",
+        "CHURCH_WORKTREE",
+        "CHURCH_FAILURE_BUNDLES_DIR"
+      ],
+      "cache": false
+    },
+    "test:e2e": {
+      "dependsOn": ["^test:e2e"],
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "CORS_ORIGIN",
+        "NODE_ENV",
+        "ENABLE_DEBUG_ENDPOINTS",
+        "VITE_SERVER_URL",
+        "CHURCH_WORKTREE",
+        "CHURCH_FAILURE_BUNDLES_DIR",
+        "PLAYWRIGHT_BROWSERS_PATH"
+      ],
+      "cache": false
+    },
+    "test:e2e:ui": {
+      "dependsOn": ["^test:e2e:ui"],
+      "passThroughEnv": [
+        "DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "CORS_ORIGIN",
+        "NODE_ENV",
+        "ENABLE_DEBUG_ENDPOINTS",
+        "VITE_SERVER_URL",
+        "CHURCH_WORKTREE",
+        "CHURCH_FAILURE_BUNDLES_DIR",
+        "PLAYWRIGHT_BROWSERS_PATH"
+      ],
+      "cache": false
+    },
+    "@church/i18n#compile": {
+      "cache": false
     },
     "dev": {
+      "dependsOn": ["@church/i18n#compile"],
       "cache": false,
       "persistent": true
     },
@@ -24,8 +85,12 @@
       "cache": false
     },
     "db:migrate": {
+      "passThroughEnv": ["DATABASE_URL"],
       "cache": false,
       "persistent": true
+    },
+    "db:reset:dev": {
+      "cache": false
     },
     "db:studio": {
       "cache": false,
@@ -43,6 +108,9 @@
       "persistent": true
     },
     "db:down": {
+      "cache": false
+    },
+    "db:clean": {
       "cache": false
     }
   }

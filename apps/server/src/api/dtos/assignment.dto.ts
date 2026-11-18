@@ -1,0 +1,79 @@
+import { instantSchema } from '@church/time';
+import { z } from 'zod';
+import type { Assignment } from '../../domain/entities/assignment';
+import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
+
+export const assignmentResponseSchema = z.object({
+  id: z.string(),
+  churchId: z.string(),
+  eventTimeBlockId: z.string(),
+  participationId: z.string().optional(),
+  shiftId: z.string().optional(),
+  volunteerId: z.string(),
+  roleId: z.string(),
+  shiftRequirementId: z.string(),
+  status: z.enum(['draft', 'pending', 'confirmed', 'declined', 'cancelled']),
+  reason: z.string().optional(),
+  assignedAt: instantSchema,
+  assignedBy: z.string().optional(),
+});
+export type AssignmentResponse = z.infer<typeof assignmentResponseSchema>;
+
+export const assignmentAuditResponseSchema = z.object({
+  id: z.string(),
+  assignmentId: z.string(),
+  actorId: z.string(),
+  action: z.enum([
+    'created',
+    'updated',
+    'deleted',
+    'status_change',
+    'event_published',
+    'event_cancelled',
+  ]),
+  reason: z.string().optional(),
+  timestamp: instantSchema,
+});
+export type AssignmentAuditResponse = z.infer<
+  typeof assignmentAuditResponseSchema
+>;
+
+export const auditListResponseSchema = z.object({
+  items: z.array(assignmentAuditResponseSchema),
+});
+
+function toAssignmentResponse(a: Assignment): AssignmentResponse {
+  return {
+    id: a.id as string,
+    churchId: a.churchId as string,
+    eventTimeBlockId: a.eventTimeBlockId as string,
+    participationId: a.participationId as string | undefined,
+    shiftId: a.shiftId as string | undefined,
+    volunteerId: a.volunteerId as string,
+    roleId: a.roleId as string,
+    shiftRequirementId: a.shiftRequirementId as string,
+    status: a.status,
+    reason: a.reason,
+    assignedAt: a.assignedAt,
+    assignedBy: a.assignedBy as string | undefined,
+  };
+}
+
+function toAuditResponse(a: AssignmentAudit): AssignmentAuditResponse {
+  return {
+    id: a.id as string,
+    assignmentId: a.assignmentId as string,
+    actorId: a.actorId as string,
+    action: a.action,
+    reason: a.reason,
+    timestamp: a.occurredAt,
+  };
+}
+
+export const assignmentMapper = {
+  toResponse: toAssignmentResponse,
+  auditToResponse: toAuditResponse,
+  auditListToResponse(items: AssignmentAudit[]) {
+    return { items: items.map(toAuditResponse) };
+  },
+};

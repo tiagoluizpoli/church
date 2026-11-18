@@ -1,0 +1,833 @@
+import type { AppConfig } from '@church/app-config';
+import {
+  fromDate,
+  millisecondsBetween,
+  now,
+  nowAsDate,
+  toDate,
+} from '@church/time';
+import type { ChurchId } from '../domain/branded-ids';
+import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
+import type {
+  DrainOnceInput,
+  DrainOnceResult,
+  IOutboxDrainer,
+} from '../domain/contracts/application/outbox-drainer';
+import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
+import type {
+  ChainedInvitationEmail,
+  ChurchBootstrapInvitationEmail,
+  EmailLocale,
+  EmailPayload,
+  EmailSender,
+} from '../domain/contracts/infrastructure/email-sender';
+import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
+import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
+import type {
+  ChainedInvitationOutboxMessage,
+  ChannelOutcomes,
+  ChurchBootstrapOutboxMessage,
+  NotificationOutboxMessage,
+  OutboxEmailDelivery,
+  OutboxMessage,
+  OutboxRepository,
+} from '../domain/contracts/infrastructure/outbox.repository';
+import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
+import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { VolunteerTransferRepository } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
+import { EmailSendError } from '../domain/errors/email-send-error';
+import {
+  type MinistryInvitationDeliveryFacts,
+  type NotificationDeliveryData,
+  type NotificationRequest,
+  notificationDeliveryFactsSchemas,
+  notificationRequestDataSchemas,
+  type TransferDigestDeliveryFacts,
+} from '../domain/notification-kinds';
+import { redemptionPathFor } from '../domain/services/ministry-invitation-redemption-path';
+import {
+  hasExhaustedRetries,
+  nextRetryAt,
+} from '../domain/services/outbox-retry-policy';
+import { recipientLocale } from '../domain/services/recipient-locale';
+import { webLink } from '../domain/services/web-link';
+import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
+import { emailRoutingFor } from './email-routing';
+import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
+
+export class DbOutboxDrainer implements IOutboxDrainer {
+  private readonly outboxRepository: OutboxRepository;
+  private readonly invitationRepository: MinistryInvitationRepository;
+  private readonly churchRepository: ChurchRepository;
+  private readonly ministryRepository: MinistryRepository;
+  private readonly roleRepository: RoleRepository;
+  private readonly volunteerTransferRepository: VolunteerTransferRepository;
+  private readonly emailSender: EmailSender;
+  private readonly notifier: ChurchNotifier;
+  private readonly schedulingFacts: SchedulingNotificationFacts;
+  private readonly unitOfWork: UnitOfWork;
+  private readonly outboxPolicy: AppConfig['outbox'];
+  private readonly emailIdempotencyRetentionMs: number;
+  private readonly webBaseUrl: string;
+  private readonly defaultLocale: AppConfig['defaultLocale'];
+
+  constructor({
+    outboxRepository,
+    invitationRepository,
+    churchRepository,
+    ministryRepository,
+    roleRepository,
+    volunteerTransferRepository,
+    emailSender,
+    notifier,
+    schedulingFacts,
+    unitOfWork,
+    config,
+    webBaseUrl,
+  }: DbOutboxDrainerDependencies) {
+    this.outboxRepository = outboxRepository;
+    this.invitationRepository = invitationRepository;
+    this.churchRepository = churchRepository;
+    this.ministryRepository = ministryRepository;
+    this.roleRepository = roleRepository;
+    this.volunteerTransferRepository = volunteerTransferRepository;
+    this.emailSender = emailSender;
+    this.notifier = notifier;
+    this.schedulingFacts = schedulingFacts;
+    this.unitOfWork = unitOfWork;
+    this.webBaseUrl = webBaseUrl;
+    const { outbox, defaultLocale } = config;
+    this.defaultLocale = defaultLocale;
+    this.outboxPolicy = outbox;
+    this.emailIdempotencyRetentionMs = outbox.emailIdempotencyRetentionMs;
+  }
+
+  async drainOnce(input: DrainOnceInput): Promise<DrainOnceResult> {
+    const { limit } = input;
+    const claimed = await this.unitOfWork.run((tx) =>
+      this.outboxRepository.claimPending({
+        limit,
+        now: nowAsDate(),
+        tx,
+      }),
+    );
+
+    let sent = 0;
+    let failed = 0;
+    for (const message of claimed) {
+      const outcome = await this.processOne({ message });
+      if (outcome === 'sent') sent += 1;
+      else failed += 1;
+    }
+
+    return { claimed: claimed.length, sent, failed };
+  }
+
+  private async processOne({
+    message,
+  }: ProcessOneInput): Promise<'sent' | 'failed'> {
+    switch (message.kind) {
+      case 'invitation.chained':
+        return this.processInvitationMessage({ message });
+      case 'notification':
+        return this.processNotificationMessage({ message });
+      case 'invitation.church-bootstrap':
+        return this.processChurchOfferMessage({ message });
+    }
+  }
+
+  /**
+   * T1 for an admin Church offer. Only the admin invite enqueues this kind;
+   * first-admin provisioning never does, so it stays print-only. An upgraded
+   * pair names its pending Ministry halves in the same email.
+   */
+  private async processChurchOfferMessage({
+    message,
+  }: ProcessChurchOfferMessageInput): Promise<'sent' | 'failed'> {
+    const { churchId } = message;
+    const { churchInvitationId } = message.payload;
+    const offer = await this.invitationRepository.findPendingChurchOffer({
+      churchId,
+      churchInvitationId,
+    });
+    if (!offer) {
+      await this.failTerminally({
+        message,
+        reason: 'Invitation is no longer pending',
+      });
+      return 'failed';
+    }
+    if (message.emailDelivery) {
+      return this.deliverEmail({ message, delivery: message.emailDelivery });
+    }
+
+    const [church, ...halves] = await Promise.all([
+      this.churchRepository.getById({ id: churchId }),
+      ...offer.pendingMinistryInvitationIds.map((ministryInvitationId) =>
+        this.loadPendingInvitationFacts({ churchId, ministryInvitationId }),
+      ),
+    ]);
+    // A half that closed meanwhile, or lacks its frozen inviter name, is left
+    // out; the offer itself being pending is what makes this T1 worth sending.
+    const ministryOffers = halves.filter((half) => half !== null);
+    if (ministryOffers.length !== halves.length) {
+      console.warn(
+        `[Outbox] church offer ${churchInvitationId} T1 omits ${halves.length - ministryOffers.length} unavailable Ministry half(s)`,
+      );
+    }
+
+    const payload: ChurchBootstrapInvitationEmail = {
+      kind: message.kind,
+      to: offer.email,
+      churchName: church.name,
+      expiresAt: fromDate({ date: offer.expiresAt }),
+      churchTimezone: church.timezone,
+      redemptionUrl: webLink({
+        baseUrl: this.webBaseUrl,
+        path: `/invitations/church/${churchInvitationId}`,
+      }),
+      ministryOffers: ministryOffers.map(
+        ({ ministryName, ministryAccessLevel, roleNames, inviterName }) => ({
+          ministryName,
+          ministryAccessLevel,
+          roleNames,
+          inviterName,
+        }),
+      ),
+    };
+    return this.prepareAndDeliver({
+      message,
+      payload,
+      locale: this.localeFor({ email: offer.email }),
+    });
+  }
+
+  private async processInvitationMessage({
+    message,
+  }: ProcessInvitationMessageInput): Promise<'sent' | 'failed'> {
+    const invitation = await this.invitationRepository.findById({
+      churchId: message.churchId,
+      ministryInvitationId: message.payload.ministryInvitationId,
+    });
+
+    if (!invitation || invitation.status !== 'pending') {
+      await this.failTerminally({
+        message,
+        reason: 'Invitation is no longer pending',
+      });
+      return 'failed';
+    }
+    if (message.emailDelivery) {
+      return this.deliverEmail({ message, delivery: message.emailDelivery });
+    }
+
+    const [church, ministry, email, inviterName] = await Promise.all([
+      this.churchRepository.getById({ id: message.churchId }),
+      this.ministryRepository.getById({
+        churchId: message.churchId,
+        id: invitation.ministryId,
+      }),
+      this.invitationRepository.resolveRecipientEmail({
+        ministryInvitation: invitation,
+      }),
+      this.churchRepository.findUserName({ userId: invitation.inviterId }),
+    ]);
+    const roles = await Promise.all(
+      invitation.roleIds.map((roleId) =>
+        this.roleRepository.getById({ churchId: message.churchId, id: roleId }),
+      ),
+    );
+
+    if (inviterName === null) {
+      // T1 names who invited; without it there is nothing correct to send.
+      await this.failTerminally({
+        message,
+        reason: 'Invitation inviter could not be resolved',
+      });
+      return 'failed';
+    }
+
+    const payload: ChainedInvitationEmail = {
+      kind: message.kind,
+      to: email,
+      churchName: church.name,
+      ministryName: ministry.name,
+      ministryAccessLevel: invitation.ministryAccessLevel,
+      roleNames: roles.map((role) => role.name),
+      inviterName,
+      expiresAt: invitation.expiresAt,
+      churchTimezone: church.timezone,
+      redemptionUrl: webLink({
+        baseUrl: this.webBaseUrl,
+        path: redemptionPathFor(invitation),
+      }),
+    };
+
+    return this.prepareAndDeliver({
+      message,
+      payload,
+      locale: this.localeFor({ email }),
+    });
+  }
+
+  private localeFor({ email }: LocaleForInput): EmailLocale {
+    return recipientLocale({
+      recipient: { email },
+      defaultLocale: this.defaultLocale,
+    });
+  }
+
+  /** The invitation's display facts, read now; `null` once it is no longer
+   * pending or its inviter has no name. */
+  private async loadPendingInvitationFacts({
+    churchId,
+    ministryInvitationId,
+  }: LoadPendingInvitationFactsInput): Promise<MinistryInvitationDeliveryFacts | null> {
+    const invitation = await this.invitationRepository.findById({
+      churchId,
+      ministryInvitationId,
+    });
+    if (!invitation || invitation.status !== 'pending') return null;
+    const [church, ministry, roles, inviterName] = await Promise.all([
+      this.churchRepository.getById({ id: churchId }),
+      this.ministryRepository.getById({ churchId, id: invitation.ministryId }),
+      Promise.all(
+        invitation.roleIds.map((roleId) =>
+          this.roleRepository.getById({ churchId, id: roleId }),
+        ),
+      ),
+      this.churchRepository.findUserName({ userId: invitation.inviterId }),
+    ]);
+    // N1 names who invited, as T1 does; without a name there is nothing correct to send.
+    if (inviterName === null) return null;
+    return {
+      ministryInvitationId: invitation.id,
+      ministryId: invitation.ministryId,
+      ministryName: ministry.name,
+      churchName: church.name,
+      churchTimezone: church.timezone,
+      inviterName,
+      ministryAccessLevel: invitation.ministryAccessLevel,
+      roleNames: roles.map((role) => role.name),
+      expiresAt: invitation.expiresAt,
+      redemptionUrl: webLink({
+        baseUrl: this.webBaseUrl,
+        path: redemptionPathFor(invitation),
+      }),
+    };
+  }
+
+  /** The kind's display facts, read now; `null` when the kind's subject is gone. */
+  private async loadDeliveryFacts({
+    churchId,
+    to,
+    request,
+  }: LoadDeliveryFactsInput): Promise<NotificationDeliveryData | null> {
+    switch (request.kind) {
+      case 'ministry_invitation':
+        return this.loadPendingInvitationFacts({
+          churchId,
+          ministryInvitationId: request.data.ministryInvitationId,
+        });
+      case 'availability_opened':
+      case 'availability_reminder':
+        return this.schedulingFacts.availability({
+          churchId,
+          userId: to.userId,
+          data: request.data,
+        });
+      case 'cycle_ready_to_prepare':
+        return this.schedulingFacts.cycleReadyToPrepare({
+          churchId,
+          data: request.data,
+        });
+      case 'schedule_published':
+      case 'schedule_updated':
+      case 'event_cancelled':
+        return {
+          ...request.data,
+          actionUrl: webLink({
+            baseUrl: this.webBaseUrl,
+            path: '/my-schedule',
+          }),
+        };
+      case 'swap_request':
+        return {
+          ...request.data,
+          actionUrl: webLink({
+            baseUrl: this.webBaseUrl,
+            path: `/schedules/${request.data.ministryId}/${request.data.cycleId}/assign?swapRequest=${request.data.swapRequestId}`,
+          }),
+        };
+      case 'event_changed': {
+        const { cycleId, ministries } = request.data;
+        const [only, ...others] = ministries;
+        const path =
+          only && others.length === 0
+            ? `/schedules/${only.id}/${cycleId}`
+            : `/schedules?cycleId=${cycleId}&ministryIds=${ministries.map(({ id }) => id).join(',')}`;
+        return {
+          ...request.data,
+          actionUrl: webLink({ baseUrl: this.webBaseUrl, path }),
+        };
+      }
+      case 'swap_request_answered':
+        return {
+          ...request.data,
+          actionUrl: webLink({
+            baseUrl: this.webBaseUrl,
+            path: `/my-schedule/${request.data.assignmentId}`,
+          }),
+        };
+      case 'transfer_ministry_digest':
+      case 'transfer_leaderless_ministry':
+        return this.loadTransferDigestFacts({ churchId, to, request });
+    }
+  }
+
+  /** Transfer facts are historical: the retired profile and the audit rows
+   * never change, so they always resolve. */
+  private async loadTransferDigestFacts({
+    churchId,
+    to,
+    request,
+  }: LoadTransferDigestFactsInput): Promise<TransferDigestDeliveryFacts> {
+    const details = await this.volunteerTransferRepository.getDigestDetails({
+      churchId,
+      ministryId: request.data.ministryId,
+      volunteerId: request.data.volunteerId,
+      correlationId: request.data.transferCorrelationId,
+      recipientUserId: to.userId,
+    });
+    return {
+      churchName: details.churchName,
+      churchTimezone: details.churchTimezone,
+      recipientFirstName: firstNameOf(details.recipientName),
+      ministryName: details.ministryName,
+      volunteerName: details.volunteerName,
+      withdrawnAssignments: details.withdrawnAssignments.map(
+        ({ startsAt, endsAt, ...names }) => ({
+          ...names,
+          startsAt: fromDate({ date: startsAt }),
+          endsAt: fromDate({ date: endsAt }),
+        }),
+      ),
+      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/schedules' }),
+    };
+  }
+
+  /**
+   * Hands one recipient's Notification to every unsettled sink, then settles
+   * the row: all delivered/skipped completes it; a retryable sink retries the
+   * whole row (settled sinks are not attempted again); a terminal sink fails
+   * it without undoing another sink's delivery.
+   */
+  private async processNotificationMessage({
+    message,
+  }: ProcessNotificationMessageInput): Promise<'sent' | 'failed'> {
+    const { to, kind, data } = message.payload;
+    const request = notificationRequestDataSchemas[kind]?.safeParse(data);
+    if (
+      !request?.success &&
+      (kind === 'schedule_published' || kind === 'schedule_updated')
+    ) {
+      await this.skipDelivery({
+        message,
+        why: 'its frozen facts predate a required field',
+      });
+      return 'sent';
+    }
+    if (!request?.success) {
+      await this.failTerminally({
+        message,
+        reason: `Invalid data for notification kind "${kind}"`,
+      });
+      return 'failed';
+    }
+    let facts = message.payload.facts;
+    // A saved email replays as stored; only an unprepared row renders from facts.
+    if (
+      facts &&
+      !message.emailDelivery &&
+      !notificationDeliveryFactsSchemas[kind].safeParse(facts).success
+    ) {
+      // Frozen before a required fact existed: never render a guess.
+      await this.skipDelivery({
+        message,
+        why: 'its frozen facts predate a required field',
+      });
+      return 'sent';
+    }
+    if (!facts) {
+      const resolved = await this.loadDeliveryFacts({
+        churchId: message.churchId,
+        to,
+        // Parsed by this kind's own schema just above.
+        request: { kind, data: request.data } as NotificationRequest,
+      });
+      if (!resolved) {
+        if (kind === 'ministry_invitation') {
+          const stillPending = await this.invitationRepository.findById({
+            churchId: message.churchId,
+            ministryInvitationId: (request.data as MinistryInvitationSubject)
+              .ministryInvitationId,
+          });
+          await this.failTerminally({
+            message,
+            reason:
+              stillPending?.status === 'pending'
+                ? 'Invitation inviter could not be resolved'
+                : 'Invitation is no longer pending',
+          });
+          return 'failed';
+        }
+        // The change is gone before anything was delivered: nothing to render.
+        await this.skipDelivery({
+          message,
+          why: 'its context no longer exists',
+        });
+        return 'sent';
+      }
+      facts = resolved;
+      // Every retry re-renders from these, never from live scheduling objects.
+      await this.unitOfWork.run((tx) =>
+        this.outboxRepository.recordDeliveryFacts({
+          id: message.id,
+          facts: resolved,
+          tx,
+        }),
+      );
+    }
+
+    const { outcomes } = await this.notifier.send({
+      to,
+      kind,
+      data: facts,
+      deliveryId: message.id,
+      settledSinks: Object.keys(message.channelOutcomes),
+    });
+
+    const channelOutcomes: ChannelOutcomes = { ...message.channelOutcomes };
+    const retryable: string[] = [];
+    const failures: string[] = [];
+    for (const [sink, outcome] of Object.entries(outcomes)) {
+      if (outcome.status === 'delivered') channelOutcomes[sink] = 'delivered';
+      else if (outcome.status === 'skipped') channelOutcomes[sink] = 'skipped';
+      else {
+        failures.push(`${sink}: ${outcome.reason}`);
+        if (outcome.status === 'retryable') retryable.push(sink);
+        else channelOutcomes[sink] = 'failed';
+      }
+    }
+
+    const attempts = message.attempts + 1;
+    if (
+      retryable.length > 0 &&
+      !hasExhaustedRetries({ attempts, policy: this.outboxPolicy })
+    ) {
+      const retryAt = nextRetryAt({ attempts, policy: this.outboxPolicy });
+      await this.unitOfWork.run((tx) =>
+        this.outboxRepository.markFailed({
+          id: message.id,
+          lastError: failures.join('; '),
+          attempts,
+          status: 'pending',
+          scheduledFor: toDate({ instant: retryAt }),
+          channelOutcomes,
+          tx,
+        }),
+      );
+      return 'failed';
+    }
+    for (const sink of retryable) channelOutcomes[sink] = 'failed';
+
+    if (Object.values(channelOutcomes).includes('failed')) {
+      await this.unitOfWork.run((tx) =>
+        this.outboxRepository.markFailed({
+          id: message.id,
+          lastError:
+            failures.length > 0
+              ? failures.join('; ')
+              : (message.lastError ?? ''),
+          attempts,
+          status: 'failed',
+          channelOutcomes,
+          tx,
+        }),
+      );
+      return 'failed';
+    }
+    await this.unitOfWork.run((tx) =>
+      this.outboxRepository.markSent({
+        id: message.id,
+        sentAt: nowAsDate(),
+        channelOutcomes,
+        tx,
+      }),
+    );
+    return 'sent';
+  }
+
+  /** Settles every unsettled sink as skipped: nothing can be rendered. */
+  private async skipDelivery({
+    message,
+    why,
+  }: SkipDeliveryInput): Promise<void> {
+    console.warn(
+      `[Outbox] notification ${message.id} (${message.payload.kind}) skipped: ${why}`,
+    );
+    await this.unitOfWork.run((tx) =>
+      this.outboxRepository.markSent({
+        id: message.id,
+        sentAt: nowAsDate(),
+        channelOutcomes: {
+          [CHURCH_SINK_NAMES.email]: 'skipped',
+          [CHURCH_SINK_NAMES.inbox]: 'skipped',
+          ...message.channelOutcomes,
+        },
+        tx,
+      }),
+    );
+  }
+
+  /**
+   * Fixes the email before its first attempt: the prepared request, the
+   * row-derived key and the first-attempt Instant commit in their own short
+   * transaction, so every later attempt resends exactly this.
+   */
+  private async prepareAndDeliver({
+    message,
+    payload,
+    locale,
+  }: PrepareAndDeliverInput): Promise<'sent' | 'failed'> {
+    const delivery = await this.unitOfWork.run((tx) =>
+      this.outboxRepository.recordEmailPrepared({
+        id: message.id,
+        email: this.emailSender.prepare({ payload, locale }),
+        idempotencyKey: emailIdempotencyKeyFor({ message }),
+        firstAttemptAt: now(),
+        tx,
+      }),
+    );
+    return this.deliverEmail({ message, delivery });
+  }
+
+  /** The network call runs outside any transaction; only the bookkeeping
+   * around it opens one. */
+  private async deliverEmail({
+    message,
+    delivery,
+  }: DeliverEmailInput): Promise<'sent' | 'failed'> {
+    if (delivery.deliveredAt) {
+      await this.markSent({ message });
+      return 'sent';
+    }
+    const age = millisecondsBetween({
+      start: delivery.firstAttemptAt,
+      end: now(),
+    });
+    // A key the provider may have forgotten no longer deduplicates, and a
+    // fresh key would too: an unconfirmed attempt this old is never resent.
+    if (age >= this.emailIdempotencyRetentionMs) {
+      await this.failTerminally({
+        message,
+        reason: 'Email idempotency retention elapsed since the first attempt',
+      });
+      return 'failed';
+    }
+    try {
+      const result = await this.emailSender.deliver({
+        email: delivery.email,
+        idempotencyKey: delivery.idempotencyKey,
+        routing: emailRoutingFor({
+          id: message.id,
+          delivery,
+          outboxRepository: this.outboxRepository,
+          unitOfWork: this.unitOfWork,
+        }),
+      });
+      await this.unitOfWork.run(async (tx) => {
+        await this.outboxRepository.recordEmailDelivered({
+          id: message.id,
+          providerMessageId: result.providerMessageId,
+          deliveredAt: now(),
+          tx,
+        });
+        await this.outboxRepository.markSent({
+          id: message.id,
+          providerMessageId: result.providerMessageId,
+          sentAt: nowAsDate(),
+          tx,
+        });
+      });
+      return 'sent';
+    } catch (error) {
+      if (!(error instanceof EmailSendError)) throw error;
+      await this.handleSendFailure({ message, error });
+      return 'failed';
+    }
+  }
+
+  private async markSent({ message }: MarkSentInput): Promise<void> {
+    await this.unitOfWork.run((tx) =>
+      this.outboxRepository.markSent({
+        id: message.id,
+        providerMessageId: message.providerMessageId,
+        sentAt: nowAsDate(),
+        tx,
+      }),
+    );
+  }
+
+  private async handleSendFailure({
+    message,
+    error,
+  }: HandleSendFailureInput): Promise<void> {
+    const attempts = message.attempts + 1;
+    if (
+      error.retryable &&
+      !hasExhaustedRetries({ attempts, policy: this.outboxPolicy })
+    ) {
+      const retryAt = nextRetryAt({ attempts, policy: this.outboxPolicy });
+      await this.unitOfWork.run((tx) =>
+        this.outboxRepository.markFailed({
+          id: message.id,
+          lastError: error.message,
+          attempts,
+          status: 'pending',
+          scheduledFor: toDate({ instant: retryAt }),
+          tx,
+        }),
+      );
+      return;
+    }
+    await this.failTerminally({
+      message,
+      reason: error.message,
+      attempts,
+    });
+  }
+
+  private async failTerminally({
+    message,
+    reason,
+    attempts = message.attempts,
+  }: FailTerminallyInput): Promise<void> {
+    await this.unitOfWork.run((tx) =>
+      this.outboxRepository.markFailed({
+        id: message.id,
+        lastError: reason,
+        attempts,
+        status: 'failed',
+        tx,
+      }),
+    );
+  }
+}
+
+interface MinistryInvitationSubject {
+  ministryInvitationId: string;
+}
+
+interface DbOutboxDrainerDependencies {
+  config: AppConfig;
+  outboxRepository: OutboxRepository;
+  invitationRepository: MinistryInvitationRepository;
+  churchRepository: ChurchRepository;
+  ministryRepository: MinistryRepository;
+  roleRepository: RoleRepository;
+  volunteerTransferRepository: VolunteerTransferRepository;
+  emailSender: EmailSender;
+  notifier: ChurchNotifier;
+  schedulingFacts: SchedulingNotificationFacts;
+  unitOfWork: UnitOfWork;
+  /** Base URL of the web app, for deep links in emails. */
+  webBaseUrl: string;
+}
+
+interface LocaleForInput {
+  email: string;
+}
+
+interface ProcessOneInput {
+  message: OutboxMessage;
+}
+
+interface ProcessInvitationMessageInput {
+  message: ChainedInvitationOutboxMessage;
+}
+
+interface ProcessChurchOfferMessageInput {
+  message: ChurchBootstrapOutboxMessage;
+}
+
+interface LoadPendingInvitationFactsInput {
+  churchId: ChurchId;
+  ministryInvitationId: string;
+}
+
+interface LoadDeliveryFactsInput {
+  churchId: ChurchId;
+  to: ChurchRecipient;
+  request: NotificationRequest;
+}
+
+interface LoadTransferDigestFactsInput {
+  churchId: ChurchId;
+  to: ChurchRecipient;
+  request: Extract<
+    NotificationRequest,
+    { kind: 'transfer_ministry_digest' | 'transfer_leaderless_ministry' }
+  >;
+}
+
+interface ProcessNotificationMessageInput {
+  message: NotificationOutboxMessage;
+}
+
+interface PrepareAndDeliverInput {
+  message: OutboxMessage;
+  payload: EmailPayload;
+  locale: EmailLocale;
+}
+
+interface DeliverEmailInput {
+  message: OutboxMessage;
+  delivery: OutboxEmailDelivery;
+}
+
+interface SkipDeliveryInput {
+  message: NotificationOutboxMessage;
+  why: string;
+}
+
+interface MarkSentInput {
+  message: OutboxMessage;
+}
+
+interface EmailIdempotencyKeyForInput {
+  message: OutboxMessage;
+}
+
+/** One key per outbox row: every replay of the row reuses it. */
+function emailIdempotencyKeyFor({
+  message,
+}: EmailIdempotencyKeyForInput): string {
+  return `outbox-message/${message.id}`;
+}
+
+/** The greeting's name: the first word of the User's display name. */
+function firstNameOf(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? name;
+}
+
+interface HandleSendFailureInput {
+  message: OutboxMessage;
+  error: EmailSendError;
+}
+
+interface FailTerminallyInput {
+  message: OutboxMessage;
+  reason: string;
+  attempts?: number;
+}

@@ -1,0 +1,330 @@
+import { appConfig } from '@church/app-config';
+import { NotFoundError } from '@church/core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DbMinistryInvitationManager } from '@/application/db-ministry-invitation-manager';
+import type {
+  ChurchId,
+  MinistryId,
+  MinistryInvitationId,
+  RoleId,
+  UserId,
+} from '@/domain/branded-ids';
+import { InsufficientInvitationAuthorityError } from '@/domain/errors/insufficient-invitation-authority';
+import { InvalidInvitationRoleError } from '@/domain/errors/invalid-invitation-role';
+import { InviteeAlreadyMinistryMemberError } from '@/domain/errors/invitee-already-ministry-member';
+import { MinistryInvitationNotFoundError } from '@/domain/errors/ministry-invitation-not-found';
+import { MissingOutboxDeliveryRecordError } from '@/domain/errors/missing-outbox-delivery-record';
+
+const churchId = 'church_1' as ChurchId;
+const ministryId = 'ministry_1' as MinistryId;
+const adminId = 'admin_1' as UserId;
+const leaderId = 'leader_1' as UserId;
+const inviteeUserId = 'invitee_1' as UserId;
+const roleId = 'role_1' as RoleId;
+const fakeTx = { id: 'fake-tx' } as never;
+
+const repo = {
+  acquireMintLock: vi.fn(),
+  acquireChurchOfferLock: vi.fn(),
+  findChurchMemberByEmail: vi.fn(),
+  findPendingForAddress: vi.fn(),
+  alignPairedExpiry: vi.fn(),
+  supersedeUnsentChainedOutbox: vi.fn(),
+  hasActiveMinistryMembership: vi.fn(),
+  findPendingChurchInvitationByEmail: vi.fn(),
+  createChurchInvitation: vi.fn(),
+  create: vi.fn(),
+  enqueueOutboxMessage: vi.fn(),
+};
+
+const roleRepository = { lockActiveForUse: vi.fn() };
+const ministryRepository = { getById: vi.fn(), lockActive: vi.fn() };
+const authorityManager = {
+  canManageMinistry: vi.fn(),
+  canManageInvitations: vi.fn(),
+};
+const unitOfWork = { run: vi.fn((fn: (tx: unknown) => unknown) => fn(fakeTx)) };
+const outboxRepository = { findLatestStatusForMinistryInvitation: vi.fn() };
+const notifications = { enqueue: vi.fn() };
+
+function createManager(
+  config: typeof appConfig = appConfig,
+): DbMinistryInvitationManager {
+  return new DbMinistryInvitationManager({
+    repo: repo as never,
+    roleRepository: roleRepository as never,
+    ministryRepository: ministryRepository as never,
+    authorityManager: authorityManager as never,
+    unitOfWork: unitOfWork as never,
+    outboxRepository: outboxRepository as never,
+    notifications,
+    config,
+  });
+}
+
+function baseMintInput() {
+  return {
+    churchId,
+    ministryId,
+    inviterId: adminId,
+    email: 'outsider@example.com',
+    ministryAccessLevel: 'volunteer' as const,
+    roleIds: [roleId],
+  };
+}
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  ministryRepository.getById.mockResolvedValue({ id: ministryId, churchId });
+  authorityManager.canManageMinistry.mockResolvedValue(true);
+  authorityManager.canManageInvitations.mockResolvedValue([true]);
+  roleRepository.lockActiveForUse.mockResolvedValue([{ id: roleId }]);
+  repo.findChurchMemberByEmail.mockResolvedValue(null);
+  repo.findPendingChurchInvitationByEmail.mockResolvedValue(null);
+  repo.createChurchInvitation.mockResolvedValue({
+    id: 'church-invitation-1',
+    expiresAt: new Date('2030-01-01T00:00:00Z'),
+  });
+  repo.create.mockResolvedValue({ id: 'invitation-1', kind: 'chained' });
+});
+
+describe('DbMinistryInvitationManager.mint — scope resolution', () => {
+  it('throws MinistryInvitationNotFoundError when the Ministry does not exist', async () => {
+    ministryRepository.getById.mockRejectedValueOnce(
+      new NotFoundError('Ministry not found: x'),
+    );
+
+    await expect(createManager().mint(baseMintInput())).rejects.toBeInstanceOf(
+      MinistryInvitationNotFoundError,
+    );
+    expect(authorityManager.canManageMinistry).not.toHaveBeenCalled();
+  });
+
+  it('throws MinistryInvitationNotFoundError when the caller cannot manage the Ministry', async () => {
+    authorityManager.canManageMinistry.mockResolvedValueOnce(false);
+
+    await expect(createManager().mint(baseMintInput())).rejects.toBeInstanceOf(
+      MinistryInvitationNotFoundError,
+    );
+    expect(repo.acquireMintLock).not.toHaveBeenCalled();
+  });
+
+  it('throws InsufficientInvitationAuthorityError when the requested level is outside the caller authority', async () => {
+    authorityManager.canManageInvitations.mockResolvedValueOnce([false]);
+
+    await expect(
+      createManager().mint({
+        ...baseMintInput(),
+        inviterId: leaderId,
+        ministryAccessLevel: 'leader',
+      }),
+    ).rejects.toBeInstanceOf(InsufficientInvitationAuthorityError);
+    expect(repo.acquireMintLock).not.toHaveBeenCalled();
+  });
+
+  it('asks AuthorityService about the requested level in the target Ministry', async () => {
+    await createManager().mint({
+      ...baseMintInput(),
+      inviterId: leaderId,
+      ministryAccessLevel: 'volunteer',
+    });
+
+    expect(authorityManager.canManageInvitations).toHaveBeenCalledWith({
+      churchId: baseMintInput().churchId,
+      userId: leaderId,
+      invitations: [
+        {
+          ministryId: baseMintInput().ministryId,
+          ministryAccessLevel: 'volunteer',
+        },
+      ],
+    });
+  });
+
+  it('rejects an invalid Role id with neither half created', async () => {
+    roleRepository.lockActiveForUse.mockResolvedValueOnce([
+      { id: 'other-role' as RoleId },
+    ]);
+
+    await expect(
+      createManager().mint({ ...baseMintInput(), roleIds: [roleId] }),
+    ).rejects.toBeInstanceOf(InvalidInvitationRoleError);
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
+  it('acquires the mint lock before resolving the recipient', async () => {
+    await createManager().mint(baseMintInput());
+
+    expect(repo.acquireMintLock).toHaveBeenCalledWith({
+      ministryId,
+      email: 'outsider@example.com',
+      tx: fakeTx,
+    });
+  });
+
+  it('rejects an existing Church Member who already holds Ministry Membership', async () => {
+    repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
+    repo.hasActiveMinistryMembership.mockResolvedValueOnce(true);
+
+    await expect(createManager().mint(baseMintInput())).rejects.toBeInstanceOf(
+      InviteeAlreadyMinistryMemberError,
+    );
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a Ministry-only invitation for an existing Church Member with no pending row', async () => {
+    repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
+    repo.hasActiveMinistryMembership.mockResolvedValueOnce(false);
+    repo.create.mockResolvedValueOnce({
+      id: 'invitation-1',
+      kind: 'ministry-only',
+    });
+
+    const invitation = await createManager().mint(baseMintInput());
+
+    expect(invitation).toEqual({ id: 'invitation-1', kind: 'ministry-only' });
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ churchId, ministryId, inviteeUserId }),
+    );
+    expect(notifications.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'ministry_invitation',
+        to: [{ userId: inviteeUserId, churchId }],
+        data: { ministryInvitationId: 'invitation-1' },
+      }),
+    );
+    expect(repo.enqueueOutboxMessage).not.toHaveBeenCalled();
+  });
+
+  it('mints a chained pair for a recipient outside the Church with no pending Church Invitation', async () => {
+    const invitation = await createManager().mint(baseMintInput());
+
+    expect(repo.createChurchInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ churchId, email: 'outsider@example.com' }),
+    );
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ churchInvitationId: 'church-invitation-1' }),
+    );
+    expect(repo.enqueueOutboxMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ churchId, kind: 'invitation.chained' }),
+    );
+    expect(invitation).toEqual({ id: 'invitation-1', kind: 'chained' });
+  });
+
+  it('reuses a still-pending chained Church Invitation rather than minting a second one', async () => {
+    repo.findPendingChurchInvitationByEmail.mockResolvedValueOnce({
+      id: 'existing-church-invitation',
+      expiresAt: new Date('2030-02-01T00:00:00Z'),
+    });
+
+    await createManager().mint(baseMintInput());
+
+    expect(repo.createChurchInvitation).not.toHaveBeenCalled();
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        churchInvitationId: 'existing-church-invitation',
+      }),
+    );
+  });
+});
+
+describe('DbMinistryInvitationManager.getDeliveryStatus', () => {
+  it('returns the outbox repository status for the invitation', async () => {
+    outboxRepository.findLatestStatusForMinistryInvitation.mockResolvedValueOnce(
+      'sent',
+    );
+
+    const status = await createManager().getDeliveryStatus({
+      churchId,
+      ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+    });
+
+    expect(status).toBe('sent');
+    expect(
+      outboxRepository.findLatestStatusForMinistryInvitation,
+    ).toHaveBeenCalledWith({
+      churchId,
+      ministryInvitationId: 'invitation-1',
+    });
+  });
+
+  it("maps the infrastructure 'processing' status to 'pending'", async () => {
+    outboxRepository.findLatestStatusForMinistryInvitation.mockResolvedValueOnce(
+      'processing',
+    );
+
+    const status = await createManager().getDeliveryStatus({
+      churchId,
+      ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+    });
+
+    expect(status).toBe('pending');
+  });
+
+  it('throws when no outbox message exists for the invitation', async () => {
+    outboxRepository.findLatestStatusForMinistryInvitation.mockResolvedValueOnce(
+      null,
+    );
+
+    await expect(
+      createManager().getDeliveryStatus({
+        churchId,
+        ministryInvitationId: 'invitation-1' as MinistryInvitationId,
+      }),
+    ).rejects.toThrow(MissingOutboxDeliveryRecordError);
+  });
+});
+
+describe('DbMinistryInvitation lifetime', () => {
+  const NOW = new Date('2030-03-01T12:00:00Z');
+  const INJECTED_TTL_MS = 3 * 60 * 60 * 1000;
+  const injected = {
+    ...appConfig,
+    ministryInvitation: { ttlMs: INJECTED_TTL_MS },
+  };
+  const EXPECTED_EXPIRY = new Date(NOW.getTime() + INJECTED_TTL_MS);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('mints a Ministry-only invitation expiring after the injected lifetime', async () => {
+    repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
+    repo.hasActiveMinistryMembership.mockResolvedValueOnce(false);
+    repo.create.mockResolvedValueOnce({
+      id: 'invitation-1',
+      kind: 'ministry-only',
+    });
+
+    await createManager(injected).mint(baseMintInput());
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ expiresAt: EXPECTED_EXPIRY }),
+    );
+  });
+
+  it('defaults to seven days', async () => {
+    repo.findChurchMemberByEmail.mockResolvedValueOnce(inviteeUserId);
+    repo.hasActiveMinistryMembership.mockResolvedValueOnce(false);
+    repo.create.mockResolvedValueOnce({
+      id: 'invitation-1',
+      kind: 'ministry-only',
+    });
+
+    await createManager().mint(baseMintInput());
+
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expiresAt: new Date(NOW.getTime() + SEVEN_DAYS_MS),
+      }),
+    );
+  });
+});

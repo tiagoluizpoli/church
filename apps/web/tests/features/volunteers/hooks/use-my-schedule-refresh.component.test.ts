@@ -1,0 +1,97 @@
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useMyScheduleRefresh } from '@/features/volunteers/hooks/use-my-schedule-refresh';
+
+function setNavigatorOnlineState(value: boolean) {
+  Object.defineProperty(window.navigator, 'onLine', {
+    configurable: true,
+    value,
+  });
+}
+
+const visibleDataFixture = {
+  assignments: [{ eventId: 'event-1' }],
+  schedules: [{ eventId: 'event-3' }],
+};
+
+describe('useMyScheduleRefresh', () => {
+  afterEach(() => {
+    setNavigatorOnlineState(true);
+  });
+
+  it('stays silent when visible schedule data does not change', () => {
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    const { result, rerender } = renderHook(
+      ({ visibleData }) =>
+        useMyScheduleRefresh({
+          onRefresh,
+          visibleData,
+        }),
+      {
+        initialProps: {
+          visibleData: visibleDataFixture,
+        },
+      },
+    );
+
+    rerender({
+      visibleData: {
+        ...visibleDataFixture,
+      },
+    });
+
+    expect(result.current.hasBackgroundUpdate).toBe(false);
+  });
+
+  it('shows background update indicator when visible schedule data changes', () => {
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    const { result, rerender } = renderHook(
+      ({ visibleData }) =>
+        useMyScheduleRefresh({
+          onRefresh,
+          visibleData,
+        }),
+      {
+        initialProps: {
+          visibleData: visibleDataFixture,
+        },
+      },
+    );
+
+    rerender({
+      visibleData: {
+        ...visibleDataFixture,
+        assignments: [{ eventId: 'event-1' }, { eventId: 'event-4' }],
+      },
+    });
+
+    expect(result.current.hasBackgroundUpdate).toBe(true);
+
+    act(() => {
+      result.current.dismissBackgroundUpdate();
+    });
+
+    expect(result.current.hasBackgroundUpdate).toBe(false);
+  });
+
+  it('keeps cached mode active when browser is offline', async () => {
+    setNavigatorOnlineState(false);
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useMyScheduleRefresh({
+        onRefresh,
+        visibleData: visibleDataFixture,
+      }),
+    );
+
+    expect(result.current.isOnline).toBe(false);
+    expect(result.current.isUsingCachedData).toBe(true);
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(result.current.refreshState).toBe('error');
+  });
+});

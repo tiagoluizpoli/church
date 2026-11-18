@@ -1,0 +1,30 @@
+{
+  "name": "@church/time",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./now": {
+      "types": "./src/now.ts",
+      "default": "./src/now.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:unit": "TZ=Pacific/Auckland vitest run",
+    "test:unit:related": "TZ=Pacific/Auckland bun ../../tooling/validation/vitest-related.ts",
+    "test": "bun run test:unit"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@church/config": "workspace:*",
+    "typescript": "^5",
+    "vitest": "catalog:"
+  }
+}

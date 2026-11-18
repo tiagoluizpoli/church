@@ -1,0 +1,1 @@
+ALTER TABLE "availability_check" ADD COLUMN "withdrawn_at" timestamp with time zone;

@@ -1,35 +1,24 @@
-# Spec F3: Onboarding & Invites UI
+# Spec F3: Onboarding & Invites
 
 ## Purpose
-Define the user experience for new volunteers joining a ministry via an invitation link.
+Define the registration and invitation flow for new volunteers, ensuring a premium and seamless entry into the platform.
 
-## 1. The Landing Page (`/join/:churchId/:ministryId?token=...`)
-- **Visual Branding**: Church logo and name.
-- **Invitation Context**: "You've been invited to join the **[Ministry Name]** team at **[Church Name]**."
-- **Action**: "Get Started" button.
+## 1. Landing & Intro
+- **Branded Landing Page**: A high-fidelity, clinical-style intro page that communicates the platform's value. 
+- **Visual Tokens**: Sharp 4px corners, mono-accented palette (Zinc/Slate), and Inter typography. 
 
-## 2. The Registration Flow
-- **Step 1: Identity**: 
-    - If logged in: "Join as [Name]?"
-    - If not logged in: Better Auth Sign-up/Login component.
-- **Step 2: Profile Completion**: 
-    - Basic info (Phone, preferred contact method).
-    - Role interests (Multiple choice).
-- **Step 3: Confirmation**:
-    - "Welcome! You are now part of the [Ministry Name] team."
-    - Redirection to the **Volunteer Dashboard**.
+## 2. Registration Flow (Wizard)
+- **Fast-Track Registration**: "One-Question-at-a-Time" wizard for high conversion on mobile. 
+- **Progressive Feedback**: A prominent progress bar and snappy transitions (Framer Motion). 
+- **Verification**: Mobile-first OTP or Email verification screen. 
 
-## 3. Token Logic (Frontend side)
-- On landing, the frontend must immediately validate the `token` via the API.
-- If the token is `Expired` or `Used`, show a friendly "This link is no longer active" page with a button to contact the leader.
+## 3. Post-Onboarding Engagement
+- **PWA Nudge**: After registration, trigger an "Add to Home Screen" prompt. 
+- **Notification Setup**: Request permission for Web Push alerts with haptic feedback on success. 
 
-## 4. Testing Requirements (Mandatory)
-- **Component**: Verify that the "Join as [Name]" button correctly uses the existing session.
-- **Integration**: Verify that an invalid token redirects to the "Link Expired" page.
-- **E2E**: Full journey - Click link -> Register -> View Dashboard.
+## 4. Invite Management
+- **Universal Links**: Invitation links that work seamlessly across all platforms. 
+- **Tailored Welcome**: Personalized messages based on the ministry or team the user is joining. 
 
 ## 🔗 References
-- [Spec 05: Onboarding Links](./05-onboarding-links.md)
-
-## 🔴 Mandatory UI Component Rule
-Everything must be built exclusively using standard **shadcn/ui** components. Do not build custom UI elements from scratch. Make as few modifications as possible. If a component is missing, pause and ask the user to find a community implementation.
+- [Spec 05: Onboarding & Links](./05-onboarding-links.md)

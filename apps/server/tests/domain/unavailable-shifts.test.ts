@@ -1,0 +1,122 @@
+import { parseCalendarDay, parseInstant } from '@church/time';
+import { describe, expect, it } from 'vitest';
+import type { ShiftId } from '@/domain/branded-ids';
+import { CrossMinistryScopeError } from '@/domain/errors/cross-ministry-scope';
+import {
+  assertUnavailableShiftsWithinScope,
+  expandWholeDayShiftIds,
+  resolveShiftAvailability,
+} from '@/domain/services/unavailable-shifts';
+
+const shiftA = '11111111-1111-4111-8111-111111111111' as ShiftId;
+const shiftB = '22222222-2222-4222-8222-222222222222' as ShiftId;
+const shiftC = '33333333-3333-4333-8333-333333333333' as ShiftId;
+
+const TIME_ZONE = 'America/Sao_Paulo';
+
+describe('resolveShiftAvailability (DL1-AC-04, DL1-AV-01, DL1-AV-03)', () => {
+  it('DL1-AC-04 zero unavailable shifts ⇒ every shift resolves available (available-by-default)', () => {
+    const resolved = resolveShiftAvailability({
+      shiftIds: [shiftA, shiftB, shiftC],
+      unavailableShiftIds: [],
+    });
+
+    expect(resolved).toEqual([
+      { shiftId: shiftA, available: true },
+      { shiftId: shiftB, available: true },
+      { shiftId: shiftC, available: true },
+    ]);
+  });
+
+  it('DL1-AV-01 existence of an unavailable shift ⇒ unavailable for that shift only', () => {
+    const resolved = resolveShiftAvailability({
+      shiftIds: [shiftA, shiftB],
+      unavailableShiftIds: [shiftB],
+    });
+
+    expect(resolved).toEqual([
+      { shiftId: shiftA, available: true },
+      { shiftId: shiftB, available: false },
+    ]);
+  });
+
+  it('DL1-AV-03 removing an unavailable shift restores default-available', () => {
+    const before = resolveShiftAvailability({
+      shiftIds: [shiftA],
+      unavailableShiftIds: [shiftA],
+    });
+    const after = resolveShiftAvailability({
+      shiftIds: [shiftA],
+      unavailableShiftIds: [],
+    });
+
+    expect(before).toEqual([{ shiftId: shiftA, available: false }]);
+    expect(after).toEqual([{ shiftId: shiftA, available: true }]);
+  });
+});
+
+describe('expandWholeDayShiftIds (DL1-AV-02)', () => {
+  it('DL1-AV-02 expands to one unavailable shift per shift on the church-local date', () => {
+    // 2026-08-02 23:30 UTC is already 2026-08-02 20:30 in São Paulo (UTC-3);
+    // 2026-08-03 01:00 UTC is still 2026-08-02 22:00 locally.
+    const shiftIds = expandWholeDayShiftIds({
+      churchDate: parseCalendarDay({ value: '2026-08-02' }),
+      timeZone: TIME_ZONE,
+      shifts: [
+        {
+          shiftId: shiftA,
+          startTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
+        },
+        {
+          shiftId: shiftB,
+          startTime: parseInstant({ value: '2026-08-03T01:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-03T03:00:00.000Z' }),
+        },
+        {
+          shiftId: shiftC,
+          startTime: parseInstant({ value: '2026-08-03T12:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-03T15:00:00.000Z' }),
+        },
+      ],
+    });
+
+    expect(shiftIds).toEqual([shiftA, shiftB]);
+  });
+
+  it('returns empty when no shift starts on the date', () => {
+    const shiftIds = expandWholeDayShiftIds({
+      churchDate: parseCalendarDay({ value: '2026-08-09' }),
+      timeZone: TIME_ZONE,
+      shifts: [
+        {
+          shiftId: shiftA,
+          startTime: parseInstant({ value: '2026-08-02T12:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-02T15:00:00.000Z' }),
+        },
+      ],
+    });
+
+    expect(shiftIds).toEqual([]);
+  });
+});
+
+describe('assertUnavailableShiftsWithinScope (DL1-AV-04)', () => {
+  it('DL1-AV-04 rejects an unavailable shift for a shift outside the check cycle/membership scope', () => {
+    expect(() =>
+      assertUnavailableShiftsWithinScope({
+        candidateShiftIds: [shiftA, shiftB],
+        requestedShiftIds: [shiftA, shiftC],
+      }),
+    ).toThrow(CrossMinistryScopeError);
+  });
+
+  it('accepts unavailable shifts fully inside the candidate scope', () => {
+    expect(() =>
+      assertUnavailableShiftsWithinScope({
+        candidateShiftIds: [shiftA, shiftB],
+        requestedShiftIds: [shiftB],
+      }),
+    ).not.toThrow();
+  });
+});

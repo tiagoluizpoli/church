@@ -1,0 +1,55 @@
+import * as schema from '@church/db';
+import { clearPublicTables } from '@church/db/clear-public-tables';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { DbActiveChurchSelectionManager } from '@/application/db-active-church-selection-manager';
+import { ChurchId } from '@/domain/branded-ids';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { buildChurch } from '@/seeds/builders/church';
+
+const DATABASE_URL = getIntegrationDatabaseUrl();
+const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
+const testDb = drizzle(pool, { schema });
+
+const churchId = ChurchId.from('11111111-1111-4111-8111-c11111111121');
+
+// Roots at `organization`/`user`: see the note on `truncateAll` in
+// `tests/integration/repositories/setup.ts`.
+async function resetDb(): Promise<void> {
+  await clearPublicTables({ pool });
+}
+
+/** Only the Church row is exercised; the other collaborators stay unused. */
+function createManager(): DbActiveChurchSelectionManager {
+  return new DbActiveChurchSelectionManager({
+    membershipRepository: {} as never,
+    authorityManager: {} as never,
+    activeChurchResolver: {} as never,
+    churchRepository: new DrizzleChurchRepository({ db: testDb }),
+  });
+}
+
+describe('DbActiveChurchSelectionManager.getChurchTimezone (integration)', () => {
+  beforeEach(async () => {
+    await resetDb();
+    await buildChurch({
+      db: testDb,
+      id: churchId,
+      name: 'Timezone Church',
+      slug: 'timezone-church',
+      timezone: 'America/Sao_Paulo',
+    });
+  });
+
+  afterAll(async () => {
+    await pool.end();
+  });
+
+  it("reads the Active Church's IANA timezone from its church row", async () => {
+    await expect(createManager().getChurchTimezone({ churchId })).resolves.toBe(
+      'America/Sao_Paulo',
+    );
+  });
+});

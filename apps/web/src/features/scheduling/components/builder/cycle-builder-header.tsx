@@ -1,0 +1,176 @@
+import { m } from '@church/i18n/messages';
+import {
+  formatCalendarDay,
+  formatDayAndMonth,
+  parseCalendarDay,
+} from '@church/time';
+import {
+  type CycleCountsSummary,
+  type CycleStaffingSummary,
+  staffingStatusClasses,
+} from '../../utils/builder/cycle-builder-staffing.utils';
+import { SyncedAgoLabel } from './synced-ago-label';
+import { HeaderStatChip } from '@/components/header-stat-chip';
+import { WorkspaceIntroPanel } from '@/components/workspace-page';
+import { cn } from '@/lib/utils';
+import { toCycleDayKey } from '@/shared/utils/date';
+
+interface FormatCycleDateRangeInput {
+  startDate?: string;
+  endDate?: string;
+}
+
+/**
+ * The cycle's own window, read as dates rather than instants — a cycle
+ * boundary is a CalendarDay, never a time of day, so no timezone conversion
+ * applies here (unlike Event/time block/shift bounds, which do need the Church
+ * Timezone). Formatted through the seam's own CalendarDay formatters, never a
+ * raw `Date` or the browser locale.
+ */
+export function formatCycleDateRange({
+  startDate,
+  endDate,
+}: FormatCycleDateRangeInput): string | undefined {
+  if (!(startDate && endDate)) return undefined;
+  const start = parseCalendarDay({ value: toCycleDayKey(startDate) });
+  const end = parseCalendarDay({ value: toCycleDayKey(endDate) });
+  return `${formatDayAndMonth({ day: start })} – ${formatCalendarDay({ day: end })}`;
+}
+
+interface CycleBuilderHeaderProps {
+  cycleName?: string;
+  cycleStartDate?: string;
+  cycleEndDate?: string;
+  staffing: CycleStaffingSummary;
+  counts: CycleCountsSummary;
+  /** Epoch ms of the last successful read of the builder query. */
+  syncedAt?: number;
+  isRefreshing?: boolean;
+}
+
+/**
+ * What used to sit here was a bespoke `<header>` — its own type scale, no
+ * card, no page shell — while every other scheduling screen (Planning,
+ * Prepare) sits inside `WorkspaceIntroPanel`. That made the builder read as
+ * a different product mid-workflow. This now renders through the same shell;
+ * only the `aside` content (inventory counters, staffing progress, sync
+ * status) stays builder-specific. Publish/audit controls live on the filter
+ * toolbar below instead of here — stacking them under the progress bar left
+ * this panel taller than the title/date column beside it for no reason.
+ *
+ * It carries the four facts a coordinator opening this at 9pm actually needs:
+ * which cycle she is in, what window it covers, how much of it is done, and
+ * whether the board she is reading is current.
+ */
+export function CycleBuilderHeader({
+  cycleName,
+  cycleStartDate,
+  cycleEndDate,
+  staffing,
+  counts,
+  syncedAt,
+  isRefreshing,
+}: CycleBuilderHeaderProps) {
+  const dateRange = formatCycleDateRange({
+    startDate: cycleStartDate,
+    endDate: cycleEndDate,
+  });
+  const statusBarClass = staffingStatusClasses({
+    percent: staffing.percent,
+    hasRequirement: staffing.required > 0,
+  }).bar;
+
+  return (
+    <div data-testid="cycle-builder-header">
+      <WorkspaceIntroPanel
+        title={cycleName ?? m.builder_header_title()}
+        description={dateRange ?? m.builder_header_no_dates()}
+        autoFocusTitle
+        aside={
+          <div className="flex w-full flex-col items-stretch gap-3 xl:w-auto xl:items-end">
+            <div className="flex w-full flex-wrap gap-2 xl:w-auto xl:justify-end">
+              <HeaderStatChip
+                testIdOnValue
+                testId="cycle-builder-event-count"
+                label={m.builder_header_events()}
+                value={counts.eventCount}
+              />
+              <HeaderStatChip
+                testIdOnValue
+                testId="cycle-builder-event-time-block-count"
+                label={m.builder_header_time_blocks()}
+                value={counts.eventTimeBlockCount}
+              />
+              <HeaderStatChip
+                testIdOnValue
+                testId="cycle-builder-shift-count"
+                label={m.builder_header_shifts()}
+                value={counts.shiftCount}
+              />
+              <HeaderStatChip
+                testIdOnValue
+                testId="cycle-builder-assigned-count"
+                label={m.builder_header_assigned()}
+                value={counts.assignedCount}
+              />
+            </div>
+            {/* The only progress signal in a session that can run to forty
+                assignments — and the only place a background refetch is
+                attributable, which is why the synced line moved up here from
+                the filter toolbar (B-1's line, B-4's home for it). */}
+            <div
+              className="w-full min-w-56 space-y-1 xl:w-80"
+              data-testid="cycle-builder-progress"
+            >
+              <p className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="font-medium">
+                  {staffing.required > 0
+                    ? staffing.required === 1
+                      ? m.builder_header_filled_one({
+                          filled: staffing.coveredPlaces,
+                        })
+                      : m.builder_header_filled({
+                          filled: staffing.coveredPlaces,
+                          needed: staffing.required,
+                        })
+                    : m.builder_header_no_staffing()}
+                </span>
+                {/* The number stays on `--foreground`: `--destructive`
+                    measures 4.45:1 against the app background at 14px, just
+                    under the AA floor axe enforces (`a11y-builder.spec.ts`).
+                    The bar below carries the status colour, where a 3:1
+                    non-text ratio applies. */}
+                {staffing.required > 0 ? (
+                  <span className="font-medium text-sm">
+                    {staffing.percent}%
+                  </span>
+                ) : null}
+              </p>
+              <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
+                <span
+                  className={cn('block h-full', statusBarClass)}
+                  style={{ width: `${Math.min(staffing.percent, 100)}%` }}
+                />
+              </span>
+              <p className="flex items-baseline justify-between gap-3 text-muted-foreground text-xs">
+                <span>
+                  {staffing.shiftsBelowTarget > 0
+                    ? staffing.shiftsBelowTarget === 1
+                      ? m.builder_header_below_one()
+                      : m.builder_header_below_many({
+                          count: staffing.shiftsBelowTarget,
+                        })
+                    : m.builder_header_all_full()}
+                </span>
+                <SyncedAgoLabel
+                  syncedAt={syncedAt}
+                  isRefreshing={isRefreshing}
+                />
+              </p>
+            </div>
+          </div>
+        }
+      />
+    </div>
+  );
+}

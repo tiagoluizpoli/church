@@ -6,8 +6,25 @@ pre-commit:
   jobs:
     - name: biome
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
-      run: bun biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      run: bun run lint:fix:files -- {staged_files}
       stage_fixed: true
+
+post-merge:
+  jobs:
+    # A merge that changes dependencies leaves node_modules (and postinstall output) stale.
+    - name: install
+      files: git diff --name-only ORIG_HEAD HEAD
+      glob: "bun.lock"
+      run: bun install
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: no-docker-validation
+      # Waits at most 5 minutes behind a running gate, then fails naming the holder.
+      env:
+        CHURCH_VALIDATE_LOCK_TIMEOUT_MS: "300000"
+      run: bun run validate:no-docker
 
 commit-msg:
   commands:

@@ -1,18 +1,19 @@
 <!--
 ## Sync Impact Report
-- Version change: [CONSTITUTION_VERSION] → 1.0.0
-- List of modified principles:
-  - [PRINCIPLE_1_NAME] → I. Domain-First Architecture
-  - [PRINCIPLE_2_NAME] → II. Full-Stack Type Safety
-  - [PRINCIPLE_3_NAME] → III. Container-Ready Infrastructure
-  - [PRINCIPLE_4_NAME] → IV. Environment Discipline
-  - [PRINCIPLE_5_NAME] → V. Automated Code Standards
-- Added sections: Technology Stack, Core Rules, Governance
-- Removed sections: None
-- Templates requiring updates:
-  - .specify/templates/plan-template.md (✅ updated)
-  - .specify/templates/spec-template.md (✅ updated)
-  - .specify/templates/tasks-template.md (✅ updated)
+- Version change: 1.7.1 → 1.8.0
+- Modified principle: VII. Explicit Parameter Contracts
+- Updated: at most one parameter with no exception for transaction handles, signals or options; interface signatures and function types included; enforced by `bun run validate:named-parameters` in `lint` (ADR 0010, #538, #547)
+
+- Version change: 1.7.0 → 1.7.1
+- Modified principle: Core Rules — Shared config package
+- Updated: `@church/app-config` may hold its Zod schema (validated once at module load, #434)
+
+- Version change: 1.6.0 → 1.7.0
+- Modified principle: Core Rules — Monorepo Boundaries
+- Updated: `@church/app-config` is the one allowed application-specific package (plain shared config data, #434)
+
+- Templates requiring updates: None; existing Constitution Check is generic
+- Follow-up TODOs: None
 -->
 
 # Church Constitution
@@ -24,21 +25,39 @@ Every feature starts with a clear domain definition and planning. Implementation
 agreed-upon domain models and business logic specified in the `planning/` directory.
 
 ### II. Full-Stack Type Safety
-End-to-end type safety is non-negotiable. Use tRPC for API boundaries, Zod for runtime 
+End-to-end type safety is non-negotiable. Use Fastify + orval + OpenAPI for API boundaries, Zod for runtime 
 validation, and Drizzle for database interactions. Avoid `any` at all costs.
 
 ### III. Container-Ready Infrastructure
-All infrastructure must be reproducible via Docker Compose. The `docker-compose.yml` is the 
-single source of truth for the local development environment.
+All infrastructure must be reproducible via Docker Compose. The root `docker-compose.yml` is the
+single source of truth for local development dependencies, shared by every worktree.
+Production has its own Compose definition.
 
 ### IV. Environment Discipline
-Environment variables must be strictly managed via `.env` files and validated using the 
-`@base-fullstack-template/env` package. Never commit secrets; always provide `.env.example` 
-templates.
+Environment variables are declared in committed Varlock `.env.schema` files, which serve as
+the templates, and validated by the `@church/env` Zod contracts. Values live only in the
+generated, ignored root `.env.local` and the machine-shared `church-shared.env`; Varlock alone
+loads them. Never commit secrets or package-local value files.
 
 ### V. Automated Code Standards
 Adhere to Biome for linting and formatting. Lefthook manages pre-commit hooks to ensure every 
 commit passes quality gates (linting, conventional commits).
+
+### VI. Maximum Context Specification
+When planning or specifying a feature (e.g., via the `speckit.specify` or `speckit.plan` commands), the process MUST begin by locating the feature's `manual-planning/[xxxx]-feature/specifications-list.md` file. The specification and plan must traverse and analyze all related documentation files linked within that list to establish maximum context before proceeding.
+
+### VII. Explicit Parameter Contracts
+Application functions, methods, constructors, and call-facing handlers MUST take at most one
+parameter, with no exception for transaction handles, signals or options. When they need data, it
+arrives through a single object parameter. Interface method signatures and function types are
+included. The object shape MUST use a separately declared, descriptively named `interface` or `type`.
+Inline object typing is forbidden in modified application code, including parameter declarations,
+variable annotations, return annotations, joined record shapes, and type assertions or casts such as
+`value as { ... }`. Framework or collection callbacks whose signatures are controlled by an external
+API are exempt from the single-parameter requirement, but any additional object typing in modified code
+MUST still use a named type. Existing violations encountered in modified code MUST be corrected as part
+of the change. Enforced by `bun run validate:named-parameters`, part of `bun run lint`
+([ADR 0010](../../docs/adr/0010-mechanical-rules-enforced-by-tooling.md)).
 
 ## Technology Stack
 
@@ -51,15 +70,20 @@ commit passes quality gates (linting, conventional commits).
 | Styling | Tailwind CSS v4 | Utility-first styling with high performance |
 | Database | Drizzle ORM + PG | Type-safe SQL and schema management |
 | Auth | Better Auth | Unified authentication framework |
-| API | tRPC | End-to-end type-safe API communication |
+| API | Fastify + orval | Type-safe HTTP API via OpenAPI contract and generated typed functions |
 | Orchestration | Turborepo | High-performance build system for monorepos |
 
 ## Core Rules
 
 - **Domain Driven**: Business logic must be separated from framework-specific code.
+- **Monorepo Boundaries**: Shared packages (`packages/*`) must only contain generic, non-application-specific code (e.g., `@church/db` for database connection and schema, `@church/env` for env schemas and parsing, `@church/ui` for generic UI primitives). All application-specific server implementation, domain logic, and routes must live inside the server application (`apps/server`, named `@church/server`). Client applications must import server API definitions via orval-generated typed functions from `apps/web/src/infrastructure/api/`.
+- **Shared config package**: `@church/app-config` is the one allowed application-specific package — plain shared config data (policy values and parked switches) read by server and web, defined by a Zod schema parsed once at module load, no logic beyond `withAllParkedOn`.
+- **Workspace Scope**: All package and application names are scoped under the `@church` namespace.
 - **Atomic Commits**: Use conventional commits and keep changes small and focused.
 - **Strict Linting**: Biome must pass before any commit.
+- **Named Object Parameters**: Use one object parameter with a separately declared, descriptively named `interface` or `type` for application-facing inputs. Do not use positional data parameters, inline object parameter types, or inline object annotations/assertions in modified application code. External callback signatures are exempt only where the framework controls the signature.
 - **Documentation First**: Significant changes must be planned in the `planning/` directory.
+- **Maximum Context**: All planning and specifications must traverse the complete tree of documentation linked in `specifications-list.md`.
 
 ## Governance
 
@@ -67,4 +91,4 @@ commit passes quality gates (linting, conventional commits).
 - Amendments require a version bump and updates to all dependent templates.
 - Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-05-03
+**Version**: 1.8.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-10-22

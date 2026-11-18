@@ -14,6 +14,8 @@ Enforce data isolation and functional authority across the system.
 | **SUB_LEADER** | Team-level | Manage assignments for their specific `team_id`. |
 | **VOLUNTEER** | Individual | View personal schedule, submit availability. |
 
+**Refined (017, 2026-07-02):** `CHURCH_ADMIN` becomes a real church-level authority (the `ChurchAdmin` role), distinct from the ministry-scoped `leader`: it owns `PlanningCycle` draft/lock, `EventTemplate` configuration, and the church calendar (one person may hold both roles). After a ChurchAdmin **cycle-lock**, `MINISTRY_LEADER` operates only on its own `MinistryParticipation` slice of each Event — tailoring inclusions/shifts, firing availability, rostering, and roster-publishing — not on the shared church-owned Event itself. (see ADR 0001 / CONTEXT.md)
+
 ---
 
 ## 2. Contextual Enforcement (Middleware)

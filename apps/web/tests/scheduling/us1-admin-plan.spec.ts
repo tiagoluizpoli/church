@@ -1,0 +1,473 @@
+import { m } from '@church/i18n/messages';
+import {
+  addCalendarDays,
+  enumerateCalendarDays,
+  formatCalendarDay,
+  parseCalendarDay,
+  weekdayIndex,
+} from '@church/time';
+import { expect, test } from '@playwright/test';
+import { fillDatePickerField } from './date-picker.helpers';
+import { addEventOnNestedPage } from './event-create.helpers';
+import { planningMonth } from './planning-month.helpers';
+import { createTemplateOnNestedPage } from './template-create.helpers';
+import {
+  newPersonaContext,
+  signInPersonaPage,
+} from '@/tests/fixtures/journeys/assign-church';
+import {
+  loadPlanningAdminJourney,
+  type PlanningAdminJourney,
+} from '@/tests/fixtures/journeys/planning-admin';
+
+const OUTBOX_NOTIFICATION_TIMEOUT_MS = 15_000;
+
+interface PlanningMonth {
+  cycleName: string;
+  startDate: string;
+  endDate: string;
+  overlapStartDate: string;
+  overlapEndDate: string;
+  firstSunday: string;
+  firstWednesday: string;
+  lastSunday: string;
+  expectedEvents: number;
+  expectedEventTimeBlocks: number;
+  expectedPrefilledBlocks: number;
+  dynamicStartDate: string;
+  dynamicEndDate: string;
+}
+
+function getRequiredDate({
+  dates,
+  label,
+}: {
+  dates: string[];
+  label: string;
+}): string {
+  const date = dates[0];
+  if (!date) {
+    throw new Error(`Expected at least one ${label} date`);
+  }
+
+  return date;
+}
+
+function getLastRequiredDate({
+  dates,
+  label,
+}: {
+  dates: string[];
+  label: string;
+}): string {
+  const date = dates[dates.length - 1];
+  if (!date) {
+    throw new Error(`Expected at least one ${label} date`);
+  }
+
+  return date;
+}
+
+function toDisplayDate(isoDate: string): string {
+  return formatCalendarDay({ day: parseCalendarDay({ value: isoDate }) });
+}
+
+interface CreatePlanningMonthParams {
+  journey: PlanningAdminJourney;
+}
+
+/** The calendar month after the journey's anchor, as the cycle to plan. */
+function createPlanningMonth({
+  journey,
+}: CreatePlanningMonthParams): PlanningMonth {
+  const window = planningMonth({ anchor: journey.anchor });
+  const start = parseCalendarDay({ value: window.startDate });
+  const end = parseCalendarDay({ value: window.endDate });
+  const days = enumerateCalendarDays({ start, end });
+  const sundayDates = days.filter((day) => weekdayIndex({ day }) === 0);
+  const wednesdayDates = days.filter((day) => weekdayIndex({ day }) === 3);
+  const nextMonth = addCalendarDays({ day: end, days: 1 }).slice(0, 7);
+
+  return {
+    cycleName: `US1 Admin Plan ${start.slice(0, 7)}`,
+    startDate: start,
+    endDate: end,
+    overlapStartDate: `${start.slice(0, 7)}-15`,
+    overlapEndDate: `${nextMonth}-15`,
+    firstSunday: getRequiredDate({ dates: sundayDates, label: 'Sunday' }),
+    firstWednesday: getRequiredDate({
+      dates: wednesdayDates,
+      label: 'Wednesday',
+    }),
+    lastSunday: getLastRequiredDate({ dates: sundayDates, label: 'Sunday' }),
+    expectedEvents: sundayDates.length + wednesdayDates.length,
+    expectedEventTimeBlocks: sundayDates.length * 3 + wednesdayDates.length,
+    expectedPrefilledBlocks: sundayDates.length,
+    dynamicStartDate: end,
+    dynamicEndDate: addCalendarDays({ day: end, days: 2 }),
+  };
+}
+
+test.use({ viewport: { width: 767, height: 1200 } });
+
+test('church admin can plan, review, and send a cycle while volunteers stay hidden from it', async ({
+  browser,
+  page,
+}, testInfo) => {
+  const journey = loadPlanningAdminJourney({ testInfo });
+  await signInPersonaPage({ page, persona: journey.personas.admin });
+  const month = createPlanningMonth({ journey });
+  const sundayTemplateName = journey.sundayTemplate.name;
+  const wednesdayTemplateName = `Wednesday Service ${month.cycleName}`;
+  const sundayGatheringName = `Sunday Gathering ${month.cycleName}`;
+
+  await page.goto('/cycles');
+
+  await page.getByTestId('open-create-cycle-dialog-button').click();
+  const createCycleDialog = page.getByRole('dialog', {
+    name: m.cycles_form_title_new({}, { locale: 'pt-BR' }),
+  });
+  await createCycleDialog.getByTestId('cycle-name-input').fill(month.cycleName);
+  await fillDatePickerField({
+    page,
+    trigger: createCycleDialog.getByTestId('cycle-start-date-input'),
+    date: month.startDate,
+  });
+  await fillDatePickerField({
+    page,
+    trigger: createCycleDialog.getByTestId('cycle-end-date-input'),
+    date: month.endDate,
+  });
+  await createCycleDialog.getByTestId('create-cycle-button').click();
+
+  await expect(page.getByTestId('selected-cycle-name')).toHaveText(
+    month.cycleName,
+  );
+  await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+    m.cycle_state_draft({}, { locale: 'pt-BR' }),
+  );
+
+  const cycleReviewUrl = page.url();
+  await page.goto('/event-templates');
+
+  // The recipe owns Sunday's source-bound Usual setup; create a second
+  // template through the UI and retain the library edit/apply outcomes.
+  await createTemplateOnNestedPage({
+    page,
+    name: wednesdayTemplateName,
+    weekday: 3,
+    blocks: [{ label: 'Midweek', startTime: '19:00', endTime: '20:00' }],
+  });
+
+  await page
+    .getByTestId('saved-template-row')
+    .filter({ hasText: sundayTemplateName })
+    .getByTestId('edit-template-button')
+    .click();
+  await expect(page.getByTestId('template-edit-page')).toBeVisible();
+  await page.getByTestId('template-name-input').fill(sundayGatheringName);
+  await page.getByTestId('create-template-button').click();
+
+  await expect(page).toHaveURL(/\/event-templates$/);
+  await expect(
+    page
+      .getByTestId('saved-template-row')
+      .filter({ hasText: sundayGatheringName }),
+  ).toBeAttached();
+
+  await page.goto(cycleReviewUrl);
+  await page.getByTestId('open-apply-templates-dialog-button').click();
+
+  const applyTemplatesDialog = page.getByRole('dialog', {
+    name: m.cycle_apply_title({}, { locale: 'pt-BR' }),
+  });
+  const applyTemplateOptions = applyTemplatesDialog.getByTestId(
+    'apply-template-option',
+  );
+  await applyTemplateOptions
+    .filter({ hasText: sundayGatheringName })
+    .getByTestId('template-select-checkbox')
+    .check();
+  await applyTemplateOptions
+    .filter({ hasText: wednesdayTemplateName })
+    .getByTestId('template-select-checkbox')
+    .check();
+  await applyTemplatesDialog.getByTestId('apply-templates-button').click();
+
+  await expect(page.getByTestId('planning-event-card')).toHaveCount(
+    month.expectedEvents,
+  );
+  await expect(page.getByTestId('planning-event-time-block-item')).toHaveCount(
+    month.expectedEventTimeBlocks,
+  );
+  await expect(page.getByTestId('planning-events-list')).toContainText(
+    toDisplayDate(month.firstSunday),
+  );
+  await expect(page.getByTestId('planning-events-list')).toContainText(
+    toDisplayDate(month.firstWednesday),
+  );
+  await expect(page.getByTestId('planning-events-list')).toContainText(
+    toDisplayDate(month.lastSunday),
+  );
+  await expect(page.getByTestId('planning-events-list')).toContainText(
+    sundayGatheringName,
+  );
+
+  // F6: a timed multi-day Event, saved with its Time block on the nested
+  // New Event page; Save returns to the review revealing it.
+  await addEventOnNestedPage({
+    page,
+    title: 'Three-day retreat',
+    startDate: month.dynamicStartDate,
+    endDate: month.dynamicEndDate,
+    endTime: '12:00',
+  });
+  await expect(
+    page.getByTestId('planning-events-list').getByTestId('revealed-event-row'),
+  ).toContainText('Three-day retreat');
+
+  await expect(page.getByTestId('planning-event-card')).toHaveCount(
+    month.expectedEvents + 1,
+  );
+  await expect(page.getByTestId('planning-events-list')).toContainText(
+    'Three-day retreat',
+  );
+
+  // F7: editing the retained whole-Event block keeps this multi-day Event in
+  // the review before the handoff.
+  await page
+    .getByTestId('planning-events-list')
+    .getByTestId('revealed-event-row')
+    .getByRole('link', {
+      name: m.cycle_review_edit_day(
+        { title: 'Three-day retreat' },
+        { locale: 'pt-BR' },
+      ),
+    })
+    .click();
+  await page
+    .getByTestId('event-time-block-row')
+    .getByLabel(m.event_editor_block_label({}, { locale: 'pt-BR' }))
+    .fill('Retreat welcome');
+  await page
+    .getByRole('button', {
+      name: m.event_editor_create_submit({}, { locale: 'pt-BR' }),
+    })
+    .click();
+  await expect(
+    page.getByTestId('planning-events-list').getByTestId('revealed-event-row'),
+  ).toContainText('Retreat welcome');
+
+  // F8: discard a separate Draft Event through the nested editor. Its
+  // deletion must not disturb the retained retreat or the generated Events.
+  await addEventOnNestedPage({
+    page,
+    title: 'Discarded draft',
+    startDate: month.dynamicStartDate,
+  });
+  await page
+    .getByTestId('planning-events-list')
+    .getByTestId('revealed-event-row')
+    .getByRole('link', {
+      name: m.cycle_review_edit_day(
+        { title: 'Discarded draft' },
+        { locale: 'pt-BR' },
+      ),
+    })
+    .click();
+  await page.getByTestId('event-delete-open').click();
+  await page
+    .getByRole('button', {
+      name: m.event_editor_delete_confirm({}, { locale: 'pt-BR' }),
+    })
+    .click();
+  await expect(page.getByText('Discarded draft', { exact: true })).toHaveCount(
+    0,
+  );
+
+  // Phase 8: "Create cycle" only lives on the cycles list view now (not on a
+  // cycle's own review page) — go back to the list (FR-018/FR-019 nav
+  // restructure). The breadcrumb link back to the list is desktop-only
+  // chrome (`app-shell.tsx` sidebar/breadcrumb, `md:hidden` below the
+  // desktop breakpoint per `specs/019-planning-cycles-table-view`), so this
+  // spec — now run at a narrow viewport to keep exercising the card/list
+  // presentation — navigates directly instead.
+  await page.goto('/cycles');
+  await expect(page).toHaveURL(/\/cycles\/?$/);
+  await page.getByTestId('open-create-cycle-dialog-button').click();
+  const overlapDialog = page.getByRole('dialog', {
+    name: m.cycles_form_title_new({}, { locale: 'pt-BR' }),
+  });
+  await overlapDialog
+    .getByTestId('cycle-name-input')
+    .fill(`${month.cycleName} overlap`);
+  await fillDatePickerField({
+    page,
+    trigger: overlapDialog.getByTestId('cycle-start-date-input'),
+    date: month.overlapStartDate,
+  });
+  await fillDatePickerField({
+    page,
+    trigger: overlapDialog.getByTestId('cycle-end-date-input'),
+    date: month.overlapEndDate,
+  });
+  await overlapDialog.getByTestId('create-cycle-button').click();
+
+  await expect(overlapDialog.getByTestId('cycle-create-error')).toContainText(
+    m.error_overlapping_cycle({}, { locale: 'pt-BR' }),
+  );
+  await overlapDialog
+    .getByRole('button', {
+      name: m.shell_close({}, { locale: 'pt-BR' }),
+    })
+    .click();
+
+  // Closing the failed overlap attempt returns to the cycles list (the
+  // dialog's own URL is /new); re-select the original cycle to send it.
+  await expect(page).toHaveURL(/\/cycles\/?$/);
+  await page
+    .getByRole('button', { name: `Selecionar ${month.cycleName}` })
+    .click();
+  await expect(page.getByTestId('selected-cycle-name')).toHaveText(
+    month.cycleName,
+  );
+
+  await page.getByTestId('send-cycle-button').click();
+  const sendDialog = page.getByTestId('cycle-send-dialog');
+  await expect(sendDialog).toContainText(
+    m.cycle_send_irreversible({}, { locale: 'pt-BR' }),
+  );
+  await expect(sendDialog.getByTestId('cycle-send-summary')).toBeVisible();
+  await expect(sendDialog.getByTestId('cycle-send-summary')).toContainText(
+    m.cycle_send_events_other(
+      { count: month.expectedEvents + 1 },
+      { locale: 'pt-BR' },
+    ),
+  );
+  await expect(sendDialog.getByTestId('cycle-send-summary')).toContainText(
+    m.cycle_send_prefill_one({}, { locale: 'pt-BR' }),
+  );
+  await sendDialog.getByTestId('confirm-cycle-send-button').click();
+  await expect(page.getByTestId('selected-cycle-state')).toHaveText(
+    m.cycle_state_sent({}, { locale: 'pt-BR' }),
+  );
+
+  // Step-sequence gating: sent-review is read-only — no editable
+  // template/apply controls, while the template library stays reachable.
+  await expect(
+    page.getByTestId('open-apply-templates-dialog-button'),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('link', {
+      name: m.cycles_add_event_button({}, { locale: 'pt-BR' }),
+    }),
+  ).toHaveCount(1);
+  await expect(page.getByTestId('open-template-library-button')).toHaveCount(0);
+  await expect(
+    page.getByRole('link', {
+      name: m.cycle_review_edit_day(
+        { title: 'Three-day retreat' },
+        { locale: 'pt-BR' },
+      ),
+    }),
+  ).toHaveCount(0);
+
+  // J5: the distinct Ministry leader receives N2 through the actual Send
+  // transaction and outbox, then its localized bell detail opens the one
+  // Ministry's exact Prepare destination.
+  const cycleId = cycleReviewUrl.split('/').at(-1);
+  if (!cycleId) throw new Error('Expected the review URL to contain a Cycle');
+  const leaderContext = await newPersonaContext({
+    browser,
+    persona: journey.personas.leader,
+  });
+  const leaderPage = await leaderContext.newPage();
+  await leaderPage.goto('/');
+  const bell = leaderPage.getByRole('button', {
+    name: m.notification_bell_label({}, { locale: 'pt-BR' }),
+  });
+  const notificationTitle = m.notification_cycle_ready_to_prepare_title(
+    { cycleName: month.cycleName },
+    { locale: 'pt-BR' },
+  );
+  const notificationItem = leaderPage.getByText(notificationTitle, {
+    exact: true,
+  });
+  // The inbox polls much less frequently than the server's outbox drainer.
+  // Reload through the browser until a real inbox response includes N2; no
+  // Notification is inserted or mutated outside the Send transaction.
+  await expect
+    .poll(
+      async () => {
+        const inboxResponse = leaderPage.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/notifications') &&
+            response.request().method() === 'GET',
+        );
+        await leaderPage.reload();
+        await inboxResponse;
+        await bell.click();
+        return await notificationItem.count();
+      },
+      { timeout: OUTBOX_NOTIFICATION_TIMEOUT_MS },
+    )
+    .toBe(1);
+  await notificationItem.click();
+  const notificationSheet = leaderPage.getByRole('dialog');
+  await notificationSheet
+    .getByRole('button', {
+      name: m.notification_cycle_ready_to_prepare_action(
+        {},
+        { locale: 'pt-BR' },
+      ),
+    })
+    .click();
+  await expect(leaderPage).toHaveURL(
+    `/schedules/${journey.ministries.worship.id}/${cycleId}`,
+  );
+  const preparedWelcomeRows = leaderPage
+    .locator('[data-testid^="prepare-event-time-block-row-"]')
+    .filter({
+      has: leaderPage.getByText(`${sundayGatheringName} · Welcome`, {
+        exact: true,
+      }),
+    });
+  await expect(preparedWelcomeRows).toHaveCount(month.expectedPrefilledBlocks);
+  const welcomeRow = preparedWelcomeRows.first();
+  await expect(welcomeRow).toContainText(
+    m.prepare_row_summary(
+      {
+        shifts: m.usual_setup_shift_count_one({}, { locale: 'pt-BR' }),
+        people: m.prepare_people_count_one({}, { locale: 'pt-BR' }),
+      },
+      { locale: 'pt-BR' },
+    ),
+  );
+  // Schedule rows summarize the Usual setup; its serves control lives in
+  // the nested Time block editor reached by opening that row.
+  await welcomeRow.click();
+  await expect(leaderPage).toHaveURL(
+    new RegExp(
+      `/schedules/${journey.ministries.worship.id}/${cycleId}/slots/[^/]+$`,
+    ),
+  );
+  await expect(
+    leaderPage.getByRole('checkbox', {
+      name: m.usual_setup_serves_label({}, { locale: 'pt-BR' }),
+    }),
+  ).toBeChecked();
+  await leaderContext.close();
+
+  const volunteerContext = await newPersonaContext({
+    browser,
+    persona: journey.personas.volunteer,
+  });
+  const volunteerPage = await volunteerContext.newPage();
+  await volunteerPage.goto('/cycles');
+  // Phase 8: a route-level `beforeLoad` guard now redirects non-ChurchAdmin
+  // callers away before the page ever renders (FR-015), superseding the old
+  // in-component "planning-access-denied" card for this route.
+  await expect(volunteerPage).not.toHaveURL(/\/cycles/);
+  await expect(volunteerPage.getByTestId('planning-admin-page')).toHaveCount(0);
+  await volunteerContext.close();
+});

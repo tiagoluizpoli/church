@@ -1,0 +1,138 @@
+import type {
+  ChurchId,
+  EventTimeBlockId,
+  MinistryParticipationId,
+  RoleId,
+  SectorId,
+  ShiftId,
+  ShiftRequirementId,
+} from '../../branded-ids';
+import type { Shift } from '../../entities/shift';
+import type { ShiftRequirement } from '../../entities/shift-requirement';
+import type { TransactionContext } from './transaction-context';
+
+export interface CreateShiftsInput {
+  churchId: ChurchId;
+  shifts: Shift[];
+  tx?: TransactionContext;
+}
+
+export interface GetShiftInput {
+  churchId: ChurchId;
+  shiftId: ShiftId;
+  tx?: TransactionContext;
+}
+
+export interface ListShiftConflictFactsInput {
+  churchId: ChurchId;
+  shiftIds: ShiftId[];
+  tx?: TransactionContext;
+}
+
+export interface ShiftConflictFacts {
+  shift: Shift;
+  ministryName: string;
+  eventTitle: string;
+}
+
+export interface ListShiftsByParticipationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  tx?: TransactionContext;
+}
+
+export interface ListShiftsByEventTimeBlockInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  eventTimeBlockId: EventTimeBlockId;
+  /** Holds the rows until commit: answers and Assignments referencing them wait. */
+  forUpdate?: boolean;
+  tx?: TransactionContext;
+}
+
+export interface UpdateShiftInput {
+  churchId: ChurchId;
+  shiftId: ShiftId;
+  startTime?: Date;
+  endTime?: Date;
+  label?: string | null;
+  tx?: TransactionContext;
+}
+
+export interface DeleteShiftInput {
+  churchId: ChurchId;
+  shiftId: ShiftId;
+  tx?: TransactionContext;
+}
+
+export interface DeleteShiftsByEventTimeBlockInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  eventTimeBlockId: EventTimeBlockId;
+  tx?: TransactionContext;
+}
+
+export interface SaveShiftRequirementInput {
+  churchId: ChurchId;
+  shiftId: ShiftId;
+  participationId: MinistryParticipationId;
+  roleId: RoleId;
+  /** Matched with the Shift and Role. */
+  sectorId: SectorId;
+  peopleNeeded: number;
+  notes?: string;
+  tx?: TransactionContext;
+}
+
+export interface DeleteShiftRequirementsInput {
+  churchId: ChurchId;
+  shiftRequirementIds: ShiftRequirementId[];
+  tx?: TransactionContext;
+}
+
+export interface ListRequirementsByParticipationInput {
+  churchId: ChurchId;
+  participationId: MinistryParticipationId;
+  tx?: TransactionContext;
+}
+
+export interface ListRequirementsByIdsInput {
+  churchId: ChurchId;
+  shiftRequirementIds: ShiftRequirementId[];
+  tx?: TransactionContext;
+}
+
+export interface GetRequirementForShiftInput {
+  churchId: ChurchId;
+  shiftId: ShiftId;
+  shiftRequirementId: ShiftRequirementId;
+  tx?: TransactionContext;
+}
+
+export interface ShiftRepository {
+  listConflictFacts(
+    input: ListShiftConflictFactsInput,
+  ): Promise<ShiftConflictFacts[]>;
+  createMany(input: CreateShiftsInput): Promise<Shift[]>;
+  getById(input: GetShiftInput): Promise<Shift>;
+  listByParticipation(input: ListShiftsByParticipationInput): Promise<Shift[]>;
+  listByEventTimeBlock(
+    input: ListShiftsByEventTimeBlockInput,
+  ): Promise<Shift[]>;
+  update(input: UpdateShiftInput): Promise<Shift>;
+  deleteById(input: DeleteShiftInput): Promise<void>;
+  deleteByEventTimeBlock(
+    input: DeleteShiftsByEventTimeBlockInput,
+  ): Promise<void>;
+  saveRequirement(input: SaveShiftRequirementInput): Promise<ShiftRequirement>;
+  deleteRequirements(input: DeleteShiftRequirementsInput): Promise<void>;
+  listRequirementsByParticipation(
+    input: ListRequirementsByParticipationInput,
+  ): Promise<ShiftRequirement[]>;
+  listRequirementsByIds(
+    input: ListRequirementsByIdsInput,
+  ): Promise<ShiftRequirement[]>;
+  getRequirementForShift(
+    input: GetRequirementForShiftInput,
+  ): Promise<ShiftRequirement>;
+}

@@ -1,0 +1,660 @@
+import { m } from '@church/i18n/messages';
+import { overwriteGetLocale } from '@church/i18n/runtime';
+import { parseInstant, setTestClock } from '@church/time';
+import { DndContext } from '@dnd-kit/core';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
+import {
+  beforeEach as beforeEachLocale,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+import { CycleBuilderCell } from '@/features/scheduling/components/builder/board/cycle-builder-cell';
+import type {
+  CycleBuilderAssignment,
+  CycleBuilderShiftSummary,
+} from '@/features/scheduling/hooks/use-cycle-builder';
+import { renderWithProviders } from '@/tests/setup/render';
+
+beforeEachLocale(() => {
+  overwriteGetLocale(() => 'en');
+  setTestClock({
+    instant: parseInstant({ value: '2026-08-02T08:55:00.000Z' }),
+  });
+});
+
+const shift: CycleBuilderShiftSummary = {
+  shiftId: 'shift-1',
+  eventTimeBlockId: 'event-time-block-1',
+  startTime: '2026-08-02T09:00:00.000Z',
+  endTime: '2026-08-02T10:00:00.000Z',
+  peopleNeeded: 2,
+  assignedCount: 0,
+  requirements: [
+    {
+      id: 'requirement-role-1',
+      roleId: 'role-1',
+      sectorName: 'Main',
+      peopleNeeded: 2,
+    },
+  ],
+  assignments: [],
+  eligibleVolunteerCount: 2,
+  eligibleVolunteers: [
+    {
+      volunteerId: 'volunteer-1',
+      volunteerName: 'Grace Hopper',
+      answerState: 'available',
+      conflict: null,
+      qualifiedRoleIds: [],
+      ministryAccessLevel: 'volunteer',
+    },
+    {
+      volunteerId: 'volunteer-2',
+      volunteerName: 'Ada Lovelace',
+      answerState: 'available',
+      conflict: null,
+      qualifiedRoleIds: [],
+      ministryAccessLevel: 'volunteer',
+    },
+  ],
+};
+
+const assignments: CycleBuilderAssignment[] = [
+  {
+    id: 'assignment-1',
+    churchId: 'church-1',
+    eventTimeBlockId: 'event-time-block-1',
+    shiftId: 'shift-1',
+    volunteerId: 'volunteer-1',
+    roleId: 'role-1',
+    shiftRequirementId: 'requirement-role-1',
+    status: 'confirmed',
+    assignedAt: '2026-08-01T09:00:00.000Z',
+    lateMark: false,
+    volunteerName: 'Grace Hopper',
+  },
+  {
+    id: 'assignment-2',
+    churchId: 'church-1',
+    eventTimeBlockId: 'event-time-block-1',
+    shiftId: 'shift-1',
+    volunteerId: 'volunteer-2',
+    roleId: 'role-1',
+    shiftRequirementId: 'requirement-role-1',
+    status: 'confirmed',
+    assignedAt: '2026-08-01T09:00:00.000Z',
+    lateMark: false,
+    volunteerName: 'Ada Lovelace',
+  },
+];
+
+function renderCell(
+  overrides: Partial<ComponentProps<typeof CycleBuilderCell>> = {},
+) {
+  return renderWithProviders(
+    <DndContext>
+      <CycleBuilderCell
+        shift={shift}
+        shiftRequirementId="requirement-role-1"
+        roleId="role-1"
+        roleLabel="Greeter"
+        peopleNeeded={2}
+        assignments={[]}
+        pickerVolunteers={[
+          {
+            id: 'volunteer-1',
+            name: 'Grace Hopper',
+            availabilityStatus: 'available',
+            alreadyAssignedCount: 0,
+          },
+        ]}
+        suggestions={[
+          {
+            id: 'volunteer-1',
+            name: 'Grace Hopper',
+            status: 'available',
+            workloadCount: 0,
+          },
+        ]}
+        needsResponseSuggestions={[]}
+        eventTimeBlockLabel="Morning service"
+        isPublished={false}
+        onFocus={vi.fn()}
+        onToggleFocus={vi.fn()}
+        onSelect={vi.fn()}
+        onRemove={vi.fn()}
+        {...overrides}
+      />
+    </DndContext>,
+  );
+}
+
+describe('CycleBuilderCell', () => {
+  it('renders started shifts without assignment actions or drop targets', () => {
+    setTestClock({
+      instant: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+    });
+    renderCell({ assignments: [assignments[0]], peopleNeeded: 2 });
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        m.builder_shift_started({
+          shift: 'Morning service · 09:00 – 10:00',
+          time: '09:00',
+        }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Grace Hopper/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: m.builder_ui_add() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).not.toHaveAttribute('data-drop-target');
+    expect(
+      screen.getByTestId('cycle-assignment-assignment-1'),
+    ).not.toHaveAttribute('data-drop-target');
+  });
+  it('renders the read-only message in Portuguese', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    setTestClock({
+      instant: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+    });
+    renderCell({ assignments: [assignments[0]] });
+    expect(
+      screen.getByText(
+        m.builder_shift_started({
+          shift: 'Morning service · 09:00 – 10:00',
+          time: '09:00',
+        }),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('offers only other sectors for the same role when moving an assignment', async () => {
+    const user = userEvent.setup();
+    const onMove = vi.fn();
+    renderCell({
+      shift: {
+        ...shift,
+        requirements: [
+          ...shift.requirements,
+          {
+            id: 'target',
+            roleId: 'role-1',
+            sectorName: 'Side',
+            peopleNeeded: 1,
+          },
+          {
+            id: 'wrong-role',
+            roleId: 'role-2',
+            sectorName: 'Other',
+            peopleNeeded: 1,
+          },
+        ],
+      },
+      assignments: assignments.slice(0, 1),
+      onMove,
+    });
+    await user.click(screen.getByTestId('assignment-chip'));
+    await user.click(screen.getByRole('button', { name: 'Move' }));
+    expect(screen.getByRole('button', { name: 'Side' })).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Other' }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Side' }));
+    expect(onMove).toHaveBeenCalledWith({
+      assignmentId: 'assignment-1',
+      shiftRequirementId: 'target',
+    });
+  });
+
+  it('shows the move action in Portuguese', async () => {
+    overwriteGetLocale(() => 'pt-BR');
+    const user = userEvent.setup();
+    renderCell({
+      shift: {
+        ...shift,
+        requirements: [
+          ...shift.requirements,
+          {
+            id: 'side',
+            roleId: 'role-1',
+            sectorName: 'Lateral',
+            peopleNeeded: 1,
+          },
+        ],
+      },
+      assignments: assignments.slice(0, 1),
+      onMove: vi.fn(),
+    });
+    await user.click(screen.getByTestId('assignment-chip'));
+    expect(
+      screen.getByRole('button', { name: m.builder_ui_move() }),
+    ).toBeVisible();
+    expect(m.builder_ui_move()).toBe('Mover');
+  });
+
+  it('shows the late mark and its Shift in Portuguese', () => {
+    overwriteGetLocale(() => 'pt-BR');
+    renderCell({
+      shift: { ...shift, label: 'Manhã' },
+      assignments: assignments
+        .slice(0, 1)
+        .map((item) => ({ ...item, lateMark: true })),
+    });
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_late_mark_tooltip({ shift: 'Manhã' }),
+      }),
+    ).toBeVisible();
+  });
+
+  it('offers People and Invitations when nobody holds the role', () => {
+    renderCell({
+      shift: { ...shift, eligibleVolunteers: [] },
+      roleLabel: 'Main · Greeter',
+      displayRoleLabel: 'Greeter',
+      pickerVolunteers: [],
+    });
+
+    expect(screen.getByText('No one holds Greeter')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'People' })).toHaveAttribute(
+      'href',
+      '/people',
+    );
+    expect(screen.getByRole('link', { name: 'Invitations' })).toHaveAttribute(
+      'href',
+      '/invitations',
+    );
+    for (const link of screen.getAllByRole('link')) {
+      expect(link).toHaveAttribute('target', '_blank');
+    }
+  });
+
+  it('keeps an unavailable warning on an assigned volunteer', () => {
+    renderCell({
+      assignments: [assignments[0]],
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          { ...shift.eligibleVolunteers[0], answerState: 'unavailable' },
+        ],
+      },
+    });
+    expect(
+      screen.getByTestId('cycle-assignment-assignment-1'),
+    ).toHaveTextContent('Unavailable');
+  });
+
+  it('shows one compact add chip while a role still has capacity', () => {
+    renderCell({ assignments: [assignments[0]] });
+
+    expect(screen.getByText('1/2')).toBeVisible();
+    expect(screen.getAllByRole('button', { name: 'Add' })).toHaveLength(1);
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).toHaveAttribute('data-drop-target', 'append');
+  });
+
+  it('removes the add chip at capacity and makes each assignment replaceable', () => {
+    renderCell({ assignments });
+
+    expect(screen.getByText('2/2')).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Add' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('cycle-assignment-assignment-1')).toHaveAttribute(
+      'data-drop-target',
+      'replace',
+    );
+  });
+
+  it('does not offer a direct assignment for someone already serving in the shift', () => {
+    renderCell({
+      shift: { ...shift, assignments: [assignments[0]] },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'Assign Grace Hopper' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
+  });
+
+  it('shows prototype-style recommendations only after Add is clicked', async () => {
+    const user = userEvent.setup();
+    const focus = vi.spyOn(HTMLInputElement.prototype, 'focus');
+    renderCell();
+
+    expect(screen.queryByText('Recommended')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(screen.getByText('Recommended')).toBeVisible();
+    expect(screen.getAllByText('Grace Hopper')).toHaveLength(1);
+    expect(screen.getByTestId('suggestion-option')).toBeVisible();
+    expect(screen.getByTestId('assignment-picker')).toHaveClass('w-80', 'p-3');
+    expect(screen.queryByText('No volunteers match')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByLabelText('Search volunteers')).toHaveFocus(),
+    );
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
+  it('offers a strong assign affordance where the selected volunteer fits', () => {
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          { ...shift.eligibleVolunteers[0], qualifiedRoleIds: ['role-1'] },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+    });
+
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).toHaveAttribute('data-selected-fit', 'ready');
+    // The fit ring is the only way to find where a selected person fits on a
+    // horizontally-scrolling board, so it is full-opacity and 2px (B-3).
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).toHaveClass('ring-2', 'ring-primary');
+    expect(
+      screen.getByRole('button', { name: 'Assign Grace Hopper' }),
+    ).toHaveClass('border-primary');
+    expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
+  });
+
+  it('faints the affordance for a qualified but unavailable volunteer, keeping the override open', () => {
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          {
+            ...shift.eligibleVolunteers[0],
+            answerState: 'unavailable',
+            qualifiedRoleIds: ['role-1'],
+          },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+    });
+
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).toHaveAttribute('data-selected-fit', 'unavailable');
+    // Dashed amber outline, not a fainter ring than the safe tier: the
+    // dangerous one used to be the harder of the two to see (B-3).
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).toHaveClass('outline-2', 'outline-dashed');
+    const assign = screen.getByRole('button', {
+      name: 'Assign Grace Hopper — Not available for this shift — confirmation required',
+    });
+    expect(assign).toHaveClass('text-yellow-700');
+    // The explanation used to live in a native `title`, reachable by neither
+    // keyboard nor screen reader.
+    expect(assign).not.toHaveAttribute('title');
+  });
+
+  it('offers no assign affordance for a double-booked volunteer (DOUBLE_BOOKED is never overridable)', () => {
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          {
+            ...shift.eligibleVolunteers[0],
+            conflict: {
+              assignmentId: 'conflict',
+              ministryName: 'Worship',
+              eventTitle: 'Service',
+              startTime: '2026-10-04T13:00:00Z',
+              endTime: '2026-10-04T15:00:00Z',
+            },
+            qualifiedRoleIds: ['role-1'],
+          },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+    });
+
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).toHaveAttribute('data-selected-fit', 'none');
+    expect(
+      screen.queryByRole('button', { name: /^Assign Grace Hopper/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not offer assignment for an unqualified selection', async () => {
+    const onSelect = vi.fn();
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          { ...shift.eligibleVolunteers[0], qualifiedRoleIds: ['role-2'] },
+          { ...shift.eligibleVolunteers[1], qualifiedRoleIds: ['role-1'] },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+      onSelect,
+    });
+
+    expect(screen.getByRole('button', { name: 'Add' })).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: /Assign Grace Hopper/ }),
+    ).not.toBeInTheDocument();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('sends the conflict with an override assignment so a reason is captured (FR-016)', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          {
+            ...shift.eligibleVolunteers[0],
+            answerState: 'unavailable',
+            qualifiedRoleIds: ['role-1'],
+          },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+      onSelect,
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: /^Assign Grace Hopper/ }),
+    );
+
+    // The board uses the availability state to confirm the assignment —
+    // without it the assignment is applied with no reason and no audit.
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        volunteerId: 'volunteer-1',
+        unavailable: true,
+      }),
+    );
+  });
+
+  it('sends no conflict for a volunteer who is genuinely free', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    renderCell({
+      shift: {
+        ...shift,
+        eligibleVolunteers: [
+          { ...shift.eligibleVolunteers[0], qualifiedRoleIds: ['role-1'] },
+        ],
+      },
+      selectedVolunteerId: 'volunteer-1',
+      selectedVolunteerName: 'Grace Hopper',
+      onSelect,
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Assign Grace Hopper' }),
+    );
+
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ unavailable: false }),
+    );
+  });
+
+  it('focuses the rail on its own shift×role without opening the picker', async () => {
+    const user = userEvent.setup();
+    const onToggleFocus = vi.fn();
+    renderCell({ onToggleFocus });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Show volunteers for Greeter first' }),
+    );
+
+    expect(onToggleFocus).toHaveBeenCalledOnce();
+    expect(screen.queryByTestId('assignment-picker')).not.toBeInTheDocument();
+  });
+
+  it('marks the focus control as pressed while its own cell is focused', () => {
+    renderCell({ isFocused: true });
+
+    expect(
+      screen.getByTestId('cycle-requirement-focus-requirement-role-1'),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('uses a full volunteer name and an explicit unassign action for an existing assignment', async () => {
+    const user = userEvent.setup();
+    renderCell({ assignments: [assignments[0]] });
+
+    const assignmentChip = screen.getByTestId('assignment-chip');
+    expect(assignmentChip).toHaveTextContent('Grace Hopper');
+
+    await user.click(assignmentChip);
+
+    const unassign = screen.getByRole('button', { name: 'Unassign' });
+    expect(unassign).toHaveClass('border-destructive/40');
+    expect(unassign).not.toHaveClass('w-full');
+  });
+
+  describe('Leader badge (issue #49 end-to-end)', () => {
+    it('badges a ministry Leader assignee', () => {
+      const leaderAssignment: CycleBuilderAssignment = {
+        ...assignments[0],
+        membership: { ministryAccessLevel: 'leader' },
+      };
+
+      renderCell({ assignments: [leaderAssignment] });
+
+      expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
+        'Leader',
+      );
+    });
+
+    it('shows no badge on a plain volunteer assignee', () => {
+      renderCell({
+        assignments: [
+          {
+            ...assignments[0],
+            membership: { ministryAccessLevel: 'volunteer' },
+          },
+        ],
+      });
+
+      expect(
+        screen.queryByTestId('assignee-role-badge'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('write state (B-1)', () => {
+    it('renders an in-flight row as pending and refuses to edit or replace it', async () => {
+      const user = userEvent.setup();
+      renderCell({
+        assignments: [{ ...assignments[0], id: 'optimistic:abc' }],
+      });
+
+      const chip = screen.getByTestId('assignment-chip');
+      expect(chip).toHaveAttribute('data-sync-state', 'pending');
+      expect(
+        screen.getByTestId('cycle-assignment-optimistic:abc'),
+      ).not.toHaveAttribute('data-drop-target');
+
+      await user.click(chip);
+      expect(screen.queryByTestId('assignment-picker')).not.toBeInTheDocument();
+    });
+
+    it('keeps a rejected write on the board with a retry and a dismiss', async () => {
+      const user = userEvent.setup();
+      const onRetryFailedWrite = vi.fn();
+      const onDismissFailedWrite = vi.fn();
+      renderCell({
+        failedWrites: [
+          {
+            failedWriteId: 'failed-1',
+            shiftId: 'shift-1',
+            shiftRequirementId: 'requirement-role-1',
+            roleId: 'role-1',
+            volunteerId: 'volunteer-2',
+            volunteerName: 'Ada Lovelace',
+            message: 'Volunteer is unavailable',
+          },
+        ],
+        onRetryFailedWrite,
+        onDismissFailedWrite,
+      });
+
+      const chip = screen.getByTestId('assignment-chip');
+      expect(chip).toHaveAttribute('data-sync-state', 'failed');
+      expect(chip).toHaveTextContent('Ada Lovelace');
+
+      await user.click(screen.getByTestId('cycle-failed-assignment-retry'));
+      expect(onRetryFailedWrite).toHaveBeenCalledWith('failed-1');
+
+      await user.click(screen.getByTestId('cycle-failed-assignment-dismiss'));
+      expect(onDismissFailedWrite).toHaveBeenCalledWith('failed-1');
+    });
+
+    it('keeps a rejected write readable without retry actions in an immutable cell', () => {
+      renderCell({
+        isEditable: false,
+        failedWrites: [
+          {
+            failedWriteId: 'failed-1',
+            shiftId: 'shift-1',
+            shiftRequirementId: 'requirement-role-1',
+            roleId: 'role-1',
+            volunteerId: 'volunteer-2',
+            volunteerName: 'Ada Lovelace',
+            message: 'Volunteer is unavailable',
+          },
+        ],
+        onRetryFailedWrite: vi.fn(),
+        onDismissFailedWrite: vi.fn(),
+      });
+
+      expect(screen.getByTestId('assignment-chip')).toHaveTextContent(
+        'Ada Lovelace',
+      );
+      expect(screen.getByText('Volunteer is unavailable')).toBeVisible();
+      expect(screen.queryByTestId('cycle-failed-assignment-retry')).toBeNull();
+      expect(
+        screen.queryByTestId('cycle-failed-assignment-dismiss'),
+      ).toBeNull();
+    });
+  });
+});

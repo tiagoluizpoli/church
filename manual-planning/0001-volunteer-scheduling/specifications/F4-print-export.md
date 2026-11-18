@@ -4,9 +4,16 @@
 Define the tools required for Ministry Leaders to extract scheduling data from the platform for physical display or external record-keeping.
 
 ## Core Features
-1. **High-Fidelity Print / Image Export**: A well-designed, branded printable view of the finalized schedule. Instead of a basic black-and-white print dump, this should be a high-quality visual representation consistent with the `shadcn/ui` design system. It should look premium and may include the ability to export the schedule as a rendered image.
-2. **Excel (.xlsx) Export**: Allow leaders to export assignment data into a fully formatted `.xlsx` file. This must not be a raw CSV; the exported Excel file should include styled headers, appropriate colors, and well-organized columns for immediate readability by ministry teams.
+1. **Clean Mobile Printing**: 
+    - Use standard CSS `@media print` directives to strip away all UI "chrome" (navigation, buttons, background colors).
+    - Enforce a high-contrast "Clinical" layout: black text on white background, standard system fonts (Inter), and thin `1px` borders for tables.
+    - Provide a dedicated `/print` route that renders a simplified, unstyled view of the data for reliable browser printing.
+2. **PDF Export**:
+    - Leverages the browser's native **"Print to PDF"** functionality. No custom PDF engine required.
+3. **Excel (.xlsx) Export**: 
+    - Export assignment data into a formatted `.xlsx` file using `exceljs`.
+    - **Styling**: Bold headers, auto-filters enabled, and frozen top rows for utility. Focus on data density: Date, Ministry, Role, Volunteer Name, and Status.
 
 ## Frontend & Backend Constraints
 - **Strict Shadcn/UI Dependency**: All print and export interface elements (buttons, menus, dialogs) must be built with standard `shadcn/ui` components.
-- **Excel Generation**: Use a robust library (e.g., `exceljs`) to generate the styled `.xlsx` files with proper formatting.
+- **Utility First**: Design for clarity and fast scanning, not decorative elements.

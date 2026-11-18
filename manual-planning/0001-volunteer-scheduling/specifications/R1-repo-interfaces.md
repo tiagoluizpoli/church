@@ -7,7 +7,7 @@ Define the TypeScript interfaces for all data access. This ensures we can mock t
 
 ### I. ChurchRepository
 - `getById(churchId: string): Promise<Church>`
-- `getBySlug(slug: string): Promise<Church>`
+- `getBySlug(slug: ChurchSlug): Promise<Church>`
 
 ### II. MinistryRepository
 - `getById(churchId: string, id: string): Promise<Ministry>`
@@ -24,13 +24,16 @@ Define the TypeScript interfaces for all data access. This ensures we can mock t
 - `createWithSlots(churchId: string, data: CreateEventInput): Promise<Event>`
 - `listPublished(churchId: string, ministryId: string): Promise<Event[]>`
 
+**Refined (017, 2026-07-02):** `listPublished(churchId, ministryId)` is invalid — Events are neither ministry-scoped nor "published". Replace with cycle/participation-oriented queries, e.g. `listEventsByCycle(churchId, planningCycleId): Event[]`, `getParticipation(churchId, ministryId, eventId): MinistryParticipation`, and `listPublishedParticipations(churchId, ministryId): MinistryParticipation[]` (participations whose roster is published). (see ADR 0001 / CONTEXT.md)
+
 ## 2. Common Patterns
 - All methods **MUST** accept `churchId` as the first argument to enforce isolation.
-- Methods should return Domain Types (POJOs), not Drizzle-specific objects.
+- Methods should return Domain Entities (Spec D1), not Drizzle-specific objects.
 
 ## 3. Testing Requirements (Mandatory)
 - **Contract**: Verify that the concrete Drizzle implementation fully satisfies these interfaces.
 - **Unit**: Verify that services using these interfaces can be tested with 100% mocked data.
 
 ## 🔗 References
+- [Spec D1: Domain Entities](./D1-domain-entities.md)
 - [Spec 04: Repository Contracts](./04-repository-contracts.md)

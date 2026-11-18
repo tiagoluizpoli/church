@@ -2,48 +2,52 @@
 
 This roadmap follows a **Clean Architecture (Ground-Up)** approach. Each "Piece" must be fully specified and tested before moving to the next layer.
 
+> **⚠️ Reshape in progress (2026-07-02) — Spec 017: Scheduling Reshape.** The domain has been re-centred on **church-owned Events planned in `PlanningCycle`s, generated from `EventTemplate`s, and tailored per ministry via `MinistryParticipation`/`Shift`**. Many entries below still describe the pre-reshape (ministry-owned, single-event) model and carry superseding notes. Authoritative sources: [`CONTEXT.md`](../../CONTEXT.md), [`docs/adr/0001`](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [`docs/adr/0002`](../../docs/adr/0002-church-timeslots-ministry-shifts.md), and [`refinement-02-scheduling-reshape.md`](../../vault/refinements/refinement-02-scheduling-reshape.md). See the **Spec 017** section below.
+
 ## Phase 1: Persistence Layer (The Schema)
 *Objective: Define the data structures in the database.*
-- **[Spec S1: Database Schema](./specifications/S1-db-schema.md)**: Drizzle ORM definitions for Church, Ministry, Team, Volunteer, Event, Slot, and Requirement.
+- **[✅ Spec S1: Database Schema](./specifications/S1-db-schema.md)**: Drizzle ORM definitions for Church, Ministry, Team, Volunteer, Event, Slot, and Requirement.
   - *Refines:* [01-core-entities.md](./specifications/01-core-entities.md), [02-event-slots.md](./specifications/02-event-slots.md), [03-assignments-availability.md](./specifications/03-assignments-availability.md), [05-onboarding-links.md](./specifications/05-onboarding-links.md)
-- **[Spec S2: Migration Strategy](./specifications/S2-migration-strategy.md)**: Transitioning from existing Better Auth tables.
+- **[✅ Spec S2: Migration Strategy](./specifications/S2-migration-strategy.md)**: Transitioning from existing Better Auth tables.
   - *Refines:* [01-core-entities.md](./specifications/01-core-entities.md)
-- **[Spec S3: Local Development Seeding](./specifications/S3-local-seeding.md)**: Generators for realistic mock data (Ministries, Roles, Teams, Volunteers) for UI testing.
-- **[Spec S4: Timezone & Date Policy](./specifications/S4-timezone-policy.md)**: Strict policies for storing dates in UTC and displaying them in local time securely.
+- **[Spec S3: Cohesive Seed Data and Fixture Workflows](./specifications/S3-local-seeding.md)**: One server-owned system of shared builders and purpose-specific development, integration, and E2E recipes. Supersedes the completed legacy local-seeding design; implementation is tracked by [#320](https://github.com/tiagoluizpoli/church/issues/320).
+- **[✅ Spec S4: Timezone & Date Policy](./specifications/S4-timezone-policy.md)**: Strict policies for storing dates in UTC and displaying them in local time securely.
 
-## Phase 2: Infrastructure Layer (The Repositories)
-*Objective: Define the data access contracts and their implementations.*
-- **[Spec R1: Repository Interfaces](./specifications/R1-repo-interfaces.md)**: TypeScript interfaces (Contracts) for all entities.
-  - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
-- **[Spec R2: Drizzle Implementations](./specifications/R2-drizzle-repos.md)**: Concrete classes with `churchId` isolation and transactional support.
-  - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
-
-## Phase 3: Domain Layer (The Services)
-*Objective: Implement the core business logic.*
-- **[Spec L1: Availability Engine](./specifications/L1-availability-engine.md)**: Calculating volunteer states and workload balance.
+## Phase 2: Domain Layer (The Entities & Services)
+*Objective: Define the core business entities and logic.*
+- **[✅ Spec D1: Domain Entities](./specifications/D1-domain-entities.md)**: Pure TypeScript interfaces for core entities (Church, Volunteer, Assignment, etc.).
+- **[✅ Spec L1: Availability Engine](../../specs/006-availability-engine/spec.md)**: Calculating volunteer states and workload balance.
   - *Refines:* [06-availability-engine.md](./specifications/06-availability-engine.md)
-- **[Spec L2: Conflict & Validation Service](./specifications/L2-conflict-service.md)**: Rules for double-booking and override auditing.
+- **[✅ Spec L2: Conflict & Validation Service](../../specs/007-conflict-validation-service/spec.md)**: Rules for double-booking and override auditing.
   - *Refines:* [07-conflict-validation.md](./specifications/07-conflict-validation.md)
-- **[Spec L3: Slot & Assignment Manager](./specifications/L3-assignment-manager.md)**: Lifecycle rules (Draft vs Published), cancellations, and substitutions.
+- **[✅ Spec L3: Slot & Assignment Manager](../../specs/008-assignment-manager/spec.md)**: Lifecycle rules (Draft vs Published), cancellations, and substitutions.
   - *Refines:* [08-slot-generator.md](./specifications/08-slot-generator.md), [12-lifecycle-rules.md](./specifications/12-lifecycle-rules.md)
-- **[Spec L4: Notification Service](./specifications/L4-notification-service.md)**: Triggering PWA Web Push and in-app alerts.
-  - *Refines:* [11-notifications.md](./specifications/11-notifications.md)
-- **[Spec L5: Background Workers & Cron](./specifications/L5-background-workers.md)**: Managing 24h reminders, expired invite cleanup, and auto-archiving past events.
+
+## Phase 3: Infrastructure Layer (The Repositories)
+*Objective: Define the data access contracts and their implementations.*
+- **[✅ Spec R1: Repository Interfaces](../../specs/009-repo-interfaces/spec.md)**: TypeScript interfaces (Contracts) for all entities, returning Domain Entities (Spec D1).
+  - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
+- **[✅ Spec R2: Drizzle Implementations](./specifications/R2-drizzle-repos.md)**: Concrete classes with `churchId` isolation and mapping between Schema (Spec S1) and Domain Entities (Spec D1).
+  - *Refines:* [04-repository-contracts.md](./specifications/04-repository-contracts.md)
 
 ## Phase 4: Application Layer (The API)
 *Objective: Expose the system via tRPC.*
-- **[Spec A1: Admin & Leader API](./specifications/A1-admin-api.md)**: Management endpoints for ministries and schedules.
-  - *Refines:* [10-scheduling-api.md](./specifications/10-scheduling-api.md), [05-onboarding-links.md](./specifications/05-onboarding-links.md)
-- **[Spec A2: Volunteer API](./specifications/A2-volunteer-api.md)**: Availability submission and confirmation endpoints.
-  - *Refines:* [10-scheduling-api.md](./specifications/10-scheduling-api.md)
-- **[Spec A3: RBAC Middleware](./specifications/A3-rbac-middleware.md)**: tRPC middleware for contextual role enforcement (Leader, Sub-leader, Volunteer).
-  - *Refines:* [09-permissions-rbac.md](./specifications/09-permissions-rbac.md)
+- **[✅ Spec A1: Admin & Leader API](./specifications/A1-admin-api.md)**: Management endpoints for ministries and schedules.
+- **[✅ Spec A2: Volunteer API](./specifications/A2-volunteer-api.md)**: Availability submission and confirmation endpoints.
+- **[✅ Spec A3: RBAC Middleware](./specifications/A3-rbac-middleware.md)**: tRPC middleware for contextual role enforcement.
+- **[✅ Spec L4: Notification Service](./specifications/L4-notification-service.md)**: Triggering PWA Web Push and in-app alerts.
+- **[✅ Spec L5: Background Workers & Cron](./specifications/L5-background-workers.md)**: Managing 24h reminders and cleanup.
+
+## Phase 4.1: Manual Fixes & Code Stabilization
+*Objective: Manually resolve existing architectural/functional misalignments to establish a stable baseline.*
+- **Manual Stabilization & API Polish**: Address incorrect implementations in the API and Domain layers manually. Once a stable version is verified, proceed to frontend building (Phase 5).
 
 ## Phase 5: Presentation Layer (The Frontend)
 *Objective: Build the user interfaces.*
+- **[Spec F0: Global UI Framework](./specifications/F0-global-ui-framework.md)**: Application-wide layout shell, theme providers, and navigation system.
 - **[Spec F1: Schedule Builder (Desktop)](./specifications/F1-schedule-builder.md)**: Desktop-first complex drag-and-drop interface.
   - *Refines:* [10-scheduling-api.md](./specifications/10-scheduling-api.md)
-- **[Spec F2: Volunteer Dashboard (Mobile/PWA)](./specifications/F2-volunteer-dashboard.md)**: Simplified mobile view for availability and confirmations.
+- **[Spec F2: Volunteer Dashboard (Mobile/PWA)](./specifications/F2-volunteer-dashboard.md)**: Canonical volunteer dashboard for availability tasks, assignments, scheduling notifications, and read-only ministry schedule visibility.
   - *Refines:* [03-assignments-availability.md](./specifications/03-assignments-availability.md), [10-scheduling-api.md](./specifications/10-scheduling-api.md)
 - **[Spec F3: Onboarding & Invites](./specifications/F3-onboarding-ui.md)**: Registration flow for new volunteers joining via link.
   - *Refines:* [05-onboarding-links.md](./specifications/05-onboarding-links.md), [onboarding-flow.md](./flowcharts/onboarding-flow.md)
@@ -61,6 +65,30 @@ Everything must be built on top of an existing component from **shadcn/ui**. We 
 - **[Spec Q1: End-to-End Testing](./specifications/Q1-e2e-testing.md)**: Playwright scenarios for the full scheduling lifecycle.
   - *Flowcharts:* [scheduling-process.md](./flowcharts/scheduling-process.md), [confirmation-flow.md](./flowcharts/confirmation-flow.md), [conflict-override-flow.md](./flowcharts/conflict-override-flow.md)
 - **[Spec Q2: Performance Audit](./specifications/Q2-performance.md)**: Optimizing DB queries and frontend bundle size.
+
+---
+
+## 🔄 Spec 017: Scheduling Reshape (Cross-Cutting)
+
+*Objective: Re-centre scheduling on a church-owned calendar planned in cycles, generated from templates, and tailored per ministry. Ships on the completed 016 clean-architecture foundation. Greenfield schema (no migration).*
+
+- **[Spec 017: Scheduling Reshape](../../specs/017-scheduling-reshape/spec.md)** *(not yet generated)* — introduces `PlanningCycle`, `ChurchAdmin`, `EventTemplate` + `TimeBlock`, `MinistryServingProfile`, `MinistryParticipation`, `Shift`, `AvailabilityCheck`; makes `Event` church-owned; splits publish into cycle-lock vs per-participation roster-publish; moves notifications to per-cycle; removes `RoleTemplate`.
+  - *Amendment source:* [refinement-02-scheduling-reshape.md](../../vault/refinements/refinement-02-scheduling-reshape.md)
+  - *Decisions:* [ADR 0001](../../docs/adr/0001-church-owned-events-and-planning-cycles.md), [ADR 0002](../../docs/adr/0002-church-timeslots-ministry-shifts.md); glossary in [CONTEXT.md](../../CONTEXT.md)
+  - *Refines / supersedes:* [02-event-slots.md](./specifications/02-event-slots.md), [03-assignments-availability.md](./specifications/03-assignments-availability.md), [01-core-entities.md](./specifications/01-core-entities.md), [08-slot-generator.md](./specifications/08-slot-generator.md), [09-permissions-rbac.md](./specifications/09-permissions-rbac.md), [11-notifications.md](./specifications/11-notifications.md), [12-lifecycle-rules.md](./specifications/12-lifecycle-rules.md), [D1-domain-entities.md](./specifications/D1-domain-entities.md), [S1-db-schema.md](./specifications/S1-db-schema.md), [L3-assignment-manager.md](./specifications/L3-assignment-manager.md), [R1-repo-interfaces.md](./specifications/R1-repo-interfaces.md), [A2-volunteer-api.md](./specifications/A2-volunteer-api.md), [A3-rbac-middleware.md](./specifications/A3-rbac-middleware.md), [F1-schedule-builder.md](./specifications/F1-schedule-builder.md), [domain-data-model.md](./overview/domain-data-model.md), [business-overview.md](./overview/business-overview.md), [ui-ux-flow.md](./overview/ui-ux-flow.md)
+  - *Flowcharts:* [planning-cycle-lifecycle.md](./flowcharts/planning-cycle-lifecycle.md), [template-generation-flow.md](./flowcharts/template-generation-flow.md), [ministry-tailoring-flow.md](./flowcharts/ministry-tailoring-flow.md), [availability-check-flow.md](./flowcharts/availability-check-flow.md), [scheduling-process.md](./flowcharts/scheduling-process.md), [slot-generation-flow.md](./flowcharts/slot-generation-flow.md)
+
+---
+
+## 🎨 Spec 018: Church-wide UX/IA Redesign (Cross-Cutting)
+
+*Objective: Reorganize navigation, notifications, the volunteer dashboard, and the scheduling/planning flow around one deliberate information architecture. No new domain entities or backend contracts. Ships as presentation-layer changes over the already-implemented Spec 017 scheduling reshape.*
+
+- **[Spec 018: Church-wide UX/IA Redesign](../../specs/018-churchwide-ux-redesign/spec.md)** — role-scoped primary navigation (Volunteer vs. Leader/Sub-leader/Admin); removes dead nav links (`Shifts`, `Profile`) and leftover template scaffolding (`/` ASCII banner, `/todos` stub); consolidates notifications into a single top-bar bell; restructures the volunteer dashboard into tabs; turns the planning-cycle screen into a state-driven step sequence; removes the duplicate `EventList`/create-event surface from `/`; adds role-badge disambiguation for Leader/Sub-leader identity in the schedule builder.
+  - *Grilling source:* [`.plan/grilling/2026-07-06-bl014-churchwide-ux-redesign.md`](../../.plan/grilling/2026-07-06-bl014-churchwide-ux-redesign.md)
+  - *Backlog source:* [BL-014](./backlog/index.md) (Implemented)
+  - *Partially supersedes:* [F0-global-ui-framework.md](./specifications/F0-global-ui-framework.md) (bottom-nav pillars, 4px radius token only — see F0's own supersession note), [F2-volunteer-dashboard.md](./specifications/F2-volunteer-dashboard.md) (notifications-as-dashboard-section placement only — see F2's own supersession note)
+  - *Explicitly out of scope:* visual/theme redesign (color, radius, typography) — deferred to a follow-up `/impeccable polish` pass after this IA lands; two correctness bugs found alongside this work (builder Publish-button state, reassign-dialog raw UUID) — tracked independently, not gated on this spec
 
 ---
 

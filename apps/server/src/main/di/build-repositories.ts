@@ -1,0 +1,208 @@
+import {
+  DrizzleAssignmentAuditRepository,
+  DrizzleAssignmentProposalApplicationRepository,
+  DrizzleAssignmentRepository,
+  DrizzleAvailabilityCheckRepository,
+  DrizzleChurchAccessRepository,
+  DrizzleChurchRepository,
+  DrizzleCycleRepository,
+  DrizzleEventRepository,
+  DrizzleEventTemplateRepository,
+  DrizzleEventTimeBlockRepository,
+  DrizzleInvitationListRepository,
+  DrizzleInvitationVerificationCodeRepository,
+  DrizzleMinistryInvitationRepository,
+  DrizzleMinistryMembershipRepository,
+  DrizzleMinistryParticipationRepository,
+  DrizzleMinistryRepository,
+  DrizzleNotificationRepository,
+  DrizzleOutboxRepository,
+  DrizzlePeopleListRepository,
+  DrizzlePlanningEventRepository,
+  DrizzleRedemptionRepository,
+  DrizzleRoleRepository,
+  DrizzleSectorRepository,
+  DrizzleSecurityLogRepository,
+  DrizzleSetupProgressRepository,
+  DrizzleShiftRepository,
+  DrizzleSwapRequestRepository,
+  DrizzleUnavailableShiftRepository,
+  DrizzleUnitOfWork,
+  DrizzleUsualSetupRepository,
+  DrizzleVolunteerRepository,
+  DrizzleVolunteerTransferRepository,
+} from '../../infrastructure/repositories';
+import type { CompositionRootDependencies } from './dependencies';
+
+export type Repositories = Pick<
+  CompositionRootDependencies,
+  | 'eventRepository'
+  | 'eventTemplateRepository'
+  | 'cycleRepository'
+  | 'planningEventRepository'
+  | 'volunteerRepository'
+  | 'assignmentRepository'
+  | 'swapRequestRepository'
+  | 'assignmentAuditRepository'
+  | 'assignmentProposalApplicationRepository'
+  | 'unavailableShiftRepository'
+  | 'availabilityCheckRepository'
+  | 'ministryParticipationRepository'
+  | 'usualSetupRepository'
+  | 'shiftRepository'
+  | 'churchRepository'
+  | 'ministryRepository'
+  | 'invitationVerificationCodeRepository'
+  | 'redemptionRepository'
+  | 'volunteerTransferRepository'
+  | 'securityLogRepository'
+  | 'ministryInvitationRepository'
+  | 'outboxRepository'
+  | 'roleRepository'
+  | 'sectorRepository'
+  | 'eventTimeBlockRepository'
+  | 'notificationRepository'
+  | 'invitationListRepository'
+  | 'peopleListRepository'
+  | 'setupProgressRepository'
+  | 'churchAccessRepository'
+  | 'ministryMembershipRepository'
+  | 'unitOfWork'
+>;
+
+export interface BuildRepositoriesInput {
+  config: CompositionRootDependencies['config'];
+  database: CompositionRootDependencies['db'];
+  overrides: Partial<CompositionRootDependencies>;
+}
+
+export function buildRepositories({
+  config,
+  database,
+  overrides,
+}: BuildRepositoriesInput): Repositories {
+  const eventRepository =
+    overrides.eventRepository ?? new DrizzleEventRepository({ db: database });
+  const eventTemplateRepository =
+    overrides.eventTemplateRepository ??
+    new DrizzleEventTemplateRepository({ db: database });
+  const cycleRepository =
+    overrides.cycleRepository ?? new DrizzleCycleRepository({ db: database });
+  const planningEventRepository =
+    overrides.planningEventRepository ??
+    new DrizzlePlanningEventRepository({ db: database });
+  const volunteerRepository =
+    overrides.volunteerRepository ??
+    new DrizzleVolunteerRepository({ db: database });
+  const assignmentRepository =
+    overrides.assignmentRepository ??
+    new DrizzleAssignmentRepository({ db: database });
+  const swapRequestRepository =
+    overrides.swapRequestRepository ??
+    new DrizzleSwapRequestRepository({ db: database });
+  const assignmentAuditRepository =
+    overrides.assignmentAuditRepository ??
+    new DrizzleAssignmentAuditRepository({ db: database });
+  const assignmentProposalApplicationRepository =
+    overrides.assignmentProposalApplicationRepository ??
+    new DrizzleAssignmentProposalApplicationRepository({ db: database });
+  const unavailableShiftRepository =
+    overrides.unavailableShiftRepository ??
+    new DrizzleUnavailableShiftRepository({ db: database });
+  const availabilityCheckRepository =
+    overrides.availabilityCheckRepository ??
+    new DrizzleAvailabilityCheckRepository({ db: database });
+  const ministryParticipationRepository =
+    overrides.ministryParticipationRepository ??
+    new DrizzleMinistryParticipationRepository({ db: database });
+  const usualSetupRepository =
+    overrides.usualSetupRepository ??
+    new DrizzleUsualSetupRepository({ db: database });
+  const shiftRepository =
+    overrides.shiftRepository ?? new DrizzleShiftRepository({ db: database });
+  const churchRepository =
+    overrides.churchRepository ?? new DrizzleChurchRepository({ db: database });
+  const ministryRepository =
+    overrides.ministryRepository ??
+    new DrizzleMinistryRepository({ db: database });
+  const invitationVerificationCodeRepository =
+    overrides.invitationVerificationCodeRepository ??
+    new DrizzleInvitationVerificationCodeRepository({ db: database, config });
+  const redemptionRepository =
+    overrides.redemptionRepository ??
+    new DrizzleRedemptionRepository({ db: database, volunteerRepository });
+  const volunteerTransferRepository =
+    overrides.volunteerTransferRepository ??
+    new DrizzleVolunteerTransferRepository({ db: database });
+  const securityLogRepository =
+    overrides.securityLogRepository ??
+    new DrizzleSecurityLogRepository({ db: database });
+  const ministryInvitationRepository =
+    overrides.ministryInvitationRepository ??
+    new DrizzleMinistryInvitationRepository({ db: database, config });
+  const outboxRepository =
+    overrides.outboxRepository ?? new DrizzleOutboxRepository({ db: database });
+  const roleRepository =
+    overrides.roleRepository ?? new DrizzleRoleRepository({ db: database });
+  const sectorRepository =
+    overrides.sectorRepository ?? new DrizzleSectorRepository({ db: database });
+  const eventTimeBlockRepository =
+    overrides.eventTimeBlockRepository ??
+    new DrizzleEventTimeBlockRepository({ db: database });
+  const notificationRepository =
+    overrides.notificationRepository ??
+    new DrizzleNotificationRepository({ db: database });
+  const invitationListRepository =
+    overrides.invitationListRepository ??
+    new DrizzleInvitationListRepository({ db: database });
+  const churchAccessRepository =
+    overrides.churchAccessRepository ??
+    new DrizzleChurchAccessRepository({ db: database });
+  const ministryMembershipRepository =
+    overrides.ministryMembershipRepository ??
+    new DrizzleMinistryMembershipRepository({ db: database });
+
+  const peopleListRepository =
+    overrides.peopleListRepository ??
+    new DrizzlePeopleListRepository({ db: database });
+  const setupProgressRepository =
+    overrides.setupProgressRepository ??
+    new DrizzleSetupProgressRepository({ db: database });
+  const unitOfWork =
+    overrides.unitOfWork ?? new DrizzleUnitOfWork({ db: database });
+
+  return {
+    eventRepository,
+    eventTemplateRepository,
+    cycleRepository,
+    planningEventRepository,
+    volunteerRepository,
+    assignmentRepository,
+    swapRequestRepository,
+    assignmentAuditRepository,
+    assignmentProposalApplicationRepository,
+    unavailableShiftRepository,
+    availabilityCheckRepository,
+    ministryParticipationRepository,
+    usualSetupRepository,
+    shiftRepository,
+    churchRepository,
+    ministryRepository,
+    invitationVerificationCodeRepository,
+    redemptionRepository,
+    volunteerTransferRepository,
+    securityLogRepository,
+    ministryInvitationRepository,
+    outboxRepository,
+    roleRepository,
+    sectorRepository,
+    eventTimeBlockRepository,
+    notificationRepository,
+    invitationListRepository,
+    peopleListRepository,
+    setupProgressRepository,
+    churchAccessRepository,
+    ministryMembershipRepository,
+    unitOfWork,
+  };
+}

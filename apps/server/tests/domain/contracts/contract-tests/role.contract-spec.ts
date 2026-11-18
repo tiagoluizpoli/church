@@ -1,0 +1,65 @@
+import { NotFoundError } from '@church/core';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { ChurchId, MinistryId, RoleId } from '@/domain/branded-ids';
+import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+
+/** The historical reads every Role repository double must honor. */
+export type RoleReadRepository = Pick<
+  RoleRepository,
+  'getById' | 'listByMinistry'
+>;
+
+export function runRoleRepositoryContractTests(
+  factory: () => Promise<RoleReadRepository>,
+  cleanup: () => Promise<void>,
+) {
+  describe('RoleRepository Contract', () => {
+    let repo: RoleReadRepository;
+
+    beforeEach(async () => {
+      repo = await factory();
+    });
+
+    afterEach(async () => {
+      await cleanup();
+    });
+
+    it('should retrieve a role by ID', async () => {
+      const found = await repo.getById({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        id: '55555555-5555-5555-5555-555555555551' as RoleId,
+      });
+      expect(found).toBeDefined();
+      expect(found.id).toBe('55555555-5555-5555-5555-555555555551');
+      expect(found.name).toBe('Usher');
+    });
+
+    it('should throw NotFoundError when role is not found', async () => {
+      await expect(
+        repo.getById({
+          churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+          id: 'non-existent' as RoleId,
+        }),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('should throw NotFoundError when tenant isolation is breached', async () => {
+      await expect(
+        repo.getById({
+          churchId: '11111111-1111-1111-1111-111111111112' as ChurchId,
+          id: '55555555-5555-5555-5555-555555555551' as RoleId,
+        }),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('should list roles in a ministry alphabetically', async () => {
+      const list = await repo.listByMinistry({
+        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
+        ministryId: '33333333-3333-3333-3333-333333333331' as MinistryId,
+      });
+      expect(list.length).toBe(2);
+      expect(list[0]?.name).toBe('Greeter');
+      expect(list[1]?.name).toBe('Usher');
+    });
+  });
+}

@@ -1,0 +1,627 @@
+name: CI
+
+on:
+  push:
+    # develop: Fast Gate is the required check deploy-development.yml waits
+    # for before deploying the pushed revision (#881).
+    branches: [master, develop]
+  pull_request:
+    branches: [master, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # #286: the daily gate used to be one job that ran lint, typecheck, unit,
+  # integration, and any affected browser journeys sequentially — the
+  # journeys' Playwright setup and run time sat on the critical path even
+  # when the fast checks were already done. Splitting into two independent
+  # workers behind one required aggregate keeps them concurrent instead. Each
+  # worker plans for itself (--dry-run is a sub-second pure function over
+  # `git diff`) rather than fanning out from a shared planning job, since a
+  # dedicated plan job's own checkout+setup overhead would cost more than the
+  # planning step it would save.
+  develop-fast:
+    name: Develop Gate / Fast + Affected (non-browser)
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: &integration-database church_unspecified_int
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: &integration-database-url postgresql://postgres:postgres@localhost:5432/church_unspecified_int
+      # ADR-0005: getIntegrationDatabaseUrl resolves through
+      # resolveDatabaseTarget, which expects `church_<worktree>_int`. CI sets
+      # no CHURCH_WORKTREE, so the worktree resolves to the reserved
+      # "unspecified" fallback; this database name matches that.
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:4100
+      CORS_ORIGIN: http://localhost:4101
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - name: Record job start time
+        run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
+
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
+
+      - name: Generated API client matches the server
+        run: bun run validate:api-generated
+
+      - name: Validation tests (affected-plan, date-time seam fixture)
+        run: bun run test:validation
+
+      - name: Fast + affected gate (lint, typecheck, unit, integration)
+        # --daily-gate: per #210's Implementation Decisions, a task-branch to
+        # develop PR only ever requires the fast+affected gate — the full E2E
+        # suite is release-gate-only (develop to master). --skip-e2e: any
+        # affected browser journeys run in the sibling develop-browser job
+        # instead, concurrently.
+        run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --skip-e2e
+
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
+
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Record elapsed-time evidence
+        if: always()
+        run: |
+          elapsed=$(( $(date +%s) - JOB_START_TIME ))
+          echo "### Develop Gate / Fast + Affected elapsed time" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (target: 600s, job start to completion)" >> "$GITHUB_STEP_SUMMARY"
+
+  develop-browser:
+    name: Develop Gate / Browser Journeys
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
+    timeout-minutes: 10
+
+    # Services and the job container start before steps can read the affected
+    # plan. The no-journey path still skips migrations and browser execution;
+    # CI evidence records this deliberate boot overhead (#593).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_unspecified_e2e
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_e2e
+      # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
+      # resolves the e2e target through resolveDatabaseTarget, which expects
+      # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
+      # `.env.local` (tooling/worktree/local-env.ts) and sets no
+      # CHURCH_WORKTREE, so the worktree resolves to the reserved
+      # "unspecified" fallback — this database name matches that.
+      # #253: the E2E lane's only configuration is this job environment —
+      # no value file is generated. The URL set is the run's own loopback set
+      # (tooling/env/e2e-environment.ts: server 4100, web 4101), so nothing
+      # here is a fallback the run silently overrides, and nothing depends
+      # on home-network DNS.
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:4100
+      CORS_ORIGIN: http://localhost:4101
+      VITE_SERVER_URL: http://localhost:4100
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - name: Record job start time
+        run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
+
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The checkout is the host runner's; the container runs as root. Owning
+      # it keeps git's ownership check passing for every process, including
+      # tests that isolate git from global config (safe.directory).
+      - name: Own the checked-out workspace
+        timeout-minutes: 2
+        run: chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
+
+      # skip-migrate: this job doesn't know yet whether it needs a database
+      # at all — the plan step right below decides that — and migrations
+      # need Postgres reachable, which isn't true yet either way.
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
+        with:
+          skip-migrate: 'true'
+
+      - name: Determine affected plan
+        id: plan
+        timeout-minutes: 1
+        run: |
+          # Written under $RUNNER_TEMP, outside the repo working tree — the
+          # later "Browser journeys" step re-runs the same planner, whose
+          # changed-path scan includes untracked files (`git ls-files
+          # --others`); a dump left inside the tree was picked up as a
+          # "changed" file and fed into `bun run lint:files`, where Biome's
+          # JSON formatter flagged its own array-formatting choices as a
+          # lint violation — a debug artifact should never be lint-scoped
+          # source in the first place.
+          plan_file="$RUNNER_TEMP/affected-plan.json"
+          bun tooling/validation/affected.ts --dry-run --daily-gate --base "origin/${{ github.base_ref }}" > "$plan_file"
+          cat "$plan_file"
+          needs_e2e=$(bun -e 'const plan = await Bun.file(process.argv[1]).json(); console.log(plan.requiresFullE2e || plan.e2eSpecPaths.length > 0 ? "true" : "false")' "$plan_file")
+          echo "needs_e2e=$needs_e2e" >> "$GITHUB_OUTPUT"
+
+      - name: Run database migrations
+        id: migrate
+        if: steps.plan.outputs.needs_e2e == 'true'
+        timeout-minutes: 1
+        run: bun run db:migrate
+
+      - name: Browser journeys (affected or critical smoke set)
+        # An intentional no-op when the plan selected no journey (e.g. a
+        # docs-only or otherwise unaffected change): --only-e2e with no
+        # selected specs and requiresFullE2e false runs nothing and exits 0,
+        # so this step — and therefore the job — still succeeds without
+        # waiting on browser setup.
+        if: steps.plan.outputs.needs_e2e == 'true'
+        run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --only-e2e
+
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup" "${{ steps.plan.outcome }}:affected planning" "${{ steps.migrate.outcome }}:database migration"
+
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Record elapsed-time evidence
+        if: always()
+        run: |
+          elapsed=$(( $(date +%s) - JOB_START_TIME ))
+          echo "### Develop Gate / Browser Journeys elapsed time" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (target: 600s, job start to completion)" >> "$GITHUB_STEP_SUMMARY"
+
+  develop-gate:
+    name: Develop Gate (Fast + Affected)
+    # The required status check branch protection points at. Aggregates the
+    # two concurrent workers above so parallelism can't hide a failed or
+    # cancelled required check (#286 US14): this job fails whenever either
+    # worker's result isn't 'success', and 'if: always()' (mirroring its own
+    # applicability condition) makes sure it still runs — and reports — even
+    # if a worker failed outright.
+    if: always() && github.event_name == 'pull_request' && github.base_ref == 'develop'
+    needs: [develop-fast, develop-browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require both workers to have succeeded
+        run: |
+          if [ "${{ needs.develop-fast.result }}" != "success" ] || [ "${{ needs.develop-browser.result }}" != "success" ]; then
+            echo "develop-fast: ${{ needs.develop-fast.result }}"
+            echo "develop-browser: ${{ needs.develop-browser.result }}"
+            echo "One or more required workers did not succeed." >&2
+            exit 1
+          fi
+
+      # #290: develop-fast and develop-browser each report only their own
+      # elapsed time now that they run concurrently — summing them double
+      # counts the overlap. github.run_started_at is the workflow run's own
+      # start, so this is the single wall-clock figure for the whole gate,
+      # start to completion, that #286's US11 target (under three minutes)
+      # is measured against.
+      - name: Record daily gate total wall-clock time
+        if: always()
+        run: |
+          start_epoch=$(date -d "${{ github.run_started_at }}" +%s)
+          elapsed=$(( $(date +%s) - start_epoch ))
+          echo "### Develop Gate total wall-clock time" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (workflow run start to gate completion; target: under 180s)" >> "$GITHUB_STEP_SUMMARY"
+
+  release-gate:
+    name: Release Gate (Complete Validation)
+    # Per #210/#222: a develop -> master pull request requires complete
+    # validation, including the full E2E suite. This is the only PR-time
+    # gate for master; fast-gate below covers the post-merge push instead.
+    if: github.event_name == 'pull_request' && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_unspecified_e2e
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_e2e
+      # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
+      # resolves the e2e target through resolveDatabaseTarget, which expects
+      # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
+      # `.env.local` (tooling/worktree/local-env.ts) and sets no
+      # CHURCH_WORKTREE, so the worktree resolves to the reserved
+      # "unspecified" fallback — this database name matches that.
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:4100
+      CORS_ORIGIN: http://localhost:4101
+      VITE_SERVER_URL: http://localhost:4100
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - name: Record job start time
+        run: echo "JOB_START_TIME=$(date +%s)" >> "$GITHUB_ENV"
+
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
+
+      # The checkout is the host runner's; the container runs as root. Owning
+      # it keeps git's ownership check passing for every process, including
+      # tests that isolate git from global config (safe.directory).
+      - name: Own the checked-out workspace
+        timeout-minutes: 2
+        run: chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
+
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
+
+      - name: Generated API client matches the server
+        run: bun run validate:api-generated
+
+      # `bun run validate`'s scripts (tooling/validation/validate.ts), one
+      # per step, except its integration lane: that runs in
+      # release-integration below, where PostgreSQL is on loopback.
+      # tooling/tests/env/ci-integration-lane.test.ts keeps them in step.
+      - name: Lint
+        run: bun run lint
+
+      - name: Type check
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun run test:unit
+
+      - name: Full E2E
+        run: bun run test:e2e
+
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
+
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Record elapsed-time evidence
+        if: always()
+        run: |
+          elapsed=$(( $(date +%s) - JOB_START_TIME ))
+          echo "### Release gate elapsed time" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (job start to complete validation)" >> "$GITHUB_STEP_SUMMARY"
+
+  release-integration:
+    name: Release Gate / Integration
+    # The release gate's integration lane, on the runner rather than in the
+    # Playwright container: there PostgreSQL is reachable only as
+    # "postgres", and integration tests of the destructive development
+    # commands (db:reset:dev) rightly refuse any non-loopback host.
+    if: github.event_name == 'pull_request' && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_unspecified_int
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_int
+      # ADR-0005: CI sets no CHURCH_WORKTREE, so the integration target is
+      # the reserved "unspecified" worktree's church_unspecified_int.
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:4100
+      CORS_ORIGIN: http://localhost:4101
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
+
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
+
+      - name: Integration tests
+        run: bun run test:integration
+
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
+
+      - name: Upload failure bundles
+        # ADR-0005: as in release-gate; only a failed job uploads them.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
+
+  fast-gate:
+    name: Fast Gate
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # The full unit + integration suite, not just the affected part: 390-470s
+    # on a typical runner, past 600s on a slow one (Nov 2026).
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: *integration-database
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: *integration-database-url
+      # The integration target develop-fast declares (ADR-0005).
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:4100
+      CORS_ORIGIN: http://localhost:4101
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
+
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
+
+      - name: Generated API client matches the server
+        run: bun run validate:api-generated
+
+      - name: Type check
+        run: bun run typecheck
+
+      - name: Lint (Biome + boundary enforcement)
+        run: bun run lint
+
+      - name: Validation tests (affected-plan, date-time seam fixture)
+        run: bun run test:validation
+
+      # shortcut: no --coverage. i18n's compile rejects the flag and server
+      # coverage is far below its thresholds; re-add once coverage is restored.
+      - name: Run tests
+        run: bunx turbo test:unit test:integration
+
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
+
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e:
+    name: E2E
+    # Post-merge safety net on master (release-gate above already ran the
+    # full suite pre-merge on the develop -> master PR).
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
+    if: github.ref == 'refs/heads/master'
+    needs: [fast-gate]
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_unspecified_e2e
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/church_unspecified_e2e
+      # ADR-0005: getE2eDatabaseUrl (packages/db/src/e2e-database-url.ts)
+      # resolves the e2e target through resolveDatabaseTarget, which expects
+      # a worktree-scoped `church_<worktree>_e2e` name. CI has no generated
+      # `.env.local` (tooling/worktree/local-env.ts) and sets no
+      # CHURCH_WORKTREE, so the worktree resolves to the reserved
+      # "unspecified" fallback — this database name matches that.
+      # #253: the E2E lane's only configuration is this job environment —
+      # no value file is generated. The URL set is the run's own loopback set
+      # (tooling/env/e2e-environment.ts: server 4100, web 4101), so nothing
+      # here is a fallback the run silently overrides, and nothing depends
+      # on home-network DNS.
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:4100
+      CORS_ORIGIN: http://localhost:4101
+      VITE_SERVER_URL: http://localhost:4100
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
+
+      # The checkout is the host runner's; the container runs as root. Owning
+      # it keeps git's ownership check passing for every process, including
+      # tests that isolate git from global config (safe.directory).
+      - name: Own the checked-out workspace
+        timeout-minutes: 2
+        run: chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
+
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
+
+      - name: Run E2E tests
+        run: bun run test:e2e
+
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
+
+      - name: Upload failure bundles
+        # ADR-0005: a failed integration or E2E command leaves its diagnostic
+        # bundle in runner-temporary storage (setup-church-ci); only a failed
+        # job uploads them, and only for seven days. Forced cancellation or
+        # runner termination can prevent this post-action from running.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore

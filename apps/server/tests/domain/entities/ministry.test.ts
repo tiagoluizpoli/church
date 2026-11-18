@@ -1,0 +1,32 @@
+import { describe, expect, it } from 'vitest';
+import { Ministry } from '@/domain/entities/ministry';
+
+describe('Ministry Entity', () => {
+  it('constructs with minimum props', () => {
+    const ministry = new Ministry({
+      props: { churchId: 'c1', name: 'Worship' },
+    });
+
+    expect(ministry.churchId).toBe('c1');
+    expect(ministry.name).toBe('Worship');
+    expect(ministry.description).toBeUndefined();
+    expect(ministry.defaultDirection).toBe('all_out');
+    expect(ministry.deletedAt).toBeUndefined();
+  });
+
+  it('handles soft deletion', () => {
+    const ministry = new Ministry({
+      props: { churchId: 'c1', name: 'Worship' },
+    });
+    const originalUpdatedAt = ministry.updatedAt;
+
+    expect(ministry.deletedAt).toBeUndefined();
+
+    ministry.softDelete();
+
+    expect(typeof ministry.deletedAt).toBe('string');
+    expect(ministry.updatedAt.getTime()).toBeGreaterThanOrEqual(
+      originalUpdatedAt.getTime(),
+    );
+  });
+});

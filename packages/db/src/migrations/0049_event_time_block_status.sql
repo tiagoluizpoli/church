@@ -1,0 +1,2 @@
+CREATE TYPE "public"."event_time_block_status" AS ENUM('active', 'cancelled');--> statement-breakpoint
+ALTER TABLE "event_time_block" ADD COLUMN "status" "event_time_block_status" DEFAULT 'active' NOT NULL;

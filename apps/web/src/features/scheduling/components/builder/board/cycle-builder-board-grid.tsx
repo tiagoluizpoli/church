@@ -1,0 +1,422 @@
+import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
+import type { now } from '@church/time';
+import { CalendarDays } from 'lucide-react';
+import type { useBoardDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
+import {
+  type CycleBuilderData,
+  type CycleBuilderEventSummary,
+  isActiveAssignment,
+} from '../../../hooks/use-cycle-builder';
+import type { CellDerived } from '../../../utils/builder/cycle-builder-assignment-index.utils';
+import {
+  dateLabel,
+  eventTimeBlocksOnDay,
+  timeLabel,
+} from '../../../utils/builder/cycle-builder-date.utils';
+import {
+  buildFocusLabel,
+  type FocusedShift,
+  focusKey,
+} from '../../../utils/builder/cycle-builder-shift-lookup.utils';
+import {
+  countCoveredPlaces,
+  staffingStatusClasses,
+} from '../../../utils/builder/cycle-builder-staffing.utils';
+import {
+  CycleBuilderCell,
+  type CycleBuilderCellSelectInput,
+  type MoveAssignmentInput,
+} from './cycle-builder-cell';
+import type { FailedAssignmentWrite } from './cycle-builder-cell-parts';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+
+interface BoardEmptyStateProps {
+  isFiltered: boolean;
+  onClearFilters: () => void;
+}
+
+/**
+ * Filtering the board down to nothing used to leave one empty 320px column in a
+ * 960px scroller, contradicted only by a 12px count at the far end of the
+ * toolbar. A large blank rectangle reads as "broken", not as "your filter is
+ * too tight" — so the board has to say which of the two it is, and offer the
+ * way back when it is the filter.
+ */
+function BoardEmptyState({ isFiltered, onClearFilters }: BoardEmptyStateProps) {
+  return (
+    <div
+      className="flex flex-col items-center gap-2 px-6 py-12 text-center"
+      data-testid="cycle-board-empty"
+    >
+      <CalendarDays className="size-5 text-muted-foreground" />
+      <p className="font-semibold text-foreground text-sm">
+        {isFiltered ? m.builder_ui_no_dates_match() : m.builder_ui_no_dates()}
+      </p>
+      <p className="max-w-md text-muted-foreground text-xs">
+        {isFiltered
+          ? m.builder_ui_all_dates_filtered()
+          : m.builder_ui_add_events()}
+      </p>
+      {isFiltered ? (
+        <Button type="button" variant="outline" onClick={onClearFilters}>
+          {m.builder_ui_clear_filters()}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+interface CycleBuilderBoardGridProps {
+  currentInstant: ReturnType<typeof now>;
+  data: CycleBuilderData;
+  /** Church Timezone from the active-church status — never the browser's. */
+  timeZone: string;
+  columns: string[];
+  eventsForDate: Map<string, CycleBuilderEventSummary[]>;
+  cellDerivedByKey: Map<string, CellDerived>;
+  failedWritesByCell: Map<string, FailedAssignmentWrite[]>;
+  selectedVolunteerId?: string;
+  selectedVolunteerName?: string;
+  focusedKey?: string;
+  onFocusRequirement: (focused: FocusedShift) => void;
+  onClearFocus: () => void;
+  onSelectAssignment: (input: CycleBuilderCellSelectInput) => void;
+  onRemoveAssignment: (id: string) => void;
+  onMoveAssignment?: (input: MoveAssignmentInput) => void;
+  onRetryFailedWrite?: (failedWriteId: string) => void;
+  onDismissFailedWrite?: (failedWriteId: string) => void;
+  filtersAreDefault: boolean;
+  onClearFilters: () => void;
+  dragScroll: ReturnType<typeof useBoardDragScroll>;
+}
+
+/**
+ * The board's own scroll surface: a grid of date columns, each holding its
+ * events → included time blocks → shifts → role cells. Drag-to-scroll comes from
+ * `useBoardDragScroll` (see that hook's doc comment for why it isn't shared
+ * with the date strip's). Rendered inside the parent's `DndContext` — cells
+ * register their own droppables via `useDroppable`, which works anywhere in
+ * the same DnD tree regardless of this component boundary.
+ */
+export function CycleBuilderBoardGrid({
+  currentInstant,
+  data,
+  timeZone,
+  columns,
+  eventsForDate,
+  cellDerivedByKey,
+  failedWritesByCell,
+  selectedVolunteerId,
+  selectedVolunteerName,
+  focusedKey,
+  onFocusRequirement,
+  onClearFocus,
+  onSelectAssignment,
+  onRemoveAssignment,
+  onMoveAssignment,
+  onRetryFailedWrite,
+  onDismissFailedWrite,
+  filtersAreDefault,
+  onClearFilters,
+  dragScroll,
+}: CycleBuilderBoardGridProps) {
+  const gridStyle = {
+    gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(320px, 1fr))`,
+  };
+
+  return (
+    // 23.75rem = 380px. Widened from 320px so the AE card's three columns each
+    // keep their own band instead of the roles line and the recency block
+    // fighting for the same width.
+    <Card
+      className={cn(
+        'min-w-0 touch-pan-y border-0 bg-transparent py-0 shadow-none',
+      )}
+      data-testid="cycle-board-drag-surface"
+      onPointerDown={dragScroll.onPointerDown}
+      onPointerMove={dragScroll.onPointerMove}
+      onPointerUp={dragScroll.onPointerUp}
+      onPointerCancel={dragScroll.onPointerCancel}
+      onLostPointerCapture={dragScroll.onLostPointerCapture}
+      onClickCapture={dragScroll.onClickCapture}
+    >
+      <CardContent className="workspace-panel">
+        <ScrollArea
+          className="min-w-0 pb-3"
+          data-testid="cycle-board-scroll"
+          viewportRef={dragScroll.viewportRef}
+          viewportTestId="cycle-board-viewport"
+          scrollbarOrientation="horizontal"
+        >
+          <div className={columns.length > 0 ? 'min-w-[960px]' : ''}>
+            {columns.length === 0 ? (
+              <BoardEmptyState
+                isFiltered={!filtersAreDefault}
+                onClearFilters={onClearFilters}
+              />
+            ) : null}
+            <div className="grid items-start gap-3 text-xs" style={gridStyle}>
+              {columns.map((date) => (
+                <section
+                  key={date}
+                  className="min-w-0 self-start rounded-md border bg-card"
+                >
+                  <header className="border-b px-3 py-2">
+                    <p className="font-semibold text-foreground text-sm">
+                      {dateLabel({ day: date, locale: getLocale() })}
+                    </p>
+                    <p className="mt-0.5 text-muted-foreground text-xs">
+                      {(eventsForDate.get(date) ?? []).length === 1
+                        ? m.builder_ui_event_one()
+                        : m.builder_ui_event_many({
+                            count: (eventsForDate.get(date) ?? []).length,
+                          })}
+                    </p>
+                  </header>
+                  <div className="space-y-3 p-2">
+                    {(eventsForDate.get(date) ?? []).map((event) => (
+                      <section key={event.eventId} className="space-y-2">
+                        <div className="flex items-center justify-between gap-2 px-1">
+                          <h2 className="truncate font-semibold text-foreground text-sm">
+                            {event.title}
+                          </h2>
+                          <Badge
+                            variant="outline"
+                            data-testid={`cycle-event-staffing-percent-${event.eventId}`}
+                            className={cn(
+                              'shrink-0',
+                              staffingStatusClasses({
+                                percent: Math.round(event.fillRatio * 100),
+                                hasRequirement: event.peopleNeeded > 0,
+                              }).text,
+                            )}
+                          >
+                            {Math.round(event.fillRatio * 100)}%
+                          </Badge>
+                        </div>
+                        {eventTimeBlocksOnDay({ event, day: date, timeZone })
+                          .filter((eventTimeBlock) => eventTimeBlock.included)
+                          .map((eventTimeBlock) => (
+                            <section
+                              key={eventTimeBlock.eventTimeBlockId}
+                              className="space-y-2 rounded-md border border-dashed p-2"
+                            >
+                              <h3 className="font-medium text-foreground text-xs">
+                                {eventTimeBlock.label ??
+                                  m.builder_ui_time_block()}
+                              </h3>
+                              <div className="space-y-2">
+                                {eventTimeBlock.shifts.map((shift) => (
+                                  <section
+                                    key={shift.shiftId}
+                                    className="space-y-2 border-t pt-2 first:border-t-0 first:pt-0"
+                                  >
+                                    <p className="text-muted-foreground text-xs">
+                                      {shift.label ??
+                                        `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`}
+                                    </p>
+                                    <div className="space-y-2">
+                                      {[
+                                        ...new Set(
+                                          shift.requirements.map(
+                                            (requirement) =>
+                                              requirement.sectorId ??
+                                              requirement.sectorName,
+                                          ),
+                                        ),
+                                      ].map((sectorKey) => (
+                                        <fieldset
+                                          key={sectorKey}
+                                          className="space-y-2"
+                                        >
+                                          <legend className="px-1 font-semibold text-foreground">
+                                            {
+                                              shift.requirements.find(
+                                                (requirement) =>
+                                                  (requirement.sectorId ??
+                                                    requirement.sectorName) ===
+                                                  sectorKey,
+                                              )?.sectorName
+                                            }
+                                          </legend>
+                                          {shift.requirements
+                                            .filter(
+                                              (requirement) =>
+                                                (requirement.sectorId ??
+                                                  requirement.sectorName) ===
+                                                sectorKey,
+                                            )
+                                            .map((requirement) => {
+                                              const assignments =
+                                                shift.assignments.filter(
+                                                  (assignment) =>
+                                                    assignment.shiftRequirementId ===
+                                                      requirement.id &&
+                                                    isActiveAssignment({
+                                                      status: assignment.status,
+                                                    }),
+                                                );
+                                              const roleName =
+                                                data.roles.find(
+                                                  (role) =>
+                                                    role.id ===
+                                                    requirement.roleId,
+                                                )?.name ?? m.builder_ui_role();
+                                              const roleLabel = `${requirement.sectorName} · ${roleName}`;
+                                              const requirementFocusKey =
+                                                focusKey({
+                                                  shiftRequirementId:
+                                                    requirement.id,
+                                                });
+                                              const cellDerived =
+                                                cellDerivedByKey.get(
+                                                  requirementFocusKey,
+                                                );
+                                              const suggestionGroups =
+                                                cellDerived?.recommendations ?? {
+                                                  safe: [],
+                                                  needsResponse: [],
+                                                };
+                                              const focusOnRequirement = () =>
+                                                onFocusRequirement({
+                                                  key: requirementFocusKey,
+                                                  label: buildFocusLabel({
+                                                    roleLabel,
+                                                    eventTimeBlockLabel:
+                                                      shift.label ??
+                                                      `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`,
+                                                    eventTitle: event.title,
+                                                    dateText: dateLabel({
+                                                      day: date,
+                                                      locale: getLocale(),
+                                                    }),
+                                                  }),
+                                                  shiftId: shift.shiftId,
+                                                  shiftRequirementId:
+                                                    requirement.id,
+                                                  roleId: requirement.roleId,
+                                                  roleLabel,
+                                                  eventTimeBlockLabel:
+                                                    shift.label ??
+                                                    `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`,
+                                                });
+                                              return (
+                                                <CycleBuilderCell
+                                                  currentInstant={
+                                                    currentInstant
+                                                  }
+                                                  key={requirement.id}
+                                                  shift={shift}
+                                                  shiftRequirementId={
+                                                    requirement.id
+                                                  }
+                                                  roleId={requirement.roleId}
+                                                  roleLabel={roleLabel}
+                                                  displayRoleLabel={roleName}
+                                                  peopleNeeded={
+                                                    requirement.peopleNeeded
+                                                  }
+                                                  assignments={assignments}
+                                                  pickerVolunteers={
+                                                    cellDerived?.candidates ??
+                                                    []
+                                                  }
+                                                  suggestions={
+                                                    suggestionGroups.safe
+                                                  }
+                                                  needsResponseSuggestions={
+                                                    suggestionGroups.needsResponse
+                                                  }
+                                                  eventTimeBlockLabel={
+                                                    shift.label ??
+                                                    `${timeLabel({ instant: shift.startTime, timeZone })} – ${timeLabel({ instant: shift.endTime, timeZone })}`
+                                                  }
+                                                  selectedVolunteerId={
+                                                    selectedVolunteerId
+                                                  }
+                                                  selectedVolunteerName={
+                                                    selectedVolunteerName
+                                                  }
+                                                  isPublished={
+                                                    event.state === 'published'
+                                                  }
+                                                  isFocused={
+                                                    focusedKey ===
+                                                    requirementFocusKey
+                                                  }
+                                                  onFocus={focusOnRequirement}
+                                                  onToggleFocus={() => {
+                                                    if (
+                                                      focusedKey ===
+                                                      requirementFocusKey
+                                                    )
+                                                      onClearFocus();
+                                                    else focusOnRequirement();
+                                                  }}
+                                                  onSelect={onSelectAssignment}
+                                                  onRemove={onRemoveAssignment}
+                                                  onMove={onMoveAssignment}
+                                                  failedWrites={failedWritesByCell.get(
+                                                    requirementFocusKey,
+                                                  )}
+                                                  onRetryFailedWrite={
+                                                    onRetryFailedWrite
+                                                  }
+                                                  onDismissFailedWrite={
+                                                    onDismissFailedWrite
+                                                  }
+                                                />
+                                              );
+                                            })}
+                                        </fieldset>
+                                      ))}
+                                    </div>
+                                    <p
+                                      className="border-t pt-2 text-right font-medium text-muted-foreground"
+                                      data-testid={`cycle-shift-footer-${shift.shiftId}`}
+                                    >
+                                      {(() => {
+                                        const needed =
+                                          shift.requirements.reduce(
+                                            (total, requirement) =>
+                                              total + requirement.peopleNeeded,
+                                            0,
+                                          );
+                                        const empty =
+                                          needed - countCoveredPlaces(shift);
+                                        return empty === 0
+                                          ? m.builder_ui_full()
+                                          : empty === 1
+                                            ? m.builder_ui_empty_one()
+                                            : m.builder_ui_empty_many({
+                                                count: empty,
+                                              });
+                                      })()}
+                                    </p>
+                                  </section>
+                                ))}
+                              </div>
+                            </section>
+                          ))}
+                      </section>
+                    ))}
+                    {(eventsForDate.get(date) ?? []).length === 0 ? (
+                      <p className="px-1 py-4 text-muted-foreground text-xs">
+                        {m.builder_ui_no_events()}
+                      </p>
+                    ) : null}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}

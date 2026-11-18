@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "5.0",
     "strict": true,
     "esModuleInterop": true,
     "jsx": "react-jsx",
@@ -7,13 +8,16 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "skipLibCheck": true,
     "types": ["vite/client"],
     "rootDirs": ["."],
     "baseUrl": ".",
     "paths": {
+      "@/tests/*": ["./tests/*"],
       "@/*": ["./src/*"],
-      "@base-fullstack-template/ui/*": ["../../packages/ui/src/*"]
+      "server/*": ["../server/*"]
     }
   }
 }

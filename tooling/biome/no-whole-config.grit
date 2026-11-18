@@ -1,0 +1,27 @@
+language js
+
+// docs/agents/backend.md: a class reads the config values it uses once, in
+// the constructor, into named private readonly fields; methods use those
+// fields and the class does not keep the whole config. Biome overrides
+// cannot scope a plugin, so the scope is matched on $filename here. Covered
+// by no-whole-config.test.ts.
+or {
+  `this.config = $_` as $hit,
+  JsPropertyClassMember() as $hit where {
+    $hit <: contains `config` as $name,
+    $name <: JsLiteralMemberName(),
+    not $name <: within or {
+      JsObjectExpression(),
+      TsObjectType(),
+      JsObjectBindingPattern()
+    }
+  },
+  TsPropertyParameter() as $hit where {
+    $hit <: contains `config` as $name,
+    $name <: within JsIdentifierBinding()
+  }
+} where {
+  $filename <: r".*apps/server/src/.*",
+  not $filename <: r".*/tests/.*",
+  register_diagnostic(span=$hit, message="Do not keep the whole config on the class: read the values it uses once, in the constructor, into named private readonly fields (docs/agents/backend.md).")
+}

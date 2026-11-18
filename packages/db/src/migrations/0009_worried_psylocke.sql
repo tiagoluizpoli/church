@@ -1,0 +1,1 @@
+ALTER TYPE "public"."outbox_message_kind" ADD VALUE 'redemption.accepted' BEFORE 'transfer.ministry-digest';

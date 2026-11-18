@@ -1,0 +1,91 @@
+import { Entity, type LooseProps } from '@church/core';
+import { type Instant, now, toDate } from '@church/time';
+import type { ChurchId, UserId, VolunteerId } from '../branded-ids';
+
+export const VOLUNTEER_STATUS_OPTIONS = [
+  'active',
+  'inactive',
+  'on_hold',
+] as const;
+export type VolunteerStatus = (typeof VOLUNTEER_STATUS_OPTIONS)[number];
+
+export interface VolunteerProps {
+  churchId: ChurchId;
+  userId: UserId;
+  status: VolunteerStatus;
+  notes?: string;
+  /** Set when this profile is retired; the profile that succeeded it. */
+  leftAt?: Instant;
+  successorVolunteerId?: VolunteerId;
+  /** Denormalized display name, populated when the user table is joined. */
+  name?: string;
+}
+
+export interface VolunteerInput {
+  props: Omit<LooseProps<VolunteerProps>, 'status'> &
+    Partial<Pick<LooseProps<VolunteerProps>, 'status'>>;
+  id?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export class Volunteer extends Entity<VolunteerProps, VolunteerId> {
+  constructor({ props, id, createdAt, updatedAt }: VolunteerInput) {
+    super({
+      props: {
+        ...props,
+        status: props.status ?? 'active',
+      } as VolunteerProps,
+      id: id as VolunteerId,
+      createdAt,
+      updatedAt,
+    });
+  }
+
+  get churchId(): ChurchId {
+    return this._props.churchId;
+  }
+
+  get userId(): UserId {
+    return this._props.userId;
+  }
+
+  get status(): VolunteerStatus {
+    return this._props.status;
+  }
+
+  get notes(): string | undefined {
+    return this._props.notes;
+  }
+
+  get leftAt(): Instant | undefined {
+    return this._props.leftAt;
+  }
+
+  get successorVolunteerId(): VolunteerId | undefined {
+    return this._props.successorVolunteerId;
+  }
+
+  get isRetired(): boolean {
+    return this._props.leftAt != null;
+  }
+
+  get name(): string | undefined {
+    return this._props.name;
+  }
+
+  public activate(): void {
+    this._props.status = 'active';
+    this._updatedAt = toDate({ instant: now() });
+  }
+
+  public deactivate(): void {
+    this._props.status = 'inactive';
+    this._updatedAt = toDate({ instant: now() });
+  }
+
+  public putOnHold(): void {
+    this._props.status = 'on_hold';
+    this._updatedAt = toDate({ instant: now() });
+  }
+}

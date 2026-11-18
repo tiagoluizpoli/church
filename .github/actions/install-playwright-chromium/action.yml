@@ -1,0 +1,66 @@
+name: Install Playwright Chromium
+description: >-
+  Install the Playwright Chromium browser, restoring it from the Actions cache
+  when the locked Playwright version has been installed before. Runs after
+  setup-church-ci (it needs the installed dependencies to resolve the
+  version). Only the browser download (~/.cache/ms-playwright) is cached: the
+  OS packages Chromium needs live outside it, so they are installed on every
+  run.
+
+inputs:
+  working-directory:
+    description: Directory whose installed Playwright version is resolved.
+    required: false
+    default: apps/web
+  summary-title:
+    description: >-
+      When set, append this heading and the step's elapsed seconds to
+      $GITHUB_STEP_SUMMARY.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve Playwright version
+      id: version
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      # Ask the same CLI that performs the install, so the cache key can never
+      # disagree with the browser build that CLI would download. It prints
+      # "Version 1.61.1"; keep only the number. Fail rather than cache under a
+      # key with an empty or garbled version.
+      run: |
+        version=$(bunx playwright --version | awk '{print $NF}')
+        if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+          echo "::error::Could not resolve the Playwright version (got '$version')."
+          exit 1
+        fi
+        echo "playwright=$version" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Playwright browsers
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.version.outputs.playwright }}-chromium
+
+    - name: Install Playwright Chromium
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+        SUMMARY_TITLE: ${{ inputs.summary-title }}
+      run: |
+        start=$(date +%s)
+        if [ "$CACHE_HIT" = "true" ]; then
+          # Browser binaries restored; only the OS dependencies are missing.
+          bunx playwright install-deps chromium
+        else
+          bunx playwright install --with-deps chromium
+        fi
+        elapsed=$(( $(date +%s) - start ))
+        if [ -n "$SUMMARY_TITLE" ]; then
+          echo "### $SUMMARY_TITLE" >> "$GITHUB_STEP_SUMMARY"
+          echo "${elapsed}s (Playwright browser install)" >> "$GITHUB_STEP_SUMMARY"
+        fi

@@ -10,6 +10,14 @@ Define rules for data retention, cleanup, and state transitions for old schedule
 - **Published -> Past**: Event date has passed. Assignments are archived for reporting.
 - **Published -> Cancelled**: All linked assignments are automatically marked as `cancelled`.
 
+**Refined (017, 2026-07-02):** The single Event state machine splits into **three** independent lifecycles, with **two distinct publishes**:
+
+- **`PlanningCycle`**: `draft -> locked -> archived` (auto-archive after `endDate`; append-only after lock). The `draft -> locked` transition is the **ChurchAdmin** cycle-lock — the church-level publish that hands the calendar to leaders.
+- **`Event`**: `draft -> scheduled -> cancelled / past` — "published" leaves the Event entirely.
+- **`MinistryParticipation`**: `tailoring -> availability_fired -> rostering -> published`. The `rostering -> published` transition is the **leader** roster-publish — reveals only that ministry's slice to its volunteers.
+
+These two publishes (cycle-lock vs roster-publish) are separate and independent. (see ADR 0001 / CONTEXT.md)
+
 ---
 
 ## 2. Cleanup Logic

@@ -34,6 +34,7 @@ const TEST_JOBS = [
   'develop-fast',
   'develop-browser',
   'release-gate',
+  'release-integration',
   'fast-gate',
   'e2e',
 ];
@@ -129,7 +130,7 @@ describe('CI setup phase bounds and reporting', () => {
           SHARED_SETUP_ACTION_LIMIT_MINUTES,
         );
         expect(job['timeout-minutes']).toBe(
-          name === 'release-gate' || name === 'e2e' ? 20 : 10,
+          ['release-gate', 'e2e', 'fast-gate'].includes(name) ? 20 : 10,
         );
       });
 
@@ -219,35 +220,14 @@ describe('CI setup phase bounds and reporting', () => {
     }
   });
 
-  it('reports a failed test command when release database setup was skipped', () => {
-    const release = workflow.jobs['release-gate'] as WorkflowJob;
-    const run =
-      stepWithId({ job: release, id: 'report-failure-phase' })?.run ?? '';
-
-    const result = simulate({
-      run,
-      outcomes: { setup: 'success', 'integration-database': 'skipped' },
-    });
-
-    expect(result.exitCode).toBe(1);
-    expect(result.stdout).toContain('test-command');
-    expect(result.stdout).not.toContain('integration database');
-  });
-
   it('bounds planning and database migrations before browser tests', () => {
     const browser = workflow.jobs['develop-browser'] as WorkflowJob;
-    const release = workflow.jobs['release-gate'] as WorkflowJob;
 
     expect(stepWithId({ job: browser, id: 'plan' })?.['timeout-minutes']).toBe(
       PLAN_OR_DATABASE_LIMIT_MINUTES,
     );
     expect(
       stepWithId({ job: browser, id: 'migrate' })?.['timeout-minutes'],
-    ).toBe(PLAN_OR_DATABASE_LIMIT_MINUTES);
-    expect(
-      stepWithId({ job: release, id: 'integration-database' })?.[
-        'timeout-minutes'
-      ],
     ).toBe(PLAN_OR_DATABASE_LIMIT_MINUTES);
   });
 

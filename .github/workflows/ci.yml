@@ -351,10 +351,8 @@ jobs:
         run: bun run validate:api-generated
 
       # `bun run validate`'s scripts (tooling/validation/validate.ts), one
-      # purpose per step: integration and E2E each resolve their own typed
-      # database target (ADR-0005), so integration gets its own
-      # church_unspecified_int beside the job's E2E database. The steps run
-      # in sequence, without validate's unit/integration overlap;
+      # per step, except its integration lane: that runs in
+      # release-integration below, where PostgreSQL is on loopback.
       # tooling/tests/env/ci-integration-lane.test.ts keeps them in step.
       - name: Lint
         run: bun run lint
@@ -365,18 +363,6 @@ jobs:
       - name: Unit tests
         run: bun run test:unit
 
-      - name: Create and migrate the integration database
-        id: integration-database
-        timeout-minutes: 1
-        run: bun run --cwd packages/db db:setup-test
-        env:
-          DATABASE_URL: &release-integration-database-url postgresql://postgres:postgres@postgres:5432/church_unspecified_int
-
-      - name: Integration tests
-        run: bun run test:integration
-        env:
-          DATABASE_URL: *release-integration-database-url
-
       - name: Full E2E
         run: bun run test:e2e
 
@@ -384,7 +370,7 @@ jobs:
         name: Report failed phase
         if: failure() || cancelled()
         shell: bash
-        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup" "${{ steps.integration-database.outcome }}:integration database"
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
 
       - name: Upload failure bundles
         # ADR-0005: a failed integration or E2E command leaves its diagnostic
@@ -406,11 +392,79 @@ jobs:
           echo "### Release gate elapsed time" >> "$GITHUB_STEP_SUMMARY"
           echo "${elapsed}s (job start to complete validation)" >> "$GITHUB_STEP_SUMMARY"
 
+  release-integration:
+    name: Release Gate / Integration
+    # The release gate's integration lane, on the runner rather than in the
+    # Playwright container: there PostgreSQL is reachable only as
+    # "postgres", and integration tests of the destructive development
+    # commands (db:reset:dev) rightly refuse any non-loopback host.
+    if: github.event_name == 'pull_request' && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: church_unspecified_int
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_int
+      # ADR-0005: CI sets no CHURCH_WORKTREE, so the integration target is
+      # the reserved "unspecified" worktree's church_unspecified_int.
+      BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      BETTER_AUTH_URL: http://localhost:4100
+      CORS_ORIGIN: http://localhost:4101
+      NODE_ENV: test
+      ENABLE_DEBUG_ENDPOINTS: "true"
+      TZ: Asia/Kolkata
+
+    steps:
+      - id: checkout
+        name: Checkout repository
+        timeout-minutes: 2
+        uses: actions/checkout@v4
+
+      - id: setup
+        name: Shared CI setup
+        timeout-minutes: 5
+        uses: ./.github/actions/setup-church-ci
+
+      - name: Integration tests
+        run: bun run test:integration
+
+      - id: report-failure-phase
+        name: Report failed phase
+        if: failure() || cancelled()
+        shell: bash
+        run: bash tooling/ci/report-failure-phase.sh "${{ steps.setup.outcome }}:shared setup"
+
+      - name: Upload failure bundles
+        # ADR-0005: as in release-gate; only a failed job uploads them.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-bundles-${{ github.job }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/church-failure-bundles
+          retention-days: 7
+          if-no-files-found: ignore
+
   fast-gate:
     name: Fast Gate
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The full unit + integration suite, not just the affected part: 390-470s
+    # on a typical runner, past 600s on a slow one (Nov 2026).
+    timeout-minutes: 20
 
     services:
       postgres:

@@ -27,7 +27,7 @@ const INTEGRATION_DATABASE = 'church_unspecified_int';
 const INTEGRATION_PROVISIONING: Record<string, 'service' | 'setup-step'> = {
   'develop-fast': 'service',
   'fast-gate': 'service',
-  'release-gate': 'setup-step',
+  'release-integration': 'service',
 };
 
 const RUNS_INTEGRATION = new RegExp(
@@ -128,15 +128,26 @@ describe('CI integration lane', () => {
     });
   }
 
-  it('release-gate runs every script `bun run validate` runs, in order', () => {
-    const steps = workflow.jobs['release-gate']?.steps ?? [];
-    const gateScripts = steps
-      .map((step) => step.run?.trim().match(BARE_SCRIPT_RUN)?.[1])
-      // CI-only (rewrites the working tree), so `bun run validate` omits it.
-      .filter(
-        (script) => script !== undefined && script !== 'validate:api-generated',
-      );
+  // Integration runs beside release-gate in release-integration: in the
+  // Playwright container PostgreSQL is not on loopback, which the
+  // destructive development commands' tests require.
+  it('release-gate and release-integration together run every script `bun run validate` runs', () => {
+    const gateScripts = (job: string) =>
+      (workflow.jobs[job]?.steps ?? [])
+        .map((step) => step.run?.trim().match(BARE_SCRIPT_RUN)?.[1])
+        // CI-only (rewrites the working tree), so `bun run validate` omits it.
+        .filter(
+          (script) =>
+            script !== undefined && script !== 'validate:api-generated',
+        );
+    const integrationScripts = INTEGRATION_LANE.map((step) => step.args[1]);
 
-    expect(gateScripts).toEqual(VALIDATE_SCRIPTS);
+    expect(gateScripts('release-gate')).toEqual(
+      VALIDATE_SCRIPTS.filter((script) => !integrationScripts.includes(script)),
+    );
+    expect(gateScripts('release-integration')).toEqual(integrationScripts);
+    expect(workflow.jobs['release-integration']?.if).toBe(
+      workflow.jobs['release-gate']?.if,
+    );
   });
 });

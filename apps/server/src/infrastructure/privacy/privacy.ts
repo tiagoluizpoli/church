@@ -12,9 +12,12 @@ const MASK = ':redacted';
 // - Better Auth: GET /api/auth/reset-password/:token (password-reset callback)
 // - Redemption: /redemption/{church,ministry,transfer}/:invitationId, the
 //   emailed invitation link's bearer id (and its /accept, /redeem, ... children)
+// - Web pages /invitations/{church,ministry}/:invitationId, the same bearer id
+//   in the page URL a browser crash report carries
 const TOKEN_SEGMENTS: readonly RegExp[] = [
   /(\/reset-password\/)[^/]+/,
   /(\/redemption\/(?:church|ministry|transfer)\/)[^/]+/,
+  /(\/invitations\/(?:church|ministry)\/)[^/]+/,
 ];
 
 // Headers carry no identity beyond these; cookie, authorization and referer
@@ -85,9 +88,15 @@ const ALLOWED_TAGS: ReadonlySet<string> = new Set([
 // Zod drops unknown keys, so each schema is the allowlist: the exception
 // value, message, breadcrumbs, extra, frame vars, user email/IP/name, request
 // body, cookies and query string never pass.
+// Browser frame paths are asset URLs; their query string is dropped.
+const framePath = z
+  .string()
+  .transform((url) => redactUrl({ url }))
+  .optional();
+
 const frameSchema = z.object({
-  filename: z.string().optional(),
-  abs_path: z.string().optional(),
+  filename: framePath,
+  abs_path: framePath,
   module: z.string().optional(),
   function: z.string().optional(),
   lineno: z.number().optional(),

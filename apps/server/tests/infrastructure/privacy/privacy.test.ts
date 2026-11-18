@@ -27,6 +27,14 @@ describe('redactUrl', () => {
       '/api/v1/redemption/transfer/:redacted/confirm',
     ],
     [
+      'https://church.test/invitations/church/SECRET?lang=en',
+      'https://church.test/invitations/church/:redacted',
+    ],
+    [
+      'https://church.test/invitations/ministry/SECRET',
+      'https://church.test/invitations/ministry/:redacted',
+    ],
+    [
       '/api/v1/ministries/abc/invitations',
       '/api/v1/ministries/abc/invitations',
     ],
@@ -71,6 +79,7 @@ describe('serializeRequest', () => {
 describe('scrubEvent', () => {
   const frame = {
     filename: '/app/src/x.ts',
+    abs_path: 'https://church.test/assets/index-abc.js?v=SECRET',
     function: 'handler',
     lineno: 3,
     colno: 7,
@@ -148,6 +157,7 @@ describe('scrubEvent', () => {
               frames: [
                 {
                   filename: '/app/src/x.ts',
+                  abs_path: 'https://church.test/assets/index-abc.js',
                   function: 'handler',
                   lineno: 3,
                   colno: 7,

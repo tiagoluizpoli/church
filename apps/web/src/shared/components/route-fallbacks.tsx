@@ -37,7 +37,8 @@ function ErrorFallback({ error, fullScreen }: ErrorFallbackProps) {
     }
     setReloading(false);
     // Only a crash the Person actually sees is reported.
-    setReferenceCode(reportCrash({ error }));
+    const code = reportCrash({ error });
+    setReferenceCode(code);
   }, [error]);
 
   if (reloading) {

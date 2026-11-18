@@ -7,6 +7,10 @@ const instance = axios.create({
   withCredentials: true,
 });
 
+// W3C traceparent field sizes.
+const TRACE_ID_BYTES = 16;
+const SPAN_ID_BYTES = 8;
+
 interface RandomHexInput {
   bytes: number;
 }
@@ -20,10 +24,9 @@ function randomHex({ bytes }: RandomHexInput): string {
 // A fresh W3C trace per call: the server takes its trace id as the request id.
 // shortcut: an all-zero id (odds 2^-128) is invalid and the server mints its own.
 instance.interceptors.request.use((config) => {
-  config.headers.set(
-    'traceparent',
-    `00-${randomHex({ bytes: 16 })}-${randomHex({ bytes: 8 })}-01`,
-  );
+  const traceId = randomHex({ bytes: TRACE_ID_BYTES });
+  const spanId = randomHex({ bytes: SPAN_ID_BYTES });
+  config.headers.set('traceparent', `00-${traceId}-${spanId}-01`);
   return config;
 });
 

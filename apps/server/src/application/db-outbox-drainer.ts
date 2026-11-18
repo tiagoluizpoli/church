@@ -6,6 +6,7 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
+import { trace } from '@opentelemetry/api';
 import type { ChurchId } from '../domain/branded-ids';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type {
@@ -55,6 +56,8 @@ import { webLink } from '../domain/services/web-link';
 import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
 import { emailRoutingFor } from './email-routing';
 import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
+
+const tracer = trace.getTracer('church-server');
 
 /** The tracker sees the row id and kind; the reason may quote an email. */
 class OutboxDeliveryFailedError extends Error {
@@ -124,7 +127,17 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     let sent = 0;
     let failed = 0;
     for (const message of claimed) {
-      const outcome = await this.processOne({ message });
+      // One span per delivery, so its SQL nests under it in the trace.
+      const outcome = await tracer.startActiveSpan(
+        'outbox.delivery',
+        async (span) => {
+          try {
+            return await this.processOne({ message });
+          } finally {
+            span.end();
+          }
+        },
+      );
       if (outcome === 'sent') sent += 1;
       else failed += 1;
     }

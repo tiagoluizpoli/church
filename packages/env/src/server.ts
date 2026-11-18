@@ -40,6 +40,13 @@ export const env = createEnv({
     /** Source revision baked into a deployed image and reported by readiness;
      * local and test runs have none. */
     APP_REVISION: z.string().min(1).default('unversioned'),
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+      .default('info'),
+    /** OTLP/HTTP collector base URL; unset turns trace export off. */
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
+    /** Share of new traces kept; an incoming traceparent's decision wins. */
+    TRACE_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(1),
     /** Error tracker (GlitchTip) DSN; unset keeps error reporting off. */
     SENTRY_DSN: z.url().optional(),
     /** Turns error reporting off even with a DSN set. */

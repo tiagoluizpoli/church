@@ -32,6 +32,9 @@ services:
       CORS_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
       RESEND_API_KEY: ${RESEND_API_KEY:?RESEND_API_KEY is required}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:?RESEND_FROM_EMAIL is required}
+      LOG_LEVEL: ${LOG_LEVEL:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      TRACE_SAMPLE_RATE: ${TRACE_SAMPLE_RATE:-}
     healthcheck:
       test: ["CMD", "bun", "-e", "const r = await fetch('http://127.0.0.1:3000/api/health'); process.exit(r.ok ? 0 : 1)"]
       interval: 10s

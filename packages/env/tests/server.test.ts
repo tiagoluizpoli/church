@@ -114,6 +114,28 @@ describe('server env: APP_REVISION', () => {
   });
 });
 
+describe('server env: observability', () => {
+  it('defaults to info logs, no trace export and a sample rate of 1', async () => {
+    const env = await parse({
+      LOG_LEVEL: '',
+      OTEL_EXPORTER_OTLP_ENDPOINT: '',
+      TRACE_SAMPLE_RATE: '',
+    });
+    expect(env.LOG_LEVEL).toBe('info');
+    expect(env.OTEL_EXPORTER_OTLP_ENDPOINT).toBeUndefined();
+    expect(env.TRACE_SAMPLE_RATE).toBe(1);
+  });
+
+  it.each([
+    ['LOG_LEVEL', 'loud'],
+    ['OTEL_EXPORTER_OTLP_ENDPOINT', 'not-a-url'],
+    ['TRACE_SAMPLE_RATE', '1.5'],
+    ['TRACE_SAMPLE_RATE', '-0.1'],
+  ])('rejects %s=%s', async (key, value) => {
+    expect(await invalidIssues({ [key]: value })).toContain(key);
+  });
+});
+
 describe('server env: error reporting', () => {
   it('has no DSN and the switch on by default', async () => {
     const env = await parse({});

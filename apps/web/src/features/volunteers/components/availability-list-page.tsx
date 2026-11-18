@@ -91,7 +91,9 @@ function AvailabilityListContent({
                         ? m.availability_list_not_confirmed()
                         : check.unavailableShiftCount === 0
                           ? m.availability_list_confirmed_all()
-                          : m.availability_list_confirmed_count({
+                          : (check.totalShiftCount === 1
+                              ? m.availability_list_confirmed_count_one
+                              : m.availability_list_confirmed_count)({
                               unavailable: check.unavailableShiftCount,
                               total: check.totalShiftCount,
                             })}

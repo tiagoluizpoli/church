@@ -1005,7 +1005,7 @@ describe('Availability check page', () => {
     expect(toggles[1]).not.toBeChecked();
     await userEvent.click(
       screen.getByRole('button', {
-        name: m.availability_detail_answer_error(),
+        name: m.availability_detail_confirm(),
       }),
     );
     await waitFor(() =>
@@ -1064,6 +1064,8 @@ describe('Availability check page', () => {
         name: m.availability_detail_published_link(),
       }),
     ).toHaveAttribute('href', '/my-schedule');
+    // A mixed day counts only the Shifts still open to answer.
+    expect(within(sunday).getByText('2 de 2 disponíveis')).toBeVisible();
     expect(
       screen.queryByRole('switch', { name: /culto da manhã/i }),
     ).not.toBeInTheDocument();
@@ -1107,8 +1109,11 @@ describe('Availability check page', () => {
         name: m.availability_detail_save_changes(),
       }),
     );
-    const retry = await screen.findByRole('button', {
-      name: m.availability_detail_save_error(),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      m.availability_detail_send_error(),
+    );
+    const retry = screen.getByRole('button', {
+      name: m.availability_detail_save_changes(),
     });
     expect(
       screen.getByText(
@@ -1141,6 +1146,12 @@ describe('Availability check page', () => {
     renderPage();
     // Nothing to send yet: a calm done state instead of a save button.
     expect(await screen.findByText(m.availability_detail_done())).toBeVisible();
+    // The answering rule stays in view for a returning volunteer.
+    expect(
+      screen.getByText(
+        `${m.availability_detail_help_covers()} ${m.availability_detail_change_until({ date: '01/10/2026' })}`,
+      ),
+    ).toBeVisible();
     expect(
       screen.queryByRole('button', {
         name: m.availability_detail_save_changes(),
@@ -1153,11 +1164,12 @@ describe('Availability check page', () => {
     const confirmation = screen.getByText(
       m.availability_detail_confirmed_on({ date: '01/10/2026' }),
     );
-    // The shortcut stays in reach after confirming, idle until something is marked.
-    const shortcut = screen.getByRole('button', {
-      name: m.availability_detail_confirm_all(),
-    });
-    expect(shortcut).toBeDisabled();
+    // An all-available answer has nothing for the shortcut to clear.
+    expect(
+      screen.queryByRole('button', {
+        name: m.availability_detail_confirm_all(),
+      }),
+    ).not.toBeInTheDocument();
     await userEvent.click(
       screen.getAllByRole('switch', {
         name: /disponibilidade:/i,
@@ -1166,7 +1178,17 @@ describe('Availability check page', () => {
     expect(
       screen.queryByText(m.availability_detail_done()),
     ).not.toBeInTheDocument();
-    expect(shortcut).toBeEnabled();
+    // While editing a saved answer, its discard is the only reset beside the save.
+    expect(
+      screen.getByRole('button', {
+        name: m.availability_detail_discard_changes(),
+      }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', {
+        name: m.availability_detail_confirm_all(),
+      }),
+    ).not.toBeInTheDocument();
     await userEvent.click(
       screen.getByRole('button', {
         name: m.availability_detail_save_changes(),
@@ -1281,8 +1303,11 @@ describe('Availability check page', () => {
         name: m.availability_detail_confirm(),
       }),
     );
-    const retry = await screen.findByRole('button', {
-      name: m.availability_detail_answer_error(),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      m.availability_detail_send_error(),
+    );
+    const retry = screen.getByRole('button', {
+      name: m.availability_detail_confirm(),
     });
     expect(
       within(sunday)
@@ -1383,7 +1408,7 @@ describe('Availability check page', () => {
 });
 
 describe('decision-first layout', () => {
-  it('folds fully published days into one group and counts only open Shifts', async () => {
+  it('keeps fully published days in date order with their outcome, and counts only open Shifts', async () => {
     api.getAvailabilityCheck.mockResolvedValue({
       ...CHECK,
       shifts: CHECK.shifts.map((shift) => ({
@@ -1394,12 +1419,26 @@ describe('decision-first layout', () => {
     renderPage();
     const monday = await screen.findByRole('region', { name: MONDAY });
     expect(
-      screen.getByText(m.availability_detail_published_days({ count: 2 })),
-    ).toBeVisible();
-    // The notice is said once, inside the folded group.
+      screen
+        .getAllByRole('region')
+        .map((region) => region.getAttribute('aria-label')),
+    ).toEqual([SUNDAY, MONDAY]);
+    const sunday = screen.getByRole('region', { name: SUNDAY });
+    // The day states the schedule outcome and points to it once.
     expect(
-      screen.getByText(m.availability_detail_published_group()),
-    ).not.toBeVisible();
+      within(sunday).getByText(m.availability_detail_published_day()),
+    ).toBeVisible();
+    expect(
+      within(sunday).getAllByRole('link', {
+        name: m.availability_detail_published_link(),
+      }),
+    ).toHaveLength(1);
+    expect(
+      within(sunday).getAllByText(m.availability_detail_locked_unassigned()),
+    ).toHaveLength(2);
+    expect(
+      within(sunday).queryByText('2 de 2 disponíveis'),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: m.availability_detail_back() }),
     ).toHaveAttribute('href', '/availability');

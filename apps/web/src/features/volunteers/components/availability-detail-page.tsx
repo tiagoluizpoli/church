@@ -267,10 +267,7 @@ function AvailabilityAnswer({
           date: formatCalendarDateOnly({ value: check.answerBy }),
         })
       : null;
-  const help = [
-    confirmed ? null : m.availability_detail_help_covers(),
-    changeUntil,
-  ]
+  const help = [m.availability_detail_help_covers(), changeUntil]
     .filter(Boolean)
     .join(' ');
   // Shifts arrive in the backend's start-time order; grouping keeps it.
@@ -292,15 +289,6 @@ function AvailabilityAnswer({
     );
   const pastDays = dayEntries.filter(isPastDay);
   const upcomingDays = dayEntries.filter((entry) => !isPastDay(entry));
-  // With something left to answer, fully published days fold away so a switch leads the page.
-  const isLockedDay = ([, shifts]: DayEntry) =>
-    editableShifts.length > 0 && shifts.every((shift) => shift.published);
-  const lockedDays = upcomingDays.filter(isLockedDay);
-  const openDays = upcomingDays.filter((entry) => !isLockedDay(entry));
-  const lockedShiftCount = lockedDays.reduce(
-    (count, [, shifts]) => count + shifts.length,
-    0,
-  );
   const markedDays = dayEntries
     .filter(([, shifts]) =>
       shifts.some(
@@ -323,15 +311,17 @@ function AvailabilityAnswer({
     });
     section.querySelector('h2')?.focus({ preventScroll: true });
   };
-  const foldSummaryClass = cn(
-    'radius-control flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-sm hover:text-foreground [&::-webkit-details-marker]:hidden',
-    SECONDARY_TONE,
+  const scheduleLink = (
+    <Link to="/my-schedule" className={LINK_CLASS}>
+      {m.availability_detail_published_link()}
+    </Link>
   );
 
-  const renderDay = ([day, shifts]: DayEntry, showLockNotice = true) => {
+  const renderDay = ([day, shifts]: DayEntry) => {
     const dayLabel = formatCalendarDayWithWeekday({ day, locale });
     const dayShifts = shifts.filter((shift) => !shift.published);
     const hasPublished = dayShifts.length < shifts.length;
+    const fullyPublished = dayShifts.length === 0;
     const wholeDayUnavailable =
       dayShifts.length > 0 &&
       dayShifts.every((shift) => draft.markedShiftIds.has(shift.shiftId));
@@ -348,7 +338,19 @@ function AvailabilityAnswer({
               <h2 tabIndex={-1} className="font-semibold text-base">
                 {dayLabel}
               </h2>
-              {wholeDayUnavailable && !hasPublished ? (
+              {fullyPublished ? (
+                // The schedule outcome, not an availability count, once nothing is left to answer.
+                <p
+                  className={cn(
+                    'flex flex-wrap items-center gap-x-1.5 text-sm',
+                    SECONDARY_TONE,
+                  )}
+                >
+                  <Lock aria-hidden className="size-4 shrink-0" />
+                  {m.availability_detail_published_day()}
+                  <span aria-hidden>·</span> {scheduleLink}
+                </p>
+              ) : wholeDayUnavailable && !hasPublished ? (
                 <p className="flex items-center gap-1.5 text-sm">
                   <CircleX
                     aria-hidden
@@ -360,11 +362,11 @@ function AvailabilityAnswer({
                 </p>
               ) : (
                 <p className={cn('text-sm tabular-nums', SECONDARY_TONE)}>
-                  {(shifts.length === 1
+                  {(dayShifts.length === 1
                     ? m.availability_detail_day_count_one
                     : m.availability_detail_day_count)({
-                    available: shifts.filter(isAvailable).length,
-                    total: shifts.length,
+                    available: dayShifts.filter(isAvailable).length,
+                    total: dayShifts.length,
                   })}
                 </p>
               )}
@@ -409,15 +411,13 @@ function AvailabilityAnswer({
               </Button>
             ) : null}
           </div>
-          {hasPublished && showLockNotice ? (
+          {hasPublished && !fullyPublished ? (
             // Each locked chip already says "Publicado"; the day only points to the schedule.
             <p
               className={cn('flex items-center gap-2 text-sm', SECONDARY_TONE)}
             >
               <Lock aria-hidden className="size-4 shrink-0" />
-              <Link to="/my-schedule" className={LINK_CLASS}>
-                {m.availability_detail_published_link()}
-              </Link>
+              {scheduleLink}
             </p>
           ) : null}
         </div>
@@ -513,13 +513,73 @@ function AvailabilityAnswer({
     );
   };
 
+  // One reset beside the main button: the saved answer's discard while editing it, else the shortcut.
+  const quietLinkClass =
+    'h-auto min-h-11 shrink-0 whitespace-normal px-0 underline hover:no-underline lg:self-start';
+  const secondaryAction = !canEdit ? null : confirmed && hasUnsentChanges ? (
+    restored ? null : (
+      <Button
+        variant="link"
+        size="touch"
+        className={quietLinkClass}
+        disabled={answer.isPending}
+        onClick={() => {
+          setUndoDraft(null);
+          discard();
+        }}
+      >
+        {m.availability_detail_discard_changes()}
+      </Button>
+    )
+  ) : showUndo ? (
+    <Button
+      variant="outline"
+      size="touch"
+      className="shrink-0"
+      onClick={() => {
+        setDraft(undoDraft);
+        setUndoDraft(null);
+      }}
+    >
+      {m.availability_detail_undo()}
+    </Button>
+  ) : done ? (
+    hasMarks ? (
+      <Button
+        variant="link"
+        size="touch"
+        className={quietLinkClass}
+        onClick={() => {
+          setUndoDraft(draft);
+          setDraft(NO_MARKS);
+        }}
+      >
+        {m.availability_detail_confirm_all()}
+      </Button>
+    ) : null
+  ) : (
+    // A draft reset, never a submit: the main button still sends the answer.
+    <Button
+      variant="outline"
+      size="touch"
+      className="shrink-0"
+      disabled={!hasMarks || answer.isPending}
+      onClick={() => {
+        setUndoDraft(draft);
+        setDraft(NO_MARKS);
+      }}
+    >
+      {m.availability_detail_confirm_all()}
+    </Button>
+  );
+
   return (
     // Below lg the two wrappers are `contents`, so `order` interleaves header, status and days.
     <div
       className={cn(
         'mx-auto flex w-full max-w-2xl flex-col gap-6 lg:grid lg:max-w-6xl lg:grid-cols-[minmax(0,40rem)_20rem] lg:items-start lg:gap-10 xl:grid-cols-[minmax(0,40rem)_22rem]',
-        // Room for the fixed mobile bar, which only exists while something is left to send.
-        !check.readOnly && !done && (confirmed ? 'pb-64' : 'pb-40'),
+        // Room for the fixed mobile bar; it grows only over the list's end, never above a row.
+        !check.readOnly && (done ? 'pb-24' : 'pb-48'),
         'md:pb-0',
       )}
     >
@@ -557,54 +617,28 @@ function AvailabilityAnswer({
               </Button>
             </div>
           ) : null}
-          {pastDays.length > 0 || lockedDays.length > 0 ? (
-            <div className="space-y-1">
-              {pastDays.length > 0 ? (
-                <details className="group">
-                  <summary className={foldSummaryClass}>
-                    <ChevronRight
-                      aria-hidden
-                      className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
-                    />
-                    {pastDays.length === 1
-                      ? m.availability_detail_past_days_one()
-                      : m.availability_detail_past_days({
-                          count: pastDays.length,
-                        })}
-                  </summary>
-                  <div className="space-y-8 pt-4">
-                    {pastDays.map((entry) => renderDay(entry))}
-                  </div>
-                </details>
-              ) : null}
-              {lockedDays.length > 0 ? (
-                <details className="group">
-                  <summary className={foldSummaryClass}>
-                    <ChevronRight
-                      aria-hidden
-                      className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
-                    />
-                    <Lock aria-hidden className="size-4" />
-                    {lockedShiftCount === 1
-                      ? m.availability_detail_published_days_one()
-                      : m.availability_detail_published_days({
-                          count: lockedShiftCount,
-                        })}
-                  </summary>
-                  <div className="space-y-8 pt-4">
-                    <p className={cn('text-sm', SECONDARY_TONE)}>
-                      {m.availability_detail_published_group()}{' '}
-                      <Link to="/my-schedule" className={LINK_CLASS}>
-                        {m.availability_detail_published_link()}
-                      </Link>
-                    </p>
-                    {lockedDays.map((entry) => renderDay(entry, false))}
-                  </div>
-                </details>
-              ) : null}
-            </div>
+          {pastDays.length > 0 ? (
+            <details className="group">
+              <summary
+                className={cn(
+                  'radius-control flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-sm hover:text-foreground [&::-webkit-details-marker]:hidden',
+                  SECONDARY_TONE,
+                )}
+              >
+                <ChevronRight
+                  aria-hidden
+                  className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+                />
+                {pastDays.length === 1
+                  ? m.availability_detail_past_days_one()
+                  : m.availability_detail_past_days({
+                      count: pastDays.length,
+                    })}
+              </summary>
+              <div className="space-y-8 pt-4">{pastDays.map(renderDay)}</div>
+            </details>
           ) : null}
-          {openDays.map((entry) => renderDay(entry))}
+          {upcomingDays.map(renderDay)}
         </div>
       </div>
       <div className="surface-panel contents lg:sticky lg:top-5 lg:flex lg:flex-col lg:gap-5 lg:p-5">
@@ -612,9 +646,10 @@ function AvailabilityAnswer({
           <h2 className="sr-only lg:not-sr-only lg:font-semibold lg:text-base">
             {m.availability_detail_summary()}
           </h2>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm lg:flex-col lg:items-start">
+          {/* One fact per line, so a changing status never rewraps what sits under it. */}
+          <div className="flex flex-col items-start gap-y-1 text-sm">
             {confirmed ? (
-              <p className="flex items-center gap-1.5 font-medium text-green-700 dark:text-green-400">
+              <p className="flex flex-wrap items-center gap-x-1.5 font-medium text-green-700 dark:text-green-400">
                 <CircleCheck aria-hidden className="size-4" />
                 {check.confirmedAt && confirmationDate ? (
                   <time dateTime={check.confirmedAt}>
@@ -625,6 +660,15 @@ function AvailabilityAnswer({
                 ) : (
                   m.availability_detail_confirmed()
                 )}
+                {done ? (
+                  // The narrow desktop panel gives it its own line, under the date.
+                  <span className="whitespace-nowrap lg:basis-full lg:pl-5.5">
+                    <span aria-hidden className="lg:hidden">
+                      ·{' '}
+                    </span>
+                    <span>{m.availability_detail_done()}</span>
+                  </span>
+                ) : null}
               </p>
             ) : (
               <p className="flex items-center gap-1.5 font-medium text-yellow-700 dark:text-yellow-300">
@@ -655,12 +699,6 @@ function AvailabilityAnswer({
               ) : null}
             </p>
           </div>
-          {done ? (
-            <p className="flex items-center gap-2 font-medium text-green-700 text-sm dark:text-green-400">
-              <CircleCheck aria-hidden className="size-5 shrink-0" />
-              {m.availability_detail_done()}
-            </p>
-          ) : null}
           {overdue ? (
             <div className="radius-control flex gap-2.5 border border-destructive/30 bg-destructive/8 p-3 text-sm">
               <TriangleAlert
@@ -685,38 +723,15 @@ function AvailabilityAnswer({
           ) : null}
         </div>
         {!check.readOnly ? (
-          <div
-            className={cn(
-              'space-y-2 lg:static lg:space-y-3 lg:border-t lg:bg-transparent lg:pt-5 lg:pb-0',
-              // A sent answer needs no bar; it comes back with the first unsent change.
-              done
-                ? 'order-2 lg:order-none'
-                : 'fixed inset-x-0 bottom-0 z-30 order-4 border-t bg-card px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:sticky md:inset-x-auto md:z-10 md:bg-background md:px-0',
-            )}
-          >
+          // Always present below md, so the first change never moves the list.
+          <div className="fixed inset-x-0 bottom-0 z-30 order-4 space-y-2 border-t bg-card px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:sticky md:inset-x-auto md:z-10 md:bg-background md:px-0 lg:static lg:space-y-3 lg:bg-transparent lg:pt-5 lg:pb-0">
             {confirmed && hasUnsentChanges ? (
-              <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-start">
-                <p
-                  role="status"
-                  className="min-w-0 flex-1 font-medium text-amber-700 text-sm dark:text-amber-300"
-                >
-                  {m.availability_detail_unsaved()}
-                </p>
-                {restored ? null : (
-                  <Button
-                    variant="outline"
-                    size="touch"
-                    className="shrink-0"
-                    disabled={answer.isPending}
-                    onClick={() => {
-                      setUndoDraft(null);
-                      discard();
-                    }}
-                  >
-                    {m.availability_detail_discard_changes()}
-                  </Button>
-                )}
-              </div>
+              <p
+                role="status"
+                className="font-medium text-amber-700 text-sm dark:text-amber-300"
+              >
+                {m.availability_detail_unsaved()}
+              </p>
             ) : null}
             <div className="flex items-center justify-between gap-3 lg:flex-col lg:items-stretch">
               <div className="min-w-0 space-y-1">
@@ -759,35 +774,7 @@ function AvailabilityAnswer({
                   </ul>
                 ) : null}
               </div>
-              {canEdit ? (
-                showUndo ? (
-                  <Button
-                    variant="outline"
-                    size="touch"
-                    className="shrink-0"
-                    onClick={() => {
-                      setDraft(undoDraft);
-                      setUndoDraft(null);
-                    }}
-                  >
-                    {m.availability_detail_undo()}
-                  </Button>
-                ) : (
-                  // A draft reset, never a submit: the main button still sends the answer.
-                  <Button
-                    variant="outline"
-                    size="touch"
-                    className="shrink-0"
-                    disabled={!hasMarks || answer.isPending}
-                    onClick={() => {
-                      setUndoDraft(draft);
-                      setDraft(NO_MARKS);
-                    }}
-                  >
-                    {m.availability_detail_confirm_all()}
-                  </Button>
-                )
-              ) : null}
+              {secondaryAction}
             </div>
             {showUndo ? (
               <p role="status" className="sr-only">
@@ -806,26 +793,14 @@ function AvailabilityAnswer({
                   ? confirmed
                     ? m.availability_detail_saving()
                     : m.availability_detail_pending()
-                  : answer.isError
-                    ? confirmed
-                      ? m.availability_detail_save_error()
-                      : m.availability_detail_answer_error()
-                    : label}
+                  : label}
               </Button>
             )}
             {answer.isError ? (
-              // One announcement: the button already reads the generic failure.
-              <p
-                role="alert"
-                className={
-                  publishedRefusal ? 'text-destructive text-sm' : 'sr-only'
-                }
-              >
+              <p role="alert" className="text-destructive text-sm">
                 {publishedRefusal
                   ? m.availability_detail_published_retry()
-                  : confirmed
-                    ? m.availability_detail_save_error()
-                    : m.availability_detail_answer_error()}
+                  : m.availability_detail_send_error()}
               </p>
             ) : null}
           </div>

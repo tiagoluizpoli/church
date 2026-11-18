@@ -252,9 +252,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   );
   await page.getByRole('button', { name: 'Confirmar disponibilidade' }).click();
   expect((await answerResponse).status()).toBe(200);
-  await expect(worshipCard).toContainText(
-    'Confirmada · indisponível para 1 de',
-  );
+  await expect(worshipCard).toContainText('Confirmada · indisponível em 1 de');
   expect(answerRequests).toHaveLength(1);
 
   // The remaining Worship shifts overlap Care's shifts; confirming Care must succeed.

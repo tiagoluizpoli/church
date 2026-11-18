@@ -99,6 +99,11 @@ describe('server error reporting', () => {
       trace_id: TRACE_ID,
       church_id: 'church_1',
     });
+    // The tracker's trace view and the trace_id tag name the same request.
+    expect(event?.contexts).toEqual({
+      trace: expect.objectContaining({ trace_id: res.headers['x-request-id'] }),
+    });
+    expect(res.headers['x-request-id']).toBe(TRACE_ID);
     expect(event?.environment).toBe(REPORT_ENVIRONMENT);
     expect(event?.release).toBe(REPORT_REVISION);
     expect(event?.user).toEqual({ id: 'user_1' });

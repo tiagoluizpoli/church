@@ -83,9 +83,12 @@ describe('AssignmentDetailPage', () => {
   it('renders the facts in the Church Timezone, the roster, the highlight and Open', async () => {
     api.getAssignmentDetail.mockResolvedValue(DETAIL);
     renderPage();
-    expect(await screen.findByText('Mon 12 Oct · Kids')).toBeInTheDocument();
-    expect(screen.getByText('12/10/2026 10:00 – 12:00')).toBeInTheDocument();
-    expect(screen.getByText('Sunday Service')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Sunday Service' }),
+    ).toBeInTheDocument();
+    // The same day and time format as the My schedule list.
+    expect(screen.getByText('Mon 12 Oct · 10:00–12:00')).toBeInTheDocument();
+    expect(screen.getByText('Kids', { selector: 'dd' })).toBeVisible();
     expect(screen.getByText('Babies Room', { selector: 'dd' })).toBeVisible();
     expect(screen.getByText('Ana Leader')).toBeInTheDocument();
     expect(screen.getByText('Joao P.')).toBeInTheDocument();
@@ -94,6 +97,22 @@ describe('AssignmentDetailPage', () => {
     expect(own).toHaveAttribute('aria-current', 'true');
     expect(screen.getByText('Joao P.').closest('li')).not.toHaveAttribute(
       'aria-current',
+    );
+  });
+
+  it('names the Ministry only when it differs from the Sector, and links back on mobile', async () => {
+    api.getAssignmentDetail.mockResolvedValue({
+      ...DETAIL,
+      ministryName: 'Babies Room',
+    });
+    renderPage();
+    expect(
+      await screen.findByText('Babies Room', { selector: 'dd' }),
+    ).toBeVisible();
+    expect(screen.queryByText('Ministry', { selector: 'dt' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'My schedule' })).toHaveAttribute(
+      'href',
+      '/my-schedule',
     );
   });
 
@@ -172,6 +191,11 @@ describe('AssignmentDetailPage', () => {
     expect(
       await screen.findByText('Swap requested · waiting for your leader'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "You're still on the schedule until your leader confirms who covers.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('Your note: Joao will cover')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Ask to swap' }),
@@ -196,6 +220,7 @@ describe('AssignmentDetailPage', () => {
     renderPage();
     expect(await screen.findByText(line)).toBeInTheDocument();
     expect(screen.queryByText(/waiting for your leader/)).toBeNull();
+    expect(screen.queryByText(/still on the schedule/)).toBeNull();
     expect(screen.queryByText(/Your note/)).toBeNull();
     if (reply)
       expect(

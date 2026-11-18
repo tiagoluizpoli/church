@@ -10,7 +10,7 @@ test('US5: volunteer keeps the loaded My schedule readable and sees the offline 
   await page.goto('/my-schedule');
 
   await expect(
-    page.getByRole('heading', { name: 'Minhas escalas' }),
+    page.getByRole('heading', { level: 1, name: 'Minha escala' }),
   ).toBeVisible();
   await expect(page.getByText('Modo offline', { exact: true })).toBeHidden();
 
@@ -18,7 +18,7 @@ test('US5: volunteer keeps the loaded My schedule readable and sees the offline 
 
   await expect(page.getByText('Modo offline', { exact: true })).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Minhas escalas' }),
+    page.getByRole('heading', { level: 1, name: 'Minha escala' }),
   ).toBeVisible();
 
   await page.getByRole('button', { name: 'Atualizar escala' }).click();

@@ -20,7 +20,7 @@
   --secondary: oklch(0.962 0.01 240);
   --secondary-foreground: oklch(0.336 0.028 252);
   --muted: oklch(0.955 0.008 236);
-  --muted-foreground: oklch(0.53 0.024 250);
+  --muted-foreground: oklch(0.48 0.024 250);
   --accent: oklch(0.948 0.018 247);
   --accent-foreground: oklch(0.324 0.037 252);
   /* Lightness lowered from 0.614: at 0.614 this red measures 4.05:1 on the

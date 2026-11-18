@@ -64,7 +64,11 @@ test('J10 admin cancellation: impact, typed gate, N9 and N10, closed SwapRequest
   );
   // Before: the Volunteer is scheduled and the leader sees the open swap.
   await volunteerPage.goto('/my-schedule');
-  await expect(assignmentLink).toBeVisible();
+  await expect(
+    volunteerPage
+      .getByRole('region', { name: m.home_next_assignment({}, locale) })
+      .locator(`a[href="/my-schedule/${journey.assignmentId}"]`),
+  ).toBeVisible();
   await leaderPage.goto(assignPreparePath({ ministryId, cycleId }));
   await expect(leaderPage.getByTestId('swap-requests-link')).toBeVisible();
 

@@ -13,7 +13,7 @@ colors:
   secondary: "oklch(0.962 0.01 240)"
   secondary-foreground: "oklch(0.336 0.028 252)"
   muted: "oklch(0.955 0.008 236)"
-  muted-foreground: "oklch(0.53 0.024 250)"
+  muted-foreground: "oklch(0.48 0.024 250)"
   accent: "oklch(0.948 0.018 247)"
   accent-foreground: "oklch(0.324 0.037 252)"
   destructive: "oklch(0.56 0.207 26)"
@@ -167,7 +167,7 @@ Restrained by default: tinted cool-blue neutrals carry almost the entire surface
 - **Chapel Mist** (`card`): card and popover surfaces, a hair lighter than the page so panels lift without a shadow.
 - **Quiet Blue** (`secondary`): secondary buttons, badge backgrounds, tab rail.
 - **Whisper Gray** (`muted`): disabled states, subtle section backgrounds, hover fills for outline and ghost buttons.
-- **Muted Slate** (`muted-foreground`): descriptions, secondary metadata, section descriptions.
+- **Muted Slate** (`muted-foreground`): descriptions, secondary metadata, section descriptions. Lightness is 0.48 (was 0.53) so a 14px section description keeps 4.5:1 on the lifted `.surface-panel`, not only on flat `card`.
 - **Hairline Blue** (`border`, `input`): strokes and field borders; `input` also fills the unchecked `Switch` track.
 - **Focus Blue** (`ring`): focus borders and focus rings.
 - **Sidebar Fog** (`sidebar`): the desktop sidebar and the mobile top header and bottom tab bar. One step cooler than the content area, so the wayfinding chrome reads as its own layer.

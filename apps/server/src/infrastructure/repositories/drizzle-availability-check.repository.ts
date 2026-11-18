@@ -611,7 +611,13 @@ export class DrizzleAvailabilityCheckRepository
           }),
         ),
       )
-      .orderBy(asc(availabilityCheck.state), asc(availabilityCheck.id));
+      // Enum order puts pending first; then the nearest Deadline, undated last.
+      .orderBy(
+        asc(availabilityCheck.state),
+        sql`${availabilityAsk.answerBy} asc nulls last`,
+        asc(cycle.startDate),
+        asc(availabilityCheck.id),
+      );
 
     return rows.map((row) => ({
       check: mapAvailabilityCheck(row.check),

@@ -376,6 +376,81 @@ describe('Volunteer availability reads through PostgreSQL', () => {
     });
   });
 
+  it('orders pending checks by nearest Deadline, undated last, then Cycle start, with confirmed checks after', async () => {
+    const { churchId, ministryId, member, check } = await seedCheck();
+    async function checkFor({
+      name,
+      startDate,
+      answerBy,
+      state,
+    }: {
+      name: string;
+      startDate: string;
+      answerBy: string | null;
+      state: 'pending' | 'confirmed';
+    }) {
+      const period = await createSchedulingPhase3Cycle({
+        churchId,
+        name,
+        startDate: new Date(startDate),
+        endDate: new Date(startDate.replace(/-01$/, '-28')),
+        state: 'sent',
+      });
+      if (answerBy) {
+        await db.insert(availabilityAsk).values({
+          churchId,
+          ministryId,
+          cycleId: period.id,
+          askedAt: new Date('2026-08-01'),
+          answerBy,
+        });
+      }
+      return buildAvailabilityCheck({
+        db,
+        churchId,
+        cycleId: period.id,
+        ministryMembershipId: member.membership.id,
+        state,
+      });
+    }
+    // Created out of order so insertion order cannot pass for the ORDER BY.
+    const december = await checkFor({
+      name: 'December',
+      startDate: '2026-12-01',
+      answerBy: null,
+      state: 'pending',
+    });
+    const confirmed = await checkFor({
+      name: 'January',
+      startDate: '2027-01-01',
+      answerBy: '2026-08-15',
+      state: 'confirmed',
+    });
+    const november = await checkFor({
+      name: 'November',
+      startDate: '2026-11-01',
+      answerBy: null,
+      state: 'pending',
+    });
+    const october = await checkFor({
+      name: 'October',
+      startDate: '2026-10-01',
+      answerBy: '2026-09-03',
+      state: 'pending',
+    });
+
+    const response = await app.inject({ method: 'GET', url: ROOT });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().checks.map(({ id }: { id: string }) => id)).toEqual([
+      october.id,
+      check.id,
+      november.id,
+      december.id,
+      confirmed.id,
+    ]);
+  });
+
   it('keeps Deadlines scoped to each Ministry of the Cycle and hides another Church’s checks', async () => {
     const { base, churchId, period, member, check } = await seedCheck();
     const second = await buildMinistry({

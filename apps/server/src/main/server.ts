@@ -1,6 +1,7 @@
 import { db } from '@church/db';
 import { env } from '@church/env/server';
 import { sql } from 'drizzle-orm';
+import { initErrorReporting } from '../infrastructure/services/sentry-error-reporter';
 import { createCompositionRoot } from './di/composition-root';
 import { registerReadiness } from './fastify/readiness';
 import { registerControllers } from './fastify/register-controllers';
@@ -8,6 +9,12 @@ import { createFastify } from './fastify/setup';
 import { OutboxPoller } from './outbox-poller';
 
 async function start(): Promise<void> {
+  initErrorReporting({
+    dsn: env.SENTRY_DSN,
+    enabled: env.ERROR_REPORTING_ENABLED,
+    environment: env.CHURCH_ENVIRONMENT,
+    revision: env.APP_REVISION,
+  });
   const root = createCompositionRoot();
 
   const app = await createFastify({ locale: root.locale });

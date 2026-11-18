@@ -6,7 +6,7 @@ import fastifyCors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import apiReference from '@scalar/fastify-api-reference';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import {
   hasZodFastifySchemaValidationErrors,
   isResponseSerializationError,
@@ -42,6 +42,7 @@ import {
   redactUrl,
   serializeRequest,
 } from '../../infrastructure/privacy/privacy';
+import { SentryErrorReporter } from '../../infrastructure/services/sentry-error-reporter';
 import { auth } from '../di/server-auth';
 import { requestId } from './request-id';
 
@@ -62,6 +63,25 @@ interface CreateFastifyInput {
 }
 
 const logSerializers = { req: serializeRequest };
+
+const errorReporter = new SentryErrorReporter();
+
+/** Unexpected 500s only; expected outcomes and 503s are never reported. */
+function reportUnexpected({ error, request }: ReportUnexpectedInput): void {
+  const { id, userId, churchId, method, url, headers } = request;
+  errorReporter.report({
+    error,
+    traceId: id,
+    userId,
+    churchId,
+    request: { method, url, headers },
+  });
+}
+
+interface ReportUnexpectedInput {
+  error: unknown;
+  request: FastifyRequest;
+}
 
 export async function createFastify({
   locale: localeSettings,
@@ -256,6 +276,7 @@ export async function createFastify({
         { issues: error.cause.issues, url: redactUrl({ url: request.url }) },
         'Serialization error',
       );
+      reportUnexpected({ error, request });
       return reply.code(500).send({
         error: 'INTERNAL_SERVER_ERROR',
         message: genericError,
@@ -280,6 +301,7 @@ export async function createFastify({
       { err: error, url: redactUrl({ url: request.url }) },
       'Unhandled error',
     );
+    reportUnexpected({ error, request });
     return reply.status(500).send({
       error: 'INTERNAL_SERVER_ERROR',
       message: genericError,

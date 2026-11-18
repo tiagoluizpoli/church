@@ -6,7 +6,7 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
-import { trace } from '@opentelemetry/api';
+import { isSpanContextValid, trace } from '@opentelemetry/api';
 import type { ChurchId } from '../domain/branded-ids';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type {
@@ -733,8 +733,15 @@ export class DbOutboxDrainer implements IOutboxDrainer {
 
   /** A message that will never be delivered: the maintainer must notice. */
   private reportFailure({ message }: ReportFailureInput): void {
+    // Runs inside the outbox.delivery span; untraced runs have no valid id.
+    const spanContext = trace.getActiveSpan()?.spanContext();
+    const traceId =
+      spanContext && isSpanContextValid(spanContext)
+        ? spanContext.traceId
+        : undefined;
     this.errorReporter.report({
       error: new OutboxDeliveryFailedError(),
+      traceId,
       tags: {
         // biome-ignore lint/style/useNamingConvention: tracker tags are snake_case
         outbox_message_id: message.id,

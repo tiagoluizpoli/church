@@ -11,7 +11,7 @@ export class OutageError extends Error {
 }
 
 /** An HTTP status (0 or missing: no response) that means the server is unreachable. */
-export function isOutageStatus(status: number | undefined): boolean {
+function isOutageStatus(status: number | undefined): boolean {
   return !status || OUTAGE_STATUSES.has(status);
 }
 
@@ -20,4 +20,13 @@ export function isOutageError(error: unknown): boolean {
   if (error instanceof OutageError) return true;
   if (!isAxiosError(error)) return false;
   return isOutageStatus(error.response?.status);
+}
+
+/**
+ * The session guard's stricter rule (ADR 0016): no response or any 5xx says
+ * nothing about who is signed in, so only a successful "no session" answer
+ * may send the user to login.
+ */
+export function isFailedSessionStatus(status: number | undefined): boolean {
+  return !status || status >= 500;
 }

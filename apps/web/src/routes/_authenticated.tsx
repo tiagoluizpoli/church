@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { authClient } from '@/lib/auth-client';
 import { ShellErrorFallback } from '@/shared/components/route-fallbacks';
-import { OutageError } from '@/shared/utils/outage';
+import { isFailedSessionStatus, OutageError } from '@/shared/utils/outage';
 
 export const Route = createFileRoute('/_authenticated')({
   component: () => <Outlet />,
@@ -12,10 +12,7 @@ export const Route = createFileRoute('/_authenticated')({
     const session = await authClient.getSession().catch((error: unknown) => {
       throw new OutageError({ cause: error });
     });
-    if (
-      session.error &&
-      (!session.error.status || session.error.status >= 500)
-    ) {
+    if (session.error && isFailedSessionStatus(session.error.status)) {
       throw new OutageError({ cause: session.error });
     }
     if (!session.data) {

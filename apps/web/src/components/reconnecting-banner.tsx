@@ -40,19 +40,22 @@ export function ReconnectingBanner() {
     });
   }, [isOutage, queryClient]);
 
-  if (!isOutage) return null;
+  // The live region stays mounted (empty) so the text is announced when it
+  // appears; a region that mounts already filled is often skipped.
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-2">
-      <p
-        role="status"
-        className="flex max-w-full items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm shadow-md"
-      >
-        <Loader2
-          aria-hidden="true"
-          className="size-4 shrink-0 animate-spin motion-reduce:animate-none"
-        />
-        <span>{m.common_reconnecting()}</span>
-      </p>
+    <div
+      role="status"
+      className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-2"
+    >
+      {isOutage ? (
+        <p className="flex max-w-full items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm shadow-md">
+          <Loader2
+            aria-hidden="true"
+            className="size-4 shrink-0 animate-spin motion-reduce:animate-none"
+          />
+          <span>{m.common_reconnecting()}</span>
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -100,8 +100,11 @@ describe('the session guard (_authenticated)', () => {
 
       const { router } = renderRoute({ initialPath: '/no-access' });
 
-      const status = await screen.findByRole('status');
-      expect(status).toHaveTextContent(m.shell_reconnecting_title());
+      // The banner's empty live region is a status too: find this one by text.
+      const title = await screen.findByText(m.shell_reconnecting_title());
+      expect(title.closest('[role="status"]')).toHaveTextContent(
+        m.shell_reconnecting_description(),
+      );
       expect(router.state.location.pathname).not.toBe('/login');
     });
 

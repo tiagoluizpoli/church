@@ -172,11 +172,15 @@ describe('Reconnecting banner', () => {
     serve(handlers);
     renderMinistries();
     expect(await listed('Worship')).toBeVisible();
+    // Mounted empty before the outage, so screen readers announce the text.
+    const region = screen.getByRole('status');
+    expect(region).toBeEmptyDOMElement();
 
     handlers.directory = unreachable;
     await focusWindow();
 
     expect(await screen.findByText(m.common_reconnecting())).toBeVisible();
+    expect(region).toHaveTextContent(m.common_reconnecting());
     expect(await listed('Worship')).toBeVisible();
     expect(toastError).not.toHaveBeenCalled();
 

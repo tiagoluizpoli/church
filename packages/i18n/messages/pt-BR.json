@@ -1649,7 +1649,7 @@
   "availability_detail_past_days": "Dias que já passaram ({count})",
   "availability_detail_past_days_one": "Dia que já passou (1)",
   "availability_detail_stat_past": "Dias que já passaram",
-  "availability_detail_stat_open": "Dias em aberto",
+  "availability_detail_stat_days_available": "Dias disponíveis",
   "availability_detail_stat_available": "Turnos disponíveis",
   "availability_detail_stat_published": "Dias publicados",
   "availability_detail_panel_hint": "Desligue os turnos em que você não puder servir. Os demais contam como disponíveis.",

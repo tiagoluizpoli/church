@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { parseInstant, setTestClock } from '@church/time';
+import { compareInstants, now, parseInstant, setTestClock } from '@church/time';
 import { QueryClient } from '@tanstack/react-query';
 import {
   createBrowserHistory,
@@ -23,9 +23,11 @@ import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AvailabilityDetailPage } from '@/features/volunteers/components/availability-detail-page';
 import { useLocalAvailabilityDraft } from '@/features/volunteers/hooks/use-local-availability-draft';
+import type { CheckShift } from '@/features/volunteers/lib/unavailable-shifts';
 import * as unavailableShifts from '@/features/volunteers/lib/unavailable-shifts';
 import type { GetAvailabilityCheck200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
+import { dayOf } from '@/shared/utils/church-time';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const api = vi.hoisted(() => ({
@@ -34,11 +36,68 @@ const api = vi.hoisted(() => ({
   getCallerCapabilities: vi.fn(),
 }));
 vi.mock('@/utils/api-instances', () => ({
-  volunteerApi: api,
+  // Tests write a check as its flat Shift list; the server sends it grouped by day.
+  volunteerApi: {
+    getAvailabilityCheck: async (...args: unknown[]) =>
+      toDetail(await api.getAvailabilityCheck(...args)),
+    answerAvailabilityCheck: async (...args: unknown[]) =>
+      toDetail(await api.answerAvailabilityCheck(...args)),
+  },
   callerCapabilitiesApi: api,
 }));
 
-const CHECK: GetAvailabilityCheck200 = {
+type FlatShift = Omit<CheckShift, 'answerable'>;
+type FlatCheck = Omit<GetAvailabilityCheck200, 'days' | 'counts'> & {
+  shifts: FlatShift[];
+};
+
+/** Groups a flat check the way the server does: by Church day, with the answerable rule and counts. */
+function toDetail(check: FlatCheck | undefined): GetAvailabilityCheck200 {
+  if (!check) return check as unknown as GetAvailabilityCheck200;
+  const { shifts, ...rest } = check;
+  const clock = now();
+  const ended = (shift: FlatShift) =>
+    compareInstants({
+      left: parseInstant({ value: shift.endTime }),
+      right: clock,
+    }) <= 0;
+  const byDay = new Map<string, CheckShift[]>();
+  for (const shift of shifts) {
+    const date = dayOf({
+      value: shift.startTime,
+      timeZone: 'America/Sao_Paulo',
+    });
+    const answerable = !check.readOnly && !shift.published && !ended(shift);
+    byDay.set(date, [...(byDay.get(date) ?? []), { ...shift, answerable }]);
+  }
+  const days = [...byDay.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, dayShifts]) => ({
+      date,
+      state: dayShifts.every(ended)
+        ? ('past' as const)
+        : dayShifts.some((shift) => shift.answerable)
+          ? ('open' as const)
+          : ('published' as const),
+      shifts: dayShifts,
+    }));
+  const inState = (state: string) =>
+    days.filter((day) => day.state === state).length;
+  return {
+    ...rest,
+    days,
+    counts: {
+      openDays: inState('open'),
+      pastDays: inState('past'),
+      publishedDays: inState('published'),
+      openShifts: days
+        .flatMap((day) => day.shifts)
+        .filter((shift) => shift.answerable).length,
+    },
+  };
+}
+
+const CHECK: FlatCheck = {
   id: 'check-1',
   cycleId: 'cycle-1',
   cycleName: 'Outubro 2026',
@@ -176,12 +235,12 @@ describe('Availability check page', () => {
     expect(api.answerAvailabilityCheck).not.toHaveBeenCalled();
   });
 
-  it('counts open days and available Shifts in the header and follows each toggle', async () => {
+  it('counts available days and Shifts out of the open ones and follows each toggle', async () => {
     const user = userEvent.setup();
     renderPage();
-    const openDays = await screen.findByTestId('availability-open-days-chip');
+    const days = await screen.findByTestId('availability-available-days-chip');
     const available = screen.getByTestId('availability-available-shifts-chip');
-    expect(openDays).toHaveTextContent('Dias em aberto2');
+    expect(days).toHaveTextContent('Dias disponíveis2/2');
     expect(available).toHaveTextContent('Turnos disponíveis3/3');
     expect(
       screen.queryByTestId('availability-past-days-chip'),
@@ -193,8 +252,49 @@ describe('Availability check page', () => {
     await user.click(
       screen.getByRole('switch', { name: /disponibilidade.*culto da manhã/i }),
     );
-
+    // Sunday still has its evening Shift, so the day still counts.
+    expect(days).toHaveTextContent('Dias disponíveis2/2');
     expect(available).toHaveTextContent('Turnos disponíveis2/3');
+
+    await user.click(
+      screen.getByRole('switch', { name: /disponibilidade.*culto à noite/i }),
+    );
+    expect(days).toHaveTextContent('Dias disponíveis1/2');
+    expect(available).toHaveTextContent('Turnos disponíveis1/3');
+  });
+
+  it('shows a past day as its answers only, without switches or a place in the counts', async () => {
+    // Sunday's Shifts have ended; Monday's has not.
+    setTestClock({ instant: parseInstant({ value: '2026-10-05T03:00:00Z' }) });
+    api.getAvailabilityCheck.mockResolvedValue({
+      ...CHECK,
+      shifts: CHECK.shifts.map((shift) => ({
+        ...shift,
+        available: shift.shiftId !== 'morning',
+      })),
+    });
+    renderPage();
+    expect(
+      await screen.findByTestId('availability-past-days-chip'),
+    ).toHaveTextContent('Dias que já passaram1');
+    expect(
+      screen.getByTestId('availability-available-days-chip'),
+    ).toHaveTextContent('Dias disponíveis1/1');
+    expect(
+      screen.getByTestId('availability-available-shifts-chip'),
+    ).toHaveTextContent('Turnos disponíveis1/1');
+    expect(
+      screen.getAllByRole('switch', { name: /disponibilidade:/i }),
+    ).toHaveLength(1);
+    expect(
+      screen.getByRole('switch', { name: /disponibilidade.*encontro/i }),
+    ).toBeChecked();
+    // The ended Shift keeps its answer as text inside the fold.
+    const morning = screen.getByText('Culto da manhã').closest('li');
+    expect(morning).toHaveTextContent(m.availability_detail_unavailable());
+    expect(
+      screen.getByText(m.availability_detail_available_everywhere()),
+    ).toBeVisible();
   });
 
   it('lists the unavailable Shifts beside the days on a wide screen and sends from there', async () => {
@@ -268,7 +368,7 @@ describe('Availability check page', () => {
     const writes = vi.spyOn(Storage.prototype, 'setItem');
     const removals = vi.spyOn(Storage.prototype, 'removeItem');
     const input = {
-      check: CHECK,
+      check: toDetail(CHECK),
       userId: 'person',
       timeZone: 'America/Sao_Paulo',
       hasFreshDetail: true,
@@ -290,7 +390,7 @@ describe('Availability check page', () => {
       result.current.setDraft((draft) =>
         unavailableShifts.toggleShiftUnavailable({
           draft,
-          shifts: CHECK.shifts,
+          shifts: unavailableShifts.answerableShifts(input.check),
           shiftId: 'morning',
           timeZone: input.timeZone,
         }),
@@ -319,13 +419,13 @@ describe('Availability check page', () => {
     vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
       throw new Error('unavailable');
     });
-    const check = {
+    const check = toDetail({
       ...CHECK,
       shifts: CHECK.shifts.map((shift) => ({
         ...shift,
         available: shift.shiftId !== 'evening',
       })),
-    };
+    });
     const { result, rerender } = renderHook(
       ({ timeZone }) =>
         useLocalAvailabilityDraft({
@@ -343,7 +443,7 @@ describe('Availability check page', () => {
       result.current.setDraft((draft) =>
         unavailableShifts.toggleShiftUnavailable({
           draft,
-          shifts: check.shifts,
+          shifts: unavailableShifts.answerableShifts(check),
           shiftId: 'next-day',
           timeZone: 'UTC',
         }),
@@ -366,10 +466,13 @@ describe('Availability check page', () => {
       })),
     };
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['availability-check', 'check-1'], cached);
-    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    queryClient.setQueryData(
+      ['availability-check', 'check-1'],
+      toDetail(cached),
+    );
+    let resolveDetail!: (check: FlatCheck) => void;
     api.getAvailabilityCheck.mockReturnValue(
-      new Promise<GetAvailabilityCheck200>((resolve) => {
+      new Promise<FlatCheck>((resolve) => {
         resolveDetail = resolve;
       }),
     );
@@ -425,10 +528,13 @@ describe('Availability check page', () => {
       })),
     };
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
-    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    queryClient.setQueryData(
+      ['availability-check', 'check-1'],
+      toDetail(CHECK),
+    );
+    let resolveDetail!: (check: FlatCheck) => void;
     api.getAvailabilityCheck.mockReturnValue(
-      new Promise<GetAvailabilityCheck200>((resolve) => {
+      new Promise<FlatCheck>((resolve) => {
         resolveDetail = resolve;
       }),
     );
@@ -477,16 +583,19 @@ describe('Availability check page', () => {
     const storageKey = 'availability-draft:person:check-1';
     localStorage.setItem(storageKey, '["morning"]');
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['availability-check', 'check-1'], {
-      ...CHECK,
-      shifts: CHECK.shifts.map((shift) => ({
-        ...shift,
-        available: shift.shiftId !== 'morning',
-      })),
-    });
-    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    queryClient.setQueryData(
+      ['availability-check', 'check-1'],
+      toDetail({
+        ...CHECK,
+        shifts: CHECK.shifts.map((shift) => ({
+          ...shift,
+          available: shift.shiftId !== 'morning',
+        })),
+      }),
+    );
+    let resolveDetail!: (check: FlatCheck) => void;
     api.getAvailabilityCheck.mockReturnValue(
-      new Promise<GetAvailabilityCheck200>((resolve) => {
+      new Promise<FlatCheck>((resolve) => {
         resolveDetail = resolve;
       }),
     );
@@ -535,10 +644,13 @@ describe('Availability check page', () => {
     const storageKey = 'availability-draft:person:check-1';
     localStorage.setItem(storageKey, '[]');
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
-    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    queryClient.setQueryData(
+      ['availability-check', 'check-1'],
+      toDetail(CHECK),
+    );
+    let resolveDetail!: (check: FlatCheck) => void;
     api.getAvailabilityCheck.mockReturnValue(
-      new Promise<GetAvailabilityCheck200>((resolve) => {
+      new Promise<FlatCheck>((resolve) => {
         resolveDetail = resolve;
       }),
     );
@@ -563,10 +675,13 @@ describe('Availability check page', () => {
       '["morning", "evening"]',
     );
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
-    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    queryClient.setQueryData(
+      ['availability-check', 'check-1'],
+      toDetail(CHECK),
+    );
+    let resolveDetail!: (check: FlatCheck) => void;
     api.getAvailabilityCheck.mockReturnValue(
-      new Promise<GetAvailabilityCheck200>((resolve) => {
+      new Promise<FlatCheck>((resolve) => {
         resolveDetail = resolve;
       }),
     );
@@ -612,10 +727,13 @@ describe('Availability check page', () => {
 
   it('preserves in-session edits while refetch prunes removed and published marks and updates untouched rows', async () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
-    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    queryClient.setQueryData(
+      ['availability-check', 'check-1'],
+      toDetail(CHECK),
+    );
+    let resolveDetail!: (check: FlatCheck) => void;
     api.getAvailabilityCheck.mockReturnValue(
-      new Promise<GetAvailabilityCheck200>((resolve) => {
+      new Promise<FlatCheck>((resolve) => {
         resolveDetail = resolve;
       }),
     );
@@ -669,10 +787,13 @@ describe('Availability check page', () => {
 
   it('follows refreshed server marks when the cached draft is untouched without inventing unsent changes', async () => {
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['availability-check', 'check-1'], CHECK);
-    let resolveDetail!: (check: GetAvailabilityCheck200) => void;
+    queryClient.setQueryData(
+      ['availability-check', 'check-1'],
+      toDetail(CHECK),
+    );
+    let resolveDetail!: (check: FlatCheck) => void;
     api.getAvailabilityCheck.mockReturnValue(
-      new Promise<GetAvailabilityCheck200>((resolve) => {
+      new Promise<FlatCheck>((resolve) => {
         resolveDetail = resolve;
       }),
     );
@@ -1007,10 +1128,8 @@ describe('Availability check page', () => {
       })),
     });
     renderPage();
-    const toggles = await screen.findAllByRole('switch', {
-      name: /disponibilidade:/i,
-    });
-    expect(toggles[0]).not.toBeChecked();
+    const morning = (await screen.findByText('Culto da manhã')).closest('li');
+    expect(morning).toHaveTextContent(m.availability_detail_unavailable());
     expect(
       screen.queryByText(m.availability_draft_restored()),
     ).not.toBeInTheDocument();
@@ -1078,19 +1197,17 @@ describe('Availability check page', () => {
     );
   });
 
-  it('renders a Past-Cycle check with disabled switches, a read-only notice and no buttons', async () => {
+  it('renders a Past-Cycle check with its answers as text, a read-only notice and no controls', async () => {
     api.getAvailabilityCheck.mockResolvedValue({ ...CHECK, readOnly: true });
     renderPage();
     await screen.findByText('Kids · Outubro 2026');
-    for (const toggle of screen.getAllByRole('switch'))
-      expect(toggle).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByText(m.availability_detail_read_only())).toBeVisible();
+    // Nothing left to change: no switches, no buttons, each answer shown as it stands.
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(
-      screen.getAllByRole('switch', {
-        name: /disponibilidade:/i,
-      }),
-    ).toHaveLength(3);
+    expect(screen.getAllByText(m.availability_detail_available())).toHaveLength(
+      3,
+    );
   });
 
   it('locks published rows while whole-day marking changes only unpublished Shifts', async () => {
@@ -1233,17 +1350,17 @@ describe('Availability check page', () => {
     expect(
       screen.queryByText(m.availability_detail_done()),
     ).not.toBeInTheDocument();
-    // While editing a saved answer, its discard is the only reset beside the save.
+    // While editing a saved answer, both resets sit beside the save: back to the sent answer, or everything available.
     expect(
       screen.getByRole('button', {
         name: m.availability_detail_discard_changes(),
       }),
     ).toBeVisible();
     expect(
-      screen.queryByRole('button', {
+      screen.getByRole('button', {
         name: m.availability_detail_confirm_all(),
       }),
-    ).not.toBeInTheDocument();
+    ).toBeVisible();
     await userEvent.click(
       screen.getByRole('button', {
         name: m.availability_detail_save_changes(),
@@ -1636,7 +1753,7 @@ describe('everything-available shortcut', () => {
     await waitFor(() => expect(onAnswered).toHaveBeenCalledOnce());
   });
 
-  it('stays hidden beside the done state; editing the saved answer offers its discard instead', async () => {
+  it('stays hidden beside the done state; editing the saved answer offers it next to its discard', async () => {
     api.getAvailabilityCheck.mockResolvedValue({
       ...CHECK,
       state: 'confirmed',
@@ -1660,6 +1777,11 @@ describe('everything-available shortcut', () => {
     expect(
       screen.getByRole('button', {
         name: m.availability_detail_discard_changes(),
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', {
+        name: m.availability_detail_confirm_all(),
       }),
     ).toBeVisible();
   });

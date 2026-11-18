@@ -1649,7 +1649,7 @@
   "availability_detail_past_days": "Days already past ({count})",
   "availability_detail_past_days_one": "Day already past (1)",
   "availability_detail_stat_past": "Days already past",
-  "availability_detail_stat_open": "Days open",
+  "availability_detail_stat_days_available": "Days available",
   "availability_detail_stat_available": "Shifts available",
   "availability_detail_stat_published": "Days published",
   "availability_detail_panel_hint": "Switch off the shifts you can't serve. The rest count as available.",

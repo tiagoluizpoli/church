@@ -1,3 +1,6 @@
+// biome-ignore-all lint/style/useNamingConvention: Sentry event fields are snake_case on the wire
+import { z } from 'zod';
+
 /**
  * The one server privacy module (ADR 0014). Framework-free so log shipping and
  * error-report scrubbing share the same URL and header rules.
@@ -66,5 +69,100 @@ export function serializeRequest(request: LoggedRequest) {
     method: request.method,
     url: redactUrl({ url: request.url }),
     headers: allowedHeaders({ headers: request.headers }),
+  };
+}
+
+// Report tags carry ids and deployment facts only.
+const ALLOWED_TAGS: ReadonlySet<string> = new Set([
+  'environment',
+  'revision',
+  'trace_id',
+  'church_id',
+  'outbox_message_id',
+  'outbox_kind',
+]);
+
+// Zod drops unknown keys, so each schema is the allowlist: the exception
+// value, message, breadcrumbs, extra, frame vars, user email/IP/name, request
+// body, cookies and query string never pass.
+const frameSchema = z.object({
+  filename: z.string().optional(),
+  abs_path: z.string().optional(),
+  module: z.string().optional(),
+  function: z.string().optional(),
+  lineno: z.number().optional(),
+  colno: z.number().optional(),
+  in_app: z.boolean().optional(),
+});
+
+const reportEventSchema = z.object({
+  event_id: z.string().optional(),
+  timestamp: z.number().optional(),
+  level: z.string().optional(),
+  platform: z.string().optional(),
+  environment: z.string().optional(),
+  release: z.string().optional(),
+  tags: z.record(z.string(), z.unknown()).optional(),
+  user: z.object({ id: z.string().optional() }).optional(),
+  request: z
+    .object({
+      method: z.string().optional(),
+      url: z.string().optional(),
+      headers: z.record(z.string(), z.unknown()).optional(),
+    })
+    .optional(),
+  exception: z
+    .object({
+      values: z.array(
+        z.object({
+          type: z.string().optional(),
+          mechanism: z
+            .object({ type: z.string(), handled: z.boolean().optional() })
+            .optional(),
+          stacktrace: z.object({ frames: z.array(frameSchema) }).optional(),
+        }),
+      ),
+    })
+    .optional(),
+  contexts: z
+    .object({
+      trace: z
+        .object({ trace_id: z.string(), span_id: z.string().optional() })
+        .optional(),
+    })
+    .optional(),
+});
+
+export type ScrubbedEvent = z.infer<typeof reportEventSchema>;
+
+export interface ScrubEventInput {
+  event: unknown;
+}
+
+/**
+ * An error-tracker event reduced to ids, error type and stack (ADR 0014), or
+ * null when it isn't a well-formed event. Server reports and forwarded
+ * browser reports both pass through here.
+ */
+export function scrubEvent({ event }: ScrubEventInput): ScrubbedEvent | null {
+  const parsed = reportEventSchema.safeParse(event);
+  if (!parsed.success) return null;
+  const { tags, request, ...rest } = parsed.data;
+  return {
+    ...rest,
+    ...(tags && {
+      tags: Object.fromEntries(
+        Object.entries(tags).filter(([name]) => ALLOWED_TAGS.has(name)),
+      ),
+    }),
+    ...(request && {
+      request: {
+        ...(request.method && { method: request.method }),
+        ...(request.url && { url: redactUrl({ url: request.url }) }),
+        ...(request.headers && {
+          headers: allowedHeaders({ headers: request.headers }),
+        }),
+      },
+    }),
   };
 }

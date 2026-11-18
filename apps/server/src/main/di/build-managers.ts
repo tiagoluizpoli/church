@@ -33,6 +33,7 @@ import { ChurchRecipients } from '../../application/church-recipients';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
+import { SentryErrorReporter } from '../../infrastructure/services/sentry-error-reporter';
 import type { Auth } from './build-auth';
 import type { Repositories } from './build-repositories';
 import type { Services } from './build-services';
@@ -257,6 +258,7 @@ export function buildManagers({
       unitOfWork,
       config,
       webBaseUrl: env.CORS_ORIGIN,
+      errorReporter: new SentryErrorReporter(),
     });
   const staffingSeeder = new UsualSetupStaffingSeeder({
     participationRepository: ministryParticipationRepository,

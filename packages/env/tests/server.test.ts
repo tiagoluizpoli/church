@@ -135,3 +135,26 @@ describe('server env: observability', () => {
     expect(await invalidIssues({ [key]: value })).toContain(key);
   });
 });
+
+describe('server env: error reporting', () => {
+  it('has no DSN and the switch on by default', async () => {
+    const env = await parse({});
+    expect(env.SENTRY_DSN).toBeUndefined();
+    expect(env.ERROR_REPORTING_ENABLED).toBe(true);
+  });
+
+  it('reads the DSN and the switch', async () => {
+    const env = await parse({
+      SENTRY_DSN: 'https://key@tracker.test/1',
+      ERROR_REPORTING_ENABLED: 'false',
+    });
+    expect(env.SENTRY_DSN).toBe('https://key@tracker.test/1');
+    expect(env.ERROR_REPORTING_ENABLED).toBe(false);
+  });
+
+  it('rejects a DSN that is not a URL', async () => {
+    expect(await invalidIssues({ SENTRY_DSN: 'not a url' })).toContain(
+      'SENTRY_DSN',
+    );
+  });
+});

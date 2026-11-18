@@ -47,6 +47,10 @@ export const env = createEnv({
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     /** Share of new traces kept; an incoming traceparent's decision wins. */
     TRACE_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(1),
+    /** Error tracker (GlitchTip) DSN; unset keeps error reporting off. */
+    SENTRY_DSN: z.url().optional(),
+    /** Turns error reporting off even with a DSN set. */
+    ERROR_REPORTING_ENABLED: z.stringbool().default(true),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

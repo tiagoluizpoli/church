@@ -115,6 +115,7 @@ function buildDrainer({ emailSender }: BuildDrainerInput): DbOutboxDrainer {
     unitOfWork,
     config: appConfig,
     webBaseUrl: 'https://app.test',
+    errorReporter: { report: () => undefined },
   });
 }
 
@@ -1251,6 +1252,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       unitOfWork,
       config,
       webBaseUrl: 'https://app.test',
+      errorReporter: { report: () => undefined },
     });
   }
 

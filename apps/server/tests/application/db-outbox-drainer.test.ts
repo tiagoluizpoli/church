@@ -1,5 +1,6 @@
+// biome-ignore-all lint/style/useNamingConvention: Sentry event fields are snake_case on the wire
 import { appConfig } from '@church/app-config';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DbOutboxDrainer } from '@/application/db-outbox-drainer';
 import type {
   ChurchId,
@@ -8,6 +9,11 @@ import type {
   UserId,
 } from '@/domain/branded-ids';
 import { EmailSendError } from '@/domain/errors/email-send-error';
+import { SentryErrorReporter } from '@/infrastructure/services/sentry-error-reporter';
+import {
+  type CapturedReports,
+  captureErrorReports,
+} from '@/tests/test-support/error-report-capture';
 
 const churchId = 'church_1' as ChurchId;
 const ministryId = 'ministry_1' as MinistryId;
@@ -55,8 +61,15 @@ function createDrainer(): DbOutboxDrainer {
     unitOfWork: unitOfWork as never,
     config: appConfig,
     webBaseUrl: 'https://app.test',
+    errorReporter: new SentryErrorReporter(),
   });
 }
+
+let reports: CapturedReports;
+
+beforeAll(() => {
+  reports = captureErrorReports();
+});
 
 function buildMessage(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -89,6 +102,7 @@ function buildInvitation(overrides: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  reports.clear();
   // Like the repository: the stored delivery, nothing confirmed yet.
   outboxRepository.recordEmailPrepared.mockImplementation(
     async ({ tx: _tx, id: _id, ...delivery }) => ({
@@ -251,6 +265,42 @@ describe('DbOutboxDrainer.drainOnce', () => {
     expect(outboxRepository.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({ attempts: 1, status: 'failed' }),
     );
+  });
+
+  it('reports a terminal delivery failure once, by id and kind only', async () => {
+    outboxRepository.claimPending.mockResolvedValue([buildMessage()]);
+    invitationRepository.findById.mockResolvedValue(buildInvitation());
+    emailSender.deliver.mockRejectedValue(
+      new EmailSendError({
+        message: 'invalid recipient invitee@example.com',
+        retryable: false,
+      }),
+    );
+
+    await createDrainer().drainOnce({ limit: 10 });
+
+    const events = await reports.settle();
+    expect(events).toHaveLength(1);
+    expect(events[0]?.tags).toMatchObject({
+      outbox_message_id: 'outbox_1',
+      outbox_kind: 'invitation.chained',
+    });
+    expect(events[0]?.exception).toMatchObject({
+      values: [{ type: 'OutboxDeliveryFailedError' }],
+    });
+    expect(reports.envelopes.join('\n')).not.toContain('invitee@example.com');
+  });
+
+  it('does not report a failure that will be retried', async () => {
+    outboxRepository.claimPending.mockResolvedValue([buildMessage()]);
+    invitationRepository.findById.mockResolvedValue(buildInvitation());
+    emailSender.deliver.mockRejectedValue(
+      new EmailSendError({ message: 'rate limited', retryable: true }),
+    );
+
+    await createDrainer().drainOnce({ limit: 10 });
+
+    expect(await reports.settle()).toEqual([]);
   });
 
   it('fails a Church offer T1 terminally once the offer is no longer pending', async () => {

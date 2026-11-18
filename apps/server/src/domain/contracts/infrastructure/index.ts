@@ -8,6 +8,7 @@ export * from './church-access.repository';
 export * from './church-membership.repository';
 export * from './cycle.repository';
 export * from './email-sender';
+export * from './error-reporter';
 export * from './event.repository';
 export * from './event-template.repository';
 export * from './event-time-block.repository';

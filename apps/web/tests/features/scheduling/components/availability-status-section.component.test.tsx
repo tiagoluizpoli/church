@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { parseInstant, setTestClock } from '@church/time';
+import { QueryClient } from '@tanstack/react-query';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
@@ -411,14 +412,37 @@ it('keeps Answers visible but removes Deadline editing when read-only', async ()
   expect(api.remindSchedule).not.toHaveBeenCalled();
 });
 
+it('keeps the Answers on screen while a refetch is in flight', async () => {
+  const queryClient = new QueryClient();
+  renderWithProviders(
+    <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+    { queryClient },
+  );
+  expect(await screen.findByText('Ana')).toBeVisible();
+  api.getCycleAvailabilityStatus.mockReturnValue(new Promise(() => {}));
+  act(() => {
+    void queryClient.invalidateQueries();
+  });
+  await waitFor(() =>
+    expect(api.getCycleAvailabilityStatus).toHaveBeenCalledTimes(2),
+  );
+  expect(screen.getByText('Ana')).toBeVisible();
+  expect(
+    screen.queryByRole('status', { name: m.answers_loading() }),
+  ).toBeNull();
+});
+
 it('shows loading and failed reads distinctly from an empty Answers list and allows retry', async () => {
   api.getCycleAvailabilityStatus.mockReturnValue(new Promise(() => {}));
   const view = renderWithProviders(
     <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
   );
-  expect(
-    screen.getByRole('status', { name: m.answers_loading() }),
-  ).toBeVisible();
+  const loading = screen.getByRole('status', { name: m.answers_loading() });
+  expect(loading).toHaveAttribute('aria-busy', 'true');
+  expect(loading.querySelector('[data-slot="skeleton"]')).toBeNull();
+  await waitFor(() =>
+    expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+  );
   expect(screen.queryByText(m.answers_empty())).not.toBeInTheDocument();
   expect(
     screen.queryByText(m.answers_count({ confirmed: 0, asked: 0 })),

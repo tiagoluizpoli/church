@@ -94,7 +94,6 @@ export function TemplateManagerCard() {
   const templatesQuery = useQuery({
     queryKey: TEMPLATE_LIST_QUERY_KEY,
     queryFn: () => adminApi.listEventTemplates(),
-    retry: false,
   });
   const templates = templatesQuery.data?.templates ?? [];
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -123,11 +122,6 @@ export function TemplateManagerCard() {
             items={rows}
             rowId={({ item }) => item.id}
             isLoading={templatesQuery.isLoading}
-            loadingContent={
-              <p className="text-muted-foreground text-sm">
-                {m.event_templates_loading()}
-              </p>
-            }
             emptyContent={
               <div className="flex flex-col items-start gap-3">
                 <p className="text-muted-foreground text-sm">

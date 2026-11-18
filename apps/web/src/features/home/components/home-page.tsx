@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
 import { HomeError } from '@/features/home/components/home-error';
@@ -79,7 +80,12 @@ function PlainWelcome({ churchId }: PlainWelcomeProps) {
   if (churchName) {
     return <p className="text-lg">{m.home_welcome({ churchName })}</p>;
   }
-  if (optionsQuery.isPending) return <Skeleton className="h-6 w-72" />;
+  if (optionsQuery.isPending)
+    return (
+      <Pending label={m.shell_church_loading()}>
+        <Skeleton className="h-6 w-72" />
+      </Pending>
+    );
   return (
     <HomeError
       message={m.home_load_error()}
@@ -182,9 +188,9 @@ export function HomePage({ search }: HomePageProps) {
       {state.status === 'error' ? (
         <HomeError message={m.home_load_error()} onRetry={state.retry} />
       ) : !capacities || !sectionProps ? (
-        <div role="status" aria-label={m.home_loading()}>
+        <Pending label={m.home_loading()}>
           <Skeleton className="h-24 w-full" />
-        </div>
+        </Pending>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
           {!homeWidgets.some(

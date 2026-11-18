@@ -2,9 +2,9 @@ import './default-locale-strategy';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import ReactDOM from 'react-dom/client';
-import Loader from './components/loader';
 import { initLocale } from './locale-init';
 import { routeTree } from './routeTree.gen';
+import { routeFallbackOptions } from './shared/components/route-fallbacks';
 import { queryClient } from './utils/api';
 
 // Must run before the router is created so ?lang= never reaches route search schemas.
@@ -17,7 +17,9 @@ interface WrapComponentProps {
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
-  defaultPendingComponent: () => <Loader />,
+  // Never swap the previous page for a pending component; <RouteProgress /> shows progress.
+  defaultPendingMs: Number.POSITIVE_INFINITY,
+  ...routeFallbackOptions,
   context: { queryClient },
   Wrap: function WrapComponent({ children }: WrapComponentProps) {
     return (

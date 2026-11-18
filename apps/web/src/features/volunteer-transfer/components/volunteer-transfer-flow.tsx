@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import type {
   ConfirmVolunteerTransfer200,
   GetVolunteerTransferPreview200,
@@ -146,14 +149,13 @@ function TransferReview({
   const previewQuery = useQuery({
     queryKey: ['redemption', 'transfer-preview', invitationId],
     queryFn: () => redemptionApi.getVolunteerTransferPreview(invitationId),
-    retry: false,
   });
 
   if (previewQuery.isLoading) {
     return (
-      <p className="text-muted-foreground text-sm">
-        {m.volunteer_transfer_checking()}
-      </p>
+      <Pending label={m.volunteer_transfer_checking()}>
+        <Skeleton className="h-40 w-full" />
+      </Pending>
     );
   }
 
@@ -379,6 +381,7 @@ function TransferConfirm({
             !nameMatches || password.length < 8 || confirmMutation.isPending
           }
         >
+          {confirmMutation.isPending ? <Spinner /> : null}
           {confirmMutation.isPending
             ? m.volunteer_transfer_moving()
             : m.volunteer_transfer_confirm_title()}

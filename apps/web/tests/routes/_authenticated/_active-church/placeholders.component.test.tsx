@@ -69,7 +69,9 @@ describe('coming-soon placeholder routes', () => {
 
     renderRoute({ initialPath: '/ministries', churchTimezone: 'UTC' });
 
-    expect(await screen.findByTestId('capability-gate-skeleton')).toBeVisible();
+    expect(
+      await screen.findByRole('status', { name: m.shell_route_loading() }),
+    ).toBeVisible();
     expect(screen.queryByText(m.shell_no_access())).not.toBeInTheDocument();
     expect(screen.queryByText(m.shell_not_serving())).not.toBeInTheDocument();
   });
@@ -79,7 +81,7 @@ describe('coming-soon placeholder routes', () => {
       initialPath: '/invitations',
       churchTimezone: 'UTC',
     });
-    await screen.findByTestId('capability-gate-skeleton');
+    await screen.findByRole('status', { name: m.shell_route_loading() });
 
     const paths = router
       .matchRoutes('/invitations/church/abc')

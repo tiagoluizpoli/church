@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -116,6 +116,40 @@ describe('NotificationsInboxSection (full mode — /notifications page)', () => 
     expect(onMarkAllRead).toHaveBeenCalledTimes(1);
   });
 
+  it('disables only the in-flight mark-read trigger and shows the spinner, keeping the rest interactive', () => {
+    renderWithProviders(
+      <NotificationsInboxSection
+        variant="full"
+        unreadCount={1}
+        pages={notificationPagesFixture}
+        isLoadingMore={false}
+        hasMore={false}
+        onLoadMore={vi.fn()}
+        onOpenNotification={vi.fn()}
+        onMarkRead={vi.fn()}
+        onMarkAllRead={vi.fn()}
+        isMarkingAllRead
+        markingReadId="notification-1"
+      />,
+    );
+
+    const markAll = screen.getByRole('button', {
+      name: m.notification_mark_all_read(),
+    });
+    const markRead = screen.getByRole('button', {
+      name: m.notification_mark_read(),
+    });
+    expect(markAll).toBeDisabled();
+    expect(markAll.querySelector('svg.animate-spin')).not.toBeNull();
+    expect(markRead).toBeDisabled();
+    expect(markRead.querySelector('svg.animate-spin')).not.toBeNull();
+    for (const open of screen.getAllByRole('button', {
+      name: m.notification_open_notification(),
+    })) {
+      expect(open).toBeEnabled();
+    }
+  });
+
   it('shows empty state when inbox has no notifications', () => {
     renderWithProviders(
       <NotificationsInboxSection
@@ -137,7 +171,7 @@ describe('NotificationsInboxSection (full mode — /notifications page)', () => 
     ).toBeInTheDocument();
   });
 
-  it('shows a loading state instead of the empty state while the first page loads', () => {
+  it('shows a skeleton instead of the empty state while the first page loads', async () => {
     renderWithProviders(
       <NotificationsInboxSection
         variant="full"
@@ -153,7 +187,11 @@ describe('NotificationsInboxSection (full mode — /notifications page)', () => 
       />,
     );
 
-    expect(screen.getByText(m.notification_loading())).toBeInTheDocument();
+    const busy = screen.getByLabelText(m.notification_loading());
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
     expect(
       screen.queryByText(m.notification_empty_title()),
     ).not.toBeInTheDocument();

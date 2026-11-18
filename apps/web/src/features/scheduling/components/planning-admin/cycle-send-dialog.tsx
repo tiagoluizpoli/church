@@ -15,6 +15,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { pluralMessage } from '@/shared/utils/plural';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
@@ -140,7 +143,6 @@ export function CycleSendDialog({
   const summary = useQuery({
     queryKey: ['cycle-send-summary', cycleId],
     queryFn: () => adminApi.getCycleSendSummary(cycleId),
-    retry: false,
     gcTime: 0,
   });
   const refreshCycle = useCallback(
@@ -198,9 +200,10 @@ export function CycleSendDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         {summary.isPending ? (
-          <p className="text-muted-foreground text-sm">
-            {m.cycle_send_summary_loading()}
-          </p>
+          <Pending label={m.cycle_send_summary_loading()} className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </Pending>
         ) : canRetrySummary ? (
           <RetryAlert
             message={m.cycle_send_summary_error()}
@@ -254,6 +257,7 @@ export function CycleSendDialog({
               if (summary.isSuccess && !summary.isFetching) send.mutate();
             }}
           >
+            {send.isPending ? <Spinner /> : null}
             {send.isPending ? m.cycle_review_sending() : m.cycle_review_send()}
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -28,7 +28,6 @@ export function useUsualSetup({ ministryId }: UseUsualSetupInput) {
   return useQuery({
     queryKey: usualSetupQueryKey({ churchId, ministryId }),
     queryFn: () => adminApi.listUsualSetup(ministryId),
-    retry: false,
   });
 }
 
@@ -45,7 +44,6 @@ export function useUsualSetupBlockBreadcrumb({
     queryKey: usualSetupQueryKey({ churchId, ministryId: ministryId ?? '' }),
     queryFn: () => adminApi.listUsualSetup(ministryId ?? ''),
     enabled: ministryId !== undefined && blockId !== undefined,
-    retry: false,
   });
   const block = setup.data?.blocks.find(
     (candidate) => candidate.sourceTemplateTimeBlockId === blockId,

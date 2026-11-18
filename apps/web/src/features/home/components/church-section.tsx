@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HomeError } from '@/features/home/components/home-error';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
@@ -36,9 +37,9 @@ export function ChurchSection({ churchId, userId }: HomeSectionProps) {
           onRetry={() => progressQuery.refetch()}
         />
       ) : !progress ? (
-        <div role="status" aria-label={m.home_setup_loading()}>
+        <Pending label={m.home_setup_loading()}>
           <Skeleton className="h-24 w-full" />
-        </div>
+        </Pending>
       ) : (
         <SetupChecklist progress={progress} />
       )}

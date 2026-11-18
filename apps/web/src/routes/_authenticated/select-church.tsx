@@ -13,6 +13,9 @@ import {
 import { z } from 'zod';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { useSignOut } from '@/shared/hooks/use-sign-out';
 import {
@@ -192,9 +195,14 @@ function SelectChurchRoute() {
         ) : null}
 
         {optionsQuery.isLoading ? (
-          <p className="px-5 pb-8 text-muted-foreground text-sm md:px-8">
-            {m.select_church_loading()}
-          </p>
+          <Pending
+            label={m.select_church_loading()}
+            className="space-y-3 px-5 pb-8 md:px-8"
+          >
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </Pending>
         ) : null}
 
         {optionsQuery.isError ? (
@@ -244,7 +252,12 @@ function SelectChurchRoute() {
                       })}
                     </span>
                   </span>
-                  <ArrowRight className="size-4 shrink-0 text-muted-foreground group-hover:text-primary" />
+                  {selectMutation.isPending &&
+                  selectMutation.variables?.churchId === church.churchId ? (
+                    <Spinner className="shrink-0" />
+                  ) : (
+                    <ArrowRight className="size-4 shrink-0 text-muted-foreground group-hover:text-primary" />
+                  )}
                 </button>
               ))}
             </div>
@@ -301,7 +314,12 @@ function SelectChurchRoute() {
                       })}
                     </span>
                     <span className="flex size-8 items-center justify-center rounded-md text-muted-foreground">
-                      <ArrowRight className="size-4" />
+                      {selectMutation.isPending &&
+                      selectMutation.variables?.churchId === church.churchId ? (
+                        <Spinner />
+                      ) : (
+                        <ArrowRight className="size-4" />
+                      )}
                     </span>
                   </button>
                 ))}

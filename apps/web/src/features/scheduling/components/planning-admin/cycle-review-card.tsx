@@ -29,6 +29,8 @@ import { RetryAlert } from './retry-alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import type {
   GetCycle200CycleState,
   GetCycle200EventsItemEventStatus,
@@ -244,12 +246,10 @@ export function CycleReviewCard({
             />
           )
         ) : cycleDetailsLoading || !reviewedCycle ? (
-          <p
-            className="text-muted-foreground text-sm"
-            data-testid="cycle-review-loading"
-          >
-            {m.cycle_review_loading()}
-          </p>
+          <Pending label={m.cycle_review_loading()} className="space-y-3">
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-32 w-full" />
+          </Pending>
         ) : (
           <div className="space-y-3">
             {isReadOnly ? (

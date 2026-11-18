@@ -98,6 +98,34 @@ beforeEach(() => {
 afterEach(() => overwriteGetLocale(() => 'pt-BR'));
 
 describe('People directory', () => {
+  it('shows a skeleton on first load, then keeps the data during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    listPeople.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { queryClient } = renderPeople();
+
+    const busy = await screen.findByRole('status', {
+      name: m.people_loading(),
+    });
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    listPeople.mockReturnValue(new Promise(() => undefined));
+    release(page([person({})]));
+    expect(await rows()).toHaveLength(1);
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() => expect(listPeople).toHaveBeenCalledTimes(2));
+    expect(await rows()).toHaveLength(1);
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
   it('lists members with Ministries, leader and Admin badges, including those in no Ministry', async () => {
     listPeople.mockResolvedValue(
       page([

@@ -121,6 +121,38 @@ const open = (id = 'mem-1') =>
   renderRoute({ initialPath: `/people/${id}`, churchTimezone: 'UTC' });
 
 describe('Member detail', () => {
+  it('shows a skeleton on first load, then keeps the data during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    getPerson.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { queryClient } = open();
+
+    const busy = await screen.findByRole('status', {
+      name: m.person_loading(),
+    });
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    getPerson.mockReturnValue(new Promise(() => undefined));
+    release(detail());
+    expect(
+      await screen.findByRole('heading', { name: 'Ana Souza', level: 1 }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() => expect(getPerson).toHaveBeenCalledTimes(2));
+    expect(
+      screen.getByRole('heading', { name: 'Ana Souza', level: 1 }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
   it('shows an admin the Ministry cards with levels, Roles, archived Roles and Church access', async () => {
     getPerson.mockResolvedValue(detail());
 

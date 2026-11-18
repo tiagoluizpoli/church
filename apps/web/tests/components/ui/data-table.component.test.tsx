@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
@@ -9,6 +9,7 @@ import {
   type DataTableColumn,
   type DataTableItemInput,
 } from '@/components/ui/data-table';
+import { PENDING_DELAY_MS } from '@/components/ui/pending';
 
 interface Row {
   id: string;
@@ -169,6 +170,7 @@ describe('DataTable', () => {
   });
 
   it('shows the loading state instead of any table or card content', () => {
+    vi.useFakeTimers();
     render(
       <DataTable
         aria-label="Rows"
@@ -180,6 +182,10 @@ describe('DataTable', () => {
         isLoading
       />,
     );
+    act(() => {
+      vi.advanceTimersByTime(PENDING_DELAY_MS);
+    });
+    vi.useRealTimers();
 
     expect(screen.getByTestId('data-table-loading-state')).toBeInTheDocument();
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
@@ -202,7 +208,7 @@ describe('DataTable', () => {
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
   });
 
-  it('supports a custom loading and empty content', () => {
+  it('supports a custom loading and empty content', async () => {
     const { rerender } = render(
       <DataTable
         aria-label="Rows"
@@ -215,7 +221,7 @@ describe('DataTable', () => {
         loadingContent={<p data-testid="custom-loading">Fetching…</p>}
       />,
     );
-    expect(screen.getByTestId('custom-loading')).toBeInTheDocument();
+    expect(await screen.findByTestId('custom-loading')).toBeInTheDocument();
 
     rerender(
       <DataTable

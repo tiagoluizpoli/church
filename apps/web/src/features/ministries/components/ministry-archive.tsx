@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries';
 import { invalidateMinistryReads } from '@/features/ministries/ministry-queries';
 import type {
@@ -135,6 +136,7 @@ export function MinistryArchive({ ministryId, name }: MinistryArchiveProps) {
               disabled={pending}
               onClick={archive}
             >
+              {pending ? <Spinner /> : null}
               {pending
                 ? m.ministry_archive_archiving()
                 : m.ministry_archive_confirm()}

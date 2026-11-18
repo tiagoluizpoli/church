@@ -1,11 +1,12 @@
 import { m } from '@church/i18n/messages';
-import { useQuery } from '@tanstack/react-query';
+import { QueryClient, useQuery } from '@tanstack/react-query';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CycleSendAction } from '@/features/scheduling/components/planning-admin/cycle-send-dialog';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const getCycleSendSummary = vi.fn();
@@ -119,7 +120,13 @@ describe('Send to Ministries confirmation', () => {
     const user = await openConfirmation();
     const confirm = await screen.findByTestId('confirm-cycle-send-button');
 
-    expect(screen.getByText(m.cycle_send_summary_loading())).toBeVisible();
+    const loading = screen.getByRole('status', {
+      name: m.cycle_send_summary_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
     expect(confirm).toBeDisabled();
     await user.click(confirm);
     expect(sendCycle).not.toHaveBeenCalled();
@@ -291,5 +298,31 @@ describe('Send to Ministries confirmation', () => {
     expect(await screen.findByTestId('cycle-send-error')).toHaveTextContent(
       message,
     );
+  });
+});
+
+describe('Send to Ministries summary refetch', () => {
+  it('keeps the counts on screen while the summary refetches', async () => {
+    const queryClient = new QueryClient();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <CycleSendAction cycleId="cycle-1" cycleName="Outubro" eventCount={3} />,
+      { queryClient },
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.cycle_review_send() }),
+    );
+    expect(
+      await screen.findByText(m.cycle_send_events_other({ count: 3 })),
+    ).toBeVisible();
+
+    await startHangingRefetch({ queryClient, read: getCycleSendSummary });
+
+    expect(
+      screen.getByText(m.cycle_send_events_other({ count: 3 })),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: m.cycle_send_summary_loading() }),
+    ).toBeNull();
   });
 });

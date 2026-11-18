@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { parseInstant, setTestClock } from '@church/time';
+import { QueryClient } from '@tanstack/react-query';
 import {
   createMemoryHistory,
   createRootRoute,
@@ -7,7 +8,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AvailabilityListPage } from '@/features/volunteers/components/availability-list-page';
@@ -37,7 +38,10 @@ const CHECK: ListAvailabilityChecks200ChecksItem = {
   unavailableShiftCount: 3,
 };
 
-function renderPage(content = <AvailabilityListPage />) {
+function renderPage(
+  content = <AvailabilityListPage />,
+  queryClient?: QueryClient,
+) {
   const root = createRootRoute({
     component: () => (
       <CallerCapabilitiesScopeProvider churchId="church" userId="person">
@@ -55,6 +59,7 @@ function renderPage(content = <AvailabilityListPage />) {
   });
   return renderWithProviders(<RouterProvider router={router} />, {
     churchTimezone: 'America/Sao_Paulo',
+    queryClient,
   });
 }
 
@@ -188,5 +193,37 @@ describe('Availability checks list', () => {
     expect(
       screen.queryByText(m.availability_list_empty()),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('loading states', () => {
+  it('shows its skeleton only after the pending delay on first load', async () => {
+    api.listAvailabilityChecks.mockReturnValue(new Promise(() => {}));
+    renderPage(undefined, new QueryClient());
+    const region = await screen.findByRole('status', {
+      name: m.availability_list_loading(),
+    });
+    expect(region).toHaveAttribute('aria-busy', 'true');
+    expect(region).toBeEmptyDOMElement();
+    await waitFor(() =>
+      expect(region.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+  });
+
+  it('keeps the shown data, with no skeleton, while a refetch is in flight', async () => {
+    const queryClient = new QueryClient();
+    api.listAvailabilityChecks.mockResolvedValue({ checks: [CHECK] });
+    renderPage(undefined, queryClient);
+    expect(await screen.findByText('Infantil')).toBeVisible();
+    api.listAvailabilityChecks.mockClear();
+    api.listAvailabilityChecks.mockReturnValue(new Promise(() => {}));
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(api.listAvailabilityChecks).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText('Infantil')).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: m.availability_list_loading() }),
+    ).toBeNull();
   });
 });

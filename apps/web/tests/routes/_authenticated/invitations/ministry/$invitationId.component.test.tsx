@@ -17,6 +17,8 @@ const confirmVolunteerTransfer = vi.fn();
 const listActiveChurchOptions = vi.fn();
 const selectActiveChurch = vi.fn();
 
+vi.mock('@/components/ui/sonner', () => ({ Toaster: () => null }));
+
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
     getSession: (...args: unknown[]) => getSession(...args),
@@ -115,6 +117,42 @@ describe('the existing-member Ministry Invitation redemption route', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it('shows a skeleton on first load, then keeps the content during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    getMinistryInvitationStatus.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { queryClient } = renderRoute({
+      initialPath: '/invitations/ministry/invitation-1',
+    });
+
+    const busy = await screen.findByLabelText(m.ministry_invitation_loading());
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    getMinistryInvitationStatus.mockReturnValue(new Promise(() => undefined));
+    release(REDEEMABLE);
+    expect(
+      await screen.findByText(
+        m.ministry_invitation_title({ ministryName: 'Care' }),
+      ),
+    ).toBeVisible();
+    expect(screen.queryByLabelText(m.ministry_invitation_loading())).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(getMinistryInvitationStatus).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      screen.getByText(m.ministry_invitation_title({ ministryName: 'Care' })),
+    ).toBeVisible();
+    expect(screen.queryByLabelText(m.ministry_invitation_loading())).toBeNull();
   });
 
   it('renders on a plain-HTTP origin without crypto.randomUUID', async () => {

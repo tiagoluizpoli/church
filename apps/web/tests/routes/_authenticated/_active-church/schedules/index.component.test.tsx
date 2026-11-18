@@ -16,6 +16,7 @@ import {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const listSchedules = vi.fn();
@@ -299,6 +300,23 @@ describe('Schedules list', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('keeps the rows on screen while a refetch is in flight', async () => {
+    listSchedules.mockResolvedValue(page([schedule()]));
+    const { queryClient } = renderPrepareIndex();
+    expect(
+      (await scheduleList()).getByRole('link', { name: /Kids · Outubro/ }),
+    ).toBeInTheDocument();
+
+    await startHangingRefetch({ queryClient, read: listSchedules });
+
+    expect(
+      (await scheduleList()).getByRole('link', { name: /Kids · Outubro/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: m.schedules_loading() }),
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps a failed read distinct from empty and retries into the real list', async () => {
     listSchedules
       .mockRejectedValueOnce(new Error('Network Error'))
@@ -323,9 +341,10 @@ describe('Schedules list', () => {
       }),
     );
     renderPrepareIndex();
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      m.schedules_loading(),
-    );
+    const loading = await screen.findByRole('status', {
+      name: m.schedules_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByText(m.schedules_empty())).not.toBeInTheDocument();
     resolve(page([]));
     expect(await screen.findByText(m.schedules_empty())).toBeVisible();

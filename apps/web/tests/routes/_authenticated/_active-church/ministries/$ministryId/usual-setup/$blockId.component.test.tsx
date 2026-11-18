@@ -112,6 +112,36 @@ function refusal(status: number, data: unknown) {
 }
 
 describe('/ministries/$ministryId/usual-setup/$blockId', () => {
+  it('shows a skeleton while the reads first load, then the form', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    listSectors.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { queryClient } = renderEditor(SERVICE_ID);
+
+    const loading = await screen.findByRole('status', {
+      name: m.usual_setup_block_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    listSectors.mockReturnValue(new Promise(() => undefined));
+    release({ sectors: SECTORS });
+    expect(
+      await screen.findByRole('button', { name: m.usual_setup_save() }),
+    ).toBeVisible();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() => expect(listSectors).toHaveBeenCalledTimes(2));
+    expect(saveButton()).toBeVisible();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
   it('shows the saved values of a block needing review, explains the fallback, and repairs explicitly', async () => {
     const user = userEvent.setup();
     listUsualSetup.mockResolvedValue(setupOf(FLAGGED_SERVICE));
@@ -273,6 +303,7 @@ describe('/ministries/$ministryId/usual-setup/$blockId', () => {
       name: m.usual_setup_saving(),
     });
     expect(pending).toBeDisabled();
+    expect(pending.querySelector('svg.animate-spin')).not.toBeNull();
     expect(
       screen.getByRole('button', { name: m.usual_setup_cancel() }),
     ).toBeDisabled();

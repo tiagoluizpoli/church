@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   WorkspaceIntroPanel,
@@ -61,7 +62,6 @@ function PrepareWorkspaceRoute() {
   const participation = useQuery({
     queryKey: ['prepare-cycle-participation', ministryId, cycleId],
     queryFn: () => adminApi.getCycleParticipation(cycleId, { ministryId }),
-    retry: false,
   });
   const schedule = schedules.data;
   const reads = [schedules, participation];
@@ -229,9 +229,9 @@ function PrepareWorkspaceRoute() {
       ) : failed && !ready ? (
         retryAlert
       ) : !ready ? (
-        <div role="status" aria-label={m.schedules_loading()}>
+        <Pending label={m.schedules_loading()}>
           <Skeleton className="h-64 w-full" />
-        </div>
+        </Pending>
       ) : (
         <div
           className={cn(

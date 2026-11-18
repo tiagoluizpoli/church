@@ -6,6 +6,9 @@ import { useEffect } from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import type { ListActiveChurchOptions200ChurchesItem } from '@/infrastructure/api/churchAPI.schemas';
 import {
   type ActiveChurchArea,
@@ -104,7 +107,7 @@ function CrossChurchConfirmCard({
             </Button>
             <Button onClick={onSwitch} disabled={isSwitchPending}>
               {m.switch_church_switch({ churchName: targetChurchName })}
-              <ArrowRight />
+              {isSwitchPending ? <Spinner /> : <ArrowRight />}
             </Button>
           </div>
         </CardContent>
@@ -187,9 +190,14 @@ function SwitchChurchConfirmRoute() {
   if (optionsQuery.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4 py-10">
-        <p className="text-muted-foreground text-sm">
-          {m.switch_church_loading()}
-        </p>
+        <Pending
+          label={m.switch_church_loading()}
+          className="w-full max-w-md space-y-4"
+        >
+          <Skeleton className="h-6 w-2/3" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </Pending>
       </div>
     );
   }

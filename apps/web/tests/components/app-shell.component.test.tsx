@@ -770,7 +770,7 @@ describe('AppShell Church header (F9)', () => {
     ).toBeVisible();
   });
 
-  it('shows no switch control, name or old strings while loading', () => {
+  it('shows no switch control, name or old strings while loading', async () => {
     asPersona();
     activeChurchApiMock.listActiveChurchOptions.mockReturnValue(
       new Promise(() => {}),
@@ -781,7 +781,13 @@ describe('AppShell Church header (F9)', () => {
     expect(
       within(sidebar).queryByRole('button', { name: m.nav_switch_church() }),
     ).toBeNull();
-    expect(within(sidebar).getByTestId('church-name-skeleton')).toBeVisible();
+    const pending = within(sidebar).getByRole('status', {
+      name: m.shell_church_loading(),
+    });
+    expect(pending).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(pending.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
     expect(screen.queryByText('Church CRM')).toBeNull();
   });
 

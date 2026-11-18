@@ -1,18 +1,15 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
-import {
-  createFileRoute,
-  DefaultGlobalNotFound,
-  notFound,
-  useRouter,
-} from '@tanstack/react-router';
+import { createFileRoute, notFound, useRouter } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
+import { NotFoundScreen } from '@/shared/components/route-fallbacks';
 import { adminApi } from '@/utils/api-instances';
 
 /** The id an N7 swap request alert (bell or email) deep-links with. */
@@ -23,7 +20,7 @@ export const Route = createFileRoute(
 )({
   validateSearch: assignSearchSchema,
   component: EventBuilderRoute,
-  notFoundComponent: DefaultGlobalNotFound,
+  notFoundComponent: NotFoundScreen,
 });
 
 // Shell host for the cycle-centric Event Builder canvas (US1/US2/US3/US6).
@@ -51,7 +48,6 @@ function EventBuilderRoute() {
   const swapRequestList = useQuery({
     queryKey: ['ministry-swap-requests', ministryId, cycleId],
     queryFn: () => adminApi.listMinistrySwapRequests(ministryId, { cycleId }),
-    retry: false,
   });
   const swapRequests = useMemo(
     () => swapRequestList.data?.schedules.flatMap(({ requests }) => requests),
@@ -93,10 +89,10 @@ function EventBuilderRoute() {
 
   if (query.isLoading || !query.data || !data) {
     return (
-      <div className="space-y-3">
+      <Pending label={m.builder_board_loading()} className="space-y-3">
         <Skeleton className="h-20 w-full" />
         <Skeleton className="h-80 w-full" />
-      </div>
+      </Pending>
     );
   }
 

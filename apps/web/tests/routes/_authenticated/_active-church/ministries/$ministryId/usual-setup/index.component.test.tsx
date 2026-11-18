@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -90,6 +90,33 @@ function rowsOf(templateName: string) {
 }
 
 describe('/ministries/$ministryId/usual-setup', () => {
+  it('shows a skeleton on first load, then keeps the setup during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    listUsualSetup.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { queryClient } = renderList();
+
+    const loading = await screen.findByRole('status', {
+      name: m.usual_setup_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    listUsualSetup.mockReturnValue(new Promise(() => undefined));
+    release(setupOf(WELCOME, SERVICE, NIGHT));
+    expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() => expect(listUsualSetup).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId('data-table-mobile-list')).toBeVisible();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
   it('marks a block whose manual split needs review and explains the whole-block fallback', async () => {
     listUsualSetup.mockResolvedValue(setupOf(WELCOME, FLAGGED_SERVICE));
 

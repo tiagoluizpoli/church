@@ -39,6 +39,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
@@ -260,7 +261,9 @@ interface ChurchNameProps {
 
 function ChurchName({ name }: ChurchNameProps) {
   return name === null ? (
-    <Skeleton data-testid="church-name-skeleton" className="h-5 w-28" />
+    <Pending label={m.shell_church_loading()}>
+      <Skeleton className="h-5 w-28" />
+    </Pending>
   ) : (
     <span className="block truncate font-semibold text-[1.05rem] tracking-tight">
       {name}

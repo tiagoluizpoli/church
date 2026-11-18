@@ -12,6 +12,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { HomeWidget } from '@/features/home/components/home-widget';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
@@ -37,7 +39,6 @@ function useVolunteerDashboard({ churchId, userId }: HomeSectionProps) {
       parts: ['dashboard'],
     }),
     queryFn: () => volunteerApi.getVolunteerDashboard(),
-    retry: false,
   });
 }
 
@@ -50,7 +51,6 @@ function usePendingChecks({ churchId, userId }: HomeSectionProps) {
       parts: ['availability-checks'],
     }),
     queryFn: () => volunteerApi.listAvailabilityChecks(),
-    retry: false,
   });
   // shortcut: listAvailabilityChecks has no state filter, filtered client-side; move to a server param when the endpoint gets one
   const pending = (query.data?.checks ?? []).filter(
@@ -99,7 +99,9 @@ export function NextAssignmentWidget(props: HomeSectionProps) {
       }
     >
       {dashboard.isPending ? (
-        <p role="status">{m.my_schedule_loading()}</p>
+        <Pending label={m.my_schedule_loading()}>
+          <Skeleton className="h-20 w-full" />
+        </Pending>
       ) : next ? (
         <div className="space-y-3">
           <div className="space-y-1">
@@ -197,7 +199,9 @@ export function PendingChecksWidget(props: HomeSectionProps) {
       }
     >
       {query.isPending ? (
-        <p role="status">{m.availability_list_loading()}</p>
+        <Pending label={m.availability_list_loading()}>
+          <Skeleton className="h-20 w-full" />
+        </Pending>
       ) : (
         <ul className="divide-y">
           {pending.map((check) => (

@@ -9,6 +9,11 @@ import { renderWithProviders } from '@/tests/setup/render';
 const mockSignInEmail = vi.fn();
 const mockToastError = vi.fn();
 const mockToastSuccess = vi.fn();
+const mockUseSession = vi.fn();
+
+beforeEach(() => {
+  mockUseSession.mockReturnValue({ isPending: false });
+});
 
 vi.mock('sonner', () => ({
   toast: {
@@ -22,7 +27,7 @@ vi.mock('@/lib/auth-client', () => ({
     signIn: {
       email: (...args: unknown[]) => mockSignInEmail(...args),
     },
-    useSession: () => ({ isPending: false }),
+    useSession: () => mockUseSession(),
     // biome-ignore lint/style/useNamingConvention: matches Better Auth API shape
     $ERROR_CODES: {},
   },
@@ -150,5 +155,24 @@ describe('SignInForm sign-up switch', () => {
     expect(
       screen.getByRole('button', { name: m.auth_sign_in_switch_to_sign_up() }),
     ).toBeVisible();
+  });
+});
+
+describe('SignInForm session check', () => {
+  it('shows a labelled form skeleton after the delay while the session check is pending', async () => {
+    mockUseSession.mockReturnValue({ isPending: true });
+    renderWithProviders(<SignInForm />);
+
+    const loading = screen.getByRole('status', {
+      name: m.auth_session_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    expect(loading.querySelector('[data-slot="skeleton"]')).toBeNull();
+    await waitFor(() => {
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+    expect(
+      screen.queryByRole('heading', { name: m.auth_sign_in_title() }),
+    ).toBeNull();
   });
 });

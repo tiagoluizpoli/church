@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSectorList } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
@@ -68,7 +69,6 @@ export function PreparationBlockEditor({
   const participation = useQuery({
     queryKey: ['prepare-cycle-participation', ministryId, cycleId],
     queryFn: () => adminApi.getCycleParticipation(cycleId, { ministryId }),
-    retry: false,
   });
   const sectors = useSectorList({ ministryId });
   const roles = useMinistryRoles({ ministryId });
@@ -121,9 +121,10 @@ export function PreparationBlockEditor({
   if (!schedule || !block || !event || !sectors.data || !roles.data)
     return (
       loadError || (
-        <div aria-busy="true">
+        <Pending label={m.prepare_block_loading()} className="space-y-3">
+          <Skeleton className="h-10 w-full" />
           <Skeleton className="h-24 w-full" />
-        </div>
+        </Pending>
       )
     );
   return (

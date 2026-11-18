@@ -325,6 +325,10 @@ export function useNotificationInbox() {
     isError: firstPageQuery.isError && items.length === 0,
     isLoading: firstPageQuery.isLoading,
     isLoadingMore,
+    isMarkingAllRead: markAllRead.isPending,
+    markingReadId: markRead.isPending
+      ? markRead.variables?.notificationId
+      : undefined,
     items,
     loadMore,
     markAllRead: () => markAllRead.mutate(scopeKey),

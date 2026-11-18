@@ -11,7 +11,6 @@ export function useTemplateBreadcrumb(): BreadcrumbSegmentOverride | null {
     queryKey: templateDetailQueryKey({ templateId: templateId ?? '' }),
     queryFn: () => adminApi.getEventTemplate(templateId ?? ''),
     enabled: templateId !== undefined,
-    retry: false,
   });
 
   if (templateId === undefined || !templateQuery.data) {

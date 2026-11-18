@@ -18,6 +18,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import { adminApi } from '@/utils/api-instances';
 
 const HTTP_NOT_FOUND = 404;
@@ -59,7 +61,6 @@ export function TemplateEditPage({ templateId }: TemplateEditPageProps) {
   const templateQuery = useQuery({
     queryKey: templateDetailQueryKey({ templateId }),
     queryFn: () => adminApi.getEventTemplate(templateId),
-    retry: false,
   });
 
   return (
@@ -95,9 +96,13 @@ export function TemplateEditPage({ templateId }: TemplateEditPageProps) {
             />
           )
         ) : (
-          <p className="text-muted-foreground text-sm" role="status">
-            {m.event_templates_detail_loading()}
-          </p>
+          <Pending
+            label={m.event_templates_detail_loading()}
+            className="space-y-3"
+          >
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-40 w-full" />
+          </Pending>
         )}
       </CardContent>
     </Card>

@@ -10,6 +10,7 @@ import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import type { GetAskPreview200 } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
@@ -39,7 +40,6 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
   const preview = useQuery({
     queryKey: ['prepare-ask-preview', ministryId, cycleId],
     queryFn: () => adminApi.getAskPreview(cycleId, { ministryId }),
-    retry: false,
   });
   const previewStatus = isAxiosError<unknown>(preview.error)
     ? preview.error.response?.status
@@ -108,13 +108,14 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
           flaggedBlocks.length > 0
         }
       >
+        {preview.isFetching ? <Spinner /> : null}
         {m.prepare_ask()}
       </Button>
       {preview.isFetching ? (
         <span
           role="status"
           aria-label={m.prepare_ask_loading()}
-          className="text-muted-foreground text-sm"
+          className="sr-only"
         >
           {m.prepare_ask_loading()}
         </span>

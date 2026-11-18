@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { volunteerApi } from '@/utils/api-instances';
 
 export interface SwapWithdrawButtonProps {
@@ -71,6 +72,7 @@ export function SwapWithdrawButton({ assignmentId }: SwapWithdrawButtonProps) {
               mutation.mutate();
             }}
           >
+            {mutation.isPending ? <Spinner /> : null}
             {m.swap_withdraw_confirm()}
           </AlertDialogAction>
         </AlertDialogFooter>

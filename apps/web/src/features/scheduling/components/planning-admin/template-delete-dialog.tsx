@@ -18,6 +18,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { pluralMessage } from '@/shared/utils/plural';
 import { adminApi } from '@/utils/api-instances';
 
@@ -40,7 +43,6 @@ export function TemplateDeleteDialog({
     queryFn: () => adminApi.getEventTemplateUsage(templateId),
     staleTime: 0,
     gcTime: 0,
-    retry: false,
     refetchOnMount: 'always',
   });
   const remove = useMutation({
@@ -87,7 +89,7 @@ export function TemplateDeleteDialog({
             testId="template-delete-usage-error"
             onRetry={() => usage.refetch()}
           />
-        ) : usageReady ? (
+        ) : usage.isSuccess ? (
           count > 0 ? (
             <p className="text-sm" data-testid="template-delete-count">
               {pluralMessage({
@@ -98,9 +100,13 @@ export function TemplateDeleteDialog({
             </p>
           ) : null
         ) : (
-          <p className="text-muted-foreground text-sm" role="status">
-            {m.event_templates_delete_usage_loading()}
-          </p>
+          <Pending
+            label={m.event_templates_delete_usage_loading()}
+            className="space-y-2"
+          >
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+          </Pending>
         )}
         {remove.isError ? (
           <p
@@ -121,6 +127,7 @@ export function TemplateDeleteDialog({
             data-testid="confirm-template-delete-button"
             onClick={() => remove.mutate()}
           >
+            {remove.isPending ? <Spinner /> : null}
             {m.event_templates_delete_confirm()}
           </AlertDialogAction>
         </AlertDialogFooter>

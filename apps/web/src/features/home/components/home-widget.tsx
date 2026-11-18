@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HomeError } from '@/features/home/components/home-error';
 
@@ -26,9 +27,9 @@ export function HomeWidget({
         {action}
       </div>
       {loading ? (
-        <output aria-label={title}>
+        <Pending label={title}>
           <Skeleton className="h-20 w-full" />
-        </output>
+        </Pending>
       ) : error ? (
         <HomeError message={error.message} onRetry={error.retry} />
       ) : (

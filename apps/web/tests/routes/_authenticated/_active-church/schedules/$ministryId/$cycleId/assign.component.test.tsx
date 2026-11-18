@@ -3,11 +3,13 @@ import { focusManager } from '@tanstack/react-query';
 import { act, screen, waitFor } from '@testing-library/react';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SCHEDULE } from '@/tests/features/scheduling/components/prepare/preparation-block.fixtures';
 import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const getCycleBuilderData = vi.fn();
 const listMinistrySwapRequests = vi.fn();
+const getSchedule = vi.fn();
 const toastError = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
@@ -16,6 +18,7 @@ vi.mock('@/utils/api-instances', async () => ({
     getCycleBuilderData: (...args: unknown[]) => getCycleBuilderData(...args),
     listMinistrySwapRequests: (...args: unknown[]) =>
       listMinistrySwapRequests(...args),
+    getSchedule: (...args: unknown[]) => getSchedule(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -60,6 +63,7 @@ const swapRequest = {
 beforeEach(() => {
   vi.clearAllMocks();
   listMinistrySwapRequests.mockResolvedValue({ schedules: [] });
+  getSchedule.mockResolvedValue(SCHEDULE);
   getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
   getCycleBuilderData.mockResolvedValue({
     cycle: {
@@ -74,6 +78,22 @@ beforeEach(() => {
 });
 
 describe('Assign board route', () => {
+  it('shows a busy skeleton, never an empty page, while the board loads', async () => {
+    getCycleBuilderData.mockReturnValue(new Promise(() => {}));
+    renderRoute({
+      initialPath: '/schedules/ministry-1/cycle-1/assign',
+      churchTimezone: 'UTC',
+    });
+    const loading = await screen.findByRole('status', {
+      name: m.builder_board_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+    expect(screen.queryByTestId('event-builder-route')).toBeNull();
+  });
+
   it('renders the board as its own page, without the Prepare workspace', async () => {
     renderRoute({
       initialPath: '/schedules/ministry-1/cycle-1/assign',
@@ -193,7 +213,9 @@ describe('Assign board route', () => {
   ])('leaves the retired path %s not found', async (path) => {
     renderRoute({ initialPath: path, churchTimezone: 'UTC' });
 
-    expect(await screen.findByText('Not Found')).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: m.shell_not_found_title() }),
+    ).toBeVisible();
     expect(screen.queryByTestId('event-builder-route')).not.toBeInTheDocument();
   });
 });
@@ -225,7 +247,9 @@ it('shows indistinguishable not found for a foreign Ministry leader receiving 40
     initialPath: '/schedules/ministry-1/cycle-1/assign',
     churchTimezone: 'UTC',
   });
-  expect(await screen.findByText('Not Found')).toBeVisible();
+  expect(
+    await screen.findByRole('heading', { name: m.shell_not_found_title() }),
+  ).toBeVisible();
   expect(screen.queryByText('Secret ministry name')).not.toBeInTheDocument();
   expect(router.state.location.pathname).toBe(
     '/schedules/ministry-1/cycle-1/assign',

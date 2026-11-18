@@ -8,6 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantOf } from '@/shared/utils/church-time';
 import { adminApi } from '@/utils/api-instances';
@@ -65,9 +67,10 @@ export function AuditLogPanel({
 
         <div className="space-y-2 text-sm">
           {auditQuery.isLoading ? (
-            <p className="text-muted-foreground">
-              {m.builder_ui_audit_loading()}
-            </p>
+            <Pending label={m.builder_ui_audit_loading()} className="space-y-2">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </Pending>
           ) : null}
           {auditQuery.isError ? (
             <div className="space-y-2">

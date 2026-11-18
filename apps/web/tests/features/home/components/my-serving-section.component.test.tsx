@@ -305,9 +305,48 @@ describe('Home serving widgets', () => {
     renderHomePage();
 
     expect(
-      await screen.findByText(m.availability_list_loading()),
+      await screen.findByRole('status', {
+        name: m.availability_list_loading(),
+      }),
     ).toBeVisible();
-    expect(screen.getByText(m.my_schedule_loading())).toBeVisible();
+    expect(
+      screen.getByRole('status', { name: m.my_schedule_loading() }),
+    ).toBeVisible();
+  });
+
+  it('fills the loading regions with skeletons after the delay and keeps data on refetch', async () => {
+    givenServing();
+    volunteerApi.listAvailabilityChecks.mockReturnValue(new Promise(() => {}));
+    volunteerApi.getVolunteerDashboard.mockReturnValue(new Promise(() => {}));
+    const loading = renderHomePage();
+    const region = await screen.findByRole('status', {
+      name: m.my_schedule_loading(),
+    });
+    expect(region).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(region.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+    loading.unmount();
+
+    const first = assignment('a-1', 11);
+    volunteerApi.getVolunteerDashboard.mockResolvedValue({
+      upcomingAssignmentGroups: [],
+      nextAssignment: first,
+    });
+    const { queryClient } = renderHomePage({
+      queryClient: new QueryClient(),
+    });
+    expect(await screen.findByText(first.eventTitle)).toBeVisible();
+    volunteerApi.getVolunteerDashboard.mockClear();
+    volunteerApi.getVolunteerDashboard.mockReturnValue(new Promise(() => {}));
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(volunteerApi.getVolunteerDashboard).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText(first.eventTitle)).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: m.my_schedule_loading() }),
+    ).toBeNull();
   });
 
   it('serves a mixed persona and never reads for a non-serving caller', async () => {

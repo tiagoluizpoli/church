@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
@@ -17,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { INVITATIONS_QUERY_KEY } from '@/features/invitations/invitation-queries';
 import { useMinistryList } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
@@ -132,9 +135,13 @@ export function RolePicker({
 
   if (rolesQuery.isLoading) {
     return (
-      <p className="text-muted-foreground text-sm">
-        {m.invitations_invite_roles_loading()}
-      </p>
+      <Pending
+        label={m.invitations_invite_roles_loading()}
+        className="space-y-2"
+      >
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+      </Pending>
     );
   }
   if (rolesQuery.isError) {
@@ -390,6 +397,7 @@ export function InviteDialog({
               form={formId}
               disabled={pending || noMinistry}
             >
+              {pending ? <Spinner /> : null}
               {pending
                 ? m.invitations_invite_submitting()
                 : m.invitations_invite_submit()}

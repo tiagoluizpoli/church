@@ -50,6 +50,45 @@ describe('select-church route (compare-access selector)', () => {
     });
   });
 
+  it('shows a skeleton on first load, then keeps the content during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    listActiveChurchOptions.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { queryClient } = renderSelectChurch();
+
+    const busy = await screen.findByLabelText(m.select_church_loading());
+    expect(busy).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(busy.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    listActiveChurchOptions.mockReturnValue(new Promise(() => undefined));
+    release({
+      churches: [
+        {
+          churchId: 'church-a',
+          name: 'Igreja Central',
+          timezone: 'UTC',
+          accessLevel: 'admin',
+          availableAreas: ['dashboard'],
+          lastOpenedAt: null,
+        },
+      ],
+    });
+    expect((await screen.findAllByText('Igreja Central'))[0]).toBeVisible();
+    expect(screen.queryByLabelText(m.select_church_loading())).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(listActiveChurchOptions).toHaveBeenCalledTimes(2),
+    );
+    expect(screen.getAllByText('Igreja Central')[0]).toBeVisible();
+    expect(screen.queryByLabelText(m.select_church_loading())).toBeNull();
+  });
+
   it('clears cached caller capabilities when signing out from the selector', async () => {
     listActiveChurchOptions.mockResolvedValue({ churches: [] });
     const { queryClient } = renderSelectChurch();

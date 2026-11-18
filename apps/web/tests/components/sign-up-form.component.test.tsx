@@ -1,15 +1,21 @@
 import { m } from '@church/i18n/messages';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SignUpForm from '@/components/sign-up-form';
 import { renderWithProviders } from '@/tests/setup/render';
+
+const mockUseSession = vi.fn();
+
+beforeEach(() => {
+  mockUseSession.mockReturnValue({ isPending: false });
+});
 
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
     signUp: { email: vi.fn() },
-    useSession: () => ({ isPending: false }),
+    useSession: () => mockUseSession(),
     // biome-ignore lint/style/useNamingConvention: matches Better Auth API shape
     $ERROR_CODES: {},
   },
@@ -54,5 +60,24 @@ describe('SignUpForm pt-BR copy', () => {
     expect(
       screen.getByText(m.password_recovery_password_too_short()),
     ).toBeVisible();
+  });
+});
+
+describe('SignUpForm session check', () => {
+  it('shows a labelled form skeleton after the delay while the session check is pending', async () => {
+    mockUseSession.mockReturnValue({ isPending: true });
+    renderWithProviders(<SignUpForm onSwitchToSignIn={vi.fn()} />);
+
+    const loading = screen.getByRole('status', {
+      name: m.auth_session_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    expect(loading.querySelector('[data-slot="skeleton"]')).toBeNull();
+    await waitFor(() => {
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+    expect(
+      screen.queryByRole('heading', { name: m.auth_sign_up_title() }),
+    ).toBeNull();
   });
 });

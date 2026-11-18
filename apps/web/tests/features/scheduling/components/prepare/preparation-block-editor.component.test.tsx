@@ -22,6 +22,7 @@ import {
 import type { PreparationBlock } from '@/features/scheduling/components/prepare/preparation-block.utils';
 import { callerCapabilitiesFixture } from '@/tests/setup/caller-capabilities';
 import type { ChildrenProps } from '@/tests/setup/children-props';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderRoute } from '@/tests/setup/render-route';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
@@ -548,24 +549,31 @@ it.each([
   [403, () => m.shell_no_access()],
   [404, () => m.error_not_found()],
   [500, () => m.prepare_schedule_error()],
-] as const)('shows a scoped read failure (%s) instead of an empty or editable form', async (status, message) => {
-  api.getCycleParticipation.mockRejectedValueOnce(
-    refusal(status, { error: 'READ_FAILED', message: 'failed' }),
-  );
-  renderRoute({
-    initialPath: EDITOR_PATH,
-    churchTimezone: 'America/Sao_Paulo',
-  });
-  expect(await screen.findByText(message())).toBeVisible();
-  expect(screen.queryByRole('checkbox')).toBeNull();
-  if (status === 500) {
-    api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: m.schedules_retry() }));
-    expect(await screen.findByRole('checkbox')).toBeChecked();
-  }
-});
+] as const)(
+  'shows a scoped read failure (%s) instead of an empty or editable form',
+  async (status, message) => {
+    // Persistent: the shared policy retries a 500 three times (1s, 2s, 4s apart).
+    api.getCycleParticipation.mockRejectedValue(
+      refusal(status, { error: 'READ_FAILED', message: 'failed' }),
+    );
+    renderRoute({
+      initialPath: EDITOR_PATH,
+      churchTimezone: 'America/Sao_Paulo',
+    });
+    expect(
+      await screen.findByText(message(), undefined, { timeout: 9000 }),
+    ).toBeVisible();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    if (status === 500) {
+      api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: m.schedules_retry() }));
+      expect(await screen.findByRole('checkbox')).toBeChecked();
+    }
+  },
+  12_000,
+);
 
 it('disables serving Save for invalid, blank and zero headcounts', async () => {
   const user = userEvent.setup();
@@ -931,11 +939,36 @@ it('keeps loading distinct from an empty or editable block', async () => {
     initialPath: EDITOR_PATH,
     churchTimezone: 'America/Sao_Paulo',
   });
-  expect(
-    await screen.findByRole('status', { name: m.schedules_loading() }),
-  ).toBeVisible();
+  const loading = await screen.findByRole('status', {
+    name: m.schedules_loading(),
+  });
+  expect(loading).toHaveAttribute('aria-busy', 'true');
+  await waitFor(() =>
+    expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+  );
   expect(screen.queryByRole('checkbox')).toBeNull();
   expect(screen.queryByText(m.usual_setup_missing_sectors())).toBeNull();
+});
+
+it('keeps the editor on screen while a refetch is in flight', async () => {
+  const { queryClient } = renderRoute({
+    initialPath: EDITOR_PATH,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByRole('checkbox');
+
+  await startHangingRefetch({
+    queryClient,
+    read: api.getCycleParticipation,
+  });
+
+  expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+  expect(
+    screen.queryByRole('status', { name: m.schedules_loading() }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('status', { name: m.prepare_block_loading() }),
+  ).not.toBeInTheDocument();
 });
 
 it.each([

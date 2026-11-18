@@ -6,6 +6,7 @@ import { cachedReadOptions, fetchAndCache } from '../lib/my-schedule-cache';
 import { cachedMinistryScheduleSchema } from '../lib/my-schedule-schemas';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GetMinistrySchedule200 } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
@@ -58,7 +59,6 @@ export function MyMinistrySchedulePage({
         key: cacheKey,
         fetch: () => volunteerApi.getMinistrySchedule(ministryId, { cycleId }),
       }),
-    retry: false,
     ...cachedReadOptions({
       scope: cacheScope,
       key: cacheKey,
@@ -69,11 +69,9 @@ export function MyMinistrySchedulePage({
 
   if (query.isPending) {
     return (
-      <Skeleton
-        role="status"
-        aria-label={m.my_schedule_ministry_loading()}
-        className="h-40 w-full"
-      />
+      <Pending label={m.my_schedule_ministry_loading()}>
+        <Skeleton className="h-40 w-full" />
+      </Pending>
     );
   }
   // Retained data stays on screen when a refetch fails; the full error is for no data.

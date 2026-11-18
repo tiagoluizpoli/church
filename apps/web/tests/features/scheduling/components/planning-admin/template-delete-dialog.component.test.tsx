@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -9,6 +10,7 @@ import {
   templateUsageQueryKey,
   USUAL_SETUP_QUERY_KEY,
 } from '@/features/scheduling/components/planning-admin/template-query-keys';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const getEventTemplateUsage = vi.fn();
@@ -158,5 +160,36 @@ describe('TemplateDeleteDialog', () => {
 
     await waitFor(() => expect(onDeleted).toHaveBeenCalled());
     expect(deleteEventTemplate).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('TemplateDeleteDialog loading', () => {
+  it('shows a busy skeleton while usage loads', async () => {
+    getEventTemplateUsage.mockReturnValue(new Promise(() => undefined));
+    renderDialog();
+    const loading = await screen.findByRole('status', {
+      name: m.event_templates_delete_usage_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+  });
+
+  it('keeps the usage line on screen while a refetch is in flight', async () => {
+    getEventTemplateUsage.mockResolvedValue(usage(3));
+    const queryClient = new QueryClient();
+    renderDialog(queryClient);
+    const line = 'A configuração padrão de 3 ministérios será removida.';
+    expect(await screen.findByText(line)).toBeInTheDocument();
+
+    await startHangingRefetch({ queryClient, read: getEventTemplateUsage });
+
+    expect(screen.getByText(line)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', {
+        name: m.event_templates_delete_usage_loading(),
+      }),
+    ).toBeNull();
   });
 });

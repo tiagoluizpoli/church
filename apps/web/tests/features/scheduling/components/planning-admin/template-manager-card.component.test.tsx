@@ -1,3 +1,4 @@
+import { QueryClient } from '@tanstack/react-query';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -30,6 +31,7 @@ vi.mock('@tanstack/react-router', () => ({
 
 import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 import { TemplateManagerCard } from '@/features/scheduling/components/planning-admin/template-manager-card';
+import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const listCycles = vi.fn().mockResolvedValue({ cycles: [] });
@@ -293,5 +295,31 @@ describe('TemplateManagerCard table view (US1)', () => {
     expect(
       screen.queryByTestId('templates-load-error'),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('TemplateManagerCard loading', () => {
+  it('keeps the rows on screen while a refetch is in flight', async () => {
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+      ],
+    });
+    const queryClient = new QueryClient();
+    renderWithProviders(
+      <PlanningAdminProvider>
+        <TemplateManagerCard />
+      </PlanningAdminProvider>,
+      { queryClient },
+    );
+    const row = await screen.findByRole('row', { name: /Sunday Service/ });
+    expect(row).toBeInTheDocument();
+
+    await startHangingRefetch({ queryClient, read: listEventTemplates });
+
+    expect(
+      screen.getByRole('row', { name: /Sunday Service/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('data-table-loading-state')).toBeNull();
   });
 });

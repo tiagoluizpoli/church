@@ -911,7 +911,9 @@ describe('Direct Cycle review route', () => {
       params: { cycleId: 'cycle-2' },
     });
 
-    expect(await screen.findByTestId('cycle-review-loading')).toBeVisible();
+    expect(
+      await screen.findByRole('status', { name: m.cycle_review_loading() }),
+    ).toBeVisible();
     expect(screen.queryByText('First Cycle')).not.toBeInTheDocument();
     expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
     expect(

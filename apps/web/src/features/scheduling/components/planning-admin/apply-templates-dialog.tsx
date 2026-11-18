@@ -16,6 +16,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { pluralMessage } from '@/shared/utils/plural';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
@@ -61,7 +64,6 @@ export function ApplyTemplatesDialog({
     queryFn: () => adminApi.listEventTemplates(),
     enabled: open,
     refetchOnWindowFocus: 'always',
-    retry: false,
   });
   const templates = templatesQuery.data?.templates;
   const [selection, setSelection] = useState<Selection>(null);
@@ -164,9 +166,10 @@ export function ApplyTemplatesDialog({
             </Button>
           </div>
         ) : templates === undefined ? (
-          <p className="text-muted-foreground text-sm">
-            {m.cycle_apply_loading()}
-          </p>
+          <Pending label={m.cycle_apply_loading()} className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </Pending>
         ) : templates.length === 0 ? (
           <p
             className="text-muted-foreground text-sm"
@@ -231,6 +234,7 @@ export function ApplyTemplatesDialog({
             disabled={checkedIds.length === 0 || applyMutation.isPending}
             onClick={() => applyMutation.mutate(checkedIds)}
           >
+            {applyMutation.isPending ? <Spinner /> : null}
             {applyMutation.isPending
               ? m.cycle_apply_submitting()
               : m.cycle_apply_submit()}

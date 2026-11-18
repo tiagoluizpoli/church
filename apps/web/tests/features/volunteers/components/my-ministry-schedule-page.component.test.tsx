@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { setLocale } from '@church/i18n/runtime';
-import { screen } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
+import { screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MyMinistrySchedulePage } from '@/features/volunteers/components/my-ministry-schedule-page';
@@ -125,5 +126,43 @@ describe.each([
     expect(
       await screen.findByText(m.my_schedule_ministry_unavailable()),
     ).toBeTruthy();
+  });
+});
+
+describe('loading states', () => {
+  it('shows its skeleton only after the pending delay on first load', async () => {
+    api.getMinistrySchedule.mockReturnValue(new Promise(() => {}));
+    renderWithProviders(
+      <MyMinistrySchedulePage ministryId="kids" cycleId="october" />,
+      { queryClient: new QueryClient() },
+    );
+    const region = screen.getByRole('status', {
+      name: m.my_schedule_ministry_loading(),
+    });
+    expect(region).toHaveAttribute('aria-busy', 'true');
+    expect(region).toBeEmptyDOMElement();
+    await waitFor(() =>
+      expect(region.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
+  });
+
+  it('keeps the shown data, with no skeleton, while a refetch is in flight', async () => {
+    const queryClient = new QueryClient();
+    api.getMinistrySchedule.mockResolvedValue(SCHEDULE);
+    renderWithProviders(
+      <MyMinistrySchedulePage ministryId="kids" cycleId="october" />,
+      { queryClient: queryClient },
+    );
+    expect(await screen.findByText('Sunday Service')).toBeVisible();
+    api.getMinistrySchedule.mockClear();
+    api.getMinistrySchedule.mockReturnValue(new Promise(() => {}));
+    void queryClient.invalidateQueries();
+    await waitFor(() =>
+      expect(api.getMinistrySchedule).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.getByText('Sunday Service')).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: m.my_schedule_ministry_loading() }),
+    ).toBeNull();
   });
 });

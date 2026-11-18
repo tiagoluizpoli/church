@@ -137,6 +137,35 @@ async function rowNames() {
 }
 
 describe('/ministries', () => {
+  it('shows a skeleton on first load, then keeps the data during a refetch', async () => {
+    let release: (value: unknown) => void = () => undefined;
+    listMinistryDirectory.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
+    const { queryClient } = renderList();
+
+    const loading = await screen.findByRole('status', {
+      name: m.ministries_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() => {
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    });
+
+    listMinistryDirectory.mockReturnValue(new Promise(() => undefined));
+    release(page({ ministries: [ministry('m-kids', 'kids')] }));
+    expect(await rowNames()).toEqual(['kids']);
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+
+    void queryClient.invalidateQueries();
+    await waitFor(() => expect(listMinistryDirectory).toHaveBeenCalledTimes(2));
+    expect(await rowNames()).toEqual(['kids']);
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
   it('lists the active Ministries in server order, each linking to its workspace', async () => {
     signInAs(callerCapabilitiesFixture({ isChurchAdmin: true }));
 

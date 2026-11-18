@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { overwriteGetLocale } from '@church/i18n/runtime';
 import { QueryClient } from '@tanstack/react-query';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -113,6 +113,20 @@ describe('EventCancelDialog', () => {
     expect(shown).toHaveTextContent(m.event_cancel_swap_requests_one());
     expect(shown).toHaveTextContent(m.event_cancel_warning());
     expect(screen.getByText(/09:00/)).toBeInTheDocument();
+  });
+
+  it('shows a busy skeleton while the impact preview loads', async () => {
+    previewPlanningEventCancellation.mockReturnValue(
+      new Promise(() => undefined),
+    );
+    await open();
+    const loading = await screen.findByRole('status', {
+      name: m.event_cancel_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
+    );
   });
 
   it('keeps confirm disabled until the pt-BR word is typed, in any case and spacing', async () => {

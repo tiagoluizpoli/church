@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { DatePickerField } from '@/components/date-picker-field';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GetCycleAvailabilityStatus200StatusesItem } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -72,7 +73,6 @@ export function AvailabilityStatusSection({
   const statusQuery = useQuery({
     queryKey,
     queryFn: () => adminApi.getCycleAvailabilityStatus(cycleId, { ministryId }),
-    retry: false,
   });
   const { churchTimezone } = useTimezone();
   const { data } = statusQuery;
@@ -159,9 +159,9 @@ export function AvailabilityStatusSection({
       </CardHeader>
       <CardContent className="space-y-6">
         {statusQuery.isLoading ? (
-          <div role="status" aria-label={m.answers_loading()}>
+          <Pending label={m.answers_loading()}>
             <Skeleton className="h-16 w-full" />
-          </div>
+          </Pending>
         ) : statusQuery.isError ? (
           <div
             role="alert"

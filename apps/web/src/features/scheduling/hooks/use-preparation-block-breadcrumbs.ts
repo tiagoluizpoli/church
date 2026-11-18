@@ -26,7 +26,6 @@ export function usePreparationBlockBreadcrumbs(): PreparationBreadcrumbOverride[
         ministryId: ministryId ?? '',
       }),
     enabled,
-    retry: false,
   });
   if (!enabled || schedules.isError || participation.isError) return [];
   const schedule = schedules.data;

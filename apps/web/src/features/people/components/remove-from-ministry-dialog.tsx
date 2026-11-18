@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { UpcomingAssignmentsAlert } from '@/features/people/components/upcoming-assignments-alert';
 import {
   type MembershipFailure,
@@ -119,6 +120,7 @@ export function RemoveFromMinistryDialog({
               disabled={pending}
               onClick={confirm}
             >
+              {pending ? <Spinner /> : null}
               {pending
                 ? m.people_remove_from_ministry_pending()
                 : m.people_remove_from_ministry_confirm()}

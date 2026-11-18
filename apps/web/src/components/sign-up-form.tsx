@@ -3,10 +3,11 @@ import { useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import z from 'zod';
-import Loader from './loader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
+import { Skeleton } from '@/components/ui/skeleton';
 import { authClient } from '@/lib/auth-client';
 import { authErrorMessage } from '@/lib/auth-error-message';
 
@@ -62,7 +63,29 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
   });
 
   if (isPending) {
-    return <Loader />;
+    return (
+      <Pending
+        label={m.auth_session_loading()}
+        className="mx-auto mt-10 w-full max-w-md p-6"
+      >
+        <Skeleton className="mx-auto mb-6 h-9 w-48" />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+          <Skeleton className="h-9 w-full" />
+        </div>
+      </Pending>
+    );
   }
 
   return (

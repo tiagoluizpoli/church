@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { QueryClient } from '@tanstack/react-query';
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { type ReactNode, useLayoutEffect } from 'react';
@@ -919,10 +920,42 @@ describe('CycleReviewCard resolution states', () => {
       </PlanningAdminProvider>,
     );
 
-    expect(await screen.findByTestId('cycle-review-loading')).toHaveTextContent(
-      m.cycle_review_loading(),
+    const loading = await screen.findByRole('status', {
+      name: m.cycle_review_loading(),
+    });
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+    await waitFor(() =>
+      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull(),
     );
     expect(screen.queryByTestId('send-cycle-button')).not.toBeInTheDocument();
+  });
+
+  it('keeps the reviewed Cycle on screen while a refetch is in flight', async () => {
+    getCycle.mockResolvedValue(twoEventCycleResponse({ state: 'draft' }));
+    listCycles.mockResolvedValue({ cycles: [] });
+    const queryClient = new QueryClient();
+    renderWithProviders(
+      <PlanningAdminProvider>
+        <SelectCycle cycleId="cycle-1" />
+        <CycleReviewCard cycleId="cycle-1" isReadOnly={false} />
+      </PlanningAdminProvider>,
+      { queryClient },
+    );
+    expect(
+      await screen.findByRole('grid', { name: m.cycle_review_title() }),
+    ).toBeInTheDocument();
+    getCycle.mockClear();
+    getCycle.mockReturnValue(new Promise(() => undefined));
+    act(() => {
+      void queryClient.invalidateQueries();
+    });
+    await waitFor(() => expect(getCycle).toHaveBeenCalled());
+    expect(
+      screen.getByRole('grid', { name: m.cycle_review_title() }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: m.cycle_review_loading() }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps a retryable failure distinct from an empty Cycle', async () => {

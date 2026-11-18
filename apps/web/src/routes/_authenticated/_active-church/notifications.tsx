@@ -40,6 +40,8 @@ function RouteComponent() {
         onOpenNotification={inbox.openNotification}
         onMarkRead={inbox.markRead}
         onMarkAllRead={inbox.markAllRead}
+        isMarkingAllRead={inbox.isMarkingAllRead}
+        markingReadId={inbox.markingReadId}
       />
 
       <NotificationDetailSheet

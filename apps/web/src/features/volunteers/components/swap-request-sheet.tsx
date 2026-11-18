@@ -8,6 +8,7 @@ import { isStaleRequest } from '../lib/http-status';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { volunteerApi } from '@/utils/api-instances';
 
@@ -75,7 +76,14 @@ export function SwapRequestSheet({
             disabled={mutation.isPending}
             onClick={() => mutation.mutate()}
           >
-            {mutation.isPending ? m.swap_sending() : m.swap_send()}
+            {mutation.isPending ? (
+              <>
+                <Spinner />
+                {m.swap_sending()}
+              </>
+            ) : (
+              m.swap_send()
+            )}
           </Button>
         </>
       }

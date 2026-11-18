@@ -20,7 +20,9 @@ import {
 } from '../lib/unavailable-shifts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import type {
   GetAvailabilityCheck200,
@@ -370,6 +372,7 @@ function AvailabilityAnswer({
             disabled={answer.isPending}
             onClick={() => answer.mutate()}
           >
+            {answer.isPending ? <Spinner /> : null}
             {answer.isPending
               ? confirmed
                 ? m.availability_detail_saving()
@@ -403,13 +406,12 @@ function AvailabilityDetailContent({
   const query = useQuery({
     queryKey: ['availability-check', checkId],
     queryFn: () => volunteerApi.getAvailabilityCheck(checkId),
-    retry: false,
   });
   if (query.isLoading)
     return (
-      <div role="status" aria-label={m.availability_detail_loading()}>
+      <Pending label={m.availability_detail_loading()}>
         <Skeleton className="h-64 w-full" />
-      </div>
+      </Pending>
     );
   if (query.isError) {
     const status = isAxiosError(query.error)

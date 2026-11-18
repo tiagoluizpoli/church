@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pending } from '@/components/ui/pending';
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import {
   WorkspaceIntroPanel,
   WorkspacePage,
@@ -177,6 +179,7 @@ function RevokeDialog({ item, open, onOpenChange }: RevokeDialogProps) {
             disabled={pending}
             onClick={revoke}
           >
+            {pending ? <Spinner /> : null}
             {pending
               ? m.invitations_revoking()
               : m.invitations_revoke_confirm()}
@@ -440,6 +443,7 @@ function RowActions({ item }: RowActionProps) {
               disabled={pending}
               onClick={resend}
             >
+              {pending ? <Spinner /> : null}
               {pending ? m.invitations_resending() : m.invitations_resend()}
             </DropdownMenuItem>
           ) : null}
@@ -775,17 +779,19 @@ export function InvitationListPage({
         </Alert>
       ) : loading ? (
         <Card className="surface-panel">
-          <CardContent
-            className="grid gap-3 md:gap-0"
-            data-testid="invitations-loading"
-          >
-            <Skeleton className="hidden h-[41px] w-full md:block" />
-            {[0, 1, 2].map((row) => (
-              <Skeleton
-                key={row}
-                className="h-27 w-full md:mt-px md:h-[40px]"
-              />
-            ))}
+          <CardContent>
+            <Pending
+              className="grid gap-3 md:gap-0"
+              label={m.invitations_loading()}
+            >
+              <Skeleton className="hidden h-[41px] w-full md:block" />
+              {[0, 1, 2].map((row) => (
+                <Skeleton
+                  key={row}
+                  className="h-27 w-full md:mt-px md:h-[40px]"
+                />
+              ))}
+            </Pending>
           </CardContent>
         </Card>
       ) : items.length === 0 &&
@@ -932,6 +938,7 @@ export function InvitationListPage({
                 className="min-h-11 w-full md:min-h-0 md:w-auto"
                 onClick={() => query.fetchNextPage()}
               >
+                {query.isFetchingNextPage ? <Spinner /> : null}
                 {query.isFetchingNextPage
                   ? m.invitations_loading_more()
                   : m.invitations_load_more()}

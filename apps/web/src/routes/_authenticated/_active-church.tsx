@@ -16,6 +16,7 @@ import { useAvailabilityCheckBreadcrumb } from '@/features/volunteers/hooks/use-
 import { useMyMinistryScheduleBreadcrumb } from '@/features/volunteers/hooks/use-my-ministry-schedule-breadcrumb';
 import type { GetActiveChurchStatus200 } from '@/infrastructure/api/churchAPI.schemas';
 import { CallerCapabilitiesScopeProvider } from '@/shared/components/caller-capabilities-scope';
+import { ShellErrorFallback } from '@/shared/components/route-fallbacks';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
 import {
   extractRequestedChurchId,
@@ -61,6 +62,8 @@ function requireChurchTimezone({
 
 export const Route = createFileRoute('/_authenticated/_active-church')({
   component: ActiveChurchLayout,
+  // Session or Active Church resolution failed: there is no shell to render inside.
+  errorComponent: ShellErrorFallback,
   beforeLoad: async ({ search, location, context }) => {
     // The entry gate's one source of truth: revalidates Church Membership
     // server-side on every load and covers every branch — an already-set
@@ -82,6 +85,9 @@ export const Route = createFileRoute('/_authenticated/_active-church')({
       const { churches } = await context.queryClient.ensureQueryData({
         queryKey: ['active-church', 'options'],
         queryFn: () => activeChurchApi.listActiveChurchOptions(),
+        // Fail fast: an outage must reach the full-screen reconnecting state,
+        // not retry forever behind the guard (#906).
+        retry: false,
       });
       const decision = resolveCrossChurchDeepLink({
         requestedChurchId,

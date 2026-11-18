@@ -3,7 +3,6 @@ import { getLocale } from '@church/i18n/runtime';
 import { now } from '@church/time';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { useOnlineState } from '../../volunteers/hooks/use-online-state';
 import type {
   NotificationItemViewModel,
@@ -24,7 +23,7 @@ import type {
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatDayOf, formatInstantOf } from '@/shared/utils/church-time';
-import { requestErrorMessage } from '@/shared/utils/request-error-message';
+import { toastRequestError } from '@/shared/utils/toast-request-error';
 import { notificationsApi } from '@/utils/api-instances';
 
 const { pollIntervalMs } = appConfig.notifications;
@@ -255,8 +254,7 @@ export function useNotificationInbox() {
       });
     },
     onError: (error) => {
-      const message = requestErrorMessage(error);
-      toast.error(message);
+      toastRequestError({ error });
     },
   });
 
@@ -271,8 +269,7 @@ export function useNotificationInbox() {
       });
     },
     onError: (error) => {
-      const message = requestErrorMessage(error);
-      toast.error(message);
+      toastRequestError({ error });
     },
   });
 

@@ -53,6 +53,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -81,7 +82,10 @@ let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   const managers = createSchedulingManagers();
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new AssignController({
     participationManager: managers.participationManager,
     assignmentManager: managers.assignmentManager,

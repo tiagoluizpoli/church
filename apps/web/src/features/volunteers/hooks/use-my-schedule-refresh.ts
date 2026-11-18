@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useOnlineState } from './use-online-state';
-import { requestErrorMessage } from '@/shared/utils/request-error-message';
+import { toastRequestError } from '@/shared/utils/toast-request-error';
 
 const BACKGROUND_UPDATE_NOTICE_MS = 6000;
 
@@ -101,8 +101,7 @@ export function useMyScheduleRefresh({
     } catch (error) {
       setRefreshState('error');
       isManualRefreshRef.current = false;
-      const message = requestErrorMessage(error);
-      toast.error(message);
+      toastRequestError({ error });
     }
   };
 

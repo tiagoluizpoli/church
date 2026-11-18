@@ -18,14 +18,25 @@ Build both from the repository root at the commit being deployed:
 
 ```sh
 docker build -f deployment/server.Dockerfile --build-arg APP_REVISION="$(git rev-parse HEAD)" -t <registry>/church-server .
-docker build -f deployment/web.Dockerfile --build-arg APP_REVISION="$(git rev-parse HEAD)" -t <registry>/church-web .
+docker build -f deployment/web.Dockerfile --build-arg APP_REVISION="$(git rev-parse HEAD)" \
+  --secret id=SENTRY_URL,env=SENTRY_URL --secret id=SENTRY_ORG,env=SENTRY_ORG \
+  --secret id=SENTRY_PROJECT,env=SENTRY_PROJECT --secret id=SENTRY_AUTH_TOKEN,env=SENTRY_AUTH_TOKEN \
+  -t <registry>/church-web .
 ```
 
 The deployment workflows build and push them for you; see
 [docs/operations/deployments.md](../docs/operations/deployments.md) for the
 develop pipeline, its checks and the deployment runbook.
 
-`APP_REVISION` is the only build input, and the build fails without it.
+`APP_REVISION` is the only build argument, and the build fails without it.
+The web build takes the error tracker settings as optional build secrets
+(`tooling/deployment/.env.schema`): it uploads the web source maps under the
+revision and deletes them before the served stage, so no `.map` is ever
+served, and it fails if the upload fails (#929). Without any of them it
+skips the upload with a warning (crash stacks stay minified); with only some
+of them it fails. Repository variables
+`SENTRY_URL`, `SENTRY_ORG`, `SENTRY_PROJECT` and the secret
+`SENTRY_AUTH_TOKEN` supply them in the workflows.
 `bun install --frozen-lockfile` pins the dependencies, and the base images
 are pinned to versions. `.dockerignore` keeps every `.env*` value file out of
 the build context. Only the Varlock `.env.schema` contracts go in. Each
@@ -49,6 +60,11 @@ contract in `packages/env/src/server.ts`.
 | `PUBLIC_ORIGIN` | yes | the environment's public origin, e.g. `https://staging.example.org`; it becomes `BETTER_AUTH_URL` and `CORS_ORIGIN` |
 | `RESEND_API_KEY` | yes, secret | Resend key for outgoing email |
 | `RESEND_FROM_EMAIL` | yes | sender, e.g. `Church <noreply@example.org>` |
+| `LOG_LEVEL` | no | `fatal`, `error`, `warn`, `info` (default), `debug` or `trace` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | no | OTLP/HTTP base URL of the tracing backend, e.g. `http://<tempo>:4318`; unset, no traces are exported |
+| `TRACE_SAMPLE_RATE` | no | share of new traces kept, `0` to `1` (default `1`); an incoming `traceparent`'s decision wins |
+| `SENTRY_DSN` | no | error tracker (GlitchTip) DSN, reachable over the tailnet; unset, no error is reported and the browser tunnel `/api/error-reports` answers 204 |
+| `ERROR_REPORTING_ENABLED` | no | `false` turns error reporting off even with `SENTRY_DSN` set (default `true`) |
 | `DATABASE_NETWORK` | no | Docker network that reaches the host's PostgreSQL (default `dokploy-network`) |
 
 The images set `NODE_ENV=production` for every environment, so debug
@@ -58,6 +74,21 @@ Resend. Development and staging deploy with
 `-f compose.yml -f compose.mailpit.yml` and route email by the database
 setting described in
 [docs/deployment/email-delivery.md](../docs/deployment/email-delivery.md).
+
+## Tracing
+
+`start:deployment` runs the server from source with
+`bun --preload ./src/main/instrumentation.ts`, which starts OpenTelemetry
+before `pg` and `fastify` load ([ADR 0015](../docs/adr/0015-self-hosted-observability-on-the-homelab.md)).
+`tests/http/tracing.http.test.ts` fails if request or SQL spans stop appearing
+under Bun.
+
+- If production ever runs the bundle (`build`/`compile`) instead, `pg` and
+  `fastify` must stay external to it, or their instrumentation sees no module
+  load and records nothing.
+- If a Bun upgrade breaks the spans and pinning Bun is not enough, the
+  fallback is running the server on Node with the same preload
+  (`node --import tsx/esm --import ./src/main/instrumentation.ts src/main/server.ts`).
 
 ## Local versus deployed
 

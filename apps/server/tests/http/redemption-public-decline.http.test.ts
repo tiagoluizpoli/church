@@ -31,6 +31,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { provisionChurch } from '@/scripts/provision-church';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
   seedTwoChurchIdentityFixture,
@@ -114,7 +115,10 @@ beforeEach(async () => {
     }),
     config: appConfig,
   });
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {

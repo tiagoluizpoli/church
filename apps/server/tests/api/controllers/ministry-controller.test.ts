@@ -14,6 +14,7 @@ import { MinistryController } from '@/api/controllers/ministry-controller';
 import { MinistryInvitationNotFoundError } from '@/domain/errors/ministry-invitation-not-found';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -61,7 +62,10 @@ function createActiveChurchResolution() {
 }
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new MinistryController({
     config: appConfig,
     ministryManager: ministryManager as never,

@@ -45,6 +45,7 @@ import {
   buildVolunteer,
 } from '@/seeds/builders/volunteer';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
   seedTwoChurchIdentityFixture,
@@ -113,7 +114,10 @@ beforeEach(async () => {
     volunteerRepository,
     volunteerTransferRepository,
   });
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new RedemptionController({
     redemptionManager,
     volunteerTransferManager,

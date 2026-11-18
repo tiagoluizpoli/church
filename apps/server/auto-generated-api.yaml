@@ -242,9 +242,12 @@ paths:
                     type: string
                   message:
                     type: string
+                  requestId:
+                    type: string
                 required:
                   - error
                   - message
+                  - requestId
                 additionalProperties: false
   /api/v1/admin/setup-progress:
     get:

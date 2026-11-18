@@ -41,6 +41,7 @@ import type {
   ChurchRepository,
   CycleRepository,
   EmailSender,
+  ErrorReporter,
   EventRepository,
   EventTemplateRepository,
   EventTimeBlockRepository,
@@ -63,6 +64,7 @@ import type {
   SetupProgressRepository,
   ShiftRepository,
   SwapRequestRepository,
+  Tracing,
   UnavailableShiftRepository,
   UnitOfWork,
   UsualSetupRepository,
@@ -112,6 +114,8 @@ export interface CompositionRootDependencies {
   redemptionIdentityGateway: RedemptionIdentityGateway;
   /** Non-production only; set alongside a capturing `emailSender`. */
   verificationCodeInspector: VerificationCodeInspector;
+  errorReporter: ErrorReporter;
+  tracing: Tracing;
   // Auth
   scopeRepository: SchedulingScopeRepository;
   authorityActorRepository: AuthorityActorRepository;

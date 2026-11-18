@@ -41,6 +41,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
@@ -73,7 +74,10 @@ interface BuildAppInput {
 /** Real managers, repositories and AuthorityService; only session and Active Church are seams. */
 async function buildApp({ wrapRepo = (repo) => repo }: BuildAppInput = {}) {
   const harness = createMinistryInvitationTestHarness({ db });
-  const instance = await createFastify({ locale: testLocale });
+  const instance = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new MinistryController({
     config: appConfig,
     ministryManager: new DbMinistryManager({

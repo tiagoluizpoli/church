@@ -3,7 +3,7 @@ import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getSelectedCycleIdOrThrow } from './planning-admin.utils';
-import { requestErrorMessage } from '@/shared/utils/request-error-message';
+import { toastRequestError } from '@/shared/utils/toast-request-error';
 import { adminApi } from '@/utils/api-instances';
 
 export interface UsePlanningAdminMutationsProps {
@@ -60,8 +60,7 @@ function usePlanningMutation<TVariables, TResult>({
       if (onError) {
         onError(error as Error);
       } else {
-        const message = requestErrorMessage(error);
-        toast.error(message);
+        toastRequestError({ error });
       }
     },
   });

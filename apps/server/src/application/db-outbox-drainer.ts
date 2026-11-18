@@ -21,6 +21,7 @@ import type {
   EmailPayload,
   EmailSender,
 } from '../domain/contracts/infrastructure/email-sender';
+import type { ErrorReporter } from '../domain/contracts/infrastructure/error-reporter';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type {
@@ -33,6 +34,7 @@ import type {
   OutboxRepository,
 } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
+import type { Tracing } from '../domain/contracts/infrastructure/tracing';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerTransferRepository } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { EmailSendError } from '../domain/errors/email-send-error';
@@ -55,6 +57,11 @@ import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
 import { emailRoutingFor } from './email-routing';
 import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
 
+/** The tracker sees the row id and kind; the reason may quote an email. */
+class OutboxDeliveryFailedError extends Error {
+  override name = 'OutboxDeliveryFailedError';
+}
+
 export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly outboxRepository: OutboxRepository;
   private readonly invitationRepository: MinistryInvitationRepository;
@@ -66,6 +73,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly notifier: ChurchNotifier;
   private readonly schedulingFacts: SchedulingNotificationFacts;
   private readonly unitOfWork: UnitOfWork;
+  private readonly errorReporter: ErrorReporter;
+  private readonly tracing: Tracing;
   private readonly outboxPolicy: AppConfig['outbox'];
   private readonly emailIdempotencyRetentionMs: number;
   private readonly webBaseUrl: string;
@@ -84,7 +93,11 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     unitOfWork,
     config,
     webBaseUrl,
+    errorReporter,
+    tracing,
   }: DbOutboxDrainerDependencies) {
+    this.errorReporter = errorReporter;
+    this.tracing = tracing;
     this.outboxRepository = outboxRepository;
     this.invitationRepository = invitationRepository;
     this.churchRepository = churchRepository;
@@ -115,7 +128,11 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     let sent = 0;
     let failed = 0;
     for (const message of claimed) {
-      const outcome = await this.processOne({ message });
+      // One span per delivery, so its SQL nests under it in the trace.
+      const outcome = await this.tracing.inSpan({
+        name: 'outbox.delivery',
+        run: () => this.processOne({ message }),
+      });
       if (outcome === 'sent') sent += 1;
       else failed += 1;
     }
@@ -542,6 +559,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     for (const sink of retryable) channelOutcomes[sink] = 'failed';
 
     if (Object.values(channelOutcomes).includes('failed')) {
+      this.reportFailure({ message });
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.markFailed({
           id: message.id,
@@ -708,11 +726,31 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     });
   }
 
+  /**
+   * A message that will never be delivered: the maintainer must notice.
+   * Terminal failures only; a retry is expected noise, a dead letter is not.
+   */
+  private reportFailure({ message }: ReportFailureInput): void {
+    // Runs inside the outbox.delivery span.
+    const traceId = this.tracing.activeTraceId();
+    this.errorReporter.report({
+      error: new OutboxDeliveryFailedError(),
+      traceId,
+      tags: {
+        // biome-ignore lint/style/useNamingConvention: tracker tags are snake_case
+        outbox_message_id: message.id,
+        // biome-ignore lint/style/useNamingConvention: tracker tags are snake_case
+        outbox_kind: message.kind,
+      },
+    });
+  }
+
   private async failTerminally({
     message,
     reason,
     attempts = message.attempts,
   }: FailTerminallyInput): Promise<void> {
+    this.reportFailure({ message });
     await this.unitOfWork.run((tx) =>
       this.outboxRepository.markFailed({
         id: message.id,
@@ -743,6 +781,12 @@ interface DbOutboxDrainerDependencies {
   unitOfWork: UnitOfWork;
   /** Base URL of the web app, for deep links in emails. */
   webBaseUrl: string;
+  errorReporter: ErrorReporter;
+  tracing: Tracing;
+}
+
+interface ReportFailureInput {
+  message: OutboxMessage;
 }
 
 interface LocaleForInput {

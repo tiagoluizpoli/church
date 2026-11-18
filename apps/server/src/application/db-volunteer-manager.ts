@@ -1,9 +1,12 @@
 import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
+  addCalendarMonths,
   addMilliseconds,
+  type CalendarDay,
   compareCalendarDays,
   compareInstants,
+  firstOfMonth,
   formatTimeOfDay,
   type Instant,
   now as nowInstant,
@@ -140,6 +143,24 @@ function capUpcomingAssignments({
     capped.push({ ...group, assignments });
   }
   return capped;
+}
+
+/** How many Church months the dashboard's serving history covers, the current one included. */
+const SERVING_HISTORY_MONTHS = 6;
+
+interface ServingMonthsInput {
+  churchDay: CalendarDay;
+  count: number;
+}
+
+/** First days of the `count` months ending at `churchDay`'s month, oldest first. */
+function servingMonths({
+  churchDay,
+  count,
+}: ServingMonthsInput): CalendarDay[] {
+  return Array.from({ length: count }, (_, index) =>
+    addCalendarMonths({ day: churchDay, months: index - (count - 1) }),
+  );
 }
 
 function isPublishedStatus(
@@ -383,6 +404,16 @@ export class DbVolunteerManager implements IVolunteerManager {
       requirements.map((item) => [item.id, item]),
     );
 
+    const { timezone: timeZone } = await this.churchRepo.getById({
+      id: churchId,
+    });
+    const servedByMonth = new Map(
+      servingMonths({
+        churchDay: today({ instant: now, timeZone }),
+        count: SERVING_HISTORY_MONTHS,
+      }).map((month) => [month, { month, served: 0 }]),
+    );
+
     for (const assignment of allAssignments) {
       if (!isPublishedStatus(assignment.status)) continue;
 
@@ -390,6 +421,20 @@ export class DbVolunteerManager implements IVolunteerManager {
       const participation = participationsById.get(
         assignment.participationId as string,
       );
+      const servedEvent =
+        participation && eventsById.get(participation.eventId as string);
+      if (
+        shift &&
+        servedEvent &&
+        servedEvent.status !== 'cancelled' &&
+        assignment.status !== 'declined' &&
+        compareInstants({ left: shift.startTime, right: now }) <= 0
+      ) {
+        const bucket = servedByMonth.get(
+          firstOfMonth({ day: today({ instant: shift.startTime, timeZone }) }),
+        );
+        if (bucket) bucket.served += 1;
+      }
       if (
         !participation ||
         !shift ||
@@ -534,6 +579,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       notificationPreview,
       defaultMinistryId,
       ministryOptions: ministries,
+      servingHistory: [...servedByMonth.values()],
     };
   }
 

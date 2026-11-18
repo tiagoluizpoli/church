@@ -96,3 +96,27 @@ export function calendarDaysBetween({
       DAY_MS,
   );
 }
+
+export interface FirstOfMonthInput {
+  day: CalendarDay;
+}
+
+/** The first CalendarDay of `day`'s month. */
+export function firstOfMonth({ day }: FirstOfMonthInput): CalendarDay {
+  return `${day.slice(0, 8)}01` as CalendarDay;
+}
+
+export interface AddCalendarMonthsInput {
+  day: CalendarDay;
+  months: number;
+}
+
+/** The first CalendarDay of the month `months` away from `day`'s month; negative goes back. */
+export function addCalendarMonths({
+  day,
+  months,
+}: AddCalendarMonthsInput): CalendarDay {
+  const date = utcMidnightOf({ day: firstOfMonth({ day }) });
+  date.setUTCMonth(date.getUTCMonth() + months);
+  return date.toISOString().slice(0, 10) as CalendarDay;
+}

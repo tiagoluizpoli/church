@@ -214,6 +214,47 @@ export interface ScheduleCountRow {
   count: number;
 }
 
+export interface ListCycleStaffingInput {
+  churchId: ChurchId;
+  /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
+  ministryIds?: MinistryId[];
+  /** How many of the latest Sent or Past Cycles to read. */
+  cycleLimit: number;
+  tx?: TransactionContext;
+}
+
+export interface ListMinistryStaffingInput {
+  churchId: ChurchId;
+  /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
+  ministryIds?: MinistryId[];
+  cycleId: CycleId;
+  tx?: TransactionContext;
+}
+
+/** Headcount of active requirements and the seats their live assignments hold. */
+export interface StaffingTotals {
+  /** People the requirements ask for. */
+  needed: number;
+  /** Seats held by a draft, pending or confirmed assignment, never above `needed` per requirement. */
+  filled: number;
+}
+
+export interface CycleStaffingRow extends StaffingTotals {
+  cycleId: string;
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  /** Availability checks not withdrawn, from active memberships. */
+  asked: number;
+  /** Of `asked`, the checks the volunteer answered. */
+  answered: number;
+}
+
+export interface MinistryStaffingRow extends StaffingTotals {
+  ministryId: string;
+  name: string;
+}
+
 export interface SaveScheduleLastToldInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -309,4 +350,10 @@ export interface MinistryParticipationRepository {
   countScheduleChecks(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleCheckCountRow[]>;
+  /** The latest Sent or Past Cycles, oldest first, with staffing and availability totals in scope. */
+  listCycleStaffing(input: ListCycleStaffingInput): Promise<CycleStaffingRow[]>;
+  /** Serving Ministries of one Cycle, least covered first, then by name and id. */
+  listMinistryStaffing(
+    input: ListMinistryStaffingInput,
+  ): Promise<MinistryStaffingRow[]>;
 }

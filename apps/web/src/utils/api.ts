@@ -25,15 +25,15 @@ export function createQueryClient(): QueryClient {
     }),
     defaultOptions: {
       queries: {
-        // Outages retry forever (React Query's default backoff caps at 30s);
+        // Outages retry forever (React Query's default backoff caps at 30s)
+        // and again on window focus or reconnect (React Query defaults);
         // other 5xx retry three times; 4xx and non-HTTP errors never.
         retry: (failureCount, error) => {
           if (isOutageError(error)) return true;
-          const status = isAxiosError(error) ? error.response?.status : 0;
-          return (status ?? 0) >= 500 && failureCount < SERVER_ERROR_RETRIES;
+          const status =
+            isAxiosError(error) && error.response ? error.response.status : 0;
+          return status >= 500 && failureCount < SERVER_ERROR_RETRIES;
         },
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
       },
       mutations: { retry: false },
     },

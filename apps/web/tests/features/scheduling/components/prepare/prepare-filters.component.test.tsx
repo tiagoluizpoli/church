@@ -1,6 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { parseTimeOfDay } from '@church/time';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
@@ -8,7 +8,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
 describe('PrepareFilters (US3/T020, mode select + single start/end pair)', () => {
-  it('calls onNameQueryChange as the leader types, with zero network requests', async () => {
+  it('commits the typed name once typing pauses, not per keystroke', async () => {
     const onNameQueryChange = vi.fn();
     const user = userEvent.setup();
     renderWithProviders(
@@ -22,8 +22,9 @@ describe('PrepareFilters (US3/T020, mode select + single start/end pair)', () =>
 
     await user.type(screen.getByTestId('prepare-name-filter'), 'greet');
 
-    expect(onNameQueryChange).toHaveBeenCalledTimes(5);
-    expect(onNameQueryChange).toHaveBeenLastCalledWith('t');
+    expect(screen.getByTestId('prepare-name-filter')).toHaveValue('greet');
+    await waitFor(() => expect(onNameQueryChange).toHaveBeenCalledTimes(1));
+    expect(onNameQueryChange).toHaveBeenCalledWith('greet');
   });
 
   it('switches mode via the select', async () => {

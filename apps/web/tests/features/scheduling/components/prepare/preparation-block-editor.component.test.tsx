@@ -72,7 +72,11 @@ vi.mock('@/components/ui/sonner', () => ({ Toaster: () => null }));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+  api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
+    events: [EVENT],
+  });
   api.getSchedule.mockResolvedValue(SCHEDULE);
   api.listSectors.mockResolvedValue({ sectors: SECTORS });
   api.listMinistryRoles.mockResolvedValue({ roles: ROLES });
@@ -177,16 +181,17 @@ it('splits a serving block into equal Shifts and submits independent indexed hea
     [1, '3'],
     [2, '4'],
   ] as const) {
-    await user.type(
-      screen.getByRole('spinbutton', {
-        name: m.headcount_grid_cell_label({
-          role: 'Singer',
-          sector: 'Stage',
-          shift: m.usual_setup_shift_label({ number }),
-        }),
+    const cell = screen.getByRole('spinbutton', {
+      name: m.headcount_grid_cell_label({
+        role: 'Singer',
+        sector: 'Stage',
+        shift: m.usual_setup_shift_label({ number }),
       }),
-      count,
-    );
+    });
+    // Each new Shift starts with the whole block's counts.
+    expect(cell).toHaveValue(2);
+    await user.clear(cell);
+    await user.type(cell, count);
   }
   await user.click(screen.getByRole('button', { name: m.usual_setup_save() }));
   expect(api.saveEventTimeBlockPreparation).toHaveBeenCalledWith(
@@ -213,6 +218,50 @@ it('splits a serving block into equal Shifts and submits independent indexed hea
   );
 });
 
+it('carries the whole-block counts into each new equal Shift and restores a split’s own counts when it returns', async () => {
+  const user = userEvent.setup();
+  renderRoute({
+    initialPath: EDITOR_PATH,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByRole('checkbox');
+  const cell = (shift: string) =>
+    screen.getByRole('spinbutton', {
+      name: m.headcount_grid_cell_label({
+        role: 'Singer',
+        sector: 'Stage',
+        shift,
+      }),
+    });
+  const first = m.usual_setup_shift_label({ number: 1 });
+  const second = m.usual_setup_shift_label({ number: 2 });
+  await user.click(
+    screen.getByRole('radio', { name: m.shift_split_mode_equal() }),
+  );
+  expect(cell(first)).toHaveValue(2);
+  expect(cell(second)).toHaveValue(2);
+  await user.clear(cell(second));
+  await user.type(cell(second), '5');
+  const count = screen.getByRole('spinbutton', {
+    name: m.shift_split_equal_count(),
+  });
+  await user.clear(count);
+  await user.type(count, '3');
+  // Each new Shift copies the Shift at its position, or the last one.
+  expect(cell(first)).toHaveValue(2);
+  expect(cell(second)).toHaveValue(5);
+  expect(cell(m.usual_setup_shift_label({ number: 3 }))).toHaveValue(5);
+  await user.clear(cell(second));
+  await user.type(cell(second), '7');
+  await user.clear(count);
+  await user.type(count, '2');
+  expect(cell(second)).toHaveValue(5);
+  await user.click(
+    screen.getByRole('radio', { name: m.shift_split_mode_whole() }),
+  );
+  expect(cell(m.usual_setup_whole_block_shift())).toHaveValue(2);
+});
+
 it('adapts overnight manual Shifts to Instants in the Church Timezone', async () => {
   const user = userEvent.setup();
   api.saveEventTimeBlockPreparation.mockResolvedValue(BLOCK);
@@ -230,16 +279,15 @@ it('adapts overnight manual Shifts to Instants in the Church Timezone', async ()
     time: '00:00',
   });
   await user.click(screen.getByRole('button', { name: m.shift_split_add() }));
-  await user.type(
-    screen.getByRole('spinbutton', {
-      name: m.headcount_grid_cell_label({
-        role: 'Singer',
-        sector: 'Stage',
-        shift: `${m.usual_setup_shift_label({ number: 2 })} · 00:00–02:00`,
-      }),
+  const second = screen.getByRole('spinbutton', {
+    name: m.headcount_grid_cell_label({
+      role: 'Singer',
+      sector: 'Stage',
+      shift: `${m.usual_setup_shift_label({ number: 2 })} · 00:00–02:00`,
     }),
-    '3',
-  );
+  });
+  await user.clear(second);
+  await user.type(second, '3');
   await user.click(screen.getByRole('button', { name: m.usual_setup_save() }));
   expect(api.saveEventTimeBlockPreparation).toHaveBeenCalledWith(
     PARTICIPATION_ID,
@@ -260,6 +308,13 @@ it('adapts overnight manual Shifts to Instants in the Church Timezone', async ()
         ],
       },
       headcounts: [
+        // The first Shift kept the whole block's count through the split.
+        {
+          shiftIndex: 0,
+          sectorId: 'sector-stage',
+          roleId: 'role-singer',
+          peopleNeeded: 2,
+        },
         {
           shiftIndex: 1,
           sectorId: 'sector-stage',
@@ -287,6 +342,8 @@ it('loads saved manual Shifts with their labels and floors cells at active assig
     requirements: [],
   });
   api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
     events: [{ ...EVENT, eventTimeBlocks: [block] }],
   });
   const user = userEvent.setup();
@@ -439,6 +496,7 @@ it('shows authoritative response and Assignment counts linked to the affected sa
       shift: m.usual_setup_shift_label({ number: 1 }),
     }),
   });
+  await user.clear(stage);
   await user.type(stage, '3');
   await user.click(screen.getByRole('button', { name: m.usual_setup_save() }));
   expect(
@@ -498,6 +556,8 @@ it('warns before leaving an unsaved form, keeps edits when staying, and cancels 
 
 it('keeps a published participation editable for an Event added to the Sent Cycle', async () => {
   api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
     events: [
       {
         ...EVENT,
@@ -565,7 +625,11 @@ it.each([
     ).toBeVisible();
     expect(screen.queryByRole('checkbox')).toBeNull();
     if (status === 500) {
-      api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+      api.getCycleParticipation.mockResolvedValue({
+        dayMarkers: ['2027-01-03'],
+        totals: { blocks: 1, needsAttention: 0 },
+        events: [EVENT],
+      });
       await userEvent
         .setup()
         .click(screen.getByRole('button', { name: m.schedules_retry() }));
@@ -598,6 +662,8 @@ it('disables serving Save for invalid, blank and zero headcounts', async () => {
 it('saves an untouched first opt-in through the server Usual setup re-seed contract', async () => {
   const block = { ...BLOCK, included: false, shifts: [] };
   api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
     events: [{ ...EVENT, eventTimeBlocks: [block] }],
   });
   api.saveEventTimeBlockPreparation.mockResolvedValue(BLOCK);
@@ -669,7 +735,11 @@ it('opens missing registry shortcuts in new tabs and refreshes on focus while ke
       },
     ],
   };
-  api.getCycleParticipation.mockResolvedValue({ events: [changed] });
+  api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
+    events: [changed],
+  });
   await act(async () => {
     focusManager.setFocused(false);
     focusManager.setFocused(true);
@@ -744,6 +814,8 @@ it('preserves exact saved manual Instants during a headcount-only edit', async (
     requirements: [],
   });
   api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
     events: [{ ...EVENT, eventTimeBlocks: [block] }],
   });
   api.saveEventTimeBlockPreparation.mockResolvedValue(block);
@@ -890,6 +962,8 @@ it.each([
   'assigning',
 ] as const)('keeps headcounts editable while %s', async (state) => {
   api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
     events: [{ ...EVENT, participation: { ...EVENT.participation, state } }],
   });
   api.saveEventTimeBlockPreparation.mockResolvedValue(BLOCK);
@@ -1048,6 +1122,8 @@ it('saves headcounts for existing multi-day manual Shifts without losing their d
     },
   ];
   api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
     events: [
       {
         ...EVENT,
@@ -1132,6 +1208,8 @@ it('keeps a saved manual Shift on its CalendarDays when its shared time controls
     },
   ];
   api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
     events: [
       {
         ...EVENT,

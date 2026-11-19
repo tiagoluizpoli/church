@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { Fragment } from 'react';
 import { Input } from '@/components/ui/input';
 
 /** A Sector or Role choice: the caller passes active registries only. */
@@ -170,73 +171,150 @@ export function HeadcountGrid({
           <fieldset
             key={shift.key}
             aria-label={shift.label}
-            className="surface-panel space-y-3 p-3"
+            // A section, not a box: the editor around it is already the card.
+            className="space-y-3 border-t pt-4 first:border-t-0 first:pt-0"
           >
-            <p className="font-medium text-sm">{shift.label}</p>
+            {/* Under the caller's "Pessoas necessárias" h3; one shift needs no name of its own. */}
+            {shifts.length > 1 ? (
+              <h4 className="font-semibold text-sm">{shift.label}</h4>
+            ) : null}
             {isEmpty ? (
-              <p className="text-muted-foreground text-xs">
+              <p className="text-muted-foreground text-sm">
                 {m.headcount_grid_empty_shift()}
               </p>
             ) : null}
-            {sectors.map((sector) => (
-              <div key={sector.id} className="space-y-2">
-                <p className="font-medium text-muted-foreground text-xs">
-                  {sector.name}
-                </p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {/* One matrix per shift: roles as rows, sectors as columns, so any number of sectors
+                stays balanced (no orphan) and a count sits under its sector. Scrolls sideways only
+                when there are more sectors than room. */}
+            <div className="max-w-lg overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <td />
+                    {sectors.map((sector) => (
+                      <th
+                        key={sector.id}
+                        scope="col"
+                        className="px-1 pb-1 text-end align-bottom font-medium"
+                      >
+                        {sector.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
                   {roles.map((role) => {
-                    const cell = {
-                      shiftKey: shift.key,
-                      sectorId: sector.id,
-                      roleId: role.id,
-                    };
-                    const key = headcountGridKey(cell);
-                    const minimum = minimums[key];
-                    const problem = cellProblem({
-                      value: values[key],
-                      minimum,
+                    const cells = sectors.map((sector) => {
+                      const cell = {
+                        shiftKey: shift.key,
+                        sectorId: sector.id,
+                        roleId: role.id,
+                      };
+                      const key = headcountGridKey(cell);
+                      const minimum = minimums[key];
+                      const problem = cellProblem({
+                        value: values[key],
+                        minimum,
+                      });
+                      const inputId = `headcount-${key}`;
+                      return {
+                        sector,
+                        cell,
+                        key,
+                        minimum,
+                        problem,
+                        inputId,
+                        problemId: `${inputId}-problem`,
+                      };
                     });
-                    const inputId = `headcount-${key}`;
-                    const problemId = `${inputId}-problem`;
                     return (
-                      <div key={key} className="space-y-1">
-                        <label htmlFor={inputId} className="text-xs">
-                          {role.name}
-                        </label>
-                        <Input
-                          id={inputId}
-                          type="number"
-                          inputMode="numeric"
-                          min={0}
-                          step={1}
-                          placeholder="0"
-                          aria-label={m.headcount_grid_cell_label({
-                            role: role.name,
-                            sector: sector.name,
-                            shift: shift.label,
-                          })}
-                          aria-invalid={problem ? true : undefined}
-                          aria-describedby={problem ? problemId : undefined}
-                          disabled={disabled}
-                          value={values[key] ?? ''}
-                          onChange={(event) =>
-                            onChange({ ...cell, value: event.target.value })
-                          }
-                        />
-                        {problem ? (
-                          <p
-                            id={problemId}
-                            className="text-destructive text-xs"
+                      <Fragment key={role.id}>
+                        <tr>
+                          <th
+                            scope="row"
+                            className="py-1 pe-3 text-start font-normal"
                           >
-                            {PROBLEM_MESSAGES[problem](minimum ?? 0)}
-                          </p>
+                            {role.name}
+                          </th>
+                          {cells.map(
+                            ({
+                              sector,
+                              cell,
+                              key,
+                              problem,
+                              inputId,
+                              problemId,
+                            }) => (
+                              <td key={key} className="py-1 ps-2 text-end">
+                                <Input
+                                  id={inputId}
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  step={1}
+                                  placeholder="0"
+                                  // Every count field alike: typed, no native spinners.
+                                  className="ms-auto w-16 text-end tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                  aria-label={m.headcount_grid_cell_label({
+                                    role: role.name,
+                                    sector: sector.name,
+                                    shift: shift.label,
+                                  })}
+                                  aria-invalid={problem ? true : undefined}
+                                  aria-describedby={
+                                    problem ? problemId : undefined
+                                  }
+                                  disabled={disabled}
+                                  value={values[key] ?? ''}
+                                  onChange={(event) =>
+                                    onChange({
+                                      ...cell,
+                                      value: event.target.value,
+                                    })
+                                  }
+                                />
+                              </td>
+                            ),
+                          )}
+                        </tr>
+                        {cells.some(({ problem }) => problem) ? (
+                          <tr>
+                            <td
+                              colSpan={sectors.length + 1}
+                              className="pb-1 text-destructive text-xs"
+                            >
+                              {cells.map(
+                                ({
+                                  sector,
+                                  key,
+                                  minimum,
+                                  problem,
+                                  problemId,
+                                }) =>
+                                  problem ? (
+                                    <p key={key} id={problemId}>
+                                      {sectors.length > 1 ? (
+                                        <span className="font-medium">
+                                          {sector.name}:{' '}
+                                        </span>
+                                      ) : null}
+                                      <span>
+                                        {PROBLEM_MESSAGES[problem](
+                                          minimum ?? 0,
+                                        )}
+                                      </span>
+                                    </p>
+                                  ) : null,
+                              )}
+                            </td>
+                          </tr>
                         ) : null}
-                      </div>
+                      </Fragment>
                     );
                   })}
-                </div>
-              </div>
-            ))}
+                </tbody>
+              </table>
+            </div>
           </fieldset>
         );
       })}

@@ -91,3 +91,17 @@ export function ScheduleRows({
     </ul>
   );
 }
+
+interface ScheduleStageLabelInput {
+  stage: ListSchedules200SchedulesItem['stage'];
+}
+export function scheduleStageLabel({ stage }: ScheduleStageLabelInput): string {
+  const labels = {
+    ['to_prepare']: m.schedules_to_prepare(),
+    asking: m.schedules_asking_stage(),
+    assigning: m.schedules_assigning(),
+    published: m.schedules_published(),
+    ['not_serving']: m.schedules_not_serving(),
+  };
+  return labels[stage];
+}

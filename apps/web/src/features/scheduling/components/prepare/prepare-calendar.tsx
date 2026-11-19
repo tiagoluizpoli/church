@@ -5,14 +5,17 @@ import {
   enumerateCalendarDays,
   formatCalendarDayWithWeekday,
   formatWeekdayShort,
+  now,
   parseCalendarDay,
+  today,
 } from '@church/time';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
-import { type PointerEvent, useRef, useState } from 'react';
+import { memo, type PointerEvent, useEffect, useRef, useState } from 'react';
 import { toCalendarDateString } from '../participation-prepare.utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useTimezone } from '@/shared/hooks/use-timezone';
 
 export interface PrepareCalendarProps {
   /** Cycle bounds, `yyyy-MM-dd` or full ISO date-time — only the calendar
@@ -29,6 +32,18 @@ export interface PrepareCalendarProps {
 }
 
 const SCROLL_STEP_PX = 240;
+
+interface SnapToDayInput {
+  days: Map<string, HTMLButtonElement>;
+  position: number;
+}
+
+/** Rounds a scroll position to a day boundary, so the strip never opens on a half-cut day. */
+function snapToDay({ days, position }: SnapToDayInput): number {
+  const [first, second] = [...days.values()];
+  const pitch = first && second ? second.offsetLeft - first.offsetLeft : 0;
+  return pitch > 0 ? Math.round(position / pitch) * pitch : position;
+}
 const DRAG_THRESHOLD_PX = 4;
 
 interface DayOfMonthInput {
@@ -69,13 +84,15 @@ interface ClearDragStateParams {
  * existing shadcn/carousel primitive fit this interaction (R11's resolved
  * shape decision); chevron buttons still reuse the existing `Button` +
  * lucide chevron-icon pattern this file already used for month navigation. */
-export function PrepareCalendar({
+function PrepareCalendarView({
   cycleStartDate,
   cycleEndDate,
   eventDayMarkers,
   selectedDate,
   onSelectedDateChange,
 }: PrepareCalendarProps) {
+  const { churchTimezone } = useTimezone();
+  const churchDay = today({ instant: now(), timeZone: churchTimezone });
   const cycleStart = parseCalendarDay({
     value: toCalendarDateString(cycleStartDate),
   });
@@ -89,9 +106,44 @@ export function PrepareCalendar({
   const dragState = useRef<DragState | null>(null);
   const skipClickIso = useRef<string | null>(null);
   const [focusedIso, setFocusedIso] = useState<string>(
-    selectedDate ?? cycleStart,
+    selectedDate ??
+      (churchDay >= cycleStart && churchDay <= cycleEnd
+        ? churchDay
+        : cycleStart),
   );
 
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    function revealCurrentDay() {
+      const target = dayButtonRefs.current.get(selectedDate ?? churchDay);
+      if (!strip) return;
+      strip.tabIndex = -1;
+      if (target && strip.clientWidth > 0)
+        strip.scrollLeft = snapToDay({
+          days: dayButtonRefs.current,
+          position:
+            target.offsetLeft - strip.clientWidth / 2 + target.clientWidth / 2,
+        });
+    }
+    revealCurrentDay();
+    // A resize (a block panel opening beside the list) keeps the strip's first day while
+    // the current day stays in view: it clips at the end instead of re-centring.
+    const observer = new ResizeObserver(() => {
+      const target = dayButtonRefs.current.get(selectedDate ?? churchDay);
+      if (
+        strip &&
+        target &&
+        target.offsetLeft >= strip.scrollLeft &&
+        target.offsetLeft + target.clientWidth <=
+          strip.scrollLeft + strip.clientWidth
+      )
+        return;
+      revealCurrentDay();
+    });
+    observer.observe(strip);
+    return () => observer.disconnect();
+  }, [churchDay, selectedDate]);
   const selectDay = (iso: string) => {
     onSelectedDateChange(selectedDate === iso ? null : iso);
   };
@@ -114,7 +166,10 @@ export function PrepareCalendar({
   const scrollByStep = (direction: 1 | -1) => {
     const strip = stripRef.current;
     if (!strip) return;
-    strip.scrollLeft += SCROLL_STEP_PX * direction;
+    strip.scrollLeft = snapToDay({
+      days: dayButtonRefs.current,
+      position: strip.scrollLeft + SCROLL_STEP_PX * direction,
+    });
   };
 
   const clearDragState = ({ pointerId }: ClearDragStateParams) => {
@@ -182,12 +237,14 @@ export function PrepareCalendar({
 
       <ScrollArea
         data-scroll-area="true"
-        className="min-w-0 flex-1"
+        // The edge chip fades into the › chevron: more days, not a clipped one.
+        className="min-w-0 flex-1 [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]"
         viewportRef={stripRef}
         viewportTestId="prepare-calendar-strip"
-        viewportClassName="pb-3"
+        // Desktop scrolls by the chevrons, wheel or drag; the bar is only noise there.
         scrollbarOrientation="horizontal"
-        scrollbarClassName="mt-2"
+        // Chevrons, swipe, wheel and drag scroll it; a bar under five days is only noise.
+        scrollbarClassName="hidden"
       >
         <div
           data-testid="prepare-calendar-drag-surface"
@@ -232,8 +289,10 @@ export function PrepareCalendar({
                 className={cn(
                   'radius-control relative flex size-11 shrink-0 flex-col items-center justify-center gap-0.5 border border-transparent bg-accent/60 font-normal text-sm leading-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background motion-reduce:transition-none',
                   hasEvent &&
-                    "after:absolute after:bottom-1 after:left-1/2 after:size-1 after:-translate-x-1/2 after:rounded-full after:bg-primary after:content-['']",
-                  isDayFilter && 'border-primary bg-accent shadow-sm',
+                    "after:absolute after:top-1 after:right-1 after:size-1 after:rounded-full after:bg-primary after:content-['']",
+                  iso < churchDay && 'bg-muted/40 text-muted-foreground',
+                  iso === churchDay && 'ring-1 ring-primary',
+                  isDayFilter && 'border-primary bg-accent',
                 )}
                 onClick={() => {
                   if (skipClickIso.current === iso) {
@@ -257,8 +316,10 @@ export function PrepareCalendar({
                   }
                 }}
               >
-                <span className="text-[10px] text-muted-foreground uppercase">
-                  {formatWeekdayShort({ day: iso, locale: getLocale() })}
+                <span className="text-muted-foreground text-xs">
+                  {iso === churchDay
+                    ? m.prepare_today()
+                    : formatWeekdayShort({ day: iso, locale: getLocale() })}
                 </span>
                 <span className="font-medium">{dayOfMonth({ day: iso })}</span>
               </button>
@@ -280,3 +341,6 @@ export function PrepareCalendar({
     </div>
   );
 }
+
+/** Memoised: the prepare page re-renders on every filter change. */
+export const PrepareCalendar = memo(PrepareCalendarView);

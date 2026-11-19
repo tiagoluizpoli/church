@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { registerReadiness } from '@/main/fastify/readiness';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 const REVISION = 'a'.repeat(40);
@@ -25,7 +26,10 @@ interface ReadyAppInput {
 }
 
 async function readyApp({ checkDatabase }: ReadyAppInput) {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   registerReadiness({ app, revision: REVISION, checkDatabase });
   await app.ready();
   return app;

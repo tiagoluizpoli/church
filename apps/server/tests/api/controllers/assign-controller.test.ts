@@ -15,6 +15,7 @@ import { AssignController } from '@/api/controllers/assign-controller';
 import { Assignment } from '@/domain/entities/assignment';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -64,7 +65,10 @@ const authorityGuard = {
 let app: FastifyTypedInstance;
 
 async function buildApp(config: typeof appConfig) {
-  const instanceApp = await createFastify({ locale: testLocale });
+  const instanceApp = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new AssignController({
     participationManager: participationManager as never,
     assignmentManager: assignmentManager as never,

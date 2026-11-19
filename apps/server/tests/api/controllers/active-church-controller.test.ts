@@ -11,6 +11,7 @@ import {
 import { ActiveChurchController } from '@/api/controllers/active-church-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -42,7 +43,10 @@ const CHURCH_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_CHURCH_ID = '22222222-2222-4222-8222-222222222222';
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new ActiveChurchController({
     activeChurchResolver: activeChurchResolver as never,
     selectionManager: selectionManager as never,
@@ -372,7 +376,9 @@ describe('POST /api/v1/active-church/select', () => {
     expect(response.json()).toEqual({
       error: 'INTERNAL_SERVER_ERROR',
       message: m.common_generic_error({}, { locale: testLocale.defaultLocale }),
+      requestId: response.headers['x-request-id'],
     });
+    expect(response.headers['x-request-id']).toMatch(/^[0-9a-f]{32}$/);
     expect(response.body).not.toContain('session store unavailable');
     expect(response.body).not.toContain(OTHER_CHURCH_ID);
   });

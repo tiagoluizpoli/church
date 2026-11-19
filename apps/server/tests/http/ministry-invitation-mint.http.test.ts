@@ -40,6 +40,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
@@ -71,7 +72,10 @@ let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   const harness = createMinistryInvitationTestHarness({ db });
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   // Real managers, repositories and AuthorityService; only session and Active Church are seams.
   const controller = new MinistryController({
     config: appConfig,

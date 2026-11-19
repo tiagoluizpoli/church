@@ -86,6 +86,7 @@ import {
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -108,7 +109,10 @@ let roleManager: DbMinistryRoleManager;
 const notifications = createChurchNotificationsSpy();
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const authorityManager = new DbAuthorityManager({
     actorRepository: new DrizzleAuthorityActorResolver({ db }),
     scopeRepository: {} as never,

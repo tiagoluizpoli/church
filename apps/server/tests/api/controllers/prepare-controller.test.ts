@@ -14,6 +14,7 @@ import { PrepareController } from '@/api/controllers/prepare-controller';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -64,7 +65,10 @@ function createActiveChurchResolution() {
 }
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new PrepareController({
     config: appConfig,
     participationManager: participationManager as never,

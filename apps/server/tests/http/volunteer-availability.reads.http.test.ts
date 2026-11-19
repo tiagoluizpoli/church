@@ -51,6 +51,7 @@ import {
   schedulingTestPool,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -62,7 +63,10 @@ let app: FastifyTypedInstance;
 const ROOT = '/api/v1/volunteer/availability-checks';
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new VolunteerController({
     volunteerManager: createSchedulingManagers().volunteerManager,
     activeChurchResolver: new DbActiveChurchResolver({

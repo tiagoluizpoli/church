@@ -5,6 +5,7 @@ import { DuplicateHeadcountError } from '@/domain/errors/duplicate-headcount';
 import { OverlappingCycleError } from '@/domain/errors/overlapping-cycle';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -14,7 +15,10 @@ vi.mock('@/main/di/server-auth', () => ({
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   app.get('/boom/domain', async () => {
     throw new OverlappingCycleError({ conflictingCycles: [] });
   });
@@ -114,7 +118,9 @@ describe('error handler locale', () => {
     expect(res.json()).toEqual({
       error: 'INTERNAL_SERVER_ERROR',
       message: m.common_generic_error({}, { locale: 'pt-BR' }),
+      requestId: res.headers['x-request-id'],
     });
+    expect(res.headers['x-request-id']).toMatch(/^[0-9a-f]{32}$/);
   });
 });
 
@@ -150,7 +156,10 @@ describe('database connection failures', () => {
 describe('error handler logs', () => {
   it('logs the code and the English constructor message', async () => {
     const warn = vi.fn();
-    const logged = await createFastify({ locale: testLocale });
+    const logged = await createFastify({
+      locale: testLocale,
+      errorReporter: testErrorReporter,
+    });
     logged.addHook('onRequest', async (request) => {
       request.log = { ...request.log, warn } as typeof request.log;
     });

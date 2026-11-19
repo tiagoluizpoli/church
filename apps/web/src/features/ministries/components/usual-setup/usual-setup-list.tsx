@@ -10,45 +10,23 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import {
+  GROUP_INDENT,
+  type GroupedRow,
+  GroupRowLabel,
+  groupedRowProps,
+  groupLeaves,
+  MobileGroupHeading,
+} from '@/components/ui/data-table-groups';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUsualSetup } from '@/features/ministries/usual-setup-queries';
+import { cn } from '@/lib/utils';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
 interface UsualSetupListProps {
   ministryId: string;
 }
-
-interface TemplateGroup {
-  templateId: string;
-  templateName: string;
-  weekday: number;
-  blocks: UsualSetupBlock[];
-}
-
-interface GroupByTemplateInput {
-  blocks: UsualSetupBlock[];
-}
-
-/** Keeps the server's template-name then block order. */
-function groupByTemplate({ blocks }: GroupByTemplateInput): TemplateGroup[] {
-  const groups = new Map<string, TemplateGroup>();
-  for (const block of blocks) {
-    const group = groups.get(block.templateId) ?? {
-      templateId: block.templateId,
-      templateName: block.templateName,
-      weekday: block.weekday,
-      blocks: [],
-    };
-    group.blocks.push(block);
-    groups.set(block.templateId, group);
-  }
-  return [...groups.values()];
-}
-
-type UsualSetupRow =
-  | { kind: 'group'; key: string; templateName: string; weekday: number }
-  | { kind: 'block'; key: string; block: UsualSetupBlock };
 
 const USUAL_SETUP_COLUMNS: DataTableColumn[] = [
   { id: 'name', name: m.usual_setup_col_block(), isRowHeader: true },
@@ -57,30 +35,32 @@ const USUAL_SETUP_COLUMNS: DataTableColumn[] = [
   { id: 'actions', name: m.people_column_actions() },
 ];
 
-function flattenGroups(groups: TemplateGroup[]): UsualSetupRow[] {
-  const rows: UsualSetupRow[] = [];
-  for (const group of groups) {
-    rows.push({
-      kind: 'group',
-      key: group.templateId,
-      templateName: group.templateName,
-      weekday: group.weekday,
-    });
-    for (const block of group.blocks) {
-      rows.push({ kind: 'block', key: block.sourceTemplateTimeBlockId, block });
-    }
-  }
-  return rows;
+interface TemplateLabelProps {
+  block: UsualSetupBlock;
+}
+
+/** `Culto de Domingo · Domingo`: the template, its weekday muted. */
+function TemplateLabel({ block }: TemplateLabelProps) {
+  return (
+    <span>
+      {block.templateName}{' '}
+      <span className="font-normal text-muted-foreground">
+        · {formatWeekday(block)}
+      </span>
+    </span>
+  );
 }
 
 /** The Usual setup tab: every current Time block and what this Ministry serves there. */
 export function UsualSetupList({ ministryId }: UsualSetupListProps) {
   const { isChurchAdmin } = useCallerCapabilities();
   const setup = useUsualSetup({ ministryId });
-  const groups = setup.data
-    ? groupByTemplate({ blocks: setup.data.blocks })
-    : [];
-  const rows = flattenGroups(groups);
+  // The server orders blocks by template name, then block.
+  const rows = groupLeaves({
+    leaves: setup.data?.blocks ?? [],
+    levels: [(block) => block.templateId],
+    leafKey: (block) => block.sourceTemplateTimeBlockId,
+  });
 
   return (
     <section className="space-y-4" aria-label={m.usual_setup_list_label()}>
@@ -104,7 +84,7 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
             {m.usual_setup_retry()}
           </Button>
         </div>
-      ) : groups.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className="space-y-2" role="status">
           <p className="text-muted-foreground">
             {m.usual_setup_no_templates()}
@@ -123,30 +103,32 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
           )}
         </div>
       ) : (
-        <DataTable<UsualSetupRow>
+        <DataTable<GroupedRow<UsualSetupBlock>>
           aria-label={m.usual_setup_list_label()}
           columns={USUAL_SETUP_COLUMNS}
           items={rows}
           rowId={({ item }) => item.key}
-          rowClassName={({ item }) =>
-            item.kind === 'group' ? 'font-semibold text-sm' : undefined
-          }
+          // Group rows span every column; each underline starts with its row's text.
+          {...groupedRowProps<UsualSetupBlock>()}
           renderCell={({ item, column }) => {
-            if (item.kind === 'group') {
-              if (column.id !== 'name') return null;
+            if (item.kind === 'group')
               return (
-                <span>
-                  {item.templateName}{' '}
-                  <span className="font-normal text-muted-foreground">
-                    · {formatWeekday(item)}
-                  </span>
-                </span>
+                <GroupRowLabel
+                  item={item}
+                  label={<TemplateLabel block={item.leaf} />}
+                  name={item.leaf.templateName}
+                  collapsible={false}
+                />
               );
-            }
-            const { block } = item;
+            const block = item.leaf;
             if (column.id === 'name') {
               return (
-                <span className="flex items-center gap-2 pl-8">
+                <span
+                  className={cn(
+                    'flex items-center gap-2',
+                    GROUP_INDENT[item.depth],
+                  )}
+                >
                   {block.label}
                   {block.needsReview ? (
                     <Badge
@@ -174,20 +156,18 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
             return null;
           }}
           renderMobileCard={({ item }) => {
-            if (item.kind === 'group') {
+            if (item.kind === 'group')
               return (
-                <div className="border-b pt-3 pb-1 first:pt-0">
-                  <span className="font-semibold text-sm">
-                    {item.templateName}
-                  </span>
-                  <span className="font-normal text-muted-foreground text-xs">
-                    {' '}
-                    · {formatWeekday(item)}
-                  </span>
-                </div>
+                <MobileGroupHeading
+                  item={item}
+                  label={<TemplateLabel block={item.leaf} />}
+                  collapsible={false}
+                  rails={false}
+                  // Keeps this list's divider heading: one level, nothing to fold.
+                  className="border-b pb-1 font-semibold text-sm"
+                />
               );
-            }
-            const { block } = item;
+            const block = item.leaf;
             return (
               <Link
                 to="/ministries/$ministryId/usual-setup/$blockId"
@@ -233,10 +213,10 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
                   to="/ministries/$ministryId/usual-setup/$blockId"
                   params={{
                     ministryId,
-                    blockId: item.block.sourceTemplateTimeBlockId,
+                    blockId: item.leaf.sourceTemplateTimeBlockId,
                   }}
                   aria-label={m.ministries_open_label({
-                    name: item.block.label,
+                    name: item.leaf.label,
                   })}
                   className={buttonVariants({ variant: 'outline', size: 'sm' })}
                 >

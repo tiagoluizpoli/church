@@ -58,6 +58,9 @@ export interface DataTableProps<T extends object> {
    * `rowId` — which react-aria uses as the row's DOM `id` and selection
    * key, and which callers may capture and re-query by. */
   rowKey?: (input: DataTableItemInput<T>) => string;
+  /** Values the cells read besides their item (selection, stage, …). react-aria
+   * re-renders cached rows only when these (or the columns) change. */
+  dependencies?: readonly unknown[];
   renderCell: (input: DataTableCellInput<T>) => ReactNode;
   renderMobileCard: (input: DataTableItemInput<T>) => ReactNode;
   /** Rendered in the desktop actions column (when `columns` includes one
@@ -124,6 +127,7 @@ export function DataTable<T extends object>({
   mobileItems = items,
   rowId,
   rowKey,
+  dependencies = [],
   renderCell,
   renderMobileCard,
   rowActions,
@@ -151,6 +155,8 @@ export function DataTable<T extends object>({
     ...columns.filter((column) => column.id !== actionsColumnId),
     ...columns.filter((column) => column.id === actionsColumnId),
   ];
+
+  const columnIds = orderedColumns.map((column) => column.id).join('|');
 
   if (isLoading) {
     return (
@@ -216,7 +222,12 @@ export function DataTable<T extends object>({
               </TableColumn>
             )}
           </TableHeader>
-          <TableBody items={items}>
+          <TableBody
+            items={items}
+            // Rows render one cell per column: a changed column set must re-render every
+            // cached row in the same pass, or react-aria finds a cell-count mismatch.
+            dependencies={[columnIds, ...dependencies]}
+          >
             {(item) => {
               const id = rowId({ item });
               const key = rowKey ? rowKey({ item }) : id;

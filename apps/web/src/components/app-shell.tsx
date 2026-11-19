@@ -680,8 +680,10 @@ export function AppShell({
           </div>
         </header>
 
-        {/* Main Content Area */}
-        <main className="min-h-0 flex-1 overflow-auto px-(--workspace-pad-x) py-(--workspace-pad-y)">
+        {/* Main Content Area. `relative` makes it the containing block of
+            absolute descendants (sr-only text), so they can't stretch the
+            document and add a second scrollbar. */}
+        <main className="relative min-h-0 flex-1 overflow-auto px-(--workspace-pad-x) py-(--workspace-pad-y)">
           <div className="w-full">{children}</div>
         </main>
       </div>

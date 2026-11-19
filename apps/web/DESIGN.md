@@ -156,7 +156,7 @@ This is not a generic AI-SaaS-cream tool (no tinted-cream backgrounds, no gradie
 
 ## Colors
 
-Restrained by default: tinted cool-blue neutrals carry almost the entire surface, and the primary blue appears only on primary actions, current selection and the sidebar's active state. All brand tokens are authored in OKLCH in `src/index.css`. The page background is not perfectly flat: a faint radial wash of the `accent` hue (mixed 56% with white) sits in the top-left corner and fades out within 20rem, over a vertical gradient from `background` to `background` mixed 8% toward `accent`. This is the one place a gradient is allowed system-wide: an ambient, whole-page atmosphere, never on text, buttons, or cards.
+Restrained by default: tinted cool-blue neutrals carry almost the entire surface, and the primary blue appears only on primary actions, current selection and the sidebar's active state. All brand tokens are authored in OKLCH in `src/index.css`. The page background is not perfectly flat: a vertical gradient from `background` to `background` mixed 8% toward `accent`, fixed to the viewport (`background-attachment: fixed`, no repeat) so it never tiles below a page shorter than the window. An earlier top-left radial wash was removed: it was invisible in light mode and a grey smear in dark mode. This is the one place a gradient is allowed system-wide: an ambient, whole-page atmosphere, never on text, buttons, or cards.
 
 ### Primary
 - **Deep Chapel Blue** (`primary`): primary buttons, active nav/sidebar state, the checked `Switch` track, badges that need to read as "the main action," and the selected day in `Calendar`/`DatePickerField`. Never used decoratively or as a background fill beyond low-opacity tints (`/8`, `/11`, `/12`). Text selection uses it mixed 32% with white.
@@ -307,6 +307,15 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **Drawer (base-ui):** the mobile counterpart to `Dialog`, used directly and via `ResponsiveFormSurface`. Bottom sheet by default (`swipeDirection="down"`), sheet-top corners, a pill grab handle, and no shadow (see Elevation & Depth).
 - **ResponsiveFormSurface:** the standard shell for any form that must work on both a desktop admin screen and a mobile volunteer screen. It renders `Dialog` at `≥768px` and `Drawer` below it for the same `children`. The footer (Save/Cancel) renders outside the mobile scroll region so the primary action stays in thumb reach, and the mobile branch wraps its content in `FormControlSizeProvider size="touch"`. The drawer's close affordance is a dedicated 44px ghost icon button, top-right, not the swipe handle alone.
 - **Toasts (Sonner):** `bottom-right` on desktop, `top-center` on mobile, with the mobile offset pinned at 80px so a toast never lands under the sticky header.
+
+### Signed-out frame (`AuthShell`)
+Sign-in, forgot-password and reset-password share one frame: a wide brand panel and a narrow form column (24rem from 768px, 28rem from 1024px, 32rem from 1280px). On phones the panel collapses to a 176px band above the form. Every control in the form is `touch`-sized. Sign-in failures render inline (`role="alert"`, `destructive`) above the submit button, never as a toast, and a successful sign-in shows no toast: arriving in the app is the confirmation.
+
+The panel is always dark (it carries `.dark`; `.auth-panel.dark` restates the colour tokens because `@theme` resolves them at `:root`) and holds the brand mark, the tagline "Tudo o que a igreja organiza, em um só lugar." and `SanctuaryLightScene`: a WebGL2 church interior with three round-arched windows in a smooth plaster wall, warm sunlight falling through them onto an open Bible on a wooden lectern. One window mask and one sun direction drive the glass, the beams, the floor patches and the shadows, so light and windows always agree. The frames are neutral (one mullion, two transoms): no cross or other symbol beyond the Bible, so the scene suits any church tradition.
+
+It is built to be light on any hardware: the scene and its light shafts are baked once (progressively, at an adaptive pixel ratio), and each frame only composites them with a slow light swell, drifting haze and dust, capped at 30fps and paused when hidden. The pointer never moves the scene; where it passes through a beam the air glows slightly and the dust swirls away. Reduced motion renders one still frame; without WebGL2 a CSS approximation stands in. The panel tagline and brand mark sit on darkened corners to keep 4.5:1.
+
+`GatheringScene` (people drifting into small groups) is kept dormant for the future cells feature and is not rendered.
 
 ### Navigation
 - **Desktop sidebar:** collapsible (240px ↔ 64px). The active item gets a `primary/11` tinted background with a solid `primary` icon chip; inactive items are `sidebar-foreground/78`.

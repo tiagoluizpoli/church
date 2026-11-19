@@ -18,7 +18,7 @@ const PASSWORD_REFUSALS = new Set(['PASSWORD_TOO_SHORT', 'PASSWORD_TOO_LONG']);
 /** Missing, malformed, expired and used tokens all end here. */
 export function ExpiredResetLink() {
   return (
-    <div className="mx-auto mt-10 w-full max-w-md space-y-4 p-6 text-center">
+    <div className="w-full space-y-6">
       <p role="alert">{m.password_recovery_link_expired()}</p>
       <Link to="/forgot-password" className={buttonVariants()}>
         {m.password_recovery_request_new_link()}
@@ -77,8 +77,8 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   if (linkExpired) return <ExpiredResetLink />;
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="mb-6 text-center font-bold text-3xl">
+    <div className="w-full">
+      <h1 className="mb-8 text-balance font-bold text-2xl tracking-tight md:text-[1.75rem]">
         {m.password_recovery_reset_title()}
       </h1>
       <form
@@ -87,7 +87,7 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           e.stopPropagation();
           form.handleSubmit();
         }}
-        className="space-y-4"
+        className="space-y-5"
       >
         <form.Field name="newPassword">
           {(field) => (
@@ -105,7 +105,7 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                 onChange={(e) => field.handleChange(e.target.value)}
               />
               {field.state.meta.errors.map((error) => (
-                <p key={error?.message} className="text-red-500">
+                <p key={error?.message} className="text-destructive text-sm">
                   {error?.message}
                 </p>
               ))}
@@ -114,7 +114,7 @@ export default function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         </form.Field>
 
         {failure && (
-          <p role="alert" className="text-red-500">
+          <p role="alert" className="text-destructive text-sm">
             {failure}
           </p>
         )}

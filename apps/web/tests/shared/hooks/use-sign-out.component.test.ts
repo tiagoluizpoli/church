@@ -17,7 +17,7 @@ vi.mock('@/lib/auth-client', () => ({
 }));
 
 describe('useSignOut', () => {
-  it('drops the cached inbox from the query cache and storage once signed out', () => {
+  it('leaves the signed-in pages, then drops the cached inbox from the query cache and storage', async () => {
     const queryClient = new QueryClient();
     queryClient.setQueryData(['notifications'], { items: [] });
     window.localStorage.setItem(`${STORAGE_PREFIX}:church-a:user-a`, '[]');
@@ -28,8 +28,16 @@ describe('useSignOut', () => {
         createElement(QueryClientProvider, { client: queryClient }, children),
     });
 
+    // Clearing while signed-in pages are mounted refetches them without a session.
+    const cachedAtNavigate: unknown[] = [];
+    mockNavigate.mockImplementation(async () => {
+      cachedAtNavigate.push(queryClient.getQueryData(['notifications']));
+    });
+
     result.current();
-    signOut.mock.calls[0]?.[0].fetchOptions.onSuccess();
+    await signOut.mock.calls[0]?.[0].fetchOptions.onSuccess();
+
+    expect(cachedAtNavigate).toEqual([{ items: [] }]);
 
     expect(queryClient.getQueryData(['notifications'])).toBeUndefined();
     expect(

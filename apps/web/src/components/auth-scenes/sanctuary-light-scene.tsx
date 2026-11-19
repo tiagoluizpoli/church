@@ -32,10 +32,10 @@ const vec3 SUN_COL = vec3(1.0, 0.84, 0.6);
 const vec3 BASE_L = vec3(-0.16, -0.75, -0.6); // light travel, before the pointer nudge
 const float DESK_Y = 1.1;      // lectern desk height
 const float AIM_Y = 1.75;      // the Bible sits in light from this height above the central sill
-const float TILT = 0.26;       // the desk leans toward the reader (-z)
-const float LECTERN_SCALE = 1.25; // the stand and book, scaled up so the Bible reads at panel size
-const vec3 BOX_MIN = vec3(-0.42, 0.0, -0.4) * LECTERN_SCALE;
-const vec3 BOX_MAX = vec3(0.42, 1.34, 0.36) * LECTERN_SCALE;
+const float TILT = 0.4;        // the desk leans toward the reader (-z)
+const float LECTERN_SCALE = 1.35; // the stand and book, scaled up so the Bible reads at panel size
+const vec3 BOX_MIN = vec3(-0.45, 0.0, -0.4) * LECTERN_SCALE;
+const vec3 BOX_MAX = vec3(0.45, 1.34, 0.38) * LECTERN_SCALE;
 
 float hash12(vec2 p) {
   vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -166,39 +166,62 @@ vec3 deskLocal(vec3 p) {
   return vec3(q.x, c * q.y - s * q.z, s * q.y + c * q.z);
 }
 
-const vec3 DESK_N = vec3(0.0, 0.96639, -0.25708); // desk normal in lectern space (cos, -sin TILT)
+const vec3 DESK_N = vec3(0.0, 0.92106, -0.38942); // desk normal in lectern space (cos, -sin TILT)
 
 const float COVER_TOP = 0.034;
 
-// Height of the open page surface above the cover, by distance from the gutter:
-// the paper rises from the spine, flattens, and curls down a little at the fore-edge.
-float pageTop(float ax) {
-  return 0.006 + 0.04 * (1.0 - exp(-ax * 17.0)) - 0.016 * smoothstep(0.24, 0.32, ax);
+// Height of the open page surface above the cover: the paper rises out of a soft
+// crease at the spine, arcs over, and thins toward the fore-edge. Well-thumbed
+// paper is never flat: a slow wave crosses each page and the leaves lift at the fore-edge.
+float pageTop(vec2 xz) {
+  float a = sqrt(xz.x * xz.x + 0.00002);
+  float side = xz.x < 0.0 ? -1.0 : 1.0;
+  float h = 0.003 + 0.05 * (1.0 - exp(-a * 16.0)) * (1.0 - 0.35 * smoothstep(0.1, 0.326, a));
+  h += 0.003 * smoothstep(0.02, 0.12, a) * sin(a * 17.0 + xz.y * 9.0 + 1.3 * sin(xz.y * 13.0 + side * 2.0));
+  h += 0.005 * smoothstep(0.22, 0.326, a) * (0.5 + 0.5 * sin(xz.y * 11.0 + side * 1.7));
+  return h;
+}
+
+// A rounded rectangle in the desk plane (corner radius r), bounded below and
+// above by two distances; e rounds the rim, so no outline has a hard crease.
+float sdPlate(vec2 xz, vec2 half2, float r, float below, float above, float e) {
+  vec2 a = abs(xz) - half2 + r;
+  float plan = length(max(a, 0.0)) + min(max(a.x, a.y), 0.0) - r;
+  vec2 w = vec2(plan, max(below, above)) + e;
+  return min(max(w.x, w.y), 0.0) + length(max(w, 0.0)) - e;
 }
 
 // Materials: 1 wood, 2 leather cover, 3 pages. Unscaled lectern space.
 float lecternSd0(vec3 p, out float mat) {
-  // A modern stand: rounded base, rounded post, slanted desk with a lip.
+  // A modern stand: rounded base, rounded post, slanted desk with a low ledge.
   float d = sdRoundBox(p - vec3(0.0, 0.025, 0.0), vec3(0.23, 0.025, 0.19), 0.02);
   d = min(d, sdRoundBox(p - vec3(0.0, 0.56, 0.04), vec3(0.052, 0.53, 0.042), 0.03));
   vec3 q = deskLocal(p);
   d = min(d, sdRoundBox(q, vec3(0.37, 0.018, 0.27), 0.012));
-  d = min(d, sdRoundBox(q - vec3(0.0, 0.03, -0.262), vec3(0.37, 0.03, 0.011), 0.009));
+  d = min(d, sdRoundBox(q - vec3(0.0, 0.022, -0.262), vec3(0.37, 0.014, 0.011), 0.009));
   mat = 1.0;
-  // Leather boards open flat, a little larger than the text block, with a rounded spine.
-  float cover = sdRoundBox(q - vec3(0.0, 0.026, 0.0), vec3(0.338, 0.008, 0.242), 0.008);
-  cover = min(cover, sdRoundBox(q - vec3(0.0, 0.02, 0.0), vec3(0.022, 0.014, 0.242), 0.012));
+  // One leather board, open flat: a continuous rim a little larger than the pages.
+  float cover = sdPlate(q.xz, vec2(0.348, 0.25), 0.02, 0.018 - q.y, q.y - COVER_TOP, 0.005);
   if (cover < d) { d = cover; mat = 2.0; }
-  // Text blocks: rounded corners in plan, the curved page surface on top.
-  float ax = abs(q.x);
-  float block = sdRoundBox(vec3(ax - 0.168, q.y - 0.06, q.z), vec3(0.156, 0.06, 0.229), 0.006);
-  float pages = max(block, (q.y - COVER_TOP - pageTop(ax)) * 0.85);
+  // The text block: rounded corners in plan, one curved page surface across the gutter.
+  // The leaves are not quite flush, so the edges of the block ripple with height.
+  float ragged = 0.001 * sin(q.y * 300.0) + 0.0006 * sin(q.y * 170.0 + q.x * 9.0 + q.z * 7.0);
+  float top = (q.y - COVER_TOP - pageTop(q.xz)) * 0.75; // 0.75: the surface slopes up to 0.8
+  float pages = sdPlate(q.xz, vec2(0.325, 0.23) + ragged, 0.012, 0.024 - q.y, top, 0.004);
   if (pages < d) { d = pages; mat = 3.0; }
   return d;
 }
 
+// The lectern turns about its post to face the sun, so the central mullion's
+// shadow falls into the gutter instead of striping a page.
+const vec2 FACE = vec2(0.25766, 0.96624); // -normalize(BASE_L.xz)
+
+vec3 lecternTurn(vec3 v) {
+  return vec3(FACE.y * v.x - FACE.x * v.z, v.y, FACE.x * v.x + FACE.y * v.z);
+}
+
 float lecternSd(vec3 p, out float mat) {
-  return lecternSd0(p / LECTERN_SCALE, mat) * LECTERN_SCALE;
+  return lecternSd0(lecternTurn(p) / LECTERN_SCALE, mat) * LECTERN_SCALE;
 }
 
 vec2 boxHit(vec3 ro, vec3 rd, vec3 bmin, vec3 bmax) {
@@ -254,10 +277,10 @@ struct Cam {
 Cam camera() {
   Cam c;
   c.band = uRes.x / uRes.y > 1.6;
-  // The tall desktop panel sees windows, beams and the lectern; the phone band frames the windows.
-  c.ro = c.band ? vec3(WX - 0.9, 4.6, -9.0) : vec3(0.5, 2.2, -8.6);
-  vec3 ta = c.band ? vec3(WX - 0.75, 5.15, 0.0) : vec3(0.5, 2.5, 0.0);
-  c.zoom = c.band ? 2.6 : 0.92;
+  // The desktop panel stands close to the lectern, a little above the open Bible, windows high behind; the phone band frames the windows.
+  c.ro = c.band ? vec3(WX - 0.9, 4.6, -9.0) : vec3(0.65, 2.7, -6.75);
+  vec3 ta = c.band ? vec3(WX - 0.75, 5.15, 0.0) : vec3(0.65, 2.45, 0.0);
+  c.zoom = c.band ? 2.6 : 0.76;
   c.fw = normalize(ta - c.ro);
   c.rt = normalize(cross(vec3(0, 1, 0), c.fw));
   c.up = cross(c.fw, c.rt);
@@ -272,8 +295,8 @@ vec3 rayDir(Cam c, vec2 frag) {
 
 const STATIC_SHADER = `#version 300 es
 ${COMMON}
-// Pass 2, full resolution: every surface, with every edge anti-aliased over
-// its pixel footprint, plus the upsampled shafts from pass 1.
+// Baked once, supersampled: every surface, with every edge anti-aliased over
+// its own pixel footprint. The composite filters it down to the display.
 
 const vec3 PLASTER = vec3(0.62, 0.57, 0.5);
 
@@ -348,7 +371,7 @@ vec3 shadeFloor(vec3 ro, vec3 rd, float tFloor, float pixel, vec3 L, vec3 sun, b
   if (!band) {
     // The lectern stands in the beam: its long soft shadow, and contact shade at its base.
     if (lit > 0.0) lit *= lecternShadow(p - lp + vec3(0.0, 0.002, 0.0), -L);
-    vec2 b = abs(p.xz - lp.xz) - vec2(0.21, 0.17);
+    vec2 b = abs(lecternTurn(p - lp).xz) - vec2(0.21, 0.17) * LECTERN_SCALE;
     float bd = length(max(b, 0.0)) + min(max(b.x, b.y), 0.0);
     ao = mix(0.45, 1.0, smoothstep(0.0, 0.18, bd));
   }
@@ -373,7 +396,7 @@ vec3 shadeFloor(vec3 ro, vec3 rd, float tFloor, float pixel, vec3 L, vec3 sun, b
 // One shaded sample of the lectern and Bible. foot: metres per pixel at the hit.
 vec3 shadeLectern(vec3 p, vec3 rd, vec3 lp, vec3 L, vec3 sun, float footW) {
   vec3 q = p - lp;
-  vec3 qs = q / LECTERN_SCALE; // texture space: the unscaled stand
+  vec3 qs = lecternTurn(q) / LECTERN_SCALE; // texture space: the unscaled, unturned stand
   float foot = footW / LECTERN_SCALE;
   float mat;
   lecternSd(q, mat);
@@ -383,46 +406,73 @@ vec3 shadeLectern(vec3 p, vec3 rd, vec3 lp, vec3 L, vec3 sun, float footW) {
                      e.yxy * lecternSd(q + e.yxy, m) + e.xxx * lecternSd(q + e.xxx, m));
   vec3 dq = deskLocal(qs);
   float ax = abs(dq.x);
-  float topness = dot(n, DESK_N);
+  float topness = dot(lecternTurn(n), DESK_N);
 
+  bool desk = dq.y > -0.024;
+  float fine = 1.0 - smoothstep(0.003, 0.009, foot); // detail finer than a pixel fades to its mean
   vec3 alb;
   float gloss = 30.0, ks = 0.16;
   if (mat == 1.0) {
-    // Varnished warm wood; grain runs along the slope on the desk, up the post.
-    bool desk = qs.y > DESK_Y - 0.2;
-    float g = desk ? dq.z * 70.0 + noise3(dq * vec3(8.0, 8.0, 1.5)) * 5.0
-                   : qs.y * 55.0 + noise3(qs * vec3(9.0, 1.2, 9.0)) * 5.0;
-    float grain = 0.5 + 0.5 * sin(g);
+    // Warm wood: growth rings stretched along the grain, which runs across the desk and the base and up the post.
+    vec3 gp = desk ? vec3(dq.x * 2.0, dq.zy * 34.0)
+            : qs.y < 0.07 ? vec3(qs.x * 2.0, qs.zy * 34.0) : vec3(qs.y * 2.0, qs.xz * 34.0);
+    float fig = noise3(gp);
+    float rings = 0.5 + 0.5 * sin((gp.y + fig * 2.5) * 6.0);
+    float grain = 0.55 * rings + 0.45 * noise3(gp * vec3(1.0, 3.0, 3.0) + 7.0);
     grain = mix(grain, 0.5, smoothstep(0.004, 0.012, foot)); // fade when finer than a pixel
-    alb = vec3(0.43, 0.26, 0.14) * (0.84 + 0.2 * grain);
+    alb = mix(vec3(0.2, 0.1, 0.05), vec3(0.4, 0.225, 0.115), grain);
+    alb *= 0.88 + 0.24 * noise3(qs * 9.0); // the stain took unevenly
+    gloss = 48.0; ks = 0.2;
   } else if (mat == 2.0) {
-    alb = vec3(0.12, 0.055, 0.04) * (0.88 + 0.16 * noise3(qs * 90.0));
-    gloss = 18.0; ks = 0.1;
-  } else if (mat == 3.0) {
-    vec3 cream = vec3(0.94, 0.9, 0.8);
-    // Fore-edges: fine page striations, lightly gilded.
-    float side = 1.0 - smoothstep(0.45, 0.8, topness);
-    float sp = 0.0016;
-    float stri = 0.5 + 0.5 * sin(dq.y * 6.2832 / sp);
-    stri = mix(stri, 0.5, smoothstep(0.5, 1.0, foot / sp));
-    vec3 edge = mix(cream, vec3(0.86, 0.68, 0.36), 0.35) * (0.82 + 0.18 * stri);
-    // Top: two columns of text per page, never readable, faded to their mean when too fine.
-    float w = foot * 1.2;
-    float cols = aaBand(ax, 0.036, 0.158, w) + aaBand(ax, 0.176, 0.298, w);
-    cols *= aaBand(dq.z, -0.205, 0.196, w);
-    float lineSp = 0.0085;
-    float row = smoothstep(0.15, 0.35, abs(fract(dq.z / lineSp) - 0.5));
-    row = mix(row, 0.45, smoothstep(0.15, 0.45, foot / lineSp));
-    // A heading on the left page: a short gap and a bolder line.
-    float head = aaBand(dq.z, 0.118, 0.13, w) * aaBand(dq.x, -0.12, -0.07, w);
-    cols *= 1.0 - aaBand(dq.z, 0.104, 0.142, w) * step(dq.x, 0.0);
-    vec3 top = cream * (1.0 - 0.26 * cols * (1.0 - row)) * (1.0 - 0.45 * head);
-    top *= mix(0.62, 1.0, smoothstep(0.0, 0.07, ax)); // the paper darkens into the gutter
-    alb = mix(top, edge, side);
-    gloss = 8.0; ks = 0.03;
+    // Worn leather: a pebbled grain in colour, normal and sheen, rubbed pale along the rounded rim.
+    float grainL = mix(0.5, noise3(qs * 120.0), fine);
+    vec3 bump = vec3(noise3(qs * 120.0 + 11.0), noise3(qs * 120.0 + 23.0), noise3(qs * 120.0 + 37.0)) - 0.5;
+    n = normalize(n + 0.45 * fine * bump);
+    float wear = smoothstep(0.15, 0.5, topness) * (1.0 - smoothstep(0.8, 0.99, topness));
+    wear *= 0.35 + 0.65 * noise3(qs * 40.0);
+    alb = vec3(0.1, 0.048, 0.035) * (0.78 + 0.44 * grainL);
+    alb = mix(alb, vec3(0.3, 0.18, 0.115), 0.55 * wear);
+    gloss = mix(9.0, 22.0, grainL); ks = 0.03 + 0.06 * grainL;
   } else {
-    alb = vec3(0.5, 0.06, 0.06);
-    gloss = 26.0; ks = 0.22;
+    float sgn = dq.x < 0.0 ? -1.0 : 1.0;
+    // Thin paper, a little yellowed and mottled with handling, warmer toward the thumbed edges.
+    float rim = max(smoothstep(0.23, 0.326, ax), smoothstep(0.15, 0.231, abs(dq.z)));
+    vec3 cream = mix(vec3(0.9, 0.86, 0.76), vec3(0.86, 0.76, 0.58), 0.5 * rim);
+    cream *= 0.93 + 0.12 * noise3(vec3(dq.xz * 28.0, sgn * 3.0));
+    // Edges of the block: irregular leaves, some standing proud, under worn gilding.
+    float side = 1.0 - smoothstep(0.3, 0.6, topness);
+    float v = dq.y + 0.004 * noise3(vec3(dq.xz * 14.0, 5.0)); // the leaves fan a little
+    float leaf = noise3(vec3(v * 130.0, 0.5, sgn * 3.0));
+    float hair = noise3(vec3(v * 340.0, 9.5, sgn * 2.0));
+    float stri = mix(0.5, 0.6 * leaf + 0.4 * mix(0.5, hair, fine), 1.0 - smoothstep(0.006, 0.014, foot));
+    float gilt = 0.25 + 0.3 * noise3(vec3(dq.xz * 22.0, 8.0));
+    vec3 edge = mix(cream, vec3(0.83, 0.61, 0.28), gilt) * (0.62 + 0.5 * stri);
+    // Top: four columns of text, never readable. Lines of uneven words; a paragraph's last
+    // line stops short, and each column has one break with a short heading.
+    float w = foot * 1.2;
+    float inner = ax < 0.167 ? 0.0 : 1.0;
+    float colId = sgn * (1.0 + inner);
+    float cx0 = inner < 0.5 ? 0.036 : 0.176;
+    float cols = aaBand(ax, cx0, cx0 + 0.122, w) * aaBand(dq.z, -0.2, 0.196, w);
+    float u = (ax - cx0) / 0.122;
+    if (sgn < 0.0) u = 1.0 - u;
+    const float lineSp = 0.009;
+    float rowId = floor(dq.z / lineSp);
+    float rowf = abs(fract(dq.z / lineSp) - 0.5);
+    float hr = hash12(vec2(rowId + 40.0, colId * 7.0 + 30.0));
+    float dr = rowId - floor(mix(-14.0, 12.0, hash12(vec2(colId + 9.0, 5.0))));
+    float lo = 0.0, hi = hr < 0.14 ? 0.3 + 3.5 * hr : 1.0, weight = 1.0;
+    if (dr == 0.0) { lo = 0.22; hi = 0.78; weight = 1.5; }
+    float len = abs(dr) == 1.0 ? 0.0 : aaBand(u, lo, hi, w / 0.122);
+    float words = smoothstep(0.24, 0.44, noise3(vec3(u * 15.0, rowId * 3.7, colId * 5.1)));
+    words = mix(words, 0.74, smoothstep(0.25, 0.9, foot * 15.0 / 0.122));
+    float stroke = 1.0 - smoothstep(0.14, 0.32, rowf);
+    stroke = mix(stroke, 0.46, smoothstep(0.2, 0.5, foot / lineSp));
+    float ink = cols * len * words * stroke * weight;
+    vec3 top = mix(cream, vec3(0.2, 0.18, 0.17), min(0.4 * ink, 0.6));
+    top *= mix(0.5, 1.0, smoothstep(0.0, 0.085, ax)); // the paper darkens into the gutter
+    alb = mix(top, edge, side);
+    gloss = mix(8.0, 30.0, side); ks = mix(0.03, 0.22, side); // the gilt edge takes a sheen
   }
 
   float sh = lecternShadow(q + n * 0.004, -L);
@@ -435,11 +485,40 @@ vec3 shadeLectern(vec3 p, vec3 rd, vec3 lp, vec3 L, vec3 sun, float footW) {
     occ += (h - lecternSd(q + n * h, m)) / h;
   }
   float ao = clamp(1.0 - 0.3 * occ, 0.25, 1.0);
+  // Contact shade: the book resting on the desk, and the text block over the cover's rim.
+  float contact = 1.0;
+  if (mat == 1.0 && desk) {
+    vec2 b = abs(dq.xz) - vec2(0.348, 0.25);
+    contact = mix(0.35, 1.0, smoothstep(0.0, 0.045, length(max(b, 0.0)) + min(max(b.x, b.y), 0.0)));
+  } else if (mat == 2.0) {
+    vec2 b = abs(dq.xz) - vec2(0.326, 0.231);
+    contact = mix(0.45, 1.0, smoothstep(0.0, 0.02, max(b.x, b.y)));
+  }
   vec3 amb = vec3(0.06, 0.053, 0.046) * (0.6 + 0.4 * n.y) + sun * 0.05 * max(-n.y, 0.0) + sun * 0.02;
-  vec3 col = alb * (amb * ao + sun * lit * diff * 1.7);
-  if (mat == 3.0) col += alb * sun * lit * 0.12; // light through thin paper
+  // Room fill from the reader's side, so faces turned from the sun keep their form.
+  amb += vec3(0.12, 0.105, 0.09) * (0.5 + 0.5 * dot(n, vec3(-0.553, 0.352, -0.755)));
+  if (mat == 1.0 && !desk) {
+    amb *= mix(0.55, 1.0, smoothstep(0.0, 0.35, DESK_Y - 0.05 - qs.y)); // the desk shades the post
+    amb += sun * 0.05 * exp(-qs.y * 3.0);                                // warm bounce off the floor
+  }
+  // The low ledge sits in the book's shade; without this, slivers of it catch the sun as specks.
+  float ledge = mat == 1.0 && desk ? smoothstep(0.018, 0.03, dq.y) * smoothstep(-0.238, -0.25, dq.z) : 0.0;
+  lit *= 1.0 - 0.75 * ledge;
+  vec3 col = alb * (amb * ao * contact + sun * lit * diff * 1.7 * mix(0.75, 1.0, contact));
+  if (mat == 3.0) {
+    // Sun through thin paper: a warm glow, strongest where the leaves thin out at the edges.
+    float thin = max(smoothstep(0.2, 0.326, ax), smoothstep(0.13, 0.231, abs(dq.z)));
+    col += alb * sun * vec3(1.0, 0.86, 0.66) * lit * (0.1 + 0.22 * thin * (1.0 - 0.6 * diff));
+  }
   vec3 h = normalize(-L - rd);
-  col += sun * lit * ks * pow(max(dot(n, h), 0.0), gloss);
+  col += sun * lit * ks * pow(max(dot(n, h), 0.0), gloss) * contact;
+  // Varnish: rounded edges and the desk pick up a faint reflection of the windows.
+  vec3 r = reflect(rd, n);
+  if (mat == 1.0 && r.z > 0.02) {
+    vec3 wp = p + r * (-p.z / r.z);
+    float fres = 0.04 + 0.6 * pow(1.0 - max(dot(n, -rd), 0.0), 4.0);
+    col += sun * min(glareAt(wp.xy), 1.0) * fres * (desk ? 0.7 : 0.35) * ao * contact;
+  }
   return col;
 }
 
@@ -453,8 +532,6 @@ vec4 sampleLectern(Cam cam, vec3 rd, vec3 lp, vec3 L, vec3 sun, float pix) {
   vec3 p = cam.ro + rd * tr.x;
   return vec4(shadeLectern(p, rd, lp, L, sun, tr.x * pix), cov);
 }
-
-uniform float uOutScale;
 
 void main() {
   vec2 frag = gl_FragCoord.xy;
@@ -502,14 +579,15 @@ void main() {
   // Bloom of the bright glass.
   col += sun * glareAt(pw.xy) * 0.07;
   // Alpha carries the lectern's coverage, so the composite can hide the air behind it.
-  outColor = vec4(col * uOutScale, cover);
+  // Range-compressed, so the composite's downsample is tone-weighted and an 8-bit target has headroom.
+  outColor = vec4(col / (1.0 + max(col.r, max(col.g, col.b))), cover);
 }
 `;
 
 const SHAFT_SHADER = `#version 300 es
 ${COMMON}
-// Baked once at CSS resolution: the light shafts in the room air. They are soft,
-// so the composite upsamples them invisibly.
+// Baked once: the light shafts in the room air. They are soft, but they end at the
+// lectern's silhouette, so they are supersampled with the scene on a 1x display.
 void main() {
   vec2 frag = gl_FragCoord.xy;
   Cam cam = camera();
@@ -558,7 +636,7 @@ const COMPOSITE_SHADER = `#version 300 es
 ${COMMON}
 uniform sampler2D uStatic;
 uniform sampler2D uShafts;
-uniform float uInScale;
+uniform float uTap;     // downsample tap offset, in output pixels
 uniform vec2 uHand;     // pointer in render pixels (GL origin, bottom-left)
 uniform float uHandOn;  // eased 0..1 while the pointer is over the panel
 
@@ -583,11 +661,18 @@ void main() {
 
   // Baked shafts, softened over their texel (march jitter). They must stay registered
   // with the baked scene: the lectern's silhouette lives in both layers.
-  vec2 st = 1.0 / vec2(textureSize(uShafts, 0));
+  // Half a texel at display resolution; three quarters (a tent) when the shafts were supersampled.
+  vec2 shaftSize = vec2(textureSize(uShafts, 0));
+  vec2 st = clamp(0.5 + 0.5 * shaftSize.x / uRes.x, 1.0, 1.5) / shaftSize;
   vec2 su = frag / uRes;
   float shaft = 0.25 * (texture(uShafts, su + st * vec2(0.5, 0.5)).r + texture(uShafts, su + st * vec2(-0.5, 0.5)).r +
                         texture(uShafts, su + st * vec2(0.5, -0.5)).r + texture(uShafts, su + st * vec2(-0.5, -0.5)).r);
-  vec3 col = texelFetch(uStatic, ivec2(frag), 0).rgb * uInScale * breath;
+  // The scene was baked supersampled and range-compressed. Four bilinear taps make a tent
+  // over the source texels; averaging before expanding keeps bright glass edges smooth.
+  vec2 tap = uTap / uRes;
+  vec3 enc = 0.25 * (texture(uStatic, s + tap).rgb + texture(uStatic, s - tap).rgb +
+                     texture(uStatic, s + vec2(tap.x, -tap.y)).rgb + texture(uStatic, s + vec2(-tap.x, tap.y)).rgb);
+  vec3 col = enc / max(1.0 - max(enc.r, max(enc.g, enc.b)), 0.004) * breath;
   // Haze drifting through the beams: two slow octaves over the baked shafts.
   vec2 hz = frag / uRes.y;
   float haze = 0.62 * vnoise(hz * 3.0 + vec2(0.02, -0.035) * uTime) + 0.38 * vnoise(hz * 7.0 - vec2(0.03, 0.02) * uTime);
@@ -631,10 +716,17 @@ void main() {
 
 /** Seconds into the animation the bake is taken at, chosen for a settled composition. */
 const BAKE_TIME = 40;
-// Bake resolutions tried in order; a slow device steps down (see `stepDown`).
-const PIXEL_RATIOS = [2, 1.5, 1];
-// A bake projected to take longer than this (all strips together) steps the ratio down.
-const BAKE_BUDGET_MS = 600;
+// Quality levels tried in order: [supersampling of the baked scene per axis, device
+// pixel ratio cap]. A slow device gives up supersampling first and resolution last.
+const QUALITY: [number, number][] = [
+  [2, 2],
+  [1.5, 2],
+  [1, 2],
+  [1, 1.5],
+  [1, 1],
+];
+// A bake projected to take longer than this (all strips together) steps the quality down.
+const BAKE_BUDGET_MS = 2500;
 // Each bake strip should cost about this much, so no single frame blocks for long.
 const STRIP_BUDGET_MS = 12;
 // The ambient motion is slow; 30fps is plenty and halves the work.
@@ -643,8 +735,6 @@ const FRAME_MS = 1000 / 30;
 const SLOW_FRAME_MS = 50;
 const HAND_EASE_PER_SECOND = 4;
 const SLOW_FRAME_LIMIT = 45;
-// An 8-bit cache stores colour at a quarter, leaving headroom for bright glass.
-const BYTE_CACHE_SCALE = 0.25;
 
 function compile(gl: WebGL2RenderingContext, type: number, source: string) {
   const shader = gl.createShader(type);
@@ -744,11 +834,11 @@ function startScene(
   }
   gl.bindVertexArray(gl.createVertexArray());
   const float = Boolean(gl.getExtension('EXT_color_buffer_float'));
-  const cacheScale = float ? 1 : BYTE_CACHE_SCALE;
+  const maxSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
   const surfaces = createTarget(gl);
   const shafts = createTarget(gl);
   const programs = [staticProgram, shaftProgram, compositeProgram];
-  const probe = new Uint8Array(4);
+  const probe = float ? new Float32Array(4) : new Uint8Array(4);
 
   const uniform = (program: WebGLProgram, name: string) =>
     gl.getUniformLocation(program, name);
@@ -762,7 +852,9 @@ function startScene(
   const reduceMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)',
   ).matches;
-  let ratioIndex = window.devicePixelRatio >= 2 ? 0 : PIXEL_RATIOS.length - 1;
+  let level = 0;
+  let tap = 0;
+  let strips = 0;
   let frame = 0;
   let lastStamp = 0;
   let lastDraw = 0;
@@ -784,8 +876,21 @@ function startScene(
   let bakeStarted = 0;
   let firstBake = true;
 
+  const supersample = () => QUALITY[level]?.[0] ?? 1;
   const ratio = () =>
-    Math.min(window.devicePixelRatio || 1, PIXEL_RATIOS[ratioIndex] ?? 1);
+    Math.min(window.devicePixelRatio || 1, QUALITY[level]?.[1] ?? 1);
+  // Moves to the next level that changes anything on this display, and rebakes.
+  const stepDown = () => {
+    const before = [supersample(), ratio()];
+    while (level < QUALITY.length - 1) {
+      level += 1;
+      if (supersample() !== before[0] || ratio() !== before[1]) {
+        resize();
+        return true;
+      }
+    }
+    return false;
+  };
 
   // Bakes rows [bakeRow, bakeRow + stripRows) of both caches, measured with a 1-pixel read.
   const bakeStrip = () => {
@@ -796,7 +901,7 @@ function startScene(
     ];
     gl.enable(gl.SCISSOR_TEST);
     for (const [target, program] of passes) {
-      // Shafts bake at CSS resolution: the same rows, scaled.
+      // The shafts may bake smaller than the scene: the same rows, scaled.
       const scale = target.height / surfaces.height;
       const y0 = Math.floor(bakeRow * scale);
       const y1 = Math.ceil((bakeRow + stripRows) * scale);
@@ -804,25 +909,31 @@ function startScene(
       gl.viewport(0, 0, target.width, target.height);
       gl.scissor(0, y0, target.width, Math.max(y1 - y0, 1));
       setCommon(program, target.width, target.height);
-      if (program === staticProgram) {
-        gl.uniform1f(uniform(program, 'uOutScale'), cacheScale);
-      }
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
     gl.disable(gl.SCISSOR_TEST);
-    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, probe);
+    // Wait for the strip: one pixel of it, read in the scene target's own format.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, surfaces.framebuffer);
+    gl.readPixels(
+      0,
+      Math.min(bakeRow, surfaces.height - 1),
+      1,
+      1,
+      gl.RGBA,
+      float ? gl.FLOAT : gl.UNSIGNED_BYTE,
+      probe,
+    );
     const spent = performance.now() - started;
     const perRow = spent / stripRows;
     bakeRow += stripRows;
-    stripRows = Math.max(
-      8,
-      Math.round(STRIP_BUDGET_MS / Math.max(perRow, 0.001)),
-    );
-    const projected = perRow * surfaces.height;
-    if (projected > BAKE_BUDGET_MS && ratioIndex < PIXEL_RATIOS.length - 1) {
-      ratioIndex += 1;
-      resize();
-      return;
+    strips += 1;
+    // The first strip also pays for the driver compiling the shaders: never judge by it.
+    if (strips > 1) {
+      stripRows = Math.max(
+        8,
+        Math.round(STRIP_BUDGET_MS / Math.max(perRow, 0.001)),
+      );
+      if (perRow * surfaces.height > BAKE_BUDGET_MS && stepDown()) return;
     }
     if (bakeRow >= surfaces.height) {
       baking = false;
@@ -830,6 +941,7 @@ function startScene(
         Math.round(performance.now() - bakeStarted),
       );
       canvas.dataset.pixelRatio = String(ratio());
+      canvas.dataset.supersample = String(surfaces.width / canvas.width);
       if (!ready) {
         ready = true;
         onReady();
@@ -849,7 +961,7 @@ function startScene(
     );
     gl.uniform1f(uniform(compositeProgram, 'uTime'), elapsed);
     gl.uniform2f(uniform(compositeProgram, 'uPointer'), 0, 0);
-    gl.uniform1f(uniform(compositeProgram, 'uInScale'), 1 / cacheScale);
+    gl.uniform1f(uniform(compositeProgram, 'uTap'), tap);
     const scale = canvas.width / Math.max(1, canvas.clientWidth);
     gl.uniform2f(
       uniform(compositeProgram, 'uHand'),
@@ -899,10 +1011,9 @@ function startScene(
     }
     // Persistently late frames on a weak device: bake smaller and carry on.
     slowFrames = gap > SLOW_FRAME_MS ? slowFrames + 1 : 0;
-    if (slowFrames > SLOW_FRAME_LIMIT && ratioIndex < PIXEL_RATIOS.length - 1) {
+    if (slowFrames > SLOW_FRAME_LIMIT) {
       slowFrames = 0;
-      ratioIndex += 1;
-      resize();
+      stepDown();
     }
   };
 
@@ -921,12 +1032,30 @@ function startScene(
     // The backing store matches the CSS size exactly, so the browser never rescales it.
     canvas.width = Math.max(1, Math.round(canvas.clientWidth * r));
     canvas.height = Math.max(1, Math.round(canvas.clientHeight * r));
-    sizeTarget(gl, surfaces, canvas.width, canvas.height, float);
+    // The scene bakes supersampled, as far as the GPU's texture limit allows.
+    const ss = Math.min(
+      supersample(),
+      maxSize / canvas.width,
+      maxSize / canvas.height,
+    );
+    sizeTarget(
+      gl,
+      surfaces,
+      Math.max(1, Math.floor(canvas.width * ss)),
+      Math.max(1, Math.floor(canvas.height * ss)),
+      float,
+    );
+    // 0.75 of a source texel at 2x: a [1 3 3 1] tent per axis; nothing at 1x.
+    tap = 0.375 * Math.max(surfaces.width / canvas.width - 1, 0);
+    strips = 0;
     sizeTarget(
       gl,
       shafts,
-      Math.max(1, Math.ceil(canvas.clientWidth)),
-      Math.max(1, Math.ceil(canvas.clientHeight)),
+      Math.max(1, Math.min(surfaces.width, Math.ceil(canvas.clientWidth * ss))),
+      Math.max(
+        1,
+        Math.min(surfaces.height, Math.ceil(canvas.clientHeight * ss)),
+      ),
       float,
     );
     baking = true;

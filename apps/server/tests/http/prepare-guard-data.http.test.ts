@@ -376,4 +376,157 @@ describe('GET /prepare/cycles/:cycleId/participation guard data', () => {
       [lateBlock.id]: true,
     });
   });
+  describe('answer coverage per block', () => {
+    interface CoverageBlock {
+      eventTimeBlock: { id: string };
+      answerCoverage: { available: number; needed: number | null };
+    }
+
+    async function seedCoverage() {
+      const base = await seedBase();
+      const { seed } = base;
+      const churchId = seed.churchAId;
+      const graph = await seedEvent({ base, title: 'Sunday service' });
+      const participationId = graph.participation.id;
+      const insertBlock = async (label: string) => {
+        const [row] = await schedulingTestDb
+          .insert(eventTimeBlock)
+          .values({
+            churchId,
+            eventId: graph.event.id,
+            startTime: BLOCK_START,
+            endTime: BLOCK_END,
+            label,
+          })
+          .returning();
+        if (!row) throw new Error(`${label} was not seeded`);
+        return row;
+      };
+      const unstaffedBlock = await insertBlock('Unstaffed');
+      const emptyBlock = await insertBlock('No shifts');
+      const role = await seedRole({
+        churchId,
+        ministryId: seed.ministryAId,
+        name: 'Teacher',
+      });
+      const sector = await buildSector({
+        db: schedulingTestDb,
+        churchId,
+        ministryId: seed.ministryAId,
+        name: 'Kids Room',
+      });
+      const shiftIn = (eventTimeBlockId: string, label: string) =>
+        seedShift({
+          churchId,
+          participationId,
+          eventTimeBlockId,
+          startTime: BLOCK_START,
+          endTime: FIRST_SHIFT_END,
+          label,
+        });
+      const first = await shiftIn(graph.eventTimeBlock.id, 'First');
+      const second = await shiftIn(graph.eventTimeBlock.id, 'Second');
+      const unstaffed = await shiftIn(unstaffedBlock.id, 'Unstaffed');
+      for (const [shiftId, peopleNeeded] of [
+        [first.id, 3],
+        [second.id, 2],
+      ] as const) {
+        await seedRequirement({
+          churchId,
+          participationId,
+          shiftId,
+          roleId: role.id,
+          sectorId: sector.id,
+          peopleNeeded,
+        });
+      }
+      const members = await Promise.all(
+        [0, 1, 2, 3].map((index) =>
+          seedVolunteerMembership({
+            churchId,
+            ministryId: seed.ministryAId,
+            name: `Volunteer ${index}`,
+            email: `coverage-${index}-${randomUUID()}@test.com`,
+          }),
+        ),
+      );
+      return {
+        base,
+        churchId,
+        blockId: graph.eventTimeBlock.id,
+        unstaffedBlockId: unstaffedBlock.id,
+        emptyBlockId: emptyBlock.id,
+        second,
+        unstaffed,
+        members,
+      };
+    }
+
+    const coverageById = (body: {
+      events: { eventTimeBlocks: CoverageBlock[] }[];
+    }) =>
+      Object.fromEntries(
+        (body.events[0]?.eventTimeBlocks ?? []).map((block) => [
+          block.eventTimeBlock.id,
+          block.answerCoverage,
+        ]),
+      );
+
+    it('counts nobody before any answer, with null needed for a block without headcount', async () => {
+      const seeded = await seedCoverage();
+
+      const coverage = coverageById(await getView(seeded.base));
+
+      expect(coverage).toEqual({
+        [seeded.blockId]: { available: 0, needed: 3 },
+        [seeded.unstaffedBlockId]: { available: 0, needed: null },
+        [seeded.emptyBlockId]: { available: 0, needed: null },
+      });
+    });
+
+    it('counts confirmed volunteers unmarked on every Shift of the block', async () => {
+      const seeded = await seedCoverage();
+      const { churchId, base, members } = seeded;
+      const states = [
+        'confirmed',
+        'confirmed',
+        'pending',
+        'confirmed',
+      ] as const;
+      const checks = [];
+      for (const [index, state] of states.entries()) {
+        checks.push(
+          await buildAvailabilityCheck({
+            db: schedulingTestDb,
+            churchId,
+            cycleId: base.cycle.id,
+            ministryMembershipId: members[index]?.membership.id ?? '',
+            state,
+          }),
+        );
+      }
+      // Volunteer 1 can serve the first Shift but not the second: out of the block.
+      await buildUnavailableShift({
+        db: schedulingTestDb,
+        churchId,
+        availabilityCheckId: checks[1]?.id ?? '',
+        shiftId: seeded.second.id,
+      });
+      // Volunteer 3 is out of the unstaffed block only.
+      await buildUnavailableShift({
+        db: schedulingTestDb,
+        churchId,
+        availabilityCheckId: checks[3]?.id ?? '',
+        shiftId: seeded.unstaffed.id,
+      });
+
+      const coverage = coverageById(await getView(base));
+
+      expect(coverage).toEqual({
+        [seeded.blockId]: { available: 2, needed: 3 },
+        [seeded.unstaffedBlockId]: { available: 2, needed: null },
+        [seeded.emptyBlockId]: { available: 3, needed: null },
+      });
+    });
+  });
 });

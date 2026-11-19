@@ -70,6 +70,8 @@ export const appConfigSchema = z.object({
     /** People directory page size when the request names none, and the most it may ask for. */
     pageSize: positiveInt,
     maxPageSize: positiveInt,
+    /** The most the Schedule answers roster may ask for; the web shows everyone in one request. */
+    answersMaxPageSize: positiveInt,
   }),
   invitations: z.object({
     /** Invitation list page size when the request names none, and the most it may ask for. */
@@ -131,7 +133,7 @@ export const appConfig = appConfigSchema.parse({
     maxPageSize: 50,
   },
   volunteerDashboard: { upcomingLimit: 5 },
-  people: { pageSize: 20, maxPageSize: 50 },
+  people: { pageSize: 20, maxPageSize: 50, answersMaxPageSize: 200 },
   invitations: { pageSize: 20, maxPageSize: 50 },
   schedules: { pageSize: 20, maxPageSize: 50 },
   ministries: { pageSize: 20, maxPageSize: 50 },

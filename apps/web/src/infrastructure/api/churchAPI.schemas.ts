@@ -3524,7 +3524,35 @@ export type GetSchedule404 = {
 
 export type GetCycleParticipationParams = {
 ministryId: string;
+/**
+ * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+ */
+day?: string;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+q?: string;
+timeMode?: GetCycleParticipationTimeMode;
+/**
+ * @pattern ^\d{2}:\d{2}(:\d{2})?$
+ */
+timeFrom?: string;
+/**
+ * @pattern ^\d{2}:\d{2}(:\d{2})?$
+ */
+timeTo?: string;
+needsAttention?: string;
 };
+
+export type GetCycleParticipationTimeMode = typeof GetCycleParticipationTimeMode[keyof typeof GetCycleParticipationTimeMode];
+
+
+export const GetCycleParticipationTimeMode = {
+  starts: 'starts',
+  ends: 'ends',
+  within: 'within',
+} as const;
 
 export type GetCycleParticipation200EventsItemParticipationState = typeof GetCycleParticipation200EventsItemParticipationState[keyof typeof GetCycleParticipation200EventsItemParticipationState];
 
@@ -3603,6 +3631,20 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlock 
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockRequirementsItem[];
 };
 
+export type GetCycleParticipation200EventsItemEventTimeBlocksItemAnswerCoverage = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  available: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     * @nullable
+     */
+  needed: number | null;
+};
+
 export type GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItemRequirementsItem = {
   id: string;
   shiftId: string;
@@ -3645,6 +3687,7 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsIte
 export type GetCycleParticipation200EventsItemEventTimeBlocksItem = {
   eventTimeBlock: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlock;
   included: boolean;
+  answerCoverage: GetCycleParticipation200EventsItemEventTimeBlocksItemAnswerCoverage;
   shifts: GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItem[];
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsItem[];
   shiftsChangedAfterAsk: boolean;
@@ -3657,8 +3700,24 @@ export type GetCycleParticipation200EventsItem = {
   eventTimeBlocks: GetCycleParticipation200EventsItemEventTimeBlocksItem[];
 };
 
+export type GetCycleParticipation200Totals = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  blocks: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  needsAttention: number;
+};
+
 export type GetCycleParticipation200 = {
   events: GetCycleParticipation200EventsItem[];
+  /** @items.pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  dayMarkers: string[];
+  totals: GetCycleParticipation200Totals;
 };
 
 export type GetCycleParticipation403 = {
@@ -3817,6 +3876,20 @@ export type SaveEventTimeBlockPreparation200EventTimeBlock = {
   requirements: SaveEventTimeBlockPreparation200EventTimeBlockRequirementsItem[];
 };
 
+export type SaveEventTimeBlockPreparation200AnswerCoverage = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  available: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     * @nullable
+     */
+  needed: number | null;
+};
+
 export type SaveEventTimeBlockPreparation200ShiftsItemRequirementsItem = {
   id: string;
   shiftId: string;
@@ -3859,6 +3932,7 @@ export type SaveEventTimeBlockPreparation200RequirementsItem = {
 export type SaveEventTimeBlockPreparation200 = {
   eventTimeBlock: SaveEventTimeBlockPreparation200EventTimeBlock;
   included: boolean;
+  answerCoverage: SaveEventTimeBlockPreparation200AnswerCoverage;
   shifts: SaveEventTimeBlockPreparation200ShiftsItem[];
   requirements: SaveEventTimeBlockPreparation200RequirementsItem[];
   shiftsChangedAfterAsk: boolean;
@@ -4128,6 +4202,45 @@ export type RemindSchedule409 = {
 
 export type GetCycleAvailabilityStatusParams = {
 ministryId: string;
+status?: GetCycleAvailabilityStatusStatus;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+q?: string;
+cursor?: string;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+};
+
+export type GetCycleAvailabilityStatusStatus = typeof GetCycleAvailabilityStatusStatus[keyof typeof GetCycleAvailabilityStatusStatus];
+
+
+export const GetCycleAvailabilityStatusStatus = {
+  pending: 'pending',
+  available: 'available',
+  unavailable: 'unavailable',
+} as const;
+
+export type GetCycleAvailabilityStatus200Counts = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  pending: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  available: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  unavailable: number;
 };
 
 export type GetCycleAvailabilityStatus200StatusesItemState = typeof GetCycleAvailabilityStatus200StatusesItemState[keyof typeof GetCycleAvailabilityStatus200StatusesItemState];
@@ -4161,6 +4274,9 @@ export type GetCycleAvailabilityStatus200 = {
      * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
      */
   remindAvailableAt: string | null;
+  counts: GetCycleAvailabilityStatus200Counts;
+  /** @nullable */
+  nextCursor: string | null;
   statuses: GetCycleAvailabilityStatus200StatusesItem[];
 };
 

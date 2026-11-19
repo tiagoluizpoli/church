@@ -71,7 +71,9 @@ beforeAll(async () => {
     peopleListManager: new DbPeopleListManager({
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
       authorityManager,
-      config: { people: { pageSize: 20, maxPageSize: 50 } },
+      config: {
+        people: { pageSize: 20, maxPageSize: 50, answersMaxPageSize: 200 },
+      },
     }),
     churchAccessManager: new DbChurchAccessManager({
       authorityManager,
@@ -81,7 +83,9 @@ beforeAll(async () => {
     ministryMembershipManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: new AuthorityGuard({ manager: authorityManager }),
-    config: { people: { pageSize: 20, maxPageSize: 50 } },
+    config: {
+      people: { pageSize: 20, maxPageSize: 50, answersMaxPageSize: 200 },
+    },
   });
   await app.register(
     async (instance) => {

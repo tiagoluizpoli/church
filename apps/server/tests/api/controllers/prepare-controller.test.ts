@@ -365,6 +365,8 @@ describe('Prepare participation routes', () => {
       confirmed: 1,
       answerBy: parseCalendarDay({ value: '2026-08-20' }),
       remindAvailableAt: parseInstant({ value: '2026-08-04T10:00:00.000Z' }),
+      counts: { pending: 1, available: 0, unavailable: 1 },
+      nextCursor: null,
       statuses: [
         {
           volunteerId: 'vol-1',
@@ -395,6 +397,8 @@ describe('Prepare participation routes', () => {
       confirmed: 1,
       answerBy: '2026-08-20',
       remindAvailableAt: '2026-08-04T10:00:00.000Z',
+      counts: { pending: 1, available: 0, unavailable: 1 },
+      nextCursor: null,
       statuses: [
         {
           volunteerId: 'vol-1',

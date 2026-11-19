@@ -22,12 +22,14 @@ import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import {
+  answersQuerystringSchema,
   answersResponseSchema,
   askBlockedFlaggedShiftsResponseSchema,
   askPreviewResponseSchema,
   askScheduleBodySchema,
   askScheduleResponseSchema,
   availabilityDeadlineResponseSchema,
+  cycleParticipationQuerystringSchema,
   cycleParticipationResponseSchema,
   headcountBelowAssignedResponseSchema,
   participationEventTimeBlockViewSchema,
@@ -118,6 +120,7 @@ export class PrepareController implements FastifyController {
   private readonly authorityGuard: AuthorityGuard;
   private readonly schedulePageSize: number;
   private readonly scheduleMaxPageSize: number;
+  private readonly answersMaxPageSize: number;
 
   constructor({
     participationManager,
@@ -128,6 +131,7 @@ export class PrepareController implements FastifyController {
   }: PrepareControllerDependencies) {
     this.schedulePageSize = config.schedules.pageSize;
     this.scheduleMaxPageSize = config.schedules.maxPageSize;
+    this.answersMaxPageSize = config.people.answersMaxPageSize;
     this.participationManager = participationManager;
     this.availabilityCheckManager = availabilityCheckManager;
     this.activeChurchResolver = activeChurchResolver;
@@ -284,8 +288,8 @@ export class PrepareController implements FastifyController {
           operationId: 'getCycleParticipation',
           summary: "Get a Ministry's prepare view of a cycle",
           description:
-            "Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle.",
-          querystring: cycleParticipationQuerySchema,
+            "Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle. `day` (church-local date), `q` (block label or Event title), a time window (`timeMode` starts, ends or within, with `timeFrom`/`timeTo` as church-local HH:mm; either bound may be omitted) and `needsAttention` (served blocks with a Shift lacking a headcount) filter the blocks; Events left with none are dropped. Blocks come ordered by start then id. `dayMarkers` and `totals` always describe the unfiltered Cycle.",
+          querystring: cycleParticipationQuerystringSchema,
           response: {
             200: cycleParticipationResponseSchema,
             403: errorResponseSchema,
@@ -295,7 +299,17 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleParticipationRouteParams;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const {
+          ministryId,
+          day,
+          q,
+          timeMode,
+          timeFrom,
+          timeTo,
+          needsAttention,
+        } = request.query as z.infer<
+          typeof cycleParticipationQuerystringSchema
+        >;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
@@ -315,6 +329,12 @@ export class PrepareController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
+          filters: {
+            day,
+            q,
+            needsAttention,
+            timeWindow: { mode: timeMode, start: timeFrom, end: timeTo },
+          },
         });
         return reply.send(participationMapper.cycleViewToResponse(view));
       },
@@ -617,8 +637,12 @@ export class PrepareController implements FastifyController {
           operationId: 'getCycleAvailabilityStatus',
           summary: "Get the Answers to a Schedule's Ask",
           description:
-            'List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, Deadline and Remind cooldown.',
-          querystring: cycleParticipationQuerySchema,
+            'List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, per-status `counts`, Deadline and Remind cooldown. `status` (pending, available, unavailable) and `q` (name search) filter the list; `limit` pages it by `cursor` (omitted, every match comes back) ordered by name then id, and `nextCursor` is null on the last page. `asked`, `confirmed` and `counts` ignore the filters.',
+          querystring: answersQuerystringSchema.extend({
+            limit: pageLimitSchema({
+              maxPageSize: this.answersMaxPageSize,
+            }).optional(),
+          }),
           response: {
             200: answersResponseSchema,
             403: errorResponseSchema,
@@ -628,7 +652,9 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleParticipationRouteParams;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { ministryId, status, q, cursor, limit } =
+          request.query as z.infer<typeof answersQuerystringSchema> &
+            Partial<ListLimitQuery>;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
@@ -649,6 +675,10 @@ export class PrepareController implements FastifyController {
             churchId: ChurchId.from(request.churchId),
             cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
+            status,
+            q,
+            cursor,
+            limit,
           });
         return reply.send(answers);
       },

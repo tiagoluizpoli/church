@@ -147,6 +147,7 @@ import {
   spansFitBlock,
   usualSetupNeedsReview,
 } from '../domain/services/usual-setup-planner';
+import { filterCycleParticipation } from './participation-view-filter';
 import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 
 interface TagCoveredSwapRequestsInput {
@@ -263,6 +264,15 @@ interface LoadEventViewInput {
   eventGroup: EventWithEventTimeBlocks;
   participation: MinistryParticipation;
   availabilityRequestedAt: Date | null;
+  /** Volunteers who confirmed their answers to this Cycle's Ask. */
+  confirmedVolunteerIds: Set<string>;
+  tx: TransactionContext;
+}
+
+interface LoadConfirmedVolunteerIdsInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  ministryId: MinistryId;
   tx: TransactionContext;
 }
 
@@ -286,6 +296,7 @@ interface BuildEventViewInput {
   marks: UnavailableShift[];
   assignments: Assignment[];
   availabilityRequestedAt: Date | null;
+  confirmedVolunteerIds: Set<string>;
 }
 
 interface GetParticipationCompletionInternalInput {
@@ -593,6 +604,9 @@ export class DbParticipationManager implements IParticipationManager {
       churchId: input.churchId,
       cycleId: input.cycleId,
     });
+    const church = await this.churchRepository.getById({
+      id: input.churchId,
+    });
 
     return this.unitOfWork.run(async (tx) => {
       const eventGroups = await this.eventRepository.listCycleEvents({
@@ -607,6 +621,10 @@ export class DbParticipationManager implements IParticipationManager {
           ministryId: input.ministryId,
           tx,
         });
+      const confirmedVolunteerIds = await this.loadConfirmedVolunteerIds({
+        ...input,
+        tx,
+      });
       const events: ParticipationEventView[] = [];
 
       for (const eventGroup of eventGroups) {
@@ -621,12 +639,25 @@ export class DbParticipationManager implements IParticipationManager {
             eventGroup,
             participation,
             availabilityRequestedAt,
+            confirmedVolunteerIds,
             tx,
           }),
         );
       }
 
-      return { events };
+      const filtered = filterCycleParticipation({
+        events,
+        filters: input.filters ?? {},
+        timeZone: church.timezone,
+      });
+      return {
+        events: filtered.events,
+        dayMarkers: filtered.dayMarkers,
+        totals: {
+          blocks: filtered.totalBlocks,
+          needsAttention: filtered.needsAttentionBlocks,
+        },
+      };
     });
   }
 
@@ -635,6 +666,7 @@ export class DbParticipationManager implements IParticipationManager {
     eventGroup,
     participation,
     availabilityRequestedAt,
+    confirmedVolunteerIds,
     tx,
   }: LoadEventViewInput): Promise<ParticipationEventView> {
     const scope = { churchId, participationId: participation.id, tx };
@@ -658,7 +690,27 @@ export class DbParticipationManager implements IParticipationManager {
       marks,
       assignments,
       availabilityRequestedAt,
+      confirmedVolunteerIds,
     });
+  }
+
+  private async loadConfirmedVolunteerIds({
+    churchId,
+    cycleId,
+    ministryId,
+    tx,
+  }: LoadConfirmedVolunteerIdsInput): Promise<Set<string>> {
+    const states = await this.loadCheckStates({
+      churchId,
+      ministryId,
+      cycleId,
+      tx,
+    });
+    return new Set(
+      [...states]
+        .filter(([, state]) => state === 'confirmed')
+        .map(([id]) => id),
+    );
   }
 
   async getCycleBuilderData(
@@ -1145,6 +1197,12 @@ export class DbParticipationManager implements IParticipationManager {
       eventGroup: { event, eventTimeBlocks: [eventTimeBlock] },
       participation,
       availabilityRequestedAt,
+      confirmedVolunteerIds: await this.loadConfirmedVolunteerIds({
+        churchId,
+        cycleId: event.cycleId,
+        ministryId: participation.ministryId,
+        tx,
+      }),
       tx,
     });
     const [view] = eventTimeBlocks;
@@ -3036,6 +3094,7 @@ function buildEventView({
   marks,
   assignments,
   availabilityRequestedAt,
+  confirmedVolunteerIds,
 }: BuildEventViewInput): ParticipationEventView {
   const {
     markCountByShift,
@@ -3050,6 +3109,11 @@ function buildEventView({
   const requirementsByShift = groupBy({
     items: requirements,
     keyOf: (requirement) => (requirement.shiftId ?? '') as string,
+  });
+
+  const marksByShift = groupBy({
+    items: marks,
+    keyOf: (mark) => mark.shiftId as string,
   });
 
   const eventTimeBlocks: ParticipationEventTimeBlockView[] =
@@ -3077,9 +3141,34 @@ function buildEventView({
         },
       );
 
+      // Available = confirmed and unmarked on every Shift of the block; needed =
+      // the busiest Shift's headcount, null while a Shift has none (or there is no Shift).
+      const unavailable = new Set(
+        eventTimeBlockShifts.flatMap((shift) =>
+          (marksByShift.get(shift.id as string) ?? []).map(
+            (mark) => mark.volunteerId as string,
+          ),
+        ),
+      );
+      const headcounts = shiftViews.map(({ requirements: shiftRequirements }) =>
+        shiftRequirements.reduce(
+          (sum, { requirement }) => sum + requirement.peopleNeeded,
+          0,
+        ),
+      );
+
       return {
         eventTimeBlock,
         included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
+        answerCoverage: {
+          available: [...confirmedVolunteerIds].filter(
+            (id) => !unavailable.has(id),
+          ).length,
+          needed:
+            headcounts.length === 0 || headcounts.includes(0)
+              ? null
+              : Math.max(...headcounts),
+        },
         shifts: shiftViews,
         requirements: shiftViews.flatMap((view) => view.requirements),
         shiftsChangedAfterAsk:

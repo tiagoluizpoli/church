@@ -1,0 +1,39 @@
+# VPS alert channels and outside watchdog (#919). Runbook: docs/operations/alerting.md.
+# Deployed as the Dokploy compose "observability" (VPS, Products). NTFY_AUTH_* come
+# from the Dokploy environment as single-quoted literals (bcrypt hashes contain $).
+services:
+  ntfy:
+    image: binwiederhier/ntfy:v2.38.1
+    command: serve
+    restart: unless-stopped
+    environment:
+      NTFY_BASE_URL: https://ntfy.lunalabs.com.br
+      NTFY_BEHIND_PROXY: "true"
+      NTFY_CACHE_FILE: /var/lib/ntfy/cache.db
+      NTFY_AUTH_FILE: /var/lib/ntfy/auth.db
+      NTFY_AUTH_DEFAULT_ACCESS: deny-all
+      NTFY_ENABLE_LOGIN: "true"
+      NTFY_AUTH_USERS: ${NTFY_AUTH_USERS}
+      NTFY_AUTH_ACCESS: ${NTFY_AUTH_ACCESS}
+      NTFY_AUTH_TOKENS: ${NTFY_AUTH_TOKENS}
+    volumes:
+      - ntfy-data:/var/lib/ntfy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 http://localhost:80/v1/health -O - | grep -Eo '\"healthy\"\\s*:\\s*true' || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+  uptime-kuma:
+    image: louislam/uptime-kuma:2.5.12-slim
+    restart: unless-stopped
+    # Tailnet only: host networking bound to the VPS tailnet address. Docker's
+    # published ports go through FORWARD, which drops tailnet traffic here.
+    network_mode: host
+    environment:
+      UPTIME_KUMA_HOST: 100.119.105.21
+      UPTIME_KUMA_PORT: "3002"
+    volumes:
+      - uptime-kuma-data:/app/data
+volumes:
+  ntfy-data:
+  uptime-kuma-data:

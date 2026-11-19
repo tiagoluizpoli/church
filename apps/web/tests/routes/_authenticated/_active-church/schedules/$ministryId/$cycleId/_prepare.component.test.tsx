@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { overwriteGetLocale } from '@church/i18n/runtime';
+import { getLocale, overwriteGetLocale } from '@church/i18n/runtime';
+import { formatWeekdayShort, parseCalendarDay } from '@church/time';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -20,6 +21,7 @@ import { renderRoute } from '@/tests/setup/render-route';
 
 const api = vi.hoisted(() => ({
   getAskPreview: vi.fn(),
+  getCycleAvailabilityStatus: vi.fn(),
   askScheduleAvailability: vi.fn(),
   listMinistries: vi.fn(),
   listScheduleSummaries: vi.fn(),
@@ -57,6 +59,15 @@ afterEach(() => overwriteGetLocale(() => 'pt-BR'));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  api.getCycleAvailabilityStatus.mockResolvedValue({
+    asked: 151,
+    confirmed: 1,
+    counts: { pending: 150, available: 1, unavailable: 0 },
+    answerBy: null,
+    remindAvailableAt: null,
+    statuses: [],
+    nextCursor: null,
+  });
   api.askScheduleAvailability.mockReset();
   api.getAskPreview.mockResolvedValue({
     eligibleVolunteerCount: 34,
@@ -67,7 +78,11 @@ beforeEach(() => {
   });
   api.listMinistries.mockRejectedValue(new Error('admin-only read'));
   api.listScheduleSummaries.mockResolvedValue({ cycles: [] });
-  api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+  api.getCycleParticipation.mockResolvedValue({
+    events: [EVENT],
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
+  });
   api.getSchedule.mockResolvedValue(SCHEDULE);
   api.listSectors.mockResolvedValue({ sectors: SECTORS });
   api.listMinistryRoles.mockResolvedValue({ roles: ROLES });
@@ -76,7 +91,7 @@ beforeEach(() => {
   });
 });
 
-it('groups the Schedule header actions at the row end with 44px touch targets', async () => {
+it('puts the Schedule actions at the end of the Respostas row with 44px touch targets on phones and desktop density elsewhere', async () => {
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
@@ -85,9 +100,23 @@ it('groups the Schedule header actions at the row end with 44px touch targets', 
     name: m.prepare_open_builder(),
   });
   const actions = builder.parentElement as HTMLElement;
-  expect(actions).toHaveClass('justify-end', 'flex-wrap');
-  expect(actions).toHaveClass('[&_a]:min-h-11', '[&_button]:min-h-11');
-  expect(actions).toHaveClass('md:[&_a]:min-h-0', 'md:[&_button]:min-h-0');
+  // No box of its own: the actions join the row they sit in, flush right, wrapping as one group.
+  expect(actions).toHaveClass('contents');
+  expect(actions.parentElement).toHaveClass(
+    'flex',
+    'flex-wrap',
+    'items-center',
+    'justify-end',
+  );
+  expect(actions).toHaveClass(
+    'max-md:[&_a]:min-h-11',
+    'max-md:[&_button]:min-h-11',
+  );
+  expect(actions).toHaveClass(
+    'max-md:[&_a]:text-sm',
+    'max-md:[&_button]:text-sm',
+  );
+  expect(actions).not.toHaveClass('[&_a]:min-h-11', '[&_button]:min-h-11');
 });
 
 it('shows a leader-callable Schedule with a link to edit one Time block and no inline or batched controls', async () => {
@@ -102,7 +131,11 @@ it('shows a leader-callable Schedule with a link to edit one Time block and no i
     'href',
     `/schedules/${MINISTRY_ID}/${CYCLE_ID}/slots/33333333-3333-4333-8333-333333333333`,
   );
-  expect(screen.getByTestId('prepare-calendar')).toBeVisible();
+  expect(
+    screen.getByRole('button', {
+      name: m.prepare_filters_toggle_none(),
+    }),
+  ).toHaveAttribute('aria-expanded', 'false');
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   expect(within(row).queryByRole('spinbutton')).not.toBeInTheDocument();
   expect(
@@ -140,6 +173,8 @@ it('shows a read-only Schedule for a past Cycle with navigation to view the bloc
 it('keeps a published Schedule preparable without asking again, so an added Event can be staffed', async () => {
   api.getSchedule.mockResolvedValue({ ...SCHEDULE, stage: 'published' });
   api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
     events: [
       {
         ...EVENT,
@@ -168,16 +203,16 @@ it('shows the swap request count on the badge and links to the Assign board', as
     stage: 'published',
     openSwapRequestCount: 2,
   });
-  api.getCycleParticipation.mockResolvedValue({ events: [] });
+  api.getCycleParticipation.mockResolvedValue({
+    events: [],
+    dayMarkers: [],
+    totals: { blocks: 0, needsAttention: 0 },
+  });
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
-  expect(
-    await screen.findByText(
-      `${m.schedules_published()} · ${m.schedules_swap_requests_other({ count: 2 })}`,
-    ),
-  ).toBeVisible();
+  expect(await screen.findByText(m.schedules_published())).toBeVisible();
   expect(
     screen.getByRole('link', {
       name: m.schedules_swap_requests_link({ count: 2 }),
@@ -186,7 +221,11 @@ it('shows the swap request count on the badge and links to the Assign board', as
 });
 
 it('distinguishes an empty Schedule from filters with no matches', async () => {
-  api.getCycleParticipation.mockResolvedValue({ events: [] });
+  api.getCycleParticipation.mockResolvedValue({
+    events: [],
+    dayMarkers: [],
+    totals: { blocks: 0, needsAttention: 0 },
+  });
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
@@ -215,8 +254,13 @@ it('opens the nested block page with no page-level leave confirmation', async ()
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
 });
 
-it('keeps a no-match filter state distinct and restores rows when cleared without a new request', async () => {
+it('queries name and day filters on the server and retains unfiltered day markers and totals', async () => {
   const user = userEvent.setup();
+  api.getCycleParticipation.mockImplementation(async (_cycleId, params) => ({
+    events: params.q || params.day === '2027-01-04' ? [] : [EVENT],
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 1 },
+  }));
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
@@ -224,21 +268,55 @@ it('keeps a no-match filter state distinct and restores rows when cleared withou
   await screen.findByTestId(
     `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
   );
-  const requests = api.getCycleParticipation.mock.calls.length;
+  await user.click(
+    screen.getByRole('button', {
+      name: m.prepare_filters_toggle_none(),
+    }),
+  );
   const filter = screen.getByRole('textbox', { name: m.prepare_filter_name() });
   await user.type(filter, 'missing');
-  expect(screen.getByText(m.prepare_filter_empty())).toBeVisible();
-  expect(screen.queryByText(m.prepare_empty())).not.toBeInTheDocument();
+  expect(
+    await screen.findByText(
+      m.prepare_filtered_description({ filters: 'missing' }),
+    ),
+  ).toBeVisible();
+  expect(api.getCycleParticipation).toHaveBeenLastCalledWith(CYCLE_ID, {
+    ministryId: MINISTRY_ID,
+    day: undefined,
+    q: 'missing',
+    timeMode: 'starts',
+    timeFrom: undefined,
+    timeTo: undefined,
+    needsAttention: undefined,
+  });
+  expect(screen.getByTestId('prepare-stat-attention')).toHaveTextContent('1');
   await user.clear(filter);
   expect(
-    screen.getByTestId(
+    await screen.findByTestId(
       `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
     ),
   ).toBeVisible();
-  expect(api.getCycleParticipation).toHaveBeenCalledTimes(requests);
+  await user.click(screen.getByTestId('prepare-calendar-day-2027-01-04'));
+  const dayFilter = m.prepare_filter_day_selected({
+    day: `${formatWeekdayShort({ day: parseCalendarDay({ value: '2027-01-04' }), locale: getLocale() })} 04/01`,
+  });
+  expect(
+    await screen.findByText(
+      m.prepare_filtered_description({ filters: dayFilter }),
+    ),
+  ).toBeVisible();
+  expect(screen.getByTestId('prepare-filter-summary')).toHaveTextContent(
+    `${m.prepare_filtered_count_other({ count: 0 })}${dayFilter}`,
+  );
+  await user.click(screen.getByTestId('prepare-calendar-day-2027-01-03'));
+  expect(
+    await screen.findByTestId(
+      `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
+    ),
+  ).toBeVisible();
 });
 
-it('filters a block crossing UTC midnight by its Church calendar day', async () => {
+it('keeps previous rows mounted during a filter request', async () => {
   const user = userEvent.setup();
   renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
@@ -247,14 +325,24 @@ it('filters a block crossing UTC midnight by its Church calendar day', async () 
   await screen.findByTestId(
     `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
   );
-  await user.click(screen.getByTestId('prepare-calendar-day-2027-01-04'));
-  expect(screen.getByText(m.prepare_filter_empty())).toBeVisible();
-  await user.click(screen.getByTestId('prepare-calendar-day-2027-01-03'));
+  api.getCycleParticipation.mockReturnValue(new Promise(() => {}));
+  await user.click(
+    screen.getByRole('button', {
+      name: m.prepare_filters_toggle_none(),
+    }),
+  );
+  await user.type(
+    screen.getByRole('textbox', { name: m.prepare_filter_name() }),
+    'a',
+  );
   expect(
     screen.getByTestId(
       `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
     ),
   ).toBeVisible();
+  expect(
+    screen.queryByRole('status', { name: m.schedules_loading() }),
+  ).not.toBeInTheDocument();
 });
 
 it.each([
@@ -313,7 +401,11 @@ it.each([
   expect(await screen.findByText(m.prepare_schedule_error())).toBeVisible();
   expect(screen.queryByText(m.prepare_empty())).not.toBeInTheDocument();
   api.getSchedule.mockResolvedValue(SCHEDULE);
-  api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+  api.getCycleParticipation.mockResolvedValue({
+    events: [EVENT],
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
+  });
   await user.click(screen.getByRole('button', { name: m.schedules_retry() }));
   expect(
     await screen.findByTestId(
@@ -323,7 +415,11 @@ it.each([
 });
 
 it('shows translated loading feedback until the prepare read resolves', async () => {
-  let resolveRead: (value: { events: (typeof EVENT)[] }) => void = () => {};
+  let resolveRead: (value: {
+    events: (typeof EVENT)[];
+    dayMarkers: string[];
+    totals: { blocks: number; needsAttention: number };
+  }) => void = () => {};
   api.getCycleParticipation.mockReturnValue(
     new Promise((resolve) => {
       resolveRead = resolve;
@@ -337,7 +433,13 @@ it('shows translated loading feedback until the prepare read resolves', async ()
     await screen.findByRole('status', { name: m.schedules_loading() }),
   ).toHaveAttribute('aria-busy', 'true');
   expect(screen.queryByText(m.prepare_empty())).not.toBeInTheDocument();
-  await act(async () => resolveRead({ events: [EVENT] }));
+  await act(async () =>
+    resolveRead({
+      events: [EVENT],
+      dayMarkers: ['2027-01-03'],
+      totals: { blocks: 1, needsAttention: 0 },
+    }),
+  );
   expect(
     await screen.findByTestId(
       `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
@@ -346,7 +448,11 @@ it('shows translated loading feedback until the prepare read resolves', async ()
 });
 
 it('keeps the prepare rows on screen while a refetch is in flight', async () => {
-  api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+  api.getCycleParticipation.mockResolvedValue({
+    events: [EVENT],
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
+  });
   const { queryClient } = renderRoute({
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
@@ -375,7 +481,14 @@ it.each([
   });
   const query =
     read === 'schedules' ? api.getSchedule : api.getCycleParticipation;
-  const response = read === 'schedules' ? SCHEDULE : { events: [EVENT] };
+  const response =
+    read === 'schedules'
+      ? SCHEDULE
+      : {
+          events: [EVENT],
+          dayMarkers: ['2027-01-03'],
+          totals: { blocks: 1, needsAttention: 0 },
+        };
   query.mockReturnValue(pendingRead.then(() => response));
   const scroll = vi.fn();
   const previous = HTMLElement.prototype.scrollIntoView;
@@ -555,6 +668,8 @@ it.each([
             asking: { confirmed: 0, asked: 34 },
           });
           api.getCycleParticipation.mockResolvedValue({
+            dayMarkers: ['2027-01-03'],
+            totals: { blocks: 1, needsAttention: 0 },
             events: [
               {
                 ...EVENT,
@@ -842,4 +957,35 @@ it('refreshes the stage after another tab has already Asked so the dialog cannot
   expect(
     screen.queryByRole('button', { name: m.prepare_ask() }),
   ).not.toBeInTheDocument();
+});
+
+it('restores validated URL filters on entry and clears them without losing unrelated search state', async () => {
+  const user = userEvent.setup();
+  const { router } = renderRoute({
+    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}?q=Sunday&needsAttention=true&timeFrom=09%3A00&timeTo=invalid&swapRequest=request`,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByTestId(
+    `prepare-event-time-block-row-${BLOCK.eventTimeBlock.id}`,
+  );
+  expect(api.getCycleParticipation).toHaveBeenLastCalledWith(CYCLE_ID, {
+    ministryId: MINISTRY_ID,
+    day: undefined,
+    q: 'Sunday',
+    timeMode: 'starts',
+    timeFrom: '09:00',
+    timeTo: undefined,
+    needsAttention: 'true',
+  });
+  await user.click(
+    screen.getByRole('button', {
+      name: m.prepare_clear_filters(),
+    }),
+  );
+  await waitFor(() =>
+    expect(router.state.location.search).toEqual({ swapRequest: 'request' }),
+  );
+  expect(api.getCycleParticipation).toHaveBeenLastCalledWith(CYCLE_ID, {
+    ministryId: MINISTRY_ID,
+  });
 });

@@ -11,7 +11,6 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import {
-  ChevronDown,
   ChevronDownIcon,
   ChevronRight,
   ChevronUpIcon,
@@ -51,6 +50,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
+import {
+  GROUP_INDENT,
+  type GroupedGroupRow,
+  type GroupedRow,
+  GroupRowLabel,
+  groupedRowProps,
+  groupLeaves,
+  leafIndentStep,
+  MOBILE_RAIL,
+  MobileGroupHeading,
+  useGroupCollapse,
+} from '@/components/ui/data-table-groups';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pending } from '@/components/ui/pending';
@@ -92,30 +103,8 @@ interface DayRow {
   day: string;
 }
 
-interface ScheduleRow extends DayRow {
-  kind: 'assignment';
-  /** How many groups it sits in. */
-  depth: number;
-  /** Keys of the groups it sits in, outermost first; folding any hides it. */
-  path: string[];
-}
-
-interface GroupRow {
-  kind: 'group';
-  level: GroupLevel;
-  depth: number;
-  /** Unique within the list: a week split across two months appears under each. */
-  key: string;
-  path: string[];
-  /** The group's first row, which carries its labels. */
-  row: DayRow;
-  /** Shifts inside it. */
-  count: number;
-  /** Folded on screen; set per render so react-aria re-renders the row. */
-  isCollapsed?: boolean;
-}
-
-type ListRow = ScheduleRow | GroupRow;
+type ListRow = GroupedRow<DayRow>;
+type GroupRow = GroupedGroupRow<DayRow>;
 
 /** `Novembro 2026` for a `yyyy-MM` month. */
 function monthLabel(month: string): string {
@@ -162,42 +151,12 @@ interface ToListRowsInput {
   levels: GroupLevel[];
 }
 
-// The read is already ordered by start, so a group starts wherever its key
-// changes, and a new outer group restarts every group inside it.
+// The read is already ordered by start, so a group starts wherever its key changes.
 function toListRows({ rows, levels }: ToListRowsInput): ListRow[] {
-  return rows.flatMap((row, index): ListRow[] => {
-    const previous = rows[index - 1];
-    const keys = levels.map((_, depth) =>
-      levels
-        .slice(0, depth + 1)
-        .map((level) => row[level])
-        .join('/'),
-    );
-    let changed = false;
-    const groups = levels.flatMap((level, depth): GroupRow[] => {
-      changed ||= row[level] !== previous?.[level];
-      return changed
-        ? [
-            {
-              kind: 'group',
-              level,
-              depth,
-              key: keys[depth],
-              path: keys.slice(0, depth),
-              row,
-              count: rows.filter((other) =>
-                levels
-                  .slice(0, depth + 1)
-                  .every((outer) => other[outer] === row[outer]),
-              ).length,
-            },
-          ]
-        : [];
-    });
-    return [
-      ...groups,
-      { ...row, kind: 'assignment', depth: levels.length, path: keys },
-    ];
+  return groupLeaves({
+    leaves: rows,
+    levels: levels.map((level) => (row: DayRow) => row[level]),
+    leafKey: (row) => row.assignment.assignmentId,
   });
 }
 
@@ -335,23 +294,6 @@ interface UpcomingTableProps extends RowContext {
   levels: GroupLevel[];
 }
 
-const HEADINGS = ['h3', 'h4', 'h5', 'h6'] as const;
-
-/** One indent step per nesting level, the width of a fold button and its gap,
- * so a row's content starts under its group's label. */
-const INDENT = ['', 'pl-8', 'pl-16', 'pl-24'];
-
-/** A nested row's underline starts with its text, so the lines show what sits inside what:
- * the first cell trades its border for a 1px line that begins at the indent. */
-const NESTED_LINE =
-  '[&>:first-child]:border-b-0 [&>:first-child]:bg-[linear-gradient(var(--color-border),var(--color-border))] [&>:first-child]:bg-no-repeat [&>:first-child]:bg-right-bottom';
-const LINE_START = [
-  '',
-  `${NESTED_LINE} [&>:first-child]:bg-[length:calc(100%-2.25rem)_1px]`,
-  `${NESTED_LINE} [&>:first-child]:bg-[length:calc(100%-4.25rem)_1px]`,
-  `${NESTED_LINE} [&>:first-child]:bg-[length:calc(100%-6.25rem)_1px]`,
-];
-
 /** Mobile group headings, weight stepping down with depth. */
 const MOBILE_GROUP_CLASS: Record<GroupLevel, string> = {
   month: 'font-semibold text-base',
@@ -359,95 +301,21 @@ const MOBILE_GROUP_CLASS: Record<GroupLevel, string> = {
   day: 'font-medium text-sm',
 };
 
-/** Phone tree lines: one 1px rail per enclosing group, each under its group's
- * chevron (8px in, then 21px per level), the content starting past the last.
- * `-mt-3 pt-3` stretches the rails across the list's gap so they read as one line. */
-// Written out in full: Tailwind only generates classes it finds literally in the source.
-const MOBILE_RAIL = [
-  '',
-  '-mt-3 pt-3 pl-[21px] bg-no-repeat bg-[image:linear-gradient(var(--color-border),var(--color-border))] bg-[size:1px_100%] bg-[position:8px_0]',
-  '-mt-3 pt-3 pl-[42px] bg-no-repeat bg-[image:linear-gradient(var(--color-border),var(--color-border)),linear-gradient(var(--color-border),var(--color-border))] bg-[size:1px_100%,1px_100%] bg-[position:8px_0,29px_0]',
-  '-mt-3 pt-3 pl-[63px] bg-no-repeat bg-[image:linear-gradient(var(--color-border),var(--color-border)),linear-gradient(var(--color-border),var(--color-border)),linear-gradient(var(--color-border),var(--color-border))] bg-[size:1px_100%,1px_100%,1px_100%] bg-[position:8px_0,29px_0,50px_0]',
-];
-
 interface GroupLabelProps {
   item: GroupRow;
+  level: GroupLevel;
 }
 
-function GroupLabel({ item }: GroupLabelProps) {
-  if (item.level === 'month') return monthLabel(item.row.month);
-  if (item.level === 'week') return weekLabel(item.row.week);
-  return <DayName row={item.row} />;
+function GroupLabel({ item, level }: GroupLabelProps) {
+  if (level === 'month') return monthLabel(item.leaf.month);
+  if (level === 'week') return weekLabel(item.leaf.week);
+  return <DayName row={item.leaf} />;
 }
 
-function groupName(item: GroupRow): string {
-  if (item.level === 'month') return monthLabel(item.row.month);
-  if (item.level === 'week') return weekLabel(item.row.week);
-  return [item.row.relative, item.row.date].filter(Boolean).join(' ');
-}
-
-interface GroupToggleProps {
-  item: GroupRow;
-  isCollapsed: boolean;
-  onToggle: (key: string) => void;
-}
-
-/** The cycle review's fold button: a chevron that names what it opens or closes. */
-function GroupToggle({ item, isCollapsed, onToggle }: GroupToggleProps) {
-  const title = groupName(item);
-  return (
-    <span className="flex items-center gap-2">
-      <Button
-        type="button"
-        size="icon-xs"
-        variant="ghost"
-        // As the Invitations row toggle: open is not a pressed state, so no fill.
-        className={cn(ACTION_SIZE, 'aria-expanded:bg-transparent')}
-        aria-expanded={!isCollapsed}
-        aria-label={
-          isCollapsed
-            ? m.cycle_review_expand_event({ title })
-            : m.cycle_review_collapse_event({ title })
-        }
-        onClick={() => onToggle(item.key)}
-      >
-        {isCollapsed ? <ChevronRight /> : <ChevronDown />}
-      </Button>
-      <span>
-        <GroupLabel item={item} />
-      </span>
-      {/* A glance at the size; the rows themselves are what is read. */}
-      <Badge variant="secondary" className="tabular-nums" aria-hidden="true">
-        {item.count}
-      </Badge>
-    </span>
-  );
-}
-
-/** On the phone the whole heading folds: a full-width target, the chevron beside the label. */
-function MobileGroupToggle({ item, isCollapsed, onToggle }: GroupToggleProps) {
-  return (
-    // A disclosure: the heading keeps its own name, aria-expanded says the state.
-    <button
-      type="button"
-      aria-expanded={!isCollapsed}
-      className="radius-control flex min-h-11 w-full items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      onClick={() => onToggle(item.key)}
-    >
-      {isCollapsed ? (
-        <ChevronRight aria-hidden="true" className="size-4 shrink-0" />
-      ) : (
-        <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
-      )}
-      <span className="min-w-0 flex-1">
-        <GroupLabel item={item} />
-      </span>
-      {/* A glance at the size; the rows themselves are what is read. */}
-      <Badge variant="secondary" className="tabular-nums" aria-hidden="true">
-        {item.count}
-      </Badge>
-    </button>
-  );
+function groupName({ item, level }: GroupLabelProps): string {
+  if (level === 'month') return monthLabel(item.leaf.month);
+  if (level === 'week') return weekLabel(item.leaf.week);
+  return [item.leaf.relative, item.leaf.date].filter(Boolean).join(' ');
 }
 
 function UpcomingTable({
@@ -456,23 +324,9 @@ function UpcomingTable({
   timeZone,
   showMinistry,
 }: UpcomingTableProps) {
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const { setCollapsed, toggle, visible } = useGroupCollapse();
   const context: RowContext = { timeZone, showMinistry };
   const byDay = levels.includes('day');
-  // Fresh objects each render: react-aria only re-renders a row whose item changed.
-  const visible = rows
-    .filter((row) => !row.path.some((key) => collapsed.has(key)))
-    .map((row) =>
-      row.kind === 'group'
-        ? { ...row, isCollapsed: collapsed.has(row.key) }
-        : row,
-    );
-  const toggle = (key: string) =>
-    setCollapsed((current) => {
-      const next = new Set(current);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
   const groupKeys = rows.flatMap((row) =>
     row.kind === 'group' ? [row.key] : [],
   );
@@ -519,41 +373,44 @@ function UpcomingTable({
           },
           { id: 'actions', name: m.people_column_actions() },
         ]}
-        items={visible}
+        items={visible({ rows })}
         rowId={({ item }) =>
           item.kind === 'group'
-            ? `${item.level}-${item.key}`
-            : item.assignment.assignmentId
+            ? `${levels[item.depth]}-${item.key}`
+            : item.leaf.assignment.assignmentId
         }
         // Group rows span the row, so a long label never widens a column.
-        rowSpansColumns={({ item }) => item.kind === 'group'}
-        // Each underline starts with its row's text: under a group's label, under a shift's first value.
-        rowClassName={({ item }) =>
-          item.kind !== 'group'
-            ? LINE_START[item.depth]
-            : cn(
-                LINE_START[item.depth + 1],
-                item.level === 'month'
-                  ? 'font-semibold text-sm'
-                  : 'font-medium text-sm',
-              )
-        }
-        renderCell={({ item, column }) => {
-          if (item.kind === 'group')
+        {...groupedRowProps<DayRow>({
+          nestLeaves: true,
+          groupClassName: (group) =>
+            levels[group.depth] === 'month'
+              ? 'font-semibold text-sm'
+              : 'font-medium text-sm',
+        })}
+        renderCell={({ item: row, column }) => {
+          if (row.kind === 'group')
             return (
-              <span className={cn('block', INDENT[item.depth])}>
-                <GroupToggle
-                  item={item}
-                  isCollapsed={item.isCollapsed ?? false}
-                  onToggle={toggle}
-                />
-              </span>
+              <GroupRowLabel
+                item={row}
+                label={<GroupLabel item={row} level={levels[row.depth]} />}
+                name={groupName({ item: row, level: levels[row.depth] })}
+                onToggle={toggle}
+                buttonClassName={ACTION_SIZE}
+              />
             );
+          const item = row.leaf;
           const { assignment } = item;
           switch (column.id) {
             case 'day':
               return (
-                <span className={cn('block', INDENT[item.depth])}>
+                <span
+                  className={cn(
+                    'block',
+                    GROUP_INDENT[
+                      leafIndentStep({ depth: row.depth, nested: true })
+                    ],
+                  )}
+                >
                   <DayName row={item} compact />
                 </span>
               );
@@ -562,7 +419,10 @@ function UpcomingTable({
                 <span
                   className={cn(
                     'block tabular-nums',
-                    byDay && INDENT[item.depth],
+                    byDay &&
+                      GROUP_INDENT[
+                        leafIndentStep({ depth: row.depth, nested: true })
+                      ],
                   )}
                 >
                   {assignmentTimeRange({ assignment, timeZone })}
@@ -594,22 +454,18 @@ function UpcomingTable({
               return <OpenAssignment row={item} {...context} />;
           }
         }}
-        renderMobileCard={({ item }) => {
-          const rail = MOBILE_RAIL[item.depth];
-          if (item.kind === 'group') {
-            const Heading = HEADINGS[item.depth];
+        renderMobileCard={({ item: row }) => {
+          const rail = MOBILE_RAIL[row.depth];
+          if (row.kind === 'group')
             return (
-              <div className={rail}>
-                <Heading className={MOBILE_GROUP_CLASS[item.level]}>
-                  <MobileGroupToggle
-                    item={item}
-                    isCollapsed={item.isCollapsed ?? false}
-                    onToggle={toggle}
-                  />
-                </Heading>
-              </div>
+              <MobileGroupHeading
+                item={row}
+                label={<GroupLabel item={row} level={levels[row.depth]} />}
+                className={MOBILE_GROUP_CLASS[levels[row.depth]]}
+                onToggle={toggle}
+              />
             );
-          }
+          const item = row.leaf;
           const { assignment } = item;
           const time = assignmentTimeRange({ assignment, timeZone });
           // The Usual setup card: the whole card opens the shift.

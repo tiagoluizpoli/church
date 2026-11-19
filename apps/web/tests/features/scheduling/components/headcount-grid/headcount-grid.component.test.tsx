@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -174,4 +174,30 @@ describe('HeadcountGrid', () => {
       expect(input).toBeDisabled();
     }
   });
+});
+
+it('lays each Shift out as one roles × sectors matrix, so three sectors share one row', () => {
+  const sectors = [...SECTORS, { id: 'kids', name: 'Kids' }];
+  renderWithProviders(
+    <HeadcountGrid
+      sectors={sectors}
+      roles={[...ROLES, { id: 'usher', name: 'Usher' }]}
+      shifts={[SHIFTS[0]]}
+      values={{}}
+      onChange={() => {}}
+    />,
+  );
+  const table = screen.getByRole('table');
+  expect(
+    within(table)
+      .getAllByRole('columnheader')
+      .map((header) => header.textContent),
+  ).toEqual(['Stage', 'Door', 'Kids']);
+  expect(
+    within(table)
+      .getAllByRole('rowheader')
+      .map((header) => header.textContent),
+  ).toEqual(['Singer', 'Usher']);
+  const [, singers] = within(table).getAllByRole('row');
+  expect(within(singers).getAllByRole('spinbutton')).toHaveLength(3);
 });

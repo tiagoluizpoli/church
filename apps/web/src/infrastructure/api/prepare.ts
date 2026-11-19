@@ -71,7 +71,7 @@ const getSchedule = (
       );
     }
   /**
- * Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle.
+ * Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle. `day` (church-local date), `q` (block label or Event title), a time window (`timeMode` starts, ends or within, with `timeFrom`/`timeTo` as church-local HH:mm; either bound may be omitted) and `needsAttention` (served blocks with a Shift lacking a headcount) filter the blocks; Events left with none are dropped. Blocks come ordered by start then id. `dayMarkers` and `totals` always describe the unfiltered Cycle.
  * @summary Get a Ministry's prepare view of a cycle
  */
 const getCycleParticipation = (
@@ -172,7 +172,7 @@ const remindSchedule = (
       );
     }
   /**
- * List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, Deadline and Remind cooldown.
+ * List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, per-status `counts`, Deadline and Remind cooldown. `status` (pending, available, unavailable) and `q` (name search) filter the list; `limit` pages it by `cursor` (omitted, every match comes back) ordered by name then id, and `nextCursor` is null on the last page. `asked`, `confirmed` and `counts` ignore the filters.
  * @summary Get the Answers to a Schedule's Ask
  */
 const getCycleAvailabilityStatus = (

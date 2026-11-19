@@ -82,8 +82,11 @@ export function ShiftSplitEditor({
 
   return (
     <fieldset className="space-y-3" disabled={disabled}>
-      <legend className="font-medium text-sm">{m.shift_split_legend()}</legend>
+      <legend className="font-semibold text-sm">
+        {m.shift_split_legend()}
+      </legend>
       <RadioGroup
+        className="gap-0"
         value={draft.mode}
         onValueChange={(value) => {
           const option = MODES.find(({ mode }) => mode === value);
@@ -93,16 +96,20 @@ export function ShiftSplitEditor({
         }}
       >
         {MODES.map(({ mode, label }) => (
-          <div key={mode} className="flex items-center gap-2">
+          <Label
+            key={mode}
+            htmlFor={`shift-split-mode-${mode}`}
+            className="flex min-h-11 items-center gap-3 font-normal text-sm md:min-h-8"
+          >
             <RadioGroupItem value={mode} id={`shift-split-mode-${mode}`} />
-            <Label htmlFor={`shift-split-mode-${mode}`}>{label()}</Label>
-          </div>
+            {label()}
+          </Label>
         ))}
       </RadioGroup>
 
       {draft.mode === 'equal' ? (
         <div className="space-y-1">
-          <Label htmlFor="shift-split-equal-count">
+          <Label htmlFor="shift-split-equal-count" className="text-sm">
             {m.shift_split_equal_count()}
           </Label>
           <Input
@@ -111,7 +118,8 @@ export function ShiftSplitEditor({
             inputMode="numeric"
             min={1}
             max={MAX_EQUAL_SHIFTS}
-            className="max-w-32"
+            // Every count field alike: typed, no native spinners (shown only on hover/focus).
+            className="w-20 text-end tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             value={draft.equalCount}
             aria-invalid={problems.count ? true : undefined}
             aria-describedby="shift-split-equal-help"
@@ -121,8 +129,8 @@ export function ShiftSplitEditor({
             id="shift-split-equal-help"
             className={
               problems.count
-                ? 'text-destructive text-xs'
-                : 'text-muted-foreground text-xs'
+                ? 'text-destructive text-sm'
+                : 'text-muted-foreground text-sm'
             }
           >
             {problems.count
@@ -134,7 +142,7 @@ export function ShiftSplitEditor({
 
       {draft.mode === 'manual' ? (
         <div className="space-y-3">
-          <p className="text-muted-foreground text-xs">
+          <p className="text-pretty text-muted-foreground text-sm">
             {m.shift_split_manual_help({ range: blockRange })}
           </p>
           {draft.spans.map((span, index) => {
@@ -145,15 +153,16 @@ export function ShiftSplitEditor({
                 ? timeOfDaySpan({ start: span.startTime, end: span.endTime })
                 : null;
             return (
-              <fieldset key={span.key} className="surface-panel space-y-2 p-3">
-                <legend className="px-1 font-medium text-sm">
+              <fieldset key={span.key} className="surface-subtle space-y-2 p-3">
+                {/* The shift's name and its remove button share one line. Floated, so the
+                    legend sits inside the box instead of cutting into its border. */}
+                <legend className="float-left mb-2 flex w-full items-center justify-between gap-2 font-medium text-sm">
                   {m.usual_setup_shift_label({ number })}
-                </legend>
-                <div className="flex justify-end">
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
+                    className="max-md:size-11"
                     aria-label={m.shift_split_remove({ number })}
                     onClick={() =>
                       update({
@@ -165,11 +174,14 @@ export function ShiftSplitEditor({
                   >
                     <Trash2Icon className="size-3.5" />
                   </Button>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
+                </legend>
+                <div className="clear-left grid gap-2 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <p className="text-xs">{m.shift_split_start()}</p>
+                    <Label htmlFor={`${span.key}-start`} className="text-sm">
+                      {m.shift_split_start()}
+                    </Label>
                     <TimeOfDayField
+                      id={`${span.key}-start`}
                       aria-label={m.shift_split_start_of({ number })}
                       data-testid={`shift-split-start-${number}`}
                       value={span.startTime}
@@ -179,8 +191,11 @@ export function ShiftSplitEditor({
                     />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs">{m.shift_split_end()}</p>
+                    <Label htmlFor={`${span.key}-end`} className="text-sm">
+                      {m.shift_split_end()}
+                    </Label>
                     <TimeOfDayField
+                      id={`${span.key}-end`}
                       aria-label={m.shift_split_end_of({ number })}
                       data-testid={`shift-split-end-${number}`}
                       value={span.endTime}
@@ -191,7 +206,7 @@ export function ShiftSplitEditor({
                   </div>
                 </div>
                 {length && length.durationMinutes > 0 ? (
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-muted-foreground text-sm">
                     {describeSpan({ span: length })}
                   </p>
                 ) : null}
@@ -219,10 +234,10 @@ export function ShiftSplitEditor({
               {m.shift_split_no_spans()}
             </p>
           ) : null}
+          {/* No size: the form's density (44px on a phone) decides. */}
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={() => {
               const lastEnd = [...draft.spans]
                 .reverse()

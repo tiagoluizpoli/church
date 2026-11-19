@@ -5,6 +5,7 @@ interface HeaderStatChipProps {
   testId: string;
   label: string;
   labelClassName?: string;
+  valueClassName?: string;
   value: React.ReactNode;
   testIdOnValue?: boolean;
 }
@@ -12,6 +13,7 @@ export function HeaderStatChip({
   testId,
   label,
   labelClassName,
+  valueClassName,
   value,
   testIdOnValue = false,
 }: HeaderStatChipProps) {
@@ -24,7 +26,7 @@ export function HeaderStatChip({
         {label}
       </span>
       <span
-        className="font-medium text-xs"
+        className={cn('font-medium text-xs', valueClassName)}
         data-testid={testIdOnValue ? testId : undefined}
       >
         {value}

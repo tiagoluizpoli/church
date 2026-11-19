@@ -1,4 +1,6 @@
 import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
+import { formatWeekdayShort, parseCalendarDay } from '@church/time';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -53,7 +55,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   api.listMinistries.mockRejectedValue(new Error('admin-only read'));
   api.listScheduleSummaries.mockResolvedValue({ cycles: [] });
-  api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+  api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
+    events: [EVENT],
+  });
   api.getSchedule.mockResolvedValue(SCHEDULE);
   api.listSectors.mockResolvedValue({ sectors: SECTORS });
   api.listMinistryRoles.mockResolvedValue({ roles: ROLES });
@@ -108,6 +114,8 @@ describe('preparing beside the retained Schedule list', () => {
   beforeEach(() => {
     HTMLElement.prototype.scrollIntoView = scroll;
     api.getCycleParticipation.mockResolvedValue({
+      dayMarkers: ['2027-01-03'],
+      totals: { blocks: 1, needsAttention: 0 },
       events: [{ ...EVENT, eventTimeBlocks: [BLOCK, MORNING] }],
     });
   });
@@ -130,6 +138,25 @@ describe('preparing beside the retained Schedule list', () => {
     });
     expect(heading).toHaveFocus();
     expect(screen.getByTestId('prepare-block-panel')).toContainElement(heading);
+    // The editor names its day, and its neighbours name theirs (and say when they are not served).
+    const sunday = `${formatWeekdayShort({ day: parseCalendarDay({ value: '2027-01-03' }), locale: getLocale() })} 03/01`;
+    const monday = `${formatWeekdayShort({ day: parseCalendarDay({ value: '2027-01-04' }), locale: getLocale() })} 04/01`;
+    expect(screen.getByTestId('preparation-block-when')).toHaveTextContent(
+      `${sunday} 22:00–${monday} 02:00`,
+    );
+    expect(
+      screen.getByRole('button', {
+        name: m.prepare_next_block_named({
+          target: `${sunday} 22:00 · ${m.prepare_not_served()}`,
+        }),
+      }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: m.prepare_previous_block() }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: m.usual_setup_save() }),
+    ).toHaveAccessibleDescription(m.prepare_save_unchanged());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(filter).toHaveValue('Sunday');
     expect(
@@ -138,6 +165,72 @@ describe('preparing beside the retained Schedule list', () => {
     expect(
       screen.getByTestId(`prepare-event-time-block-row-${MORNING_ID}`),
     ).not.toHaveAttribute('aria-current');
+    expect(
+      screen.getByRole('button', { name: m.usual_setup_save() }),
+    ).toBeDisabled();
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('prepare-block-panel'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(filter).toHaveValue('Sunday');
+  });
+
+  it('steps through the filtered list on screen, not the whole Cycle', async () => {
+    // The server filters: "Night" matches this block only, so it has no neighbour.
+    api.getCycleParticipation.mockImplementation(
+      async (_cycleId: string, params: { q?: string }) => ({
+        dayMarkers: ['2027-01-03'],
+        totals: { blocks: 2, needsAttention: 0 },
+        events: [
+          {
+            ...EVENT,
+            eventTimeBlocks: params.q ? [BLOCK] : [BLOCK, MORNING],
+          },
+        ],
+      }),
+    );
+    renderRoute({
+      initialPath: `${EDITOR_PATH}?q=Night`,
+      churchTimezone: 'America/Sao_Paulo',
+    });
+    await screen.findByRole('heading', { name: 'Sunday · Night' });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: m.prepare_next_block() }),
+      ).toBeDisabled(),
+    );
+    expect(
+      screen.queryByRole('button', { name: m.prepare_save_and_next() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`prepare-event-time-block-row-${MORNING_ID}`),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens a block from its row’s Abrir action, the row itself being no click target', async () => {
+    const user = userEvent.setup();
+    renderRoute({
+      initialPath: LIST_PATH,
+      churchTimezone: 'America/Sao_Paulo',
+    });
+    const table = await screen.findByRole('grid', {
+      name: m.prepare_table_event(),
+    });
+    const row = within(table).getByRole('row', { name: /Sunday · Night/ });
+    row.focus();
+    await user.keyboard('{Enter}');
+    expect(screen.queryByTestId('prepare-block-panel')).not.toBeInTheDocument();
+    const open = within(row).getByRole('link', {
+      name: m.ministries_open_label({ name: 'Sunday · Night' }),
+    });
+    open.focus();
+    await user.keyboard('{Enter}');
+    expect(
+      await screen.findByRole('heading', { name: 'Sunday · Night' }),
+    ).toHaveFocus();
+    expect(screen.getByTestId('prepare-block-panel')).toBeInTheDocument();
   });
 
   it('switches blocks in the same panel only after the dirty draft is discarded', async () => {
@@ -174,6 +267,35 @@ describe('preparing beside the retained Schedule list', () => {
       screen.queryByRole('heading', { name: 'Sunday · Night' }),
     ).not.toBeInTheDocument();
     expect(api.saveEventTimeBlockPreparation).not.toHaveBeenCalled();
+  });
+
+  it('saves and opens the next block straight away, focus on its title', async () => {
+    const user = userEvent.setup();
+    api.saveEventTimeBlockPreparation.mockResolvedValue(BLOCK);
+    const { router } = renderRoute({
+      initialPath: EDITOR_PATH,
+      churchTimezone: 'America/Sao_Paulo',
+    });
+    const stage = await screen.findByRole('spinbutton', {
+      name: /Singer.*Stage|Stage.*Singer/,
+    });
+    const saveAndNext = screen.getByRole('button', {
+      name: m.prepare_save_and_next(),
+    });
+    expect(saveAndNext).toBeDisabled();
+    await user.type(stage, '9');
+    await user.click(saveAndNext);
+    expect(api.saveEventTimeBlockPreparation).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole('heading', { name: 'Sunday · Morning' }),
+    ).toHaveFocus();
+    expect(router.state.location.pathname).toBe(
+      `${LIST_PATH}/slots/${MORNING_ID}`,
+    );
+    // The last block has no next one to go to.
+    expect(
+      screen.queryByRole('button', { name: m.prepare_save_and_next() }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps a pending save in its panel when another block is chosen', async () => {

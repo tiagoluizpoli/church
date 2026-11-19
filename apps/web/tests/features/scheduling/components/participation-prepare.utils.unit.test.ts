@@ -1,10 +1,10 @@
 import { parseTimeOfDay } from '@church/time';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  blockTitle,
   buildEventTimeBlockDayMarkers,
   buildMinistryPrepareSummary,
-  filterEventTimeBlocksByName,
-  filterEventTimeBlocksByTimeOfDay,
+  coverageTone,
   isTimeWindowFilterEmpty,
   toCalendarDateString,
   toScheduleKey,
@@ -27,6 +27,7 @@ const _EVENT_TIME_BLOCK_VIEW: GetCycleParticipation200EventsItem['eventTimeBlock
     shifts: [],
     requirements: [],
     shiftsChangedAfterAsk: false,
+    answerCoverage: { available: 0, needed: null },
   };
 
 type EventTimeBlockViewOverride = {
@@ -82,6 +83,7 @@ function makeEventView(
           shifts: [],
           requirements: [],
           shiftsChangedAfterAsk: false,
+          answerCoverage: { available: 0, needed: null },
         },
       ]
     ).map((eventTimeBlockOverride) => ({
@@ -100,6 +102,7 @@ function makeEventView(
       shifts: eventTimeBlockOverride.shifts ?? [],
       requirements: eventTimeBlockOverride.requirements ?? [],
       shiftsChangedAfterAsk: false,
+      answerCoverage: { available: 0, needed: null },
     })),
     ...eventOverrides,
   };
@@ -369,254 +372,6 @@ describe('buildEventTimeBlockDayMarkers', () => {
   });
 });
 
-describe('filterEventTimeBlocksByName (T008/FR-010)', () => {
-  describe('Happy Path', () => {
-    it('keeps time blocks whose label matches the query', () => {
-      const events = [
-        makeEventView({
-          eventTimeBlockOverrides: [
-            { eventTimeBlock: { label: 'Greeter' } },
-            { eventTimeBlock: { id: 'event-time-block-2', label: 'Usher' } },
-          ],
-        }),
-      ];
-
-      const filtered = filterEventTimeBlocksByName({ events, query: 'greet' });
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0]?.eventTimeBlocks).toHaveLength(1);
-      expect(filtered[0]?.eventTimeBlocks[0]?.eventTimeBlock.label).toBe(
-        'Greeter',
-      );
-    });
-
-    it('matches against the parent event title too', () => {
-      const events = [
-        makeEventView({
-          event: {
-            title: 'Youth Night',
-          } as GetCycleParticipation200EventsItem['event'],
-        }),
-      ];
-
-      const filtered = filterEventTimeBlocksByName({ events, query: 'youth' });
-      expect(filtered).toHaveLength(1);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('returns events unchanged for an empty/whitespace query', () => {
-      const events = [makeEventView()];
-      expect(filterEventTimeBlocksByName({ events, query: '   ' })).toEqual(
-        events,
-      );
-    });
-
-    it('drops an event entirely once it has zero matching time blocks', () => {
-      const events = [makeEventView()];
-      expect(
-        filterEventTimeBlocksByName({ events, query: 'no-match' }),
-      ).toEqual([]);
-    });
-
-    it('is case-insensitive', () => {
-      const events = [makeEventView()];
-      expect(
-        filterEventTimeBlocksByName({ events, query: 'GREETER' }),
-      ).toHaveLength(1);
-    });
-  });
-});
-
-describe('filterEventTimeBlocksByTimeOfDay (T008/FR-010, mode select + single start/end pair)', () => {
-  const morningAndEvening = () =>
-    makeEventView({
-      eventTimeBlockOverrides: [
-        {
-          eventTimeBlock: {
-            id: 'morning',
-            startTime: '2026-07-12T08:00:00.000Z',
-            endTime: '2026-07-12T09:00:00.000Z',
-          },
-        },
-        {
-          eventTimeBlock: {
-            id: 'evening',
-            startTime: '2026-07-12T20:00:00.000Z',
-            endTime: '2026-07-12T21:00:00.000Z',
-          },
-        },
-      ],
-    });
-
-  describe('Happy Path', () => {
-    it('mode "starts": keeps only time blocks whose start time falls in [start, end]', () => {
-      const filtered = filterEventTimeBlocksByTimeOfDay({
-        events: [morningAndEvening()],
-        filter: {
-          mode: 'starts',
-          start: parseTimeOfDay({ value: '18:00' }),
-          end: parseTimeOfDay({ value: '23:00' }),
-        },
-        timeZone: 'UTC',
-      });
-
-      expect(
-        filtered[0]?.eventTimeBlocks.map((s) => s.eventTimeBlock.id),
-      ).toEqual(['evening']);
-    });
-
-    it('mode "ends": keeps only time blocks whose end time falls in [start, end]', () => {
-      const events = [
-        makeEventView({
-          eventTimeBlockOverrides: [
-            {
-              eventTimeBlock: {
-                id: 'short',
-                startTime: '2026-07-12T09:00:00.000Z',
-                endTime: '2026-07-12T09:30:00.000Z',
-              },
-            },
-            {
-              eventTimeBlock: {
-                id: 'long',
-                startTime: '2026-07-12T09:00:00.000Z',
-                endTime: '2026-07-12T11:30:00.000Z',
-              },
-            },
-          ],
-        }),
-      ];
-
-      const filtered = filterEventTimeBlocksByTimeOfDay({
-        events,
-        filter: {
-          mode: 'ends',
-          start: parseTimeOfDay({ value: '11:00' }),
-          end: parseTimeOfDay({ value: '12:00' }),
-        },
-        timeZone: 'UTC',
-      });
-
-      expect(
-        filtered[0]?.eventTimeBlocks.map((s) => s.eventTimeBlock.id),
-      ).toEqual(['long']);
-    });
-
-    it('mode "within": keeps only time blocks whose entire span fits in [start, end]', () => {
-      const events = [
-        makeEventView({
-          eventTimeBlockOverrides: [
-            {
-              eventTimeBlock: {
-                id: 'fits',
-                startTime: '2026-07-12T18:00:00.000Z',
-                endTime: '2026-07-12T19:00:00.000Z',
-              },
-            },
-            {
-              eventTimeBlock: {
-                id: 'overruns',
-                startTime: '2026-07-12T18:00:00.000Z',
-                endTime: '2026-07-12T23:00:00.000Z',
-              },
-            },
-          ],
-        }),
-      ];
-
-      const filtered = filterEventTimeBlocksByTimeOfDay({
-        events,
-        filter: {
-          mode: 'within',
-          start: parseTimeOfDay({ value: '17:00' }),
-          end: parseTimeOfDay({ value: '20:00' }),
-        },
-        timeZone: 'UTC',
-      });
-
-      expect(
-        filtered[0]?.eventTimeBlocks.map((s) => s.eventTimeBlock.id),
-      ).toEqual(['fits']);
-    });
-
-    it('supports an open-ended window (only start bound given)', () => {
-      const filtered = filterEventTimeBlocksByTimeOfDay({
-        events: [morningAndEvening()],
-        filter: { mode: 'starts', start: parseTimeOfDay({ value: '12:00' }) },
-        timeZone: 'UTC',
-      });
-
-      expect(
-        filtered[0]?.eventTimeBlocks.map((s) => s.eventTimeBlock.id),
-      ).toEqual(['evening']);
-    });
-
-    it('supports an open-ended window (only end bound given)', () => {
-      const filtered = filterEventTimeBlocksByTimeOfDay({
-        events: [morningAndEvening()],
-        filter: { mode: 'starts', end: parseTimeOfDay({ value: '12:00' }) },
-        timeZone: 'UTC',
-      });
-
-      expect(
-        filtered[0]?.eventTimeBlocks.map((s) => s.eventTimeBlock.id),
-      ).toEqual(['morning']);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('returns events unchanged when both start and end are empty, regardless of mode', () => {
-      const events = [makeEventView()];
-      expect(
-        filterEventTimeBlocksByTimeOfDay({
-          events,
-          filter: { mode: 'within' },
-          timeZone: 'UTC',
-        }),
-      ).toEqual(events);
-    });
-
-    it('drops an event entirely once it has zero matching time blocks', () => {
-      const events = [morningAndEvening()];
-      expect(
-        filterEventTimeBlocksByTimeOfDay({
-          events,
-          filter: { mode: 'starts', start: parseTimeOfDay({ value: '23:30' }) },
-          timeZone: 'UTC',
-        }),
-      ).toEqual([]);
-    });
-
-    it('treats boundary values as inclusive', () => {
-      const events = [
-        makeEventView({
-          eventTimeBlockOverrides: [
-            {
-              eventTimeBlock: {
-                id: 'on-the-dot',
-                startTime: '2026-07-12T09:00:00.000Z',
-                endTime: '2026-07-12T10:00:00.000Z',
-              },
-            },
-          ],
-        }),
-      ];
-
-      expect(
-        filterEventTimeBlocksByTimeOfDay({
-          events,
-          filter: {
-            mode: 'starts',
-            start: parseTimeOfDay({ value: '09:00' }),
-            end: parseTimeOfDay({ value: '09:00' }),
-          },
-          timeZone: 'UTC',
-        })[0]?.eventTimeBlocks,
-      ).toHaveLength(1);
-    });
-  });
-});
-
 describe('isTimeWindowFilterEmpty', () => {
   it('is true when both start and end are undefined', () => {
     expect(isTimeWindowFilterEmpty({ mode: 'starts' })).toBe(true);
@@ -629,5 +384,84 @@ describe('isTimeWindowFilterEmpty', () => {
         end: parseTimeOfDay({ value: '20:00' }),
       }),
     ).toBe(false);
+  });
+});
+
+describe('blockTitle', () => {
+  it('drops a label that only repeats the event and its start time', () => {
+    expect(
+      blockTitle({
+        eventTitle: 'Culto de Domingo',
+        label: 'Culto 10:30',
+        startTime: '10:30',
+      }),
+    ).toBe('Culto de Domingo');
+  });
+
+  it('keeps a label that adds information', () => {
+    expect(
+      blockTitle({
+        eventTitle: 'Culto de Domingo',
+        label: 'Manhã',
+        startTime: '10:30',
+      }),
+    ).toBe('Culto de Domingo · Manhã');
+  });
+
+  it('shows the event alone when the block has no label', () => {
+    expect(
+      blockTitle({ eventTitle: 'Culto', label: '', startTime: '19:00' }),
+    ).toBe('Culto');
+  });
+});
+
+describe('coverageTone', () => {
+  it('stays neutral while pending answers could still fill the block', () => {
+    expect(
+      coverageTone({
+        available: 1,
+        needed: 12,
+        pending: 149,
+        answersClosed: false,
+      }),
+    ).toBe('neutral');
+  });
+
+  it('flags a shortfall pending answers cannot fill', () => {
+    expect(
+      coverageTone({
+        available: 1,
+        needed: 12,
+        pending: 3,
+        answersClosed: false,
+      }),
+    ).toBe('short');
+  });
+
+  it('applies the meter thresholds once answers are closed', () => {
+    expect(
+      coverageTone({
+        available: 1,
+        needed: 12,
+        pending: 149,
+        answersClosed: true,
+      }),
+    ).toBe('short');
+    expect(
+      coverageTone({
+        available: 6,
+        needed: 12,
+        pending: 0,
+        answersClosed: true,
+      }),
+    ).toBe('low');
+    expect(
+      coverageTone({
+        available: 12,
+        needed: 12,
+        pending: 0,
+        answersClosed: true,
+      }),
+    ).toBe('neutral');
   });
 });

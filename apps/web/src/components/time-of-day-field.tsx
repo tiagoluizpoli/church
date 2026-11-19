@@ -4,6 +4,7 @@ import { parseTime } from '@internationalized/date';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { TimeField, TimeInput } from '@/components/ui/time-field';
 import { cn } from '@/lib/utils';
 
@@ -189,6 +190,7 @@ export function TimeOfDayField({
   'aria-describedby': ariaDescribedby,
   'data-testid': dataTestId,
 }: TimeOfDayFieldProps) {
+  const touch = useFormControlSize() === 'touch';
   const [open, setOpen] = useState(false);
   const [digits, setDigits] = useState('');
   const [reading, setReading] = useState<SegmentReading>({
@@ -362,7 +364,8 @@ export function TimeOfDayField({
             <Button
               type="button"
               variant="ghost"
-              size="icon-xs"
+              // At touch size the visible button is the 44px target itself.
+              size={touch ? 'icon-touch' : 'icon-xs'}
               aria-label={m.time_of_day_pick_common()}
               aria-expanded={open}
               // Out of the tab order on purpose: it is a mouse affordance, and
@@ -370,7 +373,13 @@ export function TimeOfDayField({
               // tabbable only means Tab out of the minute lands *inside* the
               // control just finished, rather than on the next field.
               tabIndex={-1}
-              className="absolute top-1/2 right-1 -translate-y-1/2"
+              // Dense: a 44px hit area around the 24px icon.
+              className={cn(
+                'absolute top-1/2 -translate-y-1/2',
+                touch
+                  ? 'right-0'
+                  : "right-1 after:absolute after:-inset-2.5 after:content-['']",
+              )}
               // Keep the caret in the segments — a plain click would blur them.
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {

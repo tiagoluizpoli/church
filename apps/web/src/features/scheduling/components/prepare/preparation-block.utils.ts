@@ -10,6 +10,7 @@ import {
 import {
   type HeadcountGridMinimums,
   type HeadcountGridShift,
+  type HeadcountGridValues,
   headcountGridKey,
 } from '@/features/scheduling/components/headcount-grid/headcount-grid';
 import {
@@ -307,4 +308,51 @@ export function preparationMinimums({
       );
     }),
   );
+}
+
+interface SeedShiftCountsInput {
+  values: HeadcountGridValues;
+  /** The Shifts shown before the split changed. */
+  from: HeadcountGridShift[];
+  to: HeadcountGridShift[];
+}
+
+/**
+ * A changed split starts each new Shift with the counts of the Shift at its
+ * position before (or the last one), so splitting a block never blanks what
+ * was typed. A Shift that already holds counts (a split switched back) keeps them.
+ */
+export function seedShiftCounts({
+  values,
+  from,
+  to,
+}: SeedShiftCountsInput): HeadcountGridValues {
+  const cellsOf = (shiftKey: string) =>
+    Object.entries(values).filter(([key]) => key.startsWith(`${shiftKey}|`));
+  const seeded = { ...values };
+  for (const [index, shift] of to.entries()) {
+    const source = from[Math.min(index, from.length - 1)];
+    if (!source || cellsOf(shift.key).some(([, value]) => Number(value) > 0))
+      continue;
+    for (const [key, value] of cellsOf(source.key))
+      seeded[`${shift.key}${key.slice(source.key.length)}`] = value;
+  }
+  return seeded;
+}
+
+interface VerticalSpan {
+  top: number;
+  bottom: number;
+}
+
+interface RevealOffsetInput {
+  target: VerticalSpan;
+  view: VerticalSpan;
+}
+
+/** How far to scroll so the target's top is in view and as much of it below as fits. */
+export function revealOffset({ target, view }: RevealOffsetInput): number {
+  if (target.top < view.top) return target.top - view.top;
+  if (target.bottom <= view.bottom) return 0;
+  return Math.min(target.top - view.top, target.bottom - view.bottom);
 }

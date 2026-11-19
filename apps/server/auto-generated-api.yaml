@@ -7891,13 +7891,60 @@ paths:
       tags:
         - prepare
       description: Get a Ministry's MinistryParticipation prepare state across every
-        Event in a Cycle.
+        Event in a Cycle. `day` (church-local date), `q` (block label or Event
+        title), a time window (`timeMode` starts, ends or within, with
+        `timeFrom`/`timeTo` as church-local HH:mm; either bound may be omitted)
+        and `needsAttention` (served blocks with a Shift lacking a headcount)
+        filter the blocks; Events left with none are dropped. Blocks come
+        ordered by start then id. `dayMarkers` and `totals` always describe the
+        unfiltered Cycle.
       parameters:
         - schema:
             type: string
           in: query
           name: ministryId
           required: true
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: day
+          required: false
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          in: query
+          name: q
+          required: false
+        - schema:
+            default: starts
+            type: string
+            enum:
+              - starts
+              - ends
+              - within
+          in: query
+          name: timeMode
+          required: false
+        - schema:
+            type: string
+            pattern: ^\d{2}:\d{2}(:\d{2})?$
+          in: query
+          name: timeFrom
+          required: false
+        - schema:
+            type: string
+            pattern: ^\d{2}:\d{2}(:\d{2})?$
+          in: query
+          name: timeTo
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: needsAttention
+          required: false
         - schema:
             type: string
           in: path
@@ -8058,6 +8105,22 @@ paths:
                                 additionalProperties: false
                               included:
                                 type: boolean
+                              answerCoverage:
+                                type: object
+                                properties:
+                                  available:
+                                    type: integer
+                                    minimum: -9007199254740991
+                                    maximum: 9007199254740991
+                                  needed:
+                                    nullable: true
+                                    type: integer
+                                    minimum: -9007199254740991
+                                    maximum: 9007199254740991
+                                required:
+                                  - available
+                                  - needed
+                                additionalProperties: false
                               shifts:
                                 type: array
                                 items:
@@ -8167,6 +8230,7 @@ paths:
                             required:
                               - eventTimeBlock
                               - included
+                              - answerCoverage
                               - shifts
                               - requirements
                               - shiftsChangedAfterAsk
@@ -8177,8 +8241,31 @@ paths:
                         - generatedFromTemplate
                         - eventTimeBlocks
                       additionalProperties: false
+                  dayMarkers:
+                    type: array
+                    items:
+                      type: string
+                      format: date
+                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                  totals:
+                    type: object
+                    properties:
+                      blocks:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      needsAttention:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                    required:
+                      - blocks
+                      - needsAttention
+                    additionalProperties: false
                 required:
                   - events
+                  - dayMarkers
+                  - totals
                 additionalProperties: false
         "403":
           description: Default Response
@@ -8593,6 +8680,22 @@ paths:
                     additionalProperties: false
                   included:
                     type: boolean
+                  answerCoverage:
+                    type: object
+                    properties:
+                      available:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      needed:
+                        nullable: true
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                    required:
+                      - available
+                      - needed
+                    additionalProperties: false
                   shifts:
                     type: array
                     items:
@@ -8702,6 +8805,7 @@ paths:
                 required:
                   - eventTimeBlock
                   - included
+                  - answerCoverage
                   - shifts
                   - requirements
                   - shiftsChangedAfterAsk
@@ -9346,13 +9450,46 @@ paths:
       tags:
         - prepare
       description: List the asked Volunteers with their marks and relevant Shift
-        totals, plus the confirmed counts, Deadline and Remind cooldown.
+        totals, plus the confirmed counts, per-status `counts`, Deadline and
+        Remind cooldown. `status` (pending, available, unavailable) and `q`
+        (name search) filter the list; `limit` pages it by `cursor` (omitted,
+        every match comes back) ordered by name then id, and `nextCursor` is
+        null on the last page. `asked`, `confirmed` and `counts` ignore the
+        filters.
       parameters:
         - schema:
             type: string
           in: query
           name: ministryId
           required: true
+        - schema:
+            type: string
+            enum:
+              - pending
+              - available
+              - unavailable
+          in: query
+          name: status
+          required: false
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          in: query
+          name: q
+          required: false
+        - schema:
+            type: string
+          in: query
+          name: cursor
+          required: false
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+          in: query
+          name: limit
+          required: false
         - schema:
             type: string
           in: path
@@ -9380,6 +9517,29 @@ paths:
                     type: string
                     format: date-time
                     pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                  counts:
+                    type: object
+                    properties:
+                      pending:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      available:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      unavailable:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                    required:
+                      - pending
+                      - available
+                      - unavailable
+                    additionalProperties: false
+                  nextCursor:
+                    nullable: true
+                    type: string
                   statuses:
                     type: array
                     items:
@@ -9414,6 +9574,8 @@ paths:
                   - confirmed
                   - answerBy
                   - remindAvailableAt
+                  - counts
+                  - nextCursor
                   - statuses
                 additionalProperties: false
         "403":

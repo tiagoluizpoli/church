@@ -1,7 +1,7 @@
 import type { TimeOfDay } from '@church/time';
 import { isAxiosError } from 'axios';
 import type { GetCycleParticipation200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
-import { churchTimeOfDay, dayOf } from '@/shared/utils/church-time';
+import { dayOf } from '@/shared/utils/church-time';
 import { toCycleDayKey } from '@/shared/utils/date';
 
 export type PrepareFetchErrorKind = 'forbidden' | 'retryable';
@@ -126,38 +126,6 @@ export function buildEventTimeBlockDayMarkers({
   return markers;
 }
 
-export interface FilterEventTimeBlocksByNameInput {
-  events: GetCycleParticipation200EventsItem[];
-  query: string;
-}
-
-/** Client-side, already-fetched-data-only time block filters (FR-010) — never
- * issue network requests. Both drop an event entirely once it has zero
- * matching time blocks, so the day-grouped time block list only shows groups with
- * visible content. */
-export function filterEventTimeBlocksByName({
-  events,
-  query,
-}: FilterEventTimeBlocksByNameInput): GetCycleParticipation200EventsItem[] {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return events;
-
-  return events
-    .map((eventView) => ({
-      ...eventView,
-      eventTimeBlocks: eventView.eventTimeBlocks.filter(
-        (eventTimeBlockView) => {
-          const label = (
-            eventTimeBlockView.eventTimeBlock.label ?? ''
-          ).toLowerCase();
-          const eventTitle = eventView.event.title.toLowerCase();
-          return label.includes(needle) || eventTitle.includes(needle);
-        },
-      ),
-    }))
-    .filter((eventView) => eventView.eventTimeBlocks.length > 0);
-}
-
 export type TimeWindowMode = 'starts' | 'ends' | 'within';
 
 /** A single [start, end] local-time-of-day window (`HH:mm` strings),
@@ -171,81 +139,67 @@ export interface TimeWindowFilter {
   end?: TimeOfDay;
 }
 
-function toMinutesSinceMidnight(hhmm: string): number {
-  const [hours, minutes] = hhmm.split(':').map(Number);
-  return (hours ?? 0) * 60 + (minutes ?? 0);
-}
-
-interface ChurchTimeOfDayInMinutesInput {
-  isoValue: string;
-  timeZone: string;
-}
-
-function churchTimeOfDayInMinutes({
-  isoValue,
-  timeZone,
-}: ChurchTimeOfDayInMinutesInput): number {
-  return toMinutesSinceMidnight(churchTimeOfDay({ value: isoValue, timeZone }));
-}
-
 export function isTimeWindowFilterEmpty(filter: TimeWindowFilter): boolean {
   return !filter.start && !filter.end;
 }
 
-interface IsWithinWindowInput {
-  minutes: number;
-  filter: TimeWindowFilter;
+export interface BlockTitleInput {
+  eventTitle: string;
+  label?: string | null;
+  /** The block's church-local start, `HH:mm`. */
+  startTime: string;
 }
 
-function isWithinWindow({ minutes, filter }: IsWithinWindowInput): boolean {
-  if (filter.start && minutes < toMinutesSinceMidnight(filter.start)) {
-    return false;
-  }
-  if (filter.end && minutes > toMinutesSinceMidnight(filter.end)) {
-    return false;
-  }
-  return true;
+function titleWords(value: string): string[] {
+  return value
+    .toLocaleLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .split(/[^\p{L}\p{N}:]+/u)
+    .filter(Boolean);
 }
 
-export interface FilterEventTimeBlocksByTimeOfDayInput {
-  events: GetCycleParticipation200EventsItem[];
-  filter: TimeWindowFilter;
-  timeZone: string;
+/** The event title, plus the block label only when the label says something
+ * the title and start time don't ("Culto de Domingo" for "Culto 10:30"). */
+export function blockTitle({
+  eventTitle,
+  label,
+  startTime,
+}: BlockTitleInput): string {
+  if (!label?.trim()) return eventTitle;
+  const known = new Set([
+    ...titleWords(eventTitle),
+    startTime,
+    startTime.replace(':', 'h'),
+    startTime.replace(/:00$/, 'h'),
+  ]);
+  const redundant = titleWords(label).every((word) => known.has(word));
+  return redundant ? eventTitle : `${eventTitle} · ${label}`;
 }
 
-export function filterEventTimeBlocksByTimeOfDay({
-  events,
-  filter,
-  timeZone,
-}: FilterEventTimeBlocksByTimeOfDayInput): GetCycleParticipation200EventsItem[] {
-  if (isTimeWindowFilterEmpty(filter)) return events;
+export type CoverageTone = 'neutral' | 'low' | 'short';
 
-  return events
-    .map((eventView) => ({
-      ...eventView,
-      eventTimeBlocks: eventView.eventTimeBlocks.filter(
-        (eventTimeBlockView) => {
-          const startMinutes = churchTimeOfDayInMinutes({
-            isoValue: eventTimeBlockView.eventTimeBlock.startTime,
-            timeZone,
-          });
-          const endMinutes = churchTimeOfDayInMinutes({
-            isoValue: eventTimeBlockView.eventTimeBlock.endTime,
-            timeZone,
-          });
+export interface CoverageToneInput {
+  available: number;
+  needed: number;
+  /** Asked volunteers who have not answered yet. */
+  pending: number;
+  /** Answers can no longer change coverage: the deadline passed or the
+   * Schedule is being assigned. */
+  answersClosed: boolean;
+}
 
-          if (filter.mode === 'starts') {
-            return isWithinWindow({ minutes: startMinutes, filter });
-          }
-          if (filter.mode === 'ends') {
-            return isWithinWindow({ minutes: endMinutes, filter });
-          }
-          return (
-            isWithinWindow({ minutes: startMinutes, filter }) &&
-            isWithinWindow({ minutes: endMinutes, filter })
-          );
-        },
-      ),
-    }))
-    .filter((eventView) => eventView.eventTimeBlocks.length > 0);
+const HALF_STAFFED_RATIO = 0.5;
+
+/** Coverage colours a shortfall only when it is real: answers are closed, or
+ * even every pending answer could not fill the block. */
+export function coverageTone({
+  available,
+  needed,
+  pending,
+  answersClosed,
+}: CoverageToneInput): CoverageTone {
+  if (available >= needed) return 'neutral';
+  if (!answersClosed && available + pending >= needed) return 'neutral';
+  return available / needed < HALF_STAFFED_RATIO ? 'short' : 'low';
 }

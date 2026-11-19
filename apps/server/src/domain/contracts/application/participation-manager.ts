@@ -37,10 +37,31 @@ import type {
 } from '../../services/assignment-proposal';
 import type { ShiftSplitStrategy } from '../../services/shift-splitter';
 
+export const TIME_WINDOW_MODE_OPTIONS = ['starts', 'ends', 'within'] as const;
+export type TimeWindowMode = (typeof TIME_WINDOW_MODE_OPTIONS)[number];
+
+/** Church-local wall-clock window; an omitted bound leaves that side open. */
+export interface CycleTimeWindow {
+  mode: TimeWindowMode;
+  start?: TimeOfDay;
+  end?: TimeOfDay;
+}
+
+export interface CycleParticipationFilters {
+  /** Church-local day the block starts on. */
+  day?: CalendarDay;
+  /** Case-insensitive match on the block label or Event title. */
+  q?: string;
+  timeWindow?: CycleTimeWindow;
+  /** Only served blocks with a Shift that has no headcount. */
+  needsAttention?: boolean;
+}
+
 export interface GetCycleParticipationInput {
   churchId: ChurchId;
   cycleId: CycleId;
   ministryId: MinistryId;
+  filters?: CycleParticipationFilters;
 }
 
 export interface ParticipationRequirementView {
@@ -63,6 +84,12 @@ export interface ParticipationShiftView {
 export interface ParticipationEventTimeBlockView {
   eventTimeBlock: EventTimeBlock;
   included: boolean;
+  /**
+   * Of the volunteers asked, those who confirmed and marked no Shift of this
+   * block unavailable, against the block's busiest Shift headcount (null while
+   * a Shift has no headcount or the block has no Shift).
+   */
+  answerCoverage: { available: number; needed: number | null };
   shifts: ParticipationShiftView[];
   requirements: ParticipationRequirementView[];
   /** A Shift was created after availability was requested, so earlier answers do not cover it. */
@@ -78,7 +105,12 @@ export interface ParticipationEventView {
 }
 
 export interface CycleParticipationView {
+  /** Matching blocks only, ordered by block start then id. */
   events: ParticipationEventView[];
+  /** Church-local days with a block, over the unfiltered cycle. */
+  dayMarkers: CalendarDay[];
+  /** Counts over the unfiltered cycle. */
+  totals: { blocks: number; needsAttention: number };
 }
 
 export interface GetCycleBuilderDataInput {

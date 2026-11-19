@@ -9,7 +9,12 @@ import {
   toDate,
   today,
 } from '@church/time';
+import {
+  decodeAnswersListCursor,
+  encodeAnswersListCursor,
+} from '../domain/answers-list-cursor';
 import type {
+  AnswerStatus,
   AskPreview,
   AskScheduleInput,
   AskScheduleResult,
@@ -120,6 +125,78 @@ function ensureCycleAskable({
       to: transition,
     });
   }
+}
+
+function answerStatusOf({
+  state,
+  unavailableShiftCount,
+}: CheckStatusRow): AnswerStatus {
+  if (state !== 'confirmed') return 'pending';
+  return unavailableShiftCount > 0 ? 'unavailable' : 'available';
+}
+
+interface CompareRowsInput {
+  left: CheckStatusRow;
+  right: CheckStatusRow;
+}
+
+function compareRows({ left, right }: CompareRowsInput): number {
+  return (
+    left.volunteerName.localeCompare(right.volunteerName) ||
+    left.volunteerId.localeCompare(right.volunteerId)
+  );
+}
+
+interface PagedStatuses {
+  statuses: CheckStatusRow[];
+  nextCursor: string | null;
+}
+
+interface PageStatusesInput {
+  statuses: CheckStatusRow[];
+  status?: AnswerStatus;
+  q?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+/** Filters, totally orders (name, id) and keyset-pages the asked Volunteers. */
+function pageStatuses({
+  statuses,
+  status,
+  q,
+  cursor,
+  limit,
+}: PageStatusesInput): PagedStatuses {
+  const needle = q?.trim().toLowerCase();
+  const position = cursor ? decodeAnswersListCursor({ cursor }) : undefined;
+  const after = position
+    ? ({
+        volunteerName: position.name,
+        volunteerId: position.id,
+      } as CheckStatusRow)
+    : undefined;
+  const matching = statuses
+    .filter((row) => !status || answerStatusOf(row) === status)
+    .filter(
+      (row) => !needle || row.volunteerName.toLowerCase().includes(needle),
+    )
+    .sort((left, right) => compareRows({ left, right }))
+    .filter((row) => !after || compareRows({ left: row, right: after }) > 0);
+  if (limit === undefined || matching.length <= limit) {
+    return { statuses: matching, nextCursor: null };
+  }
+  const page = matching.slice(0, limit);
+  const last = page.at(-1);
+  return {
+    statuses: page,
+    nextCursor: last
+      ? encodeAnswersListCursor({
+          name: last.volunteerName,
+          id: last.volunteerId,
+        })
+      : null,
+  };
 }
 
 export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
@@ -488,14 +565,30 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
       },
     );
 
+    const counts: Record<AnswerStatus, number> = {
+      pending: 0,
+      available: 0,
+      unavailable: 0,
+    };
+    for (const row of statuses) counts[answerStatusOf(row)] += 1;
+    const { statuses: page, nextCursor } = pageStatuses({
+      statuses,
+      status: input.status,
+      q: input.q,
+      cursor: input.cursor,
+      limit: input.limit,
+    });
+
     return {
       asked: statuses.length,
-      confirmed: statuses.filter(({ state }) => state === 'confirmed').length,
+      confirmed: counts.available + counts.unavailable,
       answerBy,
       remindAvailableAt: this.remindAvailableAt({
         lastRemindedAt: askRecord?.lastRemindedAt ?? null,
       }),
-      statuses,
+      counts,
+      statuses: page,
+      nextCursor,
     };
   }
 

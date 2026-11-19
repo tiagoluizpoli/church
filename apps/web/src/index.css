@@ -320,6 +320,7 @@
 
   .workspace-section-description {
     max-width: 72ch;
+    text-wrap: pretty;
     color: var(--color-muted-foreground);
     font-size: 0.875rem;
     line-height: 1.6;

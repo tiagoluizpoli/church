@@ -1,4 +1,5 @@
 import { m } from '@church/i18n/messages';
+import { formatCalendarDay, parseCalendarDay } from '@church/time';
 import { expect, test } from '@playwright/test';
 import { fillDatePickerField } from './date-picker.helpers';
 import { requiredE2eUrl } from '@/tests/fixtures/e2e-urls';
@@ -153,11 +154,13 @@ for (const viewport of [
         name: m.usual_setup_save({}, LOCALE),
         exact: true,
       })
-      .click();
+      .press('Enter');
     await expect(page).toHaveURL(
       `${schedulePath}#event-time-block-${block.eventTimeBlock.id}`,
     );
-    await expect(row).toContainText(
+    await expect(
+      viewport.name === 'desktop' ? row.locator('xpath=ancestor::tr') : row,
+    ).toContainText(
       m.prepare_row_summary(
         {
           shifts: m.usual_setup_shift_count_other({ count: 2 }, LOCALE),
@@ -199,16 +202,31 @@ for (const viewport of [
       .click();
     await expect(dialog).not.toBeVisible();
     const answers = page.getByTestId('availability-status-list');
-    await expect(answers).toContainText(
+    await expect(answers.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuetext',
       m.answers_count({ confirmed: 0, asked: 2 }, LOCALE),
     );
+    const disclosure = answers.getByRole('button', {
+      name: m.answers_view_roster({}, LOCALE),
+      exact: true,
+    });
+    await expect(
+      answers.getByText(journey.pool.ana.name, { exact: true }),
+    ).toHaveCount(0);
+    await disclosure.click();
     const pending = answers.getByRole('list', {
       name: m.answers_pending({}, LOCALE),
+      exact: true,
     });
-    await expect(pending.getByRole('listitem')).toHaveCount(2);
+    const pendingPeople = pending.getByRole('listitem');
+    await expect(pendingPeople).toHaveCount(2);
     await expect(pending).toContainText(journey.pool.ana.name);
     await expect(pending).toContainText(journey.pool.bruno.name);
-    await expect(answers.locator('time')).toHaveAttribute('datetime', answerBy);
+    const deadline = page.getByTestId('prepare-stat-deadline');
+    const dateText = formatCalendarDay({
+      day: parseCalendarDay({ value: answerBy }),
+    });
+    await expect(deadline).toContainText(dateText);
     await page
       .getByText(m.prepare_ask_sent({}, LOCALE), { exact: true })
       .waitFor({ state: 'hidden' });
@@ -224,17 +242,21 @@ for (const viewport of [
         exact: true,
       })
       .click();
+    // Lembrar keeps its slot with a short label; the full sentence is its description.
     const cooldown = answers.getByRole('button', {
-      name: new RegExp(
-        m.answers_remind_cooldown({ time: '\\d{2}:\\d{2}' }, LOCALE),
-      ),
+      name: new RegExp(m.answers_remind_at({ time: '\\d{2}:\\d{2}' }, LOCALE)),
     });
-    await expect(cooldown).toBeDisabled();
+    await expect(cooldown).toHaveAttribute('aria-disabled', 'true');
+    await expect(cooldown).toHaveAccessibleDescription(
+      new RegExp(m.answers_remind_cooldown({ time: '\\d{2}:\\d{2}' }, LOCALE)),
+    );
     // Reload proves both the Deadline and cooldown came from the server.
     await page.reload();
-    await expect(cooldown).toBeDisabled();
-    await expect(pending.getByRole('listitem')).toHaveCount(2);
-    await expect(answers.locator('time')).toHaveAttribute('datetime', answerBy);
+    await expect(cooldown).toHaveAttribute('aria-disabled', 'true');
+    await expect(pendingPeople).toHaveCount(0);
+    await disclosure.click();
+    await expect(pendingPeople).toHaveCount(2);
+    await expect(deadline).toContainText(dateText);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({
       path: testInfo.outputPath(`cooldown-${viewport.name}.png`),

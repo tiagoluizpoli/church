@@ -65,16 +65,38 @@ interface Scene {
   ink: Rgb;
 }
 
-const random = (min: number, max: number) => min + Math.random() * (max - min);
-const clamp = (value: number, min: number, max: number) =>
+interface RandomInput {
+  min: number;
+  max: number;
+}
+
+interface ClampInput {
+  value: number;
+  min: number;
+  max: number;
+}
+
+interface SmoothstepInput {
+  edge0: number;
+  edge1: number;
+  value: number;
+}
+
+const random = ({ min, max }: RandomInput) => min + Math.random() * (max - min);
+const clamp = ({ value, min, max }: ClampInput) =>
   Math.min(max, Math.max(min, value));
-const smoothstep = (edge0: number, edge1: number, value: number) => {
-  const t = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+const smoothstep = ({ edge0, edge1, value }: SmoothstepInput) => {
+  const t = clamp({ value: (value - edge0) / (edge1 - edge0), min: 0, max: 1 });
   return t * t * (3 - 2 * t);
 };
 
 /** Resolves any CSS colour (oklch included) to RGB through a 1px canvas. */
-function resolveColor(probe: CanvasRenderingContext2D, color: string): Rgb {
+interface ResolveColorInput {
+  probe: CanvasRenderingContext2D;
+  color: string;
+}
+
+function resolveColor({ probe, color }: ResolveColorInput): Rgb {
   probe.clearRect(0, 0, 1, 1);
   probe.fillStyle = '#000';
   probe.fillStyle = color;
@@ -83,28 +105,49 @@ function resolveColor(probe: CanvasRenderingContext2D, color: string): Rgb {
   return [r, g, b];
 }
 
-function readColors(canvas: HTMLCanvasElement, scene: Scene) {
+interface ReadColorsInput {
+  canvas: HTMLCanvasElement;
+  scene: Scene;
+}
+
+function readColors({ canvas, scene }: ReadColorsInput) {
   const probe = document
     .createElement('canvas')
     .getContext('2d', { willReadFrequently: true });
   if (!probe) return;
   const style = getComputedStyle(canvas);
-  scene.primary = resolveColor(probe, style.getPropertyValue('--primary'));
-  scene.ink = resolveColor(
+  scene.primary = resolveColor({
     probe,
-    style.getPropertyValue('--sidebar-foreground'),
-  );
+    color: style.getPropertyValue('--primary'),
+  });
+  scene.ink = resolveColor({
+    probe,
+    color: style.getPropertyValue('--sidebar-foreground'),
+  });
 }
 
 const isCompact = (scene: Scene) => scene.h < 320;
 
 /** Keeps the brand mark and tagline zones quiet. */
-function quietness(scene: Scene, x: number, y: number): number {
+interface QuietnessInput {
+  scene: Scene;
+  x: number;
+  y: number;
+}
+
+function quietness({ scene, x, y }: QuietnessInput): number {
   if (isCompact(scene)) {
-    const nearMark = smoothstep(0, 1, 1 - Math.hypot(x / 270, y / 95));
+    const nearMark = smoothstep({
+      edge0: 0,
+      edge1: 1,
+      value: 1 - Math.hypot(x / 270, y / 95),
+    });
     return 1 - nearMark * 0.8;
   }
-  return smoothstep(40, 130, y) * smoothstep(60, 170, scene.h - y);
+  return (
+    smoothstep({ edge0: 40, edge1: 130, value: y }) *
+    smoothstep({ edge0: 60, edge1: 170, value: scene.h - y })
+  );
 }
 
 function bounds(scene: Scene) {
@@ -121,11 +164,16 @@ function bounds(scene: Scene) {
 
 function randomHome(scene: Scene) {
   const b = bounds(scene);
-  return { x: random(b.x0, b.x1), y: random(b.y0, b.y1) };
+  return {
+    x: random({ min: b.x0, max: b.x1 }),
+    y: random({ min: b.y0, max: b.y1 }),
+  };
 }
 
 function createPeople(scene: Scene): Person[] {
-  const count = Math.round(clamp((scene.w * scene.h) / 7500, 24, 88));
+  const count = Math.round(
+    clamp({ value: (scene.w * scene.h) / 7500, min: 24, max: 88 }),
+  );
   return Array.from({ length: count }, () => {
     const home = randomHome(scene);
     return {
@@ -135,10 +183,10 @@ function createPeople(scene: Scene): Person[] {
       vy: 0,
       homeX: home.x,
       homeY: home.y,
-      r: random(2.5, 4.2),
-      seed: random(0, 1000),
+      r: random({ min: 2.5, max: 4.2 }),
+      seed: random({ min: 0, max: 1000 }),
       host: false,
-      delay: random(0, 1.4),
+      delay: random({ min: 0, max: 1.4 }),
       group: -1,
       slot: 0,
       seatRadius: 1,
@@ -151,35 +199,48 @@ function createPeople(scene: Scene): Person[] {
 
 function placeGroups(scene: Scene): Group[] {
   const compact = isCompact(scene);
-  const count = compact ? 3 : Math.round(random(4, 6));
+  const count = compact ? 3 : Math.round(random({ min: 4, max: 6 }));
   const b = compact
     ? { x0: scene.w * 0.42, x1: scene.w - 40, y0: 50, y1: scene.h - 40 }
     : { x0: 70, x1: scene.w - 70, y0: 170, y1: scene.h - 200 };
   const minGap = compact ? 70 : Math.min(scene.w, scene.h) * 0.24;
   const groups: Group[] = [];
   for (let tries = 0; groups.length < count && tries < 400; tries++) {
-    const x = random(b.x0, b.x1);
-    const y = random(b.y0, b.y1);
+    const x = random({ min: b.x0, max: b.x1 });
+    const y = random({ min: b.y0, max: b.y1 });
     if (groups.every((g) => Math.hypot(g.x - x, g.y - y) > minGap)) {
-      groups.push({ x, y, size: 0, rotation: random(0, TAU), halo: 0 });
+      groups.push({
+        x,
+        y,
+        size: 0,
+        rotation: random({ min: 0, max: TAU }),
+        halo: 0,
+      });
     }
   }
   return groups;
 }
 
-function gather(scene: Scene, time: number) {
+interface SceneTimeInput {
+  scene: Scene;
+  time: number;
+}
+
+function gather({ scene, time }: SceneTimeInput) {
   const groups = placeGroups(scene);
   const compact = isCompact(scene);
   const capacities = groups.map(() =>
-    Math.round(compact ? random(4, 7) : random(6, 13)),
+    Math.round(
+      compact ? random({ min: 4, max: 7 }) : random({ min: 6, max: 13 }),
+    ),
   );
   const people = [...scene.people].sort(() => Math.random() - 0.5);
   for (const person of people) {
     person.group = -1;
     person.host = false;
-    person.delay = random(0, 1.4);
-    person.seatRadius = random(0.72, 1.18);
-    person.seatAngle = random(-0.22, 0.22);
+    person.delay = random({ min: 0, max: 1.4 });
+    person.seatRadius = random({ min: 0.72, max: 1.18 });
+    person.seatAngle = random({ min: -0.22, max: 0.22 });
     if (person.attracted) continue;
     let best = -1;
     let bestDistance = Number.POSITIVE_INFINITY;
@@ -219,17 +280,26 @@ function gather(scene: Scene, time: number) {
   scene.changedAt = time;
 }
 
-function disperse(scene: Scene, time: number) {
+function disperse({ scene, time }: SceneTimeInput) {
   const b = bounds(scene);
   for (const person of scene.people) {
     const group = scene.groups[person.group];
-    person.delay = random(0, 1.6);
+    person.delay = random({ min: 0, max: 1.6 });
     if (!group) continue;
     const angle =
-      Math.atan2(person.y - group.y, person.x - group.x) + random(-0.5, 0.5);
-    const distance = random(50, 150);
-    person.homeX = clamp(person.x + Math.cos(angle) * distance, b.x0, b.x1);
-    person.homeY = clamp(person.y + Math.sin(angle) * distance, b.y0, b.y1);
+      Math.atan2(person.y - group.y, person.x - group.x) +
+      random({ min: -0.5, max: 0.5 });
+    const distance = random({ min: 50, max: 150 });
+    person.homeX = clamp({
+      value: person.x + Math.cos(angle) * distance,
+      min: b.x0,
+      max: b.x1,
+    });
+    person.homeY = clamp({
+      value: person.y + Math.sin(angle) * distance,
+      min: b.y0,
+      max: b.y1,
+    });
   }
   scene.gathered = false;
   scene.changedAt = time;
@@ -237,7 +307,13 @@ function disperse(scene: Scene, time: number) {
 
 const ringRadius = (size: number) => 9 + size * 2.3;
 
-function seat(group: Group, person: Person, time: number) {
+interface SeatInput {
+  group: Group;
+  person: Person;
+  time: number;
+}
+
+function seat({ group, person, time }: SeatInput) {
   const radius =
     ringRadius(group.size) *
     person.seatRadius *
@@ -272,7 +348,13 @@ function updatePointerCircle(scene: Scene) {
   }
 }
 
-function targetOf(scene: Scene, person: Person, time: number) {
+interface TargetOfInput {
+  scene: Scene;
+  person: Person;
+  time: number;
+}
+
+function targetOf({ scene, person, time }: TargetOfInput) {
   const pointer = scene.pointer;
   if (person.attracted && pointer) {
     const members = scene.people.filter((p) => p.attracted);
@@ -288,7 +370,7 @@ function targetOf(scene: Scene, person: Person, time: number) {
   const group = scene.groups[person.group];
   const settled = time >= scene.changedAt + person.delay;
   if (group && scene.gathered === settled) {
-    return { ...seat(group, person, time), grouped: true };
+    return { ...seat({ group, person, time }), grouped: true };
   }
   return {
     x: person.homeX + Math.sin(time * 0.13 + person.seed) * 22,
@@ -297,17 +379,23 @@ function targetOf(scene: Scene, person: Person, time: number) {
   };
 }
 
-function step(scene: Scene, dt: number, time: number) {
+interface StepInput {
+  scene: Scene;
+  dt: number;
+  time: number;
+}
+
+function step({ scene, dt, time }: StepInput) {
   const phase = (time + START_OFFSET_S) % CYCLE_S;
   const inGathering = phase >= GATHER_AT_S && phase < DISPERSE_AT_S;
   if (inGathering !== scene.gathered) {
-    if (inGathering) gather(scene, time);
-    else disperse(scene, time);
+    if (inGathering) gather({ scene, time });
+    else disperse({ scene, time });
   }
   updatePointerCircle(scene);
   const ease = 1 - Math.exp(-dt * 1.6);
   for (const person of scene.people) {
-    const target = targetOf(scene, person, time);
+    const target = targetOf({ scene, person, time });
     const stiffness = target.grouped ? 3.4 : 1.6;
     const damping = target.grouped ? 2.9 : 2.2;
     person.vx += (stiffness * (target.x - person.x) - damping * person.vx) * dt;
@@ -324,11 +412,11 @@ function step(scene: Scene, dt: number, time: number) {
 
 /** The settled, gathered composition used for reduced motion. */
 function settle(scene: Scene) {
-  gather(scene, Number.NEGATIVE_INFINITY);
+  gather({ scene, time: Number.NEGATIVE_INFINITY });
   for (const person of scene.people) {
     const group = scene.groups[person.group];
     if (!group) continue;
-    const spot = seat(group, person, 0);
+    const spot = seat({ group, person, time: 0 });
     person.x = spot.x;
     person.y = spot.y;
     person.together = 1;
@@ -336,34 +424,55 @@ function settle(scene: Scene) {
   for (const group of scene.groups) group.halo = 1;
 }
 
-const rgba = ([r, g, b]: Rgb, alpha: number) =>
+interface RgbaInput {
+  color: Rgb;
+  alpha: number;
+}
+
+const rgba = ({ color: [r, g, b], alpha }: RgbaInput) =>
   `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
 
-const mix = (a: Rgb, b: Rgb, t: number): Rgb => [
+interface MixInput {
+  a: Rgb;
+  b: Rgb;
+  t: number;
+}
+
+const mix = ({ a, b, t }: MixInput): Rgb => [
   a[0] + (b[0] - a[0]) * t,
   a[1] + (b[1] - a[1]) * t,
   a[2] + (b[2] - a[2]) * t,
 ];
 
-function drawGlow(
-  ctx: CanvasRenderingContext2D,
-  scene: Scene,
-  x: number,
-  y: number,
-  radius: number,
-  strength: number,
-) {
+interface DrawGlowInput {
+  ctx: CanvasRenderingContext2D;
+  scene: Scene;
+  x: number;
+  y: number;
+  radius: number;
+  strength: number;
+}
+
+function drawGlow({ ctx, scene, x, y, radius, strength }: DrawGlowInput) {
   const glow = ctx.createRadialGradient(x, y, 0, x, y, radius);
-  glow.addColorStop(0, rgba(scene.primary, 0.14 * strength));
-  glow.addColorStop(0.55, rgba(scene.primary, 0.06 * strength));
-  glow.addColorStop(1, rgba(scene.primary, 0));
+  glow.addColorStop(0, rgba({ color: scene.primary, alpha: 0.14 * strength }));
+  glow.addColorStop(
+    0.55,
+    rgba({ color: scene.primary, alpha: 0.06 * strength }),
+  );
+  glow.addColorStop(1, rgba({ color: scene.primary, alpha: 0 }));
   ctx.fillStyle = glow;
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, TAU);
   ctx.fill();
 }
 
-function drawPointerGroup(ctx: CanvasRenderingContext2D, scene: Scene) {
+interface DrawInput {
+  ctx: CanvasRenderingContext2D;
+  scene: Scene;
+}
+
+function drawPointerGroup({ ctx, scene }: DrawInput) {
   const pointer = scene.pointer;
   if (!pointer) return;
   const together =
@@ -371,27 +480,34 @@ function drawPointerGroup(ctx: CanvasRenderingContext2D, scene: Scene) {
       .filter((p) => p.attracted)
       .reduce((sum, p) => sum + p.together, 0) / POINTER_CAPACITY;
   if (together < 0.05) return;
-  drawGlow(ctx, scene, pointer.x, pointer.y, 70, Math.min(1, together));
+  drawGlow({
+    ctx,
+    scene,
+    x: pointer.x,
+    y: pointer.y,
+    radius: 70,
+    strength: Math.min(1, together),
+  });
 }
 
-function drawGroups(ctx: CanvasRenderingContext2D, scene: Scene) {
+function drawGroups({ ctx, scene }: DrawInput) {
   scene.groups.forEach((group, index) => {
     if (group.halo < 0.01) return;
-    drawGlow(
+    drawGlow({
       ctx,
       scene,
-      group.x,
-      group.y,
-      ringRadius(group.size) * 2.3,
-      group.halo,
-    );
+      x: group.x,
+      y: group.y,
+      radius: ringRadius(group.size) * 2.3,
+      strength: group.halo,
+    });
 
     // Threads between neighbours: the group as a circle of people.
     const members = scene.people
       .filter((p) => p.group === index && p.together > 0.5)
       .sort((a, b) => a.slot - b.slot);
     if (members.length < 3) return;
-    ctx.strokeStyle = rgba(scene.primary, 0.16 * group.halo);
+    ctx.strokeStyle = rgba({ color: scene.primary, alpha: 0.16 * group.halo });
     ctx.lineWidth = 1;
     ctx.beginPath();
     members.forEach((member, i) => {
@@ -403,33 +519,36 @@ function drawGroups(ctx: CanvasRenderingContext2D, scene: Scene) {
   });
 }
 
-function drawPeople(ctx: CanvasRenderingContext2D, scene: Scene) {
+function drawPeople({ ctx, scene }: DrawInput) {
   for (const person of scene.people) {
-    const quiet = quietness(scene, person.x, person.y);
+    const quiet = quietness({ scene, x: person.x, y: person.y });
     if (quiet < 0.01) continue;
-    const color = mix(scene.ink, scene.primary, person.together);
+    const color = mix({ a: scene.ink, b: scene.primary, t: person.together });
     const alpha = (0.32 + 0.5 * person.together) * quiet;
     if (person.host && person.together > 0.4) {
-      ctx.fillStyle = rgba(scene.primary, 0.16 * person.together * quiet);
+      ctx.fillStyle = rgba({
+        color: scene.primary,
+        alpha: 0.16 * person.together * quiet,
+      });
       ctx.beginPath();
       ctx.arc(person.x, person.y, person.r * 2.6, 0, TAU);
       ctx.fill();
     }
-    ctx.fillStyle = rgba(
+    ctx.fillStyle = rgba({
       color,
-      person.host ? Math.min(1, alpha + 0.15) : alpha,
-    );
+      alpha: person.host ? Math.min(1, alpha + 0.15) : alpha,
+    });
     ctx.beginPath();
     ctx.arc(person.x, person.y, person.r, 0, TAU);
     ctx.fill();
   }
 }
 
-function draw(ctx: CanvasRenderingContext2D, scene: Scene) {
+function draw({ ctx, scene }: DrawInput) {
   ctx.clearRect(0, 0, scene.w, scene.h);
-  drawGroups(ctx, scene);
-  drawPointerGroup(ctx, scene);
-  drawPeople(ctx, scene);
+  drawGroups({ ctx, scene });
+  drawPointerGroup({ ctx, scene });
+  drawPeople({ ctx, scene });
 }
 
 export function GatheringScene() {
@@ -459,7 +578,7 @@ export function GatheringScene() {
     let elapsed = 0;
     let visible = true;
 
-    const render = () => draw(ctx, scene);
+    const render = () => draw({ ctx, scene });
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -496,7 +615,7 @@ export function GatheringScene() {
       const dt = last ? Math.min((now - last) / 1000, 1 / 20) : 1 / 60;
       last = now;
       elapsed += dt;
-      step(scene, dt, elapsed);
+      step({ scene, dt, time: elapsed });
       render();
       frame = requestAnimationFrame(tick);
     };
@@ -532,9 +651,9 @@ export function GatheringScene() {
       scene.pointer = null;
     };
 
-    readColors(canvas, scene);
+    readColors({ canvas, scene });
     const themeObserver = new MutationObserver(() => {
-      readColors(canvas, scene);
+      readColors({ canvas, scene });
       render();
     });
     themeObserver.observe(document.documentElement, {

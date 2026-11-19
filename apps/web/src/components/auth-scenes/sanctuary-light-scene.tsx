@@ -736,7 +736,13 @@ const SLOW_FRAME_MS = 50;
 const HAND_EASE_PER_SECOND = 4;
 const SLOW_FRAME_LIMIT = 45;
 
-function compile(gl: WebGL2RenderingContext, type: number, source: string) {
+interface CompileInput {
+  gl: WebGL2RenderingContext;
+  type: number;
+  source: string;
+}
+
+function compile({ gl, type, source }: CompileInput) {
   const shader = gl.createShader(type);
   if (!shader) return null;
   gl.shaderSource(shader, source);
@@ -746,8 +752,14 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string) {
   return null;
 }
 
-function link(gl: WebGL2RenderingContext, vertex: WebGLShader, source: string) {
-  const fragment = compile(gl, gl.FRAGMENT_SHADER, source);
+interface LinkInput {
+  gl: WebGL2RenderingContext;
+  vertex: WebGLShader;
+  source: string;
+}
+
+function link({ gl, vertex, source }: LinkInput) {
+  const fragment = compile({ gl, type: gl.FRAGMENT_SHADER, source });
   const program = gl.createProgram();
   if (!fragment || !program) return null;
   gl.attachShader(program, vertex);
@@ -784,13 +796,15 @@ function createTarget(gl: WebGL2RenderingContext): Target {
   return { texture, framebuffer, width: 0, height: 0 };
 }
 
-function sizeTarget(
-  gl: WebGL2RenderingContext,
-  target: Target,
-  width: number,
-  height: number,
-  float: boolean,
-) {
+interface SizeTargetInput {
+  gl: WebGL2RenderingContext;
+  target: Target;
+  width: number;
+  height: number;
+  float: boolean;
+}
+
+function sizeTarget({ gl, target, width, height, float }: SizeTargetInput) {
   target.width = width;
   target.height = height;
   gl.bindTexture(gl.TEXTURE_2D, target.texture);
@@ -813,21 +827,27 @@ function sizeTarget(
  * composite pass. `onReady` fires after the first bake, `onUnsupported` when
  * WebGL2 is missing or lost. Returns cleanup.
  */
-function startScene(
-  canvas: HTMLCanvasElement,
-  onReady: () => void,
-  onUnsupported: () => void,
-) {
+interface StartSceneInput {
+  canvas: HTMLCanvasElement;
+  onReady: () => void;
+  onUnsupported: () => void;
+}
+
+function startScene({ canvas, onReady, onUnsupported }: StartSceneInput) {
   const gl = canvas.getContext('webgl2', {
     alpha: false,
     antialias: false,
     depth: false,
     powerPreference: 'low-power',
   });
-  const vertex = gl && compile(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
-  const staticProgram = gl && vertex && link(gl, vertex, STATIC_SHADER);
-  const shaftProgram = gl && vertex && link(gl, vertex, SHAFT_SHADER);
-  const compositeProgram = gl && vertex && link(gl, vertex, COMPOSITE_SHADER);
+  const vertex =
+    gl && compile({ gl, type: gl.VERTEX_SHADER, source: VERTEX_SHADER });
+  const staticProgram =
+    gl && vertex && link({ gl, vertex, source: STATIC_SHADER });
+  const shaftProgram =
+    gl && vertex && link({ gl, vertex, source: SHAFT_SHADER });
+  const compositeProgram =
+    gl && vertex && link({ gl, vertex, source: COMPOSITE_SHADER });
   if (!gl || !vertex || !staticProgram || !shaftProgram || !compositeProgram) {
     onUnsupported();
     return () => {};
@@ -840,13 +860,22 @@ function startScene(
   const programs = [staticProgram, shaftProgram, compositeProgram];
   const probe = float ? new Float32Array(4) : new Uint8Array(4);
 
-  const uniform = (program: WebGLProgram, name: string) =>
+  interface UniformInput {
+    program: WebGLProgram;
+    name: string;
+  }
+  interface SetCommonInput {
+    program: WebGLProgram;
+    width: number;
+    height: number;
+  }
+  const uniform = ({ program, name }: UniformInput) =>
     gl.getUniformLocation(program, name);
-  const setCommon = (program: WebGLProgram, width: number, height: number) => {
+  const setCommon = ({ program, width, height }: SetCommonInput) => {
     gl.useProgram(program);
-    gl.uniform2f(uniform(program, 'uRes'), width, height);
-    gl.uniform1f(uniform(program, 'uTime'), BAKE_TIME);
-    gl.uniform2f(uniform(program, 'uPointer'), 0, 0);
+    gl.uniform2f(uniform({ program: program, name: 'uRes' }), width, height);
+    gl.uniform1f(uniform({ program: program, name: 'uTime' }), BAKE_TIME);
+    gl.uniform2f(uniform({ program: program, name: 'uPointer' }), 0, 0);
   };
 
   const reduceMotion = window.matchMedia(
@@ -908,7 +937,7 @@ function startScene(
       gl.bindFramebuffer(gl.FRAMEBUFFER, target.framebuffer);
       gl.viewport(0, 0, target.width, target.height);
       gl.scissor(0, y0, target.width, Math.max(y1 - y0, 1));
-      setCommon(program, target.width, target.height);
+      setCommon({ program, width: target.width, height: target.height });
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
     gl.disable(gl.SCISSOR_TEST);
@@ -955,26 +984,36 @@ function startScene(
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.useProgram(compositeProgram);
     gl.uniform2f(
-      uniform(compositeProgram, 'uRes'),
+      uniform({ program: compositeProgram, name: 'uRes' }),
       canvas.width,
       canvas.height,
     );
-    gl.uniform1f(uniform(compositeProgram, 'uTime'), elapsed);
-    gl.uniform2f(uniform(compositeProgram, 'uPointer'), 0, 0);
-    gl.uniform1f(uniform(compositeProgram, 'uTap'), tap);
+    gl.uniform1f(
+      uniform({ program: compositeProgram, name: 'uTime' }),
+      elapsed,
+    );
+    gl.uniform2f(
+      uniform({ program: compositeProgram, name: 'uPointer' }),
+      0,
+      0,
+    );
+    gl.uniform1f(uniform({ program: compositeProgram, name: 'uTap' }), tap);
     const scale = canvas.width / Math.max(1, canvas.clientWidth);
     gl.uniform2f(
-      uniform(compositeProgram, 'uHand'),
+      uniform({ program: compositeProgram, name: 'uHand' }),
       hand.x * scale,
       canvas.height - hand.y * scale,
     );
-    gl.uniform1f(uniform(compositeProgram, 'uHandOn'), hand.on);
+    gl.uniform1f(
+      uniform({ program: compositeProgram, name: 'uHandOn' }),
+      hand.on,
+    );
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, surfaces.texture);
-    gl.uniform1i(uniform(compositeProgram, 'uStatic'), 0);
+    gl.uniform1i(uniform({ program: compositeProgram, name: 'uStatic' }), 0);
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, shafts.texture);
-    gl.uniform1i(uniform(compositeProgram, 'uShafts'), 1);
+    gl.uniform1i(uniform({ program: compositeProgram, name: 'uShafts' }), 1);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     drawn += 1;
     drawMs = performance.now() - started;
@@ -1038,26 +1077,29 @@ function startScene(
       maxSize / canvas.width,
       maxSize / canvas.height,
     );
-    sizeTarget(
+    sizeTarget({
       gl,
-      surfaces,
-      Math.max(1, Math.floor(canvas.width * ss)),
-      Math.max(1, Math.floor(canvas.height * ss)),
+      target: surfaces,
+      width: Math.max(1, Math.floor(canvas.width * ss)),
+      height: Math.max(1, Math.floor(canvas.height * ss)),
       float,
-    );
+    });
     // 0.75 of a source texel at 2x: a [1 3 3 1] tent per axis; nothing at 1x.
     tap = 0.375 * Math.max(surfaces.width / canvas.width - 1, 0);
     strips = 0;
-    sizeTarget(
+    sizeTarget({
       gl,
-      shafts,
-      Math.max(1, Math.min(surfaces.width, Math.ceil(canvas.clientWidth * ss))),
-      Math.max(
+      target: shafts,
+      width: Math.max(
+        1,
+        Math.min(surfaces.width, Math.ceil(canvas.clientWidth * ss)),
+      ),
+      height: Math.max(
         1,
         Math.min(surfaces.height, Math.ceil(canvas.clientHeight * ss)),
       ),
       float,
-    );
+    });
     baking = true;
     bakeRow = 0;
     stripRows = firstBake ? 16 : stripRows;
@@ -1136,11 +1178,11 @@ export function SanctuaryLightScene() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    return startScene(
+    return startScene({
       canvas,
-      () => setState('ready'),
-      () => setState('unsupported'),
-    );
+      onReady: () => setState('ready'),
+      onUnsupported: () => setState('unsupported'),
+    });
   }, []);
 
   return (

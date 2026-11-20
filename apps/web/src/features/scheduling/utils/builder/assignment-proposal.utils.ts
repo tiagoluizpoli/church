@@ -213,7 +213,7 @@ export interface ScheduleLoad {
   ordinals: Map<string, number>;
   /** The ordinal from which a pick is tagged. */
   heavyLoad: number;
-  /** The load from which the tag turns strong: twice the median load. */
+  /** The load from which the tag turns strong. */
   severeLoad: number;
   /** Volunteer id → everything they would serve here once applied. */
   totals: Map<string, number>;
@@ -273,7 +273,13 @@ export function scheduleOrdinals({
   return {
     ordinals,
     heavyLoad,
-    severeLoad: Math.max(heavyLoad + 1, median * 2),
+    // Twice the usual load, and well past the upper quartile, so the strong
+    // tag stays for the clear outlier even when most loads are light.
+    severeLoad: Math.max(
+      heavyLoad + 1,
+      median * 2,
+      Math.ceil(upperQuartile * 1.5),
+    ),
     totals,
   };
 }

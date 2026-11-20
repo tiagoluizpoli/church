@@ -41,6 +41,11 @@ import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
 export type AssignmentProposal = GetAssignmentProposal200;
+
+// The underline sits inside the trigger: the list scrolls sideways on
+// phones, and an overflow box would clip the default -5px offset.
+const TAB_TRIGGER =
+  'h-10 flex-none px-0 text-sm group-data-horizontal/tabs:after:bottom-0';
 type Addition = GetAssignmentProposal200AdditionsItem;
 
 /** `unknown`: the request failed without an answer, so it may have committed. */
@@ -425,34 +430,22 @@ export function AssignmentProposalPreview({
                 variant="line"
                 className="h-auto max-w-full justify-start gap-4 overflow-x-auto p-0"
               >
-                <TabsTrigger
-                  className="h-10 flex-none px-0 text-sm"
-                  value="shifts"
-                >
+                <TabsTrigger className={TAB_TRIGGER} value="shifts">
                   {m.builder_proposal_tab_shifts()}
                 </TabsTrigger>
                 {hasAdditions && (
-                  <TabsTrigger
-                    className="h-10 flex-none px-0 text-sm"
-                    value="attention"
-                  >
+                  <TabsTrigger className={TAB_TRIGGER} value="attention">
                     {m.builder_proposal_tab_attention({
                       count: attentionCount,
                     })}
                   </TabsTrigger>
                 )}
                 {hasAdditions && (
-                  <TabsTrigger
-                    className="h-10 flex-none px-0 text-sm"
-                    value="volunteers"
-                  >
+                  <TabsTrigger className={TAB_TRIGGER} value="volunteers">
                     {m.builder_proposal_tab_volunteers()}
                   </TabsTrigger>
                 )}
-                <TabsTrigger
-                  className="h-10 flex-none px-0 text-sm"
-                  value="gaps"
-                >
+                <TabsTrigger className={TAB_TRIGGER} value="gaps">
                   {m.builder_proposal_tab_gaps({ count: openPlaces })}
                 </TabsTrigger>
               </TabsList>

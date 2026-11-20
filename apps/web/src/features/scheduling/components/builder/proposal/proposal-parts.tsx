@@ -133,12 +133,37 @@ function reasonLines({
   ];
 }
 
+/** One roving tab stop in a grid of row controls. */
+export interface RovingProps {
+  tabIndex: number;
+  'data-roving': string;
+  onFocus: () => void;
+}
+
+interface ShortReasonInput {
+  reason: GetAssignmentProposal200AdditionsItemReason;
+}
+
+/** The deciding rule in a few words, for the row itself. */
+export function shortReason({ reason }: ShortReasonInput): string {
+  if (reason.decidedBy === 'only_candidate')
+    return m.builder_proposal_reason_short_only();
+  if (reason.decidedBy === 'fewest_eligible_shifts')
+    return m.builder_proposal_reason_short_scarcity();
+  if (reason.decidedBy === 'fewest_cycle_assignments')
+    return m.builder_proposal_reason_short_workload();
+  return m.builder_proposal_reason_short_options({
+    count: reason.needCandidateCount,
+  });
+}
+
 interface ReasonPopoverProps extends ReasonLinesInput {
   name: string;
+  roving?: RovingProps;
 }
 
 /** The full reason on click (never hover-only), so the row keeps one line. */
-export function ReasonPopover({ name, ...input }: ReasonPopoverProps) {
+export function ReasonPopover({ name, roving, ...input }: ReasonPopoverProps) {
   const touch = useFormControlSize() === 'touch';
   const label = m.builder_proposal_why_for({ name });
   return (
@@ -150,6 +175,7 @@ export function ReasonPopover({ name, ...input }: ReasonPopoverProps) {
             size={touch ? 'icon-touch' : 'icon-sm'}
             aria-label={label}
             className="text-muted-foreground hover:text-foreground"
+            {...roving}
           />
         }
       >

@@ -1384,6 +1384,28 @@ describe('Assignment proposal preview', () => {
     ).toBeEnabled();
   });
 
+  it('gives the row controls one tab stop and moves between them with the arrow keys', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    const boxes = within(preview).getAllByRole('checkbox');
+    expect(boxes.filter((box) => box.tabIndex === 0)).toHaveLength(0);
+    const whys = within(preview).getAllByRole('button', { name: /^Why / });
+    expect(whys.map((why) => why.tabIndex)).toEqual([0, -1, -1]);
+
+    whys[0].focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(boxes[0]).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(boxes[1]).toHaveFocus();
+    expect(boxes[1].tabIndex).toBe(0);
+    expect(whys[0].tabIndex).toBe(-1);
+    await userEvent.keyboard('{End}');
+    expect(boxes[2]).toHaveFocus();
+  });
+
   it("excludes all of one volunteer's picks and submits them as excluded pairs", async () => {
     vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
       twoDayProposal,

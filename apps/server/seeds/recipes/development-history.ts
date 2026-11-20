@@ -1,6 +1,7 @@
 import { scheduleLastTold } from '@church/db';
 import {
   addCalendarDays,
+  addCalendarMonths,
   type CalendarDay,
   compareInstants,
   enumerateCalendarDays,
@@ -38,6 +39,8 @@ import {
   buildMinistryParticipation,
   buildShift,
   buildShiftRequirement,
+  type EventStatus,
+  type ParticipationState,
 } from '../builders/scheduling';
 import {
   buildConfirmedAvailabilityCheck,
@@ -269,6 +272,9 @@ function planEvents({
 }
 
 interface MaterializeEventInput {
+  /** Defaults to a published slice of a past Event: the sent history. */
+  participationState?: ParticipationState;
+  eventStatus?: EventStatus;
   db: SeedWriter;
   churchId: string;
   cycleId: string;
@@ -289,6 +295,8 @@ async function materializeEvent({
   plannedEvent,
   ministries,
   ministryOrder,
+  participationState = 'published',
+  eventStatus = 'past',
 }: MaterializeEventInput): Promise<PlannedShift[]> {
   const [firstEventTimeBlock] = plannedEvent.eventTimeBlocks;
   const lastEventTimeBlock = plannedEvent.eventTimeBlocks.at(-1);
@@ -306,7 +314,7 @@ async function materializeEvent({
     title: plannedEvent.title,
     start: firstEventTimeBlock.start,
     end: lastEventTimeBlock.end,
-    status: 'past',
+    status: eventStatus,
     sourceTemplateId: plannedEvent.sourceTemplateId,
   });
 
@@ -355,7 +363,7 @@ async function materializeEvent({
       ministryId: ministry.ministryId,
       eventId,
       id: participationId,
-      state: 'published',
+      state: participationState,
       eventTimeBlockIds: servedEventTimeBlocks.map(
         ({ eventTimeBlockId }) => eventTimeBlockId,
       ),
@@ -1413,4 +1421,95 @@ interface DayTimeAtInput {
 
 interface ShiftMomentInput {
   shift: PlannedShift;
+}
+
+export interface LoadDevelopmentUpcomingCycleInput
+  extends Omit<LoadDevelopmentHistoryInput, 'history' | 'userIdByEmail'> {}
+
+/**
+ * Two months after the anchor's: a draft Cycle whose every Ministry slice has
+ * asked for availability and had every Membership confirm, with no
+ * Assignments, so the Assignment proposal has hundreds of needs to fill.
+ */
+export async function loadDevelopmentUpcomingCycle({
+  db,
+  churchId,
+  timeZone,
+  anchor,
+  directory,
+  gatherings,
+  seededGatherings,
+  ministries,
+  volunteerIdByEmail,
+}: LoadDevelopmentUpcomingCycleInput): Promise<SeededHistoricalCycle> {
+  const startDate = addCalendarMonths({ day: anchor, months: 2 });
+  const cycle: SeededHistoricalCycle = {
+    id: deriveSeedId({ kind: 'cycle', parentIds: [churchId, 'upcoming'] }),
+    startDate,
+    endDate: addCalendarDays({
+      day: addCalendarMonths({ day: anchor, months: 3 }),
+      days: -1,
+    }),
+  };
+  await buildCycle({
+    db,
+    churchId,
+    id: cycle.id,
+    name: cycleNameOf({ startDate: cycle.startDate }),
+    startDate: cycle.startDate,
+    endDate: cycle.endDate,
+    state: 'draft',
+  });
+  const ministryOrder = [
+    ...new Set(gatherings.servingRules.map((rule) => rule.ministry.name)),
+  ];
+  const shifts: PlannedShift[] = [];
+  for (const plannedEvent of planEvents({
+    window: cycle,
+    timeZone,
+    gatherings,
+    seededGatherings,
+  })) {
+    shifts.push(
+      ...(await materializeEvent({
+        db,
+        churchId,
+        cycleId: cycle.id,
+        plannedEvent,
+        ministries,
+        ministryOrder,
+        participationState: 'availability_requested',
+        eventStatus: 'scheduled',
+      })),
+    );
+  }
+  await askAvailabilityRound({
+    db,
+    churchId,
+    cycle,
+    directory,
+    history: {
+      unavailability: [],
+      declines: [],
+      resolvedOverlaps: [],
+      crossMinistryService: [],
+      shortfalls: [],
+      unreadNotificationEmails: [],
+    },
+    ministries,
+    volunteerIdByEmail,
+    shifts,
+    ledger: new StaffingLedger({
+      directory,
+      ministryBlueprints: new Map(
+        directory.ministries.map((ministry) => [ministry.name, ministry]),
+      ),
+    }),
+    confirmedAt: instantAt({
+      day: addCalendarDays({ day: anchor, days: -1 }),
+      time: '20:00',
+      timeZone,
+    }),
+  });
+  return cycle;
 }

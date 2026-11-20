@@ -30,6 +30,7 @@ import {
   type SeededMinistryStructure,
 } from './development-gatherings';
 import {
+  type LoadDevelopmentUpcomingCycleInput,
   loadDevelopmentHistory,
   type SeededHistoricalCycle,
 } from './development-history';
@@ -46,6 +47,8 @@ export interface DevelopmentRecipeResult {
   keyPersonas: readonly KeyPersona[];
   /** The previous complete month before the anchor's, sent and published. */
   historicalCycle: SeededHistoricalCycle;
+  /** What the upcoming-cycle step needs; loaded after verification. */
+  upcoming: Omit<LoadDevelopmentUpcomingCycleInput, 'db'>;
 }
 
 /** Ids a blueprint does not name, keyed so the same entry always gets the same id. */
@@ -473,6 +476,16 @@ export function createDevelopmentRecipe({
         secondChurch,
         keyPersonas: blueprint.keyPersonas,
         historicalCycle,
+        upcoming: {
+          churchId: church.id,
+          timeZone: blueprint.primary.church.timezone,
+          anchor,
+          directory: blueprint.primary,
+          gatherings: blueprint.gatherings,
+          seededGatherings,
+          ministries: primary.ministries,
+          volunteerIdByEmail: primary.volunteerIdByEmail,
+        },
       };
     },
   };

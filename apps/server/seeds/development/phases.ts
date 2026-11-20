@@ -11,6 +11,7 @@ import {
   createDevelopmentRecipe,
   type DevelopmentRecipeResult,
 } from '../recipes/development';
+import { loadDevelopmentUpcomingCycle } from '../recipes/development-history';
 import type { ReseedPhases } from './reseed';
 import { verifyDevelopmentGraph } from './verify';
 
@@ -31,6 +32,18 @@ export function createDevelopmentReseedPhases({
     migrate: () => migrateDevelopmentSchema({ pool }),
     load: () =>
       runSeedRecipe({ db, recipe: createDevelopmentRecipe({ anchor }) }),
-    verify: ({ seeded }) => verifyDevelopmentGraph({ db, seeded }),
+    verify: async ({ seeded }) => {
+      await verifyDevelopmentGraph({ db, seeded });
+      // After verification: the graph invariants describe the sent history
+      // alone. This draft Cycle is the large one for the suggestion dialog.
+      await runSeedRecipe({
+        db,
+        recipe: {
+          name: 'development-upcoming-cycle',
+          load: ({ db: tx }) =>
+            loadDevelopmentUpcomingCycle({ ...seeded.upcoming, db: tx }),
+        },
+      });
+    },
   };
 }

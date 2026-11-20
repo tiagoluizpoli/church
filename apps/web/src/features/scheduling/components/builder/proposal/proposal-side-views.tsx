@@ -318,6 +318,12 @@ export function ProposalGapTable({
                 className={cn(CELL, 'text-right tabular-nums max-md:text-left')}
               >
                 <span className="max-md:hidden">{open}</span>
+                {/* Count first on every size, then the reopened note. */}
+                <span className="md:hidden">
+                  {open === 1
+                    ? m.builder_proposal_gap_one()
+                    : m.builder_proposal_gap_many({ count: open })}
+                </span>
                 {reopened > 0 && (
                   <span className="ms-2 text-muted-foreground">
                     {/* All of them reopened: say so without repeating the number. */}
@@ -334,11 +340,6 @@ export function ProposalGapTable({
                           })}
                   </span>
                 )}
-                <span className="md:hidden">
-                  {open === 1
-                    ? m.builder_proposal_gap_one()
-                    : m.builder_proposal_gap_many({ count: open })}
-                </span>
               </td>
               <td className={cn(CELL, 'text-right')}>
                 <Button

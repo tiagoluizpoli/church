@@ -522,7 +522,7 @@ export function AssignmentProposalPreview({
               {coverage.required > 0 && (
                 <div className="flex items-center gap-3">
                   {/* The reopened note shares the label's line, so nothing moves. */}
-                  <p className="max-w-56 truncate text-muted-foreground text-sm max-md:sr-only">
+                  <p className="whitespace-nowrap text-muted-foreground text-sm max-md:sr-only">
                     {m.builder_proposal_coverage_short()}
                     {excluded.size > 0 &&
                       ` · ${

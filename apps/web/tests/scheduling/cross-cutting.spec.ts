@@ -90,10 +90,10 @@ test.describe('DL4-X1 church isolation', () => {
     // Same check from the UI: the cycle list never renders churchA's cycle.
     await page.goto('/cycles');
     await expect(
-      page.getByRole('button', { name: `Selecionar ${churchB.cycle.name}` }),
+      page.getByRole('link', { name: `Abrir ${churchB.cycle.name}` }),
     ).toBeVisible({ timeout: 15_000 });
     await expect(
-      page.getByRole('button', { name: `Selecionar ${churchA.cycle.name}` }),
+      page.getByRole('link', { name: `Abrir ${churchA.cycle.name}` }),
     ).toHaveCount(0);
   });
 });
@@ -150,9 +150,7 @@ test.describe('DL4-X2 network failure on send', () => {
     await page.route('**/cycles/*/send', (route) => route.abort('failed'));
 
     await page.goto('/cycles');
-    await page
-      .getByRole('button', { name: `Selecionar ${month.cycleName}` })
-      .click();
+    await page.getByRole('link', { name: `Abrir ${month.cycleName}` }).click();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(
       month.cycleName,
     );

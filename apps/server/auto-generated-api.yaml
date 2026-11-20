@@ -457,7 +457,9 @@ paths:
       summary: List Cycles
       tags:
         - planning
-      description: List the Church Cycles, optionally filtered by state.
+      description: List the Church Cycles newest start first, filtered by state or
+        period, name and an overlapping day range, with the per-state counts of
+        all of them.
       parameters:
         - schema:
             type: string
@@ -467,6 +469,35 @@ paths:
               - past
           in: query
           name: state
+          required: false
+        - schema:
+            type: string
+            enum:
+              - current
+              - past
+          in: query
+          name: period
+          required: false
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          in: query
+          name: search
+          required: false
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: to
           required: false
       responses:
         "200":
@@ -509,6 +540,10 @@ paths:
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        eventCount:
+                          type: integer
+                          minimum: -9007199254740991
+                          maximum: 9007199254740991
                       required:
                         - id
                         - churchId
@@ -518,9 +553,59 @@ paths:
                         - state
                         - createdAt
                         - updatedAt
+                        - eventCount
                       additionalProperties: false
+                  pastMatching:
+                    type: integer
+                    minimum: -9007199254740991
+                    maximum: 9007199254740991
+                  currentCycleId:
+                    nullable: true
+                    type: string
+                  next:
+                    type: object
+                    properties:
+                      startDate:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                      endDate:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                      isDue:
+                        type: boolean
+                    required:
+                      - startDate
+                      - endDate
+                      - isDue
+                    additionalProperties: false
+                  counts:
+                    type: object
+                    properties:
+                      draft:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      sent:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      past:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                    required:
+                      - draft
+                      - sent
+                      - past
+                    additionalProperties: false
                 required:
                   - cycles
+                  - pastMatching
+                  - currentCycleId
+                  - next
+                  - counts
                 additionalProperties: false
   /api/v1/admin/cycles/anchors:
     get:

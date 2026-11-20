@@ -16,6 +16,10 @@ import {
   type DeleteEventTimeBlockInput,
   usePlanningAdminMutations,
 } from './use-planning-admin-mutations';
+import type {
+  ListCycles200Counts,
+  ListCycles200Next,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { adminApi } from '@/utils/api-instances';
 
 export interface SelectCycleInput {
@@ -25,6 +29,10 @@ export interface SelectCycleInput {
 export interface UsePlanningAdminResult {
   isAccessDenied: boolean;
   cycles: CycleSummary[];
+  /** The server's per-state counts of every Cycle; null until they load. */
+  cycleCounts: ListCycles200Counts | null;
+  /** The month to plan next; preloaded with the route, so stable from first paint. */
+  cycleNext: ListCycles200Next | null;
   templates: PlanningTemplateSummary[];
   selectedCycleId: string | null;
   selectedCycle: SelectedCycle | null;
@@ -98,6 +106,8 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   return {
     isAccessDenied,
     cycles,
+    cycleCounts: cyclesQuery.data?.counts ?? null,
+    cycleNext: cyclesQuery.data?.next ?? null,
     templates,
     selectedCycleId,
     selectedCycle,

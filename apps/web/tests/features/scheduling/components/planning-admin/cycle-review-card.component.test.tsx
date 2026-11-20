@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { type ReactNode, useLayoutEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
+import { SelectCycleButtons } from './select-cycle-buttons';
 import { CycleReviewCard } from '@/features/scheduling/components/planning-admin/cycle-review-card';
 import {
   PlanningAdminProvider,
@@ -65,7 +65,7 @@ function render({
 }: RenderCycleReviewCardInput = {}) {
   return renderWithProviders(
     <PlanningAdminProvider>
-      <CycleListCard />
+      <SelectCycleButtons />
       <CycleReviewCard isReadOnly={isReadOnly} revealEventId={revealEventId} />
     </PlanningAdminProvider>,
     { churchTimezone },

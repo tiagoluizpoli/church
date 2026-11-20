@@ -325,9 +325,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   // Closing the failed overlap attempt returns to the cycles list (the
   // dialog's own URL is /new); re-select the original cycle to send it.
   await expect(page).toHaveURL(/\/cycles\/?$/);
-  await page
-    .getByRole('button', { name: `Selecionar ${month.cycleName}` })
-    .click();
+  await page.getByRole('link', { name: `Abrir ${month.cycleName}` }).click();
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(
     month.cycleName,
   );

@@ -165,7 +165,9 @@ export function ApplyTemplatesDialog({
               {m.cycle_apply_retry()}
             </Button>
           </div>
-        ) : templates === undefined ? (
+        ) : templates === undefined || selection === null ? (
+          // Until the entry list seeds the selection, a box would show a
+          // state the next render overwrites, so a click could be lost.
           <Pending label={m.cycle_apply_loading()} className="space-y-2">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />

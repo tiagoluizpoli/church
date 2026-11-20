@@ -48,13 +48,63 @@ describe('Phase 3 planning repositories', () => {
     });
     const listed = await repository.list({
       churchId: ChurchId.from(seed.churchAId),
-      state: 'sent',
+      states: ['sent'],
     });
 
     expect(found.name).toBe('August 2026');
     expect(found.state).toBe('sent');
     expect(listed).toHaveLength(1);
     expect(listed[0]?.churchId).toBe(seed.churchAId);
+  });
+
+  it('resolves elapsed cycles to Past and counts states per church only', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const repository = new DrizzleCycleRepository({ db: schedulingTestDb });
+    const churchId = ChurchId.from(seed.churchAId);
+    const elapsed = await repository.create({
+      churchId,
+      name: 'July 2026',
+      startDate: new Date('2026-07-01T00:00:00.000Z'),
+      endDate: new Date('2026-07-31T00:00:00.000Z'),
+      state: 'sent',
+    });
+    const lastDayToday = await repository.create({
+      churchId,
+      name: 'August 2026',
+      startDate: new Date('2026-08-01T00:00:00.000Z'),
+      endDate: new Date('2026-08-31T00:00:00.000Z'),
+    });
+    const otherChurchElapsed = await repository.create({
+      churchId: ChurchId.from(seed.churchBId),
+      name: 'Other Church',
+      startDate: new Date('2026-07-01T00:00:00.000Z'),
+      endDate: new Date('2026-07-31T00:00:00.000Z'),
+    });
+
+    await repository.resolveElapsed({
+      churchId,
+      today: new Date('2026-08-31T00:00:00.000Z'),
+    });
+
+    expect(
+      (await repository.getById({ churchId, cycleId: elapsed.id })).state,
+    ).toBe('past');
+    expect(
+      (await repository.getById({ churchId, cycleId: lastDayToday.id })).state,
+    ).toBe('draft');
+    expect(
+      (
+        await repository.getById({
+          churchId: ChurchId.from(seed.churchBId),
+          cycleId: otherChurchElapsed.id,
+        })
+      ).state,
+    ).toBe('draft');
+    expect(await repository.countByState({ churchId })).toEqual({
+      draft: 1,
+      sent: 0,
+      past: 1,
+    });
   });
 
   it('detects overlapping cycles per church only', async () => {

@@ -937,6 +937,152 @@ describe('GET /admin/cycles', () => {
     ).toEqual([newest.id, middle.id, oldest.id]);
   });
 
+  it('filters by period and counts every state whatever the filter', async () => {
+    const seed = await signIn();
+    const past = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Elapsed',
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+    });
+    const draft = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Draft',
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+    });
+    const current = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/cycles?period=current',
+    });
+    const elapsed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/cycles?period=past',
+    });
+
+    expect(
+      current.json().cycles.map((listed: { id: string }) => listed.id),
+    ).toEqual([draft.id]);
+    expect(
+      elapsed.json().cycles.map((listed: { id: string }) => listed.id),
+    ).toEqual([past.id]);
+    expect(current.json().counts).toEqual({ draft: 1, sent: 0, past: 1 });
+    expect(elapsed.json().counts).toEqual({ draft: 1, sent: 0, past: 1 });
+  });
+
+  it('filters by part of the name and by the days a Cycle overlaps', async () => {
+    const seed = await signIn();
+    const october = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Outubro 2026',
+      startDate: '2026-10-01',
+      endDate: '2026-10-31',
+    });
+    const november = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Novembro 2026',
+      startDate: '2026-11-01',
+      endDate: '2026-11-30',
+    });
+    const ids = async (query: string) =>
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/api/v1/admin/cycles?${query}`,
+        })
+      )
+        .json()
+        .cycles.map((listed: { id: string }) => listed.id);
+
+    expect(await ids('search=NOVEMBRO')).toEqual([november.id]);
+    expect(await ids('search=100%25')).toEqual([]);
+    expect(await ids('from=2026-10-31&to=2026-10-31')).toEqual([october.id]);
+    expect(await ids('from=2026-11-15')).toEqual([november.id]);
+    expect(await ids('to=2026-10-31')).toEqual([october.id]);
+    expect(await ids('from=2026-10-15&to=2026-11-15')).toEqual([
+      november.id,
+      october.id,
+    ]);
+  });
+
+  it('counts the Past Cycles a search matches, whatever the state filter', async () => {
+    const seed = await signIn();
+    await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Setembro 2026',
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+    });
+    await seedCycle({
+      churchId: seed.churchAId,
+      name: 'Agosto 2026',
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
+    });
+    const read = async (query: string) =>
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/api/v1/admin/cycles?${query}`,
+        })
+      ).json();
+
+    const searched = await read('period=current&search=setembro');
+    const unfiltered = await read('period=current');
+
+    expect(searched.cycles).toEqual([]);
+    expect(searched.pastMatching).toBe(1);
+    expect(unfiltered.pastMatching).toBe(2);
+  });
+
+  it('names the Sent Cycle running today, and none while it is a draft', async () => {
+    const seed = await signIn();
+    const running = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-01',
+      endDate: '2026-10-31',
+    });
+    const read = async () =>
+      (await app.inject({ method: 'GET', url: '/api/v1/admin/cycles' })).json()
+        .currentCycleId;
+
+    expect(await read()).toBeNull();
+    await db
+      .update(cycle)
+      .set({ state: 'sent' })
+      .where(eq(cycle.id, running.id));
+    expect(await read()).toBe(running.id);
+  });
+
+  it('counts each listed Cycle Events, leaving cancelled ones out', async () => {
+    const seed = await signIn();
+    const planned = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-01',
+      endDate: '2026-10-31',
+    });
+    for (const status of ['draft', 'cancelled'] as const) {
+      await buildEvent({
+        db,
+        churchId: seed.churchAId,
+        cycleId: planned.id,
+        title: status,
+        start: parseInstant({ value: '2026-10-18T13:00:00Z' }),
+        end: parseInstant({ value: '2026-10-18T15:00:00Z' }),
+        status,
+      });
+    }
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/cycles',
+    });
+
+    expect(response.json().cycles).toEqual([
+      expect.objectContaining({ id: planned.id, eventCount: 1 }),
+    ]);
+  });
+
   it('answers 401 signed out and 403 without the capability', async () => {
     await signIn({ persona: 'member' });
     const forbidden = await app.inject({

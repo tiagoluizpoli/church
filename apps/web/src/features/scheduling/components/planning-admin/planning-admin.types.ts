@@ -38,6 +38,8 @@ export interface CyclesTableRow {
   name: string;
   window: string;
   state: CycleSummary['state'];
+  eventCount: number;
+  isRunning: boolean;
 }
 
 export interface TemplateLibraryTableRow {

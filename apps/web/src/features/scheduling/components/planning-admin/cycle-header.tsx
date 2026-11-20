@@ -1,12 +1,11 @@
 import { m } from '@church/i18n/messages';
-import { cycleStateLabel, stateBadgeVariant } from './planning-admin.utils';
+import { CycleStateBadge } from './cycle-state-badge';
 import {
   useCycleHeader,
   useCycleListStats,
   usePlanningTemplateLibraryStats,
 } from './planning-admin-context';
 import { HeaderStatChip } from '@/components/header-stat-chip';
-import { Badge } from '@/components/ui/badge';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 
 interface CycleHeaderProps {
@@ -43,12 +42,10 @@ export function CycleHeader({ showName = true }: CycleHeaderProps) {
             {m.cycle_header_status()}
           </span>
         )}
-        <Badge
-          data-testid="selected-cycle-state"
-          variant={stateBadgeVariant({ state: nameAndStatus.status })}
-        >
-          {cycleStateLabel({ state: nameAndStatus.status })}
-        </Badge>
+        <CycleStateBadge
+          testId="selected-cycle-state"
+          state={nameAndStatus.status}
+        />
       </div>
       <HeaderStatChip
         testId="cycle-period-chip"
@@ -75,24 +72,27 @@ export function CycleHeader({ showName = true }: CycleHeaderProps) {
  * stay empty outside of a cycle review (see the leak-into-list-view fix).
  */
 export function CycleListStats() {
-  const { totalCount, draftCount, sentCount } = useCycleListStats();
+  const counts = useCycleListStats();
+  if (!counts) {
+    return null;
+  }
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
       <HeaderStatChip
-        testId="cycles-total-chip"
-        label={m.nav_cycles()}
-        value={String(totalCount)}
-      />
-      <HeaderStatChip
         testId="cycles-draft-chip"
-        label={m.cycles_state_draft()}
-        value={String(draftCount)}
+        label={m.cycles_chip_draft()}
+        value={String(counts.draft)}
       />
       <HeaderStatChip
         testId="cycles-sent-chip"
-        label={m.cycles_state_sent()}
-        value={String(sentCount)}
+        label={m.cycles_chip_sent()}
+        value={String(counts.sent)}
+      />
+      <HeaderStatChip
+        testId="cycles-past-chip"
+        label={m.cycles_chip_past()}
+        value={String(counts.past)}
       />
     </div>
   );

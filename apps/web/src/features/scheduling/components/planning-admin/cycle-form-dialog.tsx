@@ -36,7 +36,7 @@ export interface CycleFormDialogProps {
   title: string;
   description: string;
   submitLabel: string;
-  /** Pre-fills an edit; a given name counts as authored, never re-suggested. */
+  /** Pre-fills the form; a given name counts as authored, never re-suggested. */
   initialValues?: CycleFormValues;
   /** Resolve to finish; reject to keep the dialog open with the error shown.
    * The caller closes the dialog and owns navigation and cache refresh. */
@@ -62,7 +62,8 @@ interface InitialFormInput {
 function initialForm({ initialValues }: InitialFormInput): FormState {
   return {
     values: initialValues ?? { name: '', startDate: '', endDate: '' },
-    nameAuthored: initialValues !== undefined,
+    // A blank name, as in a prefilled new Cycle, stays a derived suggestion.
+    nameAuthored: Boolean(initialValues?.name),
   };
 }
 

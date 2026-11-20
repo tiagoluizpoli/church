@@ -1,5 +1,11 @@
 import type { ChurchId, CycleId, EventId } from '../../branded-ids';
-import type { Cycle, CycleAnchors, CycleState } from '../../entities/cycle';
+import type {
+  Cycle,
+  CycleAnchors,
+  CycleList,
+  CyclePeriod,
+  CycleState,
+} from '../../entities/cycle';
 import type { EventWithEventTimeBlocks } from '../../entities/event';
 
 export interface CreateCycleManagerInput {
@@ -12,6 +18,10 @@ export interface CreateCycleManagerInput {
 export interface ListCyclesManagerInput {
   churchId: ChurchId;
   state?: CycleState;
+  period?: CyclePeriod;
+  search?: string;
+  from?: Date;
+  to?: Date;
 }
 
 export interface GetCycleAnchorsManagerInput {
@@ -66,7 +76,7 @@ export interface CycleDetails {
 
 export interface ICycleManager {
   createCycle(input: CreateCycleManagerInput): Promise<Cycle>;
-  listCycles(input: ListCyclesManagerInput): Promise<Cycle[]>;
+  listCycles(input: ListCyclesManagerInput): Promise<CycleList>;
   /** The current and next Cycle for the Church's today. */
   getCycleAnchors(input: GetCycleAnchorsManagerInput): Promise<CycleAnchors>;
   getCycle(input: GetCycleManagerInput): Promise<CycleDetails>;

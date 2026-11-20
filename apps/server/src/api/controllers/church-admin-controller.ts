@@ -238,18 +238,27 @@ export class ChurchAdminController implements FastifyController {
           tags: ['planning'],
           operationId: 'listCycles',
           summary: 'List Cycles',
-          description: 'List the Church Cycles, optionally filtered by state.',
+          description:
+            'List the Church Cycles newest start first, filtered by state or period, name and an overlapping day range, with the per-state counts of all of them.',
           query: listCyclesQuerySchema,
           response: { 200: cycleListResponseSchema },
         },
       },
       async (request, reply) => {
         const query = request.query as z.infer<typeof listCyclesQuerySchema>;
-        const cycles = await this.cycleManager.listCycles({
+        const list = await this.cycleManager.listCycles({
           churchId: ChurchId.from(request.churchId),
           state: query.state,
+          period: query.period,
+          search: query.search,
+          from: query.from
+            ? dateFromCalendarDayString({ value: query.from })
+            : undefined,
+          to: query.to
+            ? dateFromCalendarDayString({ value: query.to })
+            : undefined,
         });
-        return reply.send(cycleMapper.listToResponse(cycles));
+        return reply.send(cycleMapper.listToResponse(list));
       },
     );
 

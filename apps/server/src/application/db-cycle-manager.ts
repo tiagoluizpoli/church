@@ -1,6 +1,10 @@
 import { NotFoundError } from '@church/core';
 import {
+  addCalendarDays,
+  addCalendarMonths,
+  type CalendarDay,
   compareCalendarDays,
+  firstOfMonth,
   fromDateColumn,
   now,
   parseTimeOfDay,
@@ -36,7 +40,14 @@ import type { PlanningEventRepository } from '../domain/contracts/infrastructure
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import { Cycle, type CycleAnchors } from '../domain/entities/cycle';
+import {
+  Cycle,
+  type CycleAnchors,
+  type CycleList,
+  type CyclePeriod,
+  type CycleState,
+  type NextCycleSuggestion,
+} from '../domain/entities/cycle';
 import type { EventWithEventTimeBlocks } from '../domain/entities/event';
 import {
   DraftStaffingReconciliationRequiredError,
@@ -51,6 +62,43 @@ import type {
   StaffingSeedEventTimeBlock,
   UsualSetupStaffingSeeder,
 } from './usual-setup-staffing-seeder';
+
+interface SuggestNextCycleInput {
+  latestEnd: CalendarDay | null;
+  churchToday: CalendarDay;
+}
+
+/** The day after the latest Cycle, never before this month, to its month's end. */
+export function suggestNextCycle({
+  latestEnd,
+  churchToday,
+}: SuggestNextCycleInput): NextCycleSuggestion {
+  const thisMonth = firstOfMonth({ day: churchToday });
+  const afterLatest = latestEnd
+    ? addCalendarDays({ day: latestEnd, days: 1 })
+    : thisMonth;
+  const startDate =
+    compareCalendarDays({ left: afterLatest, right: thisMonth }) < 0
+      ? thisMonth
+      : afterLatest;
+  return {
+    startDate,
+    endDate: addCalendarDays({
+      day: addCalendarMonths({ day: startDate, months: 1 }),
+      days: -1,
+    }),
+    isDue:
+      compareCalendarDays({
+        left: startDate,
+        right: addCalendarMonths({ day: churchToday, months: 2 }),
+      }) < 0,
+  };
+}
+
+const PERIOD_STATES: Record<CyclePeriod, CycleState[]> = {
+  current: ['draft', 'sent'],
+  past: ['past'],
+};
 
 interface EnsureResolvedCycleInput {
   cycle: Cycle;
@@ -166,25 +214,67 @@ export class DbCycleManager implements ICycleManager {
     });
   }
 
-  async listCycles(input: ListCyclesManagerInput): Promise<Cycle[]> {
+  async listCycles(input: ListCyclesManagerInput): Promise<CycleList> {
     const church = await this.churchRepository.getById({ id: input.churchId });
-    // Every row is resolved before the state filter, so a Cycle that elapsed
-    // while still stored as Draft or Sent is found as Past.
-    const cycles = await this.cycleRepository.list({
-      churchId: input.churchId,
+    const churchToday = today({ instant: now(), timeZone: church.timezone });
+    // Resolved before the state filter, so a Cycle that elapsed while still
+    // stored as Draft or Sent is found and counted as Past.
+    const todayDate = toDate({
+      instant: toInstant({
+        day: churchToday,
+        time: parseTimeOfDay({ value: '00:00' }),
+        timeZone: 'UTC',
+      }),
     });
-    const resolvedCycles = await Promise.all(
-      cycles.map((cycle) =>
-        this.ensureResolvedCycle({
-          cycle,
-          churchTimeZone: church.timezone,
-        }),
-      ),
-    );
+    await this.cycleRepository.resolveElapsed({
+      churchId: input.churchId,
+      today: todayDate,
+    });
+    const [cycles, counts] = await Promise.all([
+      this.cycleRepository.list({
+        churchId: input.churchId,
+        states: input.state
+          ? [input.state]
+          : input.period
+            ? PERIOD_STATES[input.period]
+            : undefined,
+        search: input.search,
+        from: input.from,
+        to: input.to,
+      }),
+      this.cycleRepository.countByState({ churchId: input.churchId }),
+    ]);
 
-    return input.state
-      ? resolvedCycles.filter((cycle) => cycle.state === input.state)
-      : resolvedCycles;
+    const narrowed = Boolean(input.search || input.from || input.to);
+    const [eventCounts, latestEnd, pastMatching, anchors] = await Promise.all([
+      this.cycleRepository.countEvents({
+        churchId: input.churchId,
+        cycleIds: cycles.map((listed) => listed.id),
+      }),
+      this.cycleRepository.findLatestEnd({ churchId: input.churchId }),
+      narrowed
+        ? this.cycleRepository.count({
+            churchId: input.churchId,
+            states: ['past'],
+            search: input.search,
+            from: input.from,
+            to: input.to,
+          })
+        : counts.past,
+      this.cycleRepository.findAnchors({
+        churchId: input.churchId,
+        today: todayDate,
+      }),
+    ]);
+
+    return {
+      cycles,
+      counts,
+      eventCounts,
+      pastMatching,
+      currentCycleId: anchors.current?.id ?? null,
+      next: suggestNextCycle({ latestEnd, churchToday }),
+    };
   }
 
   async getCycleAnchors(

@@ -165,6 +165,20 @@ export type CreateCycle409 = {
 
 export type ListCyclesParams = {
 state?: ListCyclesState;
+period?: ListCyclesPeriod;
+/**
+ * @minLength 1
+ * @maxLength 100
+ */
+search?: string;
+/**
+ * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+ */
+from?: string;
+/**
+ * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+ */
+to?: string;
 };
 
 export type ListCyclesState = typeof ListCyclesState[keyof typeof ListCyclesState];
@@ -173,6 +187,14 @@ export type ListCyclesState = typeof ListCyclesState[keyof typeof ListCyclesStat
 export const ListCyclesState = {
   draft: 'draft',
   sent: 'sent',
+  past: 'past',
+} as const;
+
+export type ListCyclesPeriod = typeof ListCyclesPeriod[keyof typeof ListCyclesPeriod];
+
+
+export const ListCyclesPeriod = {
+  current: 'current',
   past: 'past',
 } as const;
 
@@ -198,10 +220,50 @@ export type ListCycles200CyclesItem = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  eventCount: number;
+};
+
+export type ListCycles200Next = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDate: string;
+  isDue: boolean;
+};
+
+export type ListCycles200Counts = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  draft: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  sent: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  past: number;
 };
 
 export type ListCycles200 = {
   cycles: ListCycles200CyclesItem[];
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  pastMatching: number;
+  /** @nullable */
+  currentCycleId: string | null;
+  next: ListCycles200Next;
+  counts: ListCycles200Counts;
 };
 
 export type GetCycleAnchors200CurrentState = typeof GetCycleAnchors200CurrentState[keyof typeof GetCycleAnchors200CurrentState];

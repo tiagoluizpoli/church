@@ -55,6 +55,7 @@ function cycle(input: CycleInput): ListCycles200CyclesItem {
     churchId: CHURCH_ID,
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-10-01T00:00:00.000Z',
+    eventCount: 0,
   };
 }
 

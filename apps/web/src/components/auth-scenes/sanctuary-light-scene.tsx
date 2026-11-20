@@ -267,6 +267,9 @@ float lecternShadow(vec3 ro, vec3 rd) {
   return smoothstep(0.0, 1.0, res);
 }
 
+// Wider than this, the frame is a thin landscape band that shows only the windows.
+const float BAND_ASPECT = 2.4;
+
 struct Cam {
   vec3 ro, fw, rt, up;
   float zoom;
@@ -276,8 +279,8 @@ struct Cam {
 
 Cam camera() {
   Cam c;
-  c.band = uRes.x / uRes.y > 1.6;
-  // The desktop panel stands close to the lectern, a little above the open Bible, windows high behind; the phone band frames the windows.
+  c.band = uRes.x / uRes.y > BAND_ASPECT;
+  // Panels and the phone/tablet band stand close to the lectern, a little above the open Bible, windows high behind; only a thin landscape band frames just the windows.
   c.ro = c.band ? vec3(WX - 0.9, 4.6, -9.0) : vec3(0.65, 2.7, -6.75);
   vec3 ta = c.band ? vec3(WX - 0.75, 5.15, 0.0) : vec3(0.65, 2.45, 0.0);
   c.zoom = c.band ? 2.6 : 0.76;
@@ -654,7 +657,7 @@ vec3 aces(vec3 x) {
 void main() {
   vec2 frag = gl_FragCoord.xy;
   vec2 s = frag / uRes;
-  bool band = uRes.x / uRes.y > 1.6;
+  bool band = uRes.x / uRes.y > BAND_ASPECT;
   // A cloud passing: the light swells and settles, never strobes.
   float breath = 1.0 + 0.1 * sin(uTime * 0.5) * (0.6 + 0.4 * sin(uTime * 0.19 + 1.3));
   vec3 sun = SUN_COL * breath;

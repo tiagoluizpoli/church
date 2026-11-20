@@ -7,6 +7,8 @@
 @source "./**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
+/* The signed-out frame splits only on wide landscape screens; portrait tablets stack. */
+@custom-variant auth-split (@media (width >= 64rem) and (orientation: landscape));
 
 :root {
   --background: oklch(0.978 0.004 236);

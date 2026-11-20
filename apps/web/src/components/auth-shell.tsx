@@ -18,9 +18,10 @@ function BrandMark() {
 }
 
 /**
- * The signed-out frame: the sanctuary light scene in a dark brand panel (a
- * band above the form on phones) beside a narrow form column. Controls are
- * touch-sized.
+ * The signed-out frame: the sanctuary light scene in a dark brand panel beside
+ * a narrow form column on wide landscape screens; otherwise the scene above
+ * the form, filling the height the form leaves.
+ * Controls are touch-sized.
  */
 export interface AuthShellProps {
   children: ReactNode;
@@ -28,16 +29,17 @@ export interface AuthShellProps {
 
 export function AuthShell({ children }: AuthShellProps) {
   return (
-    <div className="grid min-h-dvh grid-rows-[auto_1fr] md:grid-cols-[minmax(0,1fr)_24rem] md:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_28rem] xl:grid-cols-[minmax(0,1fr)_32rem]">
-      <div className="auth-panel dark relative isolate flex h-44 flex-col justify-between overflow-hidden border-sidebar-border border-b bg-[oklch(0.17_0.03_258)] p-6 text-sidebar-foreground md:h-auto md:min-h-dvh md:border-r md:border-b-0 md:p-10 lg:p-14">
+    <div className="grid min-h-dvh auth-split:grid-cols-[minmax(0,1fr)_28rem] auth-split:grid-rows-1 grid-rows-[minmax(12rem,1fr)_auto] auth-split:xl:grid-cols-[minmax(0,1fr)_32rem]">
+      {/* Stacked, the scene takes whatever height the form leaves, so there is no dead space. */}
+      <div className="auth-panel dark relative isolate flex auth-split:min-h-dvh flex-col justify-between gap-6 overflow-hidden border-sidebar-border auth-split:border-r border-b auth-split:border-b-0 bg-[oklch(0.17_0.03_258)] auth-split:p-14 p-5 text-sidebar-foreground sm:p-8">
         <SanctuaryLightScene />
         <BrandMark />
-        <p className="relative hidden max-w-xs text-pretty text-sidebar-foreground/75 text-sm leading-relaxed md:block">
+        <p className="relative max-w-xs text-pretty text-sidebar-foreground/75 text-sm leading-relaxed">
           {m.auth_panel_tagline()}
         </p>
       </div>
-      <main className="flex flex-col px-4 py-8 sm:px-8 md:items-center md:justify-center md:py-12">
-        <div className="w-full max-w-sm">
+      <main className="flex flex-col auth-split:justify-center px-4 pt-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:items-center sm:px-8 sm:pt-12 sm:pb-[max(3rem,env(safe-area-inset-bottom))]">
+        <div className="w-full max-w-sm sm:max-w-md">
           <FormControlSizeProvider size="touch">
             {children}
           </FormControlSizeProvider>

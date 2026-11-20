@@ -93,13 +93,14 @@ function ApplyAction({
   if (proposal.additions.length === 0) return null;
   if (status === 'refused')
     return (
-      <Button size="touch" onClick={onReviewNew}>
+      <Button size="touch" className="max-md:flex-1" onClick={onReviewNew}>
         {m.builder_proposal_refresh()}
       </Button>
     );
   return (
     <Button
       size="touch"
+      className="max-md:flex-1"
       disabled={status === 'pending' || selectedCount === 0}
       onClick={() => onApply({ proposal, excluded })}
     >
@@ -327,10 +328,10 @@ export function AssignmentProposalPreview({
         description={m.builder_proposal_description()}
         reviewBodyLabel={m.builder_proposal_list_label()}
         reviewSummary={
-          <div className="mt-3 space-y-4">
+          <div className="mt-2 space-y-3 md:mt-3 md:space-y-4">
             <div className="grid gap-x-12 gap-y-3 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-start">
               <div className="space-y-2">
-                <p className="text-foreground text-sm">
+                <p className="text-pretty text-foreground text-sm">
                   {hasAdditions && (
                     <>
                       <strong className="font-semibold">
@@ -381,17 +382,26 @@ export function AssignmentProposalPreview({
               </div>
               {coverage.required > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-muted-foreground text-xs max-md:sr-only">
                     {m.builder_proposal_coverage_label()}
                   </p>
                   <CoverageMeter coverage={coverage} />
+                  {excluded.size > 0 && (
+                    <p className="text-muted-foreground text-xs">
+                      {excluded.size === 1
+                        ? m.builder_proposal_coverage_reopened_one()
+                        : m.builder_proposal_coverage_reopened_many({
+                            count: excluded.size,
+                          })}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
             {hasAdditions && days.length > 1 && (
               <nav
                 aria-label={m.builder_proposal_day_strip_label()}
-                className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+                className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 max-md:hidden"
               >
                 {days.map(({ day }) => {
                   const dayCoverage = coverageByDay.get(day);
@@ -457,7 +467,7 @@ export function AssignmentProposalPreview({
             {applyAlert ? (
               <p
                 role="alert"
-                className="text-destructive text-sm sm:mr-auto sm:self-center"
+                className="text-destructive text-sm max-md:w-full sm:mr-auto sm:self-center"
               >
                 {applyAlert}
               </p>
@@ -469,16 +479,18 @@ export function AssignmentProposalPreview({
                     : m.builder_proposal_recap_attention_many({
                         count: attentionCount,
                       })}
-                  {' · '}
-                  {openPlaces === 1
-                    ? m.builder_proposal_gap_one()
-                    : m.builder_proposal_gap_many({ count: openPlaces })}
+                  {openPlaces > 0 && ' · '}
+                  {openPlaces > 0 &&
+                    (openPlaces === 1
+                      ? m.builder_proposal_gap_one()
+                      : m.builder_proposal_gap_many({ count: openPlaces }))}
                 </p>
               )
             )}
             <Button
               variant="outline"
               size="touch"
+              className="max-md:flex-none"
               disabled={isApplying}
               onClick={requestDiscard}
             >
@@ -498,15 +510,6 @@ export function AssignmentProposalPreview({
       >
         <div data-testid="assignment-proposal-preview" className="text-sm">
           {emptyText && <p className="py-4 font-semibold">{emptyText}</p>}
-          {hasAdditions && (
-            <div className="border-b py-3 md:hidden">
-              <ProposalRule
-                heavyLoad={heavyLoad}
-                showsOnlyOption={flagged.showsOnlyOption}
-                showsLoad={flagged.showsLoad}
-              />
-            </div>
-          )}
           {days.length > 0 && (
             <>
               <TabsContent value="shifts" className="text-sm">
@@ -524,6 +527,13 @@ export function AssignmentProposalPreview({
                 />
               </TabsContent>
               <TabsContent value="attention" className="text-sm">
+                <div className="border-b py-3 md:hidden">
+                  <ProposalRule
+                    heavyLoad={heavyLoad}
+                    showsOnlyOption={flagged.showsOnlyOption}
+                    showsLoad={flagged.showsLoad}
+                  />
+                </div>
                 {flagged.keys.size === 0 ? (
                   <p className="py-6 text-muted-foreground">
                     {m.builder_proposal_attention_empty()}

@@ -1,6 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { X } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -54,11 +54,14 @@ export function ResponsiveFormSurface({
   children,
 }: ResponsiveFormSurfaceProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  // A review opens on its title, not with a focus ring on its first control.
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
+          initialFocus={reviewSummary ? titleRef : undefined}
           closeDisabled={closeDisabled}
           className={
             reviewSummary
@@ -74,7 +77,13 @@ export function ResponsiveFormSurface({
             }
           >
             <DialogTitle
-              className={reviewSummary ? 'font-semibold text-base' : undefined}
+              ref={titleRef}
+              tabIndex={reviewSummary ? -1 : undefined}
+              className={
+                reviewSummary
+                  ? 'font-semibold text-base outline-none'
+                  : undefined
+              }
             >
               {title}
             </DialogTitle>
@@ -121,17 +130,23 @@ export function ResponsiveFormSurface({
         <DrawerHeader
           className={
             reviewSummary
-              ? 'pr-14 text-left group-data-[swipe-axis=y]/drawer-popup:text-left'
+              ? 'pb-0 text-left group-data-[swipe-axis=y]/drawer-popup:text-left'
               : 'text-left'
           }
         >
           <DrawerTitle
-            className={reviewSummary ? 'font-semibold text-base' : undefined}
+            className={
+              reviewSummary ? 'pr-12 font-semibold text-base' : undefined
+            }
           >
             {title}
           </DrawerTitle>
           {description ? (
-            <DrawerDescription>{description}</DrawerDescription>
+            <DrawerDescription
+              className={reviewSummary ? 'sr-only' : undefined}
+            >
+              {description}
+            </DrawerDescription>
           ) : null}
           {reviewSummary}
         </DrawerHeader>
@@ -149,7 +164,15 @@ export function ResponsiveFormSurface({
           ) : (
             <div className="overflow-auto px-4 pb-4">{children}</div>
           )}
-          {footer ? <DrawerFooter>{footer}</DrawerFooter> : null}
+          {footer ? (
+            <DrawerFooter
+              className={
+                reviewSummary ? 'flex-row flex-wrap py-3 pb-4' : undefined
+              }
+            >
+              {footer}
+            </DrawerFooter>
+          ) : null}
         </FormControlSizeProvider>
       </DrawerContent>
     </Drawer>

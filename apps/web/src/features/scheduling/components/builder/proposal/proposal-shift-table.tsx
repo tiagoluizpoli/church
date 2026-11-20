@@ -293,7 +293,7 @@ export function ProposalShiftTable({
                         key={row.key}
                         data-kind={row.kind}
                         className={cn(
-                          'max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto_auto] max-md:items-center max-md:[grid-template-areas:"need_need_need""name_why_include""tags_why_include"]',
+                          'max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto_auto] max-md:items-center max-md:[grid-template-areas:"need_need_need""name_why_include""tags_tags_tags"]',
                           row.lastInShift &&
                             'max-md:border-b max-md:pb-2 md:[&>td]:border-border',
                         )}

@@ -223,6 +223,12 @@ export function ProposalGapTable({
       }),
     ),
   );
+  if (rows.length === 0)
+    return (
+      <p className="py-6 text-muted-foreground">
+        {m.builder_proposal_gaps_empty()}
+      </p>
+    );
   return (
     <div className="space-y-3">
       <p className="text-muted-foreground text-sm">
@@ -267,9 +273,12 @@ export function ProposalGapTable({
               <td
                 className={cn(CELL, 'text-right tabular-nums max-md:text-left')}
               >
-                {open === 1
-                  ? m.builder_proposal_gap_one()
-                  : m.builder_proposal_gap_many({ count: open })}
+                <span className="max-md:hidden">{open}</span>
+                <span className="md:hidden">
+                  {open === 1
+                    ? m.builder_proposal_gap_one()
+                    : m.builder_proposal_gap_many({ count: open })}
+                </span>
               </td>
             </tr>
           ))}

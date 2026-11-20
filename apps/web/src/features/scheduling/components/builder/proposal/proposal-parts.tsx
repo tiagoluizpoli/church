@@ -76,7 +76,7 @@ interface AttentionTagProps {
 /** Needs-attention amber (DESIGN.md): a pick worth a second look. */
 export function AttentionTag({ children }: AttentionTagProps) {
   return (
-    <span className="radius-control inline-flex h-6 shrink-0 items-center whitespace-nowrap bg-amber-500/12 px-2 text-amber-800 text-xs dark:bg-amber-400/15 dark:text-amber-200">
+    <span className="radius-control inline-flex h-6 shrink-0 items-center whitespace-nowrap bg-amber-500/12 px-2 align-middle text-amber-800 text-xs dark:bg-amber-400/15 dark:text-amber-200">
       {children}
     </span>
   );

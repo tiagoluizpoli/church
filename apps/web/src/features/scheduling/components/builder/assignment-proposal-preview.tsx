@@ -139,14 +139,18 @@ function ProposalRule({ heavyLoad }: ProposalRuleProps) {
   return (
     <div className="space-y-1.5 text-muted-foreground text-sm">
       <p>{m.builder_proposal_rule()}</p>
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <AttentionTag>{m.builder_proposal_only_option()}</AttentionTag>
-        <span className="me-3">{m.builder_proposal_legend_only()}</span>
-        <AttentionTag>
-          {m.builder_proposal_tag_load({ ordinal: heavyLoad })}
-        </AttentionTag>
-        <span>{m.builder_proposal_legend_load({ count: heavyLoad })}</span>
-      </p>
+      <ul className="flex flex-wrap gap-x-6 gap-y-1.5">
+        <li>
+          <AttentionTag>{m.builder_proposal_only_option()}</AttentionTag>{' '}
+          {m.builder_proposal_legend_only()}
+        </li>
+        <li>
+          <AttentionTag>
+            {m.builder_proposal_tag_load({ ordinal: heavyLoad })}
+          </AttentionTag>{' '}
+          {m.builder_proposal_legend_load({ count: heavyLoad })}
+        </li>
+      </ul>
     </div>
   );
 }

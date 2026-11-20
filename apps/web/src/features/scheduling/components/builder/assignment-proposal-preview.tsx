@@ -1,9 +1,9 @@
 import { m } from '@church/i18n/messages';
 import {
-  type Dispatch,
-  type SetStateAction,
+  type MutableRefObject,
   useCallback,
   useDeferredValue,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -74,9 +74,9 @@ interface AssignmentProposalPreviewProps {
   data: CycleBuilderData;
   proposal: AssignmentProposal;
   applyState: ProposalApplyState;
-  /** Keys of the picks left out (`proposalAdditionKey`). */
-  excluded: ReadonlySet<string>;
-  onExcludedChange: Dispatch<SetStateAction<ReadonlySet<string>>>;
+  /** Keys of the picks left out (`proposalAdditionKey`): the review starts
+   * from it and keeps it current, without re-rendering its owner. */
+  exclusions: MutableRefObject<ReadonlySet<string>>;
   onApply: (selection: ProposalSelection) => void;
   onReviewNew: () => void;
   onDiscard: () => void;
@@ -191,13 +191,16 @@ export function AssignmentProposalPreview({
   data,
   proposal,
   applyState,
-  excluded,
-  onExcludedChange: setExcluded,
+  exclusions,
   onApply,
   onReviewNew,
   onDiscard,
 }: AssignmentProposalPreviewProps) {
   const { churchTimezone: timeZone } = useTimezone();
+  const [excluded, setExcluded] = useState(() => exclusions.current);
+  useEffect(() => {
+    exclusions.current = excluded;
+  }, [exclusions, excluded]);
   // Leaving with picks excluded would silently throw that work away.
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const requestDiscard = () =>
@@ -224,7 +227,7 @@ export function AssignmentProposalPreview({
         if (!next.delete(key)) next.add(key);
         return next;
       }),
-    [setExcluded],
+    [],
   );
 
   const [folded, setFolded] = useState<ReadonlySet<string>>(() => new Set());

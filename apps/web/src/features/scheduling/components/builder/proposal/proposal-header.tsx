@@ -8,7 +8,7 @@ import {
 } from '../../../utils/builder/assignment-proposal.utils';
 import { dateLabel } from '../../../utils/builder/cycle-builder-date.utils';
 import { staffingStatusClasses } from '../../../utils/builder/cycle-builder-staffing.utils';
-import { AttentionTag, LoadTag } from './proposal-parts';
+import { AttentionTag, LoadOrdinal } from './proposal-parts';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -63,13 +63,23 @@ export function HowWeSuggest({
             )}
             {showsLoad && (
               <li>
-                <LoadTag total={heavyLoad} severeLoad={severeLoad} />{' '}
+                <LoadOrdinal
+                  ordinal={heavyLoad}
+                  total={heavyLoad}
+                  heavyLoad={heavyLoad}
+                  severeLoad={severeLoad}
+                />{' '}
                 {m.builder_proposal_legend_load({ count: heavyLoad })}
               </li>
             )}
             {showsLoad && (
               <li>
-                <LoadTag total={severeLoad} severeLoad={severeLoad} />{' '}
+                <LoadOrdinal
+                  ordinal={heavyLoad}
+                  total={severeLoad}
+                  heavyLoad={heavyLoad}
+                  severeLoad={severeLoad}
+                />{' '}
                 {m.builder_proposal_legend_severe({ count: severeLoad })}
               </li>
             )}

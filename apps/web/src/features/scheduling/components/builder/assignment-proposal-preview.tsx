@@ -18,6 +18,10 @@ import {
 } from '../../utils/builder/assignment-proposal.utils';
 import { churchDayOf } from '../../utils/builder/cycle-builder-date.utils';
 import {
+  type AttentionPerson,
+  ProposalAttention,
+} from './proposal/proposal-attention';
+import {
   DayStrip,
   type DayStripDay,
   HowWeSuggest,
@@ -314,24 +318,38 @@ export function AssignmentProposalPreview({
       noShifts: !served,
     }));
   }, [data, timeZone, coverageByDay]);
-  // Picks worth a second look: the only option for their place, or past
-  // the heavy-load line for their volunteer.
-  const flagged = useMemo(() => {
+  const groups = useMemo(() => volunteerGroups(proposal), [proposal]);
+  // What needs a second look, from the proposal as a whole so a row stays
+  // put while it is toggled: people past the heavy-load line (each with
+  // the picks from the line on) and places only one person can fill.
+  const attention = useMemo(() => {
+    const load = scheduleOrdinals({ data, additions: proposal.additions });
+    const people: AttentionPerson[] = groups
+      .map(({ volunteerId, name, additions }) => ({
+        volunteerId,
+        name,
+        total: load.totals.get(volunteerId) ?? 0,
+        additions,
+        flagged: additions
+          .filter(
+            (addition) =>
+              (load.ordinals.get(proposalAdditionKey(addition)) ?? 0) >=
+              load.heavyLoad,
+          )
+          .sort(
+            (left, right) =>
+              (load.ordinals.get(proposalAdditionKey(left)) ?? 0) -
+              (load.ordinals.get(proposalAdditionKey(right)) ?? 0),
+          ),
+      }))
+      .filter(({ flagged }) => flagged.length > 0)
+      .sort((left, right) => right.total - left.total);
     const onlyOption = proposal.additions.filter(
       ({ reason }) => reason.needCandidateCount === 1,
     );
-    const loaded = proposal.additions.filter(
-      (addition) =>
-        (ordinals.get(proposalAdditionKey(addition)) ?? 0) >= heavyLoad,
-    );
-    return {
-      keys: new Set([...onlyOption, ...loaded].map(proposalAdditionKey)),
-      onlyOptionKeys: new Set(onlyOption.map(proposalAdditionKey)),
-      showsLoad: loaded.length > 0,
-    };
-  }, [proposal, ordinals, heavyLoad]);
-  const groups = useMemo(() => volunteerGroups(proposal), [proposal]);
-  // People, not picks: who would carry a heavy load, heaviest first.
+    return { load, people, onlyOption };
+  }, [data, proposal, groups]);
+  // People, not picks: who would carry a heavy load now, heaviest first.
   const loadedPeople = groups
     .map(({ volunteerId, name }) => ({
       name,
@@ -340,12 +358,11 @@ export function AssignmentProposalPreview({
     .filter(({ total }) => total >= heavyLoad)
     .sort((left, right) => right.total - left.total);
   const [heaviest] = loadedPeople;
-  const onlyOptionCount = settled.filter((addition) =>
-    flagged.onlyOptionKeys.has(proposalAdditionKey(addition)),
+  const onlyOptionCount = attention.onlyOption.filter(
+    (addition) => !excluded.has(proposalAdditionKey(addition)),
   ).length;
-  const attentionCount = settled.filter((addition) =>
-    flagged.keys.has(proposalAdditionKey(addition)),
-  ).length;
+  // The tab counts what it lists: people, plus single-option places.
+  const attentionCount = attention.people.length + attention.onlyOption.length;
   const openPlaces =
     proposal.gaps.reduce((total, { remaining }) => total + remaining, 0) +
     excluded.size;
@@ -430,8 +447,8 @@ export function AssignmentProposalPreview({
                     <HowWeSuggest
                       heavyLoad={heavyLoad}
                       severeLoad={severeLoad}
-                      showsOnlyOption={flagged.onlyOptionKeys.size > 0}
-                      showsLoad={flagged.showsLoad}
+                      showsOnlyOption={attention.onlyOption.length > 0}
+                      showsLoad={attention.people.length > 0}
                     />
                   </p>
                 )}
@@ -519,18 +536,6 @@ export function AssignmentProposalPreview({
               hasAdditions && (
                 <p className="mr-auto flex flex-wrap items-center gap-x-2 self-center text-sm max-md:hidden">
                   {[
-                    loadedPeople.length > 0 && (
-                      <RecapButton
-                        key="load"
-                        onClick={() => changeTab('volunteers')}
-                      >
-                        {loadedPeople.length === 1
-                          ? m.builder_proposal_summary_load_people_one()
-                          : m.builder_proposal_summary_load_people_many({
-                              count: loadedPeople.length,
-                            })}
-                      </RecapButton>
-                    ),
                     onlyOptionCount > 0 && (
                       <RecapButton
                         key="only"
@@ -602,7 +607,7 @@ export function AssignmentProposalPreview({
                 <ProposalShiftTable {...tableProps} />
               </TabsContent>
               <TabsContent value="attention" tabIndex={-1} className="text-sm">
-                {flagged.keys.size === 0 ? (
+                {attentionCount === 0 ? (
                   <div className="flex flex-wrap items-center gap-3 py-6">
                     <p className="text-muted-foreground">
                       {m.builder_proposal_attention_empty()}
@@ -616,7 +621,19 @@ export function AssignmentProposalPreview({
                     </Button>
                   </div>
                 ) : (
-                  <ProposalShiftTable {...tableProps} only={flagged.keys} />
+                  <ProposalAttention
+                    days={days}
+                    people={attention.people}
+                    onlyOption={attention.onlyOption}
+                    excluded={excluded}
+                    ordinals={attention.load.ordinals}
+                    heavyLoad={attention.load.heavyLoad}
+                    severeLoad={attention.load.severeLoad}
+                    locked={locked}
+                    timeZone={timeZone}
+                    onToggle={toggle}
+                    onSetIncluded={setIncluded}
+                  />
                 )}
               </TabsContent>
               <TabsContent value="volunteers" tabIndex={-1} className="text-sm">

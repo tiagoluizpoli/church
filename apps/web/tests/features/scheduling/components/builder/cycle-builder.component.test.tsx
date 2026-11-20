@@ -1305,8 +1305,14 @@ describe('Assignment proposal preview', () => {
         name: m.builder_proposal_tab_attention({ count: 1 }),
       }),
     );
-    expect(within(preview).getByText('Linus Torvalds')).toBeVisible();
-    expect(within(preview).queryByText('Ada Lovelace')).not.toBeInTheDocument();
+    const panel = screen.getByRole('tabpanel');
+    expect(
+      within(panel).getByRole('heading', {
+        name: m.builder_proposal_attention_only_heading(),
+      }),
+    ).toBeVisible();
+    expect(within(panel).getByText(/Linus Torvalds/)).toBeVisible();
+    expect(within(panel).queryByText(/Ada Lovelace/)).not.toBeInTheDocument();
     expect(
       screen.getByText(m.builder_proposal_recap_only_one(), {
         exact: false,

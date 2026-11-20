@@ -36,29 +36,24 @@ type ShiftRow = RowPlace & ShiftRowContent;
 
 interface RowsOfInput {
   shift: ProposalShift;
-  /** Show only these picks (no existing or open rows). */
-  only?: ReadonlySet<string>;
 }
 
 /** Per need: who is already there (muted, first), the picks, then what
  * stays open — so a slot reads filled / suggested / still open. An
  * excluded pick keeps its row (marked), so nothing below it moves. */
-function rowsOf({ shift, only }: RowsOfInput): ShiftRow[] {
+function rowsOf({ shift }: RowsOfInput): ShiftRow[] {
   const rows = shift.needs.flatMap((need) => {
-    const additions = need.additions
-      .filter((addition) => !only || only.has(proposalAdditionKey(addition)))
-      .map((addition): ShiftRowContent => ({ kind: 'addition', addition }));
-    const contents: ShiftRowContent[] = only
-      ? additions
-      : [
-          ...need.existing.map(
-            (assignee): ShiftRowContent => ({ kind: 'existing', assignee }),
-          ),
-          ...additions,
-          ...(need.remaining > 0
-            ? [{ kind: 'open', count: need.remaining } as const]
-            : []),
-        ];
+    const contents: ShiftRowContent[] = [
+      ...need.existing.map(
+        (assignee): ShiftRowContent => ({ kind: 'existing', assignee }),
+      ),
+      ...need.additions.map(
+        (addition): ShiftRowContent => ({ kind: 'addition', addition }),
+      ),
+      ...(need.remaining > 0
+        ? [{ kind: 'open', count: need.remaining } as const]
+        : []),
+    ];
     return contents.map(
       (content, index): ShiftRow => ({
         ...content,
@@ -256,7 +251,6 @@ interface ProposalShiftTableProps {
   coverageByDay: ReadonlyMap<string, ProposalCoverage>;
   folded: ReadonlySet<string>;
   onToggleDay: (day: string) => void;
-  only?: ReadonlySet<string>;
   excluded: ReadonlySet<string>;
   ordinals: ReadonlyMap<string, number>;
   /** Volunteer id → everything they would serve here. */
@@ -280,7 +274,6 @@ export function ProposalShiftTable({
   coverageByDay,
   folded,
   onToggleDay,
-  only,
   excluded,
   ordinals,
   totals,
@@ -300,7 +293,7 @@ export function ProposalShiftTable({
           .map((shift) => ({
             shift,
             label: `${formatTimeOf({ value: shift.startTime, timeZone })}–${formatTimeOf({ value: shift.endTime, timeZone })}`,
-            rows: rowsOf({ shift, only }),
+            rows: rowsOf({ shift }),
           }))
           .filter(({ rows }) => rows.length > 0);
         return shifts.length > 0
@@ -316,7 +309,7 @@ export function ProposalShiftTable({
             ]
           : [];
       }),
-    [days, only, timeZone],
+    [days, timeZone],
   );
   // Every fold button and row control, in reading order.
   const rovingIds = useMemo(
@@ -421,7 +414,7 @@ export function ProposalShiftTable({
         return (
           <tbody
             key={day.day}
-            id={only ? undefined : `proposal-day-${day.day}`}
+            id={`proposal-day-${day.day}`}
             className="scroll-mt-9 max-md:block max-md:scroll-mt-0"
           >
             <tr className="max-md:sticky max-md:top-0 max-md:z-10 max-md:-mx-4 max-md:block">

@@ -116,7 +116,7 @@ interface InformativeReasonInput {
 }
 
 /** The reason in a few words, only when it tells the leader something:
- * the person can serve almost nowhere else. */
+ * when the pick was made, the person could serve almost nowhere else. */
 function informativeReason({
   reason: { eligibleShiftCount },
 }: InformativeReasonInput): string | null {
@@ -125,6 +125,40 @@ function informativeReason({
   if (eligibleShiftCount === 2)
     return m.builder_proposal_reason_short_few_shifts({ count: 2 });
   return null;
+}
+
+interface LoadOrdinalProps {
+  ordinal: number;
+  total: number;
+  heavyLoad: number;
+  severeLoad: number;
+}
+
+/** "3ª de 14" on every pick of a heavy-load person: muted before the
+ * line, amber from it, strong for the clear outlier. */
+export function LoadOrdinal({
+  ordinal,
+  total,
+  heavyLoad,
+  severeLoad,
+}: LoadOrdinalProps) {
+  const text = (
+    <>
+      <span aria-hidden>
+        {m.builder_proposal_load_ordinal({ ordinal, total })}
+      </span>
+      <span className="sr-only">
+        {m.builder_proposal_load_ordinal_label({ ordinal, total })}
+      </span>
+    </>
+  );
+  if (ordinal < heavyLoad)
+    return (
+      <span className="shrink-0 text-muted-foreground tabular-nums">
+        {text}
+      </span>
+    );
+  return <AttentionTag strong={total >= severeLoad}>{text}</AttentionTag>;
 }
 
 interface PickNotesProps {
@@ -145,15 +179,22 @@ export function PickNotes({
   severeLoad,
 }: PickNotesProps) {
   const onlyOption = addition.reason.needCandidateCount === 1;
-  const loaded = ordinal !== undefined && ordinal >= heavyLoad;
+  const heavyPerson = ordinal !== undefined && total >= heavyLoad;
   const reason = informativeReason(addition);
-  if (!(onlyOption || loaded || reason)) return null;
+  if (!(onlyOption || heavyPerson || reason)) return null;
   return (
     <span className="flex min-w-0 items-center gap-2">
       {onlyOption && (
         <AttentionTag>{m.builder_proposal_only_option()}</AttentionTag>
       )}
-      {loaded && <LoadTag total={total} severeLoad={severeLoad} />}
+      {heavyPerson && (
+        <LoadOrdinal
+          ordinal={ordinal}
+          total={total}
+          heavyLoad={heavyLoad}
+          severeLoad={severeLoad}
+        />
+      )}
       {reason && (
         <span className="truncate text-muted-foreground">{reason}</span>
       )}
@@ -185,7 +226,9 @@ function reasonLines({
       ? [m.builder_proposal_reason_scarcity()]
       : decidedBy === 'fewest_cycle_assignments'
         ? [m.builder_proposal_reason_workload()]
-        : []),
+        : decidedBy === 'stable_order'
+          ? [m.builder_proposal_reason_stable()]
+          : []),
     ...(ordinal !== undefined && ordinal >= heavyLoad
       ? [m.builder_proposal_reason_load({ ordinal, total })]
       : []),

@@ -36,6 +36,9 @@ export default defineConfig({
   globalSetup: './tests/global-setup.ts',
   globalTeardown: './tests/global-teardown.ts',
   timeout: 90_000,
+  // A wait budget, not a looser assertion: under a loaded machine a page can
+  // take more than the default 5s to show its first element after `goto`.
+  expect: { timeout: 15_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -52,6 +55,14 @@ export default defineConfig({
     trace: 'retain-on-failure',
     headless: true,
     locale: 'pt-BR',
+    launchOptions: {
+      // index.css @imports Google Fonts; a slow or unreachable font host can
+      // hold `goto`'s load event. Those hosts fail DNS at once instead, for
+      // every spec, and the app falls back to its system font stack.
+      args: [
+        '--host-resolver-rules=MAP fonts.googleapis.com ~NOTFOUND, MAP fonts.gstatic.com ~NOTFOUND',
+      ],
+    },
   },
   // Lanes: tests/fixtures/e2e-lanes.ts.
   projects: [

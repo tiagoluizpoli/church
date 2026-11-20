@@ -9,10 +9,10 @@ import {
   AttentionTag,
   LoadOrdinal,
   LoadTag,
+  PersonToggle,
   ReasonPopover,
 } from './proposal-parts';
 import type { SetIncludedInput } from './proposal-side-views';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { GetAssignmentProposal200AdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
@@ -94,7 +94,7 @@ export function ProposalAttention({
       <li key={key} className={ROW}>
         <span
           className={cn(
-            'min-w-0 flex-1 truncate',
+            'min-w-0 flex-1 md:truncate',
             out && 'text-muted-foreground line-through',
           )}
         >
@@ -164,26 +164,18 @@ export function ProposalAttention({
                 <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/40 px-3 max-md:-mx-4 max-md:px-4">
                   <h4 className="font-semibold">{person.name}</h4>
                   <LoadTag total={person.total} severeLoad={severeLoad} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={locked}
-                    className="ms-auto max-md:h-11 max-md:w-full max-md:text-sm"
-                    onClick={() =>
+                  <PersonToggle
+                    name={person.name}
+                    allOut={allOut}
+                    locked={locked}
+                    className="ms-auto max-md:w-full"
+                    onToggle={() =>
                       onSetIncluded({
                         additions: person.additions,
                         include: allOut,
                       })
                     }
-                  >
-                    {allOut
-                      ? m.builder_proposal_include_volunteer({
-                          name: person.name,
-                        })
-                      : m.builder_proposal_exclude_volunteer({
-                          name: person.name,
-                        })}
-                  </Button>
+                  />
                 </div>
                 <ul>
                   {person.flagged.map((addition) =>

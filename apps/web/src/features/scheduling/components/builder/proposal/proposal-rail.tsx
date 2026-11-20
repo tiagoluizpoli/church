@@ -1,14 +1,16 @@
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
+import type { ReactNode } from 'react';
 import { proposalAdditionKey } from '../../../utils/builder/assignment-proposal.utils';
 import { dateLabel } from '../../../utils/builder/cycle-builder-date.utils';
-import { LoadTag } from './proposal-parts';
+import { LoadTag, PersonToggle } from './proposal-parts';
 import type {
   OpenPlace,
   ProposalVolunteerGroup,
   SetIncludedInput,
 } from './proposal-side-views';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { formatTimeOf } from '@/shared/utils/church-time';
 
 /** How many people and places the rail lists before pointing to the tab. */
@@ -20,8 +22,10 @@ export interface RailPerson {
 }
 
 interface ProposalRailProps {
-  /** Heaviest first. */
+  /** Heaviest first, from the whole proposal, so rows never reshuffle. */
   people: RailPerson[];
+  /** The day strip, which moves here on wide screens. */
+  days?: ReactNode;
   openPlaces: OpenPlace[];
   excluded: ReadonlySet<string>;
   severeLoad: number;
@@ -38,6 +42,7 @@ interface ProposalRailProps {
  * list. */
 export function ProposalRail({
   people,
+  days,
   openPlaces,
   excluded,
   severeLoad,
@@ -51,6 +56,7 @@ export function ProposalRail({
   const openCount = openPlaces.reduce((sum, { open }) => sum + open, 0);
   return (
     <div className="space-y-6 py-3">
+      {days}
       {people.length > 0 && (
         <section className="space-y-2">
           <h3 className="font-semibold text-base">
@@ -62,34 +68,34 @@ export function ProposalRail({
                 excluded.has(proposalAdditionKey(addition)),
               );
               return (
+                // Removing keeps the row (struck through, with Devolver), so
+                // the next button never slides under the pointer.
                 <li
                   key={group.volunteerId}
-                  className="flex flex-wrap items-center gap-x-2 gap-y-1 py-2"
+                  className="flex items-center gap-2 py-2"
                 >
-                  <span className="min-w-0 flex-1 truncate font-semibold">
-                    {group.name}
+                  <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
+                    <span
+                      className={cn(
+                        'max-w-full truncate font-semibold',
+                        allOut && 'text-muted-foreground line-through',
+                      )}
+                    >
+                      {group.name}
+                    </span>
+                    <LoadTag total={total} severeLoad={severeLoad} />
                   </span>
-                  <LoadTag total={total} severeLoad={severeLoad} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={locked}
-                    className="w-full"
-                    onClick={() =>
+                  <PersonToggle
+                    name={group.name}
+                    allOut={allOut}
+                    locked={locked}
+                    onToggle={() =>
                       onSetIncluded({
                         additions: group.additions,
                         include: allOut,
                       })
                     }
-                  >
-                    {allOut
-                      ? m.builder_proposal_include_volunteer({
-                          name: group.name,
-                        })
-                      : m.builder_proposal_exclude_volunteer({
-                          name: group.name,
-                        })}
-                  </Button>
+                  />
                 </li>
               );
             })}

@@ -1848,7 +1848,7 @@
   "builder_proposal_include_pick": "Include {name}: {need}, {shift}",
   "builder_proposal_include_volunteer": "Put {name} back in the proposal",
   "builder_proposal_volunteer_included": "{selected} of {total} included",
-  "builder_proposal_gaps_hint": "These places stay open after applying: no one else could cover them, or you left the suggested person out (tick them again to put them back). Fill the rest on the board.",
+  "builder_proposal_gaps_hint": "These places stay open after applying: no one else could cover them, or you left the suggested person out (put them back under By shift or By volunteer). Fill the rest on the board.",
   "builder_proposal_tab_attention": "Attention ({count})",
   "builder_proposal_tag_total": "Serves {count}× in this schedule",
   "builder_proposal_attention_empty": "No assignment needs attention.",
@@ -1894,5 +1894,10 @@
   "builder_proposal_gap_reopened_one": "1 reopened by you",
   "builder_proposal_gap_reopened_many": "{count} reopened by you",
   "builder_proposal_filter_label": "Filter by name or role",
-  "builder_proposal_filter_empty": "No assignment matches the filter."
+  "builder_proposal_filter_empty": "No assignment matches the filter.",
+  "builder_proposal_exclude_short": "Remove",
+  "builder_proposal_include_short": "Put back",
+  "builder_proposal_gap_reopened_all_one": "reopened by you",
+  "builder_proposal_gap_reopened_all_many": "reopened by you",
+  "builder_proposal_coverage_short": "Coverage"
 }

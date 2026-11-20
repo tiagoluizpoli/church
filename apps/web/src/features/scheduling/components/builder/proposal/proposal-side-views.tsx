@@ -8,7 +8,7 @@ import {
   proposalAdditionKey,
 } from '../../../utils/builder/assignment-proposal.utils';
 import { dateLabel } from '../../../utils/builder/cycle-builder-date.utils';
-import { LoadTag } from './proposal-parts';
+import { LoadTag, PersonToggle } from './proposal-parts';
 import { Button } from '@/components/ui/button';
 import type { GetAssignmentProposal200AdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
@@ -101,7 +101,7 @@ export function ProposalVolunteerTable({
       <colgroup>
         <col className="w-[22%]" />
         <col />
-        <col className="w-80" />
+        <col className="w-32" />
       </colgroup>
       <thead className="sticky top-0 z-10 bg-popover text-muted-foreground text-sm max-md:hidden">
         <tr>
@@ -193,17 +193,13 @@ export function ProposalVolunteerTable({
                 </span>
               </td>
               <td className={cn(CELL, 'text-right')}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={locked}
-                  className="max-md:h-11 max-md:w-full max-md:text-sm"
-                  onClick={() => onSetIncluded({ additions, include: allOut })}
-                >
-                  {allOut
-                    ? m.builder_proposal_include_volunteer({ name })
-                    : m.builder_proposal_exclude_volunteer({ name })}
-                </Button>
+                <PersonToggle
+                  name={name}
+                  allOut={allOut}
+                  locked={locked}
+                  className="max-md:w-full"
+                  onToggle={() => onSetIncluded({ additions, include: allOut })}
+                />
               </td>
             </tr>
           );
@@ -324,11 +320,18 @@ export function ProposalGapTable({
                 <span className="max-md:hidden">{open}</span>
                 {reopened > 0 && (
                   <span className="ms-2 text-muted-foreground">
-                    {reopened === 1
-                      ? m.builder_proposal_gap_reopened_one()
-                      : m.builder_proposal_gap_reopened_many({
-                          count: reopened,
-                        })}
+                    {/* All of them reopened: say so without repeating the number. */}
+                    {reopened === open
+                      ? `· ${
+                          open === 1
+                            ? m.builder_proposal_gap_reopened_all_one()
+                            : m.builder_proposal_gap_reopened_all_many()
+                        }`
+                      : reopened === 1
+                        ? m.builder_proposal_gap_reopened_one()
+                        : m.builder_proposal_gap_reopened_many({
+                            count: reopened,
+                          })}
                   </span>
                 )}
                 <span className="md:hidden">

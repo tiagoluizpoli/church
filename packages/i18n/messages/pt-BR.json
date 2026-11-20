@@ -1848,7 +1848,7 @@
   "builder_proposal_include_pick": "Incluir {name}: {need}, {shift}",
   "builder_proposal_include_volunteer": "Devolver {name} à sugestão",
   "builder_proposal_volunteer_included": "{selected} de {total} incluídas",
-  "builder_proposal_gaps_hint": "Estas vagas continuam em aberto depois de aplicar: ninguém mais pôde cobri-las, ou você tirou a pessoa sugerida (marque de novo para devolvê-la). Preencha as demais direto no quadro.",
+  "builder_proposal_gaps_hint": "Estas vagas continuam em aberto depois de aplicar: ninguém mais pôde cobri-las, ou você tirou a pessoa sugerida (devolva-a em Por turno ou Por voluntário). Preencha as demais direto no quadro.",
   "builder_proposal_tab_attention": "Atenção ({count})",
   "builder_proposal_tag_total": "Serve {count}× nesta escala",
   "builder_proposal_attention_empty": "Nenhuma atribuição precisa de atenção.",
@@ -1894,5 +1894,10 @@
   "builder_proposal_gap_reopened_one": "1 reaberta por você",
   "builder_proposal_gap_reopened_many": "{count} reabertas por você",
   "builder_proposal_filter_label": "Filtrar por nome ou função",
-  "builder_proposal_filter_empty": "Nenhuma atribuição corresponde ao filtro."
+  "builder_proposal_filter_empty": "Nenhuma atribuição corresponde ao filtro.",
+  "builder_proposal_exclude_short": "Remover",
+  "builder_proposal_include_short": "Devolver",
+  "builder_proposal_gap_reopened_all_one": "reaberta por você",
+  "builder_proposal_gap_reopened_all_many": "reabertas por você",
+  "builder_proposal_coverage_short": "Cobertura"
 }

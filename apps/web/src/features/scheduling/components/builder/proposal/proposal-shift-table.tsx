@@ -189,7 +189,8 @@ const PickRow = memo(function PickRow({
           )}
           <span
             className={cn(
-              'truncate',
+              // The name wins the space; the status note truncates instead.
+              'max-w-full shrink-0 truncate',
               row.kind === 'addition' && 'font-semibold',
               isExcluded && 'text-muted-foreground line-through',
             )}
@@ -203,7 +204,9 @@ const PickRow = memo(function PickRow({
                   : m.builder_proposal_gap_many({ count: row.count })}
           </span>
           {status && (
-            <span className="shrink-0 text-muted-foreground">· {status}</span>
+            <span className="min-w-0 truncate text-muted-foreground">
+              · {status}
+            </span>
           )}
         </span>
       </td>

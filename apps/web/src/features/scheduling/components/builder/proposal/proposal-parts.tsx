@@ -286,3 +286,40 @@ export function ReasonPopover({ name, roving, ...input }: ReasonPopoverProps) {
     </Popover>
   );
 }
+
+interface PersonToggleProps {
+  name: string;
+  /** Every pick of the person is left out. */
+  allOut: boolean;
+  locked: boolean;
+  onToggle: () => void;
+  className?: string;
+}
+
+/** Remove (or put back) all of one person's picks: a short visible label,
+ * the full sentence for assistive tech, and the control's default size. */
+export function PersonToggle({
+  name,
+  allOut,
+  locked,
+  onToggle,
+  className,
+}: PersonToggleProps) {
+  return (
+    <Button
+      variant="outline"
+      disabled={locked}
+      aria-label={
+        allOut
+          ? m.builder_proposal_include_volunteer({ name })
+          : m.builder_proposal_exclude_volunteer({ name })
+      }
+      onClick={onToggle}
+      className={className}
+    >
+      {allOut
+        ? m.builder_proposal_include_short()
+        : m.builder_proposal_exclude_short()}
+    </Button>
+  );
+}

@@ -1,18 +1,27 @@
 import { m } from '@church/i18n/messages';
-import { getLocale } from '@church/i18n/runtime';
-import { type Dispatch, type SetStateAction, useMemo, useState } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useState,
+} from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
   coverageOf,
   groupProposalByDay,
   includedShifts,
-  percentOf,
   proposalAdditionKey,
   scheduleOrdinals,
 } from '../../utils/builder/assignment-proposal.utils';
-import { dateLabel } from '../../utils/builder/cycle-builder-date.utils';
-import { staffingStatusClasses } from '../../utils/builder/cycle-builder-staffing.utils';
-import { AttentionTag, CoverageMeter } from './proposal/proposal-parts';
+import { churchDayOf } from '../../utils/builder/cycle-builder-date.utils';
+import {
+  DayStrip,
+  type DayStripDay,
+  HowWeSuggest,
+} from './proposal/proposal-header';
+import { CoverageMeter } from './proposal/proposal-parts';
 import { ProposalShiftTable } from './proposal/proposal-shift-table';
 import {
   ProposalGapTable,
@@ -37,7 +46,6 @@ import type {
   GetAssignmentProposal200,
   GetAssignmentProposal200AdditionsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
-import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
 export type AssignmentProposal = GetAssignmentProposal200;
@@ -155,40 +163,21 @@ function volunteerGroups({
   );
 }
 
-interface ProposalRuleProps {
-  heavyLoad: number;
-  /** Only the tags this proposal actually shows get a legend entry. */
-  showsOnlyOption: boolean;
-  showsLoad: boolean;
+interface RecapButtonProps {
+  onClick: () => void;
+  children: string;
 }
 
-function ProposalRule({
-  heavyLoad,
-  showsOnlyOption,
-  showsLoad,
-}: ProposalRuleProps) {
+/** A footer count that takes the leader to the list it counts. */
+function RecapButton({ onClick, children }: RecapButtonProps) {
   return (
-    <div className="space-y-1.5 text-pretty text-muted-foreground text-sm">
-      <p>{m.builder_proposal_rule()}</p>
-      {(showsOnlyOption || showsLoad) && (
-        <ul className="flex flex-wrap gap-x-6 gap-y-1.5">
-          {showsOnlyOption && (
-            <li>
-              <AttentionTag>{m.builder_proposal_only_option()}</AttentionTag>{' '}
-              {m.builder_proposal_legend_only()}
-            </li>
-          )}
-          {showsLoad && (
-            <li>
-              <AttentionTag>
-                {m.builder_proposal_tag_load({ ordinal: heavyLoad })}
-              </AttentionTag>{' '}
-              {m.builder_proposal_legend_load({ count: heavyLoad })}
-            </li>
-          )}
-        </ul>
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="radius-control text-foreground underline decoration-muted-foreground/60 underline-offset-4 outline-none hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -225,19 +214,28 @@ export function AssignmentProposalPreview({
       }
       return next;
     });
-  const toggle = (addition: Addition) =>
-    setIncluded({
-      additions: [addition],
-      include: excluded.has(proposalAdditionKey(addition)),
-    });
+  // Stable, so the memoised rows only re-render the one that changed.
+  const toggle = useCallback(
+    (addition: Addition) =>
+      setExcluded((previous) => {
+        const next = new Set(previous);
+        const key = proposalAdditionKey(addition);
+        if (!next.delete(key)) next.add(key);
+        return next;
+      }),
+    [setExcluded],
+  );
 
   const [folded, setFolded] = useState<ReadonlySet<string>>(() => new Set());
-  const toggleDay = (day: string) =>
-    setFolded((previous) => {
-      const next = new Set(previous);
-      if (!next.delete(day)) next.add(day);
-      return next;
-    });
+  const toggleDay = useCallback(
+    (day: string) =>
+      setFolded((previous) => {
+        const next = new Set(previous);
+        if (!next.delete(day)) next.add(day);
+        return next;
+      }),
+    [],
+  );
   const jumpToDay = (day: string) => {
     setTab('shifts');
     setFolded((previous) => {
@@ -260,29 +258,49 @@ export function AssignmentProposalPreview({
       ),
     [proposal, excluded],
   );
+  // The checkbox answers at once; coverage, loads and flags catch up a
+  // frame later instead of holding the click.
+  const settled = useDeferredValue(included);
   const days = useMemo(
     () => groupProposalByDay({ data, proposal, timeZone }),
     [data, proposal, timeZone],
   );
   const shifts = useMemo(() => includedShifts({ data }), [data]);
-  const { ordinals, heavyLoad, totals } = useMemo(
-    () => scheduleOrdinals({ data, additions: included }),
-    [data, included],
+  const { ordinals, heavyLoad, severeLoad, totals } = useMemo(
+    () => scheduleOrdinals({ data, additions: settled }),
+    [data, settled],
   );
   const coverage = useMemo(
-    () => coverageOf({ shifts, additions: included }),
-    [shifts, included],
+    () => coverageOf({ shifts, additions: settled }),
+    [shifts, settled],
   );
   const coverageByDay = useMemo(
     () =>
       new Map(
         days.map(({ day, dayShifts }) => [
           day,
-          coverageOf({ shifts: dayShifts, additions: included }),
+          coverageOf({ shifts: dayShifts, additions: settled }),
         ]),
       ),
-    [days, included],
+    [days, settled],
   );
+  const stripDays = useMemo((): DayStripDay[] => {
+    const servedByDay = new Map<string, boolean>();
+    for (const event of data.events)
+      for (const block of event.eventTimeBlocks) {
+        const day = churchDayOf({ value: block.startTime, timeZone });
+        servedByDay.set(
+          day,
+          (servedByDay.get(day) ?? false) ||
+            (block.included && block.shifts.length > 0),
+        );
+      }
+    return [...servedByDay].map(([day, served]) => ({
+      day,
+      coverage: coverageByDay.get(day),
+      noShifts: !served,
+    }));
+  }, [data, timeZone, coverageByDay]);
   // Picks worth a second look: the only option for their place, or past
   // the heavy-load line for their volunteer.
   const flagged = useMemo(() => {
@@ -295,27 +313,47 @@ export function AssignmentProposalPreview({
     );
     return {
       keys: new Set([...onlyOption, ...loaded].map(proposalAdditionKey)),
-      showsOnlyOption: onlyOption.length > 0,
+      onlyOptionKeys: new Set(onlyOption.map(proposalAdditionKey)),
       showsLoad: loaded.length > 0,
     };
   }, [proposal, ordinals, heavyLoad]);
-  const attentionCount = included.filter((addition) =>
+  const groups = useMemo(() => volunteerGroups(proposal), [proposal]);
+  // People, not picks: who would carry a heavy load, heaviest first.
+  const loadedPeople = groups
+    .map(({ volunteerId, name }) => ({
+      name,
+      total: totals.get(volunteerId) ?? 0,
+    }))
+    .filter(({ total }) => total >= heavyLoad)
+    .sort((left, right) => right.total - left.total);
+  const [heaviest] = loadedPeople;
+  const onlyOptionCount = settled.filter((addition) =>
+    flagged.onlyOptionKeys.has(proposalAdditionKey(addition)),
+  ).length;
+  const attentionCount = settled.filter((addition) =>
     flagged.keys.has(proposalAdditionKey(addition)),
   ).length;
-  const groups = useMemo(() => volunteerGroups(proposal), [proposal]);
   const openPlaces =
     proposal.gaps.reduce((total, { remaining }) => total + remaining, 0) +
     excluded.size;
   const emptyText = emptyReasonText(proposal);
   const isApplying = applyState.status === 'pending';
   const locked = isApplying || applyState.status === 'unknown';
-  const applyAlert =
-    applyState.status === 'refused'
-      ? applyState.message
-      : applyState.status === 'unknown'
-        ? m.builder_proposal_apply_unknown()
-        : null;
   const hasAdditions = proposal.additions.length > 0;
+  const tableProps = {
+    days,
+    coverageByDay,
+    folded,
+    onToggleDay: toggleDay,
+    excluded,
+    ordinals,
+    totals,
+    heavyLoad,
+    severeLoad,
+    locked,
+    timeZone,
+    onToggle: toggle,
+  };
 
   return (
     <Tabs value={tab} onValueChange={setTab} className="contents">
@@ -328,37 +366,23 @@ export function AssignmentProposalPreview({
         description={m.builder_proposal_description()}
         reviewBodyLabel={m.builder_proposal_list_label()}
         reviewSummary={
-          <div className="mt-2 space-y-3 md:mt-3 md:space-y-4">
-            <div className="grid gap-x-12 gap-y-3 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-start">
-              <div className="space-y-2">
+          <div className="mt-2 space-y-3 md:mt-3">
+            <div className="grid gap-x-12 gap-y-2 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-start">
+              <div className="space-y-1">
                 <p className="text-pretty text-foreground text-sm">
                   {hasAdditions && (
-                    <>
-                      <strong className="font-semibold">
-                        {proposal.additions.length === 1
-                          ? m.builder_proposal_stat_additions_one()
-                          : m.builder_proposal_stat_additions_many({
-                              count: proposal.additions.length,
-                            })}
-                      </strong>
-                      {openPlaces > 0 && (
-                        <>
-                          <span aria-hidden className="text-muted-foreground">
-                            {' · '}
-                          </span>
-                          {openPlaces === 1
-                            ? m.builder_proposal_gap_one()
-                            : m.builder_proposal_gap_many({
-                                count: openPlaces,
-                              })}
-                        </>
-                      )}
-                      {proposal.excludedUnconfirmedCount > 0 && (
-                        <span aria-hidden className="text-muted-foreground">
-                          {' · '}
-                        </span>
-                      )}
-                    </>
+                    <strong className="font-semibold">
+                      {proposal.additions.length === 1
+                        ? m.builder_proposal_stat_additions_one()
+                        : m.builder_proposal_stat_additions_many({
+                            count: proposal.additions.length,
+                          })}
+                    </strong>
+                  )}
+                  {hasAdditions && proposal.excludedUnconfirmedCount > 0 && (
+                    <span aria-hidden className="text-muted-foreground">
+                      {' · '}
+                    </span>
                   )}
                   {proposal.excludedUnconfirmedCount > 0 && (
                     <span className="text-muted-foreground">
@@ -371,23 +395,42 @@ export function AssignmentProposalPreview({
                   )}
                 </p>
                 {hasAdditions && (
-                  <div className="max-md:hidden">
-                    <ProposalRule
+                  <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    {heaviest && (
+                      <span className="flex flex-wrap items-center gap-x-2">
+                        <span className="text-muted-foreground">
+                          {loadedPeople.length === 1
+                            ? m.builder_proposal_summary_load_people_one()
+                            : m.builder_proposal_summary_load_people_many({
+                                count: loadedPeople.length,
+                              })}
+                          {' · '}
+                        </span>
+                        <RecapButton onClick={() => setTab('volunteers')}>
+                          {m.builder_proposal_summary_top_load({
+                            name: heaviest.name,
+                            count: heaviest.total,
+                          })}
+                        </RecapButton>
+                      </span>
+                    )}
+                    <HowWeSuggest
                       heavyLoad={heavyLoad}
-                      showsOnlyOption={flagged.showsOnlyOption}
+                      severeLoad={severeLoad}
+                      showsOnlyOption={flagged.onlyOptionKeys.size > 0}
                       showsLoad={flagged.showsLoad}
                     />
-                  </div>
+                  </p>
                 )}
               </div>
               {coverage.required > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-muted-foreground text-xs max-md:sr-only">
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-sm max-md:sr-only">
                     {m.builder_proposal_coverage_label()}
                   </p>
                   <CoverageMeter coverage={coverage} />
                   {excluded.size > 0 && (
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-muted-foreground text-sm">
                       {excluded.size === 1
                         ? m.builder_proposal_coverage_reopened_one()
                         : m.builder_proposal_coverage_reopened_many({
@@ -398,50 +441,21 @@ export function AssignmentProposalPreview({
                 </div>
               )}
             </div>
-            {hasAdditions && days.length > 1 && (
-              <nav
-                aria-label={m.builder_proposal_day_strip_label()}
-                className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 max-md:hidden"
-              >
-                {days.map(({ day }) => {
-                  const dayCoverage = coverageByDay.get(day);
-                  const percent = percentOf({
-                    covered: dayCoverage?.after ?? 0,
-                    required: dayCoverage?.required ?? 0,
-                  });
-                  const status = staffingStatusClasses({
-                    percent,
-                    hasRequirement: (dayCoverage?.required ?? 0) > 0,
-                  });
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => jumpToDay(day)}
-                      className="radius-control flex h-8 shrink-0 items-center gap-2 border bg-background px-2.5 text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <span
-                        aria-hidden
-                        className={cn('size-2 rounded-full', status.bar)}
-                      />
-                      <span className="first-letter:uppercase">
-                        {dateLabel({ day, locale: getLocale() })}
-                      </span>
-                      <span className={cn('tabular-nums', status.text)}>
-                        {percent}%
-                      </span>
-                    </button>
-                  );
-                })}
-              </nav>
+            {hasAdditions && stripDays.length > 1 && (
+              <DayStrip days={stripDays} onJump={jumpToDay} />
             )}
             {days.length > 0 && (
               <TabsList
                 variant="line"
-                className="h-auto max-w-full justify-start gap-4 overflow-x-auto p-0"
+                className="h-auto max-w-full justify-start gap-4 overflow-x-auto p-0 max-md:gap-3"
               >
                 <TabsTrigger className={TAB_TRIGGER} value="shifts">
-                  {m.builder_proposal_tab_shifts()}
+                  <span className="md:hidden">
+                    {m.builder_proposal_tab_shifts_short()}
+                  </span>
+                  <span className="max-md:hidden">
+                    {m.builder_proposal_tab_shifts()}
+                  </span>
                 </TabsTrigger>
                 {hasAdditions && (
                   <TabsTrigger className={TAB_TRIGGER} value="attention">
@@ -452,11 +466,21 @@ export function AssignmentProposalPreview({
                 )}
                 {hasAdditions && (
                   <TabsTrigger className={TAB_TRIGGER} value="volunteers">
-                    {m.builder_proposal_tab_volunteers()}
+                    <span className="md:hidden">
+                      {m.builder_proposal_tab_volunteers_short()}
+                    </span>
+                    <span className="max-md:hidden">
+                      {m.builder_proposal_tab_volunteers()}
+                    </span>
                   </TabsTrigger>
                 )}
                 <TabsTrigger className={TAB_TRIGGER} value="gaps">
-                  {m.builder_proposal_tab_gaps({ count: openPlaces })}
+                  <span className="md:hidden">
+                    {m.builder_proposal_tab_gaps_short({ count: openPlaces })}
+                  </span>
+                  <span className="max-md:hidden">
+                    {m.builder_proposal_tab_gaps({ count: openPlaces })}
+                  </span>
                 </TabsTrigger>
               </TabsList>
             )}
@@ -464,26 +488,71 @@ export function AssignmentProposalPreview({
         }
         footer={
           <>
-            {applyAlert ? (
+            {applyState.status === 'refused' ? (
               <p
                 role="alert"
                 className="text-destructive text-sm max-md:w-full sm:mr-auto sm:self-center"
               >
-                {applyAlert}
+                {applyState.message}
+              </p>
+            ) : applyState.status === 'unknown' ? (
+              <p
+                role="alert"
+                className="text-amber-700 text-sm max-md:w-full sm:mr-auto sm:self-center dark:text-amber-300"
+              >
+                {m.builder_proposal_apply_unknown()}
               </p>
             ) : (
               hasAdditions && (
-                <p className="mr-auto self-center text-muted-foreground text-sm max-md:hidden">
-                  {attentionCount === 1
-                    ? m.builder_proposal_recap_attention_one()
-                    : m.builder_proposal_recap_attention_many({
-                        count: attentionCount,
-                      })}
-                  {openPlaces > 0 && ' · '}
-                  {openPlaces > 0 &&
-                    (openPlaces === 1
-                      ? m.builder_proposal_gap_one()
-                      : m.builder_proposal_gap_many({ count: openPlaces }))}
+                <p className="mr-auto flex flex-wrap items-center gap-x-2 self-center text-sm max-md:hidden">
+                  {[
+                    loadedPeople.length > 0 && (
+                      <RecapButton
+                        key="load"
+                        onClick={() => setTab('volunteers')}
+                      >
+                        {loadedPeople.length === 1
+                          ? m.builder_proposal_summary_load_people_one()
+                          : m.builder_proposal_summary_load_people_many({
+                              count: loadedPeople.length,
+                            })}
+                      </RecapButton>
+                    ),
+                    onlyOptionCount > 0 && (
+                      <RecapButton
+                        key="only"
+                        onClick={() => setTab('attention')}
+                      >
+                        {onlyOptionCount === 1
+                          ? m.builder_proposal_recap_only_one()
+                          : m.builder_proposal_recap_only_many({
+                              count: onlyOptionCount,
+                            })}
+                      </RecapButton>
+                    ),
+                    openPlaces > 0 && (
+                      <RecapButton key="open" onClick={() => setTab('gaps')}>
+                        {openPlaces === 1
+                          ? m.builder_proposal_gap_one()
+                          : m.builder_proposal_gap_many({ count: openPlaces })}
+                      </RecapButton>
+                    ),
+                  ]
+                    .filter(Boolean)
+                    .flatMap((item, index) =>
+                      index === 0
+                        ? [item]
+                        : [
+                            <span
+                              key={`dot-${index}`}
+                              aria-hidden
+                              className="text-muted-foreground"
+                            >
+                              ·
+                            </span>,
+                            item,
+                          ],
+                    )}
                 </p>
               )
             )}
@@ -494,7 +563,7 @@ export function AssignmentProposalPreview({
               disabled={isApplying}
               onClick={requestDiscard}
             >
-              {m.builder_proposal_discard()}
+              {hasAdditions ? m.builder_proposal_discard() : m.shell_close()}
             </Button>
             <ApplyAction
               proposal={proposal}
@@ -512,53 +581,33 @@ export function AssignmentProposalPreview({
           {emptyText && <p className="py-4 font-semibold">{emptyText}</p>}
           {days.length > 0 && (
             <>
-              <TabsContent value="shifts" className="text-sm">
-                <ProposalShiftTable
-                  days={days}
-                  coverageByDay={coverageByDay}
-                  folded={folded}
-                  onToggleDay={toggleDay}
-                  excluded={excluded}
-                  ordinals={ordinals}
-                  heavyLoad={heavyLoad}
-                  locked={locked}
-                  timeZone={timeZone}
-                  onToggle={toggle}
-                />
+              <TabsContent value="shifts" tabIndex={-1} className="text-sm">
+                <ProposalShiftTable {...tableProps} />
               </TabsContent>
-              <TabsContent value="attention" className="text-sm">
-                <div className="border-b py-3 md:hidden">
-                  <ProposalRule
-                    heavyLoad={heavyLoad}
-                    showsOnlyOption={flagged.showsOnlyOption}
-                    showsLoad={flagged.showsLoad}
-                  />
-                </div>
+              <TabsContent value="attention" tabIndex={-1} className="text-sm">
                 {flagged.keys.size === 0 ? (
-                  <p className="py-6 text-muted-foreground">
-                    {m.builder_proposal_attention_empty()}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-3 py-6">
+                    <p className="text-muted-foreground">
+                      {m.builder_proposal_attention_empty()}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTab('shifts')}
+                    >
+                      {m.builder_proposal_attention_show_all()}
+                    </Button>
+                  </div>
                 ) : (
-                  <ProposalShiftTable
-                    days={days}
-                    coverageByDay={coverageByDay}
-                    folded={folded}
-                    onToggleDay={toggleDay}
-                    only={flagged.keys}
-                    excluded={excluded}
-                    ordinals={ordinals}
-                    heavyLoad={heavyLoad}
-                    locked={locked}
-                    timeZone={timeZone}
-                    onToggle={toggle}
-                  />
+                  <ProposalShiftTable {...tableProps} only={flagged.keys} />
                 )}
               </TabsContent>
-              <TabsContent value="volunteers" className="text-sm">
+              <TabsContent value="volunteers" tabIndex={-1} className="text-sm">
                 <ProposalVolunteerTable
                   groups={groups}
                   totals={totals}
                   heavyLoad={heavyLoad}
+                  severeLoad={severeLoad}
                   days={days}
                   excluded={excluded}
                   locked={locked}
@@ -566,11 +615,13 @@ export function AssignmentProposalPreview({
                   onSetIncluded={setIncluded}
                 />
               </TabsContent>
-              <TabsContent value="gaps" className="pt-3 text-sm">
+              <TabsContent value="gaps" tabIndex={-1} className="pt-3 text-sm">
                 <ProposalGapTable
                   days={days}
                   excluded={excluded}
                   timeZone={timeZone}
+                  onJumpToDay={jumpToDay}
+                  onShowShifts={() => setTab('shifts')}
                 />
               </TabsContent>
             </>

@@ -895,7 +895,9 @@ describe('Assignment proposal preview', () => {
     expect(existingRow).toBeGreaterThan(-1);
     expect(existingRow).toBeLessThan(pickRow);
     expect(
-      within(rows[existingRow]).getByText(m.builder_proposal_existing()),
+      within(rows[existingRow]).getByText(
+        new RegExp(m.builder_proposal_existing()),
+      ),
     ).toBeVisible();
     expect(
       within(preview).getByRole('checkbox', { name: /Ada Lovelace/ }),
@@ -940,7 +942,7 @@ describe('Assignment proposal preview', () => {
     expect(apply).not.toHaveBeenCalled();
     await userEvent.click(
       screen.getByRole('tab', {
-        name: m.builder_proposal_tab_volunteers(),
+        name: new RegExp(m.builder_proposal_tab_volunteers()),
       }),
     );
     expect(
@@ -1132,7 +1134,9 @@ describe('Assignment proposal preview', () => {
     ).toBeVisible();
     await userEvent.click(
       screen.getByRole('tab', {
-        name: m.builder_proposal_tab_gaps({ count: 1 }),
+        name: new RegExp(
+          m.builder_proposal_tab_gaps({ count: 1 }).replace(/[()]/g, '\\$&'),
+        ),
       }),
     );
     expect(
@@ -1304,7 +1308,7 @@ describe('Assignment proposal preview', () => {
     expect(within(preview).getByText('Linus Torvalds')).toBeVisible();
     expect(within(preview).queryByText('Ada Lovelace')).not.toBeInTheDocument();
     expect(
-      screen.getByText(m.builder_proposal_recap_attention_one(), {
+      screen.getByText(m.builder_proposal_recap_only_one(), {
         exact: false,
       }),
     ).toBeInTheDocument();
@@ -1393,11 +1397,24 @@ describe('Assignment proposal preview', () => {
     const boxes = within(preview).getAllByRole('checkbox');
     expect(boxes.filter((box) => box.tabIndex === 0)).toHaveLength(0);
     const whys = within(preview).getAllByRole('button', { name: /^Why / });
-    expect(whys.map((why) => why.tabIndex)).toEqual([0, -1, -1]);
+    // The table's one stop starts on the first day's fold button.
+    expect(
+      within(preview).getByRole('button', {
+        name: dateLabel({ day: '2026-08-02', locale: 'en' }),
+      }).tabIndex,
+    ).toBe(0);
+    expect(whys.map((why) => why.tabIndex)).toEqual([-1, -1, -1]);
 
     whys[0].focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(boxes[0]).toHaveFocus();
+    // Down stops at the next day's fold button, then reaches its picks.
+    await userEvent.keyboard('{ArrowDown}');
+    expect(
+      within(preview).getByRole('button', {
+        name: dateLabel({ day: '2026-08-05', locale: 'en' }),
+      }),
+    ).toHaveFocus();
     await userEvent.keyboard('{ArrowDown}');
     expect(boxes[1]).toHaveFocus();
     expect(boxes[1].tabIndex).toBe(0);
@@ -1417,7 +1434,7 @@ describe('Assignment proposal preview', () => {
     const preview = await openPreview();
     await userEvent.click(
       screen.getByRole('tab', {
-        name: m.builder_proposal_tab_volunteers(),
+        name: new RegExp(m.builder_proposal_tab_volunteers()),
       }),
     );
     const [busiest] = within(preview).getAllByRole('rowheader');
@@ -1435,7 +1452,9 @@ describe('Assignment proposal preview', () => {
     // Excluded picks reopen their places.
     expect(
       screen.getByRole('tab', {
-        name: m.builder_proposal_tab_gaps({ count: 2 }),
+        name: new RegExp(
+          m.builder_proposal_tab_gaps({ count: 2 }).replace(/[()]/g, '\\$&'),
+        ),
       }),
     ).toBeVisible();
 

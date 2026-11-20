@@ -213,6 +213,8 @@ export interface ScheduleLoad {
   ordinals: Map<string, number>;
   /** The ordinal from which a pick is tagged. */
   heavyLoad: number;
+  /** The load from which the tag turns strong: twice the median load. */
+  severeLoad: number;
   /** Volunteer id → everything they would serve here once applied. */
   totals: Map<string, number>;
 }
@@ -266,9 +268,12 @@ export function scheduleOrdinals({
   );
   const loads = [...totals.values()].sort((left, right) => left - right);
   const upperQuartile = loads[Math.floor((loads.length - 1) * 0.75)] ?? 0;
+  const median = loads[Math.floor((loads.length - 1) / 2)] ?? 0;
+  const heavyLoad = Math.max(HEAVY_LOAD_ORDINAL, upperQuartile + 1);
   return {
     ordinals,
-    heavyLoad: Math.max(HEAVY_LOAD_ORDINAL, upperQuartile + 1),
+    heavyLoad,
+    severeLoad: Math.max(heavyLoad + 1, median * 2),
     totals,
   };
 }

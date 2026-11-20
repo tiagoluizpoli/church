@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { Info } from 'lucide-react';
+import { Info, TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
   type ProposalCoverage,
@@ -25,8 +25,9 @@ interface CoverageMeterProps {
   className?: string;
 }
 
-/** The Staffing Meter read as a change: the solid part is already on the
- * board, the faint part is what applying would add. Coloured by the result. */
+/** The Staffing Meter read as a change: the darker part is already on the
+ * board, the brighter part is what applying would add. Coloured by the
+ * result; both parts keep 3:1 against the track. */
 export function CoverageMeter({ coverage, className }: CoverageMeterProps) {
   const { required, before, after } = coverage;
   const beforePercent = percentOf({ covered: before, required });
@@ -55,13 +56,16 @@ export function CoverageMeter({ coverage, className }: CoverageMeterProps) {
       >
         <span
           className={cn(
-            'absolute inset-y-0 left-0 opacity-45 transition-[width] duration-300 ease-out',
+            'absolute inset-y-0 left-0 brightness-90 transition-[width] duration-300 ease-out dark:brightness-125',
             status.bar,
           )}
           style={{ width: `${afterPercent}%` }}
         />
         <span
-          className={cn('absolute inset-y-0 left-0', status.bar)}
+          className={cn(
+            'absolute inset-y-0 left-0 brightness-[0.7] dark:brightness-100',
+            status.bar,
+          )}
           style={{ width: `${beforePercent}%` }}
         />
       </span>
@@ -70,35 +74,88 @@ export function CoverageMeter({ coverage, className }: CoverageMeterProps) {
 }
 
 interface AttentionTagProps {
+  /** Twice the usual load: louder, with an icon, so it can't blend in. */
+  strong?: boolean;
   children: ReactNode;
 }
 
 /** Needs-attention amber (DESIGN.md): a pick worth a second look. */
-export function AttentionTag({ children }: AttentionTagProps) {
+export function AttentionTag({ strong = false, children }: AttentionTagProps) {
   return (
-    <span className="radius-control inline-flex h-6 shrink-0 items-center whitespace-nowrap bg-amber-500/12 px-2 align-middle text-amber-800 text-xs dark:bg-amber-400/15 dark:text-amber-200">
+    <span
+      className={cn(
+        'radius-control inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap px-2 align-middle text-xs',
+        strong
+          ? 'bg-amber-500/25 font-semibold text-amber-900 ring-1 ring-amber-600/50 ring-inset dark:bg-amber-400/25 dark:text-amber-100'
+          : 'bg-amber-500/12 text-amber-800 dark:bg-amber-400/15 dark:text-amber-200',
+      )}
+    >
+      {strong && <TriangleAlert aria-hidden className="size-3.5" />}
       {children}
     </span>
   );
 }
 
-interface PickTagsProps {
-  addition: GetAssignmentProposal200AdditionsItem;
-  ordinal: number | undefined;
-  heavyLoad: number;
+interface LoadTagProps {
+  /** Everything the volunteer would serve in this Schedule. */
+  total: number;
+  severeLoad: number;
 }
 
-export function PickTags({ addition, ordinal, heavyLoad }: PickTagsProps) {
+/** One load wording everywhere: rows, the volunteers tab and the legend. */
+export function LoadTag({ total, severeLoad }: LoadTagProps) {
+  return (
+    <AttentionTag strong={total >= severeLoad}>
+      {m.builder_proposal_tag_total({ count: total })}
+    </AttentionTag>
+  );
+}
+
+interface InformativeReasonInput {
+  reason: GetAssignmentProposal200AdditionsItemReason;
+}
+
+/** The reason in a few words, only when it tells the leader something:
+ * the person can serve almost nowhere else. */
+function informativeReason({
+  reason: { eligibleShiftCount },
+}: InformativeReasonInput): string | null {
+  if (eligibleShiftCount === 1)
+    return m.builder_proposal_reason_short_one_shift();
+  if (eligibleShiftCount === 2)
+    return m.builder_proposal_reason_short_few_shifts({ count: 2 });
+  return null;
+}
+
+interface PickNotesProps {
+  addition: GetAssignmentProposal200AdditionsItem;
+  ordinal: number | undefined;
+  total: number;
+  heavyLoad: number;
+  severeLoad: number;
+}
+
+/** What is worth a look about a pick, in one cell: the amber tags, then a
+ * short reason when it is informative. */
+export function PickNotes({
+  addition,
+  ordinal,
+  total,
+  heavyLoad,
+  severeLoad,
+}: PickNotesProps) {
   const onlyOption = addition.reason.needCandidateCount === 1;
   const loaded = ordinal !== undefined && ordinal >= heavyLoad;
-  if (!(onlyOption || loaded)) return null;
+  const reason = informativeReason(addition);
+  if (!(onlyOption || loaded || reason)) return null;
   return (
-    <span className="flex items-center gap-1.5">
+    <span className="flex min-w-0 items-center gap-2">
       {onlyOption && (
         <AttentionTag>{m.builder_proposal_only_option()}</AttentionTag>
       )}
-      {loaded && (
-        <AttentionTag>{m.builder_proposal_tag_load({ ordinal })}</AttentionTag>
+      {loaded && <LoadTag total={total} severeLoad={severeLoad} />}
+      {reason && (
+        <span className="truncate text-muted-foreground">{reason}</span>
       )}
     </span>
   );
@@ -107,12 +164,14 @@ export function PickTags({ addition, ordinal, heavyLoad }: PickTagsProps) {
 interface ReasonLinesInput {
   reason: GetAssignmentProposal200AdditionsItemReason;
   ordinal: number | undefined;
+  total: number;
   heavyLoad: number;
 }
 
 function reasonLines({
   reason: { eligibleShiftCount, needCandidateCount, decidedBy },
   ordinal,
+  total,
   heavyLoad,
 }: ReasonLinesInput): string[] {
   return [
@@ -128,7 +187,7 @@ function reasonLines({
         ? [m.builder_proposal_reason_workload()]
         : []),
     ...(ordinal !== undefined && ordinal >= heavyLoad
-      ? [m.builder_proposal_reason_load({ ordinal })]
+      ? [m.builder_proposal_reason_load({ ordinal, total })]
       : []),
   ];
 }
@@ -138,23 +197,6 @@ export interface RovingProps {
   tabIndex: number;
   'data-roving': string;
   onFocus: () => void;
-}
-
-interface ShortReasonInput {
-  reason: GetAssignmentProposal200AdditionsItemReason;
-}
-
-/** The deciding rule in a few words, for the row itself. */
-export function shortReason({ reason }: ShortReasonInput): string {
-  if (reason.decidedBy === 'only_candidate')
-    return m.builder_proposal_reason_short_only();
-  if (reason.decidedBy === 'fewest_eligible_shifts')
-    return m.builder_proposal_reason_short_scarcity();
-  if (reason.decidedBy === 'fewest_cycle_assignments')
-    return m.builder_proposal_reason_short_workload();
-  return m.builder_proposal_reason_short_options({
-    count: reason.needCandidateCount,
-  });
 }
 
 interface ReasonPopoverProps extends ReasonLinesInput {
@@ -172,7 +214,7 @@ export function ReasonPopover({ name, roving, ...input }: ReasonPopoverProps) {
         render={
           <Button
             variant="ghost"
-            size={touch ? 'icon-touch' : 'icon-sm'}
+            size={touch ? 'icon-touch' : 'icon'}
             aria-label={label}
             className="text-muted-foreground hover:text-foreground"
             {...roving}

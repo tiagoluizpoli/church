@@ -7,7 +7,7 @@ import {
   proposalAdditionKey,
 } from '../../../utils/builder/assignment-proposal.utils';
 import { dateLabel } from '../../../utils/builder/cycle-builder-date.utils';
-import { AttentionTag } from './proposal-parts';
+import { LoadTag } from './proposal-parts';
 import { Button } from '@/components/ui/button';
 import type { GetAssignmentProposal200AdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
@@ -69,6 +69,7 @@ interface ProposalVolunteerTableProps {
   /** Volunteer id → everything they would serve here, existing included. */
   totals: ReadonlyMap<string, number>;
   heavyLoad: number;
+  severeLoad: number;
   days: ProposalDay[];
   excluded: ReadonlySet<string>;
   locked: boolean;
@@ -82,6 +83,7 @@ export function ProposalVolunteerTable({
   groups,
   totals,
   heavyLoad,
+  severeLoad,
   days,
   excluded,
   locked,
@@ -100,7 +102,7 @@ export function ProposalVolunteerTable({
         <col />
         <col className="w-80" />
       </colgroup>
-      <thead className="sticky top-0 z-10 bg-popover text-muted-foreground text-xs max-md:hidden">
+      <thead className="sticky top-0 z-10 bg-popover text-muted-foreground text-sm max-md:hidden">
         <tr>
           <th scope="col" className={HEAD}>
             {m.builder_proposal_col_volunteer()}
@@ -131,11 +133,10 @@ export function ProposalVolunteerTable({
                 {name}
                 {(totals.get(volunteerId) ?? 0) >= heavyLoad && (
                   <span className="ms-2 font-normal">
-                    <AttentionTag>
-                      {m.builder_proposal_tag_total({
-                        count: totals.get(volunteerId) ?? 0,
-                      })}
-                    </AttentionTag>
+                    <LoadTag
+                      total={totals.get(volunteerId) ?? 0}
+                      severeLoad={severeLoad}
+                    />
                   </span>
                 )}
               </th>
@@ -154,14 +155,8 @@ export function ProposalVolunteerTable({
                     return (
                       <span
                         key={day}
-                        title={picks
-                          .map(
-                            ({ shift }) =>
-                              `${formatTimeOf({ value: shift.startTime, timeZone })} ${shift.eventTitle}`,
-                          )
-                          .join(', ')}
                         className={cn(
-                          'radius-control inline-flex h-6 items-center whitespace-nowrap bg-secondary px-2 text-secondary-foreground text-xs tabular-nums',
+                          'radius-control inline-flex h-7 items-center whitespace-nowrap bg-secondary px-2 text-secondary-foreground text-sm tabular-nums',
                           out && 'text-muted-foreground line-through',
                         )}
                       >
@@ -169,10 +164,26 @@ export function ProposalVolunteerTable({
                           day: parseCalendarDay({ value: day }),
                         })}
                         {picks.length > 1 && (
-                          <span className="ms-1 text-muted-foreground">
+                          <span
+                            aria-hidden
+                            className="ms-1 text-muted-foreground"
+                          >
                             ×{picks.length}
                           </span>
                         )}
+                        {/* The times, for every reader, without widening the chip. */}
+                        <span className="sr-only">
+                          {m.builder_proposal_chip_times({
+                            times: picks
+                              .map(({ shift }) =>
+                                formatTimeOf({
+                                  value: shift.startTime,
+                                  timeZone,
+                                }),
+                              )
+                              .join(', '),
+                          })}
+                        </span>
                       </span>
                     );
                   })}
@@ -203,6 +214,8 @@ interface ProposalGapTableProps {
   days: ProposalDay[];
   excluded: ReadonlySet<string>;
   timeZone: string;
+  onJumpToDay: (day: string) => void;
+  onShowShifts: () => void;
 }
 
 /** Places still open after applying, in board order. */
@@ -210,6 +223,8 @@ export function ProposalGapTable({
   days,
   excluded,
   timeZone,
+  onJumpToDay,
+  onShowShifts,
 }: ProposalGapTableProps) {
   const rows = days.flatMap(({ day, shifts }) =>
     shifts.flatMap((shift) =>
@@ -225,9 +240,14 @@ export function ProposalGapTable({
   );
   if (rows.length === 0)
     return (
-      <p className="py-6 text-muted-foreground">
-        {m.builder_proposal_gaps_empty()}
-      </p>
+      <div className="flex flex-wrap items-center gap-3 py-6">
+        <p className="text-muted-foreground">
+          {m.builder_proposal_gaps_empty()}
+        </p>
+        <Button variant="outline" size="sm" onClick={onShowShifts}>
+          {m.builder_proposal_gaps_show_shifts()}
+        </Button>
+      </div>
     );
   return (
     <div className="space-y-3">
@@ -236,11 +256,12 @@ export function ProposalGapTable({
       </p>
       <table className="w-full table-fixed border-separate border-spacing-0 text-sm max-md:block">
         <colgroup>
-          <col className="w-[45%]" />
+          <col className="w-[40%]" />
           <col />
-          <col className="w-40" />
+          <col className="w-36" />
+          <col className="w-36" />
         </colgroup>
-        <thead className="sticky top-0 z-10 bg-popover text-muted-foreground text-xs max-md:hidden">
+        <thead className="sticky top-0 z-10 bg-popover text-muted-foreground text-sm max-md:hidden">
           <tr>
             <th scope="col" className={HEAD}>
               {m.builder_proposal_col_shift()}
@@ -250,6 +271,9 @@ export function ProposalGapTable({
             </th>
             <th scope="col" className={cn(HEAD, 'text-right')}>
               {m.builder_proposal_col_open()}
+            </th>
+            <th scope="col" className={HEAD}>
+              <span className="sr-only">{m.builder_proposal_gap_jump()}</span>
             </th>
           </tr>
         </thead>
@@ -279,6 +303,20 @@ export function ProposalGapTable({
                     ? m.builder_proposal_gap_one()
                     : m.builder_proposal_gap_many({ count: open })}
                 </span>
+              </td>
+              <td className={cn(CELL, 'text-right')}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={m.builder_proposal_gap_jump_for({
+                    day: dateLabel({ day, locale: getLocale() }),
+                    need: `${need.roleName} · ${need.sectorName}`,
+                  })}
+                  className="max-md:h-11 max-md:w-full max-md:text-sm"
+                  onClick={() => onJumpToDay(day)}
+                >
+                  {m.builder_proposal_gap_jump()}
+                </Button>
               </td>
             </tr>
           ))}

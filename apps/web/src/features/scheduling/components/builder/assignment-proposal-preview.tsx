@@ -1,6 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
-import { useMemo, useState } from 'react';
+import { type Dispatch, type SetStateAction, useMemo, useState } from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
   coverageOf,
@@ -21,6 +21,16 @@ import {
   type SetIncludedInput,
 } from './proposal/proposal-side-views';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type {
@@ -50,6 +60,9 @@ interface AssignmentProposalPreviewProps {
   data: CycleBuilderData;
   proposal: AssignmentProposal;
   applyState: ProposalApplyState;
+  /** Keys of the picks left out (`proposalAdditionKey`). */
+  excluded: ReadonlySet<string>;
+  onExcludedChange: Dispatch<SetStateAction<ReadonlySet<string>>>;
   onApply: (selection: ProposalSelection) => void;
   onReviewNew: () => void;
   onDiscard: () => void;
@@ -182,14 +195,17 @@ export function AssignmentProposalPreview({
   data,
   proposal,
   applyState,
+  excluded,
+  onExcludedChange: setExcluded,
   onApply,
   onReviewNew,
   onDiscard,
 }: AssignmentProposalPreviewProps) {
   const { churchTimezone: timeZone } = useTimezone();
-  const [excluded, setExcluded] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
+  // Leaving with picks excluded would silently throw that work away.
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const requestDiscard = () =>
+    excluded.size > 0 ? setConfirmingDiscard(true) : onDiscard();
   const [tab, setTab] = useState(
     proposal.additions.length > 0 ? 'shifts' : 'gaps',
   );
@@ -301,7 +317,7 @@ export function AssignmentProposalPreview({
         open
         wide
         closeDisabled={isApplying}
-        onOpenChange={(open) => !(open || isApplying) && onDiscard()}
+        onOpenChange={(open) => !(open || isApplying) && requestDiscard()}
         title={m.builder_proposal_title()}
         description={m.builder_proposal_description()}
         reviewBodyLabel={m.builder_proposal_list_label()}
@@ -471,7 +487,7 @@ export function AssignmentProposalPreview({
               variant="outline"
               size="touch"
               disabled={isApplying}
-              onClick={onDiscard}
+              onClick={requestDiscard}
             >
               {m.builder_proposal_discard()}
             </Button>
@@ -558,6 +574,30 @@ export function AssignmentProposalPreview({
           )}
         </div>
       </ResponsiveFormSurface>
+      <AlertDialog open={confirmingDiscard} onOpenChange={setConfirmingDiscard}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {m.builder_proposal_discard_confirm_title()}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {excluded.size === 1
+                ? m.builder_proposal_discard_confirm_body_one()
+                : m.builder_proposal_discard_confirm_body_many({
+                    count: excluded.size,
+                  })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {m.builder_proposal_discard_confirm_keep()}
+            </AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={onDiscard}>
+              {m.builder_proposal_discard()}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Tabs>
   );
 }

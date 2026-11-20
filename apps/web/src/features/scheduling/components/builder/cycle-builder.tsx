@@ -123,11 +123,20 @@ export function CycleBuilder({
   // selection resends its key, so a lost response is recovered rather than
   // applied twice, and a changed selection never reuses one (ADR 0013).
   const applicationKeys = useRef(new Map<string, string>());
+  // Picks the leader left out. Kept here so a fresh review after a refusal
+  // keeps every exclusion that still names a pair of the new proposal.
+  const [excludedKeys, setExcludedKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   // A read, kept only in memory: discarding it writes nothing.
   const proposal = useMutation({
     mutationFn: () => adminApi.getAssignmentProposal(cycleId, { ministryId }),
-    onSuccess: () => {
+    onSuccess: ({ additions }) => {
       applicationKeys.current = new Map();
+      const valid = new Set(additions.map(proposalAdditionKey));
+      setExcludedKeys(
+        (previous) => new Set([...previous].filter((key) => valid.has(key))),
+      );
     },
     onError: () => {
       toast.error(m.builder_proposal_error());
@@ -175,12 +184,14 @@ export function CycleBuilder({
       setRecentlyAdded(
         new Set(additions.map(({ assignmentId }) => assignmentId)),
       );
+      setExcludedKeys(new Set());
       proposal.reset();
     },
     onSettled: refreshBoard,
   });
   const discardProposal = () => {
     applyProposal.reset();
+    setExcludedKeys(new Set());
     proposal.reset();
   };
   const reviewNewProposal = () => {
@@ -433,6 +444,8 @@ export function CycleBuilder({
               data={data}
               proposal={proposal.data}
               applyState={applyState}
+              excluded={excludedKeys}
+              onExcludedChange={setExcludedKeys}
               onApply={applyProposal.mutate}
               onReviewNew={reviewNewProposal}
               onDiscard={discardProposal}

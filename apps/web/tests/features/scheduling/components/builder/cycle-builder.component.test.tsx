@@ -1310,6 +1310,80 @@ describe('Assignment proposal preview', () => {
     ).toBeInTheDocument();
   });
 
+  it('asks before Escape throws away excluded picks', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    await userEvent.click(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    );
+    await userEvent.keyboard('{Escape}');
+
+    const confirm = await screen.findByRole('alertdialog', {
+      name: m.builder_proposal_discard_confirm_title(),
+    });
+    await userEvent.click(
+      within(confirm).getByRole('button', {
+        name: m.builder_proposal_discard_confirm_keep(),
+      }),
+    );
+    expect(screen.getByTestId('assignment-proposal-preview')).toBeVisible();
+    expect(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    ).not.toBeChecked();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_discard() }),
+    );
+    await userEvent.click(
+      within(
+        await screen.findByRole('alertdialog', {
+          name: m.builder_proposal_discard_confirm_title(),
+        }),
+      ).getByRole('button', { name: m.builder_proposal_discard() }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('assignment-proposal-preview'),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('keeps still-valid exclusions on a fresh review after a refusal', async () => {
+    const getProposal = vi
+      .spyOn(adminApi, 'getAssignmentProposal')
+      .mockResolvedValue(twoDayProposal);
+    vi.spyOn(adminApi, 'applyAssignmentProposal').mockRejectedValueOnce(
+      conflict('The proposal is out of date.'),
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    await userEvent.click(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 2, total: 3 }),
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole('button', { name: m.builder_proposal_refresh() }),
+    );
+    await waitFor(() => expect(getProposal).toHaveBeenCalledTimes(2));
+
+    const fresh = await screen.findByTestId('assignment-proposal-preview');
+    expect(
+      within(fresh).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 2, total: 3 }),
+      }),
+    ).toBeEnabled();
+  });
+
   it("excludes all of one volunteer's picks and submits them as excluded pairs", async () => {
     vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
       twoDayProposal,

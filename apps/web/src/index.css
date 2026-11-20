@@ -170,18 +170,15 @@
 
   body {
     @apply font-sans bg-background text-foreground;
-    background:
-      radial-gradient(
-        circle at top left,
-        color-mix(in oklch, var(--color-accent) 56%, white) 0,
-        transparent 20rem
-      ),
-      linear-gradient(
+    /* Fixed to the viewport: as the canvas background it would otherwise tile
+       below a body shorter than the window. */
+    background: linear-gradient(
         180deg,
         var(--color-background) 0%,
         color-mix(in oklch, var(--color-background) 92%, var(--color-accent))
           100%
-      );
+      )
+      fixed no-repeat var(--color-background);
   }
 
   ::selection {
@@ -359,4 +356,59 @@
       var(--color-background)
     );
   }
+}
+
+/* Sanctuary light scene */
+/* Without WebGL2: three warm arched windows on plaster, one soft beam to a pool of light. */
+.sanctuary-light-fallback {
+  background:
+    radial-gradient(
+      ellipse 9% 16% at 44% 29%,
+      oklch(0.95 0.05 85 / 0.75),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 11% 20% at 60% 26%,
+      oklch(0.96 0.05 85 / 0.85),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 9% 16% at 77% 29%,
+      oklch(0.95 0.05 85 / 0.75),
+      transparent 70%
+    ),
+    linear-gradient(
+      200deg,
+      transparent 30%,
+      oklch(0.88 0.07 80 / 0.18) 42%,
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 12% 6% at 55% 71%,
+      oklch(0.9 0.07 80 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 80% 70% at 55% 40%,
+      oklch(0.36 0.025 70),
+      oklch(0.16 0.015 60)
+    );
+}
+
+.sanctuary-light-canvas {
+  opacity: 0;
+  transition: opacity 700ms ease-out;
+}
+
+.sanctuary-light-canvas[data-ready="true"] {
+  opacity: 1;
+}
+
+/* `@theme` resolves --color-* at :root, so a nested `.dark` needs them restated. */
+.auth-panel.dark {
+  --color-foreground: var(--foreground);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 }

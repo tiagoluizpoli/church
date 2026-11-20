@@ -7,6 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth-client';
+import { cn } from '@/lib/utils';
 
 type RequestState = 'idle' | 'sent' | 'failed';
 
@@ -33,16 +34,16 @@ export default function ForgotPasswordForm() {
   });
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="mb-2 text-center font-bold text-3xl">
+    <div className="w-full">
+      <h1 className="text-balance font-bold text-2xl tracking-tight md:text-[1.75rem]">
         {m.password_recovery_request_title()}
       </h1>
-      <p className="mb-6 text-center text-muted-foreground text-sm">
+      <p className="mt-2 mb-8 text-pretty text-muted-foreground text-sm leading-relaxed">
         {m.password_recovery_request_description()}
       </p>
 
       {requestState === 'sent' ? (
-        <p role="status" className="text-center">
+        <p role="status" className="surface-subtle px-3 py-2.5 text-sm">
           {m.password_recovery_request_sent()}
         </p>
       ) : (
@@ -52,7 +53,7 @@ export default function ForgotPasswordForm() {
             e.stopPropagation();
             form.handleSubmit();
           }}
-          className="space-y-4"
+          className="space-y-5"
           noValidate
         >
           <form.Field name="email">
@@ -70,7 +71,7 @@ export default function ForgotPasswordForm() {
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
                 {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
+                  <p key={error?.message} className="text-destructive text-sm">
                     {error?.message}
                   </p>
                 ))}
@@ -79,7 +80,7 @@ export default function ForgotPasswordForm() {
           </form.Field>
 
           {requestState === 'failed' && (
-            <p role="alert" className="text-red-500">
+            <p role="alert" className="text-destructive text-sm">
               {m.password_recovery_request_failed()}
             </p>
           )}
@@ -96,8 +97,11 @@ export default function ForgotPasswordForm() {
         </form>
       )}
 
-      <div className="mt-4 text-center">
-        <Link to="/login" className={buttonVariants({ variant: 'link' })}>
+      <div className="mt-6">
+        <Link
+          to="/login"
+          className={cn(buttonVariants({ variant: 'link' }), 'px-0')}
+        >
           {m.password_recovery_back_to_login()}
         </Link>
       </div>

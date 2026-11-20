@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
+import { AuthShell } from '@/components/auth-shell';
 import SignInForm from '@/components/sign-in-form';
 import { authClient } from '@/lib/auth-client';
 import { validateInternalReturnTarget } from '@/shared/utils/return-target';
@@ -29,5 +30,9 @@ function RouteComponent() {
   const redirectTo =
     validateInternalReturnTarget({ target: redirectSearch }) ?? undefined;
 
-  return <SignInForm redirectTo={redirectTo} notice={notice} />;
+  return (
+    <AuthShell>
+      <SignInForm redirectTo={redirectTo} notice={notice} />
+    </AuthShell>
+  );
 }

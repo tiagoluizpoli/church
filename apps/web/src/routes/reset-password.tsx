@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { z } from 'zod';
+import { AuthShell } from '@/components/auth-shell';
 import ResetPasswordForm, {
   ExpiredResetLink,
 } from '@/components/reset-password-form';
@@ -17,6 +18,13 @@ export const Route = createFileRoute('/reset-password')({
 
 function RouteComponent() {
   const { token, error } = Route.useSearch();
-  if (!token || error) return <ExpiredResetLink />;
-  return <ResetPasswordForm token={token} />;
+  return (
+    <AuthShell>
+      {!token || error ? (
+        <ExpiredResetLink />
+      ) : (
+        <ResetPasswordForm token={token} />
+      )}
+    </AuthShell>
+  );
 }

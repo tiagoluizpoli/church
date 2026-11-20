@@ -10,6 +10,7 @@ const mockSignInEmail = vi.fn();
 const mockToastError = vi.fn();
 const mockToastSuccess = vi.fn();
 const mockUseSession = vi.fn();
+const mockNavigate = vi.fn();
 
 beforeEach(() => {
   mockUseSession.mockReturnValue({ isPending: false });
@@ -34,7 +35,7 @@ vi.mock('@/lib/auth-client', () => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
   Link: ({ children }: { children: ReactNode }) => <a href="/">{children}</a>,
 }));
 
@@ -63,7 +64,7 @@ describe('SignInForm pt-BR copy', () => {
     expect(screen.getByLabelText(m.auth_password_label())).toBeVisible();
   });
 
-  it('shows catalog validation errors and the catalog success toast', async () => {
+  it('shows catalog validation errors, then signs in without a toast', async () => {
     renderWithProviders(<SignInForm />);
     await userEvent.type(
       screen.getByLabelText(m.password_recovery_email_label()),
@@ -84,6 +85,7 @@ describe('SignInForm pt-BR copy', () => {
       (_data: unknown, callbacks: { onSuccess: () => void }) =>
         callbacks.onSuccess(),
     );
+    mockNavigate.mockClear();
     await userEvent.clear(screen.getByLabelText(m.auth_password_label()));
     await userEvent.type(
       screen.getByLabelText(m.auth_password_label()),
@@ -92,9 +94,11 @@ describe('SignInForm pt-BR copy', () => {
     await userEvent.click(
       screen.getByRole('button', { name: m.auth_sign_in_submit() }),
     );
+    // Arriving in the app is the confirmation.
     await waitFor(() =>
-      expect(mockToastSuccess).toHaveBeenCalledWith(m.auth_sign_in_success()),
+      expect(mockNavigate).toHaveBeenCalledWith({ href: '/' }),
     );
+    expect(mockToastSuccess).not.toHaveBeenCalled();
   });
 });
 
@@ -119,11 +123,10 @@ describe('SignInForm Better Auth error messages', () => {
       screen.getByRole('button', { name: m.auth_sign_in_submit() }),
     );
 
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith(
-        m.auth_error_invalid_email_or_password(),
-      );
-    });
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      m.auth_error_invalid_email_or_password(),
+    );
+    expect(mockToastError).not.toHaveBeenCalled();
   });
 
   it('falls back to common_generic_error for an unknown error code', async () => {
@@ -142,9 +145,26 @@ describe('SignInForm Better Auth error messages', () => {
       screen.getByRole('button', { name: m.auth_sign_in_submit() }),
     );
 
-    await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith(m.common_generic_error());
-    });
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      m.common_generic_error(),
+    );
+    expect(mockToastError).not.toHaveBeenCalled();
+  });
+});
+
+describe('SignInForm password visibility', () => {
+  it('reveals and hides the password with a labelled toggle', async () => {
+    renderWithProviders(<SignInForm />);
+    const password = screen.getByLabelText(m.auth_password_label());
+    const toggle = screen.getByRole('button', { name: m.auth_password_show() });
+
+    expect(password).toHaveAttribute('type', 'password');
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(toggle);
+    expect(password).toHaveAttribute('type', 'text');
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(toggle);
+    expect(password).toHaveAttribute('type', 'password');
   });
 });
 

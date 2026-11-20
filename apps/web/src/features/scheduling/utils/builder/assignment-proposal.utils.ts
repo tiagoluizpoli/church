@@ -258,8 +258,6 @@ export function scheduleOrdinals({
       if (additionKey) ordinals.set(additionKey, index + 1);
     });
   }
-  // Past the upper quartile of loads: the tag singles out who carries
-  // clearly more than the rest, and stays silent when loads are even.
   const totals = new Map(
     [...byVolunteer].map(([volunteerId, entries]) => [
       volunteerId,
@@ -267,19 +265,16 @@ export function scheduleOrdinals({
     ]),
   );
   const loads = [...totals.values()].sort((left, right) => left - right);
-  const upperQuartile = loads[Math.floor((loads.length - 1) * 0.75)] ?? 0;
   const median = loads[Math.floor((loads.length - 1) / 2)] ?? 0;
-  const heavyLoad = Math.max(HEAVY_LOAD_ORDINAL, upperQuartile + 1);
+  // Only clear outliers: more than half again the median load. A cluster
+  // that serves both Sunday services every week (8x against a median of 6)
+  // is the norm, not overload; 14x is.
+  const heavyLoad = Math.max(HEAVY_LOAD_ORDINAL, Math.floor(median * 1.5) + 1);
   return {
     ordinals,
     heavyLoad,
-    // Twice the usual load, and well past the upper quartile, so the strong
-    // tag stays for the clear outlier even when most loads are light.
-    severeLoad: Math.max(
-      heavyLoad + 1,
-      median * 2,
-      Math.ceil(upperQuartile * 1.5),
-    ),
+    // Twice the usual load: the strong tag.
+    severeLoad: Math.max(heavyLoad + 1, median * 2),
     totals,
   };
 }

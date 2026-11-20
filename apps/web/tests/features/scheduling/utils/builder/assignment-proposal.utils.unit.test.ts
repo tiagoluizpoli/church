@@ -127,13 +127,13 @@ describe('scheduleOrdinals', () => {
     });
     expect(ordinals.get('s0-b:v1')).toBe(1);
     expect(ordinals.get('s2-b:v1')).toBe(3);
-    // One volunteer at 3: the tag still waits for a 4th.
-    expect(heavyLoad).toBe(4);
+    // One volunteer at 3 (the median): past half again of it, from the 5th.
+    expect(heavyLoad).toBe(5);
   });
 });
 
 describe('scheduleOrdinals heavy load', () => {
-  it('tags only past the upper-quartile load, never below the 4th', () => {
+  it('tags past half again the median load, strongly from twice it', () => {
     const shifts = Array.from({ length: 12 }, (_, index) =>
       shift({
         shiftId: `s${index}`,
@@ -146,7 +146,7 @@ describe('scheduleOrdinals heavy load', () => {
       roles: [],
       events: [{ eventTimeBlocks: [{ included: true, shifts }] }],
     } as unknown as CycleBuilderData;
-    // v1 serves 10 times, v2 and v3 serve 5: only v1's 6th onward stand out.
+    // v1 serves 10 times, v2 and v3 serve 5 (the median): v1 from the 8th.
     const additions = [
       ...shifts.slice(0, 10).map(({ shiftId }) => ['v1', shiftId]),
       ...shifts.slice(0, 5).map(({ shiftId }) => ['v2', shiftId]),
@@ -159,9 +159,58 @@ describe('scheduleOrdinals heavy load', () => {
       reason,
     }));
     const load = scheduleOrdinals({ data, additions });
-    expect(load.heavyLoad).toBe(6);
-    // Strong at twice the median (5), never at or below the heavy line.
+    expect(load.heavyLoad).toBe(8);
     expect(load.severeLoad).toBe(10);
     expect(load.totals.get('v1')).toBe(10);
+  });
+});
+
+describe('scheduleOrdinals on a month of Sundays', () => {
+  it('flags only the clear outlier, not the people who serve both services', () => {
+    const shifts = Array.from({ length: 14 }, (_, index) =>
+      shift({
+        shiftId: `s${index}`,
+        startTime: `2027-01-${String(index + 1).padStart(2, '0')}T12:00:00.000Z`,
+        volunteerIds: [],
+      }),
+    );
+    const data = {
+      assignments: [],
+      roles: [],
+      events: [{ eventTimeBlocks: [{ included: true, shifts }] }],
+    } as unknown as CycleBuilderData;
+    // Thirteen people at 6, nine at 8 (both Sunday services), one at 14.
+    const loads: [string, number][] = [
+      ...Array.from({ length: 13 }, (_, i): [string, number] => [
+        `six-${i}`,
+        6,
+      ]),
+      ...Array.from({ length: 9 }, (_, i): [string, number] => [
+        `eight-${i}`,
+        8,
+      ]),
+      ['outlier', 14],
+    ];
+    const additions = loads.flatMap(([volunteerId, count]) =>
+      shifts.slice(0, count).map(({ shiftId }) => ({
+        volunteerId,
+        volunteerName: volunteerId,
+        shiftRequirementId: `${shiftId}-b`,
+        shiftId,
+        reason,
+      })),
+    );
+    const { ordinals, heavyLoad, severeLoad } = scheduleOrdinals({
+      data,
+      additions,
+    });
+
+    expect(heavyLoad).toBe(10);
+    expect(severeLoad).toBe(12);
+    const flagged = [...ordinals]
+      .filter(([, ordinal]) => ordinal >= heavyLoad)
+      .map(([key]) => key.split(':')[1]);
+    expect(new Set(flagged)).toEqual(new Set(['outlier']));
+    expect(flagged).toHaveLength(5);
   });
 });

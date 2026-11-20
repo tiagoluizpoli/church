@@ -149,7 +149,7 @@ export function DayStrip({ days, wrap = false, onJump }: DayStripProps) {
             <span
               key={day}
               className={cn(
-                'radius-control flex h-8 shrink-0 items-center gap-2 border border-dashed px-2.5 text-muted-foreground text-sm',
+                'radius-control flex h-8 shrink-0 items-center gap-2 whitespace-nowrap border border-dashed px-2.5 text-muted-foreground text-sm',
                 wrap && 'col-span-2',
               )}
             >
@@ -178,15 +178,23 @@ export function DayStrip({ days, wrap = false, onJump }: DayStripProps) {
             onFocus={() => setActive(day)}
             onClick={() => onJump(day)}
             className={cn(
-              'radius-control flex h-8 shrink-0 items-center gap-2 border bg-background px-2.5 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring',
-              wrap && 'min-w-0 px-2',
+              'radius-control flex h-8 shrink-0 items-center gap-2 whitespace-nowrap border bg-background px-2.5 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring',
+              // One line even in a narrow rail cell: the label gives way first.
+              wrap && 'min-w-0 gap-1.5 px-2',
             )}
           >
             <span
               aria-hidden
               className={cn('size-2 rounded-full', status.bar)}
             />
-            <span className="first-letter:uppercase">{label}</span>
+            <span
+              className={cn(
+                'first-letter:uppercase',
+                wrap && 'min-w-0 truncate',
+              )}
+            >
+              {label}
+            </span>
             <span className="sr-only">, </span>
             <span className={cn('tabular-nums', status.text)}>{percent}%</span>
           </button>

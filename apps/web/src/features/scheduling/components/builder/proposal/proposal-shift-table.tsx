@@ -36,21 +36,39 @@ type ShiftRow = RowPlace & ShiftRowContent;
 
 interface RowsOfInput {
   shift: ProposalShift;
+  /** Normalised filter text; empty keeps every row. */
+  query: string;
+}
+
+/** Case- and accent-insensitive, so "joao" finds "João". */
+export function normaliseQuery(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
 }
 
 /** Per need: who is already there (muted, first), the picks, then what
  * stays open — so a slot reads filled / suggested / still open. An
  * excluded pick keeps its row (marked), so nothing below it moves. */
-function rowsOf({ shift }: RowsOfInput): ShiftRow[] {
+function rowsOf({ shift, query }: RowsOfInput): ShiftRow[] {
   const rows = shift.needs.flatMap((need) => {
+    // A matching role or sector keeps the whole need; otherwise only the
+    // people whose name matches.
+    const needMatches =
+      !query ||
+      normaliseQuery(`${need.roleName} ${need.sectorName}`).includes(query);
+    const nameMatches = (name: string | undefined) =>
+      needMatches || normaliseQuery(name ?? '').includes(query);
     const contents: ShiftRowContent[] = [
-      ...need.existing.map(
-        (assignee): ShiftRowContent => ({ kind: 'existing', assignee }),
-      ),
-      ...need.additions.map(
-        (addition): ShiftRowContent => ({ kind: 'addition', addition }),
-      ),
-      ...(need.remaining > 0
+      ...need.existing
+        .filter(({ name }) => nameMatches(name))
+        .map((assignee): ShiftRowContent => ({ kind: 'existing', assignee })),
+      ...need.additions
+        .filter(({ volunteerName }) => nameMatches(volunteerName))
+        .map((addition): ShiftRowContent => ({ kind: 'addition', addition })),
+      ...(need.remaining > 0 && needMatches
         ? [{ kind: 'open', count: need.remaining } as const]
         : []),
     ];
@@ -251,6 +269,8 @@ interface ProposalShiftTableProps {
   coverageByDay: ReadonlyMap<string, ProposalCoverage>;
   folded: ReadonlySet<string>;
   onToggleDay: (day: string) => void;
+  /** Normalised filter text (`normaliseQuery`); empty shows everything. */
+  query: string;
   excluded: ReadonlySet<string>;
   ordinals: ReadonlyMap<string, number>;
   /** Volunteer id → everything they would serve here. */
@@ -274,6 +294,7 @@ export function ProposalShiftTable({
   coverageByDay,
   folded,
   onToggleDay,
+  query,
   excluded,
   ordinals,
   totals,
@@ -293,7 +314,7 @@ export function ProposalShiftTable({
           .map((shift) => ({
             shift,
             label: `${formatTimeOf({ value: shift.startTime, timeZone })}–${formatTimeOf({ value: shift.endTime, timeZone })}`,
-            rows: rowsOf({ shift }),
+            rows: rowsOf({ shift, query }),
           }))
           .filter(({ rows }) => rows.length > 0);
         return shifts.length > 0
@@ -309,7 +330,7 @@ export function ProposalShiftTable({
             ]
           : [];
       }),
-    [days, timeZone],
+    [days, query, timeZone],
   );
   // Every fold button and row control, in reading order.
   const rovingIds = useMemo(
@@ -374,6 +395,12 @@ export function ProposalShiftTable({
         ? 'include'
         : null;
 
+  if (blocks.length === 0)
+    return (
+      <p className="py-6 text-muted-foreground">
+        {m.builder_proposal_filter_empty()}
+      </p>
+    );
   return (
     <table
       ref={tableRef}

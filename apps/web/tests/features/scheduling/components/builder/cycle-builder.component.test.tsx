@@ -1495,6 +1495,36 @@ describe('Assignment proposal preview', () => {
     ).toBeVisible();
   });
 
+  it('filters the shift list by name, ignoring case and accents, or by role', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    await openPreview();
+    const filter = screen.getByRole('searchbox', {
+      name: m.builder_proposal_filter_label(),
+    });
+
+    await userEvent.type(filter, 'LÍNUS');
+    const panel = () => within(screen.getByRole('tabpanel'));
+    await waitFor(() =>
+      expect(panel().queryByText('Ada Lovelace')).not.toBeInTheDocument(),
+    );
+    expect(panel().getByText('Linus Torvalds')).toBeVisible();
+
+    await userEvent.clear(filter);
+    await userEvent.type(filter, 'greeter');
+    await waitFor(() =>
+      expect(panel().getAllByText('Ada Lovelace')).toHaveLength(2),
+    );
+
+    await userEvent.clear(filter);
+    await userEvent.type(filter, 'nobody here');
+    expect(
+      await panel().findByText(m.builder_proposal_filter_empty()),
+    ).toBeVisible();
+  });
+
   it("excludes all of one volunteer's picks and submits them as excluded pairs", async () => {
     vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
       twoDayProposal,

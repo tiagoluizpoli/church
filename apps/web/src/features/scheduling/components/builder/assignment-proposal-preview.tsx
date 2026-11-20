@@ -28,7 +28,10 @@ import {
 } from './proposal/proposal-header';
 import { CoverageMeter } from './proposal/proposal-parts';
 import { ProposalRail, type RailPerson } from './proposal/proposal-rail';
-import { ProposalShiftTable } from './proposal/proposal-shift-table';
+import {
+  normaliseQuery,
+  ProposalShiftTable,
+} from './proposal/proposal-shift-table';
 import {
   openPlacesOf,
   ProposalGapTable,
@@ -48,6 +51,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMediaQuery } from '@/hooks/use-media-query';
@@ -240,6 +244,8 @@ export function AssignmentProposalPreview({
     [],
   );
 
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [folded, setFolded] = useState<ReadonlySet<string>>(() => new Set());
   const toggleDay = useCallback(
     (day: string) =>
@@ -385,6 +391,7 @@ export function AssignmentProposalPreview({
   const hasAdditions = proposal.additions.length > 0;
   const tableProps = {
     days,
+    query: normaliseQuery(deferredQuery),
     coverageByDay,
     folded,
     onToggleDay: toggleDay,
@@ -455,6 +462,17 @@ export function AssignmentProposalPreview({
       )}
     </div>
   );
+  // Only the shift list is filtered, so the field shows only there.
+  const filter = hasAdditions && tab === 'shifts' && (
+    <Input
+      type="search"
+      value={query}
+      onChange={(event) => setQuery(event.target.value)}
+      aria-label={m.builder_proposal_filter_label()}
+      placeholder={m.builder_proposal_filter_label()}
+      className="mb-1.5 text-sm md:h-8 md:w-64"
+    />
+  );
   const strip = hasAdditions && stripDays.length > 1 && (
     <DayStrip days={stripDays} onJump={jumpToDay} />
   );
@@ -493,44 +511,47 @@ export function AssignmentProposalPreview({
             </div>
             {isDesktop && strip}
             {days.length > 0 && (
-              <TabsList
-                variant="line"
-                className="h-auto max-w-full justify-start gap-4 overflow-x-auto p-0 max-md:gap-3"
-              >
-                <TabsTrigger className={TAB_TRIGGER} value="shifts">
-                  <span className="md:hidden">
-                    {m.builder_proposal_tab_shifts_short()}
-                  </span>
-                  <span className="max-md:hidden">
-                    {m.builder_proposal_tab_shifts()}
-                  </span>
-                </TabsTrigger>
-                {hasAdditions && (
-                  <TabsTrigger className={TAB_TRIGGER} value="attention">
-                    {m.builder_proposal_tab_attention({
-                      count: attentionCount,
-                    })}
-                  </TabsTrigger>
-                )}
-                {hasAdditions && (
-                  <TabsTrigger className={TAB_TRIGGER} value="volunteers">
+              <div className="flex flex-wrap items-end justify-between gap-x-6">
+                <TabsList
+                  variant="line"
+                  className="h-auto max-w-full justify-start gap-4 overflow-x-auto p-0 max-md:gap-3"
+                >
+                  <TabsTrigger className={TAB_TRIGGER} value="shifts">
                     <span className="md:hidden">
-                      {m.builder_proposal_tab_volunteers_short()}
+                      {m.builder_proposal_tab_shifts_short()}
                     </span>
                     <span className="max-md:hidden">
-                      {m.builder_proposal_tab_volunteers()}
+                      {m.builder_proposal_tab_shifts()}
                     </span>
                   </TabsTrigger>
-                )}
-                <TabsTrigger className={TAB_TRIGGER} value="gaps">
-                  <span className="md:hidden">
-                    {m.builder_proposal_tab_gaps_short({ count: openPlaces })}
-                  </span>
-                  <span className="max-md:hidden">
-                    {m.builder_proposal_tab_gaps({ count: openPlaces })}
-                  </span>
-                </TabsTrigger>
-              </TabsList>
+                  {hasAdditions && (
+                    <TabsTrigger className={TAB_TRIGGER} value="attention">
+                      {m.builder_proposal_tab_attention({
+                        count: attentionCount,
+                      })}
+                    </TabsTrigger>
+                  )}
+                  {hasAdditions && (
+                    <TabsTrigger className={TAB_TRIGGER} value="volunteers">
+                      <span className="md:hidden">
+                        {m.builder_proposal_tab_volunteers_short()}
+                      </span>
+                      <span className="max-md:hidden">
+                        {m.builder_proposal_tab_volunteers()}
+                      </span>
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger className={TAB_TRIGGER} value="gaps">
+                    <span className="md:hidden">
+                      {m.builder_proposal_tab_gaps_short({ count: openPlaces })}
+                    </span>
+                    <span className="max-md:hidden">
+                      {m.builder_proposal_tab_gaps({ count: openPlaces })}
+                    </span>
+                  </TabsTrigger>
+                </TabsList>
+                {isDesktop && filter}
+              </div>
             )}
           </div>
         }
@@ -623,6 +644,7 @@ export function AssignmentProposalPreview({
             <div className="space-y-3 border-b py-3">
               {summary}
               {strip}
+              {filter}
             </div>
           )}
           {emptyText && <p className="py-4 font-semibold">{emptyText}</p>}

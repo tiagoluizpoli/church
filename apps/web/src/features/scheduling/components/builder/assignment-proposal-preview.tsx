@@ -5,6 +5,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
@@ -240,6 +241,14 @@ export function AssignmentProposalPreview({
       }),
     [],
   );
+  const bodyRef = useRef<HTMLDivElement>(null);
+  // Each tab opens at its top; only jumping to a day scrolls on purpose.
+  const changeTab = (next: string) => {
+    setTab(next);
+    bodyRef.current
+      ?.closest('[data-testid="proposal-scroll-body"]')
+      ?.scrollTo?.({ top: 0 });
+  };
   const jumpToDay = (day: string) => {
     setTab('shifts');
     setFolded((previous) => {
@@ -360,7 +369,7 @@ export function AssignmentProposalPreview({
   };
 
   return (
-    <Tabs value={tab} onValueChange={setTab} className="contents">
+    <Tabs value={tab} onValueChange={changeTab} className="contents">
       <ResponsiveFormSurface
         open
         wide
@@ -410,7 +419,7 @@ export function AssignmentProposalPreview({
                               })}
                           {' · '}
                         </span>
-                        <RecapButton onClick={() => setTab('volunteers')}>
+                        <RecapButton onClick={() => changeTab('volunteers')}>
                           {m.builder_proposal_summary_top_load({
                             name: heaviest.name,
                             count: heaviest.total,
@@ -513,7 +522,7 @@ export function AssignmentProposalPreview({
                     loadedPeople.length > 0 && (
                       <RecapButton
                         key="load"
-                        onClick={() => setTab('volunteers')}
+                        onClick={() => changeTab('volunteers')}
                       >
                         {loadedPeople.length === 1
                           ? m.builder_proposal_summary_load_people_one()
@@ -525,7 +534,7 @@ export function AssignmentProposalPreview({
                     onlyOptionCount > 0 && (
                       <RecapButton
                         key="only"
-                        onClick={() => setTab('attention')}
+                        onClick={() => changeTab('attention')}
                       >
                         {onlyOptionCount === 1
                           ? m.builder_proposal_recap_only_one()
@@ -535,7 +544,7 @@ export function AssignmentProposalPreview({
                       </RecapButton>
                     ),
                     openPlaces > 0 && (
-                      <RecapButton key="open" onClick={() => setTab('gaps')}>
+                      <RecapButton key="open" onClick={() => changeTab('gaps')}>
                         {openPlaces === 1
                           ? m.builder_proposal_gap_one()
                           : m.builder_proposal_gap_many({ count: openPlaces })}
@@ -581,7 +590,11 @@ export function AssignmentProposalPreview({
           </>
         }
       >
-        <div data-testid="assignment-proposal-preview" className="text-sm">
+        <div
+          ref={bodyRef}
+          data-testid="assignment-proposal-preview"
+          className="text-sm"
+        >
           {emptyText && <p className="py-4 font-semibold">{emptyText}</p>}
           {days.length > 0 && (
             <>
@@ -597,7 +610,7 @@ export function AssignmentProposalPreview({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setTab('shifts')}
+                      onClick={() => changeTab('shifts')}
                     >
                       {m.builder_proposal_attention_show_all()}
                     </Button>
@@ -625,7 +638,7 @@ export function AssignmentProposalPreview({
                   excluded={excluded}
                   timeZone={timeZone}
                   onJumpToDay={jumpToDay}
-                  onShowShifts={() => setTab('shifts')}
+                  onShowShifts={() => changeTab('shifts')}
                 />
               </TabsContent>
             </>

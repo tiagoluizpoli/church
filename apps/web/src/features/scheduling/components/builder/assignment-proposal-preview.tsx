@@ -1,13 +1,17 @@
 import { m } from '@church/i18n/messages';
-import { useState } from 'react';
+import { getLocale } from '@church/i18n/runtime';
+import { useMemo, useState } from 'react';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
   coverageOf,
   groupProposalByDay,
   includedShifts,
+  percentOf,
   proposalAdditionKey,
   scheduleOrdinals,
 } from '../../utils/builder/assignment-proposal.utils';
+import { dateLabel } from '../../utils/builder/cycle-builder-date.utils';
+import { staffingStatusClasses } from '../../utils/builder/cycle-builder-staffing.utils';
 import { AttentionTag, CoverageMeter } from './proposal/proposal-parts';
 import { ProposalShiftTable } from './proposal/proposal-shift-table';
 import {
@@ -23,6 +27,7 @@ import type {
   GetAssignmentProposal200,
   GetAssignmentProposal200AdditionsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
 export type AssignmentProposal = GetAssignmentProposal200;
@@ -133,24 +138,37 @@ function volunteerGroups({
 
 interface ProposalRuleProps {
   heavyLoad: number;
+  /** Only the tags this proposal actually shows get a legend entry. */
+  showsOnlyOption: boolean;
+  showsLoad: boolean;
 }
 
-function ProposalRule({ heavyLoad }: ProposalRuleProps) {
+function ProposalRule({
+  heavyLoad,
+  showsOnlyOption,
+  showsLoad,
+}: ProposalRuleProps) {
   return (
-    <div className="space-y-1.5 text-muted-foreground text-sm">
+    <div className="space-y-1.5 text-pretty text-muted-foreground text-sm">
       <p>{m.builder_proposal_rule()}</p>
-      <ul className="flex flex-wrap gap-x-6 gap-y-1.5">
-        <li>
-          <AttentionTag>{m.builder_proposal_only_option()}</AttentionTag>{' '}
-          {m.builder_proposal_legend_only()}
-        </li>
-        <li>
-          <AttentionTag>
-            {m.builder_proposal_tag_load({ ordinal: heavyLoad })}
-          </AttentionTag>{' '}
-          {m.builder_proposal_legend_load({ count: heavyLoad })}
-        </li>
-      </ul>
+      {(showsOnlyOption || showsLoad) && (
+        <ul className="flex flex-wrap gap-x-6 gap-y-1.5">
+          {showsOnlyOption && (
+            <li>
+              <AttentionTag>{m.builder_proposal_only_option()}</AttentionTag>{' '}
+              {m.builder_proposal_legend_only()}
+            </li>
+          )}
+          {showsLoad && (
+            <li>
+              <AttentionTag>
+                {m.builder_proposal_tag_load({ ordinal: heavyLoad })}
+              </AttentionTag>{' '}
+              {m.builder_proposal_legend_load({ count: heavyLoad })}
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   );
 }
@@ -191,18 +209,78 @@ export function AssignmentProposalPreview({
       include: excluded.has(proposalAdditionKey(addition)),
     });
 
-  const included = proposal.additions.filter(
-    (addition) => !excluded.has(proposalAdditionKey(addition)),
+  const [folded, setFolded] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleDay = (day: string) =>
+    setFolded((previous) => {
+      const next = new Set(previous);
+      if (!next.delete(day)) next.add(day);
+      return next;
+    });
+  const jumpToDay = (day: string) => {
+    setTab('shifts');
+    setFolded((previous) => {
+      const next = new Set(previous);
+      next.delete(day);
+      return next;
+    });
+    // After the tab and the unfolded day have rendered.
+    requestAnimationFrame(() =>
+      document
+        .getElementById(`proposal-day-${day}`)
+        ?.scrollIntoView?.({ block: 'start' }),
+    );
+  };
+
+  const included = useMemo(
+    () =>
+      proposal.additions.filter(
+        (addition) => !excluded.has(proposalAdditionKey(addition)),
+      ),
+    [proposal, excluded],
   );
-  const days = groupProposalByDay({ data, proposal, timeZone });
-  const { ordinals, heavyLoad } = scheduleOrdinals({
-    data,
-    additions: included,
-  });
-  const coverage = coverageOf({
-    shifts: includedShifts({ data }),
-    additions: included,
-  });
+  const days = useMemo(
+    () => groupProposalByDay({ data, proposal, timeZone }),
+    [data, proposal, timeZone],
+  );
+  const shifts = useMemo(() => includedShifts({ data }), [data]);
+  const { ordinals, heavyLoad, totals } = useMemo(
+    () => scheduleOrdinals({ data, additions: included }),
+    [data, included],
+  );
+  const coverage = useMemo(
+    () => coverageOf({ shifts, additions: included }),
+    [shifts, included],
+  );
+  const coverageByDay = useMemo(
+    () =>
+      new Map(
+        days.map(({ day, dayShifts }) => [
+          day,
+          coverageOf({ shifts: dayShifts, additions: included }),
+        ]),
+      ),
+    [days, included],
+  );
+  // Picks worth a second look: the only option for their place, or past
+  // the heavy-load line for their volunteer.
+  const flagged = useMemo(() => {
+    const onlyOption = proposal.additions.filter(
+      ({ reason }) => reason.needCandidateCount === 1,
+    );
+    const loaded = proposal.additions.filter(
+      (addition) =>
+        (ordinals.get(proposalAdditionKey(addition)) ?? 0) >= heavyLoad,
+    );
+    return {
+      keys: new Set([...onlyOption, ...loaded].map(proposalAdditionKey)),
+      showsOnlyOption: onlyOption.length > 0,
+      showsLoad: loaded.length > 0,
+    };
+  }, [proposal, ordinals, heavyLoad]);
+  const attentionCount = included.filter((addition) =>
+    flagged.keys.has(proposalAdditionKey(addition)),
+  ).length;
+  const groups = useMemo(() => volunteerGroups(proposal), [proposal]);
   const openPlaces =
     proposal.gaps.reduce((total, { remaining }) => total + remaining, 0) +
     excluded.size;
@@ -253,22 +331,30 @@ export function AssignmentProposalPreview({
                               })}
                         </>
                       )}
-                      <span aria-hidden className="text-muted-foreground">
-                        {' · '}
-                      </span>
+                      {proposal.excludedUnconfirmedCount > 0 && (
+                        <span aria-hidden className="text-muted-foreground">
+                          {' · '}
+                        </span>
+                      )}
                     </>
                   )}
-                  <span className="text-muted-foreground">
-                    {proposal.excludedUnconfirmedCount === 1
-                      ? m.builder_proposal_unconfirmed_one()
-                      : m.builder_proposal_unconfirmed_many({
-                          count: proposal.excludedUnconfirmedCount,
-                        })}
-                  </span>
+                  {proposal.excludedUnconfirmedCount > 0 && (
+                    <span className="text-muted-foreground">
+                      {proposal.excludedUnconfirmedCount === 1
+                        ? m.builder_proposal_unconfirmed_one()
+                        : m.builder_proposal_unconfirmed_many({
+                            count: proposal.excludedUnconfirmedCount,
+                          })}
+                    </span>
+                  )}
                 </p>
                 {hasAdditions && (
                   <div className="max-md:hidden">
-                    <ProposalRule heavyLoad={heavyLoad} />
+                    <ProposalRule
+                      heavyLoad={heavyLoad}
+                      showsOnlyOption={flagged.showsOnlyOption}
+                      showsLoad={flagged.showsLoad}
+                    />
                   </div>
                 )}
               </div>
@@ -281,6 +367,43 @@ export function AssignmentProposalPreview({
                 </div>
               )}
             </div>
+            {hasAdditions && days.length > 1 && (
+              <nav
+                aria-label={m.builder_proposal_day_strip_label()}
+                className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+              >
+                {days.map(({ day }) => {
+                  const dayCoverage = coverageByDay.get(day);
+                  const percent = percentOf({
+                    covered: dayCoverage?.after ?? 0,
+                    required: dayCoverage?.required ?? 0,
+                  });
+                  const status = staffingStatusClasses({
+                    percent,
+                    hasRequirement: (dayCoverage?.required ?? 0) > 0,
+                  });
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => jumpToDay(day)}
+                      className="radius-control flex h-8 shrink-0 items-center gap-2 border bg-background px-2.5 text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span
+                        aria-hidden
+                        className={cn('size-2 rounded-full', status.bar)}
+                      />
+                      <span className="first-letter:uppercase">
+                        {dateLabel({ day, locale: getLocale() })}
+                      </span>
+                      <span className={cn('tabular-nums', status.text)}>
+                        {percent}%
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+            )}
             {days.length > 0 && (
               <TabsList
                 variant="line"
@@ -292,6 +415,16 @@ export function AssignmentProposalPreview({
                 >
                   {m.builder_proposal_tab_shifts()}
                 </TabsTrigger>
+                {hasAdditions && (
+                  <TabsTrigger
+                    className="h-10 flex-none px-0 text-sm"
+                    value="attention"
+                  >
+                    {m.builder_proposal_tab_attention({
+                      count: attentionCount,
+                    })}
+                  </TabsTrigger>
+                )}
                 {hasAdditions && (
                   <TabsTrigger
                     className="h-10 flex-none px-0 text-sm"
@@ -312,13 +445,27 @@ export function AssignmentProposalPreview({
         }
         footer={
           <>
-            {applyAlert && (
+            {applyAlert ? (
               <p
                 role="alert"
                 className="text-destructive text-sm sm:mr-auto sm:self-center"
               >
                 {applyAlert}
               </p>
+            ) : (
+              hasAdditions && (
+                <p className="mr-auto self-center text-muted-foreground text-sm max-md:hidden">
+                  {attentionCount === 1
+                    ? m.builder_proposal_recap_attention_one()
+                    : m.builder_proposal_recap_attention_many({
+                        count: attentionCount,
+                      })}
+                  {' · '}
+                  {openPlaces === 1
+                    ? m.builder_proposal_gap_one()
+                    : m.builder_proposal_gap_many({ count: openPlaces })}
+                </p>
+              )
             )}
             <Button
               variant="outline"
@@ -344,7 +491,11 @@ export function AssignmentProposalPreview({
           {emptyText && <p className="py-4 font-semibold">{emptyText}</p>}
           {hasAdditions && (
             <div className="border-b py-3 md:hidden">
-              <ProposalRule heavyLoad={heavyLoad} />
+              <ProposalRule
+                heavyLoad={heavyLoad}
+                showsOnlyOption={flagged.showsOnlyOption}
+                showsLoad={flagged.showsLoad}
+              />
             </div>
           )}
           {days.length > 0 && (
@@ -352,7 +503,9 @@ export function AssignmentProposalPreview({
               <TabsContent value="shifts" className="text-sm">
                 <ProposalShiftTable
                   days={days}
-                  included={included}
+                  coverageByDay={coverageByDay}
+                  folded={folded}
+                  onToggleDay={toggleDay}
                   excluded={excluded}
                   ordinals={ordinals}
                   heavyLoad={heavyLoad}
@@ -361,9 +514,32 @@ export function AssignmentProposalPreview({
                   onToggle={toggle}
                 />
               </TabsContent>
+              <TabsContent value="attention" className="text-sm">
+                {flagged.keys.size === 0 ? (
+                  <p className="py-6 text-muted-foreground">
+                    {m.builder_proposal_attention_empty()}
+                  </p>
+                ) : (
+                  <ProposalShiftTable
+                    days={days}
+                    coverageByDay={coverageByDay}
+                    folded={folded}
+                    onToggleDay={toggleDay}
+                    only={flagged.keys}
+                    excluded={excluded}
+                    ordinals={ordinals}
+                    heavyLoad={heavyLoad}
+                    locked={locked}
+                    timeZone={timeZone}
+                    onToggle={toggle}
+                  />
+                )}
+              </TabsContent>
               <TabsContent value="volunteers" className="text-sm">
                 <ProposalVolunteerTable
-                  groups={volunteerGroups(proposal)}
+                  groups={groups}
+                  totals={totals}
+                  heavyLoad={heavyLoad}
                   days={days}
                   excluded={excluded}
                   locked={locked}

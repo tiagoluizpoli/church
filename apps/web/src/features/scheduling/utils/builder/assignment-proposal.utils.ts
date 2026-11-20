@@ -213,6 +213,8 @@ export interface ScheduleLoad {
   ordinals: Map<string, number>;
   /** The ordinal from which a pick is tagged. */
   heavyLoad: number;
+  /** Volunteer id → everything they would serve here once applied. */
+  totals: Map<string, number>;
 }
 
 /** For each addition: its place, by start time, among everything its
@@ -256,12 +258,17 @@ export function scheduleOrdinals({
   }
   // Past the upper quartile of loads: the tag singles out who carries
   // clearly more than the rest, and stays silent when loads are even.
-  const totals = [...byVolunteer.values()]
-    .map((entries) => entries.length)
-    .sort((left, right) => left - right);
-  const upperQuartile = totals[Math.floor((totals.length - 1) * 0.75)] ?? 0;
+  const totals = new Map(
+    [...byVolunteer].map(([volunteerId, entries]) => [
+      volunteerId,
+      entries.length,
+    ]),
+  );
+  const loads = [...totals.values()].sort((left, right) => left - right);
+  const upperQuartile = loads[Math.floor((loads.length - 1) * 0.75)] ?? 0;
   return {
     ordinals,
     heavyLoad: Math.max(HEAVY_LOAD_ORDINAL, upperQuartile + 1),
+    totals,
   };
 }

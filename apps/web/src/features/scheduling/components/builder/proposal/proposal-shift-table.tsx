@@ -1,9 +1,8 @@
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { ChevronDown, CircleDashed, Plus } from 'lucide-react';
-import { useState } from 'react';
 import {
-  coverageOf,
+  type ProposalCoverage,
   type ProposalDay,
   type ProposalExistingAssignee,
   type ProposalNeed,
@@ -37,25 +36,30 @@ type ShiftRow = RowPlace & ShiftRowContent;
 interface RowsOfInput {
   shift: ProposalShift;
   excluded: ReadonlySet<string>;
+  /** Show only these picks (no existing or open rows). */
+  only?: ReadonlySet<string>;
 }
 
 /** Per need: who is already there (muted, first), the picks, then what
  * stays open — so a slot reads filled / suggested / still open. */
-function rowsOf({ shift, excluded }: RowsOfInput): ShiftRow[] {
+function rowsOf({ shift, excluded, only }: RowsOfInput): ShiftRow[] {
   const rows = shift.needs.flatMap((need) => {
     const excludedHere = need.additions.filter((addition) =>
       excluded.has(proposalAdditionKey(addition)),
     ).length;
     const open = need.remaining + excludedHere;
-    const contents: ShiftRowContent[] = [
-      ...need.existing.map(
-        (assignee): ShiftRowContent => ({ kind: 'existing', assignee }),
-      ),
-      ...need.additions.map(
-        (addition): ShiftRowContent => ({ kind: 'addition', addition }),
-      ),
-      ...(open > 0 ? [{ kind: 'open', count: open } as const] : []),
-    ];
+    const additions = need.additions
+      .filter((addition) => !only || only.has(proposalAdditionKey(addition)))
+      .map((addition): ShiftRowContent => ({ kind: 'addition', addition }));
+    const contents: ShiftRowContent[] = only
+      ? additions
+      : [
+          ...need.existing.map(
+            (assignee): ShiftRowContent => ({ kind: 'existing', assignee }),
+          ),
+          ...additions,
+          ...(open > 0 ? [{ kind: 'open', count: open } as const] : []),
+        ];
     return contents.map(
       (content, index): ShiftRow => ({
         ...content,
@@ -85,7 +89,10 @@ const CELL =
 
 interface ProposalShiftTableProps {
   days: ProposalDay[];
-  included: readonly Addition[];
+  coverageByDay: ReadonlyMap<string, ProposalCoverage>;
+  folded: ReadonlySet<string>;
+  onToggleDay: (day: string) => void;
+  only?: ReadonlySet<string>;
   excluded: ReadonlySet<string>;
   ordinals: ReadonlyMap<string, number>;
   heavyLoad: number;
@@ -101,7 +108,10 @@ interface ProposalShiftTableProps {
  */
 export function ProposalShiftTable({
   days,
-  included,
+  coverageByDay,
+  folded,
+  onToggleDay,
+  only,
   excluded,
   ordinals,
   heavyLoad,
@@ -109,13 +119,6 @@ export function ProposalShiftTable({
   timeZone,
   onToggle,
 }: ProposalShiftTableProps) {
-  const [folded, setFolded] = useState<ReadonlySet<string>>(() => new Set());
-  const toggleDay = (day: string) =>
-    setFolded((previous) => {
-      const next = new Set(previous);
-      if (!next.delete(day)) next.add(day);
-      return next;
-    });
   const time = (value: string) => formatTimeOf({ value, timeZone });
 
   return (
@@ -151,13 +154,22 @@ export function ProposalShiftTable({
         </tr>
       </thead>
       {days.map((day) => {
+        const dayShifts = day.shifts
+          .map((shift) => ({ shift, rows: rowsOf({ shift, excluded, only }) }))
+          .filter(({ rows }) => rows.length > 0);
+        if (dayShifts.length === 0) return null;
         const isFolded = folded.has(day.day);
         const label = dateLabel({ day: day.day, locale: getLocale() });
-        const picks = day.shifts.flatMap(({ needs }) =>
-          needs.flatMap(({ additions }) => additions),
+        const picks = dayShifts.flatMap(({ rows }) =>
+          rows.filter(({ kind }) => kind === 'addition'),
         ).length;
+        const dayCoverage = coverageByDay.get(day.day);
         return (
-          <tbody key={day.day} className="max-md:block">
+          <tbody
+            key={day.day}
+            id={only ? undefined : `proposal-day-${day.day}`}
+            className="scroll-mt-9 max-md:block max-md:scroll-mt-0"
+          >
             <tr className="max-md:block">
               <th
                 colSpan={6}
@@ -168,7 +180,7 @@ export function ProposalShiftTable({
                   <button
                     type="button"
                     aria-expanded={!isFolded}
-                    onClick={() => toggleDay(day.day)}
+                    onClick={() => onToggleDay(day.day)}
                     className="radius-control -mx-1.5 flex min-h-9 items-center gap-1.5 px-1.5 font-semibold text-foreground text-sm outline-none hover:bg-background/60 focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <ChevronDown
@@ -185,20 +197,19 @@ export function ProposalShiftTable({
                       ? m.builder_proposal_day_count_one()
                       : m.builder_proposal_day_count_many({ count: picks })}
                   </span>
-                  <CoverageMeter
-                    className="w-full md:ml-auto md:w-72"
-                    coverage={coverageOf({
-                      shifts: day.dayShifts,
-                      additions: included,
-                    })}
-                  />
+                  {dayCoverage && (
+                    <CoverageMeter
+                      className="w-full md:ml-auto md:w-72"
+                      coverage={dayCoverage}
+                    />
+                  )}
                 </div>
               </th>
             </tr>
             {!isFolded &&
-              day.shifts.flatMap((shift) => {
+              dayShifts.flatMap(({ shift, rows }) => {
                 const shiftLabel = `${time(shift.startTime)}–${time(shift.endTime)}`;
-                return rowsOf({ shift, excluded }).map((row) => {
+                return rows.map((row) => {
                   const needLabel = `${row.need.roleName} · ${row.need.sectorName}`;
                   const isExcluded =
                     row.kind === 'addition' &&

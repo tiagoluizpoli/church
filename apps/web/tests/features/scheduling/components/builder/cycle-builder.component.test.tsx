@@ -1274,6 +1274,42 @@ describe('Assignment proposal preview', () => {
     expect(within(preview).getByText('Ada Lovelace')).toBeVisible();
   });
 
+  it('lists only flagged picks under Attention and jumps to a day from the strip', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    const wednesday = dateLabel({ day: '2026-08-05', locale: 'en' });
+
+    await userEvent.click(
+      within(preview).getByRole('button', { name: wednesday }),
+    );
+    expect(
+      within(preview).queryByText('Linus Torvalds'),
+    ).not.toBeInTheDocument();
+    const strip = screen.getByRole('navigation', {
+      name: m.builder_proposal_day_strip_label(),
+    });
+    await userEvent.click(
+      within(strip).getByRole('button', { name: new RegExp(wednesday) }),
+    );
+    expect(within(preview).getByText('Linus Torvalds')).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole('tab', {
+        name: m.builder_proposal_tab_attention({ count: 1 }),
+      }),
+    );
+    expect(within(preview).getByText('Linus Torvalds')).toBeVisible();
+    expect(within(preview).queryByText('Ada Lovelace')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(m.builder_proposal_recap_attention_one(), {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("excludes all of one volunteer's picks and submits them as excluded pairs", async () => {
     vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
       twoDayProposal,

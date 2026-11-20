@@ -7,6 +7,7 @@ import {
   proposalAdditionKey,
 } from '../../../utils/builder/assignment-proposal.utils';
 import { dateLabel } from '../../../utils/builder/cycle-builder-date.utils';
+import { AttentionTag } from './proposal-parts';
 import { Button } from '@/components/ui/button';
 import type { GetAssignmentProposal200AdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
@@ -65,6 +66,9 @@ function picksByDay({ additions, shifts }: PicksByDayInput): DayPicks[] {
 
 interface ProposalVolunteerTableProps {
   groups: ProposalVolunteerGroup[];
+  /** Volunteer id → everything they would serve here, existing included. */
+  totals: ReadonlyMap<string, number>;
+  heavyLoad: number;
   days: ProposalDay[];
   excluded: ReadonlySet<string>;
   locked: boolean;
@@ -76,6 +80,8 @@ interface ProposalVolunteerTableProps {
  * one control to drop (or bring back) all of someone's picks. */
 export function ProposalVolunteerTable({
   groups,
+  totals,
+  heavyLoad,
   days,
   excluded,
   locked,
@@ -123,6 +129,15 @@ export function ProposalVolunteerTable({
                 className={cn(CELL, 'truncate text-left font-semibold')}
               >
                 {name}
+                {(totals.get(volunteerId) ?? 0) >= heavyLoad && (
+                  <span className="ms-2 font-normal">
+                    <AttentionTag>
+                      {m.builder_proposal_tag_total({
+                        count: totals.get(volunteerId) ?? 0,
+                      })}
+                    </AttentionTag>
+                  </span>
+                )}
               </th>
               <td className={CELL}>
                 <span className="flex flex-wrap items-center gap-1.5 py-1.5 max-md:py-0">

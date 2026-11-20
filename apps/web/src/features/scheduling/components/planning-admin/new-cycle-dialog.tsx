@@ -5,16 +5,23 @@ import { toast } from 'sonner';
 import {
   CycleFormDialog,
   type CycleFormSubmitInput,
+  type CycleFormValues,
 } from './cycle-form-dialog';
 import { adminApi } from '@/utils/api-instances';
 
 interface NewCycleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The suggested days; the name follows the start month until typed. */
+  initialValues?: CycleFormValues;
 }
 
 /** Creates a Cycle, refreshes the list and its detail, and opens the new Cycle. */
-export function NewCycleDialog({ open, onOpenChange }: NewCycleDialogProps) {
+export function NewCycleDialog({
+  open,
+  onOpenChange,
+  initialValues,
+}: NewCycleDialogProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -36,6 +43,7 @@ export function NewCycleDialog({ open, onOpenChange }: NewCycleDialogProps) {
       title={m.cycles_form_title_new()}
       description={m.cycles_form_description_new()}
       submitLabel={m.cycles_form_submit_new()}
+      initialValues={initialValues}
       onSubmit={createCycle}
     />
   );

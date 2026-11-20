@@ -86,7 +86,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
 
     await page.goto('/cycles');
-    const cyclesTable = page.getByRole('grid', { name: 'Atuais e futuros' });
+    const cyclesTable = page.getByRole('grid', { name: 'Ciclos' });
     await expect(cyclesTable).toBeVisible();
     await expect(
       cyclesTable.getByRole('columnheader', { name: 'Nome' }),
@@ -103,12 +103,10 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     });
     await expect(cycleRow).toBeVisible();
 
-    // Ordinary row text does not select; the explicit Select control does.
+    // Ordinary row text does not open the Cycle; its Open link does.
     await cycleRow.getByText(cycleName).click();
     await expect(page.getByTestId('selected-cycle-name')).toHaveCount(0);
-    await cycleRow
-      .getByRole('button', { name: `Selecionar ${cycleName}` })
-      .click();
+    await cycleRow.getByRole('link', { name: `Abrir ${cycleName}` }).click();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
   });
 

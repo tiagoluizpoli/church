@@ -30,7 +30,14 @@ vi.mock('@/lib/auth-client', () => ({
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
-    listCycles: (...args: unknown[]) => listCycles(...args),
+    // The server always answers with counts and the next suggestion.
+    listCycles: async (...args: unknown[]) => ({
+      counts: { draft: 0, sent: 0, past: 0 },
+      pastMatching: 0,
+      currentCycleId: null,
+      next: { startDate: '2027-01-01', endDate: '2027-01-31', isDue: false },
+      ...(await listCycles(...args)),
+    }),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -204,7 +211,7 @@ describe('the Active Church guard (_active-church)', () => {
 
     renderCycles();
 
-    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
+    expect(await screen.findByText(m.cycles_filter_status())).toBeVisible();
   });
 
   it('sends the visitor to /no-access when no Church Membership resolves', async () => {
@@ -317,7 +324,7 @@ describe('the Active Church guard (_active-church)', () => {
 
     renderCycles();
 
-    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
+    expect(await screen.findByText(m.cycles_filter_status())).toBeVisible();
   });
 
   describe('cross-Church deep links', () => {
@@ -341,7 +348,7 @@ describe('the Active Church guard (_active-church)', () => {
 
       const { router } = renderWithChurchParam('church-1');
 
-      expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
+      expect(await screen.findByText(m.cycles_filter_status())).toBeVisible();
       expect(router.state.location.pathname).toBe('/cycles');
       expect(selectActiveChurch).not.toHaveBeenCalled();
     });
@@ -400,7 +407,7 @@ describe('the Active Church guard (_active-church)', () => {
           churchId: 'church-2',
         });
       });
-      expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
+      expect(await screen.findByText(m.cycles_filter_status())).toBeVisible();
       expect(router.state.location.pathname).toBe('/cycles');
     });
 

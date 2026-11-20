@@ -3,10 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { describe, expect, it, vi } from 'vitest';
-import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
-import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 import type { ChildrenProps } from '@/tests/setup/children-props';
-import { renderWithProviders } from '@/tests/setup/render';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const listCycles = vi.fn();
@@ -22,7 +19,14 @@ const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
   adminApi: {
-    listCycles: (...args: unknown[]) => listCycles(...args),
+    // The server always answers with counts and the next suggestion.
+    listCycles: async (...args: unknown[]) => ({
+      counts: { draft: 0, sent: 0, past: 0 },
+      pastMatching: 0,
+      currentCycleId: null,
+      next: { startDate: '2027-01-01', endDate: '2027-01-31', isDue: false },
+      ...(await listCycles(...args)),
+    }),
     listEventTemplates: (...args: unknown[]) => listEventTemplates(...args),
     getCycle: (...args: unknown[]) => getCycle(...args),
     getEventTemplate: (...args: unknown[]) => getEventTemplate(...args),
@@ -65,7 +69,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
 
     renderCycles();
 
-    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
+    expect(await screen.findByText(m.cycles_filter_status())).toBeVisible();
     expect(screen.queryByText('Event templates')).not.toBeInTheDocument();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
     expect(screen.getByTestId('open-create-cycle-dialog-button')).toBeVisible();
@@ -97,13 +101,12 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     const user = userEvent.setup();
     renderCycles();
 
-    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
+    expect(await screen.findByText(m.cycles_filter_status())).toBeVisible();
     expect(screen.queryByText('Selected cycle review')).not.toBeInTheDocument();
 
     const cycleOption = (
-      await screen.findAllByRole('button', { name: /^Selecionar / })
+      await screen.findAllByRole('link', { name: /^Abrir / })
     )[0];
-    expect(cycleOption).toHaveAttribute('aria-pressed', 'false');
     await user.click(cycleOption);
 
     expect(await screen.findByText(m.cycle_review_title())).toBeVisible();
@@ -143,7 +146,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     renderCycles();
 
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
 
     expect(await screen.findByTestId('selected-cycle-state')).toHaveTextContent(
@@ -165,7 +168,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     const user = userEvent.setup();
     const { router } = renderCycles();
 
-    await screen.findByText(m.cycles_list_title());
+    await screen.findByText(m.cycles_filter_status());
     await user.click(screen.getByTestId('open-create-cycle-dialog-button'));
 
     expect(
@@ -309,7 +312,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     renderCycles();
 
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
     await user.click(screen.getByTestId('open-apply-templates-dialog-button'));
 
@@ -361,7 +364,7 @@ describe('CyclesActions (US4)', () => {
     renderCycles();
 
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
 
     const actionsRow = await screen.findByTestId('cycles-actions-row');
@@ -404,7 +407,7 @@ describe('CyclesActions (US4)', () => {
     renderCycles();
 
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
     await screen.findByText(m.cycle_review_title());
 
@@ -430,7 +433,7 @@ describe('Cycle deletion', () => {
     const user = userEvent.setup();
     renderCycles();
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
 
     await user.click(await screen.findByTestId('delete-cycle-button'));
@@ -448,7 +451,7 @@ describe('Cycle deletion', () => {
     const user = userEvent.setup();
     renderCycles();
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
 
     await screen.findByTestId('selected-cycle-state');
@@ -462,7 +465,7 @@ describe('Cycle deletion', () => {
     const user = userEvent.setup();
     renderCycles();
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
     await user.click(await screen.findByTestId('delete-cycle-button'));
     listCycles.mockResolvedValue({ cycles: [] });
@@ -471,7 +474,7 @@ describe('Cycle deletion', () => {
       await screen.findByRole('button', { name: 'Excluir ciclo' }),
     );
 
-    expect(await screen.findByText(m.cycles_list_title())).toBeVisible();
+    expect(await screen.findByText(m.cycles_filter_status())).toBeVisible();
     expect(deleteCycle).toHaveBeenCalledWith('cycle-1');
     expect(screen.queryByTestId('cycle-option')).not.toBeInTheDocument();
     expect(screen.queryByTestId('selected-cycle-name')).not.toBeInTheDocument();
@@ -617,7 +620,7 @@ describe('Cycle edit', () => {
     const user = userEvent.setup();
     renderCycles();
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
 
     await user.click(await screen.findByTestId('edit-cycle-button'));
@@ -647,7 +650,7 @@ describe('Cycle edit', () => {
     const user = userEvent.setup();
     renderCycles();
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
 
     await screen.findByTestId('selected-cycle-state');
@@ -657,36 +660,23 @@ describe('Cycle edit', () => {
 });
 
 describe('Cycle header visibility (chip-leak fix)', () => {
-  it('shows list-level total/draft/sent chips, not per-cycle chips, on the plain list route', async () => {
+  it('shows the server per-state chips, not per-cycle chips, on the plain list route', async () => {
     listCycles.mockResolvedValue({
-      cycles: [
-        {
-          id: 'cycle-1',
-          name: 'August 2026',
-          startDate: '2026-08-01T00:00:00.000Z',
-          endDate: '2026-08-31T00:00:00.000Z',
-          state: 'draft',
-        },
-        {
-          id: 'cycle-2',
-          name: 'September 2026',
-          startDate: '2026-09-01T00:00:00.000Z',
-          endDate: '2026-09-30T00:00:00.000Z',
-          state: 'sent',
-        },
-      ],
+      cycles: [],
+      counts: { draft: 1, sent: 2, past: 3 },
     });
 
     renderCycles();
 
-    expect(await screen.findByTestId('cycles-total-chip')).toHaveTextContent(
-      '2',
+    expect(await screen.findByTestId('cycles-draft-chip')).toHaveTextContent(
+      `${m.cycles_chip_draft()}1`,
     );
-    expect(screen.getByTestId('cycles-draft-chip')).toHaveTextContent('1');
     expect(screen.getByTestId('cycles-sent-chip')).toHaveTextContent(
-      m.cycles_state_sent(),
+      `${m.cycles_chip_sent()}2`,
     );
-    expect(screen.getByTestId('cycles-sent-chip')).toHaveTextContent('1');
+    expect(screen.getByTestId('cycles-past-chip')).toHaveTextContent(
+      `${m.cycles_chip_past()}3`,
+    );
     expect(screen.queryByTestId('cycle-period-chip')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('cycle-event-count-chip'),
@@ -704,6 +694,7 @@ describe('Cycle header visibility (chip-leak fix)', () => {
           state: 'draft',
         },
       ],
+      counts: { draft: 1, sent: 0, past: 0 },
     });
     getCycle.mockResolvedValue({
       cycle: {
@@ -720,13 +711,13 @@ describe('Cycle header visibility (chip-leak fix)', () => {
     const { router } = renderCycles();
 
     await user.click(
-      (await screen.findAllByRole('button', { name: /^Selecionar / }))[0],
+      (await screen.findAllByRole('link', { name: /^Abrir / }))[0],
     );
     expect(await screen.findByTestId('cycle-period-chip')).toBeInTheDocument();
 
     await router.navigate({ to: '/cycles' });
 
-    expect(await screen.findByTestId('cycles-total-chip')).toBeInTheDocument();
+    expect(await screen.findByTestId('cycles-draft-chip')).toBeInTheDocument();
     expect(screen.queryByTestId('cycle-period-chip')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('cycle-event-count-chip'),
@@ -752,12 +743,12 @@ describe('Cycle header visibility (chip-leak fix)', () => {
         screen.getByTestId('planning-templates-total-chip'),
       ).toHaveTextContent('2'),
     );
-    expect(screen.queryByTestId('cycles-total-chip')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cycles-draft-chip')).not.toBeInTheDocument();
   });
 });
 
-describe('CycleListCard selection state', () => {
-  it('renders cycles with correct aria-selected attribute based on selection', async () => {
+describe('Cycles list rows', () => {
+  it('opens a Cycle through a link to its detail, labelled with its name', async () => {
     listCycles.mockResolvedValue({
       cycles: [
         {
@@ -767,28 +758,16 @@ describe('CycleListCard selection state', () => {
           endDate: '2026-08-31T00:00:00.000Z',
           state: 'draft',
         },
-        {
-          id: 'cycle-2',
-          name: 'September 2026',
-          startDate: '2026-09-01T00:00:00.000Z',
-          endDate: '2026-09-30T00:00:00.000Z',
-          state: 'draft',
-        },
       ],
     });
 
-    renderWithProviders(
-      <PlanningAdminProvider>
-        <CycleListCard selectedCycleId="cycle-1" />
-      </PlanningAdminProvider>,
-    );
+    renderCycles();
 
-    const options = await screen.findAllByRole('button', {
-      name: /^Selecionar /,
+    const [open] = await screen.findAllByRole('link', {
+      name: m.cycles_open_label({ name: 'August 2026' }),
     });
-    // Newest start first: September, then the selected August.
-    expect(options[0]).toHaveAttribute('aria-pressed', 'false');
-    expect(options[1]).toHaveAttribute('aria-pressed', 'true');
+    expect(open).toHaveAttribute('href', '/cycles/cycle-1');
+    expect(open).toHaveTextContent(m.cycles_open());
   });
 });
 

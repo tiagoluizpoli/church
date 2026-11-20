@@ -14,7 +14,9 @@ test('New cycle is a plain dialog over /cycles, and the new Cycle gets its own U
 
   await page.goto('/cycles');
   await expect(page).toHaveURL(/\/cycles\/?$/);
-  await expect(page.getByText('Ciclos existentes')).toBeVisible();
+  await expect(
+    page.getByRole('form', { name: 'Filtrar ciclos' }),
+  ).toBeVisible();
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
   await expect(page).toHaveURL(/\/cycles\/?$/);

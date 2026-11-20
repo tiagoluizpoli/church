@@ -242,6 +242,7 @@ A four-tier z-index scale, lowest to highest: in-component layers such as sticky
 Gently rounded, never bubbly. Every radius derives from one base (`--radius`, 0.625rem/10px) and is applied through role utilities, never raw `rounded-*` classes:
 
 - **Control** (`.radius-control`, 8px): buttons, inputs, badges, calendar day cells, avatars, icon chips (`.radius-icon` is the same 8px).
+- **Check** (`.radius-check`, 4px): checkboxes. At the control radius a 16px box reads as a radio button.
 - **Surface** (`.radius-surface`, 10px): `Card` and in-flow containers.
 - **Floating** (`.radius-floating`, 10px): popovers, menus and dialogs.
 - **Panel** (`.surface-panel`, 14px): the gradient-lifted section panel is one step rounder than a Card.
@@ -288,6 +289,11 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **Focus:** border shifts to `ring`, plus a 1px ring glow. Focus is never signalled by color alone.
 - **Placeholder:** deliberately darker than the usual washed-out gray, so it keeps body-text contrast.
 - **Error:** `destructive` border and ring, in both themes.
+
+### Checkbox
+- **Shape:** a 16px box at the check radius (4px), never the control radius, so it can't be mistaken for a radio.
+- **Colors:** the unchecked border is `muted-foreground`, so the box measures at least 3:1 against `card` and `background`; checked fills `primary` with a `primary-foreground` tick.
+- **Hit area:** an `after` overlay extends it 12px sideways and 8px vertically; mobile rows wrap it in a 44px cell.
 
 ### Switch
 - **Shape:** a 44×24px pill track with a 20px pill thumb that slides 20px when checked. An invisible `after` overlay extends the hit area 10px above and below, giving a 44px-tall touch target without enlarging the visual.

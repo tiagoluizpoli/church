@@ -316,10 +316,13 @@ export function ProposalShiftTable({
                         className={cn(
                           CELL,
                           'max-md:empty:hidden max-md:[grid-area:tags]',
-                          isExcluded && 'opacity-50',
                         )}
                       >
-                        {row.kind === 'existing' ? (
+                        {isExcluded ? (
+                          <span className="text-muted-foreground">
+                            {m.builder_proposal_excluded_label()}
+                          </span>
+                        ) : row.kind === 'existing' ? (
                           <span className="text-muted-foreground">
                             {m.builder_proposal_existing()}
                           </span>

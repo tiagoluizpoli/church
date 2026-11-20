@@ -4,7 +4,6 @@ import { ChevronDown, CircleDashed, Plus } from 'lucide-react';
 import { useState } from 'react';
 import {
   coverageOf,
-  HEAVY_LOAD_ORDINAL,
   type ProposalDay,
   type ProposalExistingAssignee,
   type ProposalNeed,
@@ -89,6 +88,7 @@ interface ProposalShiftTableProps {
   included: readonly Addition[];
   excluded: ReadonlySet<string>;
   ordinals: ReadonlyMap<string, number>;
+  heavyLoad: number;
   locked: boolean;
   timeZone: string;
   onToggle: (addition: Addition) => void;
@@ -104,6 +104,7 @@ export function ProposalShiftTable({
   included,
   excluded,
   ordinals,
+  heavyLoad,
   locked,
   timeZone,
   onToggle,
@@ -317,7 +318,7 @@ export function ProposalShiftTable({
                             ordinal={ordinals.get(
                               proposalAdditionKey(row.addition),
                             )}
-                            heavyLoad={HEAVY_LOAD_ORDINAL}
+                            heavyLoad={heavyLoad}
                           />
                         ) : null}
                       </td>
@@ -334,7 +335,7 @@ export function ProposalShiftTable({
                             ordinal={ordinals.get(
                               proposalAdditionKey(row.addition),
                             )}
-                            heavyLoad={HEAVY_LOAD_ORDINAL}
+                            heavyLoad={heavyLoad}
                           />
                         )}
                       </td>

@@ -4,7 +4,6 @@ import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
   coverageOf,
   groupProposalByDay,
-  HEAVY_LOAD_ORDINAL,
   includedShifts,
   proposalAdditionKey,
   scheduleOrdinals,
@@ -132,7 +131,11 @@ function volunteerGroups({
   );
 }
 
-function ProposalRule() {
+interface ProposalRuleProps {
+  heavyLoad: number;
+}
+
+function ProposalRule({ heavyLoad }: ProposalRuleProps) {
   return (
     <div className="space-y-1.5 text-muted-foreground text-sm">
       <p>{m.builder_proposal_rule()}</p>
@@ -140,11 +143,9 @@ function ProposalRule() {
         <AttentionTag>{m.builder_proposal_only_option()}</AttentionTag>
         <span className="me-3">{m.builder_proposal_legend_only()}</span>
         <AttentionTag>
-          {m.builder_proposal_tag_load({ ordinal: HEAVY_LOAD_ORDINAL })}
+          {m.builder_proposal_tag_load({ ordinal: heavyLoad })}
         </AttentionTag>
-        <span>
-          {m.builder_proposal_legend_load({ count: HEAVY_LOAD_ORDINAL })}
-        </span>
+        <span>{m.builder_proposal_legend_load({ count: heavyLoad })}</span>
       </p>
     </div>
   );
@@ -190,7 +191,10 @@ export function AssignmentProposalPreview({
     (addition) => !excluded.has(proposalAdditionKey(addition)),
   );
   const days = groupProposalByDay({ data, proposal, timeZone });
-  const ordinals = scheduleOrdinals({ data, additions: included });
+  const { ordinals, heavyLoad } = scheduleOrdinals({
+    data,
+    additions: included,
+  });
   const coverage = coverageOf({
     shifts: includedShifts({ data }),
     additions: included,
@@ -260,7 +264,7 @@ export function AssignmentProposalPreview({
                 </p>
                 {hasAdditions && (
                   <div className="max-md:hidden">
-                    <ProposalRule />
+                    <ProposalRule heavyLoad={heavyLoad} />
                   </div>
                 )}
               </div>
@@ -336,7 +340,7 @@ export function AssignmentProposalPreview({
           {emptyText && <p className="py-4 font-semibold">{emptyText}</p>}
           {hasAdditions && (
             <div className="border-b py-3 md:hidden">
-              <ProposalRule />
+              <ProposalRule heavyLoad={heavyLoad} />
             </div>
           )}
           {days.length > 0 && (
@@ -347,6 +351,7 @@ export function AssignmentProposalPreview({
                   included={included}
                   excluded={excluded}
                   ordinals={ordinals}
+                  heavyLoad={heavyLoad}
                   locked={locked}
                   timeZone={timeZone}
                   onToggle={toggle}

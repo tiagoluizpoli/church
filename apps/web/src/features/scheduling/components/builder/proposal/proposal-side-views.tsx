@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
+import { formatDayAndMonth, parseCalendarDay } from '@church/time';
 import {
   type ProposalDay,
   type ProposalShift,
@@ -149,9 +150,9 @@ export function ProposalVolunteerTable({
                           out && 'text-muted-foreground line-through',
                         )}
                       >
-                        <span className="first-letter:uppercase">
-                          {dateLabel({ day, locale: getLocale() })}
-                        </span>
+                        {formatDayAndMonth({
+                          day: parseCalendarDay({ value: day }),
+                        })}
                         {picks.length > 1 && (
                           <span className="ms-1 text-muted-foreground">
                             ×{picks.length}

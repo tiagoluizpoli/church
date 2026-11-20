@@ -121,11 +121,43 @@ describe('scheduleOrdinals', () => {
       shiftId,
       reason,
     });
-    const ordinals = scheduleOrdinals({
+    const { ordinals, heavyLoad } = scheduleOrdinals({
       data,
       additions: [pick('s2'), pick('s0')],
     });
     expect(ordinals.get('s0-b:v1')).toBe(1);
     expect(ordinals.get('s2-b:v1')).toBe(3);
+    // One volunteer at 3: the tag still waits for a 4th.
+    expect(heavyLoad).toBe(4);
+  });
+});
+
+describe('scheduleOrdinals heavy load', () => {
+  it('tags only past the upper-quartile load, never below the 4th', () => {
+    const shifts = Array.from({ length: 12 }, (_, index) =>
+      shift({
+        shiftId: `s${index}`,
+        startTime: `2027-01-${String(index + 1).padStart(2, '0')}T12:00:00.000Z`,
+        volunteerIds: [],
+      }),
+    );
+    const data = {
+      assignments: [],
+      roles: [],
+      events: [{ eventTimeBlocks: [{ included: true, shifts }] }],
+    } as unknown as CycleBuilderData;
+    // v1 serves 10 times, v2 and v3 serve 5: only v1's 6th onward stand out.
+    const additions = [
+      ...shifts.slice(0, 10).map(({ shiftId }) => ['v1', shiftId]),
+      ...shifts.slice(0, 5).map(({ shiftId }) => ['v2', shiftId]),
+      ...shifts.slice(5, 10).map(({ shiftId }) => ['v3', shiftId]),
+    ].map(([volunteerId, shiftId]) => ({
+      volunteerId,
+      volunteerName: volunteerId,
+      shiftRequirementId: `${shiftId}-b`,
+      shiftId,
+      reason,
+    }));
+    expect(scheduleOrdinals({ data, additions }).heavyLoad).toBe(6);
   });
 });

@@ -12,7 +12,7 @@ import type {
 
 type ProposalAddition = GetAssignmentProposal200AdditionsItem;
 
-/** A volunteer's Nth Assignment in this Schedule earns the load tag from here. */
+/** The load tag never starts below a volunteer's 4th Assignment here. */
 export const HEAVY_LOAD_ORDINAL = 4;
 
 export function proposalAdditionKey({
@@ -208,12 +208,19 @@ interface DatedAssignment {
   additionKey?: string;
 }
 
+export interface ScheduleLoad {
+  /** Addition key → its place among its volunteer's Assignments here. */
+  ordinals: Map<string, number>;
+  /** The ordinal from which a pick is tagged. */
+  heavyLoad: number;
+}
+
 /** For each addition: its place, by start time, among everything its
  * volunteer would serve in this Schedule once applied. */
 export function scheduleOrdinals({
   data,
   additions,
-}: ScheduleOrdinalsInput): Map<string, number> {
+}: ScheduleOrdinalsInput): ScheduleLoad {
   const shifts = includedShifts({ data });
   const startByShift = new Map(
     shifts.map(({ shiftId, startTime }) => [shiftId, startTime]),
@@ -247,5 +254,14 @@ export function scheduleOrdinals({
       if (additionKey) ordinals.set(additionKey, index + 1);
     });
   }
-  return ordinals;
+  // Past the upper quartile of loads: the tag singles out who carries
+  // clearly more than the rest, and stays silent when loads are even.
+  const totals = [...byVolunteer.values()]
+    .map((entries) => entries.length)
+    .sort((left, right) => left - right);
+  const upperQuartile = totals[Math.floor((totals.length - 1) * 0.75)] ?? 0;
+  return {
+    ordinals,
+    heavyLoad: Math.max(HEAVY_LOAD_ORDINAL, upperQuartile + 1),
+  };
 }

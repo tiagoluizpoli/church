@@ -77,24 +77,33 @@ export function ResponsiveFormSurface({
               reviewSummary ? 'shrink-0 px-6 pt-5 pr-14 pb-0' : undefined
             }
           >
-            <DialogTitle
-              ref={titleRef}
-              tabIndex={reviewSummary ? -1 : undefined}
+            {/* A review shares one line between title and description. */}
+            <div
               className={
                 reviewSummary
-                  ? 'font-semibold text-base outline-none'
-                  : undefined
+                  ? 'flex flex-wrap items-baseline gap-x-3 gap-y-0.5'
+                  : 'contents'
               }
             >
-              {title}
-            </DialogTitle>
-            {description ? (
-              <DialogDescription
-                className={reviewSummary ? 'text-sm' : undefined}
+              <DialogTitle
+                ref={titleRef}
+                tabIndex={reviewSummary ? -1 : undefined}
+                className={
+                  reviewSummary
+                    ? 'font-semibold text-base outline-none'
+                    : undefined
+                }
               >
-                {description}
-              </DialogDescription>
-            ) : null}
+                {title}
+              </DialogTitle>
+              {description ? (
+                <DialogDescription
+                  className={reviewSummary ? 'text-sm' : undefined}
+                >
+                  {description}
+                </DialogDescription>
+              ) : null}
+            </div>
             {reviewSummary}
           </DialogHeader>
           {reviewSummary ? (

@@ -100,12 +100,14 @@ export interface DayStripDay {
 
 interface DayStripProps {
   days: DayStripDay[];
+  /** Wrap (in the rail) instead of scrolling one row (in the header). */
+  wrap?: boolean;
   onJump: (day: string) => void;
 }
 
 /** Every board day with its coverage after applying; one tab stop, arrow
  * keys move between days, and a day the proposal doesn't touch says why. */
-export function DayStrip({ days, onJump }: DayStripProps) {
+export function DayStrip({ days, wrap = false, onJump }: DayStripProps) {
   const jumpable = days
     .filter(({ coverage }) => coverage)
     .map(({ day }) => day);
@@ -134,7 +136,10 @@ export function DayStrip({ days, onJump }: DayStripProps) {
     <nav
       aria-label={m.builder_proposal_day_strip_label()}
       onKeyDown={onKeyDown}
-      className="-mx-1 flex gap-1.5 px-1 pb-1 max-md:overflow-x-auto md:flex-wrap"
+      className={cn(
+        '-mx-1 flex gap-1.5 px-1 pb-1',
+        wrap ? 'flex-wrap' : 'overflow-x-auto',
+      )}
     >
       {days.map(({ day, coverage, noShifts }) => {
         const label = dateLabel({ day, locale: getLocale() });

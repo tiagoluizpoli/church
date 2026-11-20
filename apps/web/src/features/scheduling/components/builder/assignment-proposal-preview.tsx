@@ -211,6 +211,8 @@ export function AssignmentProposalPreview({
   const { churchTimezone: timeZone } = useTimezone();
   // Same breakpoint as ResponsiveFormSurface's Dialog/Drawer swap.
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  // From here the day strip lives in the rail, beside the list.
+  const isWide = useMediaQuery('(min-width: 1280px)');
   const [excluded, setExcluded] = useState(() => exclusions.current);
   useEffect(() => {
     exclusions.current = excluded;
@@ -257,14 +259,36 @@ export function AssignmentProposalPreview({
     [],
   );
   const bodyRef = useRef<HTMLDivElement>(null);
-  // Each tab opens at its top; only jumping to a day scrolls on purpose.
+  const scrollBody = () =>
+    bodyRef.current?.closest<HTMLElement>(
+      '[data-testid="proposal-scroll-body"]',
+    );
+  // Each tab keeps its own place: back where the leader left it, the top
+  // on a first visit. Only jumping to a day scrolls on purpose.
+  const scrollByTab = useRef(new Map<string, number>());
+  const rememberScroll = () =>
+    scrollByTab.current.set(tab, scrollBody()?.scrollTop ?? 0);
   const changeTab = (next: string) => {
+    rememberScroll();
     setTab(next);
-    bodyRef.current
-      ?.closest('[data-testid="proposal-scroll-body"]')
-      ?.scrollTo?.({ top: 0 });
+    requestAnimationFrame(() =>
+      scrollBody()?.scrollTo?.({ top: scrollByTab.current.get(next) ?? 0 }),
+    );
   };
+  // The rail fits the list's visible height, whatever the header takes.
+  useEffect(() => {
+    const body = bodyRef.current?.closest<HTMLElement>(
+      '[data-testid="proposal-scroll-body"]',
+    );
+    if (!body || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() =>
+      body.style.setProperty('--proposal-viewport', `${body.clientHeight}px`),
+    );
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, []);
   const jumpToDay = (day: string) => {
+    rememberScroll();
     setTab('shifts');
     setFolded((previous) => {
       const next = new Set(previous);
@@ -360,9 +384,13 @@ export function AssignmentProposalPreview({
     );
     return { load, people, onlyOption };
   }, [data, proposal, groups]);
+  // From the whole proposal, so removing someone keeps their row in place.
   const railPeople: RailPerson[] = groups
-    .map((group) => ({ group, total: totals.get(group.volunteerId) ?? 0 }))
-    .filter(({ total }) => total >= heavyLoad)
+    .map((group) => ({
+      group,
+      total: attention.load.totals.get(group.volunteerId) ?? 0,
+    }))
+    .filter(({ total }) => total >= attention.load.heavyLoad)
     .sort((left, right) => right.total - left.total);
   const openPlaceRows = useMemo(
     () => openPlacesOf({ days, excluded }),
@@ -406,8 +434,8 @@ export function AssignmentProposalPreview({
   };
 
   const summary = (
-    <div className="space-y-1">
-      <p className="text-pretty text-foreground text-sm">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+      <p className="text-pretty text-foreground">
         {hasAdditions && (
           <strong className="font-semibold">
             {proposal.additions.length === 1
@@ -433,7 +461,7 @@ export function AssignmentProposalPreview({
         )}
       </p>
       {hasAdditions && (
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {heaviest && (
             <span className="flex flex-wrap items-center gap-x-2">
               <span className="text-muted-foreground">
@@ -474,7 +502,7 @@ export function AssignmentProposalPreview({
     />
   );
   const strip = hasAdditions && stripDays.length > 1 && (
-    <DayStrip days={stripDays} onJump={jumpToDay} />
+    <DayStrip days={stripDays} wrap={isWide} onJump={jumpToDay} />
   );
 
   return (
@@ -488,14 +516,14 @@ export function AssignmentProposalPreview({
         description={m.builder_proposal_description()}
         reviewBodyLabel={m.builder_proposal_list_label()}
         reviewSummary={
-          <div className="mt-2 space-y-3 md:mt-3">
-            <div className="grid gap-x-12 gap-y-2 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-start">
+          <div className="mt-2 space-y-2">
+            <div className="grid gap-x-8 gap-y-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               {isDesktop && summary}
               {coverage.required > 0 && (
-                <div className="space-y-1">
+                <div className="flex items-center gap-3">
                   {/* The reopened note shares the label's line, so nothing moves. */}
-                  <p className="truncate text-muted-foreground text-sm max-md:sr-only">
-                    {m.builder_proposal_coverage_label()}
+                  <p className="max-w-56 truncate text-muted-foreground text-sm max-md:sr-only">
+                    {m.builder_proposal_coverage_short()}
                     {excluded.size > 0 &&
                       ` · ${
                         excluded.size === 1
@@ -505,11 +533,14 @@ export function AssignmentProposalPreview({
                             })
                       }`}
                   </p>
-                  <CoverageMeter coverage={coverage} />
+                  <CoverageMeter
+                    className="flex-1 md:w-56"
+                    coverage={coverage}
+                  />
                 </div>
               )}
             </div>
-            {isDesktop && strip}
+            {isDesktop && !isWide && strip}
             {days.length > 0 && (
               <div className="flex flex-wrap items-end justify-between gap-x-6">
                 <TabsList
@@ -658,8 +689,9 @@ export function AssignmentProposalPreview({
               >
                 <div className="xl:grid xl:grid-cols-[minmax(0,60rem)_minmax(20rem,1fr)] xl:items-start xl:gap-10">
                   <ProposalShiftTable {...tableProps} />
-                  <aside className="sticky top-0 max-xl:hidden xl:max-h-[calc(90dvh-19rem)] xl:overflow-y-auto">
+                  <aside className="sticky top-0 max-xl:hidden xl:max-h-[calc(var(--proposal-viewport,60vh)-3rem)] xl:overflow-y-auto">
                     <ProposalRail
+                      days={isWide && strip}
                       people={railPeople}
                       openPlaces={openPlaceRows}
                       excluded={excluded}

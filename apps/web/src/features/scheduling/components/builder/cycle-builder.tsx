@@ -2,7 +2,7 @@ import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   CYCLE_BUILDER_QUERY_KEY,
@@ -12,18 +12,20 @@ import {
   type CycleBuilderMutations,
   useCycleBuilderActions,
 } from '../../hooks/use-cycle-builder-actions';
+import { proposalAdditionKey } from '../../utils/builder/assignment-proposal.utils';
 import {
   summarizeCycleCounts,
   summarizeCycleStaffing,
 } from '../../utils/builder/cycle-builder-staffing.utils';
 import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialog';
 import {
-  type AssignmentProposal,
   AssignmentProposalPreview,
   type ProposalApplyState,
+  type ProposalSelection,
 } from './assignment-proposal-preview';
 import { AuditLogPanel } from './audit-log-panel';
 import { CycleBuilderMatrix } from './board/cycle-builder-matrix';
+import { RecentlyAddedProvider } from './board/recently-added-context';
 import { CycleBuilderHeader } from './cycle-builder-header';
 import { SwapRequestBoardProvider } from './swap-request/swap-request-context';
 import {
@@ -42,6 +44,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { WorkspacePage } from '@/components/workspace-page';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import type { ApplyAssignmentProposalBodyExcludedAdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
 import { randomId } from '@/shared/utils/id';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
@@ -116,35 +119,62 @@ export function CycleBuilder({
   const queryClient = useQueryClient();
   const refreshBoard = () =>
     void queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY });
-  // Each reviewed preview gets one key; every retry of it resends that key,
-  // so a lost response is recovered rather than applied twice (ADR 0013).
-  const [applicationKey, setApplicationKey] = useState('');
+  // One key per reviewed preview and exclusion set: every retry of the same
+  // selection resends its key, so a lost response is recovered rather than
+  // applied twice, and a changed selection never reuses one (ADR 0013).
+  const applicationKeys = useRef(new Map<string, string>());
   // A read, kept only in memory: discarding it writes nothing.
   const proposal = useMutation({
     mutationFn: () => adminApi.getAssignmentProposal(cycleId, { ministryId }),
-    onSuccess: () => setApplicationKey(randomId()),
+    onSuccess: () => {
+      applicationKeys.current = new Map();
+    },
     onError: () => {
       toast.error(m.builder_proposal_error());
       // The Schedule may have moved on (e.g. published elsewhere).
       refreshBoard();
     },
   });
+  const [recentlyAdded, setRecentlyAdded] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    if (recentlyAdded.size === 0) return;
+    const timer = setTimeout(() => setRecentlyAdded(new Set()), 6000);
+    return () => clearTimeout(timer);
+  }, [recentlyAdded]);
   const applyProposal = useMutation({
-    mutationFn: ({ reviewToken, additions }: AssignmentProposal) =>
-      adminApi.applyAssignmentProposal(
+    mutationFn: ({
+      proposal: { reviewToken, additions },
+      excluded,
+    }: ProposalSelection) => {
+      const pair = ({
+        shiftRequirementId,
+        volunteerId,
+      }: ApplyAssignmentProposalBodyExcludedAdditionsItem) => ({
+        shiftRequirementId,
+        volunteerId,
+      });
+      const selection = excluded.map(proposalAdditionKey).sort().join(',');
+      const applicationKey =
+        applicationKeys.current.get(selection) ?? randomId();
+      applicationKeys.current.set(selection, applicationKey);
+      return adminApi.applyAssignmentProposal(
         cycleId,
         {
           applicationKey,
           reviewToken,
-          additions: additions.map(({ shiftRequirementId, volunteerId }) => ({
-            shiftRequirementId,
-            volunteerId,
-          })),
+          additions: additions.map(pair),
+          ...(excluded.length > 0 && { excludedAdditions: excluded.map(pair) }),
         },
         { ministryId },
-      ),
+      );
+    },
     onSuccess: ({ additions }) => {
       toast.success(m.builder_proposal_applied({ count: additions.length }));
+      setRecentlyAdded(
+        new Set(additions.map(({ assignmentId }) => assignmentId)),
+      );
       proposal.reset();
     },
     onSettled: refreshBoard,
@@ -269,171 +299,173 @@ export function CycleBuilder({
 
   return (
     <SwapRequestBoardProvider value={swapRequestContext}>
-      <WorkspacePage data-testid="cycle-builder">
-        <p
-          aria-live="polite"
-          className="sr-only"
-          data-testid="cycle-builder-announcer"
-        >
-          {actions.announcement}
-        </p>
-        <CycleBuilderHeader
-          cycleName={cycleName}
-          cycleStartDate={cycleStartDate}
-          cycleEndDate={cycleEndDate}
-          staffing={staffing}
-          counts={counts}
-          syncedAt={syncedAt}
-          isRefreshing={isRefreshing}
-        />
-
-        <CycleBuilderMatrix
-          data={data}
-          cycleStartDate={cycleStartDate}
-          cycleEndDate={cycleEndDate}
-          selectedDate={selectedDate}
-          onSelectedDateChange={setSelectedDate}
-          selectedVolunteerId={selectedVolunteerId}
-          onSelectVolunteer={(volunteerId) =>
-            setSelectedVolunteerId((current) =>
-              current === volunteerId ? undefined : volunteerId,
-            )
-          }
-          onSelectAssignment={actions.handleSelectAssignment}
-          onMoveAssignment={actions.handleMove}
-          onRemoveAssignment={setPendingRemovalId}
-          actions={toolbarActions}
-          failedWrites={actions.boardFailedWrites}
-          onRetryFailedWrite={actions.retryFailedWrite}
-          onDismissFailedWrite={actions.dismissFailedWrite}
-        />
-
-        {auditPanel ? (
-          <AuditLogPanel
-            open={auditOpen}
-            onOpenChange={setAuditOpen}
-            assignments={data.assignments}
-            cycleId={cycleId}
-            ministryId={ministryId}
+      <RecentlyAddedProvider value={recentlyAdded}>
+        <WorkspacePage data-testid="cycle-builder">
+          <p
+            aria-live="polite"
+            className="sr-only"
+            data-testid="cycle-builder-announcer"
+          >
+            {actions.announcement}
+          </p>
+          <CycleBuilderHeader
+            cycleName={cycleName}
+            cycleStartDate={cycleStartDate}
+            cycleEndDate={cycleEndDate}
+            staffing={staffing}
+            counts={counts}
+            syncedAt={syncedAt}
+            isRefreshing={isRefreshing}
           />
-        ) : null}
 
-        <Dialog
-          open={pendingRemovalId !== null}
-          onOpenChange={(open) => !open && setPendingRemovalId(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{m.builder_ui_remove_title()}</DialogTitle>
-              <DialogDescription>
-                {m.builder_ui_remove_description()}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setPendingRemovalId(null)}
-              >
-                {m.builder_ui_keep()}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={deleteAssignment.isPending}
-                onClick={() => {
-                  if (!pendingRemovalId) return;
-                  void actions
-                    .removeAssignment({
-                      assignmentId: pendingRemovalId,
-                      volunteerName: removedVolunteerName,
-                    })
-                    .then(() => setPendingRemovalId(null));
-                }}
-              >
-                {deleteAssignment.isPending ? <Spinner /> : null}
-                {deleteAssignment.isPending
-                  ? m.builder_ui_removing()
-                  : m.builder_ui_remove()}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{m.builder_ui_publish_title()}</DialogTitle>
-              <DialogDescription>
-                {belowFullCount > 0
-                  ? m.builder_ui_publish_gaps({
-                      places: emptyPlaces,
-                      shifts: belowFullCount,
-                    })
-                  : m.builder_ui_publish_full()}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setPublishDialogOpen(false)}
-              >
-                {m.builder_ui_cancel()}
-              </Button>
-              <Button
-                type="button"
-                disabled={isPublishing}
-                onClick={() => {
-                  setPublishDialogOpen(false);
-                  onPublish(belowFullCount > 0);
-                }}
-              >
-                {isPublishing
-                  ? m.builder_ui_publishing()
-                  : m.builder_ui_publish()}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {proposal.data ? (
-          <AssignmentProposalPreview
+          <CycleBuilderMatrix
             data={data}
-            proposal={proposal.data}
-            applyState={applyState}
-            onApply={applyProposal.mutate}
-            onReviewNew={reviewNewProposal}
-            onDiscard={discardProposal}
+            cycleStartDate={cycleStartDate}
+            cycleEndDate={cycleEndDate}
+            selectedDate={selectedDate}
+            onSelectedDateChange={setSelectedDate}
+            selectedVolunteerId={selectedVolunteerId}
+            onSelectVolunteer={(volunteerId) =>
+              setSelectedVolunteerId((current) =>
+                current === volunteerId ? undefined : volunteerId,
+              )
+            }
+            onSelectAssignment={actions.handleSelectAssignment}
+            onMoveAssignment={actions.handleMove}
+            onRemoveAssignment={setPendingRemovalId}
+            actions={toolbarActions}
+            failedWrites={actions.boardFailedWrites}
+            onRetryFailedWrite={actions.retryFailedWrite}
+            onDismissFailedWrite={actions.dismissFailedWrite}
           />
-        ) : null}
 
-        <UnavailableConfirmDialog
-          open={actions.unavailable !== null}
-          onOpenChange={(open) => !open && actions.setUnavailable(null)}
-          volunteerName={actions.unavailable?.volunteerName ?? ''}
-          volunteerMembership={actions.unavailable?.volunteerMembership}
-          eventTimeBlockLabel={
-            actions.unavailable?.input.eventTimeBlockLabel ??
-            m.builder_ui_this_shift()
-          }
-          isPending={actions.isSaving}
-          onConfirm={actions.confirmUnavailable}
-        />
+          {auditPanel ? (
+            <AuditLogPanel
+              open={auditOpen}
+              onOpenChange={setAuditOpen}
+              assignments={data.assignments}
+              cycleId={cycleId}
+              ministryId={ministryId}
+            />
+          ) : null}
 
-        {selectedSwapRequest ? (
-          <SwapRequestSheet
-            ministryId={ministryId}
-            request={selectedSwapRequest}
-            onCover={() => {
-              // Cover only leads to the board actions; the Assignment change closes the request.
-              setCoverAssignmentId(selectedSwapRequest.assignmentId);
-              onSelectSwapRequest?.(undefined);
-            }}
-            onOpenChange={(open) => !open && onSelectSwapRequest?.(undefined)}
+          <Dialog
+            open={pendingRemovalId !== null}
+            onOpenChange={(open) => !open && setPendingRemovalId(null)}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{m.builder_ui_remove_title()}</DialogTitle>
+                <DialogDescription>
+                  {m.builder_ui_remove_description()}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPendingRemovalId(null)}
+                >
+                  {m.builder_ui_keep()}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={deleteAssignment.isPending}
+                  onClick={() => {
+                    if (!pendingRemovalId) return;
+                    void actions
+                      .removeAssignment({
+                        assignmentId: pendingRemovalId,
+                        volunteerName: removedVolunteerName,
+                      })
+                      .then(() => setPendingRemovalId(null));
+                  }}
+                >
+                  {deleteAssignment.isPending ? <Spinner /> : null}
+                  {deleteAssignment.isPending
+                    ? m.builder_ui_removing()
+                    : m.builder_ui_remove()}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{m.builder_ui_publish_title()}</DialogTitle>
+                <DialogDescription>
+                  {belowFullCount > 0
+                    ? m.builder_ui_publish_gaps({
+                        places: emptyPlaces,
+                        shifts: belowFullCount,
+                      })
+                    : m.builder_ui_publish_full()}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPublishDialogOpen(false)}
+                >
+                  {m.builder_ui_cancel()}
+                </Button>
+                <Button
+                  type="button"
+                  disabled={isPublishing}
+                  onClick={() => {
+                    setPublishDialogOpen(false);
+                    onPublish(belowFullCount > 0);
+                  }}
+                >
+                  {isPublishing
+                    ? m.builder_ui_publishing()
+                    : m.builder_ui_publish()}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {proposal.data ? (
+            <AssignmentProposalPreview
+              data={data}
+              proposal={proposal.data}
+              applyState={applyState}
+              onApply={applyProposal.mutate}
+              onReviewNew={reviewNewProposal}
+              onDiscard={discardProposal}
+            />
+          ) : null}
+
+          <UnavailableConfirmDialog
+            open={actions.unavailable !== null}
+            onOpenChange={(open) => !open && actions.setUnavailable(null)}
+            volunteerName={actions.unavailable?.volunteerName ?? ''}
+            volunteerMembership={actions.unavailable?.volunteerMembership}
+            eventTimeBlockLabel={
+              actions.unavailable?.input.eventTimeBlockLabel ??
+              m.builder_ui_this_shift()
+            }
+            isPending={actions.isSaving}
+            onConfirm={actions.confirmUnavailable}
           />
-        ) : null}
-      </WorkspacePage>
+
+          {selectedSwapRequest ? (
+            <SwapRequestSheet
+              ministryId={ministryId}
+              request={selectedSwapRequest}
+              onCover={() => {
+                // Cover only leads to the board actions; the Assignment change closes the request.
+                setCoverAssignmentId(selectedSwapRequest.assignmentId);
+                onSelectSwapRequest?.(undefined);
+              }}
+              onOpenChange={(open) => !open && onSelectSwapRequest?.(undefined)}
+            />
+          ) : null}
+        </WorkspacePage>
+      </RecentlyAddedProvider>
     </SwapRequestBoardProvider>
   );
 }

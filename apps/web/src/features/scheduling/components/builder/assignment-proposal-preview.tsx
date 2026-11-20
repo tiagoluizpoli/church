@@ -1,27 +1,33 @@
 import { m } from '@church/i18n/messages';
 import { useState } from 'react';
+import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
-  type CycleBuilderData,
-  isActiveAssignment,
-} from '../../hooks/use-cycle-builder';
-import { staffingStatusClasses } from '../../utils/builder/cycle-builder-staffing.utils';
+  coverageOf,
+  groupProposalByDay,
+  HEAVY_LOAD_ORDINAL,
+  includedShifts,
+  proposalAdditionKey,
+  scheduleOrdinals,
+} from '../../utils/builder/assignment-proposal.utils';
+import { AttentionTag, CoverageMeter } from './proposal/proposal-parts';
+import { ProposalShiftTable } from './proposal/proposal-shift-table';
+import {
+  ProposalGapTable,
+  type ProposalVolunteerGroup,
+  ProposalVolunteerTable,
+  type SetIncludedInput,
+} from './proposal/proposal-side-views';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type {
   GetAssignmentProposal200,
   GetAssignmentProposal200AdditionsItem,
-  GetAssignmentProposal200AdditionsItemReason,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import {
-  formatDayOf,
-  formatInstantRangeOf,
-  formatTimeOf,
-} from '@/shared/utils/church-time';
 
 export type AssignmentProposal = GetAssignmentProposal200;
+type Addition = GetAssignmentProposal200AdditionsItem;
 
 /** `unknown`: the request failed without an answer, so it may have committed. */
 export type ProposalApplyState =
@@ -30,30 +36,37 @@ export type ProposalApplyState =
   | { status: 'unknown' }
   | { status: 'refused'; message: string };
 
+/** The reviewed proposal and the picks left out of it. */
+export interface ProposalSelection {
+  proposal: AssignmentProposal;
+  excluded: Addition[];
+}
+
 interface AssignmentProposalPreviewProps {
   data: CycleBuilderData;
   proposal: AssignmentProposal;
   applyState: ProposalApplyState;
-  onApply: (proposal: AssignmentProposal) => void;
+  onApply: (selection: ProposalSelection) => void;
   onReviewNew: () => void;
   onDiscard: () => void;
 }
 
 interface ApplyActionProps {
   proposal: AssignmentProposal;
+  excluded: Addition[];
   applyState: ProposalApplyState;
-  onApply: (proposal: AssignmentProposal) => void;
+  onApply: (selection: ProposalSelection) => void;
   onReviewNew: () => void;
-  selectedCount: number;
 }
 
 function ApplyAction({
   proposal,
+  excluded,
   applyState,
   onApply,
   onReviewNew,
-  selectedCount,
 }: ApplyActionProps) {
+  const selectedCount = proposal.additions.length - excluded.length;
   const { status } = applyState;
   if (proposal.additions.length === 0) return null;
   if (status === 'refused')
@@ -65,10 +78,8 @@ function ApplyAction({
   return (
     <Button
       size="touch"
-      disabled={
-        status === 'pending' || selectedCount !== proposal.additions.length
-      }
-      onClick={() => onApply(proposal)}
+      disabled={status === 'pending' || selectedCount === 0}
+      onClick={() => onApply({ proposal, excluded })}
     >
       {status === 'pending'
         ? m.builder_proposal_applying()
@@ -80,107 +91,6 @@ function ApplyAction({
             })}
     </Button>
   );
-}
-
-interface ExistingAssignee {
-  assignmentId: string;
-  name: string;
-}
-
-interface ProposalNeedRow {
-  requirementId: string;
-  label: string;
-  existing: ExistingAssignee[];
-  additions: GetAssignmentProposal200AdditionsItem[];
-  remaining: number;
-}
-
-interface ProposalShiftGroup {
-  shiftId: string;
-  eventTitle: string;
-  startTime: string;
-  endTime: string;
-  needs: ProposalNeedRow[];
-}
-
-interface GroupProposalInput {
-  data: CycleBuilderData;
-  proposal: AssignmentProposal;
-}
-
-/** Board order (Event → time block → Shift); only needs the proposal touches. */
-function groupProposalByShift({
-  data,
-  proposal,
-}: GroupProposalInput): ProposalShiftGroup[] {
-  const roleNames = new Map(data.roles.map(({ id, name }) => [id, name]));
-  const remainingByNeed = new Map(
-    proposal.gaps.map(({ shiftRequirementId, remaining }) => [
-      shiftRequirementId,
-      remaining,
-    ]),
-  );
-  return data.events.flatMap((event) =>
-    event.eventTimeBlocks.flatMap(({ shifts }) =>
-      shifts.flatMap((shift) => {
-        const needs = shift.requirements.flatMap((requirement) => {
-          const additions = proposal.additions.filter(
-            ({ shiftRequirementId }) => shiftRequirementId === requirement.id,
-          );
-          const remaining = remainingByNeed.get(requirement.id) ?? 0;
-          if (additions.length === 0 && remaining === 0) return [];
-          const existing = shift.assignments
-            .filter(
-              (assignment) =>
-                assignment.shiftRequirementId === requirement.id &&
-                isActiveAssignment(assignment),
-            )
-            .map(({ id, volunteerName }) => ({
-              assignmentId: id,
-              name: volunteerName ?? m.builder_ui_the_volunteer(),
-            }));
-          const roleName = roleNames.get(requirement.roleId) ?? '';
-          return [
-            {
-              requirementId: requirement.id,
-              label: `${roleName} · ${requirement.sectorName}`,
-              existing,
-              additions,
-              remaining,
-            },
-          ];
-        });
-        if (needs.length === 0) return [];
-        return [
-          {
-            shiftId: shift.shiftId,
-            eventTitle: event.title,
-            startTime: shift.startTime,
-            endTime: shift.endTime,
-            needs,
-          },
-        ];
-      }),
-    ),
-  );
-}
-
-function reasonText({
-  eligibleShiftCount,
-  needCandidateCount,
-  decidedBy,
-}: GetAssignmentProposal200AdditionsItemReason): string {
-  const parts = [
-    eligibleShiftCount === 1
-      ? m.builder_proposal_reason_shifts_one()
-      : m.builder_proposal_reason_shifts_many({ count: eligibleShiftCount }),
-    needCandidateCount === 1
-      ? m.builder_proposal_reason_need_one()
-      : m.builder_proposal_reason_need_many({ count: needCandidateCount }),
-  ];
-  if (decidedBy === 'fewest_cycle_assignments')
-    parts.push(m.builder_proposal_reason_workload());
-  return parts.join(' · ');
 }
 
 interface EmptyReasonInput {
@@ -197,6 +107,49 @@ function emptyReasonText({ emptyReason }: EmptyReasonInput): string | null {
   return null;
 }
 
+interface VolunteerGroupsInput {
+  additions: readonly Addition[];
+}
+
+/** Busiest first; equal loads by name, so the order never shuffles. */
+function volunteerGroups({
+  additions,
+}: VolunteerGroupsInput): ProposalVolunteerGroup[] {
+  const groups = new Map<string, ProposalVolunteerGroup>();
+  for (const addition of additions) {
+    const group = groups.get(addition.volunteerId) ?? {
+      volunteerId: addition.volunteerId,
+      name: addition.volunteerName,
+      additions: [],
+    };
+    group.additions.push(addition);
+    groups.set(addition.volunteerId, group);
+  }
+  return [...groups.values()].sort(
+    (left, right) =>
+      right.additions.length - left.additions.length ||
+      left.name.localeCompare(right.name),
+  );
+}
+
+function ProposalRule() {
+  return (
+    <div className="space-y-1.5 text-muted-foreground text-sm">
+      <p>{m.builder_proposal_rule()}</p>
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <AttentionTag>{m.builder_proposal_only_option()}</AttentionTag>
+        <span className="me-3">{m.builder_proposal_legend_only()}</span>
+        <AttentionTag>
+          {m.builder_proposal_tag_load({ ordinal: HEAVY_LOAD_ORDINAL })}
+        </AttentionTag>
+        <span>
+          {m.builder_proposal_legend_load({ count: HEAVY_LOAD_ORDINAL })}
+        </span>
+      </p>
+    </div>
+  );
+}
+
 /**
  * Review of a proposal. Only Apply writes: exactly these additions, once
  * (ADR 0013). A refusal asks for a fresh review; an unanswered attempt is
@@ -211,37 +164,40 @@ export function AssignmentProposalPreview({
   onDiscard,
 }: AssignmentProposalPreviewProps) {
   const { churchTimezone: timeZone } = useTimezone();
-  const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
-  const keyOf = (addition: GetAssignmentProposal200AdditionsItem) =>
-    `${addition.shiftRequirementId}:${addition.volunteerId}`;
-  const toggle = (addition: GetAssignmentProposal200AdditionsItem) => {
+  const [excluded, setExcluded] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [tab, setTab] = useState(
+    proposal.additions.length > 0 ? 'shifts' : 'gaps',
+  );
+  const setIncluded = ({ additions, include }: SetIncludedInput) =>
     setExcluded((previous) => {
       const next = new Set(previous);
-      const key = keyOf(addition);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      for (const addition of additions) {
+        const key = proposalAdditionKey(addition);
+        if (include) next.delete(key);
+        else next.add(key);
+      }
       return next;
     });
-  };
-  const groups = groupProposalByShift({ data, proposal });
-  const days = new Map<string, ProposalShiftGroup[]>();
-  for (const group of [...groups].sort((a, b) =>
-    a.startTime.localeCompare(b.startTime),
-  )) {
-    const day = formatDayOf({ value: group.startTime, timeZone });
-    days.set(day, [...(days.get(day) ?? []), group]);
-  }
-  const volunteers = new Map<string, GetAssignmentProposal200AdditionsItem[]>();
-  for (const addition of proposal.additions) {
-    volunteers.set(addition.volunteerId, [
-      ...(volunteers.get(addition.volunteerId) ?? []),
-      addition,
-    ]);
-  }
-  const openPlaces = proposal.gaps.reduce(
-    (total, { remaining }) => total + remaining,
-    0,
+  const toggle = (addition: Addition) =>
+    setIncluded({
+      additions: [addition],
+      include: excluded.has(proposalAdditionKey(addition)),
+    });
+
+  const included = proposal.additions.filter(
+    (addition) => !excluded.has(proposalAdditionKey(addition)),
   );
+  const days = groupProposalByDay({ data, proposal, timeZone });
+  const ordinals = scheduleOrdinals({ data, additions: included });
+  const coverage = coverageOf({
+    shifts: includedShifts({ data }),
+    additions: included,
+  });
+  const openPlaces =
+    proposal.gaps.reduce((total, { remaining }) => total + remaining, 0) +
+    excluded.size;
   const emptyText = emptyReasonText(proposal);
   const isApplying = applyState.status === 'pending';
   const locked = isApplying || applyState.status === 'unknown';
@@ -251,280 +207,172 @@ export function AssignmentProposalPreview({
       : applyState.status === 'unknown'
         ? m.builder_proposal_apply_unknown()
         : null;
-  const selectedCount = proposal.additions.length - excluded.size;
-  const range = (group: ProposalShiftGroup) =>
-    formatInstantRangeOf({
-      start: group.startTime,
-      end: group.endTime,
-      timeZone,
-    });
+  const hasAdditions = proposal.additions.length > 0;
 
   return (
-    <ResponsiveFormSurface
-      open
-      wide
-      closeDisabled={isApplying}
-      onOpenChange={(open) => !(open || isApplying) && onDiscard()}
-      title={m.builder_proposal_title()}
-      description={m.builder_proposal_description()}
-      reviewSummary={
-        <div className="mt-2 space-y-1 text-sm">
-          {!emptyText && (
-            <p className="font-medium">
-              {m.builder_proposal_summary({
-                additions: proposal.additions.length,
-                places: openPlaces,
-              })}
-            </p>
-          )}
-          <p>{m.builder_proposal_rule()}</p>
-          <p className="text-muted-foreground">
-            {proposal.excludedUnconfirmedCount === 1
-              ? m.builder_proposal_unconfirmed_one()
-              : m.builder_proposal_unconfirmed_many({
-                  count: proposal.excludedUnconfirmedCount,
-                })}
-          </p>
-          {applyAlert && (
-            <p role="alert" className="text-destructive">
-              {applyAlert}
-            </p>
-          )}
-        </div>
-      }
-      footer={
-        <>
-          <Button
-            variant="outline"
-            size="touch"
-            disabled={isApplying}
-            onClick={onDiscard}
-          >
-            {m.builder_proposal_discard()}
-          </Button>
-          <ApplyAction
-            proposal={proposal}
-            applyState={applyState}
-            onApply={onApply}
-            onReviewNew={onReviewNew}
-            selectedCount={selectedCount}
-          />
-        </>
-      }
-    >
-      <div
-        data-testid="assignment-proposal-preview"
-        className="space-y-4 text-sm"
-      >
-        {emptyText && <p className="font-medium">{emptyText}</p>}
-        {groups.length > 0 && (
-          <Tabs defaultValue={proposal.additions.length ? 'shifts' : 'gaps'}>
-            <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1">
-              <TabsTrigger className="min-h-11 px-3 text-sm" value="shifts">
-                {m.builder_proposal_tab_shifts()}
-              </TabsTrigger>
-              <TabsTrigger className="min-h-11 px-3 text-sm" value="volunteers">
-                {m.builder_proposal_tab_volunteers()}
-              </TabsTrigger>
-              <TabsTrigger className="min-h-11 px-3 text-sm" value="gaps">
-                {m.builder_proposal_tab_gaps({ count: openPlaces })}
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="shifts" className="text-sm">
-              {[...days]
-                .filter(([, dayGroups]) =>
-                  dayGroups.some((group) =>
-                    group.needs.some((need) => need.additions.length > 0),
-                  ),
-                )
-                .map(([day, dayGroups]) => {
-                  const needs = dayGroups.flatMap((group) => group.needs);
-                  const before = needs.reduce(
-                    (sum, need) => sum + need.existing.length,
-                    0,
-                  );
-                  const added = needs
-                    .flatMap((need) => need.additions)
-                    .filter((item) => !excluded.has(keyOf(item))).length;
-                  const total =
-                    before +
-                    needs.reduce(
-                      (sum, need) =>
-                        sum + need.additions.length + need.remaining,
-                      0,
-                    );
-                  const percent = total
-                    ? Math.round(((before + added) / total) * 100)
-                    : 0;
-                  const status = staffingStatusClasses({
-                    percent,
-                    hasRequirement: total > 0,
-                  });
-                  return (
-                    <details key={day} open className="border-b py-3">
-                      <summary className="cursor-pointer font-medium">
-                        {day} ·{' '}
-                        {m.builder_proposal_day_count({
-                          count: needs.reduce(
-                            (sum, need) => sum + need.additions.length,
-                            0,
-                          ),
-                        })}
-                      </summary>
-                      <div className="my-2 flex max-w-md items-center gap-3 text-muted-foreground">
-                        <span>
-                          {before}/{total} → {before + added}/{total}
-                        </span>
-                        <span className="h-1 flex-1 bg-muted">
-                          <span
-                            className={`block h-full ${status.bar}`}
-                            style={{ width: `${percent}%` }}
-                          />
-                        </span>
-                      </div>
-                      {dayGroups.map((group) => (
-                        <section key={group.shiftId} className="py-2">
-                          <h3 className="font-medium">
-                            {formatTimeOf({ value: group.startTime, timeZone })}{' '}
-                            – {formatTimeOf({ value: group.endTime, timeZone })}{' '}
-                            · {group.eventTitle}
-                          </h3>
-                          {group.needs.map((need) => (
-                            <div
-                              key={need.requirementId}
-                              className="border-border/50 border-b last:border-0"
-                            >
-                              <h4 className="sr-only">{need.label}</h4>
-                              {need.existing.map(({ assignmentId, name }) => (
-                                <div
-                                  key={assignmentId}
-                                  className="grid gap-1 py-2 text-muted-foreground md:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_auto] md:items-center"
-                                >
-                                  <span>{need.label}</span>
-                                  <span>{name}</span>
-                                  <span>{m.builder_proposal_existing()}</span>
-                                </div>
-                              ))}
-                              {need.additions.map((addition) => (
-                                <div
-                                  key={keyOf(addition)}
-                                  className="grid gap-1 py-2 md:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_auto_auto] md:items-center md:gap-4"
-                                >
-                                  <span>{need.label}</span>
-                                  <span className="font-medium">
-                                    {addition.volunteerName}
-                                  </span>
-                                  <details>
-                                    <summary className="cursor-pointer">
-                                      {addition.reason.needCandidateCount === 1
-                                        ? m.builder_proposal_only_option()
-                                        : m.builder_proposal_why()}
-                                    </summary>
-                                    <p className="text-muted-foreground">
-                                      {reasonText(addition.reason)}
-                                    </p>
-                                  </details>
-                                  <label
-                                    htmlFor={keyOf(addition)}
-                                    className="flex min-h-11 items-center gap-3 md:min-h-0"
-                                  >
-                                    <Checkbox
-                                      id={keyOf(addition)}
-                                      checked={!excluded.has(keyOf(addition))}
-                                      disabled={locked}
-                                      onCheckedChange={() => toggle(addition)}
-                                    />
-                                    <span>
-                                      {m.builder_proposal_include({
-                                        name: addition.volunteerName,
-                                      })}
-                                    </span>
-                                  </label>
-                                </div>
-                              ))}
-                            </div>
-                          ))}
-                        </section>
-                      ))}
-                    </details>
-                  );
-                })}
-            </TabsContent>
-            <TabsContent value="volunteers" className="divide-y text-sm">
-              {[...volunteers.values()]
-                .sort((a, b) => b.length - a.length)
-                .map((items) => (
-                  <section
-                    key={items[0].volunteerId}
-                    className="flex flex-wrap items-center gap-3 py-3"
-                  >
-                    <h3 className="font-medium">{items[0].volunteerName}</h3>
-                    <span>
-                      {m.builder_proposal_day_count({ count: items.length })}
-                    </span>
-                    <div className="flex flex-1 flex-wrap gap-2">
-                      {items.map((item) => {
-                        const group = groups.find(
-                          (entry) => entry.shiftId === item.shiftId,
-                        );
-                        return group ? (
-                          <span
-                            key={keyOf(item)}
-                            className="radius-control bg-muted px-2 py-1"
-                          >
-                            {formatDayOf({ value: group.startTime, timeZone })}{' '}
-                            · {range(group)}
+    <Tabs value={tab} onValueChange={setTab} className="contents">
+      <ResponsiveFormSurface
+        open
+        wide
+        closeDisabled={isApplying}
+        onOpenChange={(open) => !(open || isApplying) && onDiscard()}
+        title={m.builder_proposal_title()}
+        description={m.builder_proposal_description()}
+        reviewBodyLabel={m.builder_proposal_list_label()}
+        reviewSummary={
+          <div className="mt-3 space-y-4">
+            <div className="grid gap-x-12 gap-y-3 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-start">
+              <div className="space-y-2">
+                <p className="text-foreground text-sm">
+                  {hasAdditions && (
+                    <>
+                      <strong className="font-semibold">
+                        {proposal.additions.length === 1
+                          ? m.builder_proposal_stat_additions_one()
+                          : m.builder_proposal_stat_additions_many({
+                              count: proposal.additions.length,
+                            })}
+                      </strong>
+                      {openPlaces > 0 && (
+                        <>
+                          <span aria-hidden className="text-muted-foreground">
+                            {' · '}
                           </span>
-                        ) : null;
-                      })}
-                    </div>
-                    <Button
-                      variant="outline"
-                      disabled={locked}
-                      onClick={() =>
-                        setExcluded(
-                          (previous) =>
-                            new Set([...previous, ...items.map(keyOf)]),
-                        )
-                      }
-                    >
-                      {m.builder_proposal_exclude_volunteer({
-                        name: items[0].volunteerName,
-                      })}
-                    </Button>
-                  </section>
-                ))}
-            </TabsContent>
-            <TabsContent value="gaps" className="divide-y text-sm">
-              {groups
-                .filter((group) =>
-                  group.needs.some((need) => need.remaining > 0),
-                )
-                .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                .map((group) => (
-                  <section key={group.shiftId} className="py-3">
-                    <h3 className="font-medium">
-                      {formatDayOf({ value: group.startTime, timeZone })} ·{' '}
-                      {range(group)} · {group.eventTitle}
-                    </h3>
-                    {group.needs
-                      .filter((need) => need.remaining > 0)
-                      .map((need) => (
-                        <p key={need.requirementId}>
-                          {need.label} ·{' '}
-                          {need.remaining === 1
+                          {openPlaces === 1
                             ? m.builder_proposal_gap_one()
                             : m.builder_proposal_gap_many({
-                                count: need.remaining,
+                                count: openPlaces,
                               })}
-                        </p>
-                      ))}
-                  </section>
-                ))}
-            </TabsContent>
-          </Tabs>
-        )}
-      </div>
-    </ResponsiveFormSurface>
+                        </>
+                      )}
+                      <span aria-hidden className="text-muted-foreground">
+                        {' · '}
+                      </span>
+                    </>
+                  )}
+                  <span className="text-muted-foreground">
+                    {proposal.excludedUnconfirmedCount === 1
+                      ? m.builder_proposal_unconfirmed_one()
+                      : m.builder_proposal_unconfirmed_many({
+                          count: proposal.excludedUnconfirmedCount,
+                        })}
+                  </span>
+                </p>
+                {hasAdditions && (
+                  <div className="max-md:hidden">
+                    <ProposalRule />
+                  </div>
+                )}
+              </div>
+              {coverage.required > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-muted-foreground text-xs">
+                    {m.builder_proposal_coverage_label()}
+                  </p>
+                  <CoverageMeter coverage={coverage} />
+                </div>
+              )}
+            </div>
+            {days.length > 0 && (
+              <TabsList
+                variant="line"
+                className="h-auto max-w-full justify-start gap-4 overflow-x-auto p-0"
+              >
+                <TabsTrigger
+                  className="h-10 flex-none px-0 text-sm"
+                  value="shifts"
+                >
+                  {m.builder_proposal_tab_shifts()}
+                </TabsTrigger>
+                {hasAdditions && (
+                  <TabsTrigger
+                    className="h-10 flex-none px-0 text-sm"
+                    value="volunteers"
+                  >
+                    {m.builder_proposal_tab_volunteers()}
+                  </TabsTrigger>
+                )}
+                <TabsTrigger
+                  className="h-10 flex-none px-0 text-sm"
+                  value="gaps"
+                >
+                  {m.builder_proposal_tab_gaps({ count: openPlaces })}
+                </TabsTrigger>
+              </TabsList>
+            )}
+          </div>
+        }
+        footer={
+          <>
+            {applyAlert && (
+              <p
+                role="alert"
+                className="text-destructive text-sm sm:mr-auto sm:self-center"
+              >
+                {applyAlert}
+              </p>
+            )}
+            <Button
+              variant="outline"
+              size="touch"
+              disabled={isApplying}
+              onClick={onDiscard}
+            >
+              {m.builder_proposal_discard()}
+            </Button>
+            <ApplyAction
+              proposal={proposal}
+              applyState={applyState}
+              onApply={onApply}
+              onReviewNew={onReviewNew}
+              excluded={proposal.additions.filter((addition) =>
+                excluded.has(proposalAdditionKey(addition)),
+              )}
+            />
+          </>
+        }
+      >
+        <div data-testid="assignment-proposal-preview" className="text-sm">
+          {emptyText && <p className="py-4 font-semibold">{emptyText}</p>}
+          {hasAdditions && (
+            <div className="border-b py-3 md:hidden">
+              <ProposalRule />
+            </div>
+          )}
+          {days.length > 0 && (
+            <>
+              <TabsContent value="shifts" className="text-sm">
+                <ProposalShiftTable
+                  days={days}
+                  included={included}
+                  excluded={excluded}
+                  ordinals={ordinals}
+                  locked={locked}
+                  timeZone={timeZone}
+                  onToggle={toggle}
+                />
+              </TabsContent>
+              <TabsContent value="volunteers" className="text-sm">
+                <ProposalVolunteerTable
+                  groups={volunteerGroups(proposal)}
+                  days={days}
+                  excluded={excluded}
+                  locked={locked}
+                  timeZone={timeZone}
+                  onSetIncluded={setIncluded}
+                />
+              </TabsContent>
+              <TabsContent value="gaps" className="pt-3 text-sm">
+                <ProposalGapTable
+                  days={days}
+                  excluded={excluded}
+                  timeZone={timeZone}
+                />
+              </TabsContent>
+            </>
+          )}
+        </div>
+      </ResponsiveFormSurface>
+    </Tabs>
   );
 }

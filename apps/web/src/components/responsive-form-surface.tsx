@@ -70,10 +70,14 @@ export function ResponsiveFormSurface({
         >
           <DialogHeader
             className={
-              reviewSummary ? 'shrink-0 px-5 pt-5 pr-12 pb-4' : undefined
+              reviewSummary ? 'shrink-0 px-6 pt-5 pr-14 pb-0' : undefined
             }
           >
-            <DialogTitle>{title}</DialogTitle>
+            <DialogTitle
+              className={reviewSummary ? 'font-semibold text-base' : undefined}
+            >
+              {title}
+            </DialogTitle>
             {description ? (
               <DialogDescription>{description}</DialogDescription>
             ) : null}
@@ -85,7 +89,7 @@ export function ResponsiveFormSurface({
               aria-label={reviewBodyLabel}
               // biome-ignore lint/a11y/noNoninteractiveTabindex: the scroll region must be keyboard scrollable.
               tabIndex={0}
-              className="min-h-0 flex-1 overflow-y-auto border-y px-5 py-4"
+              className="min-h-0 flex-1 overflow-y-auto border-y px-6 pb-4"
             >
               {children}
             </section>
@@ -94,7 +98,7 @@ export function ResponsiveFormSurface({
           )}
           {footer ? (
             <DialogFooter
-              className={reviewSummary ? 'shrink-0 px-5 py-4' : undefined}
+              className={reviewSummary ? 'shrink-0 px-6 py-4' : undefined}
             >
               {footer}
             </DialogFooter>
@@ -114,8 +118,18 @@ export function ResponsiveFormSurface({
         >
           <X className="h-5 w-5" />
         </DrawerClose>
-        <DrawerHeader className="text-left">
-          <DrawerTitle>{title}</DrawerTitle>
+        <DrawerHeader
+          className={
+            reviewSummary
+              ? 'pr-14 text-left group-data-[swipe-axis=y]/drawer-popup:text-left'
+              : 'text-left'
+          }
+        >
+          <DrawerTitle
+            className={reviewSummary ? 'font-semibold text-base' : undefined}
+          >
+            {title}
+          </DrawerTitle>
           {description ? (
             <DrawerDescription>{description}</DrawerDescription>
           ) : null}
@@ -128,7 +142,7 @@ export function ResponsiveFormSurface({
               aria-label={reviewBodyLabel}
               // biome-ignore lint/a11y/noNoninteractiveTabindex: the scroll region must be keyboard scrollable.
               tabIndex={0}
-              className="min-h-0 overflow-y-auto px-4 py-4"
+              className="min-h-0 overflow-y-auto border-t px-4 pb-4"
             >
               {children}
             </section>

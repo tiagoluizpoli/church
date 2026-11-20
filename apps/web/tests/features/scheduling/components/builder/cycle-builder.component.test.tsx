@@ -865,7 +865,9 @@ describe('Assignment proposal preview', () => {
       'overflow-y-auto',
     );
     expect(
-      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     ).toBeVisible();
     expect(getProposal).toHaveBeenCalledWith('cycle-1', {
       ministryId: 'ministry-1',
@@ -879,19 +881,30 @@ describe('Assignment proposal preview', () => {
     expect(
       screen.getByText(m.builder_proposal_unconfirmed_many({ count: 2 })),
     ).toBeVisible();
-    expect(within(preview).getByText('Sunday Gathering')).toBeVisible();
-    expect(within(preview).getByText('Greeter · Main')).toBeVisible();
-    const existing = within(preview).getByText('Grace Hopper').closest('li');
-    expect(existing).toHaveTextContent(m.builder_proposal_existing());
-    const added = within(preview).getByText('Ada Lovelace').closest('li');
-    expect(added).toHaveTextContent(m.builder_proposal_added());
-    expect(added).toHaveTextContent(
-      [
-        m.builder_proposal_reason_shifts_one(),
-        m.builder_proposal_reason_need_many({ count: 2 }),
-        m.builder_proposal_reason_workload(),
-      ].join(' · '),
-    );
+    expect(
+      within(preview).getByRole('heading', { name: /Sunday Gathering/ }),
+    ).toBeVisible();
+    expect(
+      within(preview).getByRole('heading', { name: 'Greeter · Main' }),
+    ).toBeInTheDocument();
+    expect(
+      within(preview).getByText(m.builder_proposal_existing()),
+    ).toBeVisible();
+    expect(
+      within(preview).getByRole('checkbox', {
+        name: m.builder_proposal_include({ name: 'Ada Lovelace' }),
+      }),
+    ).toBeChecked();
+    await userEvent.click(within(preview).getByText(m.builder_proposal_why()));
+    expect(
+      within(preview).getByText(
+        [
+          m.builder_proposal_reason_shifts_one(),
+          m.builder_proposal_reason_need_many({ count: 2 }),
+          m.builder_proposal_reason_workload(),
+        ].join(' · '),
+      ),
+    ).toBeVisible();
     await userEvent.click(
       screen.getByRole('button', { name: m.builder_proposal_discard() }),
     );
@@ -902,6 +915,36 @@ describe('Assignment proposal preview', () => {
       ).not.toBeInTheDocument(),
     );
     expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('groups by day, switches views and tracks exclusions without submitting an incomplete request', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(proposal);
+    const apply = vi.spyOn(adminApi, 'applyAssignmentProposal');
+    renderBuilder({ data: boardData({}) });
+    const preview = await openPreview();
+    const include = within(preview).getByRole('checkbox', {
+      name: m.builder_proposal_include({ name: 'Ada Lovelace' }),
+    });
+    await userEvent.click(include);
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 0, total: 1 }),
+      }),
+    ).toBeDisabled();
+    expect(apply).not.toHaveBeenCalled();
+    await userEvent.click(
+      within(preview).getByRole('tab', {
+        name: m.builder_proposal_tab_volunteers(),
+      }),
+    );
+    expect(
+      within(preview).getByRole('heading', { name: 'Ada Lovelace' }),
+    ).toBeVisible();
+    expect(
+      within(preview).getByRole('button', {
+        name: m.builder_proposal_exclude_volunteer({ name: 'Ada Lovelace' }),
+      }),
+    ).toBeVisible();
   });
 
   it('applies exactly the reviewed pairs once and reports the added Assignments without publishing', async () => {
@@ -916,7 +959,9 @@ describe('Assignment proposal preview', () => {
     await openPreview();
 
     await userEvent.click(
-      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     );
 
     const pending = screen.getByRole('button', {
@@ -964,17 +1009,21 @@ describe('Assignment proposal preview', () => {
       .mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK'))
       .mockResolvedValueOnce({ ...outcome, replayed: true });
     renderBuilder({ data: boardData({}) });
-    const preview = await openPreview();
+    await openPreview();
 
     await userEvent.click(
-      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     );
 
-    expect(await within(preview).findByRole('alert')).toHaveTextContent(
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       m.builder_proposal_apply_unknown(),
     );
     expect(
-      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+      screen.queryByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     ).not.toBeInTheDocument();
     await userEvent.click(
       screen.getByRole('button', { name: m.builder_proposal_apply_retry() }),
@@ -998,24 +1047,30 @@ describe('Assignment proposal preview', () => {
       .mockRejectedValueOnce(conflict('The proposal is out of date.'))
       .mockResolvedValueOnce(outcome);
     renderBuilder({ data: boardData({}) });
-    const preview = await openPreview();
+    await openPreview();
 
     await userEvent.click(
-      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     );
 
-    expect(await within(preview).findByRole('alert')).toHaveTextContent(
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       'The proposal is out of date.',
     );
     expect(
-      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+      screen.queryByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     ).not.toBeInTheDocument();
     await userEvent.click(
       screen.getByRole('button', { name: m.builder_proposal_refresh() }),
     );
     await waitFor(() => expect(getProposal).toHaveBeenCalledTimes(2));
     await userEvent.click(
-      await screen.findByRole('button', { name: m.builder_proposal_apply() }),
+      await screen.findByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     );
 
     await waitFor(() => expect(apply).toHaveBeenCalledTimes(2));
@@ -1033,7 +1088,9 @@ describe('Assignment proposal preview', () => {
     await openPreview();
 
     expect(
-      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+      screen.queryByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -1059,16 +1116,23 @@ describe('Assignment proposal preview', () => {
 
     const preview = await screen.findByTestId('assignment-proposal-preview');
     expect(
-      screen.getByText(m.builder_proposal_summary({ additions: 0, places: 1 })),
-    ).toBeVisible();
+      screen.queryByText(
+        m.builder_proposal_summary({ additions: 0, places: 1 }),
+      ),
+    ).not.toBeInTheDocument();
     expect(
       within(preview).getByText(m.builder_proposal_empty_no_confirmed()),
     ).toBeVisible();
     expect(
       screen.getByText(m.builder_proposal_unconfirmed_one()),
     ).toBeVisible();
+    await userEvent.click(
+      within(preview).getByRole('tab', {
+        name: m.builder_proposal_tab_gaps({ count: 1 }),
+      }),
+    );
     expect(
-      within(preview).getByText(m.builder_proposal_gap_one()),
+      within(preview).getByText(new RegExp(m.builder_proposal_gap_one())),
     ).toBeVisible();
   });
 

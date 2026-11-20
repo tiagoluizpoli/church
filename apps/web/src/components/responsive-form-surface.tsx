@@ -32,6 +32,8 @@ export interface ResponsiveFormSurfaceProps {
   /** Optional bounded review layout with a fixed summary and actions. */
   reviewSummary?: ReactNode;
   reviewBodyLabel?: string;
+  wide?: boolean;
+  closeDisabled?: boolean;
   children: ReactNode;
 }
 
@@ -47,6 +49,8 @@ export function ResponsiveFormSurface({
   footer,
   reviewSummary,
   reviewBodyLabel,
+  wide = false,
+  closeDisabled = false,
   children,
 }: ResponsiveFormSurfaceProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -55,9 +59,12 @@ export function ResponsiveFormSurface({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
+          closeDisabled={closeDisabled}
           className={
             reviewSummary
-              ? 'flex max-h-[85dvh] flex-col gap-0 p-0 sm:max-w-4xl'
+              ? wide
+                ? 'flex h-[90dvh] max-h-[90dvh] flex-col gap-0 p-0 sm:max-w-[min(96vw,1600px)]'
+                : 'flex max-h-[85dvh] flex-col gap-0 p-0 sm:max-w-4xl'
               : undefined
           }
         >
@@ -78,7 +85,7 @@ export function ResponsiveFormSurface({
               aria-label={reviewBodyLabel}
               // biome-ignore lint/a11y/noNoninteractiveTabindex: the scroll region must be keyboard scrollable.
               tabIndex={0}
-              className="min-h-0 overflow-y-auto border-y px-5 py-4"
+              className="min-h-0 flex-1 overflow-y-auto border-y px-5 py-4"
             >
               {children}
             </section>
@@ -101,6 +108,7 @@ export function ResponsiveFormSurface({
     <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
       <DrawerContent>
         <DrawerClose
+          disabled={closeDisabled}
           aria-label={m.shell_close()}
           className="radius-icon absolute top-2 right-2 flex h-11 w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >

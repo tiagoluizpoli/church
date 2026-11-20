@@ -134,7 +134,7 @@ const PickRow = memo(function PickRow({
     <tr
       data-kind={row.kind}
       className={cn(
-        'max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto_auto] max-md:items-center max-md:[grid-template-areas:"need_need_need""name_why_include""notes_notes_notes"]',
+        'max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto_auto_auto] max-md:items-center max-md:gap-x-1 max-md:[grid-template-areas:"need_need_need_need""name_notes_why_include"]',
         row.lastInShift &&
           'max-md:border-b max-md:pb-2 md:[&>td]:border-border',
       )}
@@ -192,7 +192,7 @@ const PickRow = memo(function PickRow({
       <td
         className={cn(
           CELL,
-          'max-md:pb-1 max-md:empty:hidden max-md:[grid-area:notes]',
+          'max-md:max-w-36 max-md:overflow-hidden max-md:empty:hidden max-md:[grid-area:notes]',
         )}
       >
         {row.kind === 'addition' && !isExcluded && (
@@ -423,7 +423,7 @@ export function ProposalShiftTable({
                 scope="rowgroup"
                 className="border-b bg-popover p-0 text-left font-normal max-md:block md:sticky md:top-9 md:z-10"
               >
-                <div className="flex min-h-11 flex-wrap items-center gap-x-4 gap-y-1 bg-muted/40 px-3 py-1 max-md:px-4 md:h-11 md:flex-nowrap">
+                <div className="flex h-11 flex-nowrap items-center gap-x-4 bg-muted/40 px-3 max-md:gap-x-3 max-md:px-4">
                   <button
                     type="button"
                     aria-expanded={!isFolded}
@@ -449,7 +449,8 @@ export function ProposalShiftTable({
                   </span>
                   {dayCoverage && (
                     <CoverageMeter
-                      className="w-full md:ml-auto md:w-72"
+                      compactOnPhone
+                      className="ml-auto md:w-72"
                       coverage={dayCoverage}
                     />
                   )}
@@ -458,7 +459,10 @@ export function ProposalShiftTable({
             </tr>
             {!isFolded &&
               shifts.flatMap(({ shift, label: shiftLabel, rows }) => [
-                <tr key={shift.shiftId} className="max-md:block">
+                <tr
+                  key={shift.shiftId}
+                  className="max-md:sticky max-md:top-[45px] max-md:z-[5] max-md:-mx-4 max-md:block max-md:bg-popover max-md:px-4"
+                >
                   <th
                     colSpan={COLUMNS}
                     className="h-9 border-b bg-popover px-3 text-left align-middle font-normal max-md:block max-md:h-auto max-md:px-0 max-md:pt-3 max-md:pb-1 md:sticky md:top-[81px] md:z-[5]"

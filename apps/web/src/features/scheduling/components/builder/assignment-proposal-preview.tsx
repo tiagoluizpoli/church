@@ -50,6 +50,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import type {
   GetAssignmentProposal200,
   GetAssignmentProposal200AdditionsItem,
@@ -61,7 +62,7 @@ export type AssignmentProposal = GetAssignmentProposal200;
 // The underline sits inside the trigger: the list scrolls sideways on
 // phones, and an overflow box would clip the default -5px offset.
 const TAB_TRIGGER =
-  'h-10 flex-none px-0 text-sm group-data-horizontal/tabs:after:bottom-0';
+  'h-11 flex-none px-0 text-sm group-data-horizontal/tabs:after:bottom-0';
 type Addition = GetAssignmentProposal200AdditionsItem;
 
 /** `unknown`: the request failed without an answer, so it may have committed. */
@@ -204,6 +205,8 @@ export function AssignmentProposalPreview({
   onDiscard,
 }: AssignmentProposalPreviewProps) {
   const { churchTimezone: timeZone } = useTimezone();
+  // Same breakpoint as ResponsiveFormSurface's Dialog/Drawer swap.
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   const [excluded, setExcluded] = useState(() => exclusions.current);
   useEffect(() => {
     exclusions.current = excluded;
@@ -395,6 +398,67 @@ export function AssignmentProposalPreview({
     onToggle: toggle,
   };
 
+  const summary = (
+    <div className="space-y-1">
+      <p className="text-pretty text-foreground text-sm">
+        {hasAdditions && (
+          <strong className="font-semibold">
+            {proposal.additions.length === 1
+              ? m.builder_proposal_stat_additions_one()
+              : m.builder_proposal_stat_additions_many({
+                  count: proposal.additions.length,
+                })}
+          </strong>
+        )}
+        {hasAdditions && proposal.excludedUnconfirmedCount > 0 && (
+          <span aria-hidden className="text-muted-foreground">
+            {' · '}
+          </span>
+        )}
+        {proposal.excludedUnconfirmedCount > 0 && (
+          <span className="text-muted-foreground">
+            {proposal.excludedUnconfirmedCount === 1
+              ? m.builder_proposal_unconfirmed_one()
+              : m.builder_proposal_unconfirmed_many({
+                  count: proposal.excludedUnconfirmedCount,
+                })}
+          </span>
+        )}
+      </p>
+      {hasAdditions && (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          {heaviest && (
+            <span className="flex flex-wrap items-center gap-x-2">
+              <span className="text-muted-foreground">
+                {loadedPeople.length === 1
+                  ? m.builder_proposal_summary_load_people_one()
+                  : m.builder_proposal_summary_load_people_many({
+                      count: loadedPeople.length,
+                    })}
+                {' · '}
+              </span>
+              <RecapButton onClick={() => changeTab('volunteers')}>
+                {m.builder_proposal_summary_top_load({
+                  name: heaviest.name,
+                  count: heaviest.total,
+                })}
+              </RecapButton>
+            </span>
+          )}
+          <HowWeSuggest
+            heavyLoad={heavyLoad}
+            severeLoad={severeLoad}
+            showsOnlyOption={attention.onlyOption.length > 0}
+            showsLoad={attention.people.length > 0}
+          />
+        </p>
+      )}
+    </div>
+  );
+  const strip = hasAdditions && stripDays.length > 1 && (
+    <DayStrip days={stripDays} onJump={jumpToDay} />
+  );
+
   return (
     <Tabs value={tab} onValueChange={changeTab} className="contents">
       <ResponsiveFormSurface
@@ -408,61 +472,7 @@ export function AssignmentProposalPreview({
         reviewSummary={
           <div className="mt-2 space-y-3 md:mt-3">
             <div className="grid gap-x-12 gap-y-2 md:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] md:items-start">
-              <div className="space-y-1">
-                <p className="text-pretty text-foreground text-sm">
-                  {hasAdditions && (
-                    <strong className="font-semibold">
-                      {proposal.additions.length === 1
-                        ? m.builder_proposal_stat_additions_one()
-                        : m.builder_proposal_stat_additions_many({
-                            count: proposal.additions.length,
-                          })}
-                    </strong>
-                  )}
-                  {hasAdditions && proposal.excludedUnconfirmedCount > 0 && (
-                    <span aria-hidden className="text-muted-foreground">
-                      {' · '}
-                    </span>
-                  )}
-                  {proposal.excludedUnconfirmedCount > 0 && (
-                    <span className="text-muted-foreground">
-                      {proposal.excludedUnconfirmedCount === 1
-                        ? m.builder_proposal_unconfirmed_one()
-                        : m.builder_proposal_unconfirmed_many({
-                            count: proposal.excludedUnconfirmedCount,
-                          })}
-                    </span>
-                  )}
-                </p>
-                {hasAdditions && (
-                  <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                    {heaviest && (
-                      <span className="flex flex-wrap items-center gap-x-2">
-                        <span className="text-muted-foreground">
-                          {loadedPeople.length === 1
-                            ? m.builder_proposal_summary_load_people_one()
-                            : m.builder_proposal_summary_load_people_many({
-                                count: loadedPeople.length,
-                              })}
-                          {' · '}
-                        </span>
-                        <RecapButton onClick={() => changeTab('volunteers')}>
-                          {m.builder_proposal_summary_top_load({
-                            name: heaviest.name,
-                            count: heaviest.total,
-                          })}
-                        </RecapButton>
-                      </span>
-                    )}
-                    <HowWeSuggest
-                      heavyLoad={heavyLoad}
-                      severeLoad={severeLoad}
-                      showsOnlyOption={attention.onlyOption.length > 0}
-                      showsLoad={attention.people.length > 0}
-                    />
-                  </p>
-                )}
-              </div>
+              {isDesktop && summary}
               {coverage.required > 0 && (
                 <div className="space-y-1">
                   <p className="text-muted-foreground text-sm max-md:sr-only">
@@ -481,9 +491,7 @@ export function AssignmentProposalPreview({
                 </div>
               )}
             </div>
-            {hasAdditions && stripDays.length > 1 && (
-              <DayStrip days={stripDays} onJump={jumpToDay} />
-            )}
+            {isDesktop && strip}
             {days.length > 0 && (
               <TabsList
                 variant="line"
@@ -610,6 +618,13 @@ export function AssignmentProposalPreview({
           data-testid="assignment-proposal-preview"
           className="text-sm"
         >
+          {/* On phones the summary scrolls away with the list, so rows show. */}
+          {!isDesktop && (
+            <div className="space-y-3 border-b py-3">
+              {summary}
+              {strip}
+            </div>
+          )}
           {emptyText && <p className="py-4 font-semibold">{emptyText}</p>}
           {days.length > 0 && (
             <>

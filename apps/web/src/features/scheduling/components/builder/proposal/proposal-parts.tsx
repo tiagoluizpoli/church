@@ -22,13 +22,19 @@ import { cn } from '@/lib/utils';
 
 interface CoverageMeterProps {
   coverage: ProposalCoverage;
+  /** Numbers only below md, so a day heading stays one line. */
+  compactOnPhone?: boolean;
   className?: string;
 }
 
 /** The Staffing Meter read as a change: the darker part is already on the
  * board, the brighter part is what applying would add. Coloured by the
  * result; both parts keep 3:1 against the track. */
-export function CoverageMeter({ coverage, className }: CoverageMeterProps) {
+export function CoverageMeter({
+  coverage,
+  compactOnPhone = false,
+  className,
+}: CoverageMeterProps) {
   const { required, before, after } = coverage;
   const beforePercent = percentOf({ covered: before, required });
   const afterPercent = percentOf({ covered: after, required });
@@ -52,7 +58,10 @@ export function CoverageMeter({ coverage, className }: CoverageMeterProps) {
       </span>
       <span
         aria-hidden
-        className="relative h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted"
+        className={cn(
+          'relative h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted',
+          compactOnPhone && 'max-md:hidden',
+        )}
       >
         <span
           className={cn(

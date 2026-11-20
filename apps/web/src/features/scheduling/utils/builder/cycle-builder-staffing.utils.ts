@@ -152,13 +152,16 @@ export function staffingStatusClasses({
     return { text: 'text-muted-foreground', bar: 'bg-muted-foreground/30' };
   }
   if (percent >= 100) {
-    return { text: 'text-green-700 dark:text-green-400', bar: 'bg-green-600' };
+    return {
+      text: 'text-green-700 dark:text-green-400',
+      bar: 'bg-meter-success',
+    };
   }
   if (percent >= 50) {
     return {
       text: 'text-yellow-700 dark:text-yellow-300',
-      bar: 'bg-yellow-500',
+      bar: 'bg-meter-warning',
     };
   }
-  return { text: 'text-destructive', bar: 'bg-destructive' };
+  return { text: 'text-destructive', bar: 'bg-meter-danger' };
 }

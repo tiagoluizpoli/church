@@ -27,9 +27,9 @@ interface CoverageMeterProps {
   className?: string;
 }
 
-/** The Staffing Meter read as a change: the darker part is already on the
- * board, the brighter part is what applying would add. Coloured by the
- * result; both parts keep 3:1 against the track. */
+/** The Staffing Meter read as a change: filled to the result, with a notch
+ * where the board stands today. The fill token keeps 3:1 against the
+ * track and the surface in both themes. */
 export function CoverageMeter({
   coverage,
   compactOnPhone = false,
@@ -65,18 +65,17 @@ export function CoverageMeter({
       >
         <span
           className={cn(
-            'absolute inset-y-0 left-0 brightness-90 transition-[width] duration-300 ease-out dark:brightness-125',
+            'absolute inset-y-0 left-0 transition-[width] duration-300 ease-out',
             status.bar,
           )}
           style={{ width: `${afterPercent}%` }}
         />
-        <span
-          className={cn(
-            'absolute inset-y-0 left-0 brightness-[0.7] dark:brightness-100',
-            status.bar,
-          )}
-          style={{ width: `${beforePercent}%` }}
-        />
+        {beforePercent > 0 && beforePercent < afterPercent && (
+          <span
+            className="absolute inset-y-0 w-0.5 bg-popover"
+            style={{ left: `${beforePercent}%` }}
+          />
+        )}
       </span>
     </span>
   );

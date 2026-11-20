@@ -179,8 +179,13 @@ describe('scheduleOrdinals on a month of Sundays', () => {
       roles: [],
       events: [{ eventTimeBlocks: [{ included: true, shifts }] }],
     } as unknown as CycleBuilderData;
-    // Thirteen people at 6, nine at 8 (both Sunday services), one at 14.
+    // As in the Janeiro 2027 seed: twenty-two one-off helpers, thirteen
+    // people at 6, nine at 8 (both Sunday services), one at 14.
     const loads: [string, number][] = [
+      ...Array.from({ length: 22 }, (_, i): [string, number] => [
+        `once-${i}`,
+        1,
+      ]),
       ...Array.from({ length: 13 }, (_, i): [string, number] => [
         `six-${i}`,
         6,

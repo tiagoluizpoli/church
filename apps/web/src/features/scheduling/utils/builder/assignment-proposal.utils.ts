@@ -264,9 +264,13 @@ export function scheduleOrdinals({
       entries.length,
     ]),
   );
+  // The usual load is that of people who serve more than once: a crowd of
+  // one-off helpers would otherwise drag the median to 1 and flag everyone.
   const loads = [...totals.values()].sort((left, right) => left - right);
-  const median = loads[Math.floor((loads.length - 1) / 2)] ?? 0;
-  // Only clear outliers: more than half again the median load. A cluster
+  const regular = loads.filter((load) => load > 1);
+  const usual = regular.length > 0 ? regular : loads;
+  const median = usual[Math.floor((usual.length - 1) / 2)] ?? 0;
+  // Only clear outliers: more than half again the usual load. A cluster
   // that serves both Sunday services every week (8x against a median of 6)
   // is the norm, not overload; 14x is.
   const heavyLoad = Math.max(HEAVY_LOAD_ORDINAL, Math.floor(median * 1.5) + 1);

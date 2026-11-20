@@ -1461,6 +1461,7 @@
   "error_schedule_has_no_assignments": "Assign at least one volunteer before publishing.",
   "error_schedule_already_published": "This schedule has already been published.",
   "error_assignment_proposal_changed": "These assignments aren't the proposal you reviewed. Review the proposal again.",
+  "error_assignment_proposal_exclusion_invalid": "An excluded assignment isn't part of the reviewed proposal, or none are left to apply.",
   "error_assignment_proposal_stale": "The proposal is out of date, so nothing was added. Review a new proposal.",
   "assignment_detail_loading": "Loading assignment…",
   "assignment_detail_load_error": "Could not load this assignment. Try again.",

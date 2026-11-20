@@ -31,6 +31,14 @@ export class AssignmentProposalChangedError extends DomainError {
   }
 }
 
+/** An excluded pair was not reviewed, or the exclusions leave nothing to apply. */
+export class AssignmentProposalExclusionInvalidError extends DomainError {
+  readonly code = 'ASSIGNMENT_PROPOSAL_EXCLUSION_INVALID' as const;
+  constructor() {
+    super('The exclusions do not match the reviewed Assignment proposal');
+  }
+}
+
 /** A reviewed pair no longer passes eligibility; nothing was applied. */
 export class AssignmentProposalStaleError extends DomainError {
   readonly code = 'ASSIGNMENT_PROPOSAL_STALE' as const;

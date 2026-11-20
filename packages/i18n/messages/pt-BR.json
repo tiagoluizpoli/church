@@ -1461,6 +1461,7 @@
   "error_schedule_has_no_assignments": "Escale pelo menos uma pessoa voluntária antes de publicar.",
   "error_schedule_already_published": "Esta escala já foi publicada.",
   "error_assignment_proposal_changed": "Estas escalas não são as da sugestão revisada. Revise a sugestão de novo.",
+  "error_assignment_proposal_exclusion_invalid": "Alguma atribuição excluída não faz parte da sugestão revisada, ou não sobrou nenhuma para aplicar.",
   "error_assignment_proposal_stale": "A sugestão está desatualizada, então nada foi adicionado. Revise uma nova sugestão.",
   "assignment_detail_loading": "Carregando escala…",
   "assignment_detail_load_error": "Não foi possível carregar esta escala. Tente novamente.",

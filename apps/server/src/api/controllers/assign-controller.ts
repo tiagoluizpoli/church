@@ -80,6 +80,19 @@ type CreateParticipationAssignmentBody = z.infer<
   typeof createParticipationAssignmentBodySchema
 >;
 type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
+interface ReviewedPairBody {
+  shiftRequirementId: string;
+  volunteerId: string;
+}
+
+const toReviewedAddition = ({
+  shiftRequirementId,
+  volunteerId,
+}: ReviewedPairBody) => ({
+  shiftRequirementId: ShiftRequirementId.from({ raw: shiftRequirementId }),
+  volunteerId: VolunteerId.from(volunteerId),
+});
+
 type ApplyAssignmentProposalBody = z.infer<
   typeof applyAssignmentProposalBodySchema
 >;
@@ -308,7 +321,7 @@ export class AssignController implements FastifyController {
           operationId: 'applyAssignmentProposal',
           summary: 'Apply a reviewed Assignment proposal',
           description:
-            'Create exactly the reviewed additions once, atomically, as pending Assignments. A retry with the same applicationKey returns the committed outcome. Never publishes or notifies.',
+            'Create the reviewed additions, less any excludedAdditions, once, atomically, as pending Assignments. A retry with the same applicationKey returns the committed outcome. Never publishes or notifies.',
           querystring: cycleMinistryQuerySchema,
           body: applyAssignmentProposalBodySchema,
           response: {
@@ -316,6 +329,7 @@ export class AssignController implements FastifyController {
             403: errorResponseSchema,
             404: errorResponseSchema,
             409: errorResponseSchema,
+            422: errorResponseSchema,
           },
         },
       },
@@ -338,7 +352,7 @@ export class AssignController implements FastifyController {
         )
           return;
 
-        const { applicationKey, reviewToken, additions } =
+        const { applicationKey, reviewToken, additions, excludedAdditions } =
           request.body as ApplyAssignmentProposalBody;
         const outcome = await this.participationManager.applyAssignmentProposal(
           {
@@ -348,12 +362,8 @@ export class AssignController implements FastifyController {
             actorId: UserId.from(request.userId),
             applicationKey,
             reviewToken,
-            additions: additions.map(({ shiftRequirementId, volunteerId }) => ({
-              shiftRequirementId: ShiftRequirementId.from({
-                raw: shiftRequirementId,
-              }),
-              volunteerId: VolunteerId.from(volunteerId),
-            })),
+            additions: additions.map(toReviewedAddition),
+            excludedAdditions: excludedAdditions.map(toReviewedAddition),
           },
         );
         return reply.send(assignMapper.proposalOutcomeToResponse(outcome));

@@ -116,6 +116,7 @@ import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
 import { PreparationEmptyError } from '../domain/errors/preparation-empty';
 import {
   AssignmentProposalChangedError,
+  AssignmentProposalExclusionInvalidError,
   AssignmentProposalStaleError,
   NoUnsentChangesError,
   ScheduleAlreadyPublishedError,
@@ -138,6 +139,7 @@ import {
   type ProposeAssignmentsInput,
   proposalReviewTokenFor,
   proposeAssignments,
+  type ReviewedAddition,
 } from '../domain/services/assignment-proposal';
 import {
   type ShiftSplitStrategy,
@@ -1419,7 +1421,8 @@ export class DbParticipationManager implements IParticipationManager {
       actorId,
       applicationKey,
       reviewToken,
-      additions,
+      additions: reviewed,
+      excludedAdditions,
     } = input;
     await this.ministryRepository.getById({ churchId, id: ministryId });
     await this.cycleRepository.getById({ churchId, cycleId });
@@ -1429,10 +1432,23 @@ export class DbParticipationManager implements IParticipationManager {
       const submittedToken = proposalReviewTokenFor({
         cycleId,
         ministryId,
-        additions,
+        additions: reviewed,
       });
       if (submittedToken !== reviewToken)
         throw new AssignmentProposalChangedError();
+      // Exclusions only drop reviewed pairs; they never add or edit one.
+      const pairKey = (pair: ReviewedAddition) =>
+        `${pair.shiftRequirementId as string}:${pair.volunteerId as string}`;
+      const reviewedKeys = new Set(reviewed.map(pairKey));
+      const excludedKeys = new Set(excludedAdditions.map(pairKey));
+      const additions = reviewed.filter(
+        (pair) => !excludedKeys.has(pairKey(pair)),
+      );
+      if (
+        [...excludedKeys].some((key) => !reviewedKeys.has(key)) ||
+        additions.length === 0
+      )
+        throw new AssignmentProposalExclusionInvalidError();
       // Manual creation's Church lock: a double click or retry waits here
       // for the first attempt, then recovers what it committed.
       await this.cycleRepository.acquireChurchLock({ churchId, tx });
@@ -1442,8 +1458,11 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
       if (committed) {
+        const appliedKeys = new Set(committed.additions.map(pairKey));
         const sameReview =
           committed.reviewToken === reviewToken &&
+          appliedKeys.size === additions.length &&
+          additions.every((pair) => appliedKeys.has(pairKey(pair))) &&
           committed.cycleId === cycleId &&
           committed.ministryId === ministryId;
         if (!sameReview) throw new AssignmentProposalChangedError();

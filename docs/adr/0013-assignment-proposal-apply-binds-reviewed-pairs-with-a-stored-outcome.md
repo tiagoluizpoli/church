@@ -37,3 +37,12 @@ accepted ([#873](https://github.com/tiagoluizpoli/church/issues/873)); builds on
 - A retry always gets the original outcome, even after the Schedule has been published or the pairs have gone stale.
 - A reloaded page loses its key. The builder already shows the committed Assignments, and a new preview leaves out the needs they fill.
 - Outcome rows are kept with the Church and are never pruned.
+
+## Amendment: excluding reviewed pairs
+
+The review surface lets the leader drop individual picks before Apply. Apply accepts an optional `excludedAdditions` list next to the full `additions` and `reviewToken`.
+
+- **Token over the full set.** The token is still checked against the whole submitted `additions`, so the guarantee is unchanged: no added, dropped or edited pair passes. Exclusion is the only way to write fewer pairs.
+- **Exclusions refuse, never edit.** Every excluded pair must be one of `additions`, and at least one pair must remain. Otherwise Apply refuses with `ASSIGNMENT_PROPOSAL_EXCLUSION_INVALID` (422) before touching the Church lock. Excluding everything is refused because there is nothing to apply.
+- **Only the remainder is checked and written.** `findStaleAdditions` and the Assignment writes run over `additions` less the exclusions.
+- **The key binds the exclusions.** No new column: the stored outcome already lists the pairs written. A replay under the same key returns the stored outcome only when its pairs equal the submitted remainder. A different exclusion set under that key is `ASSIGNMENT_PROPOSAL_CHANGED`.

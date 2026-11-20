@@ -137,8 +137,9 @@ export function DayStrip({ days, wrap = false, onJump }: DayStripProps) {
       aria-label={m.builder_proposal_day_strip_label()}
       onKeyDown={onKeyDown}
       className={cn(
-        '-mx-1 flex gap-1.5 px-1 pb-1',
-        wrap ? 'flex-wrap' : 'overflow-x-auto',
+        '-mx-1 gap-1.5 px-1 pb-1',
+        // In the rail: two even columns; in the header: one scrolling row.
+        wrap ? 'grid grid-cols-2' : 'flex overflow-x-auto',
       )}
     >
       {days.map(({ day, coverage, noShifts }) => {
@@ -147,7 +148,10 @@ export function DayStrip({ days, wrap = false, onJump }: DayStripProps) {
           return (
             <span
               key={day}
-              className="radius-control flex h-8 shrink-0 items-center gap-2 border border-dashed px-2.5 text-muted-foreground text-sm"
+              className={cn(
+                'radius-control flex h-8 shrink-0 items-center gap-2 border border-dashed px-2.5 text-muted-foreground text-sm',
+                wrap && 'col-span-2',
+              )}
             >
               <span className="first-letter:uppercase">{label}</span>
               <span>
@@ -173,7 +177,10 @@ export function DayStrip({ days, wrap = false, onJump }: DayStripProps) {
             tabIndex={day === current ? 0 : -1}
             onFocus={() => setActive(day)}
             onClick={() => onJump(day)}
-            className="radius-control flex h-8 shrink-0 items-center gap-2 border bg-background px-2.5 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+            className={cn(
+              'radius-control flex h-8 shrink-0 items-center gap-2 border bg-background px-2.5 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring',
+              wrap && 'min-w-0 px-2',
+            )}
           >
             <span
               aria-hidden

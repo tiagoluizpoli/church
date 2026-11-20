@@ -134,7 +134,7 @@ export function DayStrip({ days, onJump }: DayStripProps) {
     <nav
       aria-label={m.builder_proposal_day_strip_label()}
       onKeyDown={onKeyDown}
-      className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+      className="-mx-1 flex gap-1.5 px-1 pb-1 max-md:overflow-x-auto md:flex-wrap"
     >
       {days.map(({ day, coverage, noShifts }) => {
         const label = dateLabel({ day, locale: getLocale() });

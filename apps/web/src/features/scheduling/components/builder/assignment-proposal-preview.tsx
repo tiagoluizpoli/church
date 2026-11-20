@@ -27,8 +27,10 @@ import {
   HowWeSuggest,
 } from './proposal/proposal-header';
 import { CoverageMeter } from './proposal/proposal-parts';
+import { ProposalRail, type RailPerson } from './proposal/proposal-rail';
 import { ProposalShiftTable } from './proposal/proposal-shift-table';
 import {
+  openPlacesOf,
   ProposalGapTable,
   type ProposalVolunteerGroup,
   ProposalVolunteerTable,
@@ -349,6 +351,14 @@ export function AssignmentProposalPreview({
     );
     return { load, people, onlyOption };
   }, [data, proposal, groups]);
+  const railPeople: RailPerson[] = groups
+    .map((group) => ({ group, total: totals.get(group.volunteerId) ?? 0 }))
+    .filter(({ total }) => total >= heavyLoad)
+    .sort((left, right) => right.total - left.total);
+  const openPlaceRows = useMemo(
+    () => openPlacesOf({ days, excluded }),
+    [days, excluded],
+  );
   // People, not picks: who would carry a heavy load now, heaviest first.
   const loadedPeople = groups
     .map(({ volunteerId, name }) => ({
@@ -604,7 +614,23 @@ export function AssignmentProposalPreview({
           {days.length > 0 && (
             <>
               <TabsContent value="shifts" tabIndex={-1} className="text-sm">
-                <ProposalShiftTable {...tableProps} />
+                <div className="xl:grid xl:grid-cols-[minmax(0,60rem)_minmax(20rem,1fr)] xl:items-start xl:gap-10">
+                  <ProposalShiftTable {...tableProps} />
+                  <aside className="sticky top-0 max-xl:hidden xl:max-h-[calc(90dvh-19rem)] xl:overflow-y-auto">
+                    <ProposalRail
+                      people={railPeople}
+                      openPlaces={openPlaceRows}
+                      excluded={excluded}
+                      severeLoad={severeLoad}
+                      locked={locked}
+                      timeZone={timeZone}
+                      onSetIncluded={setIncluded}
+                      onJumpToDay={jumpToDay}
+                      onShowVolunteers={() => changeTab('volunteers')}
+                      onShowGaps={() => changeTab('gaps')}
+                    />
+                  </aside>
+                </div>
               </TabsContent>
               <TabsContent value="attention" tabIndex={-1} className="text-sm">
                 {attentionCount === 0 ? (

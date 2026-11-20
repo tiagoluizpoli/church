@@ -3,6 +3,7 @@ import { getLocale } from '@church/i18n/runtime';
 import { formatDayAndMonth, parseCalendarDay } from '@church/time';
 import {
   type ProposalDay,
+  type ProposalNeed,
   type ProposalShift,
   proposalAdditionKey,
 } from '../../../utils/builder/assignment-proposal.utils';
@@ -210,6 +211,38 @@ export function ProposalVolunteerTable({
   );
 }
 
+export interface OpenPlace {
+  day: string;
+  shift: ProposalShift;
+  need: ProposalNeed;
+  open: number;
+  /** Of those, places the leader reopened by leaving a pick out. */
+  reopened: number;
+}
+
+interface OpenPlacesOfInput {
+  days: ProposalDay[];
+  excluded: ReadonlySet<string>;
+}
+
+/** Places still open after applying, in board order. */
+export function openPlacesOf({
+  days,
+  excluded,
+}: OpenPlacesOfInput): OpenPlace[] {
+  return days.flatMap(({ day, shifts }) =>
+    shifts.flatMap((shift) =>
+      shift.needs.flatMap((need) => {
+        const reopened = need.additions.filter((addition) =>
+          excluded.has(proposalAdditionKey(addition)),
+        ).length;
+        const open = need.remaining + reopened;
+        return open > 0 ? [{ day, shift, need, open, reopened }] : [];
+      }),
+    ),
+  );
+}
+
 interface ProposalGapTableProps {
   days: ProposalDay[];
   excluded: ReadonlySet<string>;
@@ -226,18 +259,7 @@ export function ProposalGapTable({
   onJumpToDay,
   onShowShifts,
 }: ProposalGapTableProps) {
-  const rows = days.flatMap(({ day, shifts }) =>
-    shifts.flatMap((shift) =>
-      shift.needs.flatMap((need) => {
-        const open =
-          need.remaining +
-          need.additions.filter((addition) =>
-            excluded.has(proposalAdditionKey(addition)),
-          ).length;
-        return open > 0 ? [{ day, shift, need, open }] : [];
-      }),
-    ),
-  );
+  const rows = openPlacesOf({ days, excluded });
   if (rows.length === 0)
     return (
       <div className="flex flex-wrap items-center gap-3 py-6">
@@ -258,7 +280,7 @@ export function ProposalGapTable({
         <colgroup>
           <col className="w-[40%]" />
           <col />
-          <col className="w-36" />
+          <col className="w-56" />
           <col className="w-36" />
         </colgroup>
         <thead className="sticky top-0 z-10 bg-popover text-muted-foreground text-sm max-md:hidden">
@@ -278,7 +300,7 @@ export function ProposalGapTable({
           </tr>
         </thead>
         <tbody className="max-md:block">
-          {rows.map(({ day, shift, need, open }) => (
+          {rows.map(({ day, shift, need, open, reopened }) => (
             <tr
               key={need.requirementId}
               className="max-md:flex max-md:flex-col max-md:gap-0.5 max-md:border-b max-md:py-3"
@@ -298,6 +320,15 @@ export function ProposalGapTable({
                 className={cn(CELL, 'text-right tabular-nums max-md:text-left')}
               >
                 <span className="max-md:hidden">{open}</span>
+                {reopened > 0 && (
+                  <span className="ms-2 text-muted-foreground">
+                    {reopened === 1
+                      ? m.builder_proposal_gap_reopened_one()
+                      : m.builder_proposal_gap_reopened_many({
+                          count: reopened,
+                        })}
+                  </span>
+                )}
                 <span className="md:hidden">
                   {open === 1
                     ? m.builder_proposal_gap_one()

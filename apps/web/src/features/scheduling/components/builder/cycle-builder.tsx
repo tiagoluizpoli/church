@@ -21,6 +21,7 @@ import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialo
 import {
   AssignmentProposalPreview,
   type ProposalApplyState,
+  ProposalLoading,
   type ProposalSelection,
 } from './assignment-proposal-preview';
 import { AuditLogPanel } from './audit-log-panel';
@@ -450,6 +451,8 @@ export function CycleBuilder({
               onReviewNew={reviewNewProposal}
               onDiscard={discardProposal}
             />
+          ) : proposal.isPending ? (
+            <ProposalLoading onCancel={() => proposal.reset()} />
           ) : null}
 
           <UnavailableConfirmDialog

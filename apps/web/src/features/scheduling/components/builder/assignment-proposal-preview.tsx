@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type {
   GetAssignmentProposal200,
@@ -653,5 +654,42 @@ export function AssignmentProposalPreview({
         </AlertDialogContent>
       </AlertDialog>
     </Tabs>
+  );
+}
+
+interface ProposalLoadingProps {
+  onCancel: () => void;
+}
+
+/** The review's own frame while the proposal is computed, so the leader
+ * sees where it will appear instead of only a busy button. */
+export function ProposalLoading({ onCancel }: ProposalLoadingProps) {
+  return (
+    <ResponsiveFormSurface
+      open
+      wide
+      onOpenChange={(open) => !open && onCancel()}
+      title={m.builder_proposal_title()}
+      description={m.builder_proposal_description()}
+      reviewSummary={
+        <div className="mt-3 space-y-3" aria-hidden>
+          <Skeleton className="radius-control h-5 w-64" />
+          <Skeleton className="radius-control h-8 w-full max-w-3xl" />
+          <Skeleton className="radius-control mb-3 h-6 w-80" />
+        </div>
+      }
+      footer={
+        <Button variant="outline" size="touch" onClick={onCancel}>
+          {m.shell_close()}
+        </Button>
+      }
+    >
+      <div role="status" aria-busy className="space-y-2 py-3">
+        <span className="sr-only">{m.builder_proposal_loading()}</span>
+        {Array.from({ length: 8 }, (_, index) => (
+          <Skeleton key={index} className="radius-control h-9 w-full" />
+        ))}
+      </div>
+    </ResponsiveFormSurface>
   );
 }

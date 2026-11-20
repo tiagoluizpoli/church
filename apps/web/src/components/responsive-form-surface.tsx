@@ -88,7 +88,11 @@ export function ResponsiveFormSurface({
               {title}
             </DialogTitle>
             {description ? (
-              <DialogDescription>{description}</DialogDescription>
+              <DialogDescription
+                className={reviewSummary ? 'text-sm' : undefined}
+              >
+                {description}
+              </DialogDescription>
             ) : null}
             {reviewSummary}
           </DialogHeader>
@@ -96,8 +100,7 @@ export function ResponsiveFormSurface({
             <section
               data-testid="proposal-scroll-body"
               aria-label={reviewBodyLabel}
-              // biome-ignore lint/a11y/noNoninteractiveTabindex: the scroll region must be keyboard scrollable.
-              tabIndex={0}
+              // Not a tab stop of its own: its controls scroll it into view.
               className="min-h-0 flex-1 overflow-y-auto border-y px-6 pb-4"
             >
               {children}
@@ -155,8 +158,7 @@ export function ResponsiveFormSurface({
             <section
               data-testid="proposal-scroll-body"
               aria-label={reviewBodyLabel}
-              // biome-ignore lint/a11y/noNoninteractiveTabindex: the scroll region must be keyboard scrollable.
-              tabIndex={0}
+              // Not a tab stop of its own: its controls scroll it into view.
               className="min-h-0 overflow-y-auto border-t px-4 pb-4"
             >
               {children}

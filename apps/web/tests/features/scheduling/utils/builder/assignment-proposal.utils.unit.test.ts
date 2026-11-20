@@ -158,6 +158,10 @@ describe('scheduleOrdinals heavy load', () => {
       shiftId,
       reason,
     }));
-    expect(scheduleOrdinals({ data, additions }).heavyLoad).toBe(6);
+    const load = scheduleOrdinals({ data, additions });
+    expect(load.heavyLoad).toBe(6);
+    // Strong at twice the median (5), never at or below the heavy line.
+    expect(load.severeLoad).toBe(10);
+    expect(load.totals.get('v1')).toBe(10);
   });
 });

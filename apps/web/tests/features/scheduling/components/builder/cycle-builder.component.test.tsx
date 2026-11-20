@@ -1423,6 +1423,64 @@ describe('Assignment proposal preview', () => {
     expect(boxes[2]).toHaveFocus();
   });
 
+  it('shows the review frame while the proposal loads', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockReturnValue(
+      new Promise(() => {}),
+    );
+    renderBuilder({ data: twoDayBoard() });
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: m.builder_proposal_title(),
+    });
+    expect(within(dialog).getByRole('status')).toHaveTextContent(
+      m.builder_proposal_loading(),
+    );
+  });
+
+  it('leads from the footer counts and from an open place to the matching list', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_recap_only_one() }),
+    );
+    expect(
+      screen.getByRole('tab', {
+        name: m.builder_proposal_tab_attention({ count: 1 }),
+      }),
+    ).toHaveAttribute('aria-selected', 'true');
+
+    await userEvent.click(
+      screen.getByRole('tab', {
+        name: new RegExp(m.builder_proposal_tab_shifts()),
+      }),
+    );
+    await userEvent.click(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_gap_one() }),
+    );
+    const wednesday = dateLabel({ day: '2026-08-05', locale: 'en' });
+    await userEvent.click(
+      within(preview).getByRole('button', {
+        name: m.builder_proposal_gap_jump_for({
+          day: wednesday,
+          need: 'Greeter · Main',
+        }),
+      }),
+    );
+    expect(
+      within(preview).getByRole('button', { name: wednesday }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(within(preview).getByText('Linus Torvalds')).toBeVisible();
+  });
+
   it("excludes all of one volunteer's picks and submits them as excluded pairs", async () => {
     vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
       twoDayProposal,

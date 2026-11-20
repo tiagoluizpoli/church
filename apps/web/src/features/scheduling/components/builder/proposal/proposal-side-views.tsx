@@ -98,7 +98,7 @@ export function ProposalVolunteerTable({
       <colgroup>
         <col className="w-[22%]" />
         <col />
-        <col className="w-60" />
+        <col className="w-80" />
       </colgroup>
       <thead className="sticky top-0 z-10 bg-popover text-muted-foreground text-xs max-md:hidden">
         <tr>

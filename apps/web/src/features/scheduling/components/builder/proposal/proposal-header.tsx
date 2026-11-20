@@ -175,6 +175,7 @@ export function DayStrip({ days, onJump }: DayStripProps) {
               className={cn('size-2 rounded-full', status.bar)}
             />
             <span className="first-letter:uppercase">{label}</span>
+            <span className="sr-only">, </span>
             <span className={cn('tabular-nums', status.text)}>{percent}%</span>
           </button>
         );

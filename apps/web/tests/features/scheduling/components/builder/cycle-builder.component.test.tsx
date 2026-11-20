@@ -1140,7 +1140,9 @@ describe('Assignment proposal preview', () => {
       }),
     );
     expect(
-      within(preview).getByText(new RegExp(m.builder_proposal_gap_one())),
+      within(screen.getByRole('tabpanel')).getByText(
+        new RegExp(m.builder_proposal_gap_one()),
+      ),
     ).toBeVisible();
   });
 
@@ -1273,9 +1275,11 @@ describe('Assignment proposal preview', () => {
     await userEvent.click(wednesday);
     expect(wednesday).toHaveAttribute('aria-expanded', 'false');
     expect(
-      within(preview).queryByText('Linus Torvalds'),
+      within(screen.getByRole('tabpanel')).queryByText('Linus Torvalds'),
     ).not.toBeInTheDocument();
-    expect(within(preview).getByText('Ada Lovelace')).toBeVisible();
+    expect(
+      within(screen.getByRole('tabpanel')).getByText('Ada Lovelace'),
+    ).toBeVisible();
   });
 
   it('lists only flagged picks under Attention and jumps to a day from the strip', async () => {
@@ -1290,7 +1294,7 @@ describe('Assignment proposal preview', () => {
       within(preview).getByRole('button', { name: wednesday }),
     );
     expect(
-      within(preview).queryByText('Linus Torvalds'),
+      within(screen.getByRole('tabpanel')).queryByText('Linus Torvalds'),
     ).not.toBeInTheDocument();
     const strip = screen.getByRole('navigation', {
       name: m.builder_proposal_day_strip_label(),
@@ -1298,7 +1302,9 @@ describe('Assignment proposal preview', () => {
     await userEvent.click(
       within(strip).getByRole('button', { name: new RegExp(wednesday) }),
     );
-    expect(within(preview).getByText('Linus Torvalds')).toBeVisible();
+    expect(
+      within(screen.getByRole('tabpanel')).getByText('Linus Torvalds'),
+    ).toBeVisible();
 
     await userEvent.click(
       screen.getByRole('tab', {
@@ -1484,7 +1490,9 @@ describe('Assignment proposal preview', () => {
     expect(
       within(preview).getByRole('button', { name: wednesday }),
     ).toHaveAttribute('aria-expanded', 'true');
-    expect(within(preview).getByText('Linus Torvalds')).toBeVisible();
+    expect(
+      within(screen.getByRole('tabpanel')).getByText('Linus Torvalds'),
+    ).toBeVisible();
   });
 
   it("excludes all of one volunteer's picks and submits them as excluded pairs", async () => {

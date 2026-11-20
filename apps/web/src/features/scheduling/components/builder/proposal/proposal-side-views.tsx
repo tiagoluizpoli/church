@@ -143,12 +143,14 @@ export function ProposalVolunteerTable({
               </th>
               <td className={CELL}>
                 <span className="flex flex-wrap items-center gap-1.5 py-1.5 max-md:py-0">
-                  <span className="me-2 text-muted-foreground tabular-nums">
-                    {m.builder_proposal_volunteer_included({
-                      selected: kept,
-                      total: additions.length,
-                    })}
-                  </span>
+                  {additions.length > 1 && (
+                    <span className="me-2 text-muted-foreground tabular-nums">
+                      {m.builder_proposal_volunteer_included({
+                        selected: kept,
+                        total: additions.length,
+                      })}
+                    </span>
+                  )}
                   {picksByDay({ additions, shifts }).map(({ day, picks }) => {
                     const out = picks.every((pick) =>
                       excluded.has(proposalAdditionKey(pick.addition)),

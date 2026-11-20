@@ -66,7 +66,8 @@ export function ResponsiveFormSurface({
           className={
             reviewSummary
               ? wide
-                ? 'flex h-[90dvh] max-h-[90dvh] flex-col gap-0 p-0 sm:max-w-[min(96vw,1600px)]'
+                ? // Top-anchored with a lane below for toasts (bottom-right).
+                  'top-6 flex h-[calc(100dvh-8rem)] max-h-[calc(100dvh-8rem)] translate-y-0 flex-col gap-0 p-0 sm:max-w-[min(96vw,1600px)]'
                 : 'flex max-h-[85dvh] flex-col gap-0 p-0 sm:max-w-4xl'
               : undefined
           }
@@ -122,7 +123,14 @@ export function ResponsiveFormSurface({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
-      <DrawerContent>
+      <DrawerContent
+        className={
+          reviewSummary
+            ? // Stops below the toast band (top: 80px), so toasts never cover it.
+              'data-[swipe-axis=y]:[--drawer-content-max-height:calc(100dvh-9.5rem)]'
+            : undefined
+        }
+      >
         <DrawerClose
           disabled={closeDisabled}
           aria-label={m.shell_close()}

@@ -183,7 +183,7 @@ function RecapButton({ onClick, children }: RecapButtonProps) {
     <button
       type="button"
       onClick={onClick}
-      className="radius-control text-foreground underline decoration-muted-foreground/60 underline-offset-4 outline-none hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring"
+      className="radius-control inline-flex min-h-8 items-center text-foreground underline decoration-muted-foreground/60 underline-offset-4 outline-none hover:decoration-foreground focus-visible:ring-2 focus-visible:ring-ring"
     >
       {children}
     </button>
@@ -475,19 +475,19 @@ export function AssignmentProposalPreview({
               {isDesktop && summary}
               {coverage.required > 0 && (
                 <div className="space-y-1">
-                  <p className="text-muted-foreground text-sm max-md:sr-only">
+                  {/* The reopened note shares the label's line, so nothing moves. */}
+                  <p className="truncate text-muted-foreground text-sm max-md:sr-only">
                     {m.builder_proposal_coverage_label()}
+                    {excluded.size > 0 &&
+                      ` · ${
+                        excluded.size === 1
+                          ? m.builder_proposal_coverage_reopened_one()
+                          : m.builder_proposal_coverage_reopened_many({
+                              count: excluded.size,
+                            })
+                      }`}
                   </p>
                   <CoverageMeter coverage={coverage} />
-                  {excluded.size > 0 && (
-                    <p className="text-muted-foreground text-sm">
-                      {excluded.size === 1
-                        ? m.builder_proposal_coverage_reopened_one()
-                        : m.builder_proposal_coverage_reopened_many({
-                            count: excluded.size,
-                          })}
-                    </p>
-                  )}
                 </div>
               )}
             </div>
@@ -628,7 +628,12 @@ export function AssignmentProposalPreview({
           {emptyText && <p className="py-4 font-semibold">{emptyText}</p>}
           {days.length > 0 && (
             <>
-              <TabsContent value="shifts" tabIndex={-1} className="text-sm">
+              <TabsContent
+                keepMounted
+                value="shifts"
+                tabIndex={-1}
+                className="text-sm"
+              >
                 <div className="xl:grid xl:grid-cols-[minmax(0,60rem)_minmax(20rem,1fr)] xl:items-start xl:gap-10">
                   <ProposalShiftTable {...tableProps} />
                   <aside className="sticky top-0 max-xl:hidden xl:max-h-[calc(90dvh-19rem)] xl:overflow-y-auto">
@@ -647,7 +652,12 @@ export function AssignmentProposalPreview({
                   </aside>
                 </div>
               </TabsContent>
-              <TabsContent value="attention" tabIndex={-1} className="text-sm">
+              <TabsContent
+                keepMounted
+                value="attention"
+                tabIndex={-1}
+                className="text-sm"
+              >
                 {attentionCount === 0 ? (
                   <div className="flex flex-wrap items-center gap-3 py-6">
                     <p className="text-muted-foreground">
@@ -677,7 +687,12 @@ export function AssignmentProposalPreview({
                   />
                 )}
               </TabsContent>
-              <TabsContent value="volunteers" tabIndex={-1} className="text-sm">
+              <TabsContent
+                keepMounted
+                value="volunteers"
+                tabIndex={-1}
+                className="text-sm"
+              >
                 <ProposalVolunteerTable
                   groups={groups}
                   totals={totals}
@@ -690,7 +705,12 @@ export function AssignmentProposalPreview({
                   onSetIncluded={setIncluded}
                 />
               </TabsContent>
-              <TabsContent value="gaps" tabIndex={-1} className="pt-3 text-sm">
+              <TabsContent
+                keepMounted
+                value="gaps"
+                tabIndex={-1}
+                className="pt-3 text-sm"
+              >
                 <ProposalGapTable
                   days={days}
                   excluded={excluded}
@@ -709,7 +729,7 @@ export function AssignmentProposalPreview({
             <AlertDialogTitle>
               {m.builder_proposal_discard_confirm_title()}
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-sm">
               {excluded.size === 1
                 ? m.builder_proposal_discard_confirm_body_one()
                 : m.builder_proposal_discard_confirm_body_many({

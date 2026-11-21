@@ -80,10 +80,10 @@ type CreateParticipationAssignmentBody = z.infer<
   typeof createParticipationAssignmentBodySchema
 >;
 type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
-interface ReviewedPairBody {
-  shiftRequirementId: string;
-  volunteerId: string;
-}
+type ApplyAssignmentProposalBody = z.infer<
+  typeof applyAssignmentProposalBodySchema
+>;
+type ReviewedPairBody = ApplyAssignmentProposalBody['additions'][number];
 
 const toReviewedAddition = ({
   shiftRequirementId,
@@ -92,10 +92,6 @@ const toReviewedAddition = ({
   shiftRequirementId: ShiftRequirementId.from({ raw: shiftRequirementId }),
   volunteerId: VolunteerId.from(volunteerId),
 });
-
-type ApplyAssignmentProposalBody = z.infer<
-  typeof applyAssignmentProposalBodySchema
->;
 type MoveAssignmentBody = z.infer<typeof moveAssignmentBodySchema>;
 type ReassignAssignmentBody = z.infer<typeof reassignAssignmentBodySchema>;
 

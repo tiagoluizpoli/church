@@ -198,6 +198,72 @@ export type AcceptExistingMemberOutcome =
   | RetryableRedemptionFailure
   | TerminalRedemptionFailure;
 
+/** The signed-in review of a plain Church Invitation (ADR 0011, Church-only bundle). */
+export interface GetChurchInvitationReviewStatusInput {
+  churchInvitationId: ChurchInvitationId;
+  userId: UserId;
+  now?: Date;
+}
+
+export interface RedeemableChurchInvitationStatus {
+  kind: 'redeemable';
+  churchName: string;
+  email: string;
+  churchAccessLevel: ChurchAccessLevel;
+  expiresAt: Date;
+  /** Echoed on accept; see `reviewTokenFor`. */
+  reviewToken: string;
+}
+
+/** The offer has a pending Ministry half: its existing Ministry review is the one review. */
+export interface PairedChurchInvitationStatus {
+  kind: 'paired';
+  /** The oldest pending, unexpired half. */
+  ministryInvitationId: MinistryInvitationId;
+}
+
+export type ChurchInvitationReviewStatus =
+  | RedeemableChurchInvitationStatus
+  | PairedChurchInvitationStatus
+  | AlreadyAcceptedInvitationStatus
+  | MaskedIdentityMismatchStatus
+  | UnavailableInvitationStatus;
+
+export interface AcceptChurchInvitationInput {
+  churchInvitationId: ChurchInvitationId;
+  userId: UserId;
+  /** The caller's own Better Auth session cookie — forwarded as-is, never minted here. */
+  sessionCookie: string;
+  idempotencyKey: string;
+  reviewToken: string;
+  now?: Date;
+}
+
+/** The Church Membership was granted and the invited Church is now active. */
+export interface ChurchInvitationAcceptedOutcome {
+  kind: 'full-success';
+  churchId: ChurchId;
+}
+
+/** Every write rolled back; the same review can be submitted again. */
+export interface RetryableChurchAcceptanceFailure {
+  kind: 'retryable-failure';
+  reason: 'IDENTITY_FAILED';
+}
+
+export interface TerminalChurchAcceptanceFailure {
+  kind: 'terminal-failure';
+  reason: 'INVITATION_UNAVAILABLE' | 'IDENTITY_FAILED';
+}
+
+export type AcceptChurchInvitationOutcome =
+  | ChurchInvitationAcceptedOutcome
+  | OfferChangedOutcome
+  | AlreadyAcceptedInvitationStatus
+  | MaskedIdentityMismatchStatus
+  | RetryableChurchAcceptanceFailure
+  | TerminalChurchAcceptanceFailure;
+
 export interface DeclineInvitationInput {
   ministryInvitationId: MinistryInvitationId;
   userId: UserId;
@@ -245,6 +311,14 @@ export interface RedemptionManager {
   acceptExistingMember(
     input: AcceptExistingMemberInput,
   ): Promise<AcceptExistingMemberOutcome>;
+  /** Signed-in status of a Church Invitation; `paired` defers to the Ministry review. */
+  getChurchInvitationReviewStatus(
+    input: GetChurchInvitationReviewStatusInput,
+  ): Promise<ChurchInvitationReviewStatus>;
+  /** Accepts the reviewed Church-only bundle and makes its Church active. */
+  acceptChurchInvitation(
+    input: AcceptChurchInvitationInput,
+  ): Promise<AcceptChurchInvitationOutcome>;
   declineInvitation(
     input: DeclineInvitationInput,
   ): Promise<DeclineInvitationOutcome>;

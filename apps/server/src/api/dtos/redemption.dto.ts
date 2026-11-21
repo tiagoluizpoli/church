@@ -175,6 +175,55 @@ export const existingMemberOutcomeResponseSchema = z.discriminatedUnion(
   ],
 );
 
+/** The signed-in review of a Church Invitation; `paired` defers to the Ministry review. */
+export const churchInvitationReviewStatusResponseSchema = z.discriminatedUnion(
+  'kind',
+  [
+    z.object({
+      kind: z.literal('redeemable'),
+      churchName: z.string(),
+      email: z.string().email(),
+      churchAccessLevel: z.enum(CHURCH_ACCESS_LEVEL_OPTIONS),
+      expiresAt: instantSchema,
+      /** Echo it on accept: a changed offer is refused without any grant. */
+      reviewToken: z.string(),
+    }),
+    z.object({
+      kind: z.literal('paired'),
+      /** The oldest pending Ministry half, whose review covers the whole offer. */
+      ministryInvitationId: z.string().uuid(),
+    }),
+    z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
+    z.object({
+      kind: z.literal('identity-mismatch'),
+      maskedEmail: z.string(),
+    }),
+    z.object({ kind: z.literal('unavailable') }),
+  ],
+);
+
+export const churchInvitationAcceptOutcomeResponseSchema = z.discriminatedUnion(
+  'kind',
+  [
+    /** The Church Membership was granted; `churchId` is now the Active Church. */
+    z.object({ kind: z.literal('full-success'), churchId: z.string() }),
+    z.object({ kind: z.literal('offer-changed') }),
+    z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
+    z.object({
+      kind: z.literal('identity-mismatch'),
+      maskedEmail: z.string(),
+    }),
+    z.object({
+      kind: z.literal('retryable-failure'),
+      reason: z.literal('IDENTITY_FAILED'),
+    }),
+    z.object({
+      kind: z.literal('terminal-failure'),
+      reason: z.enum(['INVITATION_UNAVAILABLE', 'IDENTITY_FAILED']),
+    }),
+  ],
+);
+
 export const declineOutcomeResponseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('declined') }),
   z.object({ kind: z.literal('identity-mismatch') }),

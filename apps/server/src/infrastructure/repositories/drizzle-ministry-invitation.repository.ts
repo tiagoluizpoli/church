@@ -36,12 +36,14 @@ import type {
   ApplyResendInput,
   CancelChurchInvitationInput,
   CancelMinistryInvitationInput,
+  ChurchInvitationContext,
   ChurchInvitationStatus,
   ChurchInvitationSummary,
   CreateChurchInvitationInput,
   CreateMinistryInvitationInput,
   EnqueueOutboxMessageInput,
   FindByIdInput,
+  FindChurchInvitationContextInput,
   FindChurchMemberByEmailInput,
   FindMinistryInvitationContextInput,
   FindPendingChurchInvitationByEmailInput,
@@ -51,6 +53,7 @@ import type {
   FindPublicRedemptionPreviewInput,
   FindRedemptionBundleInput,
   HasActiveMinistryMembershipInput,
+  IsChurchInvitationAddressedToUserInput,
   IsInvitationAddressedToUserInput,
   ListPendingInMinistryInput,
   LockChurchInvitationInput,
@@ -560,33 +563,43 @@ export class DrizzleMinistryInvitationRepository
     };
   }
 
-  async findRedemptionBundle({
-    ministryInvitation: invitation,
-    now,
-    tx,
-  }: FindRedemptionBundleInput): Promise<RedemptionBundle> {
+  async findRedemptionBundle(
+    input: FindRedemptionBundleInput,
+  ): Promise<RedemptionBundle> {
+    const { now, tx } = input;
     const db = getClient({ db: this.db, tx });
-    const { churchId, churchInvitationId } = invitation;
+    const { churchId, churchInvitationId } =
+      'churchInvitation' in input
+        ? input.churchInvitation
+        : input.ministryInvitation;
     const [parent] = churchInvitationId
       ? await db
           .select({
             status: churchInvitation.status,
             role: churchInvitation.role,
+            expiresAt: churchInvitation.expiresAt,
           })
           .from(churchInvitation)
-          .where(eq(churchInvitation.id, churchInvitationId))
+          .where(
+            and(
+              eq(churchInvitation.organizationId, churchId),
+              eq(churchInvitation.id, churchInvitationId),
+            ),
+          )
       : [];
-    const churchAccessLevel =
-      parent?.status === 'pending'
-        ? parent.role === 'admin'
-          ? 'admin'
-          : 'member'
-        : null;
+    const churchHalf = parent?.status === 'pending' ? parent : null;
+    const churchAccessLevel = churchHalf
+      ? churchHalf.role === 'admin'
+        ? 'admin'
+        : 'member'
+      : null;
     // A chained offer is every pending half of its Church Invitation; a
     // standalone Ministry offer stays alone.
     const offerScope = churchInvitationId
       ? eq(ministryInvitation.churchInvitationId, churchInvitationId)
-      : eq(ministryInvitation.id, invitation.id);
+      : 'ministryInvitation' in input
+        ? eq(ministryInvitation.id, input.ministryInvitation.id)
+        : sql`false`;
     const rows = await db
       .select({
         ministryInvitationId: ministryInvitation.id,
@@ -638,7 +651,42 @@ export class DrizzleMinistryInvitationRepository
       }
       halves.set(row.ministryInvitationId, half);
     }
-    return { churchAccessLevel, ministries: [...halves.values()] };
+    return {
+      churchAccessLevel,
+      churchExpiresAt: churchHalf?.expiresAt ?? null,
+      ministries: [...halves.values()],
+    };
+  }
+
+  async findChurchInvitationContext({
+    churchInvitationId,
+    tx,
+  }: FindChurchInvitationContextInput): Promise<ChurchInvitationContext | null> {
+    if (!isValidUuid(churchInvitationId)) return null;
+    const [row] = await getClient({ db: this.db, tx })
+      .select({
+        churchId: churchInvitation.organizationId,
+        churchName: organization.name,
+        email: churchInvitation.email,
+        status: churchInvitation.status,
+        role: churchInvitation.role,
+        expiresAt: churchInvitation.expiresAt,
+      })
+      .from(churchInvitation)
+      .innerJoin(
+        organization,
+        eq(organization.id, churchInvitation.organizationId),
+      )
+      .where(eq(churchInvitation.id, churchInvitationId));
+    if (!row) return null;
+    return {
+      churchId: row.churchId as ChurchId,
+      churchName: row.churchName,
+      email: row.email,
+      status: row.status as ChurchInvitationStatus,
+      churchAccessLevel: row.role === 'admin' ? 'admin' : 'member',
+      expiresAt: row.expiresAt,
+    };
   }
 
   async isInvitationAddressedToUser({
@@ -647,16 +695,25 @@ export class DrizzleMinistryInvitationRepository
     tx,
   }: IsInvitationAddressedToUserInput): Promise<boolean> {
     if (invitation.inviteeUserId) return invitation.inviteeUserId === userId;
+    return this.isChurchInvitationAddressedToUser({
+      churchInvitationId: invitation.churchInvitationId as string,
+      userId,
+      tx,
+    });
+  }
+
+  async isChurchInvitationAddressedToUser({
+    churchInvitationId,
+    userId,
+    tx,
+  }: IsChurchInvitationAddressedToUserInput): Promise<boolean> {
     const db = getClient({ db: this.db, tx });
     const [row] = await db
       .select({ id: user.id })
       .from(churchInvitation)
       .innerJoin(user, eq(user.email, churchInvitation.email))
       .where(
-        and(
-          eq(churchInvitation.id, invitation.churchInvitationId as string),
-          eq(user.id, userId),
-        ),
+        and(eq(churchInvitation.id, churchInvitationId), eq(user.id, userId)),
       )
       .limit(1);
     return row != null;

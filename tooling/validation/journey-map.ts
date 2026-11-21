@@ -52,6 +52,7 @@ export const DELIBERATE_SMOKE_FALLBACK_PATHS: {
 const REDEMPTION_SPEC_PATHS = [
   'tests/identity/redemption-new-user.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
+  'tests/identity/redemption-church-only-sign-in.spec.ts',
 ];
 
 // The public Church Invitation join also serves the plain first-admin
@@ -133,6 +134,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/first-admin-onboarding.spec.ts',
   'tests/identity/invitation-journey.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
+  'tests/identity/redemption-church-only-sign-in.spec.ts',
   'tests/identity/redemption-new-user.spec.ts',
   // Signs in as the shared personas global setup loads from a recipe.
   'tests/identity/route-protection.spec.ts',

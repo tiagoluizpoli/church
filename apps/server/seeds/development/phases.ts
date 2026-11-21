@@ -32,10 +32,10 @@ export function createDevelopmentReseedPhases({
     migrate: () => migrateDevelopmentSchema({ pool }),
     load: () =>
       runSeedRecipe({ db, recipe: createDevelopmentRecipe({ anchor }) }),
-    verify: async ({ seeded }) => {
-      await verifyDevelopmentGraph({ db, seeded });
-      // After verification: the graph invariants describe the sent history
-      // alone. This draft Cycle is the large one for the suggestion dialog.
+    verify: ({ seeded }) => verifyDevelopmentGraph({ db, seeded }),
+    // After verification: the graph invariants describe the sent history
+    // alone. This sent Cycle is the large one for the suggestion dialog.
+    upcoming: async ({ seeded }) => {
       await runSeedRecipe({
         db,
         recipe: {

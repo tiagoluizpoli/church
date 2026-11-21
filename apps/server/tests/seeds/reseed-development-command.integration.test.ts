@@ -40,10 +40,11 @@ const SCRATCH_WORKTREE = SCRATCH_DATABASE.slice(
 const ABSENT_WORKTREE = ABSENT_DATABASE.slice('church_'.length, -'_dev'.length);
 const SENTINEL_TABLE = 'reseed_dev_sentinel';
 const PHASE_LINES = [
-  '[1/4] reset: ok',
-  '[2/4] migrate: ok',
-  '[3/4] load: ok',
-  '[4/4] verify: ok',
+  '[1/5] reset: ok',
+  '[2/5] migrate: ok',
+  '[3/5] load: ok',
+  '[4/5] verify: ok',
+  '[5/5] upcoming: ok',
 ];
 /** Stamped from the clock at load time, so they differ between reseeds. */
 const TIME_DERIVED_OR_AUDIT_COLUMNS = new Set([
@@ -324,7 +325,7 @@ describe('db:reseed:dev command', () => {
     expect(result.status).toBe(1);
     expect(result.output).toContain('Invalid --anchor "2026-02-30"');
     expect(result.output).not.toContain('purpose=development');
-    expect(result.output).not.toContain('[1/4]');
+    expect(result.output).not.toContain('[1/5]');
     expect(
       await hasTable({ database: SCRATCH_DATABASE, table: SENTINEL_TABLE }),
     ).toBe(true);
@@ -351,7 +352,7 @@ describe('db:reseed:dev command', () => {
 
     expect(result.status).toBe(1);
     expect(result.output).toContain('db:reseed:dev refused the target');
-    expect(result.output).not.toContain('[1/4]');
+    expect(result.output).not.toContain('[1/5]');
     expect(result.output).not.toContain(credentials);
     expect(await hasTable({ database, table: probe })).toBe(true);
   });
@@ -373,7 +374,7 @@ describe('db:reseed:dev command', () => {
 
     expect(result.status).toBe(1);
     expect(result.output).toContain('db:reseed:dev refused the target');
-    expect(result.output).not.toContain('[1/4]');
+    expect(result.output).not.toContain('[1/5]');
     expect(result.output).not.toContain(credentials);
   });
 

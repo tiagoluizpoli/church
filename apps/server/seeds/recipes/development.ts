@@ -485,6 +485,7 @@ export function createDevelopmentRecipe({
           seededGatherings,
           ministries: primary.ministries,
           volunteerIdByEmail: primary.volunteerIdByEmail,
+          userIdByEmail,
         },
       };
     },

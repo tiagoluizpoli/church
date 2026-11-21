@@ -1424,10 +1424,11 @@ interface ShiftMomentInput {
 }
 
 export interface LoadDevelopmentUpcomingCycleInput
-  extends Omit<LoadDevelopmentHistoryInput, 'history' | 'userIdByEmail'> {}
+  extends Omit<LoadDevelopmentHistoryInput, 'history'> {}
 
 /**
- * Two months after the anchor's: a draft Cycle whose every Ministry slice has
+ * Two months after the anchor's: a sent Cycle (with the leaders'
+ * ready-to-prepare notifications Send writes) whose every Ministry slice has
  * asked for availability and had every Membership confirm, with no
  * Assignments, so the Assignment proposal has hundreds of needs to fill.
  */
@@ -1441,6 +1442,7 @@ export async function loadDevelopmentUpcomingCycle({
   seededGatherings,
   ministries,
   volunteerIdByEmail,
+  userIdByEmail,
 }: LoadDevelopmentUpcomingCycleInput): Promise<SeededHistoricalCycle> {
   const startDate = addCalendarMonths({ day: anchor, months: 2 });
   const cycle: SeededHistoricalCycle = {
@@ -1458,18 +1460,19 @@ export async function loadDevelopmentUpcomingCycle({
     name: cycleNameOf({ startDate: cycle.startDate }),
     startDate: cycle.startDate,
     endDate: cycle.endDate,
-    state: 'draft',
+    state: 'sent',
   });
   const ministryOrder = [
     ...new Set(gatherings.servingRules.map((rule) => rule.ministry.name)),
   ];
-  const shifts: PlannedShift[] = [];
-  for (const plannedEvent of planEvents({
+  const plannedEvents = planEvents({
     window: cycle,
     timeZone,
     gatherings,
     seededGatherings,
-  })) {
+  });
+  const shifts: PlannedShift[] = [];
+  for (const plannedEvent of plannedEvents) {
     shifts.push(
       ...(await materializeEvent({
         db,
@@ -1511,5 +1514,102 @@ export async function loadDevelopmentUpcomingCycle({
       timeZone,
     }),
   });
+  await notifyCycleReadyToPrepare({
+    db,
+    churchId,
+    cycle,
+    eventCount: plannedEvents.length,
+    directory,
+    ministries,
+    userIdByEmail,
+    sentAt: instantAt({
+      day: addCalendarDays({ day: anchor, days: -3 }),
+      time: '09:00',
+      timeZone,
+    }),
+    readAt: instantAt({
+      day: addCalendarDays({ day: anchor, days: -2 }),
+      time: '08:00',
+      timeZone,
+    }),
+  });
   return cycle;
+}
+
+interface LedMinistry {
+  id: string;
+  name: string;
+}
+
+interface NotifyCycleReadyToPrepareInput {
+  db: SeedWriter;
+  churchId: string;
+  cycle: SeededHistoricalCycle;
+  eventCount: number;
+  directory: ChurchDirectoryBlueprint;
+  ministries: Map<string, SeededMinistryStructure>;
+  userIdByEmail: Map<string, string>;
+  sentAt: Instant;
+  readAt: Instant;
+}
+
+/**
+ * What Send leaves each Ministry leader: one inbox Notification listing every
+ * Ministry they lead, as the outbox delivers `cycle_ready_to_prepare`.
+ */
+async function notifyCycleReadyToPrepare({
+  db,
+  churchId,
+  cycle,
+  eventCount,
+  directory,
+  ministries,
+  userIdByEmail,
+  sentAt,
+  readAt,
+}: NotifyCycleReadyToPrepareInput): Promise<void> {
+  const ledByEmail = new Map<string, LedMinistry[]>();
+  for (const ministryBlueprint of directory.ministries) {
+    const { ministryId } = requireMinistry({
+      ministries,
+      name: ministryBlueprint.name,
+    });
+    for (const group of ministryBlueprint.schedule) {
+      if (!group.seat.ministryLeader) continue;
+      for (const { email } of group.people) {
+        const led = ledByEmail.get(email) ?? [];
+        led.push({ id: ministryId, name: ministryBlueprint.name });
+        ledByEmail.set(email, led);
+      }
+    }
+  }
+  for (const [email, led] of ledByEmail) {
+    const userId = requireKnown({ ids: userIdByEmail, key: email });
+    await buildNotification({
+      db,
+      userId,
+      churchId,
+      id: deriveSeedId({
+        kind: 'notification',
+        parentIds: ['cycle_ready_to_prepare', cycle.id, userId],
+      }),
+      sourceOutboxId: deriveSeedId({
+        kind: 'notification-outbox',
+        parentIds: ['cycle_ready_to_prepare', cycle.id, userId],
+      }),
+      payload: {
+        kind: 'cycle_ready_to_prepare',
+        data: {
+          cycleId: cycle.id,
+          cycleName: cycleNameOf({ startDate: cycle.startDate }),
+          cycleStartDate: cycle.startDate,
+          cycleEndDate: cycle.endDate,
+          eventCount,
+          ministries: led,
+        },
+      },
+      createdAt: sentAt,
+      readAt,
+    });
+  }
 }

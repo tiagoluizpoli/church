@@ -99,12 +99,13 @@ function fakePhases({ failAt }: FakePhasesInput): FakePhases {
         return 'graph';
       },
       verify: ({ seeded }) => step({ name: `verify:${seeded}` }),
+      upcoming: ({ seeded }) => step({ name: `upcoming:${seeded}` }),
     },
   };
 }
 
 describe('runReseedPhases', () => {
-  it('resets, migrates, loads, then verifies the loaded graph, reporting each phase', async () => {
+  it('resets, migrates, loads, verifies the loaded graph, then adds the upcoming Cycle, reporting each phase', async () => {
     const { phases, run } = fakePhases({});
 
     const seeded = await runReseedPhases({
@@ -113,12 +114,19 @@ describe('runReseedPhases', () => {
     });
 
     expect(seeded).toBe('graph');
-    expect(run.calls).toEqual(['reset', 'migrate', 'load', 'verify:graph']);
+    expect(run.calls).toEqual([
+      'reset',
+      'migrate',
+      'load',
+      'verify:graph',
+      'upcoming:graph',
+    ]);
     expect(run.lines).toEqual([
-      '[1/4] reset: ok',
-      '[2/4] migrate: ok',
-      '[3/4] load: ok',
-      '[4/4] verify: ok',
+      '[1/5] reset: ok',
+      '[2/5] migrate: ok',
+      '[3/5] load: ok',
+      '[4/5] verify: ok',
+      '[5/5] upcoming: ok',
     ]);
   });
 
@@ -127,6 +135,10 @@ describe('runReseedPhases', () => {
     ['migrate', ['reset', 'migrate']],
     ['load', ['reset', 'migrate', 'load']],
     ['verify:graph', ['reset', 'migrate', 'load', 'verify:graph']],
+    [
+      'upcoming:graph',
+      ['reset', 'migrate', 'load', 'verify:graph', 'upcoming:graph'],
+    ],
   ])('stops at a failing %s phase and names it', async (failAt, calls) => {
     const { phases, run } = fakePhases({ failAt });
 
@@ -142,6 +154,6 @@ describe('runReseedPhases', () => {
       message: expect.stringContaining(`${failAt} broke`),
     });
     expect(run.calls).toEqual(calls);
-    expect(run.lines).not.toContain(`[${calls.length}/4] ${phase}: ok`);
+    expect(run.lines).not.toContain(`[${calls.length}/5] ${phase}: ok`);
   });
 });

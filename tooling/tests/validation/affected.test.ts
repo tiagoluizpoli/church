@@ -163,6 +163,7 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/invitation-journey.spec.ts',
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
     ]);
@@ -177,6 +178,7 @@ describe('classifyChanges', () => {
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
@@ -251,6 +253,7 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/invitation-journey.spec.ts',
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
@@ -266,6 +269,7 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/invitation-journey.spec.ts',
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
     ]);
@@ -667,6 +671,7 @@ describe('classifyChanges', () => {
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
       'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/invitation-journey.spec.ts',
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/route-protection.spec.ts',

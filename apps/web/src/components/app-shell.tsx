@@ -16,6 +16,7 @@ import {
   Mail,
   Menu,
   Search,
+  Settings,
   Users,
   UsersRound,
 } from 'lucide-react';
@@ -175,6 +176,14 @@ const NAV_ENTRIES: NavEntry[] = [
     icon: Mail,
     isVisible: isAdminOrLeader,
   },
+  // PROTOTYPE (wayfinder #980): Church Settings nav placement.
+  {
+    group: 'church',
+    label: () => 'Configurações da igreja',
+    to: '/prototype-church-settings',
+    icon: Settings,
+    isVisible: (c) => c.isChurchAdmin,
+  },
 ];
 
 const GROUP_ORDER: NavGroup[] = ['home', 'serving', 'scheduling', 'church'];
@@ -193,6 +202,7 @@ const EXTRA_ACTIVE_PATHS: Record<string, string[]> = {};
 // Static URL segment -> catalog label. A spec adding a segment adds it here.
 const BREADCRUMB_SEGMENT_LABELS: Record<string, () => string> = {
   availability: () => m.nav_availability(),
+  'prototype-church-settings': () => 'Configurações da igreja',
   notifications: () => m.breadcrumb_notifications(),
   cycles: () => m.nav_cycles(),
   new: () => m.breadcrumb_new(),

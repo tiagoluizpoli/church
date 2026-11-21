@@ -20,6 +20,7 @@ import { Route as AuthenticatedActiveChurchRouteImport } from './routes/_authent
 import { Route as AuthenticatedActiveChurchIndexRouteImport } from './routes/_authenticated/_active-church/index'
 import { Route as InvitationsChurchInvitationIdRouteImport } from './routes/invitations/church/$invitationId'
 import { Route as AuthenticatedActiveChurchSchedulesRouteImport } from './routes/_authenticated/_active-church/schedules'
+import { Route as AuthenticatedActiveChurchPrototypeChurchSettingsRouteImport } from './routes/_authenticated/_active-church/prototype-church-settings'
 import { Route as AuthenticatedActiveChurchNotificationsRouteImport } from './routes/_authenticated/_active-church/notifications'
 import { Route as AuthenticatedActiveChurchDashboardRouteImport } from './routes/_authenticated/_active-church/dashboard'
 import { Route as AuthenticatedActiveChurchAvailabilityRouteImport } from './routes/_authenticated/_active-church/availability'
@@ -112,6 +113,12 @@ const AuthenticatedActiveChurchSchedulesRoute =
   AuthenticatedActiveChurchSchedulesRouteImport.update({
     id: '/schedules',
     path: '/schedules',
+    getParentRoute: () => AuthenticatedActiveChurchRoute,
+  } as any)
+const AuthenticatedActiveChurchPrototypeChurchSettingsRoute =
+  AuthenticatedActiveChurchPrototypeChurchSettingsRouteImport.update({
+    id: '/prototype-church-settings',
+    path: '/prototype-church-settings',
     getParentRoute: () => AuthenticatedActiveChurchRoute,
   } as any)
 const AuthenticatedActiveChurchNotificationsRoute =
@@ -345,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
   '/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
+  '/prototype-church-settings': typeof AuthenticatedActiveChurchPrototypeChurchSettingsRoute
   '/schedules': typeof AuthenticatedActiveChurchSchedulesRouteWithChildren
   '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
   '/availability/$checkId': typeof AuthenticatedActiveChurchAvailabilityCheckIdRoute
@@ -389,6 +397,7 @@ export interface FileRoutesByTo {
   '/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
   '/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
+  '/prototype-church-settings': typeof AuthenticatedActiveChurchPrototypeChurchSettingsRoute
   '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
   '/availability/$checkId': typeof AuthenticatedActiveChurchAvailabilityCheckIdRoute
   '/my-schedule/$assignmentId': typeof AuthenticatedActiveChurchMyScheduleAssignmentIdRoute
@@ -433,6 +442,7 @@ export interface FileRoutesById {
   '/_authenticated/_active-church/availability': typeof AuthenticatedActiveChurchAvailabilityRoute
   '/_authenticated/_active-church/dashboard': typeof AuthenticatedActiveChurchDashboardRoute
   '/_authenticated/_active-church/notifications': typeof AuthenticatedActiveChurchNotificationsRoute
+  '/_authenticated/_active-church/prototype-church-settings': typeof AuthenticatedActiveChurchPrototypeChurchSettingsRoute
   '/_authenticated/_active-church/schedules': typeof AuthenticatedActiveChurchSchedulesRouteWithChildren
   '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
   '/_authenticated/_active-church/': typeof AuthenticatedActiveChurchIndexRoute
@@ -480,6 +490,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/dashboard'
     | '/notifications'
+    | '/prototype-church-settings'
     | '/schedules'
     | '/invitations/church/$invitationId'
     | '/availability/$checkId'
@@ -524,6 +535,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/dashboard'
     | '/notifications'
+    | '/prototype-church-settings'
     | '/invitations/church/$invitationId'
     | '/availability/$checkId'
     | '/my-schedule/$assignmentId'
@@ -567,6 +579,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_active-church/availability'
     | '/_authenticated/_active-church/dashboard'
     | '/_authenticated/_active-church/notifications'
+    | '/_authenticated/_active-church/prototype-church-settings'
     | '/_authenticated/_active-church/schedules'
     | '/invitations/church/$invitationId'
     | '/_authenticated/_active-church/'
@@ -687,6 +700,13 @@ declare module '@tanstack/react-router' {
       path: '/schedules'
       fullPath: '/schedules'
       preLoaderRoute: typeof AuthenticatedActiveChurchSchedulesRouteImport
+      parentRoute: typeof AuthenticatedActiveChurchRoute
+    }
+    '/_authenticated/_active-church/prototype-church-settings': {
+      id: '/_authenticated/_active-church/prototype-church-settings'
+      path: '/prototype-church-settings'
+      fullPath: '/prototype-church-settings'
+      preLoaderRoute: typeof AuthenticatedActiveChurchPrototypeChurchSettingsRouteImport
       parentRoute: typeof AuthenticatedActiveChurchRoute
     }
     '/_authenticated/_active-church/notifications': {
@@ -1040,6 +1060,7 @@ interface AuthenticatedActiveChurchRouteChildren {
   AuthenticatedActiveChurchAvailabilityRoute: typeof AuthenticatedActiveChurchAvailabilityRoute
   AuthenticatedActiveChurchDashboardRoute: typeof AuthenticatedActiveChurchDashboardRoute
   AuthenticatedActiveChurchNotificationsRoute: typeof AuthenticatedActiveChurchNotificationsRoute
+  AuthenticatedActiveChurchPrototypeChurchSettingsRoute: typeof AuthenticatedActiveChurchPrototypeChurchSettingsRoute
   AuthenticatedActiveChurchSchedulesRoute: typeof AuthenticatedActiveChurchSchedulesRouteWithChildren
   AuthenticatedActiveChurchIndexRoute: typeof AuthenticatedActiveChurchIndexRoute
   AuthenticatedActiveChurchAvailabilityCheckIdRoute: typeof AuthenticatedActiveChurchAvailabilityCheckIdRoute
@@ -1063,6 +1084,8 @@ const AuthenticatedActiveChurchRouteChildren: AuthenticatedActiveChurchRouteChil
       AuthenticatedActiveChurchDashboardRoute,
     AuthenticatedActiveChurchNotificationsRoute:
       AuthenticatedActiveChurchNotificationsRoute,
+    AuthenticatedActiveChurchPrototypeChurchSettingsRoute:
+      AuthenticatedActiveChurchPrototypeChurchSettingsRoute,
     AuthenticatedActiveChurchSchedulesRoute:
       AuthenticatedActiveChurchSchedulesRouteWithChildren,
     AuthenticatedActiveChurchIndexRoute: AuthenticatedActiveChurchIndexRoute,

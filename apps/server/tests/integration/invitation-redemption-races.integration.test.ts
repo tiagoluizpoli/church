@@ -28,6 +28,7 @@ import { DbRedemptionManager } from '@/application/db-redemption-manager';
 import { InvitationVerificationCodeManager } from '@/application/invitation-verification-code-manager';
 import {
   ChurchId,
+  ChurchInvitationId,
   MinistryId,
   MinistryInvitationId,
   RoleId,
@@ -486,7 +487,7 @@ describe('Church-only acceptance races', () => {
   /** A plain member Church Invitation: what a lone Church half leaves. */
   async function plainChurchOffer(
     churchAccessLevel: 'member' | 'admin',
-  ): Promise<string> {
+  ): Promise<ChurchInvitationId> {
     const created = await unitOfWork.run((tx) =>
       ministryInvitationRepository.createChurchInvitation({
         churchId,
@@ -496,11 +497,11 @@ describe('Church-only acceptance races', () => {
         tx,
       }),
     );
-    return created.id;
+    return ChurchInvitationId.from(created.id);
   }
 
   async function churchReviewToken(input: {
-    churchInvitationId: string;
+    churchInvitationId: ChurchInvitationId;
     userId: UserId;
   }): Promise<string> {
     const status =
@@ -511,7 +512,7 @@ describe('Church-only acceptance races', () => {
   }
 
   const acceptChurch = (input: {
-    churchInvitationId: string;
+    churchInvitationId: ChurchInvitationId;
     invitee: Invitee;
     reviewToken: string;
   }) =>

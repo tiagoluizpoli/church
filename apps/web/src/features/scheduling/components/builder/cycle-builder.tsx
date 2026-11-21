@@ -128,9 +128,13 @@ export function CycleBuilder({
   // re-render on each toggle) so a fresh review after a refusal keeps every
   // exclusion that still names a pair of the new proposal.
   const exclusions = useRef<ReadonlySet<string>>(new Set());
+  // Each request carries its run number; Cancel moves past it, so a response
+  // that lands after the leader cancelled is never reported as an error.
+  const proposalRun = useRef(0);
   // A read, kept only in memory: discarding it writes nothing.
   const proposal = useMutation({
-    mutationFn: () => adminApi.getAssignmentProposal(cycleId, { ministryId }),
+    mutationFn: (_run: number) =>
+      adminApi.getAssignmentProposal(cycleId, { ministryId }),
     onSuccess: ({ additions }) => {
       applicationKeys.current = new Map();
       const valid = new Set(additions.map(proposalAdditionKey));
@@ -139,7 +143,8 @@ export function CycleBuilder({
         [...exclusions.current].filter((key) => valid.has(key)),
       );
     },
-    onError: () => {
+    onError: (_error, run) => {
+      if (run !== proposalRun.current) return;
       toast.error(m.builder_proposal_error());
       // The Schedule may have moved on (e.g. published elsewhere).
       refreshBoard();
@@ -190,14 +195,19 @@ export function CycleBuilder({
     },
     onSettled: refreshBoard,
   });
+  const requestProposal = () => proposal.mutate(++proposalRun.current);
   const discardProposal = () => {
     applyProposal.reset();
     exclusions.current = new Set();
     proposal.reset();
   };
+  const cancelProposal = () => {
+    proposalRun.current += 1;
+    discardProposal();
+  };
   const reviewNewProposal = () => {
     applyProposal.reset();
-    proposal.mutate();
+    requestProposal();
   };
   const applyError = applyProposal.error;
   // A 4xx is a definite refusal; anything else may have committed.
@@ -288,7 +298,7 @@ export function CycleBuilder({
           size={isMobile ? 'touch' : 'sm'}
           variant="outline"
           disabled={proposal.isPending || isPublishing}
-          onClick={() => proposal.mutate()}
+          onClick={requestProposal}
         >
           {proposal.isPending ? <Spinner /> : null}
           {proposal.isPending
@@ -451,7 +461,7 @@ export function CycleBuilder({
               onDiscard={discardProposal}
             />
           ) : proposal.isPending ? (
-            <ProposalLoading onCancel={() => proposal.reset()} />
+            <ProposalLoading onCancel={cancelProposal} />
           ) : null}
 
           <UnavailableConfirmDialog

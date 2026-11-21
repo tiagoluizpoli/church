@@ -1655,6 +1655,31 @@ describe('Assignment proposal preview', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('says nothing when a proposal fails after the leader closed it', async () => {
+    let fail: (error: Error) => void = () => {};
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockReturnValue(
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      }),
+    );
+    renderBuilder({ data: boardData({}) });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+    await screen.findByRole('dialog', { name: m.builder_proposal_title() });
+    await userEvent.keyboard('{Escape}');
+    fail(new Error('offline'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: m.builder_proposal_title() }),
+      ).not.toBeInTheDocument(),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
   it('is not offered once the Schedule is published', () => {
     renderBuilder({ data: boardData({ state: 'published' }) });
 

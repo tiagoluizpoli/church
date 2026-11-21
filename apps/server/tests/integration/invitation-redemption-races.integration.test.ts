@@ -2,6 +2,7 @@ import { appConfig } from '@church/app-config';
 import * as schema from '@church/db';
 import {
   invitation as churchInvitation,
+  member,
   ministryInvitation,
   ministryMembership,
   session,
@@ -11,7 +12,7 @@ import {
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { env } from '@church/env/server';
 import { makeSignature } from 'better-auth/crypto';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import {
@@ -33,6 +34,7 @@ import {
   UserId,
 } from '@/domain/branded-ids';
 import { InvitationNotPendingError } from '@/domain/errors/invitation-not-pending';
+import { InviteeAlreadyChurchMemberError } from '@/domain/errors/invitee-already-church-member';
 import {
   DrizzleInvitationVerificationCodeRepository,
   DrizzleRedemptionRepository,
@@ -475,5 +477,307 @@ describe('acceptance versus Church revoke', () => {
     expect(await membershipMinistries(invitee.userId)).toEqual([
       fixture.ministryOneA,
     ]);
+  });
+});
+
+describe('Church-only acceptance races', () => {
+  const unitOfWork = new DrizzleUnitOfWork({ db: raceDb });
+
+  /** A plain member Church Invitation: what a lone Church half leaves. */
+  async function plainChurchOffer(
+    churchAccessLevel: 'member' | 'admin',
+  ): Promise<string> {
+    const created = await unitOfWork.run((tx) =>
+      ministryInvitationRepository.createChurchInvitation({
+        churchId,
+        email: INVITEE_EMAIL,
+        inviterId: adminId,
+        churchAccessLevel,
+        tx,
+      }),
+    );
+    return created.id;
+  }
+
+  async function churchReviewToken(input: {
+    churchInvitationId: string;
+    userId: UserId;
+  }): Promise<string> {
+    const status =
+      await redemptionManager.getChurchInvitationReviewStatus(input);
+    if (status.kind !== 'redeemable')
+      throw new Error(`Not redeemable: ${status.kind}`);
+    return status.reviewToken;
+  }
+
+  const acceptChurch = (input: {
+    churchInvitationId: string;
+    invitee: Invitee;
+    reviewToken: string;
+  }) =>
+    redemptionManager.acceptChurchInvitation({
+      churchInvitationId: input.churchInvitationId,
+      userId: input.invitee.userId,
+      sessionCookie: input.invitee.sessionCookie,
+      idempotencyKey: crypto.randomUUID(),
+      reviewToken: input.reviewToken,
+    });
+
+  async function rolesOf(userId: UserId) {
+    const rows = await testDb
+      .select({ role: member.role })
+      .from(member)
+      .where(
+        and(eq(member.userId, userId), eq(member.organizationId, churchId)),
+      );
+    return rows.map(({ role }) => role);
+  }
+
+  /** Parks the acceptance holding the Church row it has just accepted. */
+  function parkAcceptanceAfterRecording() {
+    const churchAccepted = gate();
+    const recordAcceptance =
+      redemptionRepository.recordChurchInvitationAcceptance.bind(
+        redemptionRepository,
+      );
+    vi.spyOn(
+      redemptionRepository,
+      'recordChurchInvitationAcceptance',
+    ).mockImplementationOnce(async (input) => {
+      await recordAcceptance(input);
+      await churchAccepted.park();
+    });
+    return churchAccepted;
+  }
+
+  // Only an admin offer can be revoked, so the revoke races use one.
+  async function setup(churchAccessLevel: 'member' | 'admin' = 'member') {
+    const churchInvitationId = await plainChurchOffer(churchAccessLevel);
+    const invitee = await signedInInvitee();
+    const reviewToken = await churchReviewToken({
+      churchInvitationId,
+      userId: invitee.userId,
+    });
+    return { churchInvitationId, invitee, reviewToken };
+  }
+
+  it('refuses a member → admin raise that waits on an acceptance: the person stays a member', async () => {
+    const { churchInvitationId, invitee, reviewToken } = await setup();
+    const accepted = parkAcceptanceAfterRecording();
+
+    const accepting = acceptChurch({
+      churchInvitationId,
+      invitee,
+      reviewToken,
+    });
+    await parked({ gate: accepted.entered, work: accepting });
+    const raising = invitationManager.mintAdmin({
+      churchId,
+      inviterId: adminId,
+      email: INVITEE_EMAIL,
+    });
+    await untilLockWait();
+    accepted.open();
+
+    await expect(accepting).resolves.toMatchObject({ kind: 'full-success' });
+    await expect(raising).rejects.toBeInstanceOf(
+      InviteeAlreadyChurchMemberError,
+    );
+    expect(await rolesOf(invitee.userId)).toEqual(['member']);
+    expect((await churchRow(churchInvitationId))?.role).toBe('member');
+  });
+
+  it('answers offer-changed to an acceptance that waited on a winning raise, granting nothing', async () => {
+    const { churchInvitationId, invitee, reviewToken } = await setup();
+    const raised = gate();
+    const upgrade =
+      ministryInvitationRepository.upgradeChurchInvitationToAdmin.bind(
+        ministryInvitationRepository,
+      );
+    vi.spyOn(
+      ministryInvitationRepository,
+      'upgradeChurchInvitationToAdmin',
+    ).mockImplementationOnce(async (input) => {
+      await upgrade(input);
+      await raised.park();
+    });
+
+    const raising = invitationManager.mintAdmin({
+      churchId,
+      inviterId: adminId,
+      email: INVITEE_EMAIL,
+    });
+    await parked({ gate: raised.entered, work: raising });
+    const accepting = acceptChurch({
+      churchInvitationId,
+      invitee,
+      reviewToken,
+    });
+    await untilLockWait();
+    raised.open();
+
+    await expect(raising).resolves.toMatchObject({ outcome: 'upgraded' });
+    await expect(accepting).resolves.toEqual({ kind: 'offer-changed' });
+    expect(await rolesOf(invitee.userId)).toEqual([]);
+    expect(await churchRow(churchInvitationId)).toMatchObject({
+      status: 'pending',
+      role: 'admin',
+    });
+  });
+
+  it('lets an acceptance win over a pair that waits: a member, with the new half still pending', async () => {
+    const { churchInvitationId, invitee, reviewToken } = await setup();
+    const accepted = parkAcceptanceAfterRecording();
+
+    const accepting = acceptChurch({
+      churchInvitationId,
+      invitee,
+      reviewToken,
+    });
+    await parked({ gate: accepted.entered, work: accepting });
+    const pairing = invitationManager.mint({
+      churchId,
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: adminId,
+      email: INVITEE_EMAIL,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    });
+    await untilLockWait();
+    accepted.open();
+
+    await expect(accepting).resolves.toMatchObject({ kind: 'full-success' });
+    const half = await pairing;
+    expect(await rolesOf(invitee.userId)).toEqual(['member']);
+    expect(await ministryRow(half.id)).toMatchObject({ status: 'pending' });
+    expect(await membershipMinistries(invitee.userId)).toEqual([]);
+  });
+
+  it('answers offer-changed to an acceptance that waited on a winning pair, granting nothing', async () => {
+    const { churchInvitationId, invitee, reviewToken } = await setup();
+    const created = gate();
+    const create = ministryInvitationRepository.create.bind(
+      ministryInvitationRepository,
+    );
+    vi.spyOn(ministryInvitationRepository, 'create').mockImplementationOnce(
+      async (input) => {
+        const half = await create(input);
+        await created.park();
+        return half;
+      },
+    );
+
+    const pairing = invitationManager.mint({
+      churchId,
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: adminId,
+      email: INVITEE_EMAIL,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    });
+    await parked({ gate: created.entered, work: pairing });
+    const accepting = acceptChurch({
+      churchInvitationId,
+      invitee,
+      reviewToken,
+    });
+    await untilLockWait();
+    created.open();
+
+    const half = await pairing;
+    await expect(accepting).resolves.toEqual({ kind: 'offer-changed' });
+    expect(await rolesOf(invitee.userId)).toEqual([]);
+    expect(await ministryRow(half.id)).toMatchObject({ status: 'pending' });
+    expect((await churchRow(churchInvitationId))?.status).toBe('pending');
+  });
+
+  it('answers a duplicate accept with the same token as already accepted, granting once', async () => {
+    const { churchInvitationId, invitee, reviewToken } = await setup();
+    const accepted = parkAcceptanceAfterRecording();
+
+    const first = acceptChurch({ churchInvitationId, invitee, reviewToken });
+    await parked({ gate: accepted.entered, work: first });
+    const duplicate = acceptChurch({
+      churchInvitationId,
+      invitee,
+      reviewToken,
+    });
+    await untilLockWait();
+    accepted.open();
+
+    await expect(first).resolves.toMatchObject({ kind: 'full-success' });
+    await expect(duplicate).resolves.toEqual({
+      kind: 'already-accepted',
+      churchId,
+    });
+    expect(await rolesOf(invitee.userId)).toEqual(['member']);
+  });
+
+  it('refuses a revoke that waits on an acceptance, keeping the accepted offer', async () => {
+    const { churchInvitationId, invitee, reviewToken } = await setup('admin');
+    const accepted = parkAcceptanceAfterRecording();
+
+    const accepting = acceptChurch({
+      churchInvitationId,
+      invitee,
+      reviewToken,
+    });
+    await parked({ gate: accepted.entered, work: accepting });
+    const revoking = invitationManager.revokeChurch({
+      churchId,
+      churchInvitationId,
+      callerId: adminId,
+    });
+    await untilLockWait();
+    accepted.open();
+
+    await expect(revoking).rejects.toBeInstanceOf(InvitationNotPendingError);
+    await expect(accepting).resolves.toMatchObject({ kind: 'full-success' });
+    expect(await churchRow(churchInvitationId)).toMatchObject({
+      status: 'accepted',
+      canceledAt: null,
+    });
+    expect(await rolesOf(invitee.userId)).toEqual(['admin']);
+  });
+
+  it('answers unavailable to an acceptance that waited on a winning revoke, granting nothing', async () => {
+    const { churchInvitationId, invitee, reviewToken } = await setup('admin');
+    const canceled = gate();
+    const cancelChurch =
+      ministryInvitationRepository.cancelChurchInvitation.bind(
+        ministryInvitationRepository,
+      );
+    vi.spyOn(
+      ministryInvitationRepository,
+      'cancelChurchInvitation',
+    ).mockImplementationOnce(async (input) => {
+      const result = await cancelChurch(input);
+      await canceled.park();
+      return result;
+    });
+
+    const revoking = invitationManager.revokeChurch({
+      churchId,
+      churchInvitationId,
+      callerId: adminId,
+    });
+    await parked({ gate: canceled.entered, work: revoking });
+    const accepting = acceptChurch({
+      churchInvitationId,
+      invitee,
+      reviewToken,
+    });
+    await untilLockWait();
+    canceled.open();
+
+    await expect(revoking).resolves.toBe(true);
+    await expect(accepting).resolves.toEqual({
+      kind: 'terminal-failure',
+      reason: 'INVITATION_UNAVAILABLE',
+    });
+    expect(await churchRow(churchInvitationId)).toMatchObject(
+      manualBy(adminId),
+    );
+    expect(await rolesOf(invitee.userId)).toEqual([]);
   });
 });

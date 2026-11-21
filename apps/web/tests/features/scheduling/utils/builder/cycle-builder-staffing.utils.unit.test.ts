@@ -291,12 +291,12 @@ describe('staffingStatusClasses', () => {
     ).toBe('text-muted-foreground');
     expect(
       staffingStatusClasses({ percent: 100, hasRequirement: true }).bar,
-    ).toBe('bg-green-600');
+    ).toBe('bg-meter-success');
     expect(
       staffingStatusClasses({ percent: 50, hasRequirement: true }).bar,
-    ).toBe('bg-yellow-500');
+    ).toBe('bg-meter-warning');
     expect(
       staffingStatusClasses({ percent: 49, hasRequirement: true }).bar,
-    ).toBe('bg-destructive');
+    ).toBe('bg-meter-danger');
   });
 });

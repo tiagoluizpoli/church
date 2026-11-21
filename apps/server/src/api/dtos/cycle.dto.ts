@@ -1,7 +1,11 @@
 import { calendarDaySchema, fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { CycleDetails } from '../../domain/contracts/application/cycle-manager';
-import type { Cycle, CycleAnchors } from '../../domain/entities/cycle';
+import type {
+  Cycle,
+  CycleAnchors,
+  CycleList,
+} from '../../domain/entities/cycle';
 import {
   eventGraphMapper,
   eventGraphResponseSchema,
@@ -84,6 +88,13 @@ export const sendCycleConflictResponseSchema = z.object({
 
 export const listCyclesQuerySchema = z.object({
   state: z.enum(['draft', 'sent', 'past']).optional(),
+  /** current: Draft and Sent; past: Past. Ignored when `state` is given. */
+  period: z.enum(['current', 'past']).optional(),
+  /** Case-insensitive part of the name. */
+  search: z.string().trim().min(1).max(100).optional(),
+  /** Only Cycles overlapping these days, both included; either may be open. */
+  from: calendarDaySchema.optional(),
+  to: calendarDaySchema.optional(),
 });
 
 export const cycleResponseSchema = z.object({
@@ -98,7 +109,29 @@ export const cycleResponseSchema = z.object({
 });
 
 export const cycleListResponseSchema = z.object({
-  cycles: z.array(cycleResponseSchema),
+  cycles: z.array(
+    cycleResponseSchema.extend({
+      /** Events that are not cancelled. */
+      eventCount: z.number().int(),
+    }),
+  ),
+  /** Past Cycles matching `search`, `from` and `to`, whatever `state` or `period`. */
+  pastMatching: z.number().int(),
+  /** The Sent Cycle running on the Church's today, null when none is. */
+  currentCycleId: z.string().nullable(),
+  /** The month to plan next, from the day after the latest Cycle. */
+  next: z.object({
+    startDate: calendarDaySchema,
+    endDate: calendarDaySchema,
+    /** It starts this month or next: time to create it. */
+    isDue: z.boolean(),
+  }),
+  /** Every Cycle of the Church per state, whatever the filter. */
+  counts: z.object({
+    draft: z.number().int(),
+    sent: z.number().int(),
+    past: z.number().int(),
+  }),
 });
 
 /** Home's anchors: the running Sent Cycle and the earliest upcoming one, either absent. */
@@ -129,8 +162,24 @@ function toCycleResponse(cycle: Cycle): CycleResponse {
 
 export const cycleMapper = {
   toResponse: toCycleResponse,
-  listToResponse(cycles: Cycle[]) {
-    return { cycles: cycles.map(toCycleResponse) };
+  listToResponse({
+    cycles,
+    counts,
+    eventCounts,
+    pastMatching,
+    currentCycleId,
+    next,
+  }: CycleList) {
+    return {
+      cycles: cycles.map((listed) => ({
+        ...toCycleResponse(listed),
+        eventCount: eventCounts[listed.id] ?? 0,
+      })),
+      counts,
+      pastMatching,
+      currentCycleId,
+      next,
+    };
   },
   anchorsToResponse({ current, next }: CycleAnchors) {
     return {

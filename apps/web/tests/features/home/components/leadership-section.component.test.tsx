@@ -36,6 +36,7 @@ vi.mock('@/components/ui/sonner', () => ({
 const adminApiMock = vi.hoisted(() => ({
   listSchedules: vi.fn(),
   getCycleAnchors: vi.fn().mockResolvedValue({ current: null, next: null }),
+  getScheduleInsights: vi.fn().mockResolvedValue({ cycles: [], focus: null }),
   listMinistryDirectory: vi
     .fn()
     .mockResolvedValue({ counts: { review: 0, noSectors: 0 } }),
@@ -271,7 +272,12 @@ describe('LeadershipSection', () => {
     const cached = queryClient
       .getQueryCache()
       .findAll({ queryKey: ['home', 'leadership'] });
-    expect(cached).toHaveLength(1);
+    // Schedules and insights, both read under the new leader scope only.
+    expect(cached.map(({ queryKey }) => queryKey[4]).sort()).toEqual([
+      'insights',
+      'schedules',
+    ]);
+    expect(new Set(cached.map(({ queryKey }) => queryKey.at(-1))).size).toBe(1);
   });
 
   it('distinguishes loading and error from empty, and retries', async () => {

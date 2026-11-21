@@ -75,7 +75,7 @@ const createCycle = (
       );
     }
   /**
- * List the Church Cycles, optionally filtered by state.
+ * List the Church Cycles newest start first, filtered by state or period, name and an overlapping day range, with the per-state counts of all of them.
  * @summary List Cycles
  */
 const listCycles = (

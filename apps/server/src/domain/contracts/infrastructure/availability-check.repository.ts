@@ -83,6 +83,8 @@ export interface ListCheckShiftsInput {
 /** A shift inside the check's scope (its membership ministry × its cycle). */
 export interface CheckShiftRow {
   published: boolean;
+  /** On the published schedule for this Shift; always false before publishing. */
+  assigned: boolean;
   shiftId: ShiftId;
   eventId: EventId;
   eventTitle: string;

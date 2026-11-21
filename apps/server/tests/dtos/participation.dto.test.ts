@@ -194,6 +194,7 @@ describe('participationMapper', () => {
       const populatedEventTimeBlockView: ParticipationEventTimeBlockView = {
         eventTimeBlock,
         included: true,
+        answerCoverage: { available: 3, needed: 4 },
         shifts: [
           {
             shift,
@@ -217,6 +218,7 @@ describe('participationMapper', () => {
       const emptyEventTimeBlockView: ParticipationEventTimeBlockView = {
         eventTimeBlock: buildEventTimeBlock(),
         included: false,
+        answerCoverage: { available: 0, needed: null },
         shifts: [],
         requirements: [],
         shiftsChangedAfterAsk: false,
@@ -231,6 +233,8 @@ describe('participationMapper', () => {
 
       const view: CycleParticipationView = {
         events: [eventView],
+        dayMarkers: [],
+        totals: { blocks: 0, needsAttention: 0 },
       };
 
       const response = participationMapper.cycleViewToResponse(view);
@@ -283,10 +287,16 @@ describe('participationMapper', () => {
     });
 
     it('maps an empty events list', () => {
-      const view: CycleParticipationView = { events: [] };
+      const view: CycleParticipationView = {
+        events: [],
+        dayMarkers: [],
+        totals: { blocks: 0, needsAttention: 0 },
+      };
 
       expect(participationMapper.cycleViewToResponse(view)).toEqual({
         events: [],
+        dayMarkers: [],
+        totals: { blocks: 0, needsAttention: 0 },
       });
     });
   });

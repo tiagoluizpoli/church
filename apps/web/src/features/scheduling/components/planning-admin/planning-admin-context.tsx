@@ -5,6 +5,10 @@ import {
   type UsePlanningAdminResult,
   usePlanningAdmin,
 } from './use-planning-admin';
+import type {
+  ListCycles200Counts,
+  ListCycles200Next,
+} from '@/infrastructure/api/churchAPI.schemas';
 
 const PlanningAdminContext = createContext<UsePlanningAdminResult | undefined>(
   undefined,
@@ -64,29 +68,6 @@ export function usePlanningStep(): PlanningStep {
   }
 
   return 'template-and-review';
-}
-
-export type CycleListCardModel = Pick<
-  UsePlanningAdminResult,
-  | 'cycles'
-  | 'cyclesLoading'
-  | 'cyclesError'
-  | 'refetchCycles'
-  | 'selectedCycleId'
-  | 'handleSelectCycle'
->;
-
-export function useCycleListCard(): CycleListCardModel {
-  const context = usePlanningAdminContext();
-
-  return {
-    cycles: context.cycles,
-    cyclesLoading: context.cyclesLoading,
-    cyclesError: context.cyclesError,
-    refetchCycles: context.refetchCycles,
-    selectedCycleId: context.selectedCycleId,
-    handleSelectCycle: context.handleSelectCycle,
-  };
 }
 
 export interface CycleSelectionModel {
@@ -158,25 +139,18 @@ export function useCycleHeader(): CycleHeaderModel {
   };
 }
 
-export interface CycleListStatsModel {
-  totalCount: number;
-  draftCount: number;
-  sentCount: number;
+/**
+ * The server's per-state counts for the plain "Cycles" list view's stat
+ * chips, null until they load — distinct from `useCycleHeader`, which only
+ * ever reflects the single selected cycle.
+ */
+export function useCycleListStats(): ListCycles200Counts | null {
+  return usePlanningAdminContext().cycleCounts;
 }
 
-/**
- * Counts for the plain "Cycles" list view's own stat chips —
- * distinct from `useCycleHeader`, which only ever reflects the
- * single selected cycle.
- */
-export function useCycleListStats(): CycleListStatsModel {
-  const { cycles } = usePlanningAdminContext();
-
-  return {
-    totalCount: cycles.length,
-    draftCount: cycles.filter((cycle) => cycle.state === 'draft').length,
-    sentCount: cycles.filter((cycle) => cycle.state === 'sent').length,
-  };
+/** The month the list offers to create next, null until the list loads. */
+export function useCycleListNext(): ListCycles200Next | null {
+  return usePlanningAdminContext().cycleNext;
 }
 
 export interface PlanningTemplateLibraryStatsModel {

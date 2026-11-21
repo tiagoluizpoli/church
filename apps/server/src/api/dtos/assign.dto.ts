@@ -125,6 +125,8 @@ export const applyAssignmentProposalBodySchema = z
     applicationKey: z.uuid(),
     reviewToken: z.string().min(1),
     additions: z.array(reviewedPairSchema).min(1),
+    /** Reviewed pairs to leave out; never added or edited pairs. */
+    excludedAdditions: z.array(reviewedPairSchema).default([]),
   })
   .strict();
 

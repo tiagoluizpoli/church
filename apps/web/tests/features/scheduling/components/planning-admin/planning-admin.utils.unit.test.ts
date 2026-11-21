@@ -17,9 +17,8 @@ import {
   describeTemplateTimeBlockSpan,
   eventSpanLabel,
   eventStatusBadgeVariant,
-  groupCyclesForList,
   groupRowsByWeek,
-  stateBadgeVariant,
+  stateBadgeProps,
   suggestCycleName,
   templateBlockErrors,
   toTemplateRequestBlocks,
@@ -169,31 +168,6 @@ describe('suggestCycleName', () => {
 
   it('suggests nothing until a start date is chosen', () => {
     expect(suggestCycleName({ startDate: '', locale: 'en' })).toBe('');
-  });
-});
-
-function makeListedCycle(
-  id: string,
-  startDate: string,
-  state: 'draft' | 'sent' | 'past' = 'draft',
-) {
-  return makeCycle({ id, startDate, endDate: startDate, state });
-}
-
-describe('groupCyclesForList', () => {
-  it('splits Past from current and orders each newest start first, ties by end then id', () => {
-    const groups = groupCyclesForList({
-      cycles: [
-        makeListedCycle('a', '2026-09-01', 'past'),
-        makeListedCycle('b', '2026-10-01'),
-        makeListedCycle('c', '2026-11-01', 'sent'),
-        makeListedCycle('d', '2026-08-01', 'past'),
-        { ...makeListedCycle('e', '2026-10-01'), endDate: '2026-10-20' },
-      ],
-    });
-
-    expect(groups.current.map((cycle) => cycle.id)).toEqual(['c', 'e', 'b']);
-    expect(groups.past.map((cycle) => cycle.id)).toEqual(['a', 'd']);
   });
 });
 
@@ -440,11 +414,17 @@ describe('groupRowsByWeek', () => {
   });
 });
 
-describe('stateBadgeVariant', () => {
-  it('maps each cycle state to its badge variant', () => {
-    expect(stateBadgeVariant({ state: 'sent' })).toBe('default');
-    expect(stateBadgeVariant({ state: 'past' })).toBe('outline');
-    expect(stateBadgeVariant({ state: 'draft' })).toBe('secondary');
+describe('stateBadgeProps', () => {
+  it('marks a Draft with the needs-attention amber and keeps settled states neutral', () => {
+    expect(stateBadgeProps({ state: 'draft' })).toEqual({
+      variant: 'outline',
+      className:
+        'border-amber-600/40 bg-amber-500/8 text-amber-700 dark:text-amber-300',
+    });
+    expect(stateBadgeProps({ state: 'sent' })).toEqual({
+      variant: 'secondary',
+    });
+    expect(stateBadgeProps({ state: 'past' })).toEqual({ variant: 'outline' });
   });
 });
 

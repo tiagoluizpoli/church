@@ -1,11 +1,12 @@
 import type { ComponentType } from 'react';
 import { ChurchSection } from '@/features/home/components/church-section';
+import {
+  CoverageWidget,
+  TrendWidget,
+} from '@/features/home/components/home-insights';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { LeadershipSection } from '@/features/home/components/leadership-section';
-import {
-  ServingActionsWidget,
-  UpcomingAssignmentsWidget,
-} from '@/features/home/components/my-serving-section';
+import { ServingActionsWidget } from '@/features/home/components/my-serving-section';
 import { NextCycleCard } from '@/features/home/components/next-cycle-card';
 import {
   AdminSummary,
@@ -38,7 +39,8 @@ export const widgetSpanClass: Record<WidgetSpan, string> = {
 interface WidgetBase {
   id: string;
   capacity: (caps: HomeCapacities) => boolean;
-  span: WidgetSpan;
+  /** A function when the widget shares its row only with a widget the same viewer may lack. */
+  span: WidgetSpan | ((caps: HomeCapacities) => WidgetSpan);
   Component: ComponentType<WidgetProps>;
 }
 
@@ -67,17 +69,31 @@ export const homeWidgets: WidgetDefinition[] = [
     cacheSection: 'serving',
   },
   {
-    id: 'upcoming-assignments',
-    capacity: (caps) => caps.serving,
-    span: 12,
-    Component: UpcomingAssignmentsWidget,
-    cacheSection: 'serving',
-  },
-  {
     id: 'schedule-summary',
     capacity: (caps) => caps.leadership,
-    span: 12,
+    span: (caps) => (caps.church ? 7 : 12),
     Component: ScheduleSummary,
+    cacheSection: 'leadership',
+  },
+  {
+    id: 'cycles',
+    capacity: (caps) => caps.church,
+    span: (caps) => (caps.leadership ? 5 : 12),
+    Component: NextCycleCard,
+    cacheSection: 'church',
+  },
+  {
+    id: 'coverage',
+    capacity: (caps) => caps.leadership,
+    span: 7,
+    Component: CoverageWidget,
+    cacheSection: 'leadership',
+  },
+  {
+    id: 'trend',
+    capacity: (caps) => caps.leadership,
+    span: 5,
+    Component: TrendWidget,
     cacheSection: 'leadership',
   },
   {
@@ -85,13 +101,6 @@ export const homeWidgets: WidgetDefinition[] = [
     capacity: (caps) => caps.church,
     span: 12,
     Component: AdminSummary,
-    cacheSection: 'church',
-  },
-  {
-    id: 'cycles',
-    capacity: (caps) => caps.church,
-    span: 12,
-    Component: NextCycleCard,
     cacheSection: 'church',
   },
   {

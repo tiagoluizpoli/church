@@ -37,6 +37,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -58,7 +59,10 @@ const USER_HEADER = 'x-test-user';
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const authorityManager = new DbAuthorityManager({
     actorRepository: new DrizzleAuthorityActorResolver({ db }),
     scopeRepository: {} as never,
@@ -71,7 +75,9 @@ beforeAll(async () => {
     peopleListManager: new DbPeopleListManager({
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
       authorityManager,
-      config: { people: { pageSize: 20, maxPageSize: 50 } },
+      config: {
+        people: { pageSize: 20, maxPageSize: 50, answersMaxPageSize: 200 },
+      },
     }),
     churchAccessManager: new DbChurchAccessManager({
       authorityManager,
@@ -81,7 +87,9 @@ beforeAll(async () => {
     ministryMembershipManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: new AuthorityGuard({ manager: authorityManager }),
-    config: { people: { pageSize: 20, maxPageSize: 50 } },
+    config: {
+      people: { pageSize: 20, maxPageSize: 50, answersMaxPageSize: 200 },
+    },
   });
   await app.register(
     async (instance) => {

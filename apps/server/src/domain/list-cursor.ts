@@ -1,5 +1,10 @@
 /** The keyset-paged lists; the tag keeps one list's cursor from reaching another. */
-export type CursorList = 'ministries' | 'people' | 'invitations' | 'schedules';
+export type CursorList =
+  | 'ministries'
+  | 'people'
+  | 'invitations'
+  | 'schedules'
+  | 'answers';
 
 const BASE64URL = /^[\w-]+$/;
 

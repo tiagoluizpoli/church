@@ -1,4 +1,8 @@
+import { trace } from '@opentelemetry/api';
 import type { IOutboxDrainer } from '../domain/contracts/application/outbox-drainer';
+import { SERVICE_NAME } from '../infrastructure/services/otel-tracing';
+
+const tracer = trace.getTracer(SERVICE_NAME);
 
 export interface OutboxPollerOptions {
   drainer: IOutboxDrainer;
@@ -21,7 +25,10 @@ export class OutboxPoller {
 
   start(): void {
     this.timer = setInterval(() => {
-      void this.tick();
+      // One span per tick, so the drain's SQL nests under it in the trace.
+      void tracer.startActiveSpan('outbox.tick', (span) =>
+        this.tick().finally(() => span.end()),
+      );
     }, this.options.intervalMs);
   }
 

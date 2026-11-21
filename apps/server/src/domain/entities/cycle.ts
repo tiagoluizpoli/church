@@ -126,6 +126,35 @@ export class Cycle extends Entity<CycleProps, CycleId> {
   }
 }
 
+/** The list's period: Draft and Sent Cycles, or Past ones. */
+export type CyclePeriod = 'current' | 'past';
+
+/** How many of the Church's Cycles sit in each state, whatever the list filter. */
+export type CycleStateCounts = Record<CycleState, number>;
+
+export interface CycleList {
+  cycles: Cycle[];
+  counts: CycleStateCounts;
+  /** Each listed Cycle's Events that are not cancelled, by Cycle id. */
+  eventCounts: Record<string, number>;
+  /** Past Cycles matching the name and day filters, whatever the state filter. */
+  pastMatching: number;
+  /** The Sent Cycle running on the Church's today, if any. */
+  currentCycleId: string | null;
+  next: NextCycleSuggestion;
+}
+
+/**
+ * The month the Church plans next: from the day after its latest Cycle (never
+ * before this month) to the end of that month. Due when it starts this month
+ * or next, so the admin is prompted to create it.
+ */
+export interface NextCycleSuggestion {
+  startDate: CalendarDay;
+  endDate: CalendarDay;
+  isDue: boolean;
+}
+
 /** Home's anchors: the running Sent Cycle and the earliest not-yet-started one. */
 export interface CycleAnchors {
   current: Cycle | null;

@@ -7,6 +7,8 @@
 @source "./**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
+/* The signed-out frame splits only on wide landscape screens; portrait tablets stack. */
+@custom-variant auth-split (@media (width >= 64rem) and (orientation: landscape));
 
 :root {
   --background: oklch(0.978 0.004 236);
@@ -20,14 +22,21 @@
   --secondary: oklch(0.962 0.01 240);
   --secondary-foreground: oklch(0.336 0.028 252);
   --muted: oklch(0.955 0.008 236);
-  --muted-foreground: oklch(0.53 0.024 250);
+  --muted-foreground: oklch(0.48 0.024 250);
   --accent: oklch(0.948 0.018 247);
   --accent-foreground: oklch(0.324 0.037 252);
   /* Lightness lowered from 0.614: at 0.614 this red measures 4.05:1 on the
      card surface, so every use as small text failed WCAG AA (4.5:1). 0.58
-     measures 4.66:1. Hue and chroma are unchanged, and destructive-as-a-
-     background only gains contrast against its white foreground. */
-  --destructive: oklch(0.58 0.207 26);
+     still measured only 4.46:1 on the panel/page background, so 0.56: 5.1:1
+     on card, 4.85:1 on background. Hue and chroma are unchanged, and
+     destructive-as-a-background only gains contrast against its white
+     foreground. */
+  --destructive: oklch(0.56 0.207 26);
+  /* Staffing Meter fills: at least 3:1 against the track (muted) and the
+   * surface (card/popover); the text forms stay green-700 / yellow-700. */
+  --meter-success: oklch(0.527 0.154 150.069);
+  --meter-warning: oklch(0.554 0.135 66.442);
+  --meter-danger: var(--destructive);
   --border: oklch(0.885 0.012 242);
   --input: oklch(0.902 0.012 242);
   --ring: oklch(0.532 0.082 254);
@@ -47,7 +56,16 @@
   --sidebar-ring: oklch(0.532 0.082 254);
 
   /* Layout / spacing tokens */
-  --workspace-pad-x: 0.75rem;
+  /* Top bar height: the shell's headers and anything sized against the visible workspace. */
+  --app-topbar-h: 4rem;
+  /* The scrolling workspace's inner height, for page regions that stick inside it. */
+  --workspace-visible-h: calc(
+    100dvh -
+    var(--app-topbar-h) -
+    2 *
+    var(--workspace-pad-y)
+  );
+  --workspace-pad-x: 1rem;
   --workspace-pad-y: 1rem;
   --workspace-gap: 1rem;
   --workspace-panel-pad: 1rem;
@@ -70,6 +88,9 @@
   --accent: oklch(0.332 0.028 246);
   --accent-foreground: oklch(0.948 0.008 236);
   --destructive: oklch(0.682 0.183 24);
+  --meter-success: oklch(0.723 0.219 149.579);
+  --meter-warning: oklch(0.852 0.199 91.936);
+  --meter-danger: var(--destructive);
   --border: oklch(0.336 0.018 248);
   --input: oklch(0.372 0.018 248);
   --ring: oklch(0.646 0.072 238);
@@ -125,6 +146,9 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-meter-success: var(--meter-success);
+  --color-meter-warning: var(--meter-warning);
+  --color-meter-danger: var(--meter-danger);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -159,18 +183,15 @@
 
   body {
     @apply font-sans bg-background text-foreground;
-    background:
-      radial-gradient(
-        circle at top left,
-        color-mix(in oklch, var(--color-accent) 56%, white) 0,
-        transparent 20rem
-      ),
-      linear-gradient(
+    /* Fixed to the viewport: as the canvas background it would otherwise tile
+       below a body shorter than the window. */
+    background: linear-gradient(
         180deg,
         var(--color-background) 0%,
         color-mix(in oklch, var(--color-background) 92%, var(--color-accent))
           100%
-      );
+      )
+      fixed no-repeat var(--color-background);
   }
 
   ::selection {
@@ -271,6 +292,11 @@
     border-radius: var(--radius-md);
   }
 
+  /* A 16px box at the control radius reads as a radio; checks stay square. */
+  .radius-check {
+    border-radius: calc(var(--radius) * 0.4);
+  }
+
   .radius-pill {
     border-radius: 999px;
   }
@@ -309,6 +335,7 @@
 
   .workspace-section-description {
     max-width: 72ch;
+    text-wrap: pretty;
     color: var(--color-muted-foreground);
     font-size: 0.875rem;
     line-height: 1.6;
@@ -347,4 +374,59 @@
       var(--color-background)
     );
   }
+}
+
+/* Sanctuary light scene */
+/* Without WebGL2: three warm arched windows on plaster, one soft beam to a pool of light. */
+.sanctuary-light-fallback {
+  background:
+    radial-gradient(
+      ellipse 9% 16% at 44% 29%,
+      oklch(0.95 0.05 85 / 0.75),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 11% 20% at 60% 26%,
+      oklch(0.96 0.05 85 / 0.85),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 9% 16% at 77% 29%,
+      oklch(0.95 0.05 85 / 0.75),
+      transparent 70%
+    ),
+    linear-gradient(
+      200deg,
+      transparent 30%,
+      oklch(0.88 0.07 80 / 0.18) 42%,
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 12% 6% at 55% 71%,
+      oklch(0.9 0.07 80 / 0.4),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 80% 70% at 55% 40%,
+      oklch(0.36 0.025 70),
+      oklch(0.16 0.015 60)
+    );
+}
+
+.sanctuary-light-canvas {
+  opacity: 0;
+  transition: opacity 700ms ease-out;
+}
+
+.sanctuary-light-canvas[data-ready="true"] {
+  opacity: 1;
+}
+
+/* `@theme` resolves --color-* at :root, so a nested `.dark` needs them restated. */
+.auth-panel.dark {
+  --color-foreground: var(--foreground);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { isInstant, parseInstant } from '@church/time';
+import { isInstant, parseCalendarDay, parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { volunteerMapper } from '@/api/dtos/volunteer.dto';
 import { Assignment } from '@/domain/entities/assignment';
@@ -15,6 +15,9 @@ describe('volunteerMapper', () => {
         notificationPreview: [],
         defaultMinistryId: 'm1',
         ministryOptions: [],
+        servingHistory: [
+          { month: parseCalendarDay({ value: '2026-05-01' }), served: 2 },
+        ],
       };
 
       const response = volunteerMapper.dashboardToResponse(dashboard);
@@ -29,6 +32,7 @@ describe('volunteerMapper', () => {
         unreadNotificationCount: 0,
         notificationPreview: [],
         ministryOptions: [],
+        servingHistory: [],
       };
 
       const response = volunteerMapper.dashboardToResponse(dashboard);
@@ -86,6 +90,7 @@ describe('volunteerMapper', () => {
           }),
         ],
         ministryOptions: [],
+        servingHistory: [],
       };
 
       const response = volunteerMapper.dashboardToResponse(dashboard);
@@ -219,15 +224,36 @@ describe('volunteerMapper', () => {
       expect(response.checks[0]?.confirmedAt).toBeUndefined();
     });
 
+    it('counts the pending and confirmed checks for the header', () => {
+      const summary = {
+        answerBy: null,
+        id: 'chk',
+        cycleId: 'pc1',
+        cycleName: 'Spring 2026',
+        ministryId: 'm1',
+        ministryName: 'Worship',
+        totalShiftCount: 3,
+        unavailableShiftCount: 0,
+      };
+      const response = volunteerMapper.availabilityCheckListToResponse([
+        { ...summary, id: 'a', state: 'pending' },
+        { ...summary, id: 'b', state: 'pending' },
+        { ...summary, id: 'c', state: 'confirmed' },
+      ]);
+
+      expect(response.counts).toEqual({ total: 3, pending: 2, confirmed: 1 });
+    });
+
     it('maps an empty list of summaries', () => {
       const response = volunteerMapper.availabilityCheckListToResponse([]);
 
       expect(response.checks).toEqual([]);
+      expect(response.counts).toEqual({ total: 0, pending: 0, confirmed: 0 });
     });
   });
 
   describe('availabilityCheckDetailToResponse', () => {
-    it('maps a detail with confirmedAt present and shifts non-empty (label present and absent)', () => {
+    it('maps a detail with confirmedAt present and day shifts non-empty (label present and absent)', () => {
       const confirmedAt = parseInstant({ value: '2026-01-10T00:00:00.000Z' });
       const startTime = parseInstant({ value: '2026-01-11T09:00:00.000Z' });
       const endTime = parseInstant({ value: '2026-01-11T11:00:00.000Z' });
@@ -242,37 +268,59 @@ describe('volunteerMapper', () => {
         ministryName: 'Worship',
         state: 'confirmed',
         confirmedAt,
-        shifts: [
+        days: [
           {
-            shiftId: 'sh1',
-            eventId: 'e1',
-            eventTitle: 'Sunday Service',
-            startTime,
-            endTime,
-            label: 'Morning',
-            available: true,
-            published: false,
-          },
-          {
-            shiftId: 'sh2',
-            eventId: 'e2',
-            eventTitle: 'Evening Service',
-            startTime,
-            endTime,
-            available: false,
-            published: false,
+            date: parseCalendarDay({ value: '2026-01-11' }),
+            state: 'open',
+            shifts: [
+              {
+                shiftId: 'sh1',
+                eventId: 'e1',
+                eventTitle: 'Sunday Service',
+                startTime,
+                endTime,
+                label: 'Morning',
+                available: true,
+                published: false,
+                assigned: false,
+                answerable: true,
+              },
+              {
+                shiftId: 'sh2',
+                eventId: 'e2',
+                eventTitle: 'Evening Service',
+                startTime,
+                endTime,
+                available: false,
+                published: false,
+                assigned: false,
+                answerable: true,
+              },
+            ],
           },
         ],
+        counts: { openDays: 1, pastDays: 0, publishedDays: 0, openShifts: 2 },
       });
 
       expect(response.confirmedAt).toBe(confirmedAt);
-      expect(response.shifts).toHaveLength(2);
-      expect(response.shifts[0]?.label).toBe('Morning');
-      expect(response.shifts[1]?.label).toBeUndefined();
-      expect(response.shifts[0]?.startTime).toBe(startTime);
+      expect(response.days).toHaveLength(1);
+      expect(response.days[0]?.date).toBe('2026-01-11');
+      expect(response.days[0]?.state).toBe('open');
+      const shifts = response.days[0]?.shifts;
+      expect(shifts).toHaveLength(2);
+      expect(shifts?.[0]?.label).toBe('Morning');
+      expect(shifts?.[1]?.label).toBeUndefined();
+      expect(shifts?.[0]?.startTime).toBe(startTime);
+      expect(shifts?.[0]?.answerable).toBe(true);
+      expect(response.counts).toEqual({
+        openDays: 1,
+        pastDays: 0,
+        publishedDays: 0,
+        openShifts: 2,
+      });
     });
 
-    it('maps a detail with confirmedAt absent and shifts empty', () => {
+    it('maps a detail with confirmedAt absent and days empty', () => {
       const response = volunteerMapper.availabilityCheckDetailToResponse({
         answerBy: null,
         readOnly: false,
@@ -282,11 +330,12 @@ describe('volunteerMapper', () => {
         ministryId: 'm1',
         ministryName: 'Worship',
         state: 'pending',
-        shifts: [],
+        days: [],
+        counts: { openDays: 0, pastDays: 0, publishedDays: 0, openShifts: 0 },
       });
 
       expect(response.confirmedAt).toBeUndefined();
-      expect(response.shifts).toEqual([]);
+      expect(response.days).toEqual([]);
     });
   });
 });

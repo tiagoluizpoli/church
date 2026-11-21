@@ -13,6 +13,7 @@ import type {
   GetMinistrySchedule200,
   GetMinistryScheduleParams,
   GetPublishedVolunteerSchedule200,
+  GetPublishedVolunteerScheduleParams,
   GetVolunteerDashboard200,
   ListAvailabilityChecks200,
   RaiseSwapRequest201,
@@ -133,14 +134,15 @@ const cancelOwnAssignment = (
       );
     }
   /**
- * List the current Volunteer's upcoming and in-progress Assignments from published MinistryParticipations, with the published Schedules of every Ministry they serve in.
+ * List the current Volunteer's upcoming and in-progress Assignments from published MinistryParticipations, with the published Schedules of every Ministry they serve in. Search (trimmed, case-insensitive literal Event-title substring), `month` (`yyyy-MM` of the Shift start in the Church Timezone) and `ministryId` narrow `assignments` only: `counts`, `next` and `options` cover the whole list.
  * @summary Get the caller's published schedule
  */
 const getPublishedVolunteerSchedule = (
-
+    params?: GetPublishedVolunteerScheduleParams,
  ) => {
       return apiClient<GetPublishedVolunteerSchedule200>(
-      {url: `/api/v1/volunteer/schedule`, method: 'GET'
+      {url: `/api/v1/volunteer/schedule`, method: 'GET',
+        params
     },
       );
     }

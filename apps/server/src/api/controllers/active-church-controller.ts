@@ -25,6 +25,11 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
+// The request id doubles as the reference code a Person reads out to support.
+const internalErrorResponseSchema = errorResponseSchema.extend({
+  requestId: z.string(),
+});
+
 interface BuildStatusResponseInput {
   resolution: ActiveChurchResolution;
 }
@@ -163,7 +168,7 @@ export class ActiveChurchController implements FastifyController {
             200: activeChurchStatusResponseSchema,
             401: errorResponseSchema,
             403: errorResponseSchema,
-            500: errorResponseSchema,
+            500: internalErrorResponseSchema,
           },
         },
       },

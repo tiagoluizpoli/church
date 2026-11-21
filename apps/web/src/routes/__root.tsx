@@ -11,6 +11,7 @@ import { ReconnectingBanner } from '@/components/reconnecting-banner';
 import { RouteProgress } from '@/components/route-progress';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { ShellErrorFallback } from '@/shared/components/route-fallbacks';
 
 import '../index.css';
@@ -43,6 +44,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 });
 
 function RootComponent() {
+  // Dev tools float over a phone's pinned action bars (Save, Swap): wide screens only.
+  const devtools = useMediaQuery('(min-width: 768px)');
   return (
     <>
       <HeadContent />
@@ -57,8 +60,12 @@ function RootComponent() {
         <ReconnectingBanner />
         <Toaster richColors />
       </ThemeProvider>
-      <TanStackRouterDevtools position="bottom-left" />
-      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+      {devtools ? (
+        <>
+          <TanStackRouterDevtools position="bottom-left" />
+          <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+        </>
+      ) : null}
     </>
   );
 }

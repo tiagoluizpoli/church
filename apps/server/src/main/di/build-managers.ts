@@ -116,6 +116,8 @@ export function buildManagers({
     redemptionIdentityGateway,
     emailSender,
     verificationCodeInspector,
+    errorReporter,
+    tracing,
   },
   auth: { churchMembershipRepository, authorityManager, activeChurchResolver },
 }: BuildManagersInput): Managers {
@@ -257,6 +259,8 @@ export function buildManagers({
       unitOfWork,
       config,
       webBaseUrl: env.CORS_ORIGIN,
+      errorReporter,
+      tracing,
     });
   const staffingSeeder = new UsualSetupStaffingSeeder({
     participationRepository: ministryParticipationRepository,

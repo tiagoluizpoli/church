@@ -1,12 +1,14 @@
 import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
+import { OtelTracing } from '../../infrastructure/services/otel-tracing';
+import { SentryErrorReporter } from '../../infrastructure/services/sentry-error-reporter';
 import type { CompositionRootDependencies } from './dependencies';
 import { auth, createServerAuth, useResetMailSender } from './server-auth';
 import { serverEmailSender } from './server-email-sender';
 
 export type Services = Pick<
   CompositionRootDependencies,
-  'redemptionIdentityGateway' | 'emailSender'
+  'redemptionIdentityGateway' | 'emailSender' | 'errorReporter' | 'tracing'
 > &
   // Absent unless the sender is capture.
   Partial<Pick<CompositionRootDependencies, 'verificationCodeInspector'>>;
@@ -28,9 +30,14 @@ export function buildServices({ overrides }: BuildServicesInput): Services {
     overrides.verificationCodeInspector ??
     (emailSender instanceof CaptureEmailSender ? emailSender : undefined);
 
+  const errorReporter = overrides.errorReporter ?? new SentryErrorReporter();
+  const tracing = overrides.tracing ?? new OtelTracing();
+
   return {
     redemptionIdentityGateway,
     emailSender,
     verificationCodeInspector,
+    errorReporter,
+    tracing,
   };
 }

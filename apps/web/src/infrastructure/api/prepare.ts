@@ -14,6 +14,7 @@ import type {
   GetCycleParticipation200,
   GetCycleParticipationParams,
   GetSchedule200,
+  GetScheduleInsights200,
   ListScheduleSummaries200,
   ListSchedules200,
   ListSchedulesParams,
@@ -45,6 +46,18 @@ const listSchedules = (
       );
     }
   /**
+ * Totals over the caller's Ministries (every active one for a ChurchAdmin, the led ones for a leader): for each of the latest six Sent or Past Cycles, oldest first, the requirement headcount (`needed`), the seats held by a draft, pending or confirmed assignment (`filled`, capped per requirement), assignments by response, and availability checks asked and answered; plus, for the Cycle running on the Church's today (else the latest), the same staffing totals per serving Ministry, least covered first, then by name. Cancelled Events, inactive blocks and archived Ministries, Sectors and Roles are left out.
+ * @summary Staffing trends of the caller's Schedules
+ */
+const getScheduleInsights = (
+
+ ) => {
+      return apiClient<GetScheduleInsights200>(
+      {url: `/api/v1/prepare/insights`, method: 'GET'
+    },
+      );
+    }
+  /**
  * Read one Ministry's Schedule of one Sent or Past Cycle, shaped as a `listSchedules` row. 404 when the Ministry is archived or outside the caller's led Ministries (a ChurchAdmin reaches every active one), the Cycle is a Draft, or either is unknown.
  * @summary Get one of the caller's Schedules
  */
@@ -58,7 +71,7 @@ const getSchedule = (
       );
     }
   /**
- * Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle.
+ * Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle. `day` (church-local date), `q` (block label or Event title), a time window (`timeMode` starts, ends or within, with `timeFrom`/`timeTo` as church-local HH:mm; either bound may be omitted) and `needsAttention` (served blocks with a Shift lacking a headcount) filter the blocks; Events left with none are dropped. Blocks come ordered by start then id. `dayMarkers` and `totals` always describe the unfiltered Cycle.
  * @summary Get a Ministry's prepare view of a cycle
  */
 const getCycleParticipation = (
@@ -159,7 +172,7 @@ const remindSchedule = (
       );
     }
   /**
- * List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, Deadline and Remind cooldown.
+ * List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, per-status `counts`, Deadline and Remind cooldown. `status` (pending, available, unavailable) and `q` (name search) filter the list; `limit` pages it by `cursor` (omitted, every match comes back) ordered by name then id, and `nextCursor` is null on the last page. `asked`, `confirmed` and `counts` ignore the filters.
  * @summary Get the Answers to a Schedule's Ask
  */
 const getCycleAvailabilityStatus = (
@@ -172,8 +185,9 @@ const getCycleAvailabilityStatus = (
     },
       );
     }
-  return {listSchedules,getSchedule,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,setAvailabilityDeadline,remindSchedule,getCycleAvailabilityStatus}};
+  return {listSchedules,getScheduleInsights,getSchedule,getCycleParticipation,getAskPreview,listScheduleSummaries,saveEventTimeBlockPreparation,askScheduleAvailability,setAvailabilityDeadline,remindSchedule,getCycleAvailabilityStatus}};
 export type ListSchedulesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['listSchedules']>>>
+export type GetScheduleInsightsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getScheduleInsights']>>>
 export type GetScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getSchedule']>>>
 export type GetCycleParticipationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getCycleParticipation']>>>
 export type GetAskPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPrepare>['getAskPreview']>>>

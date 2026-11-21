@@ -12,6 +12,7 @@ import type {
 import type { Assignment } from '../../entities/assignment';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
 import type { Notification } from '../../entities/notification';
+import type { CheckDayState } from '../../services/availability-check-days';
 
 export interface DashboardAssignmentItem {
   assignmentId: string;
@@ -51,6 +52,13 @@ export interface DashboardNextAssignment extends DashboardAssignmentItem {
   ministryName: string;
 }
 
+/** Published, non-declined Assignments whose Shift starts in one Church month. */
+export interface DashboardServingMonth {
+  /** First day of the month. */
+  month: CalendarDay;
+  served: number;
+}
+
 export interface VolunteerDashboard {
   nextAssignment: DashboardNextAssignment | null;
   upcomingAssignmentGroups: DashboardAssignmentGroup[];
@@ -59,6 +67,8 @@ export interface VolunteerDashboard {
   notificationPreview: Notification[];
   defaultMinistryId?: string;
   ministryOptions: DashboardMinistryOption[];
+  /** The latest months up to the Church's current one, oldest first. */
+  servingHistory: DashboardServingMonth[];
 }
 
 export interface VolunteerScheduleAssignment {
@@ -86,9 +96,30 @@ export interface VolunteerPublishedScheduleSummary {
   cycleName: string;
 }
 
+/** Counts over the listed Assignments, for the page header. */
+export interface VolunteerScheduleCounts {
+  upcoming: number;
+  /** Starting in the current calendar month in the Church Timezone. */
+  thisMonth: number;
+  openSwaps: number;
+}
+
+/** What the filters can choose from, over the whole unfiltered list. */
+export interface VolunteerScheduleFilterOptions {
+  /** `yyyy-MM` months, in the Church Timezone, with at least one Assignment; ascending. */
+  months: string[];
+  /** The Ministries the Volunteer serves in, by name. */
+  ministries: { id: string; name: string }[];
+}
+
 export interface VolunteerPublishedSchedule {
+  /** Filtered by `filters`; everything else ignores them. */
   assignments: VolunteerScheduleAssignment[];
   schedules: VolunteerPublishedScheduleSummary[];
+  counts: VolunteerScheduleCounts;
+  /** The soonest listed Assignment, whatever the filters. */
+  next: VolunteerScheduleAssignment | null;
+  options: VolunteerScheduleFilterOptions;
 }
 
 export interface MinistryScheduleRow {
@@ -167,12 +198,15 @@ export interface VolunteerAvailabilityCheckSummary {
   ministryName: string;
   state: AvailabilityCheckState;
   confirmedAt?: Instant;
+  /** Answerable Shifts only: unpublished and not yet ended. */
   totalShiftCount: number;
   unavailableShiftCount: number;
 }
 
 export interface VolunteerCheckShift {
   published: boolean;
+  /** On the published schedule for this Shift. */
+  assigned: boolean;
   shiftId: string;
   eventId: string;
   eventTitle: string;
@@ -180,6 +214,22 @@ export interface VolunteerCheckShift {
   endTime: Instant;
   label?: string;
   available: boolean;
+  /** The Volunteer can still change this answer: open check, unpublished and not ended. */
+  answerable: boolean;
+}
+
+export interface VolunteerCheckDay {
+  /** Church-local day the Shifts start on. */
+  date: CalendarDay;
+  state: CheckDayState;
+  shifts: VolunteerCheckShift[];
+}
+
+export interface VolunteerAvailabilityCheckCounts {
+  openDays: number;
+  pastDays: number;
+  publishedDays: number;
+  openShifts: number;
 }
 
 export interface VolunteerAvailabilityCheckDetail {
@@ -192,7 +242,9 @@ export interface VolunteerAvailabilityCheckDetail {
   ministryName: string;
   state: AvailabilityCheckState;
   confirmedAt?: Instant;
-  shifts: VolunteerCheckShift[];
+  /** Ascending date; Shifts inside keep their start-time order. */
+  days: VolunteerCheckDay[];
+  counts: VolunteerAvailabilityCheckCounts;
 }
 
 export interface ListAvailabilityChecksInput {
@@ -235,9 +287,18 @@ export interface GetDashboardInput {
   churchId: ChurchId;
 }
 
+export interface VolunteerScheduleFilters {
+  /** Case-insensitive literal substring of the Event title. */
+  search?: string;
+  /** `yyyy-MM`, matched on the Shift start's Church-Timezone day. */
+  month?: string;
+  ministryId?: string;
+}
+
 export interface GetPublishedScheduleInput {
   volunteerId: VolunteerId;
   churchId: ChurchId;
+  filters?: VolunteerScheduleFilters;
 }
 
 export interface GetMinistryScheduleInput {

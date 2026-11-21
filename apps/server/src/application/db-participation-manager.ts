@@ -3,6 +3,7 @@ import {
   compareCalendarDays,
   compareInstants,
   fromDate,
+  fromDateColumn,
   type Instant,
   now,
   today,
@@ -34,6 +35,7 @@ import type {
   GetCycleParticipationInput,
   GetParticipationCompletionInput,
   GetScheduleInput,
+  GetScheduleInsightsInput,
   IParticipationManager,
   ListEligibleVolunteersInput,
   ListScheduleSummariesInput,
@@ -48,6 +50,7 @@ import type {
   PublishCycleView,
   SavePreparationInput,
   SaveUsualSetupBlockInput,
+  ScheduleInsightsView,
   ScheduleListPage,
   ScheduleListPeriod,
   ScheduleStageCounts,
@@ -113,6 +116,7 @@ import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
 import { PreparationEmptyError } from '../domain/errors/preparation-empty';
 import {
   AssignmentProposalChangedError,
+  AssignmentProposalExclusionInvalidError,
   AssignmentProposalStaleError,
   NoUnsentChangesError,
   ScheduleAlreadyPublishedError,
@@ -135,6 +139,7 @@ import {
   type ProposeAssignmentsInput,
   proposalReviewTokenFor,
   proposeAssignments,
+  type ReviewedAddition,
 } from '../domain/services/assignment-proposal';
 import {
   type ShiftSplitStrategy,
@@ -144,6 +149,7 @@ import {
   spansFitBlock,
   usualSetupNeedsReview,
 } from '../domain/services/usual-setup-planner';
+import { filterCycleParticipation } from './participation-view-filter';
 import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 
 interface TagCoveredSwapRequestsInput {
@@ -260,6 +266,15 @@ interface LoadEventViewInput {
   eventGroup: EventWithEventTimeBlocks;
   participation: MinistryParticipation;
   availabilityRequestedAt: Date | null;
+  /** Volunteers who confirmed their answers to this Cycle's Ask. */
+  confirmedVolunteerIds: Set<string>;
+  tx: TransactionContext;
+}
+
+interface LoadConfirmedVolunteerIdsInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  ministryId: MinistryId;
   tx: TransactionContext;
 }
 
@@ -283,6 +298,7 @@ interface BuildEventViewInput {
   marks: UnavailableShift[];
   assignments: Assignment[];
   availabilityRequestedAt: Date | null;
+  confirmedVolunteerIds: Set<string>;
 }
 
 interface GetParticipationCompletionInternalInput {
@@ -430,6 +446,9 @@ interface ScheduleKeyInput {
 function scheduleKey({ ministryId, cycleId }: ScheduleKeyInput): string {
   return `${ministryId}:${cycleId}`;
 }
+
+/** Cycles the Home trend charts read: about half a year of monthly Cycles. */
+const SCHEDULE_INSIGHTS_CYCLE_LIMIT = 6;
 
 const SCHEDULE_LIST_PERIOD_CYCLE_STATES: Record<
   ScheduleListPeriod,
@@ -587,6 +606,9 @@ export class DbParticipationManager implements IParticipationManager {
       churchId: input.churchId,
       cycleId: input.cycleId,
     });
+    const church = await this.churchRepository.getById({
+      id: input.churchId,
+    });
 
     return this.unitOfWork.run(async (tx) => {
       const eventGroups = await this.eventRepository.listCycleEvents({
@@ -601,6 +623,10 @@ export class DbParticipationManager implements IParticipationManager {
           ministryId: input.ministryId,
           tx,
         });
+      const confirmedVolunteerIds = await this.loadConfirmedVolunteerIds({
+        ...input,
+        tx,
+      });
       const events: ParticipationEventView[] = [];
 
       for (const eventGroup of eventGroups) {
@@ -615,12 +641,25 @@ export class DbParticipationManager implements IParticipationManager {
             eventGroup,
             participation,
             availabilityRequestedAt,
+            confirmedVolunteerIds,
             tx,
           }),
         );
       }
 
-      return { events };
+      const filtered = filterCycleParticipation({
+        events,
+        filters: input.filters ?? {},
+        timeZone: church.timezone,
+      });
+      return {
+        events: filtered.events,
+        dayMarkers: filtered.dayMarkers,
+        totals: {
+          blocks: filtered.totalBlocks,
+          needsAttention: filtered.needsAttentionBlocks,
+        },
+      };
     });
   }
 
@@ -629,6 +668,7 @@ export class DbParticipationManager implements IParticipationManager {
     eventGroup,
     participation,
     availabilityRequestedAt,
+    confirmedVolunteerIds,
     tx,
   }: LoadEventViewInput): Promise<ParticipationEventView> {
     const scope = { churchId, participationId: participation.id, tx };
@@ -652,7 +692,27 @@ export class DbParticipationManager implements IParticipationManager {
       marks,
       assignments,
       availabilityRequestedAt,
+      confirmedVolunteerIds,
     });
+  }
+
+  private async loadConfirmedVolunteerIds({
+    churchId,
+    cycleId,
+    ministryId,
+    tx,
+  }: LoadConfirmedVolunteerIdsInput): Promise<Set<string>> {
+    const states = await this.loadCheckStates({
+      churchId,
+      ministryId,
+      cycleId,
+      tx,
+    });
+    return new Set(
+      [...states]
+        .filter(([, state]) => state === 'confirmed')
+        .map(([id]) => id),
+    );
   }
 
   async getCycleBuilderData(
@@ -1139,6 +1199,12 @@ export class DbParticipationManager implements IParticipationManager {
       eventGroup: { event, eventTimeBlocks: [eventTimeBlock] },
       participation,
       availabilityRequestedAt,
+      confirmedVolunteerIds: await this.loadConfirmedVolunteerIds({
+        churchId,
+        cycleId: event.cycleId,
+        ministryId: participation.ministryId,
+        tx,
+      }),
       tx,
     });
     const [view] = eventTimeBlocks;
@@ -1355,7 +1421,8 @@ export class DbParticipationManager implements IParticipationManager {
       actorId,
       applicationKey,
       reviewToken,
-      additions,
+      additions: reviewed,
+      excludedAdditions,
     } = input;
     await this.ministryRepository.getById({ churchId, id: ministryId });
     await this.cycleRepository.getById({ churchId, cycleId });
@@ -1365,10 +1432,23 @@ export class DbParticipationManager implements IParticipationManager {
       const submittedToken = proposalReviewTokenFor({
         cycleId,
         ministryId,
-        additions,
+        additions: reviewed,
       });
       if (submittedToken !== reviewToken)
         throw new AssignmentProposalChangedError();
+      // Exclusions only drop reviewed pairs; they never add or edit one.
+      const pairKey = (pair: ReviewedAddition) =>
+        `${pair.shiftRequirementId as string}:${pair.volunteerId as string}`;
+      const reviewedKeys = new Set(reviewed.map(pairKey));
+      const excludedKeys = new Set(excludedAdditions.map(pairKey));
+      const additions = reviewed.filter(
+        (pair) => !excludedKeys.has(pairKey(pair)),
+      );
+      if (
+        [...excludedKeys].some((key) => !reviewedKeys.has(key)) ||
+        additions.length === 0
+      )
+        throw new AssignmentProposalExclusionInvalidError();
       // Manual creation's Church lock: a double click or retry waits here
       // for the first attempt, then recovers what it committed.
       await this.cycleRepository.acquireChurchLock({ churchId, tx });
@@ -1378,8 +1458,11 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
       if (committed) {
+        const appliedKeys = new Set(committed.additions.map(pairKey));
         const sameReview =
           committed.reviewToken === reviewToken &&
+          appliedKeys.size === additions.length &&
+          additions.every((pair) => appliedKeys.has(pairKey(pair))) &&
           committed.cycleId === cycleId &&
           committed.ministryId === ministryId;
         if (!sameReview) throw new AssignmentProposalChangedError();
@@ -2180,6 +2263,42 @@ export class DbParticipationManager implements IParticipationManager {
       options: {
         ministries: ministries.map(({ id, name }) => ({ id, name })),
       },
+    };
+  }
+
+  async getScheduleInsights({
+    churchId,
+    ministryIds,
+  }: GetScheduleInsightsInput): Promise<ScheduleInsightsView> {
+    const [church, rows] = await Promise.all([
+      this.churchRepository.getById({ id: churchId }),
+      this.participationRepository.listCycleStaffing({
+        churchId,
+        ministryIds,
+        cycleLimit: SCHEDULE_INSIGHTS_CYCLE_LIMIT,
+      }),
+    ]);
+    const cycles = rows.map(({ startDate, endDate, ...row }) => ({
+      ...row,
+      startDate: fromDateColumn({ date: startDate }),
+      endDate: fromDateColumn({ date: endDate }),
+    }));
+    const churchDay = today({ instant: now(), timeZone: church.timezone });
+    const focus =
+      cycles.find(
+        ({ startDate, endDate }) =>
+          compareCalendarDays({ left: startDate, right: churchDay }) <= 0 &&
+          compareCalendarDays({ left: churchDay, right: endDate }) <= 0,
+      ) ?? cycles.at(-1);
+    if (!focus) return { cycles, focus: null };
+    const ministries = await this.participationRepository.listMinistryStaffing({
+      churchId,
+      ministryIds,
+      cycleId: focus.cycleId as CycleId,
+    });
+    return {
+      cycles,
+      focus: { cycleId: focus.cycleId, name: focus.name, ministries },
     };
   }
 
@@ -2994,6 +3113,7 @@ function buildEventView({
   marks,
   assignments,
   availabilityRequestedAt,
+  confirmedVolunteerIds,
 }: BuildEventViewInput): ParticipationEventView {
   const {
     markCountByShift,
@@ -3008,6 +3128,11 @@ function buildEventView({
   const requirementsByShift = groupBy({
     items: requirements,
     keyOf: (requirement) => (requirement.shiftId ?? '') as string,
+  });
+
+  const marksByShift = groupBy({
+    items: marks,
+    keyOf: (mark) => mark.shiftId as string,
   });
 
   const eventTimeBlocks: ParticipationEventTimeBlockView[] =
@@ -3035,9 +3160,34 @@ function buildEventView({
         },
       );
 
+      // Available = confirmed and unmarked on every Shift of the block; needed =
+      // the busiest Shift's headcount, null while a Shift has none (or there is no Shift).
+      const unavailable = new Set(
+        eventTimeBlockShifts.flatMap((shift) =>
+          (marksByShift.get(shift.id as string) ?? []).map(
+            (mark) => mark.volunteerId as string,
+          ),
+        ),
+      );
+      const headcounts = shiftViews.map(({ requirements: shiftRequirements }) =>
+        shiftRequirements.reduce(
+          (sum, { requirement }) => sum + requirement.peopleNeeded,
+          0,
+        ),
+      );
+
       return {
         eventTimeBlock,
         included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
+        answerCoverage: {
+          available: [...confirmedVolunteerIds].filter(
+            (id) => !unavailable.has(id),
+          ).length,
+          needed:
+            headcounts.length === 0 || headcounts.includes(0)
+              ? null
+              : Math.max(...headcounts),
+        },
         shifts: shiftViews,
         requirements: shiftViews.flatMap((view) => view.requirements),
         shiftsChangedAfterAsk:

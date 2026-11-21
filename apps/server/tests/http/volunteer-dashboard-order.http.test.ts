@@ -18,6 +18,7 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import { Assignment } from '@/domain/entities/assignment';
+import { Church } from '@/domain/entities/church';
 import { Event } from '@/domain/entities/event';
 import { Ministry } from '@/domain/entities/ministry';
 import { MinistryParticipation } from '@/domain/entities/ministry-participation';
@@ -26,6 +27,7 @@ import { Shift } from '@/domain/entities/shift';
 import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
   createAssignmentRepositoryFake,
@@ -66,8 +68,15 @@ const ministryRepo = createMinistryRepositoryFake();
 const participationRepo = createMinistryParticipationRepositoryFake();
 const roleRepo = createRoleRepositoryFake();
 const notificationRepo = createNotificationRepositoryFake();
+const churchRepo = createChurchRepositoryFake();
 
 beforeAll(async () => {
+  churchRepo.getById.mockResolvedValue(
+    new Church({
+      id: churchId,
+      props: { name: 'Church', slug: 'church', timezone: 'America/Sao_Paulo' },
+    }),
+  );
   const manager = new DbVolunteerManager({
     volunteerRepo,
     assignmentRepo,
@@ -81,7 +90,7 @@ beforeAll(async () => {
     unavailableShiftRepo: createUnavailableShiftRepositoryFake(),
     cycleRepo: createCycleRepositoryFake(),
     availabilityCheckRepo: createAvailabilityCheckRepositoryFake(),
-    churchRepo: createChurchRepositoryFake(),
+    churchRepo,
     authorityManager: createAuthorityManagerFake(),
     unitOfWork: createUnitOfWorkFake({ tx: createTransactionContextFake() }),
     config: appConfig,
@@ -99,7 +108,10 @@ beforeAll(async () => {
     } as never,
     config: appConfig,
   });
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   await app.register(
     async (instance) => {
       instance.register(controller.registerRoutes.bind(controller), {
@@ -290,7 +302,12 @@ interface ArrangedItem {
 }
 
 interface ArrangeInput {
-  events: { id: string; title: string; start: string }[];
+  events: {
+    id: string;
+    title: string;
+    start: string;
+    status?: 'cancelled';
+  }[];
   items: ArrangedItem[];
 }
 
@@ -314,6 +331,7 @@ function arrange({ events, items }: ArrangeInput) {
           title: event.title,
           start: instant(event.start),
           end: instant('2026-08-09T23:00:00Z'),
+          status: event.status,
         },
       }),
   );
@@ -423,6 +441,7 @@ async function getDashboard() {
   expect(response.statusCode, response.body).toBe(200);
   return response.json() as {
     nextAssignment: { assignmentId: string } | null;
+    servingHistory: { month: string; served: number }[];
     upcomingAssignmentGroups: {
       eventId: string;
       ministryName: string;
@@ -563,6 +582,90 @@ describe('volunteer dashboard upcoming cap and order', () => {
       'k-a',
       'k-b',
       'z-b',
+    ]);
+  });
+});
+
+describe('volunteer dashboard serving history', () => {
+  it('counts started, published, non-declined shifts per Church month, skipping cancelled Events', async () => {
+    arrange({
+      events: [
+        { id: 'e', title: 'Sunday', start: '2026-02-01T08:00:00Z' },
+        {
+          id: 'gone',
+          title: 'Retreat',
+          start: '2026-06-01T08:00:00Z',
+          status: 'cancelled',
+        },
+      ],
+      items: [
+        // 01:00 UTC on 1 March is still 28 February in São Paulo.
+        {
+          id: 'feb-edge',
+          eventId: 'e',
+          start: '2026-03-01T01:00:00Z',
+          status: 'confirmed',
+        },
+        {
+          id: 'mar',
+          eventId: 'e',
+          start: '2026-03-08T12:00:00Z',
+          status: 'pending',
+        },
+        {
+          id: 'jul',
+          eventId: 'e',
+          start: '2026-07-05T12:00:00Z',
+          status: 'confirmed',
+        },
+        {
+          id: 'jul-declined',
+          eventId: 'e',
+          start: '2026-07-12T12:00:00Z',
+          status: 'declined',
+        },
+        // 31 July 22:00 in São Paulo: this month, but not served yet.
+        {
+          id: 'jul-future',
+          eventId: 'e',
+          start: '2026-08-01T01:00:00Z',
+          status: 'confirmed',
+        },
+        {
+          id: 'jun-cancelled-event',
+          eventId: 'gone',
+          start: '2026-06-07T12:00:00Z',
+          status: 'confirmed',
+        },
+        {
+          id: 'aug-outside',
+          eventId: 'e',
+          start: '2026-08-02T12:00:00Z',
+          status: 'pending',
+        },
+        {
+          id: 'jan-outside',
+          eventId: 'e',
+          start: '2026-01-10T12:00:00Z',
+          status: 'confirmed',
+        },
+        {
+          id: 'sep-outside',
+          eventId: 'e',
+          start: '2026-09-06T12:00:00Z',
+          status: 'confirmed',
+        },
+      ],
+    });
+    const dashboard = await getDashboard();
+    // The clock (2026-08-01T00:00Z) is still 31 July in São Paulo, so July is the current month.
+    expect(dashboard.servingHistory).toEqual([
+      { month: '2026-02-01', served: 1 },
+      { month: '2026-03-01', served: 1 },
+      { month: '2026-04-01', served: 0 },
+      { month: '2026-05-01', served: 0 },
+      { month: '2026-06-01', served: 0 },
+      { month: '2026-07-01', served: 1 },
     ]);
   });
 });

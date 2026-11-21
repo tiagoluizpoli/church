@@ -14,6 +14,7 @@ import { AssignmentChip } from '../assignment/assignment-chip';
 import { AssignmentPicker } from '../assignment/assignment-picker';
 import { useSwapRequestBoard } from '../swap-request/swap-request-context';
 import { useBoardDragIdentity } from './board-drag-identity';
+import { useRecentlyAdded } from './recently-added-context';
 import { Button } from '@/components/ui/button';
 import { useFormControlSize } from '@/components/ui/form-control-size';
 import {
@@ -227,13 +228,16 @@ function AssignmentDropTarget({
     data: { shiftId, shiftRequirementId, assignmentId },
     disabled,
   });
+  const recent = useRecentlyAdded().has(assignmentId);
   return (
     <span
       ref={target.setNodeRef}
       className={cn(
-        'inline-flex max-w-full rounded-full',
+        'inline-flex max-w-full rounded-full transition-shadow duration-1000 ease-out',
+        recent && 'ring-2 ring-primary/45 ring-offset-1 ring-offset-background',
         target.isOver && 'ring-1 ring-primary ring-offset-1',
       )}
+      data-recent={recent || undefined}
       data-drop-target={readOnly ? undefined : 'replace'}
       data-testid={`cycle-assignment-${assignmentId}`}
     >

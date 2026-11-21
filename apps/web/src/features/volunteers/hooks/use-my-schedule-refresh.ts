@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useOnlineState } from './use-online-state';
-import { requestErrorMessage } from '@/shared/utils/request-error-message';
+import { toastRequestError } from '@/shared/utils/toast-request-error';
 
 const BACKGROUND_UPDATE_NOTICE_MS = 6000;
 
@@ -14,6 +14,10 @@ export interface MyScheduleRefreshVisibleData {
 export interface UseMyScheduleRefreshOptions {
   visibleData: MyScheduleRefreshVisibleData;
   onRefresh: () => Promise<void>;
+  /** A new scope (e.g. other filters) is a fresh baseline, not a background update. */
+  scopeKey?: string;
+  /** The data on screen is a previous scope's, kept while the new one loads. */
+  isStale?: boolean;
 }
 
 export type MyScheduleRefreshState = 'idle' | 'refreshing' | 'error';
@@ -27,6 +31,8 @@ function serializeVisibleData(
 export function useMyScheduleRefresh({
   visibleData,
   onRefresh,
+  scopeKey = '',
+  isStale = false,
 }: UseMyScheduleRefreshOptions) {
   const isOnline = useOnlineState();
   const [refreshState, setRefreshState] =
@@ -35,13 +41,16 @@ export function useMyScheduleRefresh({
   const lastVisibleDataRef = useRef<string | undefined>(undefined);
   const isManualRefreshRef = useRef(false);
   const hasLoadedVisibleDataRef = useRef(false);
+  const scopeKeyRef = useRef(scopeKey);
 
   useEffect(() => {
+    if (isStale) return;
     const nextVisibleData = serializeVisibleData(visibleData);
 
-    if (!hasLoadedVisibleDataRef.current) {
+    if (!hasLoadedVisibleDataRef.current || scopeKeyRef.current !== scopeKey) {
       lastVisibleDataRef.current = nextVisibleData;
       hasLoadedVisibleDataRef.current = true;
+      scopeKeyRef.current = scopeKey;
       return;
     }
 
@@ -61,7 +70,7 @@ export function useMyScheduleRefresh({
     }
 
     lastVisibleDataRef.current = nextVisibleData;
-  }, [visibleData]);
+  }, [visibleData, scopeKey, isStale]);
 
   useEffect(() => {
     if (!hasBackgroundUpdate) {
@@ -92,8 +101,7 @@ export function useMyScheduleRefresh({
     } catch (error) {
       setRefreshState('error');
       isManualRefreshRef.current = false;
-      const message = requestErrorMessage(error);
-      toast.error(message);
+      toastRequestError({ error });
     }
   };
 

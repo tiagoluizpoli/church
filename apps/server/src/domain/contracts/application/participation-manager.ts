@@ -1,4 +1,4 @@
-import type { Instant, TimeOfDay } from '@church/time';
+import type { CalendarDay, Instant, TimeOfDay } from '@church/time';
 import type {
   ChurchId,
   CycleId,
@@ -37,10 +37,31 @@ import type {
 } from '../../services/assignment-proposal';
 import type { ShiftSplitStrategy } from '../../services/shift-splitter';
 
+export const TIME_WINDOW_MODE_OPTIONS = ['starts', 'ends', 'within'] as const;
+export type TimeWindowMode = (typeof TIME_WINDOW_MODE_OPTIONS)[number];
+
+/** Church-local wall-clock window; an omitted bound leaves that side open. */
+export interface CycleTimeWindow {
+  mode: TimeWindowMode;
+  start?: TimeOfDay;
+  end?: TimeOfDay;
+}
+
+export interface CycleParticipationFilters {
+  /** Church-local day the block starts on. */
+  day?: CalendarDay;
+  /** Case-insensitive match on the block label or Event title. */
+  q?: string;
+  timeWindow?: CycleTimeWindow;
+  /** Only served blocks with a Shift that has no headcount. */
+  needsAttention?: boolean;
+}
+
 export interface GetCycleParticipationInput {
   churchId: ChurchId;
   cycleId: CycleId;
   ministryId: MinistryId;
+  filters?: CycleParticipationFilters;
 }
 
 export interface ParticipationRequirementView {
@@ -63,6 +84,12 @@ export interface ParticipationShiftView {
 export interface ParticipationEventTimeBlockView {
   eventTimeBlock: EventTimeBlock;
   included: boolean;
+  /**
+   * Of the volunteers asked, those who confirmed and marked no Shift of this
+   * block unavailable, against the block's busiest Shift headcount (null while
+   * a Shift has no headcount or the block has no Shift).
+   */
+  answerCoverage: { available: number; needed: number | null };
   shifts: ParticipationShiftView[];
   requirements: ParticipationRequirementView[];
   /** A Shift was created after availability was requested, so earlier answers do not cover it. */
@@ -78,7 +105,12 @@ export interface ParticipationEventView {
 }
 
 export interface CycleParticipationView {
+  /** Matching blocks only, ordered by block start then id. */
   events: ParticipationEventView[];
+  /** Church-local days with a block, over the unfiltered cycle. */
+  dayMarkers: CalendarDay[];
+  /** Counts over the unfiltered cycle. */
+  totals: { blocks: number; needsAttention: number };
 }
 
 export interface GetCycleBuilderDataInput {
@@ -257,6 +289,46 @@ export interface ScheduleListFilters {
   attention?: boolean;
 }
 
+export interface GetScheduleInsightsInput {
+  churchId: ChurchId;
+  /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
+  ministryIds?: MinistryId[];
+}
+
+/** Requirement headcount and seats held; `filled` never exceeds `needed` per requirement. */
+export interface StaffingView {
+  needed: number;
+  filled: number;
+}
+
+export interface CycleInsightView extends StaffingView {
+  cycleId: string;
+  name: string;
+  startDate: CalendarDay;
+  endDate: CalendarDay;
+  asked: number;
+  answered: number;
+}
+
+export interface MinistryInsightView extends StaffingView {
+  ministryId: string;
+  name: string;
+}
+
+export interface FocusCycleInsightView {
+  cycleId: string;
+  name: string;
+  /** Serving Ministries, least covered first. */
+  ministries: MinistryInsightView[];
+}
+
+export interface ScheduleInsightsView {
+  /** The latest Sent or Past Cycles in scope, oldest first. */
+  cycles: CycleInsightView[];
+  /** The Cycle running on the Church's today, else the latest one; null without any. */
+  focus: FocusCycleInsightView | null;
+}
+
 export interface ListSchedulesInput {
   churchId: ChurchId;
   /** The led Ministries a leader is scoped to; omitted for a ChurchAdmin. */
@@ -351,6 +423,8 @@ export interface ApplyAssignmentProposalInput {
   applicationKey: string;
   reviewToken: string;
   additions: ReviewedAddition[];
+  /** Reviewed pairs to leave out; the token still covers `additions` whole. */
+  excludedAdditions: ReviewedAddition[];
 }
 
 /** The committed outcome; `replayed` when a retry recovered it. */
@@ -403,6 +477,10 @@ export interface IParticipationManager {
   ): Promise<ScheduleSummaryView[]>;
   /** Newest Cycle first, then Ministries alphabetically. */
   listSchedules(input: ListSchedulesInput): Promise<ScheduleListPage>;
+  /** Staffing and availability totals of the latest Cycles plus per-Ministry coverage of the focus Cycle. */
+  getScheduleInsights(
+    input: GetScheduleInsightsInput,
+  ): Promise<ScheduleInsightsView>;
   /** Throws NotFoundError when the pair is out of scope or its Cycle is a Draft. */
   getSchedule(input: GetScheduleInput): Promise<ScheduleView>;
 }

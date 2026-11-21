@@ -186,9 +186,13 @@ test('leader prepares one Time block and sees its saved Schedule summary', async
     },
     { locale: 'pt-BR' },
   );
-  await expect(welcomeRow).toContainText(initialSummary);
-  await expect(messageRow).toContainText(initialSummary);
-  await expect(prayerRow).toContainText(
+  await expect(welcomeRow.locator('xpath=ancestor::tr')).toContainText(
+    initialSummary,
+  );
+  await expect(messageRow.locator('xpath=ancestor::tr')).toContainText(
+    initialSummary,
+  );
+  await expect(prayerRow.locator('xpath=ancestor::tr')).toContainText(
     m.prepare_not_served({}, { locale: 'pt-BR' }),
   );
 
@@ -260,16 +264,22 @@ test('leader prepares one Time block and sees its saved Schedule summary', async
     },
     { locale: 'pt-BR' },
   );
-  await expect(welcomeRow).toContainText(savedSummary);
+  await expect(welcomeRow.locator('xpath=ancestor::tr')).toContainText(
+    savedSummary,
+  );
   await expect(welcomeRow).toBeInViewport();
   // Save closes the panel and returns focus to the block's row.
   await expect(panel).toHaveCount(0);
   await expect(welcomeRow).toBeFocused();
   // A reload proves the summary comes from the persisted slot save.
   await page.reload();
-  await expect(welcomeRow).toContainText(savedSummary);
-  await expect(messageRow).toContainText(initialSummary);
-  await expect(prayerRow).toContainText(
+  await expect(welcomeRow.locator('xpath=ancestor::tr')).toContainText(
+    savedSummary,
+  );
+  await expect(messageRow.locator('xpath=ancestor::tr')).toContainText(
+    initialSummary,
+  );
+  await expect(prayerRow.locator('xpath=ancestor::tr')).toContainText(
     m.prepare_not_served({}, { locale: 'pt-BR' }),
   );
   await welcomeRow.click();

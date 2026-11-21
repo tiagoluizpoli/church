@@ -16,6 +16,7 @@ import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -52,7 +53,10 @@ const MINISTRY_ID = '66666666-6666-4666-8666-666666666661';
 const CYCLE_ID = '99999999-9999-4999-8999-999999999999';
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new VolunteerController({
     volunteerManager: volunteerManager as never,
     activeChurchResolver: activeChurchResolver as never,
@@ -199,7 +203,8 @@ describe('Volunteer route access', () => {
       ministryName: 'Kids',
       state: 'pending',
       confirmedAt: undefined,
-      shifts: [],
+      days: [],
+      counts: { openDays: 0, pastDays: 0, publishedDays: 0, openShifts: 0 },
     });
 
     const response = await app.inject({
@@ -309,7 +314,10 @@ describe('PATCH /api/v1/volunteer/assignments/:assignmentId (parked)', () => {
   const body = { response: 'accepted' };
 
   async function buildApp(config: typeof appConfig) {
-    const instance = await createFastify({ locale: testLocale });
+    const instance = await createFastify({
+      locale: testLocale,
+      errorReporter: testErrorReporter,
+    });
     const controller = new VolunteerController({
       volunteerManager: volunteerManager as never,
       activeChurchResolver: activeChurchResolver as never,

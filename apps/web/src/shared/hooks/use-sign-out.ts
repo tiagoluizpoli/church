@@ -16,11 +16,13 @@ export function useSignOut() {
   return ({ to = '/login', search }: SignOutInput = {}) => {
     authClient.signOut({
       fetchOptions: {
-        onSuccess: () => {
+        onSuccess: async () => {
+          // Leave the signed-in pages first: clearing while they are mounted
+          // refetches their queries without a session, toasting 401s.
+          await navigate({ to, search });
           queryClient.clear();
           clearNotificationCache();
           clearMyScheduleCache();
-          navigate({ to, search });
         },
       },
     });

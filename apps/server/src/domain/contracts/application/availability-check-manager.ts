@@ -35,10 +35,25 @@ export interface RemindScheduleResult {
   remindAvailableAt: Instant;
 }
 
+/** Where an asked Volunteer stands: not confirmed, confirmed with no marks, or confirmed with some Shifts marked unavailable. */
+export const ANSWER_STATUS_OPTIONS = [
+  'pending',
+  'available',
+  'unavailable',
+] as const;
+export type AnswerStatus = (typeof ANSWER_STATUS_OPTIONS)[number];
+
 export interface ListCycleCheckStatusesInput {
   churchId: ChurchId;
   cycleId: CycleId;
   ministryId: MinistryId;
+  /** Keeps one answer status. */
+  status?: AnswerStatus;
+  /** Case-insensitive Volunteer name search. */
+  q?: string;
+  cursor?: string;
+  /** Page size; omitted answers every matching Volunteer. */
+  limit?: number;
 }
 
 /** One asked Volunteer: an existing, non-withdrawn check on an active membership. */
@@ -58,7 +73,12 @@ export interface CycleCheckStatuses {
   answerBy: CalendarDay | null;
   /** When Remind is next allowed; `null` while it is allowed now. */
   remindAvailableAt: Instant | null;
+  /** Asked Volunteers per answer status, ignoring the filters and the cursor. */
+  counts: Record<AnswerStatus, number>;
+  /** The page of matching Volunteers, ordered by name then id. */
   statuses: CheckStatusRow[];
+  /** Position after the last returned row; null on the last page. */
+  nextCursor: string | null;
 }
 
 export interface GetAskPreviewInput {

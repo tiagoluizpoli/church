@@ -1,112 +1,76 @@
 import { m } from '@church/i18n/messages';
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { SchedulePublish } from '@/features/scheduling/components/prepare/schedule-publish';
-import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
+import type { GetSchedule200 } from '@/infrastructure/api/churchAPI.schemas';
+import { SCHEDULE } from '@/tests/features/scheduling/components/prepare/preparation-block.fixtures';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const state = vi.hoisted(() => ({
-  data: undefined as CycleBuilderData | undefined,
-  mutate: vi.fn(),
-  send: vi.fn(),
+  data: undefined as GetSchedule200 | undefined,
+  publishCycle: vi.fn(),
+  sendScheduleUpdates: vi.fn(),
 }));
-vi.mock('@/features/scheduling/hooks/use-cycle-builder', () => ({
-  useCycleBuilder: () => ({
-    data: state.data,
-    publish: { isPending: false, mutate: state.mutate },
-    sendUpdates: { isPending: false, mutate: state.send },
-  }),
+vi.mock('@/features/scheduling/hooks/use-schedule', () => ({
+  useSchedule: () => ({ data: state.data }),
 }));
-
+vi.mock('@/utils/api-instances', () => ({
+  adminApi: {
+    publishCycle: state.publishCycle,
+    sendScheduleUpdates: state.sendScheduleUpdates,
+  },
+}));
 beforeEach(() => {
-  state.mutate.mockReset();
-  state.send.mockReset();
-  state.data = {
-    roles: [],
-    assignments: [],
-    events: [
-      {
-        participationId: 'p',
-        state: 'assigning',
-        eventId: 'e',
-        title: 'Event',
-        start: '2026-12-01T10:00:00Z',
-        end: '2026-12-01T12:00:00Z',
-        status: 'scheduled',
-        fillRatio: 0,
-        peopleNeeded: 2,
-        assignedCount: 0,
-        eventTimeBlockCount: 1,
-        eventTimeBlocks: [
-          {
-            eventTimeBlockId: 'b',
-            label: 'Block',
-            startTime: '2026-12-01T10:00:00Z',
-            endTime: '2026-12-01T12:00:00Z',
-            included: true,
-            peopleNeeded: 2,
-            assignedCount: 0,
-            shiftCount: 1,
-            shifts: [
-              {
-                shiftId: 's',
-                eventTimeBlockId: 'b',
-                startTime: '2026-12-01T10:00:00Z',
-                endTime: '2026-12-01T12:00:00Z',
-                peopleNeeded: 2,
-                assignedCount: 0,
-                requirements: [
-                  {
-                    id: 'r',
-                    roleId: 'role',
-                    sectorName: 'Main',
-                    peopleNeeded: 2,
-                  },
-                ],
-                assignments: [],
-                eligibleVolunteerCount: 0,
-                eligibleVolunteers: [],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  };
+  vi.resetAllMocks();
+  state.data = { ...SCHEDULE, stage: 'assigning', gapCount: 2 };
+  state.publishCycle.mockResolvedValue({ published: true });
+  state.sendScheduleUpdates.mockResolvedValue({});
 });
-
-it('confirms whole-Schedule gaps and publishes from the Schedule page', () => {
-  renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
+it('confirms summary gaps and unanswered people before publishing the whole Schedule', async () => {
+  renderWithProviders(
+    <SchedulePublish ministryId="m" cycleId="c" unanswered={7} />,
+  );
   fireEvent.click(screen.getByRole('button', { name: m.builder_ui_publish() }));
+  expect(screen.getByText(m.prepare_publish_gaps({ count: 2 }))).toBeVisible();
   expect(
-    screen.getByText(m.builder_ui_publish_gaps({ places: 2, shifts: 1 })),
+    screen.getByText(m.prepare_publish_unanswered({ count: 7 })),
   ).toBeVisible();
   fireEvent.click(
     within(screen.getByRole('dialog')).getByRole('button', {
       name: m.builder_ui_publish(),
     }),
   );
-  expect(state.mutate).toHaveBeenCalledWith(true);
+  await waitFor(() =>
+    expect(state.publishCycle).toHaveBeenCalledExactlyOnceWith(
+      'c',
+      { confirmBelowFull: true },
+      { ministryId: 'm' },
+    ),
+  );
 });
-
-it('removes Publish after the Schedule is published', () => {
-  if (!state.data) throw new Error('missing fixture');
-  const event = state.data.events[0];
-  if (!event) throw new Error('missing event');
-  event.state = 'published';
+it('makes Publish secondary while asking', () => {
+  state.data = { ...SCHEDULE, stage: 'asking', gapCount: 0 };
   renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
   expect(
-    screen.queryByRole('button', { name: m.builder_ui_publish() }),
-  ).not.toBeInTheDocument();
+    screen.getByRole('button', { name: m.builder_ui_publish() }),
+  ).toHaveClass('border-border', 'bg-background');
 });
-
-it('sends pending changes from a published Schedule', () => {
-  if (!state.data?.events[0]) throw new Error('missing fixture');
-  state.data.events[0].state = 'published';
-  state.data.affectedVolunteerCount = 2;
+it('removes Publish after publication and renders no primary without pending changes', () => {
+  state.data = { ...SCHEDULE, stage: 'published', affectedVolunteerCount: 0 };
+  const { container } = renderWithProviders(
+    <SchedulePublish ministryId="m" cycleId="c" />,
+  );
+  expect(container).toBeEmptyDOMElement();
+});
+it('sends pending changes from a published Schedule without loading the board', async () => {
+  state.data = { ...SCHEDULE, stage: 'published', affectedVolunteerCount: 2 };
   renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
   fireEvent.click(
     screen.getByRole('button', { name: m.builder_send_updates({ count: 2 }) }),
   );
-  expect(state.send).toHaveBeenCalledOnce();
+  await waitFor(() =>
+    expect(state.sendScheduleUpdates).toHaveBeenCalledExactlyOnceWith('c', {
+      ministryId: 'm',
+    }),
+  );
 });

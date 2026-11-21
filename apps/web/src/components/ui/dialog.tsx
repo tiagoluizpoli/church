@@ -41,12 +41,14 @@ function DialogOverlay({
 
 type DialogContentProps = DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean;
+  closeDisabled?: boolean;
 };
 
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  closeDisabled = false,
   ...props
 }: DialogContentProps) {
   return (
@@ -64,11 +66,12 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
+            disabled={closeDisabled}
             render={
               <Button
                 variant="ghost"
                 className="absolute top-2 right-2"
-                size="icon-sm"
+                size="icon"
               />
             }
           >

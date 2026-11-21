@@ -91,6 +91,8 @@ interface SelectedCycleInput {
 
 interface CyclesTableRowInput {
   cycle: CycleSummary;
+  /** The Sent Cycle running today, as the server named it. */
+  currentCycleId?: string | null;
 }
 
 interface TemplateLibraryTableRowInput {
@@ -251,18 +253,27 @@ export function templateBlockErrors({
   return { duplicateLabelKeys, equalTimeKeys };
 }
 
-export function stateBadgeVariant({
+export interface StateBadgeProps {
+  variant: 'secondary' | 'outline';
+  className?: string;
+}
+
+/**
+ * A Draft still has to be sent, so it takes the needs-attention amber; Sent
+ * and Past are settled and stay neutral, Past the quietest.
+ */
+export function stateBadgeProps({
   state,
-}: CycleStateVariantInput): 'default' | 'outline' | 'secondary' {
-  if (state === 'sent') {
-    return 'default';
+}: CycleStateVariantInput): StateBadgeProps {
+  if (state === 'draft') {
+    return {
+      variant: 'outline',
+      className:
+        'border-amber-600/40 bg-amber-500/8 text-amber-700 dark:text-amber-300',
+    };
   }
 
-  if (state === 'past') {
-    return 'outline';
-  }
-
-  return 'secondary';
+  return { variant: state === 'sent' ? 'secondary' : 'outline' };
 }
 
 export function eventStatusBadgeVariant({
@@ -333,31 +344,6 @@ export function suggestCycleName({
   return startDate === ''
     ? ''
     : formatMonthYear({ day: parseCalendarDay({ value: startDate }), locale });
-}
-
-interface GroupCyclesInput {
-  cycles: CycleSummary[];
-}
-
-interface GroupedCycles {
-  current: CycleSummary[];
-  past: CycleSummary[];
-}
-
-/** Current (Draft/Sent) and Past Cycles, each newest start first. */
-export function groupCyclesForList({
-  cycles,
-}: GroupCyclesInput): GroupedCycles {
-  const sorted = [...cycles].sort(
-    (left, right) =>
-      right.startDate.localeCompare(left.startDate) ||
-      right.endDate.localeCompare(left.endDate) ||
-      left.id.localeCompare(right.id),
-  );
-  return {
-    current: sorted.filter((cycle) => cycle.state !== 'past'),
-    past: sorted.filter((cycle) => cycle.state === 'past'),
-  };
 }
 
 export interface ConflictingCycle {
@@ -541,12 +527,15 @@ export function eventSpanLabel({
 
 export function toCyclesTableRow({
   cycle,
+  currentCycleId,
 }: CyclesTableRowInput): CyclesTableRow {
   return {
     id: cycle.id,
     name: cycle.name,
     window: `${formatCalendarDateOnly({ value: cycle.startDate })} – ${formatCalendarDateOnly({ value: cycle.endDate })}`,
     state: cycle.state,
+    eventCount: cycle.eventCount,
+    isRunning: cycle.id === currentCycleId,
   };
 }
 

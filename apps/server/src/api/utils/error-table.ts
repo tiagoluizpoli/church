@@ -75,6 +75,7 @@ export type MappedDomainCode =
   | 'SCHEDULE_HAS_NO_ASSIGNMENTS'
   | 'SCHEDULE_ALREADY_PUBLISHED'
   | 'ASSIGNMENT_PROPOSAL_CHANGED'
+  | 'ASSIGNMENT_PROPOSAL_EXCLUSION_INVALID'
   | 'ASSIGNMENT_PROPOSAL_STALE'
   | 'NO_UNSENT_CHANGES'
   | 'SHIFT_STARTED'
@@ -230,6 +231,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   ASSIGNMENT_PROPOSAL_CHANGED: {
     status: 409,
     message: m.error_assignment_proposal_changed,
+  },
+  ASSIGNMENT_PROPOSAL_EXCLUSION_INVALID: {
+    status: 422,
+    message: m.error_assignment_proposal_exclusion_invalid,
   },
   ASSIGNMENT_PROPOSAL_STALE: {
     status: 409,

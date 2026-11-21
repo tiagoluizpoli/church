@@ -62,6 +62,7 @@ import type {
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
 } from '../../domain/contracts/infrastructure/planning-event.repository';
+import { PUBLISHED_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
 import type {
   Event,
   EventWithEventTimeBlocks,
@@ -79,8 +80,6 @@ import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
-/** The active statuses a Volunteer already sees once the Schedule is published. */
-const PUBLISHED_ASSIGNMENT_STATUSES = ['pending', 'confirmed'] as const;
 
 interface DrizzlePlanningEventRepositoryInput {
   db: AnyDrizzleDb;

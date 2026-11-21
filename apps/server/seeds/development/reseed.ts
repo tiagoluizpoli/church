@@ -77,11 +77,17 @@ export function resolveReseedAnchor({
 }
 
 /** The only order the destructive workflow may run in. */
-const RESEED_PHASE_ORDER = ['reset', 'migrate', 'load', 'verify'] as const;
+const RESEED_PHASE_ORDER = [
+  'reset',
+  'migrate',
+  'load',
+  'verify',
+  'upcoming',
+] as const;
 
 export type ReseedPhase = (typeof RESEED_PHASE_ORDER)[number];
 
-export interface VerifyReseedInput<TResult> {
+export interface SeededReseedInput<TResult> {
   seeded: TResult;
 }
 
@@ -91,7 +97,9 @@ export interface ReseedPhases<TResult> {
   migrate(): Promise<void>;
   /** Transactional: a failure leaves no partial graph behind. */
   load(): Promise<TResult>;
-  verify(input: VerifyReseedInput<TResult>): Promise<void>;
+  verify(input: SeededReseedInput<TResult>): Promise<void>;
+  /** Adds what verification does not describe, on top of the verified graph. */
+  upcoming(input: SeededReseedInput<TResult>): Promise<void>;
 }
 
 export interface ReasonOfInput {
@@ -137,7 +145,7 @@ interface RunPhaseInput<T> {
 }
 
 /**
- * Runs reset, migrate, load and verify in order, stopping at the first
+ * Runs reset, migrate, load, verify and upcoming in order, stopping at the first
  * failure with a `ReseedPhaseError` naming it. A phase is reported `ok` only
  * after it completes, so a failed run never prints success for it.
  */
@@ -171,6 +179,10 @@ export async function runReseedPhases<TResult>({
   await runPhase({
     phase: 'verify',
     run: () => phases.verify({ seeded }),
+  });
+  await runPhase({
+    phase: 'upcoming',
+    run: () => phases.upcoming({ seeded }),
   });
 
   return seeded;

@@ -23,6 +23,8 @@ const ANSWERS: GetCycleAvailabilityStatus200 = {
   confirmed: 2,
   answerBy: null,
   remindAvailableAt: null,
+  counts: { pending: 1, available: 1, unavailable: 1 },
+  nextCursor: null,
   statuses: [
     {
       volunteerId: 'unavailable',
@@ -88,15 +90,21 @@ describe.each(['pt-BR', 'en'] as const)('Answers in %s', (locale) => {
     expect(api.remindSchedule).toHaveBeenCalledWith('cycle', {
       ministryId: 'ministry',
     });
-    expect(await screen.findByText('Davi')).toBeVisible();
+    expect(screen.queryByText('Davi')).not.toBeInTheDocument();
     expect(
-      screen.getByText(m.answers_count({ confirmed: 2, asked: 4 })),
-    ).toBeVisible();
-    expect(
-      screen.getByRole('button', {
-        name: m.answers_remind_cooldown({ time: '14:00' }),
-      }),
-    ).toBeDisabled();
+      screen.getByRole('progressbar', { name: m.answers_title() }),
+    ).toHaveAttribute(
+      'aria-valuetext',
+      m.answers_count({ confirmed: 2, asked: 4 }),
+    );
+    const cooldown = screen.getByRole('button', {
+      name: m.answers_remind_at({ time: '14:00' }),
+    });
+    expect(cooldown).toHaveAttribute('aria-disabled', 'true');
+    // The short label keeps Lembrar's slot; the full sentence is its description.
+    expect(cooldown).toHaveAccessibleDescription(
+      m.answers_remind_cooldown({ time: '14:00' }),
+    );
   });
 
   it('surfaces an early cooldown refusal time and refreshes the authoritative Answers', async () => {
@@ -130,12 +138,15 @@ describe.each(['pt-BR', 'en'] as const)('Answers in %s', (locale) => {
     );
     expect(
       screen.getByRole('button', {
-        name: m.answers_remind_cooldown({ time: '14:00' }),
+        name: m.answers_remind_at({ time: '14:00' }),
       }),
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     expect(
-      await screen.findByText(m.answers_count({ confirmed: 3, asked: 3 })),
-    ).toBeVisible();
+      await screen.findByRole('progressbar', { name: m.answers_title() }),
+    ).toHaveAttribute(
+      'aria-valuetext',
+      m.answers_count({ confirmed: 3, asked: 3 }),
+    );
   });
 
   it('re-enables Remind when the Church-Timezone cooldown expires without navigation', async () => {
@@ -157,9 +168,9 @@ describe.each(['pt-BR', 'en'] as const)('Answers in %s', (locale) => {
     });
     expect(
       screen.getByRole('button', {
-        name: m.answers_remind_cooldown({ time: '14:00' }),
+        name: m.answers_remind_at({ time: '14:00' }),
       }),
-    ).toBeDisabled();
+    ).toHaveAttribute('aria-disabled', 'true');
     setTestClock({ instant: parseInstant({ value: '2027-01-04T17:00:00Z' }) });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
@@ -215,7 +226,12 @@ describe.each(['pt-BR', 'en'] as const)('Answers in %s', (locale) => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       m.answers_remind_error(),
     );
-    expect(screen.getByText('Caio')).toBeVisible();
+    expect(
+      screen.getByRole('progressbar', { name: m.answers_title() }),
+    ).toHaveAttribute(
+      'aria-valuetext',
+      m.answers_count({ confirmed: 2, asked: 3 }),
+    );
     expect(
       screen.getByRole('button', { name: m.answers_remind({ count: 1 }) }),
     ).toBeEnabled();
@@ -246,13 +262,24 @@ describe.each(['pt-BR', 'en'] as const)('Answers in %s', (locale) => {
       <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
     );
     expect(
-      await screen.findByText(m.answers_count_one({ confirmed: 1, asked: 1 })),
-    ).toBeVisible();
-    expect(
-      screen.getByText(
-        m.answers_unavailable_count_one({ unavailable: 1, total: 1 }),
-      ),
-    ).toBeVisible();
+      await screen.findByRole('progressbar', { name: m.answers_title() }),
+    ).toHaveAttribute(
+      'aria-valuetext',
+      m.answers_count_one({ confirmed: 1, asked: 1 }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.answers_view_roster(),
+      }),
+    );
+    const details = m.answers_unavailable_count_one({
+      unavailable: 1,
+      total: 1,
+    });
+    await userEvent.click(
+      await screen.findByRole('button', { name: `Ana: ${details}` }),
+    );
+    expect(await screen.findByText(details)).toBeVisible();
   });
 
   it('marks a deadline overdue only after the Church CalendarDay has passed', async () => {
@@ -279,29 +306,59 @@ describe.each(['pt-BR', 'en'] as const)('Answers in %s', (locale) => {
     expect(await screen.findByText(m.answers_overdue())).toBeVisible();
   });
 
-  it('shows the read counts and the three groups in priority order with per-Volunteer Shift totals', async () => {
+  it('summarizes groups in priority order and only requests names after disclosure', async () => {
     overwriteGetLocale(() => locale);
     renderWithProviders(
       <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
     );
     expect(
-      await screen.findByText(m.answers_count({ confirmed: 2, asked: 3 })),
-    ).toBeVisible();
-    const groups = screen.getAllByRole('list');
-    expect(groups.map((group) => group.getAttribute('aria-label'))).toEqual([
-      m.answers_pending(),
-      m.answers_available(),
-      m.answers_unavailable(),
+      await screen.findByRole('progressbar', { name: m.answers_title() }),
+    ).toHaveAttribute(
+      'aria-valuetext',
+      m.answers_count({ confirmed: 2, asked: 3 }),
+    );
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.queryByText('Caio')).not.toBeInTheDocument();
+    expect(api.getCycleAvailabilityStatus).toHaveBeenCalledExactlyOnceWith(
+      'cycle',
+      { ministryId: 'ministry', limit: 1 },
+    );
+    const disclosures = screen
+      .getAllByRole('button')
+      .filter((button) => button.hasAttribute('aria-controls'));
+    expect(disclosures.map((button) => button.textContent)).toEqual([
+      m.answers_view_roster(),
     ]);
-    expect(within(groups[0]).getByText('Caio')).toBeVisible();
-    expect(within(groups[1]).getByText('Bia')).toBeVisible();
-    expect(within(groups[2]).getByText('Ana')).toBeVisible();
+    api.getCycleAvailabilityStatus.mockResolvedValue({
+      ...ANSWERS,
+      statuses: [ANSWERS.statuses[2]],
+    });
+    await userEvent.click(disclosures[0]);
     expect(
-      within(groups[2]).getByText(
-        m.answers_unavailable_count({ unavailable: 2, total: 5 }),
-      ),
-    ).toBeVisible();
-    expect(within(groups[0]).queryByText(/1.*4/)).not.toBeInTheDocument();
+      await screen.findByRole('list', { name: m.answers_pending() }),
+    ).toHaveTextContent('Caio');
+    expect(api.getCycleAvailabilityStatus).toHaveBeenLastCalledWith('cycle', {
+      ministryId: 'ministry',
+      status: undefined,
+      q: undefined,
+      cursor: undefined,
+      limit: 200,
+    });
+    expect(
+      screen.getByRole('radio', { name: `${m.answers_all()} · 3` }),
+    ).toHaveAttribute('aria-checked', 'true');
+    // Actionable groups lead: partial answers, available, then pending.
+    expect(
+      within(screen.getByRole('radiogroup', { name: m.answers_view_roster() }))
+        .getAllByRole('radio')
+        .map((radio) => radio.textContent),
+    ).toEqual([
+      `${m.answers_all()} · 3`,
+      `${m.answers_unavailable()} · ${ANSWERS.counts.unavailable}`,
+      `${m.answers_available()} · ${ANSWERS.counts.available}`,
+      `${m.answers_pending()} · ${ANSWERS.counts.pending}`,
+    ]);
+    expect(screen.queryByText('Ana')).not.toBeInTheDocument();
   });
 });
 
@@ -320,9 +377,9 @@ it('keeps a successful Remind cooldown scoped to its Schedule when navigating', 
   );
   expect(
     await screen.findByRole('button', {
-      name: m.answers_remind_cooldown({ time: '17:00' }),
+      name: m.answers_remind_at({ time: '17:00' }),
     }),
-  ).toBeDisabled();
+  ).toHaveAttribute('aria-disabled', 'true');
   view.rerender(
     <AvailabilityStatusSection cycleId="other-cycle" ministryId="ministry" />,
   );
@@ -345,7 +402,10 @@ it('sets, moves and clears the Deadline through the silent endpoint without any 
   renderWithProviders(
     <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
   );
-  await screen.findByText(m.answers_count({ confirmed: 2, asked: 3 }));
+  await screen.findByRole('progressbar', { name: m.answers_title() });
+  await user.click(
+    screen.getByRole('button', { name: m.answers_edit_deadline() }),
+  );
   expect(screen.getByText(m.answers_deadline_silent())).toBeVisible();
   await pickCalendarDate({
     user,
@@ -358,17 +418,13 @@ it('sets, moves and clears the Deadline through the silent endpoint without any 
       answerBy: '2027-01-10',
     }),
   );
-  expect(
-    await screen.findByText('10/01/2027', { selector: 'time' }),
-  ).toBeVisible();
+  expect(await screen.findByText('10/01/2027')).toBeVisible();
   await pickCalendarDate({
     user,
     trigger: screen.getByRole('button', { name: m.answers_deadline() }),
     date: '2027-01-12',
   });
-  expect(
-    await screen.findByText('12/01/2027', { selector: 'time' }),
-  ).toBeVisible();
+  expect(await screen.findByText('12/01/2027')).toBeVisible();
   expect(api.setAvailabilityDeadline).toHaveBeenLastCalledWith('cycle', {
     ministryId: 'ministry',
     answerBy: '2027-01-12',
@@ -380,9 +436,7 @@ it('sets, moves and clears the Deadline through the silent endpoint without any 
       answerBy: null,
     }),
   );
-  expect(
-    await screen.findByText(m.answers_no_deadline(), { selector: 'span' }),
-  ).toBeVisible();
+  expect(await screen.findByText(m.answers_no_deadline())).toBeVisible();
   expect(screen.queryByText(m.answers_overdue())).not.toBeInTheDocument();
 });
 
@@ -418,7 +472,12 @@ it('keeps the Answers on screen while a refetch is in flight', async () => {
     <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
     { queryClient },
   );
-  expect(await screen.findByText('Ana')).toBeVisible();
+  expect(
+    await screen.findByRole('progressbar', { name: m.answers_title() }),
+  ).toHaveAttribute(
+    'aria-valuetext',
+    m.answers_count({ confirmed: 2, asked: 3 }),
+  );
   api.getCycleAvailabilityStatus.mockReturnValue(new Promise(() => {}));
   act(() => {
     void queryClient.invalidateQueries();
@@ -426,7 +485,12 @@ it('keeps the Answers on screen while a refetch is in flight', async () => {
   await waitFor(() =>
     expect(api.getCycleAvailabilityStatus).toHaveBeenCalledTimes(2),
   );
-  expect(screen.getByText('Ana')).toBeVisible();
+  expect(
+    screen.getByRole('progressbar', { name: m.answers_title() }),
+  ).toHaveAttribute(
+    'aria-valuetext',
+    m.answers_count({ confirmed: 2, asked: 3 }),
+  );
   expect(
     screen.queryByRole('status', { name: m.answers_loading() }),
   ).toBeNull();
@@ -460,8 +524,11 @@ it('shows loading and failed reads distinctly from an empty Answers list and all
     screen.getByRole('button', { name: m.schedules_retry() }),
   );
   expect(
-    await screen.findByText(m.answers_count({ confirmed: 2, asked: 3 })),
-  ).toBeVisible();
+    await screen.findByRole('progressbar', { name: m.answers_title() }),
+  ).toHaveAttribute(
+    'aria-valuetext',
+    m.answers_count({ confirmed: 2, asked: 3 }),
+  );
 });
 
 it('preserves the saved Deadline and surfaces a refusal when an edit fails', async () => {
@@ -477,13 +544,232 @@ it('preserves the saved Deadline and surfaces a refusal when an edit fails', asy
   );
   await screen.findByText('10/01/2027', { selector: 'time' });
   await userEvent.click(
+    screen.getByRole('button', { name: m.answers_edit_deadline() }),
+  );
+  await userEvent.click(
     screen.getByRole('button', { name: m.date_picker_clear() }),
   );
   expect(await screen.findByRole('alert')).toHaveTextContent(
     m.answers_deadline_error(),
   );
-  expect(screen.getByText('10/01/2027', { selector: 'time' })).toBeVisible();
+  expect(screen.getByText('10/01/2027')).toBeVisible();
   expect(
     screen.getByRole('button', { name: m.answers_deadline() }),
   ).toBeEnabled();
+});
+
+it('uses server status, search and cursors, keeps names collapsed and hides empty groups', async () => {
+  const first = {
+    ...ANSWERS,
+    counts: { pending: 2, available: 1, unavailable: 0 },
+    statuses: [ANSWERS.statuses[2]],
+    nextCursor: 'next-page',
+  };
+  api.getCycleAvailabilityStatus.mockImplementation(async (_cycle, params) => {
+    if (params.limit === 1) return first;
+    if (params.q) return { ...first, statuses: [], nextCursor: null };
+    if (params.cursor)
+      return {
+        ...first,
+        statuses: [
+          {
+            ...ANSWERS.statuses[2],
+            volunteerId: 'davi',
+            volunteerName: 'Davi',
+          },
+        ],
+        nextCursor: null,
+      };
+    if (params.status === 'available')
+      return { ...first, statuses: [ANSWERS.statuses[1]], nextCursor: null };
+    return first;
+  });
+  renderWithProviders(
+    <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+  );
+  const pending = await screen.findByRole('button', {
+    name: m.answers_view_roster(),
+  });
+  expect(screen.queryByText('Caio')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', {
+      name: m.answers_view_group({ count: 0, group: m.answers_unavailable() }),
+    }),
+  ).not.toBeInTheDocument();
+  await userEvent.click(pending);
+  expect(
+    within(
+      await screen.findByRole('list', { name: m.answers_pending() }),
+    ).getByText('Caio'),
+  ).toBeVisible();
+  await userEvent.click(
+    screen.getByRole('button', { name: m.answers_load_more() }),
+  );
+  await waitFor(() =>
+    expect(api.getCycleAvailabilityStatus).toHaveBeenLastCalledWith('cycle', {
+      ministryId: 'ministry',
+      status: undefined,
+      q: undefined,
+      cursor: 'next-page',
+      limit: 200,
+    }),
+  );
+  const list = screen.getByTestId('availability-status-list');
+  expect(await within(list).findByText('Davi')).toBeVisible();
+  expect(within(list).getByText('Caio')).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: m.answers_load_more() }),
+  ).not.toBeInTheDocument();
+  await userEvent.click(
+    screen.getByRole('radio', { name: `${m.answers_available()} · 1` }),
+  );
+  expect(await within(list).findByText('Bia')).toBeVisible();
+  expect(within(list).queryByText('Caio')).not.toBeInTheDocument();
+  await userEvent.type(
+    screen.getByRole('textbox', { name: m.answers_search() }),
+    'x',
+  );
+  await waitFor(() =>
+    expect(api.getCycleAvailabilityStatus).toHaveBeenLastCalledWith('cycle', {
+      ministryId: 'ministry',
+      status: 'available',
+      q: 'x',
+      cursor: undefined,
+      limit: 200,
+    }),
+  );
+  expect(await screen.findByText(m.shell_search_no_results())).toBeVisible();
+});
+
+it('reads the roster once per typing pause, not once per keystroke', async () => {
+  const user = userEvent.setup();
+  renderWithProviders(
+    <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+  );
+  await user.click(
+    await screen.findByRole('button', { name: m.answers_view_roster() }),
+  );
+  const search = await screen.findByRole('textbox', {
+    name: m.answers_search(),
+  });
+  await user.type(search, 'ana');
+  await waitFor(() =>
+    expect(api.getCycleAvailabilityStatus).toHaveBeenLastCalledWith('cycle', {
+      ministryId: 'ministry',
+      status: undefined,
+      q: 'ana',
+      cursor: undefined,
+      limit: 200,
+    }),
+  );
+  const queries = api.getCycleAvailabilityStatus.mock.calls
+    .map(([, params]) => params.q)
+    .filter(Boolean);
+  expect(queries).toEqual(['ana']);
+});
+
+it('reveals partial-answer details when keyboard focus reaches a compact chip', async () => {
+  const user = userEvent.setup();
+  renderWithProviders(
+    <AvailabilityStatusSection cycleId="cycle" ministryId="ministry" />,
+  );
+  await user.click(
+    await screen.findByRole('button', { name: m.answers_view_roster() }),
+  );
+  const search = await screen.findByRole('textbox', {
+    name: m.answers_search(),
+  });
+  search.focus();
+  await user.tab();
+  const details = m.answers_unavailable_count({ unavailable: 2, total: 5 });
+  expect(screen.getByRole('button', { name: `Ana: ${details}` })).toHaveFocus();
+  expect(await screen.findByText(details)).toBeVisible();
+});
+
+describe('Respostas bar trailing actions', () => {
+  it('ends the bar row with the page actions, right of the progress on wide containers', async () => {
+    renderWithProviders(
+      <AvailabilityStatusSection
+        cycleId="cycle"
+        ministryId="ministry"
+        headerSummary
+        trailing={<a href="/assign">Open</a>}
+      />,
+      { churchTimezone: 'America/Sao_Paulo' },
+    );
+    const progress = await screen.findByRole('progressbar', {
+      name: m.answers_title(),
+    });
+    const actions = screen.getByTestId('availability-status-actions');
+    const bar = actions.parentElement as HTMLElement;
+    expect(bar).toContainElement(progress);
+    expect(bar).toHaveClass('flex', 'flex-wrap', 'items-center');
+    expect(actions).toHaveClass(
+      'flex',
+      'flex-wrap',
+      'items-center',
+      'justify-end',
+    );
+    expect(bar.lastElementChild).toBe(actions);
+    // One group: the bar's own actions, then the page's, wrapping together.
+    expect([...actions.children].map((child) => child.textContent)).toEqual([
+      m.answers_view_roster(),
+      m.answers_edit_deadline(),
+      m.answers_remind({ count: 1 }),
+      'Open',
+    ]);
+  });
+
+  it('keeps a cooling-down Lembrar in the same group, size and slot as before', async () => {
+    api.remindSchedule.mockResolvedValue({
+      remindedCount: 1,
+      newCheckCount: 0,
+      remindAvailableAt: '2027-01-04T17:00:00Z',
+    });
+    setTestClock({ instant: parseInstant({ value: '2027-01-03T17:00:00Z' }) });
+    renderWithProviders(
+      <AvailabilityStatusSection
+        cycleId="cycle"
+        ministryId="ministry"
+        headerSummary
+        trailing={<a href="/assign">Open</a>}
+      />,
+      { churchTimezone: 'America/Sao_Paulo' },
+    );
+    const remind = await screen.findByRole('button', {
+      name: m.answers_remind({ count: 1 }),
+    });
+    const before = remind.className;
+    await userEvent.click(remind);
+    const cooldown = await screen.findByRole('button', {
+      name: m.answers_remind_at({ time: '14:00' }),
+    });
+    const actions = screen.getByTestId('availability-status-actions');
+    expect(cooldown.parentElement).toBe(actions);
+    expect(cooldown.className).toBe(before);
+    expect(
+      [...actions.children]
+        .filter((child) => !child.classList.contains('sr-only'))
+        .map((child) => child.textContent),
+    ).toEqual([
+      m.answers_view_roster(),
+      m.answers_edit_deadline(),
+      m.answers_remind_at({ time: '14:00' }),
+      'Open',
+    ]);
+  });
+
+  it('keeps the page actions while the answers read has failed', async () => {
+    api.getCycleAvailabilityStatus.mockRejectedValue(new Error('down'));
+    renderWithProviders(
+      <AvailabilityStatusSection
+        cycleId="cycle"
+        ministryId="ministry"
+        trailing={<a href="/assign">Open</a>}
+      />,
+      { churchTimezone: 'America/Sao_Paulo' },
+    );
+    expect(await screen.findByText(m.answers_error())).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Open' })).toBeVisible();
+  });
 });

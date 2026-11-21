@@ -51,6 +51,7 @@ import {
   resetSchedulingPhase3Db,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -68,7 +69,10 @@ const CONFIRMED_AT = '2026-08-01T12:00:00.000Z';
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   // Real managers, repositories, resolver and AuthorityService: only the
   // Better Auth session is a seam.
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
@@ -150,6 +154,10 @@ function getAnswers({ cycleId, ministryId }: GetAnswersInput) {
     method: 'GET',
     url: `/api/v1/prepare/cycles/${cycleId}/availability-status?ministryId=${ministryId}`,
   });
+}
+
+function names({ volunteerName }: AnswersRow): string {
+  return volunteerName;
 }
 
 interface AnswersRow {
@@ -502,6 +510,8 @@ describe('GET /prepare/cycles/:cycleId/availability-status', () => {
       confirmed: 2,
       answerBy: '2026-08-20',
       remindAvailableAt: null,
+      counts: { pending: 1, available: 1, unavailable: 1 },
+      nextCursor: null,
     });
     expect(sortByName<AnswersRow>({ statuses })).toEqual([
       {
@@ -530,6 +540,78 @@ describe('GET /prepare/cycles/:cycleId/availability-status', () => {
     ]);
   });
 
+  it('filters by status and name while counts and totals stay unfiltered', async () => {
+    const { churchId, leaderUserId, cycleId, ministryId } = await seedAsked();
+    signIn({ userId: leaderUserId, churchId });
+    const base = `/api/v1/prepare/cycles/${cycleId}/availability-status?ministryId=${ministryId}`;
+
+    const unavailable = (
+      await app.inject({ method: 'GET', url: `${base}&status=unavailable` })
+    ).json();
+    expect(unavailable.statuses.map(names)).toEqual(['Bia']);
+    expect(unavailable.counts).toEqual({
+      pending: 1,
+      available: 1,
+      unavailable: 1,
+    });
+    expect(unavailable.asked).toBe(3);
+
+    const pending = (
+      await app.inject({ method: 'GET', url: `${base}&status=pending` })
+    ).json();
+    expect(pending.statuses.map(names)).toEqual(['Ana']);
+
+    const search = (
+      await app.inject({ method: 'GET', url: `${base}&q=%20CAI%20` })
+    ).json();
+    expect(search.statuses.map(names)).toEqual(['Caio']);
+
+    const none = (
+      await app.inject({ method: 'GET', url: `${base}&q=Ana&status=available` })
+    ).json();
+    expect(none.statuses).toEqual([]);
+  });
+
+  it('pages by name then id with an opaque cursor and refuses a bad one', async () => {
+    const { churchId, leaderUserId, cycleId, ministryId } = await seedAsked();
+    signIn({ userId: leaderUserId, churchId });
+    const base = `/api/v1/prepare/cycles/${cycleId}/availability-status?ministryId=${ministryId}&limit=2`;
+
+    const first = (await app.inject({ method: 'GET', url: base })).json();
+    expect(first.statuses.map(names)).toEqual(['Ana', 'Bia']);
+    expect(first.nextCursor).toEqual(expect.any(String));
+
+    const second = (
+      await app.inject({
+        method: 'GET',
+        url: `${base}&cursor=${first.nextCursor}`,
+      })
+    ).json();
+    expect(second.statuses.map(names)).toEqual(['Caio']);
+    expect(second.nextCursor).toBeNull();
+    expect(second.asked).toBe(3);
+
+    const bad = await app.inject({ method: 'GET', url: `${base}&cursor=nope` });
+    expect(bad.statusCode).toBe(422);
+  });
+
+  it('lets the whole roster in one page up to 200 and refuses more', async () => {
+    const { churchId, leaderUserId, cycleId, ministryId } = await seedAsked();
+    signIn({ userId: leaderUserId, churchId });
+    const base = `/api/v1/prepare/cycles/${cycleId}/availability-status?ministryId=${ministryId}`;
+
+    const all = await app.inject({ method: 'GET', url: `${base}&limit=200` });
+    expect(all.statusCode).toBe(200);
+    expect(all.json().statuses).toHaveLength(3);
+    expect(all.json().nextCursor).toBeNull();
+
+    const tooMany = await app.inject({
+      method: 'GET',
+      url: `${base}&limit=201`,
+    });
+    expect(tooMany.statusCode).toBe(422);
+  });
+
   it('answers an empty read before the Ask', async () => {
     const { churchId, adminUserId, cycleId } = await seedAsked();
     const unasked = await buildMinistry({ db, churchId, name: 'Unasked' });
@@ -544,6 +626,8 @@ describe('GET /prepare/cycles/:cycleId/availability-status', () => {
       confirmed: 0,
       answerBy: null,
       remindAvailableAt: null,
+      counts: { pending: 0, available: 0, unavailable: 0 },
+      nextCursor: null,
       statuses: [],
     });
   });

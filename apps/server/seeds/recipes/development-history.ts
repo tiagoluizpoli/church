@@ -1,6 +1,7 @@
 import { scheduleLastTold } from '@church/db';
 import {
   addCalendarDays,
+  addCalendarMonths,
   type CalendarDay,
   compareInstants,
   enumerateCalendarDays,
@@ -38,6 +39,8 @@ import {
   buildMinistryParticipation,
   buildShift,
   buildShiftRequirement,
+  type EventStatus,
+  type ParticipationState,
 } from '../builders/scheduling';
 import {
   buildConfirmedAvailabilityCheck,
@@ -269,6 +272,9 @@ function planEvents({
 }
 
 interface MaterializeEventInput {
+  /** Defaults to a published slice of a past Event: the sent history. */
+  participationState?: ParticipationState;
+  eventStatus?: EventStatus;
   db: SeedWriter;
   churchId: string;
   cycleId: string;
@@ -289,6 +295,8 @@ async function materializeEvent({
   plannedEvent,
   ministries,
   ministryOrder,
+  participationState = 'published',
+  eventStatus = 'past',
 }: MaterializeEventInput): Promise<PlannedShift[]> {
   const [firstEventTimeBlock] = plannedEvent.eventTimeBlocks;
   const lastEventTimeBlock = plannedEvent.eventTimeBlocks.at(-1);
@@ -306,7 +314,7 @@ async function materializeEvent({
     title: plannedEvent.title,
     start: firstEventTimeBlock.start,
     end: lastEventTimeBlock.end,
-    status: 'past',
+    status: eventStatus,
     sourceTemplateId: plannedEvent.sourceTemplateId,
   });
 
@@ -355,7 +363,7 @@ async function materializeEvent({
       ministryId: ministry.ministryId,
       eventId,
       id: participationId,
-      state: 'published',
+      state: participationState,
       eventTimeBlockIds: servedEventTimeBlocks.map(
         ({ eventTimeBlockId }) => eventTimeBlockId,
       ),
@@ -1413,4 +1421,195 @@ interface DayTimeAtInput {
 
 interface ShiftMomentInput {
   shift: PlannedShift;
+}
+
+export interface LoadDevelopmentUpcomingCycleInput
+  extends Omit<LoadDevelopmentHistoryInput, 'history'> {}
+
+/**
+ * Two months after the anchor's: a sent Cycle (with the leaders'
+ * ready-to-prepare notifications Send writes) whose every Ministry slice has
+ * asked for availability and had every Membership confirm, with no
+ * Assignments, so the Assignment proposal has hundreds of needs to fill.
+ */
+export async function loadDevelopmentUpcomingCycle({
+  db,
+  churchId,
+  timeZone,
+  anchor,
+  directory,
+  gatherings,
+  seededGatherings,
+  ministries,
+  volunteerIdByEmail,
+  userIdByEmail,
+}: LoadDevelopmentUpcomingCycleInput): Promise<SeededHistoricalCycle> {
+  const startDate = addCalendarMonths({ day: anchor, months: 2 });
+  const cycle: SeededHistoricalCycle = {
+    id: deriveSeedId({ kind: 'cycle', parentIds: [churchId, 'upcoming'] }),
+    startDate,
+    endDate: addCalendarDays({
+      day: addCalendarMonths({ day: anchor, months: 3 }),
+      days: -1,
+    }),
+  };
+  await buildCycle({
+    db,
+    churchId,
+    id: cycle.id,
+    name: cycleNameOf({ startDate: cycle.startDate }),
+    startDate: cycle.startDate,
+    endDate: cycle.endDate,
+    state: 'sent',
+  });
+  const ministryOrder = [
+    ...new Set(gatherings.servingRules.map((rule) => rule.ministry.name)),
+  ];
+  const plannedEvents = planEvents({
+    window: cycle,
+    timeZone,
+    gatherings,
+    seededGatherings,
+  });
+  const shifts: PlannedShift[] = [];
+  for (const plannedEvent of plannedEvents) {
+    shifts.push(
+      ...(await materializeEvent({
+        db,
+        churchId,
+        cycleId: cycle.id,
+        plannedEvent,
+        ministries,
+        ministryOrder,
+        participationState: 'availability_requested',
+        eventStatus: 'scheduled',
+      })),
+    );
+  }
+  await askAvailabilityRound({
+    db,
+    churchId,
+    cycle,
+    directory,
+    history: {
+      unavailability: [],
+      declines: [],
+      resolvedOverlaps: [],
+      crossMinistryService: [],
+      shortfalls: [],
+      unreadNotificationEmails: [],
+    },
+    ministries,
+    volunteerIdByEmail,
+    shifts,
+    ledger: new StaffingLedger({
+      directory,
+      ministryBlueprints: new Map(
+        directory.ministries.map((ministry) => [ministry.name, ministry]),
+      ),
+    }),
+    confirmedAt: instantAt({
+      day: addCalendarDays({ day: anchor, days: -1 }),
+      time: '20:00',
+      timeZone,
+    }),
+  });
+  await notifyCycleReadyToPrepare({
+    db,
+    churchId,
+    cycle,
+    eventCount: plannedEvents.length,
+    directory,
+    ministries,
+    userIdByEmail,
+    sentAt: instantAt({
+      day: addCalendarDays({ day: anchor, days: -3 }),
+      time: '09:00',
+      timeZone,
+    }),
+    readAt: instantAt({
+      day: addCalendarDays({ day: anchor, days: -2 }),
+      time: '08:00',
+      timeZone,
+    }),
+  });
+  return cycle;
+}
+
+interface LedMinistry {
+  id: string;
+  name: string;
+}
+
+interface NotifyCycleReadyToPrepareInput {
+  db: SeedWriter;
+  churchId: string;
+  cycle: SeededHistoricalCycle;
+  eventCount: number;
+  directory: ChurchDirectoryBlueprint;
+  ministries: Map<string, SeededMinistryStructure>;
+  userIdByEmail: Map<string, string>;
+  sentAt: Instant;
+  readAt: Instant;
+}
+
+/**
+ * What Send leaves each Ministry leader: one inbox Notification listing every
+ * Ministry they lead, as the outbox delivers `cycle_ready_to_prepare`.
+ */
+async function notifyCycleReadyToPrepare({
+  db,
+  churchId,
+  cycle,
+  eventCount,
+  directory,
+  ministries,
+  userIdByEmail,
+  sentAt,
+  readAt,
+}: NotifyCycleReadyToPrepareInput): Promise<void> {
+  const ledByEmail = new Map<string, LedMinistry[]>();
+  for (const ministryBlueprint of directory.ministries) {
+    const { ministryId } = requireMinistry({
+      ministries,
+      name: ministryBlueprint.name,
+    });
+    for (const group of ministryBlueprint.schedule) {
+      if (!group.seat.ministryLeader) continue;
+      for (const { email } of group.people) {
+        const led = ledByEmail.get(email) ?? [];
+        led.push({ id: ministryId, name: ministryBlueprint.name });
+        ledByEmail.set(email, led);
+      }
+    }
+  }
+  for (const [email, led] of ledByEmail) {
+    const userId = requireKnown({ ids: userIdByEmail, key: email });
+    await buildNotification({
+      db,
+      userId,
+      churchId,
+      id: deriveSeedId({
+        kind: 'notification',
+        parentIds: ['cycle_ready_to_prepare', cycle.id, userId],
+      }),
+      sourceOutboxId: deriveSeedId({
+        kind: 'notification-outbox',
+        parentIds: ['cycle_ready_to_prepare', cycle.id, userId],
+      }),
+      payload: {
+        kind: 'cycle_ready_to_prepare',
+        data: {
+          cycleId: cycle.id,
+          cycleName: cycleNameOf({ startDate: cycle.startDate }),
+          cycleStartDate: cycle.startDate,
+          cycleEndDate: cycle.endDate,
+          eventCount,
+          ministries: led,
+        },
+      },
+      createdAt: sentAt,
+      readAt,
+    });
+  }
 }

@@ -1,16 +1,27 @@
 import { db } from '@church/db';
 import { env } from '@church/env/server';
 import { sql } from 'drizzle-orm';
+import { initErrorReporting } from '../infrastructure/services/sentry-error-reporter';
 import { createCompositionRoot } from './di/composition-root';
+import { registerErrorReportTunnel } from './fastify/error-report-tunnel';
 import { registerReadiness } from './fastify/readiness';
 import { registerControllers } from './fastify/register-controllers';
 import { createFastify } from './fastify/setup';
 import { OutboxPoller } from './outbox-poller';
 
 async function start(): Promise<void> {
+  const reportingDsn = initErrorReporting({
+    dsn: env.SENTRY_DSN,
+    enabled: env.ERROR_REPORTING_ENABLED,
+    environment: env.CHURCH_ENVIRONMENT,
+    revision: env.APP_REVISION,
+  });
   const root = createCompositionRoot();
 
-  const app = await createFastify({ locale: root.locale });
+  const app = await createFastify({
+    locale: root.locale,
+    errorReporter: root.errorReporter,
+  });
 
   await app.register(
     async (instance) => {
@@ -21,6 +32,13 @@ async function start(): Promise<void> {
     },
     { prefix: '/api/v1' },
   );
+
+  registerErrorReportTunnel({
+    app,
+    dsn: reportingDsn,
+    environment: env.CHURCH_ENVIRONMENT,
+    settings: root.errorReportTunnel,
+  });
 
   registerReadiness({
     app,

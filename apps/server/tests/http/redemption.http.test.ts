@@ -65,6 +65,7 @@ import { runOperatorCommand } from '@/scripts/operator';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
   seedTwoChurchIdentityFixture,
@@ -272,7 +273,10 @@ async function createHarness({
     volunteerRepository,
     volunteerTransferRepository,
   });
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new RedemptionController({
     redemptionManager,
     volunteerTransferManager,

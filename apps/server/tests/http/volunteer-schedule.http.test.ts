@@ -5,10 +5,11 @@ import {
   ministryParticipation,
   swapRequest,
 } from '@church/db';
-import type { Instant } from '@church/time';
+import { type Instant, now, resetClock, setTestClock } from '@church/time';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -45,6 +46,7 @@ import {
   resetSchedulingPhase3Db,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -59,7 +61,10 @@ const SCHEDULE_URL = '/api/v1/volunteer/schedule';
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const { volunteerManager } = createSchedulingManagers();
   const activeChurchResolver = new DbActiveChurchResolver({
     churchRepository: new DrizzleChurchRepository({ db }),
@@ -94,9 +99,12 @@ beforeEach(async () => {
   vi.resetAllMocks();
   await resetSchedulingPhase3Db();
 });
+afterEach(() => {
+  resetClock();
+});
 
 function fromNow(offsetMs: number): Date {
-  return new Date(Date.now() + offsetMs);
+  return new Date(Date.parse(now()) + offsetMs);
 }
 
 interface SeedCycleInput {
@@ -324,6 +332,128 @@ describe('GET /volunteer/schedule (database-backed)', () => {
       ['Plain', false],
       ['Withdrawn', false],
     ]);
+  });
+
+  it('counts upcoming, this-month (Church Timezone) and open-swap Assignments', async () => {
+    // Mid-March; Church A is America/Sao_Paulo (UTC-3).
+    setTestClock({ instant: '2030-03-15T12:00:00.000Z' as Instant });
+    const { churchId, ministryId, me, assignMe } = await seedWorld();
+    const cycle = await seedCycle({
+      churchId,
+      name: 'Current',
+      startOffsetMs: -20 * DAY_MS,
+      endOffsetMs: 40 * DAY_MS,
+    });
+    const common = { churchId, ministryId, cycleId: cycle.id };
+    const atUtc = (iso: string) => Date.parse(iso) - Date.parse(now());
+    const shifts = [
+      ['Running', -HOUR_MS],
+      ['Swapped', 5 * DAY_MS],
+      // 2030-03-31 22:00 in São Paulo: still March there.
+      ['Last March evening', atUtc('2030-04-01T01:00:00.000Z')],
+      // 2030-04-01 01:00 in São Paulo.
+      ['First April night', atUtc('2030-04-01T04:00:00.000Z')],
+      ['Finished', -2 * DAY_MS],
+    ] as const;
+    const assignmentIds = new Map<string, string>();
+    for (const [title, startOffsetMs] of shifts) {
+      const assignment = await assignMe(
+        await seedShiftGraph({
+          ...common,
+          title,
+          startOffsetMs,
+          endOffsetMs: startOffsetMs + 2 * HOUR_MS,
+        }),
+      );
+      assignmentIds.set(title, assignment.id);
+    }
+    // The finished one's open request is outside the list, so it is not counted.
+    for (const title of ['Swapped', 'Finished']) {
+      await db.insert(swapRequest).values({
+        churchId,
+        assignmentId: assignmentIds.get(title) as string,
+        status: 'open',
+        raisedBy: me.volunteer.userId,
+      });
+    }
+
+    const response = await app.inject({ method: 'GET', url: SCHEDULE_URL });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().counts).toEqual({
+      upcoming: 4,
+      thisMonth: 3,
+      openSwaps: 1,
+    });
+  });
+
+  it('filters the list by Event title, Church-Timezone month and Ministry; counts, next and options ignore them', async () => {
+    setTestClock({ instant: '2030-03-15T12:00:00.000Z' as Instant });
+    const { churchId, ministryId, assignMe } = await seedWorld();
+    const cycle = await seedCycle({
+      churchId,
+      name: 'Current',
+      startOffsetMs: -20 * DAY_MS,
+      endOffsetMs: 40 * DAY_MS,
+    });
+    const atUtc = (iso: string) => Date.parse(iso) - Date.parse(now());
+    const shifts = [
+      ['Culto de domingo', DAY_MS],
+      // 2030-03-31 22:00 in São Paulo: still March there.
+      ['Culto de quarta', atUtc('2030-04-01T01:00:00.000Z')],
+      ['Conferência', 20 * DAY_MS],
+    ] as const;
+    for (const [title, startOffsetMs] of shifts) {
+      await assignMe(
+        await seedShiftGraph({
+          churchId,
+          ministryId,
+          cycleId: cycle.id,
+          title,
+          startOffsetMs,
+          endOffsetMs: startOffsetMs + 2 * HOUR_MS,
+        }),
+      );
+    }
+    const titles = async (query: string) => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `${SCHEDULE_URL}?${query}`,
+      });
+      expect(response.statusCode).toBe(200);
+      return response.json() as {
+        assignments: { eventTitle: string }[];
+        next: { eventTitle: string } | null;
+        counts: { upcoming: number };
+        options: { months: string[]; ministries: { id: string }[] };
+      };
+    };
+
+    const searched = await titles('search=%20CULTO%20');
+    expect(searched.assignments.map((a) => a.eventTitle)).toEqual([
+      'Culto de domingo',
+      'Culto de quarta',
+    ]);
+    const april = await titles('month=2030-04');
+    expect(april.assignments.map((a) => a.eventTitle)).toEqual(['Conferência']);
+    expect(april.next?.eventTitle).toBe('Culto de domingo');
+    expect(april.counts.upcoming).toBe(3);
+    expect(april.options.months).toEqual(['2030-03', '2030-04']);
+    expect(april.options.ministries.map((x) => x.id)).toEqual([ministryId]);
+    expect(
+      (await titles(`ministryId=${ministryId}&month=2030-03&search=quarta`))
+        .assignments,
+    ).toHaveLength(1);
+    expect(
+      (await titles('ministryId=00000000-0000-4000-8000-000000000000'))
+        .assignments,
+    ).toEqual([]);
+
+    const malformed = await app.inject({
+      method: 'GET',
+      url: `${SCHEDULE_URL}?month=2030-13`,
+    });
+    expect(malformed.statusCode).toBe(422);
   });
 
   it('lists a published Schedule the caller has no Assignment in, and drops a past Cycle', async () => {

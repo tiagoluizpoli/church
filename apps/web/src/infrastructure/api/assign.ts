@@ -79,7 +79,7 @@ const getAssignmentProposal = (
       );
     }
   /**
- * Create exactly the reviewed additions once, atomically, as pending Assignments. A retry with the same applicationKey returns the committed outcome. Never publishes or notifies.
+ * Create the reviewed additions, less any excludedAdditions, once, atomically, as pending Assignments. A retry with the same applicationKey returns the committed outcome. Never publishes or notifies.
  * @summary Apply a reviewed Assignment proposal
  */
 const applyAssignmentProposal = (

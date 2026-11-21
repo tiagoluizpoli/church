@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const REPO_ROOT = resolve(import.meta.dir, '../..');
@@ -21,7 +21,8 @@ export function readApplicationSourceFiles(): SourceFile[] {
     .filter(
       (path) =>
         SOURCE_FILE_PATTERN.test(path) &&
-        APPLICATION_ROOTS.some((root) => path.startsWith(root)),
+        APPLICATION_ROOTS.some((root) => path.startsWith(root)) &&
+        existsSync(resolve(REPO_ROOT, path)),
     )
     .map((path) => ({
       path,

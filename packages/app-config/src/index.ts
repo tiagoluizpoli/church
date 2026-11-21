@@ -36,6 +36,15 @@ export const appConfigSchema = z.object({
     windowMs: positiveInt,
     maxRequests: positiveInt,
   }),
+  /** Browser crash reports relayed to the error tracker (ADR 0014). */
+  errorReportTunnel: z.object({
+    /** The API route the web and desktop SDKs send crash reports to. */
+    path: z.string().startsWith('/'),
+    windowMs: positiveInt,
+    maxRequests: positiveInt,
+    /** A tracker that takes longer is dropped; the browser never waits on it. */
+    forwardTimeoutMs: positiveInt,
+  }),
   outbox: z.object({
     maxAttempts: positiveInt,
     backoffCapMinutes: positiveInt,
@@ -70,6 +79,8 @@ export const appConfigSchema = z.object({
     /** People directory page size when the request names none, and the most it may ask for. */
     pageSize: positiveInt,
     maxPageSize: positiveInt,
+    /** The most the Schedule answers roster may ask for; the web shows everyone in one request. */
+    answersMaxPageSize: positiveInt,
   }),
   invitations: z.object({
     /** Invitation list page size when the request names none, and the most it may ask for. */
@@ -115,6 +126,12 @@ export const appConfig = appConfigSchema.parse({
   },
   passwordReset: { ttlMs: HOUR_MS },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
+  errorReportTunnel: {
+    path: '/api/error-reports',
+    windowMs: MINUTE_MS,
+    maxRequests: 10,
+    forwardTimeoutMs: 3 * SECOND_MS,
+  },
   outbox: {
     maxAttempts: 5,
     backoffCapMinutes: 60,
@@ -131,7 +148,7 @@ export const appConfig = appConfigSchema.parse({
     maxPageSize: 50,
   },
   volunteerDashboard: { upcomingLimit: 5 },
-  people: { pageSize: 20, maxPageSize: 50 },
+  people: { pageSize: 20, maxPageSize: 50, answersMaxPageSize: 200 },
   invitations: { pageSize: 20, maxPageSize: 50 },
   schedules: { pageSize: 20, maxPageSize: 50 },
   ministries: { pageSize: 20, maxPageSize: 50 },

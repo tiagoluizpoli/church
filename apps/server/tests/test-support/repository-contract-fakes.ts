@@ -128,6 +128,11 @@ export function createCycleRepositoryFake() {
     getById: vi.fn<CycleRepository['getById']>(),
     findOverlapping: vi.fn<CycleRepository['findOverlapping']>(),
     findAnchors: vi.fn<CycleRepository['findAnchors']>(),
+    resolveElapsed: vi.fn<CycleRepository['resolveElapsed']>(),
+    countByState: vi.fn<CycleRepository['countByState']>(),
+    countEvents: vi.fn<CycleRepository['countEvents']>(),
+    findLatestEnd: vi.fn<CycleRepository['findLatestEnd']>(),
+    count: vi.fn<CycleRepository['count']>(),
     updateState: vi.fn<CycleRepository['updateState']>(),
     update: vi.fn<CycleRepository['update']>(),
     delete: vi.fn<CycleRepository['delete']>(),
@@ -232,6 +237,10 @@ export function createMinistryParticipationRepositoryFake() {
       vi.fn<MinistryParticipationRepository['countScheduleGaps']>(),
     countScheduleChecks:
       vi.fn<MinistryParticipationRepository['countScheduleChecks']>(),
+    listCycleStaffing:
+      vi.fn<MinistryParticipationRepository['listCycleStaffing']>(),
+    listMinistryStaffing:
+      vi.fn<MinistryParticipationRepository['listMinistryStaffing']>(),
   } satisfies MinistryParticipationRepository;
 }
 

@@ -8,7 +8,7 @@ product
 
 Two primary user groups, roughly equal weight:
 
-- **Volunteers**: church members checking availability, assignments, and notifications, mostly on mobile, in short sessions between other tasks. Low tolerance for friction; needs quick in-and-out task completion (respond to an assignment, mark availability, check a notification).
+- **Volunteers**: church members checking availability, assignments, and notifications, mostly on mobile, in short sessions between other tasks. Low tolerance for friction; needs quick in-and-out task completion (mark availability, check the published schedule, ask for a swap when something comes up, check a notification).
 - **Admins / planners**: ministry leaders and schedulers building schedules, planning events, and prepare participation, mostly on desktop in longer focused sessions. Needs clarity over dense data (who's available, who's assigned, gaps in coverage) and confidence that changes save correctly.
 
 Many volunteers skew older, so interactions should not assume fine motor precision, hover states, or small touch targets.

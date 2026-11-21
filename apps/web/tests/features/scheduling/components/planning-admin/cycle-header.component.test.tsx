@@ -2,8 +2,8 @@ import { m } from '@church/i18n/messages';
 import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { SelectCycleButtons } from './select-cycle-buttons';
 import { CycleHeader } from '@/features/scheduling/components/planning-admin/cycle-header';
-import { CycleListCard } from '@/features/scheduling/components/planning-admin/cycle-list-card';
 import { PlanningAdminProvider } from '@/features/scheduling/components/planning-admin/planning-admin-context';
 import { renderWithProviders } from '@/tests/setup/render';
 
@@ -27,7 +27,7 @@ function render({ churchTimezone }: RenderCycleHeaderInput = {}) {
   return renderWithProviders(
     <PlanningAdminProvider>
       <CycleHeader />
-      <CycleListCard />
+      <SelectCycleButtons />
     </PlanningAdminProvider>,
     { churchTimezone },
   );

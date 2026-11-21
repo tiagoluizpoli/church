@@ -113,3 +113,48 @@ describe('server env: APP_REVISION', () => {
     );
   });
 });
+
+describe('server env: observability', () => {
+  it('defaults to info logs, no trace export and a sample rate of 1', async () => {
+    const env = await parse({
+      LOG_LEVEL: '',
+      OTEL_EXPORTER_OTLP_ENDPOINT: '',
+      TRACE_SAMPLE_RATE: '',
+    });
+    expect(env.LOG_LEVEL).toBe('info');
+    expect(env.OTEL_EXPORTER_OTLP_ENDPOINT).toBeUndefined();
+    expect(env.TRACE_SAMPLE_RATE).toBe(1);
+  });
+
+  it.each([
+    ['LOG_LEVEL', 'loud'],
+    ['OTEL_EXPORTER_OTLP_ENDPOINT', 'not-a-url'],
+    ['TRACE_SAMPLE_RATE', '1.5'],
+    ['TRACE_SAMPLE_RATE', '-0.1'],
+  ])('rejects %s=%s', async (key, value) => {
+    expect(await invalidIssues({ [key]: value })).toContain(key);
+  });
+});
+
+describe('server env: error reporting', () => {
+  it('has no DSN and the switch on by default', async () => {
+    const env = await parse({});
+    expect(env.SENTRY_DSN).toBeUndefined();
+    expect(env.ERROR_REPORTING_ENABLED).toBe(true);
+  });
+
+  it('reads the DSN and the switch', async () => {
+    const env = await parse({
+      SENTRY_DSN: 'https://key@tracker.test/1',
+      ERROR_REPORTING_ENABLED: 'false',
+    });
+    expect(env.SENTRY_DSN).toBe('https://key@tracker.test/1');
+    expect(env.ERROR_REPORTING_ENABLED).toBe(false);
+  });
+
+  it('rejects a DSN that is not a URL', async () => {
+    expect(await invalidIssues({ SENTRY_DSN: 'not a url' })).toContain(
+      'SENTRY_DSN',
+    );
+  });
+});

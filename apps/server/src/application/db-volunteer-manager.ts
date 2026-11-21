@@ -1,9 +1,12 @@
 import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
+  addCalendarMonths,
   addMilliseconds,
+  type CalendarDay,
   compareCalendarDays,
   compareInstants,
+  firstOfMonth,
   formatTimeOfDay,
   type Instant,
   now as nowInstant,
@@ -75,6 +78,10 @@ import { IllegalStateTransitionError } from '../domain/errors/illegal-state-tran
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 import { ShiftPublishedError } from '../domain/errors/shift-published';
 import {
+  groupCheckDays,
+  isShiftAnswerable,
+} from '../domain/services/availability-check-days';
+import {
   assertUnavailableShiftsWithinScope,
   expandWholeDayShiftIds,
   resolveShiftAvailability,
@@ -140,6 +147,24 @@ function capUpcomingAssignments({
     capped.push({ ...group, assignments });
   }
   return capped;
+}
+
+/** How many Church months the dashboard's serving history covers, the current one included. */
+const SERVING_HISTORY_MONTHS = 6;
+
+interface ServingMonthsInput {
+  churchDay: CalendarDay;
+  count: number;
+}
+
+/** First days of the `count` months ending at `churchDay`'s month, oldest first. */
+function servingMonths({
+  churchDay,
+  count,
+}: ServingMonthsInput): CalendarDay[] {
+  return Array.from({ length: count }, (_, index) =>
+    addCalendarMonths({ day: churchDay, months: index - (count - 1) }),
+  );
 }
 
 function isPublishedStatus(
@@ -383,6 +408,16 @@ export class DbVolunteerManager implements IVolunteerManager {
       requirements.map((item) => [item.id, item]),
     );
 
+    const { timezone: timeZone } = await this.churchRepo.getById({
+      id: churchId,
+    });
+    const servedByMonth = new Map(
+      servingMonths({
+        churchDay: today({ instant: now, timeZone }),
+        count: SERVING_HISTORY_MONTHS,
+      }).map((month) => [month, { month, served: 0 }]),
+    );
+
     for (const assignment of allAssignments) {
       if (!isPublishedStatus(assignment.status)) continue;
 
@@ -390,6 +425,20 @@ export class DbVolunteerManager implements IVolunteerManager {
       const participation = participationsById.get(
         assignment.participationId as string,
       );
+      const servedEvent =
+        participation && eventsById.get(participation.eventId as string);
+      if (
+        shift &&
+        servedEvent &&
+        servedEvent.status !== 'cancelled' &&
+        assignment.status !== 'declined' &&
+        compareInstants({ left: shift.startTime, right: now }) <= 0
+      ) {
+        const bucket = servedByMonth.get(
+          firstOfMonth({ day: today({ instant: shift.startTime, timeZone }) }),
+        );
+        if (bucket) bucket.served += 1;
+      }
       if (
         !participation ||
         !shift ||
@@ -534,6 +583,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       notificationPreview,
       defaultMinistryId,
       ministryOptions: ministries,
+      servingHistory: [...servedByMonth.values()],
     };
   }
 
@@ -699,13 +749,43 @@ export class DbVolunteerManager implements IVolunteerManager {
       }),
     );
 
+    const listed = items
+      .filter((item): item is VolunteerScheduleAssignment => item != null)
+      .sort((a, b) =>
+        compareInstants({ left: a.startTime, right: b.startTime }),
+      );
+    // `yyyy-MM` of the Church-Timezone day.
+    const monthOf = (item: VolunteerScheduleAssignment) =>
+      today({ instant: item.startTime, timeZone }).slice(0, 7);
+    const currentMonth = churchToday.slice(0, 7);
+    const { search, month, ministryId } = input.filters ?? {};
+    const needle = search?.toLocaleLowerCase();
+    // shortcut: filters run over the assembled list, not in SQL; a Volunteer's own upcoming Assignments stay few. Move into the repository read if that list ever pages.
+    const filtered = listed.filter(
+      (item) =>
+        (!needle || item.eventTitle.toLocaleLowerCase().includes(needle)) &&
+        (!month || monthOf(item) === month) &&
+        (!ministryId || item.ministryId === ministryId),
+    );
     return {
-      assignments: items
-        .filter((item): item is VolunteerScheduleAssignment => item != null)
-        .sort((a, b) =>
-          compareInstants({ left: a.startTime, right: b.startTime }),
-        ),
+      assignments: filtered,
       schedules: scheduleList,
+      counts: {
+        upcoming: listed.length,
+        thisMonth: listed.filter((item) => monthOf(item) === currentMonth)
+          .length,
+        openSwaps: listed.filter((item) => item.swapRequested).length,
+      },
+      next: listed[0] ?? null,
+      options: {
+        months: [...new Set(listed.map(monthOf))],
+        ministries: memberMinistryIds
+          .map((id) => ({
+            id: id as string,
+            name: ministryNames.get(id as string) ?? '',
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      },
     };
   }
 
@@ -1072,7 +1152,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       resolutions.map((entry) => [entry.shiftId, entry.available]),
     );
 
-    const checkShifts: VolunteerCheckShift[] = shifts.map(
+    const checkShifts: Omit<VolunteerCheckShift, 'answerable'>[] = shifts.map(
       (shift: CheckShiftRow) => ({
         shiftId: shift.shiftId as string,
         eventId: shift.eventId as string,
@@ -1081,9 +1161,16 @@ export class DbVolunteerManager implements IVolunteerManager {
         endTime: shift.endTime,
         label: shift.label,
         published: shift.published,
+        assigned: shift.assigned,
         available: availableByShiftId.get(shift.shiftId) ?? true,
       }),
     );
+    const { days, counts } = groupCheckDays({
+      readOnly: context.readOnly,
+      shifts: checkShifts,
+      now: nowInstant(),
+      timeZone: context.timeZone,
+    });
 
     return {
       id: context.check.id as string,
@@ -1095,7 +1182,8 @@ export class DbVolunteerManager implements IVolunteerManager {
       confirmedAt: context.check.confirmedAt,
       answerBy: context.answerBy,
       readOnly: context.readOnly,
-      shifts: checkShifts,
+      days,
+      counts,
     };
   }
 
@@ -1121,6 +1209,13 @@ export class DbVolunteerManager implements IVolunteerManager {
             availabilityCheckId: checkId,
           }),
         ]);
+        const now = nowInstant();
+        const openShifts = shifts.filter((shift) =>
+          isShiftAnswerable({ readOnly: context.readOnly, shift, now }),
+        );
+        // While Shifts are open the summary counts those, like the detail page;
+        // once none are, it reports the whole answer as it stands.
+        const countedShifts = openShifts.length > 0 ? openShifts : shifts;
 
         return {
           id: checkId as string,
@@ -1131,8 +1226,8 @@ export class DbVolunteerManager implements IVolunteerManager {
           state: context.check.state,
           confirmedAt: context.check.confirmedAt,
           answerBy: context.answerBy,
-          totalShiftCount: shifts.length,
-          unavailableShiftCount: shifts.filter((shift) =>
+          totalShiftCount: countedShifts.length,
+          unavailableShiftCount: countedShifts.filter((shift) =>
             unavailableShifts.some((mark) => mark.shiftId === shift.shiftId),
           ).length,
         };
@@ -1199,7 +1294,8 @@ export class DbVolunteerManager implements IVolunteerManager {
         throw new ShiftPublishedError({ shiftIds: publishedShiftIds });
       }
 
-      // Published answers are locked history, even when their Role is no longer held.
+      // Published and ended answers are locked history, even when their Role is no longer held;
+      // new requests for them are ignored.
       const [existingMarks, scopedShifts] = await Promise.all([
         this.unavailableShiftRepo.listUnavailableShiftsByCheck({
           churchId: input.churchId,
@@ -1212,15 +1308,22 @@ export class DbVolunteerManager implements IVolunteerManager {
           tx,
         }),
       ]);
+      const now = nowInstant();
       const lockedShiftIds = new Set(
         scopedShifts
-          .filter((shift) => shift.published)
+          // A read-only check never gets here, so "not answerable" means published or ended.
+          .filter(
+            (shift) => !isShiftAnswerable({ readOnly: false, shift, now }),
+          )
           .map((shift) => shift.shiftId),
       );
       const preservedShiftIds = existingMarks
         .filter((mark) => lockedShiftIds.has(mark.shiftId))
         .map((mark) => mark.shiftId);
-      const nextShiftIds = [...preservedShiftIds, ...requestedShiftIds];
+      const nextShiftIds = [
+        ...preservedShiftIds,
+        ...requestedShiftIds.filter((shiftId) => !lockedShiftIds.has(shiftId)),
+      ];
       await this.unavailableShiftRepo.replaceUnavailableShiftsForCheck({
         churchId: input.churchId,
         availabilityCheckId: input.checkId,

@@ -25,7 +25,14 @@ vi.mock('@/utils/api-instances', async () => ({
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
   adminApi: {
-    listCycles: (...args: unknown[]) => listCycles(...args),
+    // The server always answers with counts and the next suggestion.
+    listCycles: async (...args: unknown[]) => ({
+      counts: { draft: 0, sent: 0, past: 0 },
+      pastMatching: 0,
+      currentCycleId: null,
+      next: { startDate: '2027-01-01', endDate: '2027-01-31', isDue: false },
+      ...(await listCycles(...args)),
+    }),
   },
 }));
 

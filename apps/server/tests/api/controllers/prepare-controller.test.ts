@@ -14,6 +14,7 @@ import { PrepareController } from '@/api/controllers/prepare-controller';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -64,7 +65,10 @@ function createActiveChurchResolution() {
 }
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const controller = new PrepareController({
     config: appConfig,
     participationManager: participationManager as never,
@@ -365,6 +369,8 @@ describe('Prepare participation routes', () => {
       confirmed: 1,
       answerBy: parseCalendarDay({ value: '2026-08-20' }),
       remindAvailableAt: parseInstant({ value: '2026-08-04T10:00:00.000Z' }),
+      counts: { pending: 1, available: 0, unavailable: 1 },
+      nextCursor: null,
       statuses: [
         {
           volunteerId: 'vol-1',
@@ -395,6 +401,8 @@ describe('Prepare participation routes', () => {
       confirmed: 1,
       answerBy: '2026-08-20',
       remindAvailableAt: '2026-08-04T10:00:00.000Z',
+      counts: { pending: 1, available: 0, unavailable: 1 },
+      nextCursor: null,
       statuses: [
         {
           volunteerId: 'vol-1',

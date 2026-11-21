@@ -86,6 +86,7 @@ import {
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
+import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -108,7 +109,10 @@ let roleManager: DbMinistryRoleManager;
 const notifications = createChurchNotificationsSpy();
 
 beforeAll(async () => {
-  app = await createFastify({ locale: testLocale });
+  app = await createFastify({
+    locale: testLocale,
+    errorReporter: testErrorReporter,
+  });
   const authorityManager = new DbAuthorityManager({
     actorRepository: new DrizzleAuthorityActorResolver({ db }),
     scopeRepository: {} as never,
@@ -2208,7 +2212,10 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
 
       await removeFrom({ as: 'ada', member: 'val', membership: ws('val') });
 
-      expect((await asVal('GET', '')).json()).toEqual({ checks: [] });
+      expect((await asVal('GET', '')).json()).toEqual({
+        checks: [],
+        counts: { total: 0, pending: 0, confirmed: 0 },
+      });
       for (const id of [pending, confirmed]) {
         for (const [method, path] of [
           ['GET', `/${id}`],

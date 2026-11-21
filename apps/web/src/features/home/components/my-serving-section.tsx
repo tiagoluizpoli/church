@@ -3,15 +3,33 @@ import { getLocale } from '@church/i18n/runtime';
 import {
   addCalendarDays,
   type CalendarDay,
+  calendarDaysBetween,
   formatLongCalendarDay,
+  formatMonthShort,
   now,
   parseCalendarDay,
   today,
 } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import {
+  CalendarCheck,
+  CalendarClock,
+  CalendarDays,
+  ChevronRight,
+  CircleCheck,
+  Clock,
+  type LucideIcon,
+} from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
@@ -77,15 +95,49 @@ function formatLongRange({ start, end, timeZone }: LongRangeInput): string {
   return `${formatLongCalendarDay({ day: startDay, locale })} · ${formatTimeOf({ value: start, timeZone })}–${endLabel}`;
 }
 
+interface EmptySlotProps {
+  icon: LucideIcon;
+  title: string;
+  hint: string;
+  children?: React.ReactNode;
+}
+
+/** The slot keeps its place when it has nothing to show, so the dashboard never reshuffles. */
+function EmptySlot({ icon: Icon, title, hint, children }: EmptySlotProps) {
+  return (
+    <div className="radius-control flex min-h-36 flex-1 flex-col items-start justify-center gap-3 border border-dashed p-4">
+      <span className="radius-icon flex size-9 items-center justify-center bg-primary/8 text-primary">
+        <Icon aria-hidden className="size-4.5" />
+      </span>
+      <div className="space-y-1">
+        <p className="font-semibold">{title}</p>
+        <p className="text-muted-foreground text-sm">{hint}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+interface CountdownInput {
+  start: string;
+  timeZone: string;
+}
+
+function countdown({ start, timeZone }: CountdownInput): string {
+  const days = calendarDaysBetween({
+    start: today({ instant: now(), timeZone }),
+    end: dayOf({ value: start, timeZone }),
+  });
+  if (days <= 0) return m.home_next_today();
+  if (days === 1) return m.home_next_tomorrow();
+  return m.home_next_in_days({ count: days });
+}
+
 export function NextAssignmentWidget(props: HomeSectionProps) {
   const { churchTimezone: timeZone } = useTimezone();
   const dashboard = useVolunteerDashboard(props);
-  const { query: checks, pending } = usePendingChecks(props);
+  const { pending } = usePendingChecks(props);
   const next = dashboard.data?.nextAssignment;
-  // With no next assignment, stay silent unless nothing at all needs the volunteer.
-  if (dashboard.isSuccess && !next && !(checks.isSuccess && !pending.length))
-    return null;
-  const needsResponse = next?.status === 'pending' && next.canRespond;
   return (
     <HomeWidget
       title={m.home_next_assignment()}
@@ -100,50 +152,65 @@ export function NextAssignmentWidget(props: HomeSectionProps) {
     >
       {dashboard.isPending ? (
         <Pending label={m.my_schedule_loading()}>
-          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-28 w-full" />
         </Pending>
       ) : next ? (
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <Link
-              to="/my-schedule/$assignmentId"
-              params={{ assignmentId: next.assignmentId }}
-              className="inline-flex min-h-11 items-center font-semibold text-2xl hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              {next.eventTitle}
-            </Link>
-            <p className="text-lg">
-              {formatLongRange({
-                start: next.startTime,
-                end: next.endTime,
-                timeZone,
-              })}
-            </p>
-            <p className="text-muted-foreground">
-              {next.ministryName} · {next.sectorName} · {next.roleName}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {needsResponse ? (
+        <div className="space-y-4">
+          <div className="flex items-start gap-4">
+            <DateTile day={dayOf({ value: next.startTime, timeZone })} large />
+            <div className="min-w-0 space-y-0.5">
               <Link
                 to="/my-schedule/$assignmentId"
                 params={{ assignmentId: next.assignmentId }}
-                className={buttonVariants({ size: 'touch' })}
+                className="inline-flex items-center font-semibold text-2xl tracking-tight hover:underline focus-visible:outline-2 focus-visible:outline-ring"
               >
-                {m.home_respond()}
+                {next.eventTitle}
               </Link>
-            ) : null}
-            <Badge variant="secondary">
+              <p>
+                {formatLongRange({
+                  start: next.startTime,
+                  end: next.endTime,
+                  timeZone,
+                })}
+              </p>
+              <p className="text-muted-foreground text-sm">
+                {next.ministryName} · {next.sectorName} · {next.roleName}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+            <span className="radius-control inline-flex items-center gap-1.5 bg-primary/8 px-2.5 py-1 font-medium text-primary text-sm">
+              <Clock aria-hidden className="size-3.5" />
               {next.timingState === 'in_progress'
                 ? m.my_schedule_in_progress()
-                : needsResponse
-                  ? m.home_next_assignment_pending()
-                  : m.home_next_assignment_answered()}
-            </Badge>
+                : countdown({ start: next.startTime, timeZone })}
+            </span>
+            <Link
+              to="/my-schedule/$assignmentId"
+              params={{ assignmentId: next.assignmentId }}
+              className={cn(buttonVariants({ size: 'touch' }), 'ml-auto')}
+            >
+              {m.home_open_assignment()}
+            </Link>
           </div>
         </div>
       ) : (
-        <p>{m.my_schedule_empty()}</p>
+        <EmptySlot
+          icon={CalendarClock}
+          title={m.home_next_assignment_none()}
+          hint={
+            pending.length
+              ? m.home_next_assignment_none_checks()
+              : m.home_next_assignment_none_hint()
+          }
+        >
+          <Link
+            to="/my-schedule"
+            className={buttonVariants({ variant: 'outline', size: 'sm' })}
+          >
+            {m.nav_my_schedule()}
+          </Link>
+        </EmptySlot>
       )}
     </HomeWidget>
   );
@@ -163,8 +230,9 @@ function CheckDeadline({ check, churchDay }: CheckDeadlineProps) {
     !overdue &&
     answerBy <= addCalendarDays({ day: churchDay, days: DEADLINE_SOON_DAYS });
   return (
-    <p
+    <span
       className={cn(
+        'block text-sm',
         overdue
           ? 'font-medium text-destructive'
           : soon
@@ -177,7 +245,7 @@ function CheckDeadline({ check, churchDay }: CheckDeadlineProps) {
           ? m.availability_list_overdue({ date })
           : m.availability_list_answer_by({ date })}
       </time>
-    </p>
+    </span>
   );
 }
 
@@ -185,10 +253,14 @@ export function PendingChecksWidget(props: HomeSectionProps) {
   const { churchTimezone: timeZone } = useTimezone();
   const churchDay = today({ instant: now(), timeZone });
   const { query, pending } = usePendingChecks(props);
-  if (query.isSuccess && !pending.length) return null;
   return (
     <HomeWidget
       title={m.home_pending_checks()}
+      action={
+        pending.length ? (
+          <Badge className="tabular-nums">{pending.length}</Badge>
+        ) : null
+      }
       error={
         query.isError
           ? {
@@ -200,46 +272,94 @@ export function PendingChecksWidget(props: HomeSectionProps) {
     >
       {query.isPending ? (
         <Pending label={m.availability_list_loading()}>
-          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-28 w-full" />
         </Pending>
-      ) : (
-        <ul className="divide-y">
+      ) : pending.length ? (
+        <ul className="space-y-2">
           {pending.map((check) => (
-            <li key={check.id} className="space-y-2 py-3 first:pt-0 last:pb-0">
-              <p className="font-semibold">
-                {check.ministryName} · {check.cycleName}
-              </p>
-              <CheckDeadline check={check} churchDay={churchDay} />
+            <li key={check.id}>
               <Link
                 to="/availability/$checkId"
                 params={{ checkId: check.id }}
-                className={buttonVariants({ size: 'touch' })}
+                className="radius-control group flex min-h-14 items-center gap-3 border px-3 py-2.5 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
               >
-                {m.home_answer_availability()}
-                <span className="sr-only">
-                  {' '}
-                  · {check.ministryName} · {check.cycleName}
+                <span className="radius-icon flex size-9 shrink-0 items-center justify-center bg-primary/8 text-primary">
+                  <CalendarCheck aria-hidden className="size-4.5" />
                 </span>
+                <span className="min-w-0 flex-1 space-y-0.5">
+                  <span className="block truncate font-medium">
+                    {check.ministryName} · {check.cycleName}
+                  </span>
+                  <CheckDeadline check={check} churchDay={churchDay} />
+                </span>
+                <span className="sr-only">{m.home_answer_availability()}</span>
+                <ChevronRight
+                  aria-hidden
+                  className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                />
               </Link>
             </li>
           ))}
         </ul>
+      ) : (
+        <EmptySlot
+          icon={CircleCheck}
+          title={m.home_pending_checks_none()}
+          hint={m.home_pending_checks_none_hint()}
+        />
       )}
     </HomeWidget>
   );
 }
 
-/** Next assignment and open checks share a row on desktop; either takes the full row when the other renders nothing. */
+/** Fixed slots: next and availability on top, history and upcoming below. */
 export function ServingActionsWidget(props: HomeSectionProps) {
   return (
-    <div className="flex flex-col gap-4 md:flex-row">
-      <div className="min-w-0 flex-1 empty:hidden">
+    <div className="grid gap-4 lg:grid-cols-12">
+      <div className="min-w-0 lg:col-span-7">
         <NextAssignmentWidget {...props} />
       </div>
-      <div className="min-w-0 flex-1 empty:hidden">
+      <div className="min-w-0 lg:col-span-5">
         <PendingChecksWidget {...props} />
       </div>
+      <div className="min-w-0 lg:col-span-5">
+        <ServingHistoryWidget {...props} />
+      </div>
+      <div className="min-w-0 lg:col-span-7">
+        <UpcomingAssignmentsWidget {...props} />
+      </div>
     </div>
+  );
+}
+
+interface DateTileProps {
+  day: CalendarDay;
+  large?: boolean;
+}
+
+/** A calendar-leaf date: month and day stacked, so a list of dates scans at a glance. */
+function DateTile({ day, large }: DateTileProps) {
+  const month = formatMonthShort({ day, locale: getLocale() });
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'radius-control flex shrink-0 flex-col items-center overflow-hidden border bg-card',
+        large ? 'w-16' : 'w-12',
+      )}
+    >
+      <span className="w-full bg-primary/10 py-0.5 text-center font-medium text-primary text-xs uppercase">
+        {month}
+      </span>
+      <span
+        className={cn(
+          'font-semibold tabular-nums',
+          large ? 'text-3xl leading-11' : 'text-lg leading-7',
+        )}
+      >
+        {Number(day.slice(8))}
+      </span>
+    </span>
   );
 }
 
@@ -254,43 +374,163 @@ export function UpcomingAssignmentsWidget(props: HomeSectionProps) {
         .filter((assignment) => assignment.assignmentId !== nextId)
         .map((assignment) => ({ group, assignment })),
   );
-  if (!rows.length) return null;
   return (
     <HomeWidget
       title={m.home_upcoming_assignments()}
+      loading={dashboard.isPending}
       action={
         <Link
           to="/my-schedule"
-          className="inline-flex min-h-11 items-center underline"
+          className="-my-3 inline-flex min-h-11 items-center underline"
         >
           {m.home_see_all()}
         </Link>
       }
     >
-      <ul className="divide-y">
-        {rows.map(({ group, assignment }) => (
-          <li key={assignment.assignmentId}>
-            <Link
-              to="/my-schedule/$assignmentId"
-              params={{ assignmentId: assignment.assignmentId }}
-              className="-mx-2 block min-h-11 rounded-md px-2 py-3 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+      {dashboard.isError ? (
+        // The next-assignment and history widgets already offer the retry for this shared read.
+        <p className="text-muted-foreground">{m.my_schedule_load_error()}</p>
+      ) : rows.length === 0 ? (
+        <EmptySlot
+          icon={CalendarDays}
+          title={m.home_upcoming_none()}
+          hint={m.home_next_assignment_none_hint()}
+        />
+      ) : (
+        <ul className="grid gap-1">
+          {rows.map(({ group, assignment }) => {
+            const day = dayOf({ value: assignment.startTime, timeZone });
+            return (
+              <li key={assignment.assignmentId}>
+                <Link
+                  to="/my-schedule/$assignmentId"
+                  params={{ assignmentId: assignment.assignmentId }}
+                  className="radius-control -mx-2 flex min-h-11 items-center gap-4 px-2 py-2 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <DateTile day={day} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">
+                      {group.eventTitle}
+                    </span>
+                    <span className="block text-muted-foreground text-sm">
+                      {formatInstantRangeOf({
+                        start: assignment.startTime,
+                        end: assignment.endTime,
+                        timeZone,
+                      })}{' '}
+                      · {assignment.sectorName} · {assignment.roleName}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </HomeWidget>
+  );
+}
+
+const servingConfig = {
+  served: { label: m.home_serving_series(), color: 'var(--chart-1)' },
+} satisfies ChartConfig;
+
+/** The volunteer's own rhythm: assignments per month, and the ministries they serve in. */
+export function ServingHistoryWidget(props: HomeSectionProps) {
+  const dashboard = useVolunteerDashboard(props);
+  const history = dashboard.data?.servingHistory ?? [];
+  const ministries = dashboard.data?.ministryOptions ?? [];
+  const total = history.reduce((sum, { served }) => sum + served, 0);
+  const data = history.map(({ month, served }) => ({
+    month: formatMonthShort({
+      day: parseCalendarDay({ value: month }),
+      locale: getLocale(),
+    }),
+    served,
+  }));
+  return (
+    <HomeWidget
+      title={m.home_serving_title()}
+      loading={dashboard.isPending}
+      error={
+        dashboard.isError
+          ? {
+              message: m.my_schedule_load_error(),
+              retry: () => dashboard.refetch(),
+            }
+          : undefined
+      }
+    >
+      <div className="space-y-4">
+        <p className="flex flex-col">
+          <span className="text-muted-foreground text-sm">
+            {m.home_serving_total()}
+          </span>
+          <span className="font-semibold text-3xl tabular-nums tracking-tight">
+            {total}
+          </span>
+        </p>
+        {total === 0 ? (
+          <p className="radius-control flex h-36 items-center justify-center border border-dashed px-4 text-center text-muted-foreground text-sm">
+            {m.home_serving_empty()}
+          </p>
+        ) : (
+          <figure>
+            <ChartContainer
+              config={servingConfig}
+              className="aspect-auto h-36 w-full"
             >
-              {group.eventTitle} ·{' '}
-              {formatInstantRangeOf({
-                start: assignment.startTime,
-                end: assignment.endTime,
-                timeZone,
-              })}{' '}
-              · {assignment.sectorName} · {assignment.roleName}
-              {assignment.status === 'declined' ? (
-                <Badge variant="outline" className="ml-2">
-                  {m.home_assignment_declined()}
-                </Badge>
-              ) : null}
-            </Link>
-          </li>
-        ))}
-      </ul>
+              <BarChart
+                data={data}
+                margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
+                accessibilityLayer
+              >
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="month"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
+                <ChartTooltip
+                  cursor={{ fill: 'var(--muted)', opacity: 0.6 }}
+                  content={<ChartTooltipContent hideIndicator />}
+                />
+                <Bar
+                  dataKey="served"
+                  fill="var(--color-served)"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={32}
+                  isAnimationActive={false}
+                />
+              </BarChart>
+            </ChartContainer>
+            <figcaption className="sr-only">
+              <ul>
+                {data.map(({ month, served }) => (
+                  <li key={month}>
+                    {m.home_serving_month({ month, count: served })}
+                  </li>
+                ))}
+              </ul>
+            </figcaption>
+          </figure>
+        )}
+        {ministries.length ? (
+          <section className="space-y-2">
+            <h3 className="font-medium text-muted-foreground text-sm">
+              {m.home_serving_ministries()}
+            </h3>
+            <ul className="flex flex-wrap gap-2">
+              {ministries.map((ministry) => (
+                <li key={ministry.id}>
+                  <Badge variant="secondary">{ministry.name}</Badge>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
     </HomeWidget>
   );
 }

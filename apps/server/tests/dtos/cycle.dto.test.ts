@@ -69,15 +69,40 @@ describe('cycleMapper', () => {
     expect(isInstant({ value: response.updatedAt })).toBe(true);
   });
 
-  it('maps a non-empty list of cycles', () => {
-    const response = cycleMapper.listToResponse([createCycle()]);
+  it('maps a non-empty list of cycles with its state counts', () => {
+    const counts = { draft: 1, sent: 2, past: 3 };
+    const response = cycleMapper.listToResponse({
+      cycles: [createCycle()],
+      counts,
+      eventCounts: { '22222222-2222-2222-2222-222222222222': 4 },
+      pastMatching: 0,
+      currentCycleId: null,
+      next: {
+        startDate: parseCalendarDay({ value: '2026-12-01' }),
+        endDate: parseCalendarDay({ value: '2026-12-31' }),
+        isDue: true,
+      },
+    });
 
     expect(response.cycles).toHaveLength(1);
     expect(response.cycles[0]?.id).toBe('22222222-2222-2222-2222-222222222222');
+    expect(response.counts).toEqual(counts);
+    expect(response.cycles[0]?.eventCount).toBe(4);
   });
 
   it('maps an empty list of cycles', () => {
-    const response = cycleMapper.listToResponse([]);
+    const response = cycleMapper.listToResponse({
+      cycles: [],
+      counts: { draft: 0, sent: 0, past: 0 },
+      eventCounts: {},
+      pastMatching: 0,
+      currentCycleId: null,
+      next: {
+        startDate: parseCalendarDay({ value: '2026-12-01' }),
+        endDate: parseCalendarDay({ value: '2026-12-31' }),
+        isDue: true,
+      },
+    });
 
     expect(response.cycles).toEqual([]);
   });

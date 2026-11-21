@@ -1,23 +1,51 @@
 import { NotFoundError } from '@church/core';
-import { cycle } from '@church/db';
-import { nowAsDate } from '@church/time';
-import { and, desc, eq, gt, gte, lte, ne, notInArray, sql } from 'drizzle-orm';
+import { cycle, event } from '@church/db';
+import { type CalendarDay, fromDateColumn, nowAsDate } from '@church/time';
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  ilike,
+  inArray,
+  lt,
+  lte,
+  max,
+  ne,
+  notInArray,
+  sql,
+} from 'drizzle-orm';
 import type {
   AcquireCycleChurchLockInput,
+  CountCycleEventsInput,
+  CountCyclesByStateInput,
   CreateCycleInput,
   CycleRepository,
   DeleteCycleInput,
   FindCycleAnchorsInput,
+  FindLatestCycleEndInput,
   FindOverlappingCyclesInput,
   GetCycleInput,
   ListCyclesInput,
+  ResolveElapsedCyclesInput,
   UpdateCycleInput,
   UpdateCycleStateInput,
 } from '../../domain/contracts/infrastructure/cycle.repository';
-import type { Cycle, CycleAnchors } from '../../domain/entities/cycle';
+import type {
+  Cycle,
+  CycleAnchors,
+  CycleStateCounts,
+} from '../../domain/entities/cycle';
 import { OverlappingCycleError } from '../../domain/errors/overlapping-cycle';
 import { mapCycle } from '../mappers/cycle.mapper';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  containsPattern,
+  getClient,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import type { AnyDrizzleDb } from './types';
 import {
   isConstraintViolation,
@@ -30,6 +58,28 @@ const CHURCH_DATE_EXCLUSION_CONSTRAINT = 'cycle_church_date_excl';
 interface RefuseExclusionRaceInput {
   error: unknown;
   range: Omit<FindOverlappingCyclesInput, 'tx'>;
+}
+
+/** The Church's Cycles narrowed by `list`'s optional filters. */
+function listConditions(input: ListCyclesInput) {
+  const conditions = [
+    withChurchIsolation({ table: cycle, churchId: input.churchId }),
+  ];
+  if (input.states) {
+    conditions.push(inArray(cycle.state, input.states));
+  }
+  if (input.search) {
+    conditions.push(
+      ilike(cycle.name, containsPattern({ value: input.search })),
+    );
+  }
+  if (input.from) {
+    conditions.push(gte(cycle.endDate, input.from));
+  }
+  if (input.to) {
+    conditions.push(lte(cycle.startDate, input.to));
+  }
+  return and(...conditions);
 }
 
 interface DrizzleCycleRepositoryInput {
@@ -68,23 +118,87 @@ export class DrizzleCycleRepository implements CycleRepository {
 
   async list(input: ListCyclesInput): Promise<Cycle[]> {
     const db = getClient({ db: this.db, tx: input.tx });
-    const conditions = [
-      withChurchIsolation({ table: cycle, churchId: input.churchId }),
-    ];
-
-    if (input.state) {
-      conditions.push(eq(cycle.state, input.state));
-    }
-
     const rows = await db
       .select()
       .from(cycle)
-      .where(and(...conditions))
+      .where(listConditions(input))
       // Newest first; Cycles of one Church never overlap, so id only keeps the
       // order total.
       .orderBy(desc(cycle.startDate), desc(cycle.endDate), cycle.id);
 
     return rows.map(mapCycle);
+  }
+
+  async count(input: ListCyclesInput): Promise<number> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const [row] = await db
+      .select({ total: count() })
+      .from(cycle)
+      .where(listConditions(input));
+    return row?.total ?? 0;
+  }
+
+  async resolveElapsed(input: ResolveElapsedCyclesInput): Promise<void> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    await db
+      .update(cycle)
+      .set({ state: 'past', updatedAt: nowAsDate() })
+      .where(
+        and(
+          withChurchIsolation({ table: cycle, churchId: input.churchId }),
+          ne(cycle.state, 'past'),
+          // endDate is the Cycle's last day: it elapses on the following day.
+          lt(cycle.endDate, input.today),
+        ),
+      );
+  }
+
+  async countByState(
+    input: CountCyclesByStateInput,
+  ): Promise<CycleStateCounts> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const rows = await db
+      .select({ state: cycle.state, total: count() })
+      .from(cycle)
+      .where(withChurchIsolation({ table: cycle, churchId: input.churchId }))
+      .groupBy(cycle.state);
+    const counts: CycleStateCounts = { draft: 0, sent: 0, past: 0 };
+    for (const row of rows) {
+      counts[row.state] = row.total;
+    }
+    return counts;
+  }
+
+  async findLatestEnd(
+    input: FindLatestCycleEndInput,
+  ): Promise<CalendarDay | null> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const [row] = await db
+      .select({ latestEnd: max(cycle.endDate) })
+      .from(cycle)
+      .where(withChurchIsolation({ table: cycle, churchId: input.churchId }));
+    return row?.latestEnd ? fromDateColumn({ date: row.latestEnd }) : null;
+  }
+
+  async countEvents(
+    input: CountCycleEventsInput,
+  ): Promise<Record<string, number>> {
+    if (input.cycleIds.length === 0) {
+      return {};
+    }
+    const db = getClient({ db: this.db, tx: input.tx });
+    const rows = await db
+      .select({ cycleId: event.cycleId, total: count() })
+      .from(event)
+      .where(
+        and(
+          withChurchIsolation({ table: event, churchId: input.churchId }),
+          inArray(event.cycleId, input.cycleIds),
+          ne(event.status, 'cancelled'),
+        ),
+      )
+      .groupBy(event.cycleId);
+    return Object.fromEntries(rows.map((row) => [row.cycleId, row.total]));
   }
 
   async getById(input: GetCycleInput): Promise<Cycle> {

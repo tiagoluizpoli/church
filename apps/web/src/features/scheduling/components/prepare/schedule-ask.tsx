@@ -91,7 +91,7 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
   ));
   if (preview.data?.shiftCount === 0) return null;
   return (
-    <div className="flex max-w-sm flex-col gap-2">
+    <div className="contents">
       <Button
         onClick={() => {
           setAnswerBy('');
@@ -121,7 +121,7 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
         </span>
       ) : null}
       {preview.isError ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="order-last basis-full">
           <AlertDescription>
             {previewStatus === 403
               ? m.shell_no_access()
@@ -244,7 +244,7 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
         </ResponsiveFormSurface>
       ) : null}
       {!open && flaggedBlocks.length > 0 ? (
-        <div className="flex flex-col gap-1 text-sm">
+        <div className="order-last flex basis-full flex-col gap-1 text-sm">
           <p id={`${deadlineId}-flagged`}>{m.prepare_ask_flagged()}</p>
           {flaggedLinks}
         </div>

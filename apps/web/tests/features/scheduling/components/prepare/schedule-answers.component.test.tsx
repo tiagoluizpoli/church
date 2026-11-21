@@ -51,6 +51,8 @@ beforeEach(() => {
     confirmed: 0,
     answerBy: null,
     remindAvailableAt: null,
+    counts: { pending: 1, available: 0, unavailable: 0 },
+    nextCursor: null,
     statuses: [
       {
         volunteerId: 'v1',
@@ -63,7 +65,11 @@ beforeEach(() => {
   });
   api.listMinistries.mockRejectedValue(new Error('admin-only read'));
   api.listScheduleSummaries.mockResolvedValue({ cycles: [] });
-  api.getCycleParticipation.mockResolvedValue({ events: [EVENT] });
+  api.getCycleParticipation.mockResolvedValue({
+    dayMarkers: ['2027-01-03'],
+    totals: { blocks: 1, needsAttention: 0 },
+    events: [EVENT],
+  });
   api.getSchedule.mockResolvedValue(SCHEDULE);
   api.listSectors.mockResolvedValue({ sectors: SECTORS });
   api.listMinistryRoles.mockResolvedValue({ roles: ROLES });
@@ -82,16 +88,16 @@ it.each([
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
-  expect(
-    await screen.findByText(m.answers_count({ confirmed: 0, asked: 1 })),
-  ).toBeVisible();
+  expect(await screen.findByTestId('prepare-stat-answers')).toHaveTextContent(
+    '0/1',
+  );
   if (stage === 'published')
     expect(
-      screen.queryByRole('button', { name: m.answers_deadline() }),
+      screen.queryByRole('button', { name: m.answers_edit_deadline() }),
     ).not.toBeInTheDocument();
   else
     expect(
-      screen.getByRole('button', { name: m.answers_deadline() }),
+      screen.getByRole('button', { name: m.answers_edit_deadline() }),
     ).toBeVisible();
 });
 
@@ -105,11 +111,11 @@ it('keeps Past Schedule Answers readable without Deadline editing', async () => 
     initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
+  expect(await screen.findByTestId('prepare-stat-answers')).toHaveTextContent(
+    '0/1',
+  );
   expect(
-    await screen.findByText(m.answers_count({ confirmed: 0, asked: 1 })),
-  ).toBeVisible();
-  expect(
-    screen.queryByRole('button', { name: m.answers_deadline() }),
+    screen.queryByRole('button', { name: m.answers_edit_deadline() }),
   ).not.toBeInTheDocument();
 });
 

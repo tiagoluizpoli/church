@@ -41,6 +41,12 @@ export type AvailabilityCheckSummaryResponse = z.infer<
 
 export const availabilityCheckListResponseSchema = z.object({
   checks: z.array(availabilityCheckSummarySchema),
+  /** Header totals; the list is never paged or filtered, so it is the whole scope. */
+  counts: z.object({
+    total: z.number().int(),
+    pending: z.number().int(),
+    confirmed: z.number().int(),
+  }),
 });
 
 const availabilityCheckShiftSchema = z.object({
@@ -52,6 +58,21 @@ const availabilityCheckShiftSchema = z.object({
   label: z.string().optional(),
   available: z.boolean(),
   published: z.boolean(),
+  assigned: z.boolean(),
+  answerable: z.boolean(),
+});
+
+const availabilityCheckDaySchema = z.object({
+  date: calendarDaySchema,
+  state: z.enum(['open', 'past', 'published']),
+  shifts: z.array(availabilityCheckShiftSchema),
+});
+
+const availabilityCheckCountsSchema = z.object({
+  openDays: z.number(),
+  pastDays: z.number(),
+  publishedDays: z.number(),
+  openShifts: z.number(),
 });
 
 export const availabilityCheckDetailResponseSchema = z.object({
@@ -64,7 +85,8 @@ export const availabilityCheckDetailResponseSchema = z.object({
   ministryName: z.string(),
   state: z.enum(['pending', 'confirmed']),
   confirmedAt: instantSchema.optional(),
-  shifts: z.array(availabilityCheckShiftSchema),
+  days: z.array(availabilityCheckDaySchema),
+  counts: availabilityCheckCountsSchema,
 });
 export type AvailabilityCheckDetailResponse = z.infer<
   typeof availabilityCheckDetailResponseSchema
@@ -136,27 +158,39 @@ export const dashboardResponseSchema = z.object({
   notificationPreview: z.array(memberNotificationResponseSchema),
   defaultMinistryId: z.string().optional(),
   ministryOptions: z.array(dashboardMinistryOptionSchema),
+  servingHistory: z.array(
+    z.object({ month: calendarDaySchema, served: z.number() }),
+  ),
 });
 export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
 
+export const volunteerScheduleQuerystringSchema = z.object({
+  search: z.string().trim().min(1).max(200).optional(),
+  month: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
+  ministryId: z.string().uuid().optional(),
+});
+
+const volunteerScheduleAssignmentSchema = z.object({
+  assignmentId: z.string(),
+  eventId: z.string(),
+  eventTitle: z.string(),
+  shiftId: z.string(),
+  startTime: instantSchema,
+  endTime: instantSchema,
+  ministryId: z.string(),
+  ministryName: z.string(),
+  sectorName: z.string(),
+  roleId: z.string(),
+  roleName: z.string(),
+  status: z.enum(['pending', 'confirmed', 'declined']),
+  swapRequested: z.boolean(),
+});
+
 export const volunteerScheduleResponseSchema = z.object({
-  assignments: z.array(
-    z.object({
-      assignmentId: z.string(),
-      eventId: z.string(),
-      eventTitle: z.string(),
-      shiftId: z.string(),
-      startTime: instantSchema,
-      endTime: instantSchema,
-      ministryId: z.string(),
-      ministryName: z.string(),
-      sectorName: z.string(),
-      roleId: z.string(),
-      roleName: z.string(),
-      status: z.enum(['pending', 'confirmed', 'declined']),
-      swapRequested: z.boolean(),
-    }),
-  ),
+  assignments: z.array(volunteerScheduleAssignmentSchema),
   schedules: z.array(
     z.object({
       ministryId: z.string(),
@@ -165,6 +199,17 @@ export const volunteerScheduleResponseSchema = z.object({
       cycleName: z.string(),
     }),
   ),
+  /** Over the listed Assignments; `thisMonth` uses the Church Timezone. */
+  counts: z.object({
+    upcoming: z.number().int().nonnegative(),
+    thisMonth: z.number().int().nonnegative(),
+    openSwaps: z.number().int().nonnegative(),
+  }),
+  next: volunteerScheduleAssignmentSchema.nullable(),
+  options: z.object({
+    months: z.array(z.string()),
+    ministries: z.array(z.object({ id: z.string(), name: z.string() })),
+  }),
 });
 
 const ministryScheduleEventResponseSchema = z.object({
@@ -272,16 +317,23 @@ function availabilityCheckDetailToResponse(
     confirmedAt: detail.confirmedAt,
     answerBy: detail.answerBy,
     readOnly: detail.readOnly,
-    shifts: detail.shifts.map((shift) => ({
-      shiftId: shift.shiftId,
-      eventId: shift.eventId,
-      eventTitle: shift.eventTitle,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      label: shift.label,
-      available: shift.available,
-      published: shift.published,
+    days: detail.days.map((day) => ({
+      date: day.date,
+      state: day.state,
+      shifts: day.shifts.map((shift) => ({
+        shiftId: shift.shiftId,
+        eventId: shift.eventId,
+        eventTitle: shift.eventTitle,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        label: shift.label,
+        available: shift.available,
+        published: shift.published,
+        assigned: shift.assigned,
+        answerable: shift.answerable,
+      })),
     })),
+    counts: detail.counts,
   };
 }
 
@@ -339,6 +391,7 @@ function dashboardToResponse(dashboard: VolunteerDashboard): DashboardResponse {
     ),
     defaultMinistryId: dashboard.defaultMinistryId,
     ministryOptions: dashboard.ministryOptions,
+    servingHistory: dashboard.servingHistory,
   };
 }
 
@@ -378,7 +431,17 @@ export const volunteerMapper = {
   availabilityCheckListToResponse(
     summaries: VolunteerAvailabilityCheckSummary[],
   ) {
-    return { checks: summaries.map(availabilityCheckSummaryToResponse) };
+    const pending = summaries.filter(
+      (summary) => summary.state === 'pending',
+    ).length;
+    return {
+      checks: summaries.map(availabilityCheckSummaryToResponse),
+      counts: {
+        total: summaries.length,
+        pending,
+        confirmed: summaries.length - pending,
+      },
+    };
   },
   availabilityCheckDetailToResponse,
   assignmentToResponse,

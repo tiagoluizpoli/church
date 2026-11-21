@@ -1,9 +1,19 @@
 import type { CalendarDay } from '@church/time';
 import type {
   AnswerAvailabilityCheckBody,
-  GetAvailabilityCheck200ShiftsItem,
+  GetAvailabilityCheck200,
+  GetAvailabilityCheck200DaysItemShiftsItem,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { dayOf } from '@/shared/utils/church-time';
+
+export type CheckShift = GetAvailabilityCheck200DaysItemShiftsItem;
+
+/** The Shifts the Volunteer can still answer, as the server flags them. */
+export function answerableShifts(check: GetAvailabilityCheck200): CheckShift[] {
+  return check.days.flatMap((day) =>
+    day.shifts.filter((shift) => shift.answerable),
+  );
+}
 
 export interface UnavailableShiftDraft {
   markedShiftIds: Set<string>;
@@ -11,20 +21,20 @@ export interface UnavailableShiftDraft {
 }
 
 export interface CreateInitialUnavailableShiftDraftInput {
-  shifts: GetAvailabilityCheck200ShiftsItem[];
+  shifts: CheckShift[];
   timeZone: string;
 }
 
 export interface ToggleShiftUnavailableInput {
   draft: UnavailableShiftDraft;
-  shifts: GetAvailabilityCheck200ShiftsItem[];
+  shifts: CheckShift[];
   shiftId: string;
   timeZone: string;
 }
 
 export interface ToggleWholeDayUnavailableInput {
   draft: UnavailableShiftDraft;
-  shifts: GetAvailabilityCheck200ShiftsItem[];
+  shifts: CheckShift[];
   date: CalendarDay;
   timeZone: string;
 }
@@ -34,20 +44,20 @@ export interface BuildUnavailableShiftsBodyInput {
 }
 
 interface ShiftsOnDateInput {
-  shifts: GetAvailabilityCheck200ShiftsItem[];
+  shifts: CheckShift[];
   date: CalendarDay;
   timeZone: string;
 }
 
 interface IsWholeDateMarkedInput {
-  shifts: GetAvailabilityCheck200ShiftsItem[];
+  shifts: CheckShift[];
   date: CalendarDay;
   markedShiftIds: Set<string>;
   timeZone: string;
 }
 
 export interface GetShiftDateInput {
-  shift: GetAvailabilityCheck200ShiftsItem;
+  shift: CheckShift;
   timeZone: string;
 }
 
@@ -63,7 +73,7 @@ function shiftsOnDate({
   shifts,
   date,
   timeZone,
-}: ShiftsOnDateInput): GetAvailabilityCheck200ShiftsItem[] {
+}: ShiftsOnDateInput): CheckShift[] {
   return shifts.filter((shift) => getShiftDate({ shift, timeZone }) === date);
 }
 

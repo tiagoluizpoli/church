@@ -2,9 +2,12 @@ import {
   calendarDaySchema,
   fromDate,
   instantSchema,
+  timeOfDaySchema,
   today,
 } from '@church/time';
 import { z } from 'zod';
+import { decodeAnswersListCursor } from '../../domain/answers-list-cursor';
+import { ANSWER_STATUS_OPTIONS } from '../../domain/contracts/application/availability-check-manager';
 import {
   type CycleParticipationView,
   type ParticipationEventTimeBlockView,
@@ -15,6 +18,7 @@ import {
   type ScheduleListPage,
   type ScheduleSummaryView,
   type ScheduleView,
+  TIME_WINDOW_MODE_OPTIONS,
 } from '../../domain/contracts/application/participation-manager';
 import { CYCLE_STATE_OPTIONS } from '../../domain/entities/cycle';
 import {
@@ -84,6 +88,10 @@ export const participationShiftViewSchema = shiftResponseSchema.extend({
 export const participationEventTimeBlockViewSchema = z.object({
   eventTimeBlock: eventTimeBlockResponseSchema,
   included: z.boolean(),
+  answerCoverage: z.object({
+    available: z.number().int(),
+    needed: z.number().int().nullable(),
+  }),
   shifts: z.array(participationShiftViewSchema),
   requirements: z.array(participationRequirementViewSchema),
   shiftsChangedAfterAsk: z.boolean(),
@@ -123,8 +131,23 @@ export const shiftHasResponsesResponseSchema = z.object({
   ),
 });
 
+export const cycleParticipationQuerystringSchema = z.object({
+  ministryId: z.string(),
+  day: calendarDaySchema.optional(),
+  q: z.string().trim().min(1).max(100).optional(),
+  timeMode: z.enum(TIME_WINDOW_MODE_OPTIONS).default('starts'),
+  timeFrom: timeOfDaySchema.optional(),
+  timeTo: timeOfDaySchema.optional(),
+  needsAttention: z.stringbool().optional(),
+});
+
 export const cycleParticipationResponseSchema = z.object({
   events: z.array(participationEventViewSchema),
+  dayMarkers: z.array(calendarDaySchema),
+  totals: z.object({
+    blocks: z.number().int(),
+    needsAttention: z.number().int(),
+  }),
 });
 export type CycleParticipationResponse = z.infer<
   typeof cycleParticipationResponseSchema
@@ -289,6 +312,40 @@ export const scheduleListResponseSchema = z.object({
   }),
 });
 
+const staffingResponseShape = {
+  needed: z.number().int(),
+  filled: z.number().int(),
+};
+
+export const scheduleInsightsResponseSchema = z.object({
+  /** The latest Sent or Past Cycles in scope, oldest first. */
+  cycles: z.array(
+    z.object({
+      cycleId: z.string(),
+      name: z.string(),
+      startDate: calendarDaySchema,
+      endDate: calendarDaySchema,
+      ...staffingResponseShape,
+      asked: z.number().int(),
+      answered: z.number().int(),
+    }),
+  ),
+  /** The Cycle running on the Church's today, else the latest; its serving Ministries least covered first. */
+  focus: z
+    .object({
+      cycleId: z.string(),
+      name: z.string(),
+      ministries: z.array(
+        z.object({
+          ministryId: z.string(),
+          name: z.string(),
+          ...staffingResponseShape,
+        }),
+      ),
+    })
+    .nullable(),
+});
+
 export const scheduleRouteParamsSchema = z.object({
   ministryId: z.uuid(),
   cycleId: z.uuid(),
@@ -309,11 +366,29 @@ export const scheduleListQuerystringSchema = z.object({
 });
 export type ScheduleListResponse = z.infer<typeof scheduleListResponseSchema>;
 
+export const answersQuerystringSchema = z.object({
+  ministryId: z.string(),
+  status: z.enum(ANSWER_STATUS_OPTIONS).optional(),
+  q: z.string().trim().min(1).max(100).optional(),
+  cursor: z
+    .string()
+    .refine((cursor) => decodeAnswersListCursor({ cursor }) !== undefined, {
+      message: 'Invalid cursor',
+    })
+    .optional(),
+});
+
 export const answersResponseSchema = z.object({
   asked: z.number(),
   confirmed: z.number(),
   answerBy: calendarDaySchema.nullable(),
   remindAvailableAt: instantSchema.nullable(),
+  counts: z.object({
+    pending: z.number().int(),
+    available: z.number().int(),
+    unavailable: z.number().int(),
+  }),
+  nextCursor: z.string().nullable(),
   statuses: z.array(
     z.object({
       volunteerId: z.string(),
@@ -386,6 +461,7 @@ function toEventTimeBlockView(view: ParticipationEventTimeBlockView) {
   return {
     eventTimeBlock: eventTimeBlockMapper.toResponse(view.eventTimeBlock),
     included: view.included,
+    answerCoverage: view.answerCoverage,
     shifts: view.shifts.map(toShiftView),
     requirements: view.requirements.map(toRequirementView),
     shiftsChangedAfterAsk: view.shiftsChangedAfterAsk,
@@ -468,7 +544,11 @@ export const participationMapper = {
   cycleViewToResponse(
     view: CycleParticipationView,
   ): CycleParticipationResponse {
-    return { events: view.events.map(toEventView) };
+    return {
+      events: view.events.map(toEventView),
+      dayMarkers: view.dayMarkers,
+      totals: view.totals,
+    };
   },
   eventTimeBlockViewToResponse: toEventTimeBlockView,
   scheduleSummaryListToResponse(

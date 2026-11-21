@@ -205,7 +205,12 @@ export function HomePage({ search }: HomePageProps) {
             .map(({ id, span, Component }) => (
               <div
                 key={id}
-                className={cn(widgetSpanClass[span], 'empty:hidden')}
+                className={cn(
+                  widgetSpanClass[
+                    typeof span === 'function' ? span(capacities) : span
+                  ],
+                  'empty:hidden',
+                )}
               >
                 <Component {...sectionProps} />
               </div>

@@ -301,6 +301,49 @@ describe('PrepareCalendar day-strip scroll (Iteration 2/T041)', () => {
     expect(strip.scrollLeft).toBeLessThan(300);
   });
 
+  it('keeps its first day on a resize while the current day stays in view, and re-centres only when it falls out', () => {
+    const resizes: (() => void)[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          resizes.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    renderWithProviders(
+      <PrepareCalendar
+        cycleStartDate="2026-07-01"
+        cycleEndDate="2026-07-31"
+        eventDayMarkers={new Set()}
+        selectedDate="2026-07-15"
+        onSelectedDateChange={vi.fn()}
+      />,
+    );
+    const strip = screen.getByTestId('prepare-calendar-strip');
+    for (const [index, day] of screen
+      .getAllByTestId(/^prepare-calendar-day-/)
+      .entries()) {
+      Object.defineProperty(day, 'offsetLeft', { value: index * 48 });
+      Object.defineProperty(day, 'clientWidth', { value: 44 });
+    }
+    Object.defineProperty(strip, 'clientWidth', { value: 480 });
+    const resize = () => {
+      for (const callback of resizes) callback();
+    };
+    // 15/07 sits at 672: in view from 480, so the strip keeps its start.
+    strip.scrollLeft = 480;
+    resize();
+    expect(strip.scrollLeft).toBe(480);
+    // Out of view from 0: centred (672 - 240 + 22), snapped to a 48px day.
+    strip.scrollLeft = 0;
+    resize();
+    expect(strip.scrollLeft).toBe(432);
+    vi.unstubAllGlobals();
+  });
+
   it('scrolls the strip in response to a pointer drag', () => {
     renderWithProviders(
       <PrepareCalendar

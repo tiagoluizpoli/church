@@ -147,7 +147,9 @@ function PlanningAdminLayout() {
         }
       />
 
-      {isTemplatesView || isEventEditorPath({ pathname }) ? null : (
+      {isTemplatesView ||
+      isPlainListView ||
+      isEventEditorPath({ pathname }) ? null : (
         <CyclesActions pathname={pathname} />
       )}
 

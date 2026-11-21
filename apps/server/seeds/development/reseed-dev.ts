@@ -37,7 +37,7 @@ function reportSeededGraph({ seeded }: ReportSeededGraphInput): void {
   console.log(`  Every other sign-in: ${BLUEPRINT_LOCATION}`);
   const { startDate, endDate } = seeded.historicalCycle;
   console.log(
-    `  History: sent Cycle ${startDate} to ${endDate}; from ${addCalendarDays({ day: endDate, days: 1 })} on, nothing is planned.`,
+    `  History: sent Cycle ${startDate} to ${endDate}; from ${addCalendarDays({ day: endDate, days: 1 })} on, nothing is planned except the sent Cycle two months after the anchor's (availability asked and confirmed by everyone, nothing assigned; sign in as the ChurchAdmin).`,
   );
 }
 

@@ -688,7 +688,9 @@ describe('Assignment proposal preview', () => {
 
     interface ApplyInput {
       seed: ReviewedSeed;
-      body: ReturnType<typeof reviewedBody>;
+      body: ReturnType<typeof reviewedBody> & {
+        excludedAdditions?: ReviewedPair[];
+      };
     }
 
     async function apply({ seed, body }: ApplyInput) {
@@ -845,6 +847,97 @@ describe('Assignment proposal preview', () => {
       expect(reused.statusCode).toBe(409);
       expect(reused.json().error).toBe('ASSIGNMENT_PROPOSAL_CHANGED');
       expect(await targetAssignments(seed)).toHaveLength(2);
+    });
+
+    describe('excluding reviewed pairs', () => {
+      it('writes only the remaining pairs while the token still binds the full set', async () => {
+        const seed = await seedReviewedProposal();
+        const body = reviewedBody({ preview: seed.preview });
+        const [first, second] = body.additions;
+        if (!first || !second) throw new Error('Missing reviewed pairs');
+
+        const response = await apply({
+          seed,
+          body: { ...body, excludedAdditions: [first] },
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect(response.json().additions).toEqual([
+          { assignmentId: expect.any(String), ...second },
+        ]);
+        const rows = await targetAssignments(seed);
+        expect(rows.map((row) => row.volunteerId)).toEqual([
+          second.volunteerId,
+        ]);
+      });
+
+      it('refuses a pair that was not reviewed, or excluding everything, writing nothing', async () => {
+        const seed = await seedReviewedProposal();
+        const body = reviewedBody({ preview: seed.preview });
+        const stranger = {
+          shiftRequirementId: seed.otherRequirementId,
+          volunteerId: seed.doubleBookedVolunteerId,
+        };
+
+        for (const excludedAdditions of [[stranger], body.additions]) {
+          const refused = await apply({
+            seed,
+            body: { ...body, excludedAdditions },
+          });
+          expect(refused.statusCode).toBe(422);
+          expect(refused.json().error).toBe(
+            'ASSIGNMENT_PROPOSAL_EXCLUSION_INVALID',
+          );
+        }
+        expect(await targetAssignments(seed)).toEqual([]);
+      });
+
+      it('still verifies the token against the full reviewed set', async () => {
+        const seed = await seedReviewedProposal();
+        const body = reviewedBody({ preview: seed.preview });
+        const [first, second] = body.additions;
+        if (!first || !second) throw new Error('Missing reviewed pairs');
+
+        // The full set is submitted, so a token over only the remainder is wrong.
+        const remainderOnly = await apply({
+          seed,
+          body: {
+            ...body,
+            reviewToken: proposalReviewTokenFor({
+              cycleId: seed.cycleId,
+              ministryId: seed.ministryId,
+              additions: [second] as ReviewedAddition[],
+            }),
+            excludedAdditions: [first],
+          },
+        });
+        expect(remainderOnly.statusCode).toBe(409);
+        expect(remainderOnly.json().error).toBe('ASSIGNMENT_PROPOSAL_CHANGED');
+        expect(await targetAssignments(seed)).toEqual([]);
+      });
+
+      it('replays the stored outcome and refuses the key with other exclusions', async () => {
+        const seed = await seedReviewedProposal();
+        const body = reviewedBody({ preview: seed.preview });
+        const [first, second] = body.additions;
+        if (!first || !second) throw new Error('Missing reviewed pairs');
+        const excluding = { ...body, excludedAdditions: [first] };
+
+        const committed = (await apply({ seed, body: excluding })).json();
+        const retry = await apply({ seed, body: excluding });
+        expect(retry.statusCode).toBe(200);
+        expect(retry.json()).toEqual({ ...committed, replayed: true });
+
+        for (const excludedAdditions of [[], [second]]) {
+          const reused = await apply({
+            seed,
+            body: { ...body, excludedAdditions },
+          });
+          expect(reused.statusCode).toBe(409);
+          expect(reused.json().error).toBe('ASSIGNMENT_PROPOSAL_CHANGED');
+        }
+        expect(await targetAssignments(seed)).toHaveLength(1);
+      });
     });
 
     const staleChanges: [string, (seed: ReviewedSeed) => Promise<unknown>][] = [

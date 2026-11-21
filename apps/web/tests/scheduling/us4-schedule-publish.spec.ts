@@ -128,11 +128,14 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
       .getByRole('button', { name: m.builder_proposal_open({}, ptBR) })
       .click();
     await expect(proposalDialog).toContainText(
-      m.builder_proposal_summary({ additions: 1, places: 1 }, ptBR),
+      m.builder_proposal_stat_additions_one({}, ptBR),
     );
   };
   await openProposal();
-  await expect(proposalDialog.getByText(volunteerName)).toBeVisible();
+  // Every tab stays mounted; read the one on screen.
+  await expect(
+    proposalDialog.getByRole('tabpanel').getByText(volunteerName),
+  ).toBeVisible();
   await expect(proposalDialog).toContainText(
     m.builder_proposal_gap_one({}, ptBR),
   );
@@ -144,7 +147,9 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
 
   await openProposal();
   await proposalDialog
-    .getByRole('button', { name: m.builder_proposal_apply({}, ptBR) })
+    .getByRole('button', {
+      name: m.builder_proposal_apply_count({ selected: 1, total: 1 }, ptBR),
+    })
     .click();
   await expect(
     page.getByText(m.builder_proposal_applied({ count: 1 }, ptBR)),

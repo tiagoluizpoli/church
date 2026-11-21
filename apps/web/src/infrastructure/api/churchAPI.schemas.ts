@@ -4696,6 +4696,11 @@ export type ApplyAssignmentProposalBodyAdditionsItem = {
   volunteerId: string;
 };
 
+export type ApplyAssignmentProposalBodyExcludedAdditionsItem = {
+  shiftRequirementId: string;
+  volunteerId: string;
+};
+
 export type ApplyAssignmentProposalBody = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   applicationKey: string;
@@ -4703,6 +4708,7 @@ export type ApplyAssignmentProposalBody = {
   reviewToken: string;
   /** @minItems 1 */
   additions: ApplyAssignmentProposalBodyAdditionsItem[];
+  excludedAdditions?: ApplyAssignmentProposalBodyExcludedAdditionsItem[];
 };
 
 export type ApplyAssignmentProposal200AdditionsItem = {
@@ -4730,6 +4736,11 @@ export type ApplyAssignmentProposal404 = {
 };
 
 export type ApplyAssignmentProposal409 = {
+  error: string;
+  message: string;
+};
+
+export type ApplyAssignmentProposal422 = {
   error: string;
   message: string;
 };

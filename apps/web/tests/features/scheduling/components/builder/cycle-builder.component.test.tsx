@@ -20,6 +20,7 @@ import * as picker from '@/features/scheduling/components/builder/assignment/ass
 import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-builder';
 import type { LeaderSwapRequest } from '@/features/scheduling/components/builder/swap-request/swap-request-sheet';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
+import { dateLabel } from '@/features/scheduling/utils/builder/cycle-builder-date.utils';
 import { renderWithProviders } from '@/tests/setup/render';
 import { adminApi } from '@/utils/api-instances';
 import * as volunteerName from '@/utils/format-volunteer-name';
@@ -865,7 +866,9 @@ describe('Assignment proposal preview', () => {
       'overflow-y-auto',
     );
     expect(
-      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     ).toBeVisible();
     expect(getProposal).toHaveBeenCalledWith('cycle-1', {
       ministryId: 'ministry-1',
@@ -874,24 +877,42 @@ describe('Assignment proposal preview', () => {
       screen.getByRole('heading', { name: m.builder_proposal_title() }),
     ).toBeVisible();
     expect(
-      screen.getByText(m.builder_proposal_summary({ additions: 1, places: 0 })),
+      screen.getByText(m.builder_proposal_stat_additions_one()),
     ).toBeVisible();
     expect(
       screen.getByText(m.builder_proposal_unconfirmed_many({ count: 2 })),
     ).toBeVisible();
-    expect(within(preview).getByText('Sunday Gathering')).toBeVisible();
-    expect(within(preview).getByText('Greeter · Main')).toBeVisible();
-    const existing = within(preview).getByText('Grace Hopper').closest('li');
-    expect(existing).toHaveTextContent(m.builder_proposal_existing());
-    const added = within(preview).getByText('Ada Lovelace').closest('li');
-    expect(added).toHaveTextContent(m.builder_proposal_added());
-    expect(added).toHaveTextContent(
-      [
-        m.builder_proposal_reason_shifts_one(),
-        m.builder_proposal_reason_need_many({ count: 2 }),
-        m.builder_proposal_reason_workload(),
-      ].join(' · '),
+    expect(within(preview).getAllByText('Sunday Gathering')[0]).toBeVisible();
+    expect(within(preview).getAllByText('Greeter · Main')[0]).toBeVisible();
+    // The volunteer already there reads first and muted, then the pick.
+    const rows = within(preview).getAllByRole('row');
+    const existingRow = rows.findIndex((row) =>
+      within(row).queryByText('Grace Hopper'),
     );
+    const pickRow = rows.findIndex((row) =>
+      within(row).queryByText('Ada Lovelace'),
+    );
+    expect(existingRow).toBeGreaterThan(-1);
+    expect(existingRow).toBeLessThan(pickRow);
+    expect(
+      within(rows[existingRow]).getByText(
+        new RegExp(m.builder_proposal_existing()),
+      ),
+    ).toBeVisible();
+    expect(
+      within(preview).getByRole('checkbox', { name: /Ada Lovelace/ }),
+    ).toBeChecked();
+    await userEvent.click(
+      within(preview).getByRole('button', {
+        name: m.builder_proposal_why_for({ name: 'Ada Lovelace' }),
+      }),
+    );
+    for (const line of [
+      m.builder_proposal_reason_need_many({ count: 2 }),
+      m.builder_proposal_reason_shifts_one(),
+      m.builder_proposal_reason_workload(),
+    ])
+      expect(await screen.findByText(line)).toBeVisible();
     await userEvent.click(
       screen.getByRole('button', { name: m.builder_proposal_discard() }),
     );
@@ -902,6 +923,36 @@ describe('Assignment proposal preview', () => {
       ).not.toBeInTheDocument(),
     );
     expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('keeps Apply off once every pick is excluded', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(proposal);
+    const apply = vi.spyOn(adminApi, 'applyAssignmentProposal');
+    renderBuilder({ data: boardData({}) });
+    const preview = await openPreview();
+    const include = within(preview).getByRole('checkbox', {
+      name: /Ada Lovelace/,
+    });
+    await userEvent.click(include);
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 0, total: 1 }),
+      }),
+    ).toBeDisabled();
+    expect(apply).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole('tab', {
+        name: new RegExp(m.builder_proposal_tab_volunteers()),
+      }),
+    );
+    expect(
+      within(preview).getByRole('rowheader', { name: 'Ada Lovelace' }),
+    ).toBeVisible();
+    expect(
+      within(preview).getByRole('button', {
+        name: m.builder_proposal_include_volunteer({ name: 'Ada Lovelace' }),
+      }),
+    ).toBeVisible();
   });
 
   it('applies exactly the reviewed pairs once and reports the added Assignments without publishing', async () => {
@@ -916,7 +967,9 @@ describe('Assignment proposal preview', () => {
     await openPreview();
 
     await userEvent.click(
-      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     );
 
     const pending = screen.getByRole('button', {
@@ -964,17 +1017,21 @@ describe('Assignment proposal preview', () => {
       .mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK'))
       .mockResolvedValueOnce({ ...outcome, replayed: true });
     renderBuilder({ data: boardData({}) });
-    const preview = await openPreview();
+    await openPreview();
 
     await userEvent.click(
-      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     );
 
-    expect(await within(preview).findByRole('alert')).toHaveTextContent(
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       m.builder_proposal_apply_unknown(),
     );
     expect(
-      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+      screen.queryByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     ).not.toBeInTheDocument();
     await userEvent.click(
       screen.getByRole('button', { name: m.builder_proposal_apply_retry() }),
@@ -998,24 +1055,30 @@ describe('Assignment proposal preview', () => {
       .mockRejectedValueOnce(conflict('The proposal is out of date.'))
       .mockResolvedValueOnce(outcome);
     renderBuilder({ data: boardData({}) });
-    const preview = await openPreview();
+    await openPreview();
 
     await userEvent.click(
-      screen.getByRole('button', { name: m.builder_proposal_apply() }),
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     );
 
-    expect(await within(preview).findByRole('alert')).toHaveTextContent(
+    expect(await screen.findByRole('alert')).toHaveTextContent(
       'The proposal is out of date.',
     );
     expect(
-      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+      screen.queryByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     ).not.toBeInTheDocument();
     await userEvent.click(
       screen.getByRole('button', { name: m.builder_proposal_refresh() }),
     );
     await waitFor(() => expect(getProposal).toHaveBeenCalledTimes(2));
     await userEvent.click(
-      await screen.findByRole('button', { name: m.builder_proposal_apply() }),
+      await screen.findByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     );
 
     await waitFor(() => expect(apply).toHaveBeenCalledTimes(2));
@@ -1033,7 +1096,9 @@ describe('Assignment proposal preview', () => {
     await openPreview();
 
     expect(
-      screen.queryByRole('button', { name: m.builder_proposal_apply() }),
+      screen.queryByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 1 }),
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -1059,17 +1124,517 @@ describe('Assignment proposal preview', () => {
 
     const preview = await screen.findByTestId('assignment-proposal-preview');
     expect(
-      screen.getByText(m.builder_proposal_summary({ additions: 0, places: 1 })),
-    ).toBeVisible();
+      screen.queryByText(m.builder_proposal_stat_additions_many({ count: 0 })),
+    ).not.toBeInTheDocument();
     expect(
       within(preview).getByText(m.builder_proposal_empty_no_confirmed()),
     ).toBeVisible();
     expect(
       screen.getByText(m.builder_proposal_unconfirmed_one()),
     ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole('tab', {
+        name: new RegExp(
+          m.builder_proposal_tab_gaps({ count: 1 }).replace(/[()]/g, '\\$&'),
+        ),
+      }),
+    );
     expect(
-      within(preview).getByText(m.builder_proposal_gap_one()),
+      within(screen.getByRole('tabpanel')).getByText(
+        new RegExp(m.builder_proposal_gap_one()),
+      ),
     ).toBeVisible();
+  });
+
+  /** Day one: the base Sunday shift (1 of 2 filled). Day two: a Wednesday
+   * shift needing two, empty. */
+  function twoDayBoard(): CycleBuilderData {
+    const base = boardData({});
+    const sunday = base.events[0];
+    const sundayShift = sunday.eventTimeBlocks[0].shifts[0];
+    const wednesdayShift = {
+      ...sundayShift,
+      shiftId: 'shift-2',
+      eventTimeBlockId: 'event-time-block-2',
+      startTime: '2026-08-05T22:00:00.000Z',
+      endTime: '2026-08-05T23:30:00.000Z',
+      assignedCount: 0,
+      requirements: [
+        { ...sundayShift.requirements[0], id: 'requirement-role-2' },
+      ],
+      assignments: [],
+    };
+    return {
+      ...base,
+      events: [
+        sunday,
+        {
+          ...sunday,
+          participationId: 'participation-2',
+          eventId: 'event-2',
+          title: 'Midweek Prayer',
+          start: wednesdayShift.startTime,
+          end: wednesdayShift.endTime,
+          assignedCount: 0,
+          eventTimeBlocks: [
+            {
+              ...sunday.eventTimeBlocks[0],
+              eventTimeBlockId: 'event-time-block-2',
+              startTime: wednesdayShift.startTime,
+              endTime: wednesdayShift.endTime,
+              assignedCount: 0,
+              shifts: [wednesdayShift],
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  const reason = {
+    eligibleShiftCount: 2,
+    needCandidateCount: 3,
+    decidedBy: 'fewest_eligible_shifts' as const,
+  };
+  const twoDayProposal = {
+    ...proposal,
+    additions: [
+      {
+        volunteerId: 'volunteer-2',
+        volunteerName: 'Ada Lovelace',
+        shiftRequirementId: 'requirement-role-1',
+        shiftId: 'shift-1',
+        reason,
+      },
+      {
+        volunteerId: 'volunteer-2',
+        volunteerName: 'Ada Lovelace',
+        shiftRequirementId: 'requirement-role-2',
+        shiftId: 'shift-2',
+        reason,
+      },
+      {
+        volunteerId: 'volunteer-3',
+        volunteerName: 'Linus Torvalds',
+        shiftRequirementId: 'requirement-role-2',
+        shiftId: 'shift-2',
+        reason: {
+          ...reason,
+          needCandidateCount: 1,
+          decidedBy: 'only_candidate' as const,
+        },
+      },
+    ],
+  };
+
+  it("groups picks by church day with each day's coverage before and after", async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+
+    const sunday = within(preview).getByRole('button', {
+      name: dateLabel({ day: '2026-08-02', locale: 'en' }),
+    });
+    const wednesday = within(preview).getByRole('button', {
+      name: dateLabel({ day: '2026-08-05', locale: 'en' }),
+    });
+    expect(sunday).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      within(preview).getByText(m.builder_proposal_day_count_one()),
+    ).toBeVisible();
+    expect(
+      within(preview).getByText(
+        m.builder_proposal_day_count_many({ count: 2 }),
+      ),
+    ).toBeVisible();
+    // Sunday: 1 of 2 places before, 2 of 2 after; Wednesday: 0 → 2 of 2.
+    expect(
+      within(preview).getByText(
+        m.builder_proposal_coverage_change({ before: 50, after: 100 }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(preview).getAllByText(
+        m.builder_proposal_coverage_change({ before: 0, after: 100 }),
+      ),
+    ).toHaveLength(1);
+    // The whole Schedule: 1 of 4 → 4 of 4.
+    expect(
+      screen.getByText(
+        m.builder_proposal_coverage_change({ before: 25, after: 100 }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(preview).getByText(m.builder_proposal_only_option(), {
+        selector: 'td *',
+      }),
+    ).toBeVisible();
+
+    await userEvent.click(wednesday);
+    expect(wednesday).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      within(screen.getByRole('tabpanel')).queryByText('Linus Torvalds'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole('tabpanel')).getByText('Ada Lovelace'),
+    ).toBeVisible();
+  });
+
+  it('lists only flagged picks under Attention and jumps to a day from the strip', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    const wednesday = dateLabel({ day: '2026-08-05', locale: 'en' });
+
+    await userEvent.click(
+      within(preview).getByRole('button', { name: wednesday }),
+    );
+    expect(
+      within(screen.getByRole('tabpanel')).queryByText('Linus Torvalds'),
+    ).not.toBeInTheDocument();
+    const strip = screen.getByRole('navigation', {
+      name: m.builder_proposal_day_strip_label(),
+    });
+    await userEvent.click(
+      within(strip).getByRole('button', { name: new RegExp(wednesday) }),
+    );
+    expect(
+      within(screen.getByRole('tabpanel')).getByText('Linus Torvalds'),
+    ).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole('tab', {
+        name: m.builder_proposal_tab_attention({ count: 1 }),
+      }),
+    );
+    const panel = screen.getByRole('tabpanel');
+    expect(
+      within(panel).getByRole('heading', {
+        name: m.builder_proposal_attention_only_heading(),
+      }),
+    ).toBeVisible();
+    expect(within(panel).getByText(/Linus Torvalds/)).toBeVisible();
+    expect(within(panel).queryByText(/Ada Lovelace/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(m.builder_proposal_recap_only_one(), {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('asks before Escape throws away excluded picks', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    await userEvent.click(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    );
+    await userEvent.keyboard('{Escape}');
+
+    const confirm = await screen.findByRole('alertdialog', {
+      name: m.builder_proposal_discard_confirm_title(),
+    });
+    await userEvent.click(
+      within(confirm).getByRole('button', {
+        name: m.builder_proposal_discard_confirm_keep(),
+      }),
+    );
+    expect(screen.getByTestId('assignment-proposal-preview')).toBeVisible();
+    expect(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    ).not.toBeChecked();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_discard() }),
+    );
+    await userEvent.click(
+      within(
+        await screen.findByRole('alertdialog', {
+          name: m.builder_proposal_discard_confirm_title(),
+        }),
+      ).getByRole('button', { name: m.builder_proposal_discard() }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('assignment-proposal-preview'),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('keeps still-valid exclusions on a fresh review after a refusal', async () => {
+    const getProposal = vi
+      .spyOn(adminApi, 'getAssignmentProposal')
+      .mockResolvedValue(twoDayProposal);
+    vi.spyOn(adminApi, 'applyAssignmentProposal').mockRejectedValueOnce(
+      conflict('The proposal is out of date.'),
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    await userEvent.click(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 2, total: 3 }),
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole('button', { name: m.builder_proposal_refresh() }),
+    );
+    await waitFor(() => expect(getProposal).toHaveBeenCalledTimes(2));
+
+    const fresh = await screen.findByTestId('assignment-proposal-preview');
+    expect(
+      within(fresh).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 2, total: 3 }),
+      }),
+    ).toBeEnabled();
+  });
+
+  it('gives the row controls one tab stop and moves between them with the arrow keys', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    const boxes = within(preview).getAllByRole('checkbox');
+    expect(boxes.filter((box) => box.tabIndex === 0)).toHaveLength(0);
+    const whys = within(preview).getAllByRole('button', { name: /^Why / });
+    // The table's one stop starts on the first day's fold button.
+    expect(
+      within(preview).getByRole('button', {
+        name: dateLabel({ day: '2026-08-02', locale: 'en' }),
+      }).tabIndex,
+    ).toBe(0);
+    expect(whys.map((why) => why.tabIndex)).toEqual([-1, -1, -1]);
+
+    whys[0].focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(boxes[0]).toHaveFocus();
+    // Down stops at the next day's fold button, then reaches its picks.
+    await userEvent.keyboard('{ArrowDown}');
+    expect(
+      within(preview).getByRole('button', {
+        name: dateLabel({ day: '2026-08-05', locale: 'en' }),
+      }),
+    ).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(boxes[1]).toHaveFocus();
+    expect(boxes[1].tabIndex).toBe(0);
+    expect(whys[0].tabIndex).toBe(-1);
+    await userEvent.keyboard('{End}');
+    expect(boxes[2]).toHaveFocus();
+  });
+
+  it('shows the review frame while the proposal loads', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockReturnValue(
+      new Promise(() => {}),
+    );
+    renderBuilder({ data: twoDayBoard() });
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: m.builder_proposal_title(),
+    });
+    expect(within(dialog).getByRole('status')).toHaveTextContent(
+      m.builder_proposal_loading(),
+    );
+  });
+
+  it('leads from the footer counts and from an open place to the matching list', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_recap_only_one() }),
+    );
+    expect(
+      screen.getByRole('tab', {
+        name: m.builder_proposal_tab_attention({ count: 1 }),
+      }),
+    ).toHaveAttribute('aria-selected', 'true');
+
+    await userEvent.click(
+      screen.getByRole('tab', {
+        name: new RegExp(m.builder_proposal_tab_shifts()),
+      }),
+    );
+    await userEvent.click(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_gap_one() }),
+    );
+    const wednesday = dateLabel({ day: '2026-08-05', locale: 'en' });
+    await userEvent.click(
+      within(preview).getByRole('button', {
+        name: m.builder_proposal_gap_jump_for({
+          day: wednesday,
+          need: 'Greeter · Main',
+        }),
+      }),
+    );
+    expect(
+      within(preview).getByRole('button', { name: wednesday }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      within(screen.getByRole('tabpanel')).getByText('Linus Torvalds'),
+    ).toBeVisible();
+  });
+
+  it('filters the shift list by name, ignoring case and accents, or by role', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    renderBuilder({ data: twoDayBoard() });
+    await openPreview();
+    const filter = screen.getByRole('searchbox', {
+      name: m.builder_proposal_filter_label(),
+    });
+
+    await userEvent.type(filter, 'LÍNUS');
+    const panel = () => within(screen.getByRole('tabpanel'));
+    await waitFor(() =>
+      expect(panel().queryByText('Ada Lovelace')).not.toBeInTheDocument(),
+    );
+    expect(panel().getByText('Linus Torvalds')).toBeVisible();
+
+    await userEvent.clear(filter);
+    await userEvent.type(filter, 'greeter');
+    await waitFor(() =>
+      expect(panel().getAllByText('Ada Lovelace')).toHaveLength(2),
+    );
+
+    await userEvent.clear(filter);
+    await userEvent.type(filter, 'nobody here');
+    expect(
+      await panel().findByText(m.builder_proposal_filter_empty()),
+    ).toBeVisible();
+  });
+
+  it("excludes all of one volunteer's picks and submits them as excluded pairs", async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    const apply = vi
+      .spyOn(adminApi, 'applyAssignmentProposal')
+      .mockResolvedValue(outcome);
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    await userEvent.click(
+      screen.getByRole('tab', {
+        name: new RegExp(m.builder_proposal_tab_volunteers()),
+      }),
+    );
+    const [busiest] = within(preview).getAllByRole('rowheader');
+    expect(busiest).toHaveTextContent('Ada Lovelace');
+    await userEvent.click(
+      within(preview).getByRole('button', {
+        name: m.builder_proposal_exclude_volunteer({ name: 'Ada Lovelace' }),
+      }),
+    );
+    expect(
+      within(preview).getByRole('button', {
+        name: m.builder_proposal_include_volunteer({ name: 'Ada Lovelace' }),
+      }),
+    ).toBeVisible();
+    // Excluded picks reopen their places.
+    expect(
+      screen.getByRole('tab', {
+        name: new RegExp(
+          m.builder_proposal_tab_gaps({ count: 2 }).replace(/[()]/g, '\\$&'),
+        ),
+      }),
+    ).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 1, total: 3 }),
+      }),
+    );
+
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+    expect(apply).toHaveBeenCalledWith(
+      'cycle-1',
+      {
+        applicationKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
+        reviewToken: 'review-token-1',
+        additions: [
+          {
+            shiftRequirementId: 'requirement-role-1',
+            volunteerId: 'volunteer-2',
+          },
+          {
+            shiftRequirementId: 'requirement-role-2',
+            volunteerId: 'volunteer-2',
+          },
+          {
+            shiftRequirementId: 'requirement-role-2',
+            volunteerId: 'volunteer-3',
+          },
+        ],
+        excludedAdditions: [
+          {
+            shiftRequirementId: 'requirement-role-1',
+            volunteerId: 'volunteer-2',
+          },
+          {
+            shiftRequirementId: 'requirement-role-2',
+            volunteerId: 'volunteer-2',
+          },
+        ],
+      },
+      { ministryId: 'ministry-1' },
+    );
+  });
+
+  it('retries an unconfirmed Apply with the same selection and key', async () => {
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockResolvedValue(
+      twoDayProposal,
+    );
+    const apply = vi
+      .spyOn(adminApi, 'applyAssignmentProposal')
+      .mockRejectedValueOnce(new AxiosError('Network Error', 'ERR_NETWORK'))
+      .mockResolvedValueOnce(outcome);
+    renderBuilder({ data: twoDayBoard() });
+    const preview = await openPreview();
+    await userEvent.click(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    );
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: m.builder_proposal_apply_count({ selected: 2, total: 3 }),
+      }),
+    );
+    // Unanswered: the selection is frozen until the retry settles it.
+    await screen.findByRole('button', {
+      name: m.builder_proposal_apply_retry(),
+    });
+    expect(
+      within(preview).getByRole('checkbox', { name: /Linus Torvalds/ }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_apply_retry() }),
+    );
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(2));
+    const [[, first], [, retry]] = apply.mock.calls;
+    expect(retry).toEqual(first);
+    expect(first?.excludedAdditions).toEqual([
+      { shiftRequirementId: 'requirement-role-2', volunteerId: 'volunteer-3' },
+    ]);
   });
 
   it('reports a failed proposal', async () => {
@@ -1088,6 +1653,31 @@ describe('Assignment proposal preview', () => {
     expect(
       screen.queryByTestId('assignment-proposal-preview'),
     ).not.toBeInTheDocument();
+  });
+
+  it('says nothing when a proposal fails after the leader closed it', async () => {
+    let fail: (error: Error) => void = () => {};
+    vi.spyOn(adminApi, 'getAssignmentProposal').mockReturnValue(
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      }),
+    );
+    renderBuilder({ data: boardData({}) });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    );
+    await screen.findByRole('dialog', { name: m.builder_proposal_title() });
+    await userEvent.keyboard('{Escape}');
+    fail(new Error('offline'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: m.builder_proposal_title() }),
+      ).not.toBeInTheDocument(),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it('is not offered once the Schedule is published', () => {

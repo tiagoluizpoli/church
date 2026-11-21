@@ -173,12 +173,12 @@ Restrained by default: tinted cool-blue neutrals carry almost the entire surface
 - **Sidebar Fog** (`sidebar`): the desktop sidebar and the mobile top header and bottom tab bar. One step cooler than the content area, so the wayfinding chrome reads as its own layer.
 
 ### Status (outside the brand palette, by design)
-- **Confirmed Green** (`status-success`, Tailwind `green-600`): staffing meter bar at 100%, confirmed-assignment icon, positive suggestion markers. Its text form is `green-700` in light mode and `green-400` in dark mode.
-- **Pending Amber** (`status-warning`, Tailwind `yellow-500`): staffing meter bar at 50–99%, pending-confirmation icon. Its text form is `yellow-700` / `yellow-300`. A sibling `amber` family (`amber-500/8` fill, `amber-600`/`amber-700` text) carries needs-attention notices such as "removed from this church" and a usual setup that needs review.
+- **Confirmed Green** (`status-success`, Tailwind `green-600`): confirmed-assignment icon, positive suggestion markers. Its text form is `green-700` in light mode and `green-400` in dark mode.
+- **Pending Amber** (`status-warning`, Tailwind `yellow-500`): pending-confirmation icon. Its text form is `yellow-700` / `yellow-300`. A sibling `amber` family (`amber-500/8` fill, `amber-600`/`amber-700` text) carries needs-attention notices such as "removed from this church" and a usual setup that needs review.
 - **Conflict Red** (`destructive`): staffing under 50%, declined assignments, destructive actions, unavailable/double-booked conflict chips. Lightness was lowered to 0.56 so it measures 5.1:1 on `card` and 4.85:1 on `background`, passing AA as small text on every surface; at 0.614 it measured 4.05:1 on `card`, and at 0.58 4.46:1 on `background`.
 
 ### Dark Mode
-Dark mode is a deliberate re-tuning, not a straight invert. `background` drops to a near-black cool slate (`oklch(0.205 0.018 252)`) rather than pure black. `primary` lightens and desaturates to `oklch(0.72 0.066 238)`, because Deep Chapel Blue would fail contrast as a fill on a dark surface, and `primary-foreground` stays dark (`oklch(0.226 0.022 254)`) instead of flipping to white. `card` sits one step lighter than `background` (`oklch(0.24 0.018 252)`) and `sidebar` one step darker (`oklch(0.186 0.016 252)`), so the chrome still reads as its own layer. `destructive` lightens to `oklch(0.682 0.183 24)`. The green and amber meter bars keep the same fill in both themes; only their text forms shift lighter.
+Dark mode is a deliberate re-tuning, not a straight invert. `background` drops to a near-black cool slate (`oklch(0.205 0.018 252)`) rather than pure black. `primary` lightens and desaturates to `oklch(0.72 0.066 238)`, because Deep Chapel Blue would fail contrast as a fill on a dark surface, and `primary-foreground` stays dark (`oklch(0.226 0.022 254)`) instead of flipping to white. `card` sits one step lighter than `background` (`oklch(0.24 0.018 252)`) and `sidebar` one step darker (`oklch(0.186 0.016 252)`), so the chrome still reads as its own layer. `destructive` lightens to `oklch(0.682 0.183 24)`. The Staffing Meter fills come from their own `--meter-*` tokens and re-tune per theme (see Staffing Meter), so a fill keeps 3:1 against its track and surface in both.
 
 ### Named Rules
 **The One Voice Rule.** Deep Chapel Blue is the only saturated brand color and it never exceeds roughly 10% of a screen's surface. Reach for a neutral tint (`/8`–`/15` opacity) before reaching for a stronger blue.
@@ -242,6 +242,7 @@ A four-tier z-index scale, lowest to highest: in-component layers such as sticky
 Gently rounded, never bubbly. Every radius derives from one base (`--radius`, 0.625rem/10px) and is applied through role utilities, never raw `rounded-*` classes:
 
 - **Control** (`.radius-control`, 8px): buttons, inputs, badges, calendar day cells, avatars, icon chips (`.radius-icon` is the same 8px).
+- **Check** (`.radius-check`, 4px): checkboxes. At the control radius a 16px box reads as a radio button.
 - **Surface** (`.radius-surface`, 10px): `Card` and in-flow containers.
 - **Floating** (`.radius-floating`, 10px): popovers, menus and dialogs.
 - **Panel** (`.surface-panel`, 14px): the gradient-lifted section panel is one step rounder than a Card.
@@ -289,6 +290,11 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **Placeholder:** deliberately darker than the usual washed-out gray, so it keeps body-text contrast.
 - **Error:** `destructive` border and ring, in both themes.
 
+### Checkbox
+- **Shape:** a 16px box at the check radius (4px), never the control radius, so it can't be mistaken for a radio.
+- **Colors:** the unchecked border is `muted-foreground`, so the box measures at least 3:1 against `card` and `background`; checked fills `primary` with a `primary-foreground` tick.
+- **Hit area:** an `after` overlay extends it 12px sideways and 8px vertically; mobile rows wrap it in a 44px cell.
+
 ### Switch
 - **Shape:** a 44×24px pill track with a 20px pill thumb that slides 20px when checked. An invisible `after` overlay extends the hit area 10px above and below, giving a 44px-tall touch target without enlarging the visual.
 - **Colors:** unchecked track is `input` with an `input` border; checked track and border are `primary`. The thumb is `background`.
@@ -325,7 +331,7 @@ It is built to be light on any hardware: the scene and its light shafts are bake
 - **Breadcrumbs:** desktop-only, derived from the route path. Opaque IDs (UUIDs) are dropped from the trail unless the segment resolves to a real name through live data, such as a cycle ID rendering as the cycle's name once fetched.
 
 ### Staffing Meter (signature component)
-A dedicated component with two renderings: a compact percentage `Badge` per event-time-block and a full `Progress` bar per event, both colored by the status vocabulary. The bar is `destructive` under 50%, `yellow-500` from 50–99% and `green-600` at 100%; a slot with no requirement shows a neutral `muted-foreground/30` bar. This is the main home of the Traffic-Light Exception. On the Home dashboard the meter runs softened: the same three hues at 60–70% opacity (bar and coverage ring alike), with the open-spot count as plain muted text, so a page of meters reads calm rather than loud.
+A dedicated component with two renderings: a compact percentage `Badge` per event-time-block and a full `Progress` bar per event, both colored by the status vocabulary. The bar fills from `--meter-danger` under 50%, `--meter-warning` from 50–99% and `--meter-success` at 100% (`bg-meter-*`): `destructive`, `yellow-700` and `green-700` in light mode, `destructive`, `yellow-400` and `green-500` in dark, chosen so each fill measures at least 3:1 against the `muted` track and the `card`/`popover` surface (the lighter `yellow-500`/`green-600` fell to about 2:1 and 2.8:1 in light mode). A slot with no requirement shows a neutral `muted-foreground/30` bar. In the proposal review, the meter shows a change: it fills to the result, with a 2px notch where the board stands today. This is the main home of the Traffic-Light Exception. On the Home dashboard the meter runs softened: the same three hues at 60–70% opacity (bar and coverage ring alike), with the open-spot count as plain muted text, so a page of meters reads calm rather than loud.
 
 ## Do's and Don'ts
 

@@ -423,6 +423,8 @@ export interface ApplyAssignmentProposalInput {
   applicationKey: string;
   reviewToken: string;
   additions: ReviewedAddition[];
+  /** Reviewed pairs to leave out; the token still covers `additions` whole. */
+  excludedAdditions: ReviewedAddition[];
 }
 
 /** The committed outcome; `replayed` when a retry recovered it. */

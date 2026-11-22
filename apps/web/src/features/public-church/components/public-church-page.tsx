@@ -1,6 +1,7 @@
 import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { PoweredByFooter } from './powered-by-footer';
+import { PublicEventsSection } from './public-events-section';
 import type { GetPublicChurchProfile200 } from '@/infrastructure/api/churchAPI.schemas';
 
 interface PublicChurchPageProps {
@@ -33,6 +34,7 @@ export function PublicChurchPage({ profile }: PublicChurchPageProps) {
             {profile.name}
           </h1>
         </header>
+        <PublicEventsSection slug={profile.slug} />
       </main>
       <PoweredByFooter
         appName={appConfig.appName}

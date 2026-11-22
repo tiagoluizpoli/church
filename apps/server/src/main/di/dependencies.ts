@@ -24,6 +24,7 @@ import type {
   IPeopleListManager,
   IPlanningEventManager,
   IPublicChurchProfileManager,
+  IPublicEventManager,
   ISectorManager,
   ISetupProgressManager,
   ISwapRequestListManager,
@@ -58,6 +59,7 @@ import type {
   OutboxRepository,
   PeopleListRepository,
   PlanningEventRepository,
+  PublicEventRepository,
   RedemptionIdentityGateway,
   RedemptionRepository,
   RoleRepository,
@@ -94,6 +96,7 @@ export interface CompositionRootDependencies {
   unavailableShiftRepository: UnavailableShiftRepository;
   availabilityCheckRepository: AvailabilityCheckRepository;
   churchRepository: ChurchRepository;
+  publicEventRepository: PublicEventRepository;
   ministryRepository: MinistryRepository;
   invitationVerificationCodeRepository: InvitationVerificationCodeRepository;
   ministryInvitationRepository: MinistryInvitationRepository;
@@ -157,5 +160,6 @@ export interface CompositionRootDependencies {
   churchAccessManager: IChurchAccessManager;
   churchSettingsManager: IChurchSettingsManager;
   publicChurchProfileManager: IPublicChurchProfileManager;
+  publicEventManager: IPublicEventManager;
   ministryMembershipManager: IMinistryMembershipManager;
 }

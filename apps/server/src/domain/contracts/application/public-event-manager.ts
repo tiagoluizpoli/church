@@ -13,6 +13,21 @@ export interface ListPublicEventsInput {
   after?: PublicEventCursor;
 }
 
+export interface ListPublicEventsBySlugInput {
+  /** A live or old Church Slug, as the visitor typed it. */
+  slug: string;
+  after?: PublicEventCursor;
+}
+
+export interface PublicChurchEvents {
+  timezone: string;
+  page: PublicEventPage;
+}
+
 export interface IPublicEventManager {
+  /** `null` when no Church ever held the slug. */
+  listPublicEventsBySlug(
+    input: ListPublicEventsBySlugInput,
+  ): Promise<PublicChurchEvents | null>;
   listPublicEvents(input: ListPublicEventsInput): Promise<PublicEventPage>;
 }

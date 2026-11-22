@@ -2,6 +2,7 @@ import { parseInstant } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbPublicEventManager } from '@/application/db-public-event-manager';
 import { ChurchId } from '@/domain/branded-ids';
+import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzlePublicEventRepository } from '@/infrastructure/repositories/drizzle-public-event.repository';
 import {
   buildEvent,
@@ -19,6 +20,7 @@ const manager = new DbPublicEventManager({
   publicEventRepository: new DrizzlePublicEventRepository({
     db: schedulingTestDb,
   }),
+  churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
 });
 
 const at = (value: string) => parseInstant({ value: `${value}:00Z` });

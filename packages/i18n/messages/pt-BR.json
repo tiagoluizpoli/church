@@ -2005,5 +2005,10 @@
   "public_church_logo_alt": "Logo de {name}",
   "public_church_powered_by": "Desenvolvido com {appName}",
   "public_church_not_found_title": "Igreja não encontrada",
-  "public_church_not_found_description": "Confira o endereço. O link pode estar errado ou desatualizado."
+  "public_church_not_found_description": "Confira o endereço. O link pode estar errado ou desatualizado.",
+  "public_events_title": "Próximos eventos",
+  "public_events_load_more": "Carregar mais",
+  "public_events_cancelled": "Cancelado",
+  "public_events_history_show": "Ver histórico",
+  "public_events_history_hide": "Esconder histórico"
 }

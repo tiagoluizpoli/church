@@ -7,7 +7,7 @@ import {
   user,
 } from '@church/db';
 import { and, asc, eq, ne, or } from 'drizzle-orm';
-import type { UserId } from '../../domain/branded-ids';
+import { ChurchId, type UserId } from '../../domain/branded-ids';
 import type {
   ChurchSettings,
   ChurchSlugAvailability,
@@ -253,6 +253,8 @@ export class DrizzleChurchRepository implements ChurchRepository {
     // A live slug and the slug history are disjoint, so at most one row matches.
     const [row] = await getClient({ db: this.db })
       .select({
+        churchId: church.id,
+        timezone: church.timezone,
         slug: organization.slug,
         name: organization.name,
         accentColor: church.accentColor,
@@ -269,6 +271,6 @@ export class DrizzleChurchRepository implements ChurchRepository {
       )
       .where(or(eq(organization.slug, slug), eq(churchSlugHistory.slug, slug)))
       .limit(1);
-    return row ?? null;
+    return row ? { ...row, churchId: ChurchId.from(row.churchId) } : null;
   }
 }

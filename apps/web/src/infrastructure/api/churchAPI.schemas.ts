@@ -5701,6 +5701,10 @@ export type GetNotifications200ItemsItem = {
   roleNames?: string[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   expiresAt?: string;
+  /** @nullable */
+  churchLogoUrl?: string | null;
+  /** @nullable */
+  churchAccent?: string | null;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -7436,6 +7440,70 @@ export type GetPublicChurchProfile429 = {
   message: string;
 };
 
+export type ListPublicChurchEventsParams = {
+cursor?: string;
+};
+
+export type ListPublicChurchEvents200ItemsItemBlocksItemMovePathItem = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type ListPublicChurchEvents200ItemsItemBlocksItem = {
+  /** @nullable */
+  label: string | null;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /** @nullable */
+  place: string | null;
+  cancelled: boolean;
+  movePath: ListPublicChurchEvents200ItemsItemBlocksItemMovePathItem[];
+};
+
+export type ListPublicChurchEvents200ItemsItem = {
+  title: string;
+  cancelled: boolean;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  blocks: ListPublicChurchEvents200ItemsItemBlocksItem[];
+};
+
+export type ListPublicChurchEvents200 = {
+  timezone: string;
+  items: ListPublicChurchEvents200ItemsItem[];
+  nextCursor?: string;
+};
+
+export type ListPublicChurchEvents404Error = typeof ListPublicChurchEvents404Error[keyof typeof ListPublicChurchEvents404Error];
+
+
+export const ListPublicChurchEvents404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type ListPublicChurchEvents404 = {
+  error: ListPublicChurchEvents404Error;
+  message: string;
+};
+
+export type ListPublicChurchEvents429Error = typeof ListPublicChurchEvents429Error[keyof typeof ListPublicChurchEvents429Error];
+
+
+export const ListPublicChurchEvents429Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type ListPublicChurchEvents429 = {
+  error: ListPublicChurchEvents429Error;
+  message: string;
+};
+
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState];
 
 
@@ -7550,6 +7618,10 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   roleNames?: string[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   expiresAt?: string;
+  /** @nullable */
+  churchLogoUrl?: string | null;
+  /** @nullable */
+  churchAccent?: string | null;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;

@@ -36,12 +36,16 @@ import {
 } from '../dtos/cycle.dto';
 import {
   applyTemplatesBodySchema,
+  changeTemplatePrecedenceBodySchema,
   createEventTemplateBodySchema,
   eventTemplateListResponseSchema,
   eventTemplateMapper,
   eventTemplateResponseSchema,
   eventTemplateUsageResponseSchema,
   generatedPlanningCountsResponseSchema,
+  templateCollisionsResponseSchema,
+  templatePrecedenceListResponseSchema,
+  templatePrecedenceResponseSchema,
   updateEventTemplateBodySchema,
 } from '../dtos/event-template.dto';
 import {
@@ -90,6 +94,21 @@ interface CycleRouteParams {
 
 interface EventTemplateRouteParams {
   templateId: string;
+}
+
+interface TemplatePrecedenceRouteParams extends EventTemplateRouteParams {
+  otherTemplateId: string;
+}
+
+type PrecedenceBody = z.infer<
+  typeof createEventTemplateBodySchema
+>['precedences'];
+
+function precedenceAnswers(precedences: PrecedenceBody) {
+  return precedences?.map((precedence) => ({
+    otherTemplateId: EventTemplateId.from(precedence.otherTemplateId),
+    answer: precedence.answer,
+  }));
 }
 
 interface PlanningEventRouteParams {
@@ -431,10 +450,11 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'createEventTemplate',
           summary: 'Create an EventTemplate',
           description:
-            'Create a church-owned EventTemplate with its ordered TemplateTimeBlocks on a weekly or monthly Recurrence.',
+            'Create a church-owned EventTemplate with its ordered TemplateTimeBlocks on a weekly or monthly Recurrence. When it collides with templates it has no Template Precedence for, nothing is saved and 409 UNANSWERED_TEMPLATE_COLLISIONS names them; resubmit with an answer per pair in `precedences`.',
           body: createEventTemplateBodySchema,
           response: {
             201: eventTemplateResponseSchema,
+            409: templateCollisionsResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -448,6 +468,7 @@ export class ChurchAdminController implements FastifyController {
           name: body.name,
           recurrence: body.recurrence,
           blocks: body.blocks,
+          precedences: precedenceAnswers(body.precedences),
         });
         return reply.status(201).send(eventTemplateMapper.toResponse(template));
       },
@@ -524,10 +545,11 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'updateEventTemplate',
           summary: 'Update an EventTemplate',
           description:
-            "Apply an EventTemplate's complete desired name, Recurrence and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries.",
+            "Apply an EventTemplate's complete desired name, Recurrence and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries. Stored Template Precedences are never re-asked; a new colliding pair without one refuses the save with 409 UNANSWERED_TEMPLATE_COLLISIONS until `precedences` answers it.",
           body: updateEventTemplateBodySchema,
           response: {
             200: eventTemplateResponseSchema,
+            409: templateCollisionsResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -543,8 +565,63 @@ export class ChurchAdminController implements FastifyController {
           name: body.name,
           recurrence: body.recurrence,
           blocks: body.blocks,
+          precedences: precedenceAnswers(body.precedences),
         });
         return reply.send(eventTemplateMapper.toResponse(template));
+      },
+    );
+
+    app.get(
+      '/event-templates/:templateId/precedences',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'listTemplatePrecedences',
+          summary: 'List Template Precedences',
+          description:
+            "The template's stored Template Precedences, each as this template sees the pair, ordered by the other template's name.",
+          response: { 200: templatePrecedenceListResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { templateId } = request.params as EventTemplateRouteParams;
+        const precedences = await this.eventTemplateManager.listPrecedences({
+          churchId: ChurchId.from(request.churchId),
+          templateId: EventTemplateId.from(templateId),
+        });
+        return reply.send({ precedences });
+      },
+    );
+
+    app.put(
+      '/event-templates/:templateId/precedences/:otherTemplateId',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'changeTemplatePrecedence',
+          summary: 'Change a Template Precedence',
+          description:
+            'Change one stored Template Precedence, as the first template sees the pair, without editing either template. A pair with no stored answer is 404.',
+          body: changeTemplatePrecedenceBodySchema,
+          response: {
+            200: templatePrecedenceResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { templateId, otherTemplateId } =
+          request.params as TemplatePrecedenceRouteParams;
+        const body = request.body as z.infer<
+          typeof changeTemplatePrecedenceBodySchema
+        >;
+        const precedence = await this.eventTemplateManager.changePrecedence({
+          churchId: ChurchId.from(request.churchId),
+          templateId: EventTemplateId.from(templateId),
+          otherTemplateId: EventTemplateId.from(otherTemplateId),
+          answer: body.answer,
+        });
+        return reply.send(precedence);
       },
     );
 

@@ -79,10 +79,45 @@ export const recurrenceSchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
+/** A Template Precedence answer as the saved template sees the pair. */
+export const precedenceAnswerSchema = z.enum(['both', 'thisWins', 'otherWins']);
+
 export const createEventTemplateBodySchema = z.object({
   name: requiredTextSchema,
   recurrence: recurrenceSchema,
   blocks: z.array(eventTemplateTimeBlockBodySchema).min(1),
+  /** Answers to the pairs a previous 409 UNANSWERED_TEMPLATE_COLLISIONS named. */
+  precedences: z
+    .array(
+      z.object({
+        otherTemplateId: z.string().uuid(),
+        answer: precedenceAnswerSchema,
+      }),
+    )
+    .optional(),
+});
+
+/** A 409 `UNANSWERED_TEMPLATE_COLLISIONS`: each colliding template still to answer, by name. */
+export const templateCollisionsResponseSchema = z.object({
+  error: z.string(),
+  message: z.string(),
+  collisions: z
+    .array(z.object({ templateId: z.string(), name: z.string() }))
+    .optional(),
+});
+
+export const templatePrecedenceResponseSchema = z.object({
+  otherTemplateId: z.string(),
+  otherTemplateName: z.string(),
+  answer: precedenceAnswerSchema,
+});
+
+export const templatePrecedenceListResponseSchema = z.object({
+  precedences: z.array(templatePrecedenceResponseSchema),
+});
+
+export const changeTemplatePrecedenceBodySchema = z.object({
+  answer: precedenceAnswerSchema,
 });
 
 export const updateEventTemplateBodySchema =

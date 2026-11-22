@@ -48,6 +48,7 @@ export type MappedDomainCode =
   | 'ISOLATION_BREACH'
   | 'CROSS_MINISTRY_SCOPE'
   | 'OVERLAPPING_CYCLE'
+  | 'UNANSWERED_TEMPLATE_COLLISIONS'
   | 'ILLEGAL_STATE_TRANSITION'
   | 'DRAFT_STAFFING_RECONCILIATION_REQUIRED'
   | 'EVENT_OUTSIDE_CYCLE'
@@ -147,6 +148,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   ISOLATION_BREACH: { status: 409, message: m.error_isolation_breach },
   CROSS_MINISTRY_SCOPE: { status: 409, message: m.error_cross_ministry_scope },
   OVERLAPPING_CYCLE: { status: 409, message: m.error_overlapping_cycle },
+  UNANSWERED_TEMPLATE_COLLISIONS: {
+    status: 409,
+    message: m.error_unanswered_template_collisions,
+  },
   ILLEGAL_STATE_TRANSITION: {
     status: 409,
     message: m.error_illegal_state_transition,

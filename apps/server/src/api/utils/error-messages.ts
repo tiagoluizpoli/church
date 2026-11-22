@@ -36,6 +36,10 @@ import {
 } from '@/domain/errors/shift-has-responses';
 import { ShiftPublishedError } from '@/domain/errors/shift-published';
 import { SwapRequestNoteTooLongError } from '@/domain/errors/swap-request';
+import {
+  type TemplateCollisionReference,
+  UnansweredTemplateCollisionsError,
+} from '@/domain/errors/unanswered-template-collisions';
 import { UpcomingAssignmentsError } from '@/domain/errors/upcoming-assignments';
 import {
   type ValidationReason,
@@ -120,6 +124,15 @@ export function outsideEvents(
 ): OutsideEventReference[] | undefined {
   return error instanceof EventOutsideCycleError
     ? error.outsideEvents
+    : undefined;
+}
+
+/** The templates a save collides with and has no Template Precedence for, also sent to the client. */
+export function templateCollisions(
+  error: DomainError,
+): TemplateCollisionReference[] | undefined {
+  return error instanceof UnansweredTemplateCollisionsError
+    ? error.collisions
     : undefined;
 }
 

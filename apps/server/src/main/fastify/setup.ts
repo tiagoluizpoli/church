@@ -31,6 +31,7 @@ import {
   publishedShiftIds,
   remindAvailableAt,
   shiftResponses,
+  templateCollisions,
   upcomingAssignments,
   validationField,
   validationReason,
@@ -251,6 +252,7 @@ export async function createFastify({
       const cycles = conflictingCycles(error);
       const outside = outsideEvents(error);
       const invalid = invalidEvents(error);
+      const collisions = templateCollisions(error);
       const floors = headcountFloors(error);
       const responses = shiftResponses(error);
       const flagged = flaggedBlocks(error);
@@ -267,6 +269,7 @@ export async function createFastify({
         ...(cycles && { conflictingCycles: cycles }),
         ...(outside && { outsideEvents: outside }),
         ...(invalid && { invalidEvents: invalid }),
+        ...(collisions && { collisions }),
         ...(floors && { headcountFloors: floors }),
         ...(responses && { shiftResponses: responses }),
         ...(flagged && { flaggedBlocks: flagged }),

@@ -479,7 +479,12 @@ describe('toTemplateRequestBlocks', () => {
     expect(
       toTemplateRequestBlocks({
         blocks: [
-          makeTemplateTimeBlock({ key: 'row-1', label: ' New ' }),
+          makeTemplateTimeBlock({
+            key: 'row-1',
+            label: ' New ',
+            isPublic: true,
+            place: ' Hall ',
+          }),
           makeTemplateTimeBlock({
             key: 'row-2',
             persistedId: 'stored-id',
@@ -488,8 +493,21 @@ describe('toTemplateRequestBlocks', () => {
         ],
       }),
     ).toEqual([
-      { label: 'New', startTime: '09:00', endTime: '09:30' },
-      { id: 'stored-id', label: 'Kept', startTime: '09:00', endTime: '09:30' },
+      {
+        label: 'New',
+        startTime: '09:00',
+        endTime: '09:30',
+        isPublic: true,
+        place: 'Hall',
+      },
+      {
+        id: 'stored-id',
+        label: 'Kept',
+        startTime: '09:00',
+        endTime: '09:30',
+        isPublic: false,
+        place: '',
+      },
     ]);
   });
 });

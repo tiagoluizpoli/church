@@ -101,6 +101,8 @@ describe('GET /public/churches/:slug', () => {
       logoUrl: null,
       accentColor: null,
       programme: [],
+      addresses: [],
+      mainAddressArea: null,
     });
   });
 
@@ -125,6 +127,8 @@ describe('GET /public/churches/:slug', () => {
       logoUrl: storage.publicUrl({ key: logoKey }),
       accentColor: '#1D4ED8',
       programme: [],
+      addresses: [],
+      mainAddressArea: null,
     });
   });
 
@@ -142,6 +146,8 @@ describe('GET /public/churches/:slug', () => {
       logoUrl: null,
       accentColor: null,
       programme: [],
+      addresses: [],
+      mainAddressArea: null,
     });
   });
 
@@ -169,6 +175,92 @@ describe('GET /public/churches/:slug', () => {
     });
     remoteAddress = '198.51.100.1';
     expect((await readProfile('ib-esperanca')).statusCode).toBe(200);
+  });
+
+  describe('addresses', () => {
+    async function readBody() {
+      return (await readProfile('ib-esperanca')).json();
+    }
+
+    it('serves public addresses Main first with an allow-list of fields, never a private one', async () => {
+      await insertChurchAddress({
+        db,
+        churchId: CHURCH_A,
+        label: 'Sede',
+        street: 'Rua Principal',
+        isMain: true,
+        position: 1,
+      });
+      await insertChurchAddress({
+        db,
+        churchId: CHURCH_A,
+        label: 'Anexo',
+        street: 'Rua Anexo',
+        isMain: false,
+        position: 0,
+      });
+      await insertChurchAddress({
+        db,
+        churchId: CHURCH_A,
+        label: 'Casa do pastor',
+        street: 'Rua Secreta',
+        isMain: false,
+        isPublic: false,
+        position: 2,
+      });
+
+      const body = await readBody();
+
+      expect(body.addresses).toEqual([
+        {
+          label: 'Sede',
+          street: 'Rua Principal',
+          number: '10',
+          complement: null,
+          bairro: 'Centro',
+          city: 'Campinas',
+          uf: 'SP',
+          cep: null,
+          latitude: null,
+          longitude: null,
+          placeId: null,
+          isMain: true,
+        },
+        expect.objectContaining({ label: 'Anexo', isMain: false }),
+      ]);
+      expect(JSON.stringify(body)).not.toContain('Rua Secreta');
+    });
+
+    it('carries only bairro and city/UF of a private Main Address', async () => {
+      await insertChurchAddress({
+        db,
+        churchId: CHURCH_A,
+        label: 'Casa do pastor',
+        street: 'Rua Secreta',
+        isMain: true,
+        isPublic: false,
+      });
+
+      const body = await readBody();
+
+      expect(body.addresses).toEqual([]);
+      expect(body.mainAddressArea).toEqual({
+        bairro: 'Centro',
+        city: 'Campinas',
+        uf: 'SP',
+      });
+      expect(JSON.stringify(body)).not.toContain('Rua Secreta');
+    });
+
+    it('serves the Main Address area when it is public too', async () => {
+      await insertChurchAddress({ db, churchId: CHURCH_A });
+
+      expect((await readBody()).mainAddressArea).toEqual({
+        bairro: 'Centro',
+        city: 'Campinas',
+        uf: 'SP',
+      });
+    });
   });
 
   describe('programme', () => {

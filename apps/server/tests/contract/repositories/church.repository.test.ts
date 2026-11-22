@@ -66,6 +66,13 @@ class MockChurchRepository implements ChurchRepository {
 
   async saveLogoKey(): Promise<void> {}
 
+  async findPublicAddresses(): Promise<{
+    addresses: [];
+    mainAddressArea: null;
+  }> {
+    return { addresses: [], mainAddressArea: null };
+  }
+
   async findPublicIdentityBySlug(): Promise<null> {
     return null;
   }

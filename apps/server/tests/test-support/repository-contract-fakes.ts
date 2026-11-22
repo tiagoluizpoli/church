@@ -124,6 +124,7 @@ export function createChurchRepositoryFake() {
     saveLogoKey: vi.fn<ChurchRepository['saveLogoKey']>(),
     findPublicIdentityBySlug:
       vi.fn<ChurchRepository['findPublicIdentityBySlug']>(),
+    findPublicAddresses: vi.fn<ChurchRepository['findPublicAddresses']>(),
   } satisfies ChurchRepository;
 }
 

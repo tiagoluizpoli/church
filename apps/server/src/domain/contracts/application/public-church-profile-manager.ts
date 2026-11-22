@@ -1,3 +1,7 @@
+import type {
+  MainAddressArea,
+  PublicChurchAddress,
+} from '../../church-address';
 import type { RegularActivity } from '../../entities/regular-activity';
 
 export interface GetPublicChurchProfileInput {
@@ -14,6 +18,10 @@ export interface PublicChurchProfile {
   logoUrl: string | null;
   /** The Church Programme; a place is left out when it is the Main Address. */
   programme: Omit<RegularActivity, 'atMainAddress'>[];
+  /** Public Church Addresses, Main first. */
+  addresses: PublicChurchAddress[];
+  /** The Main Address's bairro and city/UF, even when it is private. */
+  mainAddressArea: MainAddressArea | null;
 }
 
 export interface IPublicChurchProfileManager {

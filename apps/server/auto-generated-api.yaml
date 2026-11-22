@@ -19028,12 +19028,78 @@ paths:
                         - label
                         - place
                       additionalProperties: false
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                        cep:
+                          nullable: true
+                          type: string
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        placeId:
+                          nullable: true
+                          type: string
+                        isMain:
+                          type: boolean
+                      required:
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - latitude
+                        - longitude
+                        - placeId
+                        - isMain
+                      additionalProperties: false
+                  mainAddressArea:
+                    nullable: true
+                    type: object
+                    properties:
+                      bairro:
+                        type: string
+                      city:
+                        type: string
+                      uf:
+                        type: string
+                    required:
+                      - bairro
+                      - city
+                      - uf
+                    additionalProperties: false
                 required:
                   - slug
                   - name
                   - logoUrl
                   - accentColor
                   - programme
+                  - addresses
+                  - mainAddressArea
                 additionalProperties: false
         "404":
           description: Default Response

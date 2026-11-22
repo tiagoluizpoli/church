@@ -1,4 +1,5 @@
 import type { ChurchId, UserId } from '../../branded-ids';
+import type { PublicChurchAddresses } from '../../church-address';
 import type {
   ChurchSettings,
   ChurchSettingsChanges,
@@ -49,6 +50,18 @@ export interface ChurchRepository {
   findPublicIdentityBySlug(
     input: FindPublicIdentityBySlugInput,
   ): Promise<PublicChurchIdentity | null>;
+  /**
+   * What a visitor may see of the Church's addresses: the public ones, Main
+   * first, then display order; and the Main Address's bairro and city/UF even
+   * when it is private. Nothing else of a private address leaves.
+   */
+  findPublicAddresses(
+    input: FindPublicAddressesInput,
+  ): Promise<PublicChurchAddresses>;
+}
+
+export interface FindPublicAddressesInput {
+  churchId: ChurchId;
 }
 
 export interface FindPublicIdentityBySlugInput {

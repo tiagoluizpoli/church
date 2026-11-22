@@ -10,10 +10,13 @@ import {
   organization,
   user,
 } from '@church/db';
-import { and, asc, eq, ne, notInArray, or } from 'drizzle-orm';
+import { and, asc, desc, eq, ne, notInArray, or } from 'drizzle-orm';
 import { ChurchId, type UserId } from '../../domain/branded-ids';
 import {
   type ChurchAddress,
+  type MainAddressArea,
+  type PublicChurchAddress,
+  type PublicChurchAddresses,
   resolveChurchAddresses,
 } from '../../domain/church-address';
 import type { ChurchLegalProfile } from '../../domain/church-legal-profile';
@@ -25,6 +28,7 @@ import type {
   ChurchMemberContact,
   ChurchRepository,
   FindChurchMemberEmailInput,
+  FindPublicAddressesInput,
   FindPublicIdentityBySlugInput,
   FindUserNameInput,
   GetChurchByIdInput,
@@ -489,5 +493,50 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .where(or(eq(organization.slug, slug), eq(churchSlugHistory.slug, slug)))
       .limit(1);
     return row ? { ...row, churchId: ChurchId.from(row.churchId) } : null;
+  }
+
+  async findPublicAddresses({
+    churchId,
+  }: FindPublicAddressesInput): Promise<PublicChurchAddresses> {
+    // Private addresses are read only to take the Main Address's area; the
+    // street, number and pin of one never reach the result.
+    const rows = await getClient({ db: this.db })
+      .select({
+        label: churchAddress.label,
+        street: churchAddress.street,
+        number: churchAddress.number,
+        complement: churchAddress.complement,
+        bairro: churchAddress.bairro,
+        city: churchAddress.city,
+        uf: churchAddress.uf,
+        cep: churchAddress.cep,
+        latitude: churchAddress.latitude,
+        longitude: churchAddress.longitude,
+        placeId: churchAddress.placeId,
+        isMain: churchAddress.isMain,
+        isPublic: churchAddress.isPublic,
+      })
+      .from(churchAddress)
+      .where(eq(churchAddress.churchId, churchId))
+      .orderBy(
+        desc(churchAddress.isMain),
+        asc(churchAddress.position),
+        asc(churchAddress.id),
+      );
+    const main = rows.find((row) => row.isMain);
+    return {
+      addresses: rows
+        .filter((row) => row.isPublic)
+        .map(
+          ({ isPublic: _isPublic, ...address }) => address,
+        ) as PublicChurchAddress[],
+      mainAddressArea: main
+        ? {
+            bairro: main.bairro,
+            city: main.city,
+            uf: main.uf as MainAddressArea['uf'],
+          }
+        : null,
+    };
   }
 }

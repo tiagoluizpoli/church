@@ -41,7 +41,13 @@ export class DbPublicChurchProfileManager
     const activities = await this.programmeRepository.listRegularActivities({
       churchId: identity.churchId,
     });
+    const { addresses, mainAddressArea } =
+      await this.churchRepository.findPublicAddresses({
+        churchId: identity.churchId,
+      });
     return {
+      addresses,
+      mainAddressArea,
       slug: identity.slug,
       name: identity.name,
       accentColor: identity.accentColor,

@@ -34,8 +34,10 @@ import {
   count,
   countDistinct,
   eq,
+  isNotNull,
   isNull,
   ne,
+  or,
   sql,
 } from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -293,6 +295,51 @@ describe('development seed recipe', () => {
         .from(churchAddress)
         .where(eq(churchAddress.churchId, seeded.secondChurch.id)),
     ).toEqual([]);
+  });
+
+  it('places the public Sunday template blocks, and the Events copied from them, at the seeded addresses', async () => {
+    const templateRows = await testDb
+      .select({
+        label: templateTimeBlock.label,
+        place: templateTimeBlock.place,
+        address: churchAddress.label,
+      })
+      .from(templateTimeBlock)
+      .leftJoin(
+        churchAddress,
+        eq(churchAddress.id, templateTimeBlock.placeAddressId),
+      )
+      .where(
+        and(
+          eq(templateTimeBlock.churchId, seeded.church.id),
+          eq(templateTimeBlock.isPublic, true),
+        ),
+      )
+      .orderBy(asc(templateTimeBlock.startTime));
+    const copiedWithoutAddress = await testDb
+      .select({ id: eventTimeBlock.id })
+      .from(eventTimeBlock)
+      .innerJoin(
+        templateTimeBlock,
+        eq(templateTimeBlock.id, eventTimeBlock.sourceTemplateTimeBlockId),
+      )
+      .where(
+        and(
+          eq(eventTimeBlock.churchId, seeded.church.id),
+          isNotNull(templateTimeBlock.placeAddressId),
+          or(
+            isNull(eventTimeBlock.placeAddressId),
+            ne(eventTimeBlock.placeAddressId, templateTimeBlock.placeAddressId),
+          ),
+        ),
+      );
+
+    expect(templateRows).toEqual([
+      { label: 'Culto 08:00', place: null, address: 'Templo' },
+      { label: 'Culto 10:30', place: null, address: 'Templo' },
+      { label: 'Culto 18:30', place: null, address: 'Salão anexo' },
+    ]);
+    expect(copiedWithoutAddress).toEqual([]);
   });
 
   it('uploads a logo for the primary Church through the logo pipeline, none for the second', async () => {

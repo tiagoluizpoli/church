@@ -179,6 +179,21 @@ describe('affected.ts --dry-run against a temporary Git history', () => {
     expect(stderr).toContain('Base ref: develop');
   });
 
+  it('fails instead of falling back to develop when the configured base is missing', () => {
+    git(['config', 'branch.feature/x.validateBase', 'spec/9-deleted']);
+
+    const result = Bun.spawnSync(['bun', SCRIPT_PATH, '--dry-run'], {
+      cwd: repoDir,
+      stderr: 'pipe',
+      stdout: 'pipe',
+    });
+
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr.toString()).toContain(
+      '"spec/9-deleted", which does not resolve',
+    );
+  });
+
   it('keeps stdout as pure JSON so CI can parse it with jq, moving the explanation to stderr', () => {
     writeRepoFile('apps/web/src/shared/utils/active-church-switch.ts');
     commitAll('feat: active church switch');

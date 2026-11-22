@@ -142,27 +142,45 @@ const VALIDATE_BASE_CONFIG = 'validateBase';
  * local plan.
  */
 function resolveDefaultBaseRef(): string | undefined {
-  try {
-    const branch = execFileSync('git', ['symbolic-ref', '--short', 'HEAD'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-    const configured = execFileSync(
-      'git',
-      ['config', '--get', `branch.${branch}.${VALIDATE_BASE_CONFIG}`],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
-    ).trim();
-    if (configured) return configured;
-  } catch {} // detached HEAD or no setting: fall back to develop
-  for (const candidate of ['develop', 'origin/develop']) {
-    try {
-      execFileSync('git', ['rev-parse', '--verify', '--quiet', candidate], {
-        stdio: 'ignore',
-      });
-      return candidate;
-    } catch {}
+  const configured = readConfiguredBaseRef();
+  if (configured !== undefined) {
+    // A silent develop fallback would bring back the whole-spec diff.
+    if (!isRef({ ref: configured })) {
+      throw new Error(
+        `git config ${VALIDATE_BASE_CONFIG} names "${configured}", which does not resolve; fix it or pass --base.`,
+      );
+    }
+    return configured;
   }
-  return undefined;
+  return ['develop', 'origin/develop'].find((ref) => isRef({ ref }));
+}
+
+const QUIET_GIT = {
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'ignore'],
+} as const;
+
+function readConfiguredBaseRef(): string | undefined {
+  try {
+    const branch = execFileSync(
+      'git',
+      ['symbolic-ref', '--short', 'HEAD'],
+      QUIET_GIT,
+    ).trim();
+    const key = `branch.${branch}.${VALIDATE_BASE_CONFIG}`;
+    return execFileSync('git', ['config', '--get', key], QUIET_GIT).trim();
+  } catch {
+    return undefined; // detached HEAD or no setting
+  }
+}
+
+function isRef({ ref }: { ref: string }): boolean {
+  try {
+    execFileSync('git', ['rev-parse', '--verify', '--quiet', ref], QUIET_GIT);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function collectChangedPaths({

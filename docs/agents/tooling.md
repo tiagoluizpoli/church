@@ -250,15 +250,17 @@ per-ticket gate once each and the coordinator owns the single final
 `bun run validate` on the integration branch; workers do not run it.
 
 With no `--base`, `validate:affected` diffs against the branch's
-`validateBase` git setting, else `develop`. A ticket branch that merges its
-integration branch sets it when its worktree is created, so the gate and the
-seed-impact trailer lookup see only the ticket's own commits:
+`validateBase` git setting, else `develop`. On a wrapper run the coordinator
+sets it when it creates each ticket worktree (nothing infers the integration
+branch), so the gate and the seed-impact trailer lookup see only the ticket's
+own commits:
 
 ```sh
 git config branch.<ticket-branch>.validateBase spec/<n>-<slug>
 ```
 
-`--base` still wins, and the dry run's `Base ref:` line shows the choice.
+`--base` still wins, a setting naming a missing ref fails the gate, and the
+dry run's `Base ref:` line shows the choice.
 
 ## Validate slot
 

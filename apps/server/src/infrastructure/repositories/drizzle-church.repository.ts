@@ -78,6 +78,14 @@ interface ReplaceSocialLinksInput {
   })[];
 }
 
+interface GroupedRow {
+  group: string | null;
+}
+
+interface CreatedGroup {
+  id: string;
+}
+
 interface ReplaceGroupsInput {
   client: DrizzleClient;
   id: string;
@@ -345,7 +353,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
         ...changes.socialLinks.map(({ group }) => group),
       ],
     });
-    const groupIdOf = ({ group }: { group: string | null }) =>
+    const groupIdOf = ({ group }: GroupedRow) =>
       group ? (groupIds.get(contactGroupKey({ name: group })) ?? null) : null;
     await this.replaceSocialLinks({
       client,
@@ -438,7 +446,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
           .insert(churchContactGroup)
           .values({ churchId: id, name, position })
           .returning({ id: churchContactGroup.id });
-        ids.set(key, (created as { id: string }).id);
+        ids.set(key, (created as CreatedGroup).id);
       }
     }
     return ids;
@@ -474,10 +482,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
       );
   }
 
-  private listContacts({
-    id,
-    tx,
-  }: ListAddressesInput): Promise<{ group: string | null }[]> {
+  private listContacts({ id, tx }: ListAddressesInput): Promise<GroupedRow[]> {
     return getClient({ db: this.db, tx })
       .select({ group: churchContactGroup.name })
       .from(churchContact)

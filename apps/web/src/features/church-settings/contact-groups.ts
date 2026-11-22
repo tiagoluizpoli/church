@@ -91,14 +91,17 @@ export function moveGroup({ form, name, by }: MoveInput): string[] {
   return next;
 }
 
+interface MembersOfInput<T> {
+  rows: T[];
+  /** `null` is the ungrouped block. */
+  name: string | null;
+}
+
 /** One block of the preview: a group's rows, in the form's order. */
 export function membersOf<T extends { group: string }>({
   rows,
   name,
-}: {
-  rows: T[];
-  name: string | null;
-}): T[] {
+}: MembersOfInput<T>): T[] {
   return rows.filter(({ group }) =>
     name === null
       ? clean({ name: group }) === ''

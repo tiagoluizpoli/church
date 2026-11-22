@@ -22,7 +22,7 @@ type OperatorEnvironment = (typeof OPERATOR_ENVIRONMENTS)[number];
 const USAGE = [
   'Usage:',
   '  operator setup-identity --environment <env>',
-  '  operator provision-church --environment <env> --name <name> --slug <slug> --admin-email <email> [--base-url <url>]',
+  '  operator provision-church --environment <env> --name <name> [--slug <slug>] --admin-email <email> [--base-url <url>]',
 ].join('\n');
 
 export interface RunOperatorCommandInput {
@@ -103,10 +103,11 @@ export async function runOperatorCommand({
   }
 
   if (command === 'provision-church') {
-    const [requested, churchName, churchSlug, adminEmail] = requireFlags({
+    const [requested, churchName, adminEmail] = requireFlags({
       flags,
-      names: ['environment', 'name', 'slug', 'admin-email'],
-    }) as [string, string, string, string];
+      names: ['environment', 'name', 'admin-email'],
+    }) as [string, string, string];
+    const churchSlug = flags.get('slug');
     assertTarget({ requested, connected });
 
     const operator = await ensurePlatformOperatorExisting({ db });

@@ -6,6 +6,7 @@ import {
   assignmentProposalApplication,
   availabilityAsk,
   availabilityCheck,
+  churchSlugHistory,
   createChurch,
   cycle,
   event,
@@ -125,6 +126,9 @@ async function seedEveryTenantedTable(): Promise<void> {
     name: 'Truncation Root Church',
     slug: 'truncation-root-church',
   });
+  await testDb
+    .insert(churchSlugHistory)
+    .values({ slug: 'truncation-root-former', churchId: IDS.church });
 
   await testDb.insert(user).values({
     id: IDS.user,

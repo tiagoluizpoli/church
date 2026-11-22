@@ -1,5 +1,11 @@
 import { NotFoundError } from '@church/core';
-import { invitation, organization, user } from '@church/db';
+import {
+  churchSlugHistory,
+  createChurch,
+  invitation,
+  organization,
+  user,
+} from '@church/db';
 import { count, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -53,6 +59,48 @@ describe('provisionChurch', () => {
       status: 'pending',
       inviterId: OPERATOR_USER_ID,
     });
+  });
+
+  it('derives the Church Slug from the name when none is given', async () => {
+    const result = await provisionChurch({
+      db: testDb,
+      churchName: 'Igreja Batista Esperança',
+      adminEmail: 'admin@esperanca.test',
+      operatorUserId: OPERATOR_USER_ID,
+    });
+
+    expect(result.church.slug).toBe('igreja-batista-esperanca');
+  });
+
+  it('refuses a slug the schema refuses, derived or given', async () => {
+    await expect(
+      provisionChurch({
+        db: testDb,
+        churchName: 'Admin',
+        adminEmail: 'admin@admin.test',
+        operatorUserId: OPERATOR_USER_ID,
+      }),
+    ).rejects.toThrow('is reserved by the platform');
+  });
+
+  it('refuses a slug another Church gave up', async () => {
+    const former = await createChurch({
+      db: testDb,
+      name: 'Former',
+      slug: 'former-name',
+    });
+    await testDb
+      .insert(churchSlugHistory)
+      .values({ slug: 'old-name', churchId: former.id });
+
+    await expect(
+      provisionChurch({
+        db: testDb,
+        churchName: 'Old Name',
+        adminEmail: 'admin@old-name.test',
+        operatorUserId: OPERATOR_USER_ID,
+      }),
+    ).rejects.toBeInstanceOf(ChurchSlugTakenError);
   });
 
   it('prefixes the printed path with baseUrl but returns a relative path', async () => {

@@ -21,7 +21,8 @@ export interface BuildProvisionedChurchInput {
   db: SeedWriter;
   id: string;
   name: string;
-  slug: string;
+  /** Omitted, derived from the name through the Church Slug schema. */
+  slug?: string;
   timezone: string;
   adminEmail: string;
   adminInvitationId: string;

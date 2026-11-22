@@ -227,6 +227,8 @@ async function loadChurchDirectory({
     db,
     id: deriveSeedId({ kind: 'church', parentIds: [blueprint.church.slug] }),
     ...blueprint.church,
+    // The seeded slugs are the names' own: provisioning derives them from the name.
+    slug: undefined,
     adminEmail: blueprint.churchAdmin.email,
     adminInvitationId: deriveSeedId({
       kind: 'church-admin-invitation',

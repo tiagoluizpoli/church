@@ -3,6 +3,7 @@ import type { GetChurchSettings200 } from '@/infrastructure/api/churchAPI.schema
 /** What the screen edits; the server normalises it on save. */
 export interface ChurchSettingsForm {
   name: string;
+  slug: string;
   /** Empty means no website. */
   website: string;
   /** `null` means "Padrão do app". */
@@ -10,7 +11,10 @@ export interface ChurchSettingsForm {
 }
 
 interface ToChurchSettingsFormInput {
-  settings: Pick<GetChurchSettings200, 'name' | 'website' | 'accentColor'>;
+  settings: Pick<
+    GetChurchSettings200,
+    'name' | 'slug' | 'website' | 'accentColor'
+  >;
 }
 
 export function toChurchSettingsForm({
@@ -18,6 +22,7 @@ export function toChurchSettingsForm({
 }: ToChurchSettingsFormInput): ChurchSettingsForm {
   return {
     name: settings.name,
+    slug: settings.slug,
     website: settings.website ?? '',
     accentColor: settings.accentColor,
   };

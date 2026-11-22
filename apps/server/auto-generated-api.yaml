@@ -1236,7 +1236,10 @@ paths:
       tags:
         - planning
       description: Create a church-owned EventTemplate with its ordered
-        TemplateTimeBlocks on a weekly or monthly Recurrence.
+        TemplateTimeBlocks on a weekly or monthly Recurrence. When it collides
+        with templates it has no Template Precedence for, nothing is saved and
+        409 UNANSWERED_TEMPLATE_COLLISIONS names them; resubmit with an answer
+        per pair in `precedences`.
       requestBody:
         required: true
         content:
@@ -1399,6 +1402,24 @@ paths:
                       - startTime
                       - endTime
                     additionalProperties: false
+                precedences:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      otherTemplateId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      answer:
+                        type: string
+                        enum:
+                          - both
+                          - thisWins
+                          - otherWins
+                    required:
+                      - otherTemplateId
+                      - answer
               required:
                 - name
                 - recurrence
@@ -1603,6 +1624,34 @@ paths:
                   - blocks
                   - createdAt
                   - updatedAt
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  collisions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        templateId:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - templateId
+                        - name
+                      additionalProperties: false
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "422":
           description: Default Response
@@ -2081,7 +2130,9 @@ paths:
       description: "Apply an EventTemplate's complete desired name, Recurrence and
         TemplateTimeBlocks: blocks with a persisted id are updated in place,
         blocks without one are created and omitted blocks are deleted with their
-        UsualSetup entries."
+        UsualSetup entries. Stored Template Precedences are never re-asked; a
+        new colliding pair without one refuses the save with 409
+        UNANSWERED_TEMPLATE_COLLISIONS until `precedences` answers it."
       requestBody:
         required: true
         content:
@@ -2248,6 +2299,24 @@ paths:
                       - startTime
                       - endTime
                     additionalProperties: false
+                precedences:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      otherTemplateId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      answer:
+                        type: string
+                        enum:
+                          - both
+                          - thisWins
+                          - otherWins
+                    required:
+                      - otherTemplateId
+                      - answer
               required:
                 - name
                 - recurrence
@@ -2459,6 +2528,34 @@ paths:
                   - createdAt
                   - updatedAt
                 additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  collisions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        templateId:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - templateId
+                        - name
+                      additionalProperties: false
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "422":
           description: Default Response
           content:
@@ -2556,6 +2653,148 @@ paths:
                   - templateId
                   - ministryCount
                   - blocks
+                additionalProperties: false
+  /api/v1/admin/event-templates/{templateId}/precedences:
+    get:
+      operationId: listTemplatePrecedences
+      summary: List Template Precedences
+      tags:
+        - planning
+      description: The template's stored Template Precedences, each as this template
+        sees the pair, ordered by the other template's name.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: templateId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  precedences:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        otherTemplateId:
+                          type: string
+                        otherTemplateName:
+                          type: string
+                        answer:
+                          type: string
+                          enum:
+                            - both
+                            - thisWins
+                            - otherWins
+                      required:
+                        - otherTemplateId
+                        - otherTemplateName
+                        - answer
+                      additionalProperties: false
+                required:
+                  - precedences
+                additionalProperties: false
+  /api/v1/admin/event-templates/{templateId}/precedences/{otherTemplateId}:
+    put:
+      operationId: changeTemplatePrecedence
+      summary: Change a Template Precedence
+      tags:
+        - planning
+      description: Change one stored Template Precedence, as the first template sees
+        the pair, without editing either template. A pair with no stored answer
+        is 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answer:
+                  type: string
+                  enum:
+                    - both
+                    - thisWins
+                    - otherWins
+              required:
+                - answer
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: templateId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: otherTemplateId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  otherTemplateId:
+                    type: string
+                  otherTemplateName:
+                    type: string
+                  answer:
+                    type: string
+                    enum:
+                      - both
+                      - thisWins
+                      - otherWins
+                required:
+                  - otherTemplateId
+                  - otherTemplateName
+                  - answer
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/apply-templates:
     post:
@@ -5444,9 +5683,10 @@ paths:
       tags:
         - church-settings
       description: Saves the whole set of Church Settings in one transaction, last
-        write wins; the slug never changes here. A refused save changes nothing
-        and answers 422 with one entry per refused field (list rows addressed by
-        index). ChurchAdmin only.
+        write wins; the slug changes only when one is sent (its old value moves
+        to the slug history). A refused save changes nothing and answers 422
+        with one entry per refused field (list rows addressed by index).
+        ChurchAdmin only.
       requestBody:
         required: true
         content:
@@ -5456,6 +5696,11 @@ paths:
               properties:
                 name:
                   description: Required. Trimmed, inner spaces collapsed, 2–80 characters.
+                  type: string
+                slug:
+                  description: "Church Slug: 3–63 characters, lower-case letters, digits and
+                    single hyphens, not reserved, not taken. Omitted, the slug
+                    stays."
                   type: string
                 website:
                   description: https:// only; a bare domain gets it prepended; empty or null
@@ -5579,6 +5824,10 @@ paths:
                             - CHURCH_WEBSITE_INVALID
                             - CHURCH_WEBSITE_TOO_LONG
                             - ACCENT_COLOR_INVALID
+                            - CHURCH_SLUG_LENGTH
+                            - CHURCH_SLUG_FORMAT
+                            - CHURCH_SLUG_RESERVED
+                            - CHURCH_SLUG_TAKEN
                             - INVALID
                         message:
                           type: string
@@ -5591,6 +5840,85 @@ paths:
                   - error
                   - message
                   - fieldErrors
+                additionalProperties: false
+  /api/v1/church-settings/slug-availability:
+    get:
+      operationId: getChurchSlugAvailability
+      summary: Check a Church Slug for the Active Church
+      tags:
+        - church-settings
+      description: Whether a Church Slug is free, taken, reserved, or held in the
+        Active Church's own slug history (it may take it back). Never says which
+        Church holds a taken slug. ChurchAdmin only.
+      parameters:
+        - schema:
+            type: string
+            maxLength: 200
+          in: query
+          name: slug
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - free
+                      - taken
+                      - reserved
+                      - own_history
+                required:
+                  - status
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/church-settings/logo:
     put:

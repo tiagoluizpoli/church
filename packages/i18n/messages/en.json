@@ -57,6 +57,7 @@
   "error_isolation_breach": "This item belongs to another Church.",
   "error_cross_ministry_scope": "This item belongs to another Ministry.",
   "error_overlapping_cycle": "This Cycle overlaps an existing Cycle.",
+  "error_unanswered_template_collisions": "This template collides with other templates. Choose which one wins on shared days.",
   "error_illegal_state_transition": "This change is not allowed in the current state.",
   "error_draft_staffing_reconciliation_required": "This Cycle already has staffing from earlier preparation. It needs to be reconciled before the Cycle can be sent; nothing was changed.",
   "error_empty_cycle": "Add at least one Event before sending this Cycle.",
@@ -1989,5 +1990,15 @@
   "church_settings_logo_none": "No logo",
   "church_settings_preview_logo_light": "Light mode",
   "church_settings_preview_logo_dark": "Dark mode",
-  "church_settings_preview_email": "Email header"
+  "church_settings_preview_email": "Email header",
+  "error_church_settings_slug_length": "The link must be 3 to 63 characters long.",
+  "error_church_settings_slug_format": "Use only lower-case letters, digits and hyphens, not starting or ending with a hyphen.",
+  "error_church_settings_slug_reserved": "That link is reserved by the app. Choose another.",
+  "error_church_settings_slug_taken": "That link is not available. Choose another.",
+  "church_settings_slug_generate": "Generate from name",
+  "church_settings_slug_hint": "Your Church's public address. Renaming the Church does not change the link.",
+  "church_settings_slug_confirm_title": "Change the Church link?",
+  "church_settings_slug_confirm_body": "Links already shared and printed material with the old link (/{old}) must be updated. The new link will be /{slug}.",
+  "church_settings_slug_confirm_action": "Change the link",
+  "church_settings_slug_confirm_cancel": "Go back"
 }

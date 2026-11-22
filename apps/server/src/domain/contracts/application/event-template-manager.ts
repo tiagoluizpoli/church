@@ -4,6 +4,10 @@ import type {
   EventTemplateUsage,
 } from '../../entities/event-template';
 import type { Recurrence } from '../../recurrence';
+import type {
+  PrecedenceAnswer,
+  TemplatePrecedenceAnswer,
+} from '../../template-precedence';
 
 /** Submitted block; `order` is derived from start time by the manager. */
 export interface EventTemplateTimeBlockManagerInput {
@@ -21,6 +25,8 @@ export interface CreateEventTemplateManagerInput {
   name: string;
   recurrence: Recurrence;
   blocks: EventTemplateTimeBlockManagerInput[];
+  /** Answers for colliding pairs; an unanswered new collision refuses the save. */
+  precedences?: TemplatePrecedenceAnswer[];
 }
 
 export interface UpdateEventTemplateManagerInput {
@@ -29,6 +35,8 @@ export interface UpdateEventTemplateManagerInput {
   name: string;
   recurrence: Recurrence;
   blocks: EventTemplateTimeBlockManagerInput[];
+  /** Answers for colliding pairs; an unanswered new collision refuses the save. */
+  precedences?: TemplatePrecedenceAnswer[];
 }
 
 export interface DeleteEventTemplateManagerInput {
@@ -43,6 +51,18 @@ export interface GetEventTemplateManagerInput {
 
 export interface ListEventTemplatesManagerInput {
   churchId: ChurchId;
+}
+
+export interface ChangeTemplatePrecedenceManagerInput {
+  churchId: ChurchId;
+  templateId: EventTemplateId;
+  otherTemplateId: EventTemplateId;
+  answer: PrecedenceAnswer;
+}
+
+/** A stored Template Precedence as one template of the pair sees it. */
+export interface TemplatePrecedenceView extends TemplatePrecedenceAnswer {
+  otherTemplateName: string;
 }
 
 export interface IEventTemplateManager {
@@ -60,4 +80,12 @@ export interface IEventTemplateManager {
   listTemplates(
     input: ListEventTemplatesManagerInput,
   ): Promise<EventTemplate[]>;
+  /** The template's stored precedences, ordered by the other template's name. */
+  listPrecedences(
+    input: GetEventTemplateManagerInput,
+  ): Promise<TemplatePrecedenceView[]>;
+  /** Changes one stored precedence without editing either template. */
+  changePrecedence(
+    input: ChangeTemplatePrecedenceManagerInput,
+  ): Promise<TemplatePrecedenceView>;
 }

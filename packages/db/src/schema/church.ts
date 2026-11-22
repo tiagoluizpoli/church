@@ -1,5 +1,12 @@
 import { relations } from 'drizzle-orm';
-import { jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import {
+  index,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { organization } from './organization';
 
 // A Church *is* an `organization` row. Its `name` and `slug` live there (written
@@ -28,3 +35,20 @@ export const churchRelations = relations(church, ({ one }) => ({
     references: [organization.id],
   }),
 }));
+
+// Every Church Slug a Church gave up stays reserved to it forever. `slug` is
+// unique across Churches; a live slug (organization.slug) is kept disjoint
+// from this table by the slug-change write, which is the only writer.
+export const churchSlugHistory = pgTable(
+  'church_slug_history',
+  {
+    slug: text('slug').primaryKey(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index('church_slug_history_church_id_idx').on(table.churchId)],
+);

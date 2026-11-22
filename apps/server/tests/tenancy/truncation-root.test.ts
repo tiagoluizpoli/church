@@ -6,6 +6,7 @@ import {
   assignmentProposalApplication,
   availabilityAsk,
   availabilityCheck,
+  churchSlugHistory,
   createChurch,
   cycle,
   event,
@@ -35,6 +36,7 @@ import {
   shiftRequirement,
   swapRequest,
   team,
+  templatePrecedence,
   templateTimeBlock,
   todo,
   unavailableShift,
@@ -72,6 +74,8 @@ const IDS = {
   cycle: 'aaaaaaa1-0000-4000-8000-000000000007',
   eventTemplate: 'aaaaaaa1-0000-4000-8000-000000000008',
   templateTimeBlock: 'aaaaaaa1-0000-4000-8000-000000000009',
+  /** Sorts after `eventTemplate`: a precedence pair is stored as (A < B). */
+  otherEventTemplate: 'aaaaaaa1-0000-4000-8000-0000000000f8',
   event: 'aaaaaaa1-0000-4000-8000-00000000000a',
   eventTimeBlock: 'aaaaaaa1-0000-4000-8000-00000000000b',
   participation: 'aaaaaaa1-0000-4000-8000-00000000000c',
@@ -125,6 +129,9 @@ async function seedEveryTenantedTable(): Promise<void> {
     name: 'Truncation Root Church',
     slug: 'truncation-root-church',
   });
+  await testDb
+    .insert(churchSlugHistory)
+    .values({ slug: 'truncation-root-former', churchId: IDS.church });
 
   await testDb.insert(user).values({
     id: IDS.user,
@@ -279,6 +286,23 @@ async function seedEveryTenantedTable(): Promise<void> {
     churchId: IDS.church,
     name: 'Truncation template',
     recurrence: { kind: 'weekly', weekdays: [0] },
+  });
+
+  await testDb.insert(eventTemplate).values({
+    id: IDS.otherEventTemplate,
+    churchId: IDS.church,
+    name: 'Truncation monthly template',
+    recurrence: {
+      kind: 'monthly',
+      entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+    },
+  });
+
+  await testDb.insert(templatePrecedence).values({
+    churchId: IDS.church,
+    templateAId: IDS.eventTemplate,
+    templateBId: IDS.otherEventTemplate,
+    outcome: 'b_wins',
   });
 
   await testDb.insert(templateTimeBlock).values({

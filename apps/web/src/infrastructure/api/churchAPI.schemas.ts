@@ -574,6 +574,21 @@ export type CreateEventTemplateBodyBlocksItem = {
   place?: string;
 };
 
+export type CreateEventTemplateBodyPrecedencesItemAnswer = typeof CreateEventTemplateBodyPrecedencesItemAnswer[keyof typeof CreateEventTemplateBodyPrecedencesItemAnswer];
+
+
+export const CreateEventTemplateBodyPrecedencesItemAnswer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type CreateEventTemplateBodyPrecedencesItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  otherTemplateId: string;
+  answer: CreateEventTemplateBodyPrecedencesItemAnswer;
+};
+
 export type CreateEventTemplateBody = {
   /**
      * @minLength 1
@@ -583,6 +598,7 @@ export type CreateEventTemplateBody = {
   recurrence: CreateEventTemplateBodyRecurrence;
   /** @minItems 1 */
   blocks: CreateEventTemplateBodyBlocksItem[];
+  precedences?: CreateEventTemplateBodyPrecedencesItem[];
 };
 
 export type CreateEventTemplate201Recurrence = {
@@ -634,6 +650,17 @@ export type CreateEventTemplate201 = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type CreateEventTemplate409CollisionsItem = {
+  templateId: string;
+  name: string;
+};
+
+export type CreateEventTemplate409 = {
+  error: string;
+  message: string;
+  collisions?: CreateEventTemplate409CollisionsItem[];
 };
 
 export type CreateEventTemplate422Error = typeof CreateEventTemplate422Error[keyof typeof CreateEventTemplate422Error];
@@ -817,6 +844,21 @@ export type UpdateEventTemplateBodyBlocksItem = {
   id?: string;
 };
 
+export type UpdateEventTemplateBodyPrecedencesItemAnswer = typeof UpdateEventTemplateBodyPrecedencesItemAnswer[keyof typeof UpdateEventTemplateBodyPrecedencesItemAnswer];
+
+
+export const UpdateEventTemplateBodyPrecedencesItemAnswer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type UpdateEventTemplateBodyPrecedencesItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  otherTemplateId: string;
+  answer: UpdateEventTemplateBodyPrecedencesItemAnswer;
+};
+
 export type UpdateEventTemplateBody = {
   /**
      * @minLength 1
@@ -826,6 +868,7 @@ export type UpdateEventTemplateBody = {
   recurrence: UpdateEventTemplateBodyRecurrence;
   /** @minItems 1 */
   blocks: UpdateEventTemplateBodyBlocksItem[];
+  precedences?: UpdateEventTemplateBodyPrecedencesItem[];
 };
 
 export type UpdateEventTemplate200Recurrence = {
@@ -879,6 +922,17 @@ export type UpdateEventTemplate200 = {
   updatedAt: string;
 };
 
+export type UpdateEventTemplate409CollisionsItem = {
+  templateId: string;
+  name: string;
+};
+
+export type UpdateEventTemplate409 = {
+  error: string;
+  message: string;
+  collisions?: UpdateEventTemplate409CollisionsItem[];
+};
+
 export type UpdateEventTemplate422Error = typeof UpdateEventTemplate422Error[keyof typeof UpdateEventTemplate422Error];
 
 
@@ -923,6 +977,88 @@ export type GetEventTemplateUsage200 = {
   templateId: string;
   ministryCount: number;
   blocks: GetEventTemplateUsage200BlocksItem[];
+};
+
+export type ListTemplatePrecedences200PrecedencesItemAnswer = typeof ListTemplatePrecedences200PrecedencesItemAnswer[keyof typeof ListTemplatePrecedences200PrecedencesItemAnswer];
+
+
+export const ListTemplatePrecedences200PrecedencesItemAnswer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type ListTemplatePrecedences200PrecedencesItem = {
+  otherTemplateId: string;
+  otherTemplateName: string;
+  answer: ListTemplatePrecedences200PrecedencesItemAnswer;
+};
+
+export type ListTemplatePrecedences200 = {
+  precedences: ListTemplatePrecedences200PrecedencesItem[];
+};
+
+export type ChangeTemplatePrecedenceBodyAnswer = typeof ChangeTemplatePrecedenceBodyAnswer[keyof typeof ChangeTemplatePrecedenceBodyAnswer];
+
+
+export const ChangeTemplatePrecedenceBodyAnswer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type ChangeTemplatePrecedenceBody = {
+  answer: ChangeTemplatePrecedenceBodyAnswer;
+};
+
+export type ChangeTemplatePrecedence200Answer = typeof ChangeTemplatePrecedence200Answer[keyof typeof ChangeTemplatePrecedence200Answer];
+
+
+export const ChangeTemplatePrecedence200Answer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type ChangeTemplatePrecedence200 = {
+  otherTemplateId: string;
+  otherTemplateName: string;
+  answer: ChangeTemplatePrecedence200Answer;
+};
+
+export type ChangeTemplatePrecedence422Error = typeof ChangeTemplatePrecedence422Error[keyof typeof ChangeTemplatePrecedence422Error];
+
+
+export const ChangeTemplatePrecedence422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type ChangeTemplatePrecedence422Reason = typeof ChangeTemplatePrecedence422Reason[keyof typeof ChangeTemplatePrecedence422Reason];
+
+
+export const ChangeTemplatePrecedence422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+} as const;
+
+export type ChangeTemplatePrecedence422 = {
+  error: ChangeTemplatePrecedence422Error;
+  message: string;
+  reason?: ChangeTemplatePrecedence422Reason;
+  field?: string;
+  issues?: unknown[];
 };
 
 export type ApplyPlanningTemplatesBody = {
@@ -2301,6 +2437,8 @@ export type GetChurchSettings409 = {
 export type UpdateChurchSettingsBody = {
   /** Required. Trimmed, inner spaces collapsed, 2–80 characters. */
   name: string;
+  /** Church Slug: 3–63 characters, lower-case letters, digits and single hyphens, not reserved, not taken. Omitted, the slug stays. */
+  slug?: string;
   /**
      * https:// only; a bare domain gets it prepended; empty or null clears it; at most 2048 characters.
      * @nullable
@@ -2359,6 +2497,10 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   CHURCH_WEBSITE_INVALID: 'CHURCH_WEBSITE_INVALID',
   CHURCH_WEBSITE_TOO_LONG: 'CHURCH_WEBSITE_TOO_LONG',
   ACCENT_COLOR_INVALID: 'ACCENT_COLOR_INVALID',
+  CHURCH_SLUG_LENGTH: 'CHURCH_SLUG_LENGTH',
+  CHURCH_SLUG_FORMAT: 'CHURCH_SLUG_FORMAT',
+  CHURCH_SLUG_RESERVED: 'CHURCH_SLUG_RESERVED',
+  CHURCH_SLUG_TAKEN: 'CHURCH_SLUG_TAKEN',
   INVALID: 'INVALID',
 } as const;
 
@@ -2372,6 +2514,42 @@ export type UpdateChurchSettings422 = {
   error: UpdateChurchSettings422Error;
   message: string;
   fieldErrors: UpdateChurchSettings422FieldErrorsItem[];
+};
+
+export type GetChurchSlugAvailabilityParams = {
+/**
+ * @maxLength 200
+ */
+slug: string;
+};
+
+export type GetChurchSlugAvailability200Status = typeof GetChurchSlugAvailability200Status[keyof typeof GetChurchSlugAvailability200Status];
+
+
+export const GetChurchSlugAvailability200Status = {
+  free: 'free',
+  taken: 'taken',
+  reserved: 'reserved',
+  own_history: 'own_history',
+} as const;
+
+export type GetChurchSlugAvailability200 = {
+  status: GetChurchSlugAvailability200Status;
+};
+
+export type GetChurchSlugAvailability401 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSlugAvailability403 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSlugAvailability409 = {
+  error: string;
+  message: string;
 };
 
 export type UploadChurchLogoBody = {

@@ -171,6 +171,7 @@ function createHarness({
     findUserName: vi.fn(),
     getSettings: vi.fn(),
     saveSettings: vi.fn(),
+    slugAvailability: vi.fn(),
     saveLogoKey: vi.fn(),
   };
   return {

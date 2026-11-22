@@ -25,7 +25,7 @@ export interface ValidateLock {
   waitedMs: number;
 }
 
-interface DirInput {
+export interface DirInput {
   dir?: string;
 }
 

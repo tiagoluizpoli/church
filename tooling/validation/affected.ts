@@ -17,6 +17,7 @@ import {
   findReusablePass,
   formatReusedPass,
   readCleanTree,
+  readMergeBase,
   recordPass,
 } from './gate-pass';
 import {
@@ -256,6 +257,29 @@ function collectChangedPaths({
     packageJsonScriptsOnlyAddition,
     deletedPaths: changedPaths.filter((path) => !existsSync(path)),
   };
+}
+
+export interface IsWholeLocalRunInput {
+  argumentsResult: ParseArgumentsResult;
+  ci?: string;
+}
+
+/** Only a whole local run of its tier may reuse or record a gate pass; a narrowed or CI run stands for nothing. */
+export function isWholeLocalRun({
+  argumentsResult,
+  ci,
+}: IsWholeLocalRunInput): boolean {
+  const { baseRef, dailyGate, dryRun, e2eSpecPaths, onlyE2e, skipE2e } =
+    argumentsResult;
+  return (
+    !ci &&
+    !dryRun &&
+    !onlyE2e &&
+    !skipE2e &&
+    !dailyGate &&
+    !baseRef &&
+    e2eSpecPaths.length === 0
+  );
 }
 
 export function parseArguments({
@@ -877,20 +901,6 @@ export function formatTimingSummary({
 if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
   const { tier } = argumentsResult;
-  // Only a whole local run of the tier may reuse or record a pass; a narrowed or CI run stands for nothing.
-  const isWholeLocalRun =
-    !process.env.CI &&
-    !argumentsResult.dryRun &&
-    !argumentsResult.onlyE2e &&
-    !argumentsResult.skipE2e &&
-    !argumentsResult.dailyGate &&
-    !argumentsResult.baseRef &&
-    argumentsResult.e2eSpecPaths.length === 0;
-  const reusablePass = isWholeLocalRun ? findReusablePass({ tier }) : null;
-  if (reusablePass) {
-    console.log(formatReusedPass({ pass: reusablePass }));
-    process.exit(0);
-  }
   if (tier === 'no-docker') {
     console.log(
       'validate:no-docker skips integration tests and browser journeys; CI runs them.',
@@ -940,7 +950,18 @@ if (import.meta.main) {
     console.error('');
     console.error(explainPlan({ baseRef, plan }));
   } else {
-    const tree = isWholeLocalRun ? readCleanTree({}) : null;
+    const mergeBase =
+      baseRef && isWholeLocalRun({ argumentsResult, ci: process.env.CI })
+        ? readMergeBase({ baseRef })
+        : null;
+    const reusablePass = mergeBase
+      ? findReusablePass({ base: mergeBase, tier })
+      : null;
+    if (reusablePass) {
+      console.log(formatReusedPass({ pass: reusablePass }));
+      process.exit(0);
+    }
+    const tree = mergeBase ? readCleanTree({}) : null;
     const lock = await holdValidateLock({ tier });
     let failed: boolean;
     let timings: Awaited<ReturnType<typeof runValidation>>['timings'];
@@ -974,6 +995,6 @@ if (import.meta.main) {
       );
     }
     if (failed) process.exitCode = 1;
-    else if (tree) recordPass({ tier, tree });
+    else if (tree && mergeBase) recordPass({ base: mergeBase, tier, tree });
   }
 }

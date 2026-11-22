@@ -2078,6 +2078,103 @@ export type SetMinistryDefaultDirection200 = {
   updatedAt: string;
 };
 
+export type GetChurchSettings200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  publicOrigin: string;
+};
+
+export type GetChurchSettings401 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSettings403 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSettings409 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateChurchSettingsBody = {
+  /** Required. Trimmed, inner spaces collapsed, 2–80 characters. */
+  name: string;
+  /**
+     * https:// only; a bare domain gets it prepended; empty or null clears it; at most 2048 characters.
+     * @nullable
+     */
+  website: string | null;
+  /**
+     * #rrggbb, or null for the app default.
+     * @nullable
+     * @pattern ^#[0-9a-fA-F]{6}$
+     */
+  accentColor: string | null;
+};
+
+export type UpdateChurchSettings200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  publicOrigin: string;
+};
+
+export type UpdateChurchSettings401 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateChurchSettings403 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateChurchSettings409 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateChurchSettings422Error = typeof UpdateChurchSettings422Error[keyof typeof UpdateChurchSettings422Error];
+
+
+export const UpdateChurchSettings422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type UpdateChurchSettings422FieldErrorsItemCode = typeof UpdateChurchSettings422FieldErrorsItemCode[keyof typeof UpdateChurchSettings422FieldErrorsItemCode];
+
+
+export const UpdateChurchSettings422FieldErrorsItemCode = {
+  CHURCH_NAME_LENGTH: 'CHURCH_NAME_LENGTH',
+  CHURCH_WEBSITE_HTTPS_ONLY: 'CHURCH_WEBSITE_HTTPS_ONLY',
+  CHURCH_WEBSITE_INVALID: 'CHURCH_WEBSITE_INVALID',
+  CHURCH_WEBSITE_TOO_LONG: 'CHURCH_WEBSITE_TOO_LONG',
+  ACCENT_COLOR_INVALID: 'ACCENT_COLOR_INVALID',
+  INVALID: 'INVALID',
+} as const;
+
+export type UpdateChurchSettings422FieldErrorsItem = {
+  field: string;
+  code: UpdateChurchSettings422FieldErrorsItemCode;
+  message: string;
+};
+
+export type UpdateChurchSettings422 = {
+  error: UpdateChurchSettings422Error;
+  message: string;
+  fieldErrors: UpdateChurchSettings422FieldErrorsItem[];
+};
+
 export type GetScheduleBuilderDataParams = {
 eventId: string;
 ministryId?: string;

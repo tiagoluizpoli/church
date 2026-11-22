@@ -8,6 +8,7 @@ import type {
   IAuthorityManager,
   IAvailabilityCheckManager,
   IChurchAccessManager,
+  IChurchSettingsManager,
   ICycleManager,
   IEventManager,
   IEventTemplateManager,
@@ -148,5 +149,6 @@ export interface CompositionRootDependencies {
   peopleListManager: IPeopleListManager;
   setupProgressManager: ISetupProgressManager;
   churchAccessManager: IChurchAccessManager;
+  churchSettingsManager: IChurchSettingsManager;
   ministryMembershipManager: IMinistryMembershipManager;
 }

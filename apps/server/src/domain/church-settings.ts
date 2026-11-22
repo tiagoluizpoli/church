@@ -1,5 +1,19 @@
 import { z } from 'zod';
 
+/** Church Settings as stored; empty optional fields are `null`. */
+export interface ChurchSettings {
+  name: string;
+  slug: string;
+  website: string | null;
+  accentColor: string | null;
+}
+
+export interface ChurchSettingsChanges {
+  name: string;
+  website: string | null;
+  accentColor: string | null;
+}
+
 /**
  * Church Settings value objects. Each refusal's message is a stable code the
  * HTTP layer words per field (see `CHURCH_SETTINGS_FIELD_CODES`).

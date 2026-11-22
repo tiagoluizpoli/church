@@ -4462,6 +4462,233 @@ paths:
                   - createdAt
                   - updatedAt
                 additionalProperties: false
+  /api/v1/church-settings:
+    get:
+      operationId: getChurchSettings
+      summary: Get the Active Church settings
+      tags:
+        - church-settings
+      description: The Church Settings of the Active Church (name, slug, website,
+        accent colour) and the public origin the `…/slug` address is shown
+        under. Empty optional fields are null. ChurchAdmin only.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    put:
+      operationId: updateChurchSettings
+      summary: Save the Active Church settings
+      tags:
+        - church-settings
+      description: Saves the whole set of Church Settings in one transaction, last
+        write wins; the slug never changes here. A refused save changes nothing
+        and answers 422 with one entry per refused field (list rows addressed by
+        index). ChurchAdmin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: Required. Trimmed, inner spaces collapsed, 2–80 characters.
+                  type: string
+                website:
+                  description: https:// only; a bare domain gets it prepended; empty or null
+                    clears it; at most 2048 characters.
+                  nullable: true
+                  type: string
+                accentColor:
+                  nullable: true
+                  description: "#rrggbb, or null for the app default."
+                  type: string
+                  pattern: ^#[0-9a-fA-F]{6}$
+              required:
+                - name
+                - website
+                - accentColor
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  fieldErrors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        code:
+                          type: string
+                          enum:
+                            - CHURCH_NAME_LENGTH
+                            - CHURCH_WEBSITE_HTTPS_ONLY
+                            - CHURCH_WEBSITE_INVALID
+                            - CHURCH_WEBSITE_TOO_LONG
+                            - ACCENT_COLOR_INVALID
+                            - INVALID
+                        message:
+                          type: string
+                      required:
+                        - field
+                        - code
+                        - message
+                      additionalProperties: false
+                required:
+                  - error
+                  - message
+                  - fieldErrors
+                additionalProperties: false
   /api/v1/events/schedule-builder:
     get:
       operationId: getScheduleBuilderData

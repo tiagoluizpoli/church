@@ -2,6 +2,7 @@ export { ActiveChurchController } from './active-church-controller';
 export { AssignController } from './assign-controller';
 export { CallerCapabilitiesController } from './caller-capabilities-controller';
 export { ChurchAdminController } from './church-admin-controller';
+export { ChurchSettingsController } from './church-settings-controller';
 export { EventController } from './event-controller';
 export { InvitationController } from './invitation-controller';
 export { MinistryController } from './ministry-controller';

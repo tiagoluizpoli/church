@@ -1904,5 +1904,11 @@
   "builder_proposal_include_short": "Devolver",
   "builder_proposal_gap_reopened_all_one": "reaberta por você",
   "builder_proposal_gap_reopened_all_many": "reabertas por você",
-  "builder_proposal_coverage_short": "Cobertura"
+  "builder_proposal_coverage_short": "Cobertura",
+  "error_church_settings_name_length": "O nome deve ter entre 2 e 80 caracteres.",
+  "error_church_settings_website_https_only": "Use um endereço que comece com https://.",
+  "error_church_settings_website_invalid": "Informe um endereço de site válido.",
+  "error_church_settings_website_too_long": "O endereço pode ter no máximo 2048 caracteres.",
+  "error_church_settings_accent_color_invalid": "Escolha uma cor no formato #rrggbb.",
+  "error_church_settings_invalid": "Valor inválido."
 }

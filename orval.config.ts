@@ -23,6 +23,7 @@ export default defineConfig({
           'people',
           'swap-requests',
           'setup',
+          'church-settings',
         ],
       },
     },

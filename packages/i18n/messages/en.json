@@ -1904,5 +1904,11 @@
   "builder_proposal_include_short": "Put back",
   "builder_proposal_gap_reopened_all_one": "reopened by you",
   "builder_proposal_gap_reopened_all_many": "reopened by you",
-  "builder_proposal_coverage_short": "Coverage"
+  "builder_proposal_coverage_short": "Coverage",
+  "error_church_settings_name_length": "The name must be 2 to 80 characters long.",
+  "error_church_settings_website_https_only": "Use an address that starts with https://.",
+  "error_church_settings_website_invalid": "Enter a valid website address.",
+  "error_church_settings_website_too_long": "The address can be at most 2048 characters long.",
+  "error_church_settings_accent_color_invalid": "Choose a colour in #rrggbb format.",
+  "error_church_settings_invalid": "Invalid value."
 }

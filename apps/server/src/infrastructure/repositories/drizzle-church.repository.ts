@@ -2,6 +2,7 @@ import { NotFoundError } from '@church/core';
 import { church, member, organization, user } from '@church/db';
 import { and, asc, eq } from 'drizzle-orm';
 import type { UserId } from '../../domain/branded-ids';
+import type { ChurchSettings } from '../../domain/church-settings';
 import type {
   ChurchMemberContact,
   ChurchRepository,
@@ -10,6 +11,7 @@ import type {
   GetChurchByIdInput,
   GetChurchBySlugInput,
   ListChurchAdminUserIdsInput,
+  SaveChurchSettingsInput,
 } from '../../domain/contracts/infrastructure/church.repository';
 import type { Church } from '../../domain/entities/church';
 import { mapChurch } from '../mappers/church.mapper';
@@ -101,5 +103,38 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .from(user)
       .where(eq(user.id, userId));
     return row?.name.trim() || null;
+  }
+
+  async getSettings({ id }: GetChurchByIdInput): Promise<ChurchSettings> {
+    const [row] = isValidUuid(id)
+      ? await getClient({ db: this.db })
+          .select({
+            name: organization.name,
+            slug: organization.slug,
+            website: church.website,
+            accentColor: church.accentColor,
+          })
+          .from(church)
+          .innerJoin(organization, eq(organization.id, church.id))
+          .where(eq(church.id, id))
+      : [];
+    if (!row) throw new NotFoundError(`Church not found: ${id}`);
+    return row;
+  }
+
+  async saveSettings({
+    id,
+    changes,
+    tx,
+  }: SaveChurchSettingsInput): Promise<void> {
+    const client = getClient({ db: this.db, tx });
+    await client
+      .update(organization)
+      .set({ name: changes.name })
+      .where(eq(organization.id, id));
+    await client
+      .update(church)
+      .set({ website: changes.website, accentColor: changes.accentColor })
+      .where(eq(church.id, id));
   }
 }

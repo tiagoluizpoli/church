@@ -93,6 +93,8 @@ export interface GetChurchSettingsInput extends GetChurchByIdInput {
 
 export interface GetChurchByIdInput {
   id: ChurchId;
+  /** Reads inside the caller's transaction, so it never needs a second connection. */
+  tx?: TransactionContext;
 }
 
 export interface GetChurchBySlugInput {
@@ -106,6 +108,8 @@ export interface ListChurchAdminUserIdsInput {
 
 export interface FindUserNameInput {
   userId: UserId;
+  /** Reads inside the caller's transaction, so it never needs a second connection. */
+  tx?: TransactionContext;
 }
 
 export interface FindChurchMemberEmailInput {

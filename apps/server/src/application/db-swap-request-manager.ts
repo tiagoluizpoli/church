@@ -192,7 +192,7 @@ export class DbSwapRequestManager implements ISwapRequestManager {
         await Promise.all([
           this.eventRepo.getById({ churchId, eventId }),
           this.ministryRepo.getById({ churchId, id: ministryId }),
-          this.churchRepo.getById({ id: churchId }),
+          this.churchRepo.getById({ id: churchId, tx }),
           this.volunteerRepo.listByIds({ churchId, ids: [volunteerId] }),
           this.roleRepo.listByMinistry({ churchId, ministryId }),
           this.shiftRepo.listRequirementsByParticipation({
@@ -357,8 +357,8 @@ export class DbSwapRequestManager implements ISwapRequestManager {
         await Promise.all([
           this.eventRepo.getById({ churchId, eventId }),
           this.ministryRepo.getById({ churchId, id: ministryId }),
-          this.churchRepo.getById({ id: churchId }),
-          this.churchRepo.findUserName({ userId }),
+          this.churchRepo.getById({ id: churchId, tx }),
+          this.churchRepo.findUserName({ userId, tx }),
           this.roleRepo.listByMinistry({ churchId, ministryId }),
           this.shiftRepo.listRequirementsByParticipation({
             churchId,

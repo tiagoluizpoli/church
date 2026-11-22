@@ -72,11 +72,11 @@ export class DrizzleChurchRepository implements ChurchRepository {
 
   private readonly db: AnyDrizzleDb;
 
-  async getById({ id }: GetChurchByIdInput): Promise<Church> {
+  async getById({ id, tx }: GetChurchByIdInput): Promise<Church> {
     if (!isValidUuid(id)) {
       throw new NotFoundError(`Church not found: ${id}`);
     }
-    const [row] = await getClient({ db: this.db })
+    const [row] = await getClient({ db: this.db, tx })
       .select(churchJoinShape)
       .from(church)
       .innerJoin(organization, eq(organization.id, church.id))
@@ -136,8 +136,11 @@ export class DrizzleChurchRepository implements ChurchRepository {
     return row ?? null;
   }
 
-  async findUserName({ userId }: FindUserNameInput): Promise<string | null> {
-    const [row] = await getClient({ db: this.db })
+  async findUserName({
+    userId,
+    tx,
+  }: FindUserNameInput): Promise<string | null> {
+    const [row] = await getClient({ db: this.db, tx })
       .select({ name: user.name })
       .from(user)
       .where(eq(user.id, userId));

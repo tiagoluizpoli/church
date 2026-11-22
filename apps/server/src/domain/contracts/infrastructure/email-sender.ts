@@ -24,6 +24,8 @@ export interface ChainedInvitationEmail {
   churchLogoUrl?: string | null;
   /** `#rrggbb`; absent means the app's default brand colour. */
   churchAccent?: string | null;
+  /** The Main Address's "bairro, city/UF", frozen when queued; absent without an address. */
+  churchLocality?: string;
   ministryName: string;
   ministryAccessLevel: MinistryAccessLevel;
   roleNames: string[];
@@ -107,6 +109,8 @@ export interface ChurchBootstrapInvitationEmail {
   churchLogoUrl?: string | null;
   /** `#rrggbb`; absent means the app's default brand colour. */
   churchAccent?: string | null;
+  /** The Main Address's "bairro, city/UF", frozen when queued; absent without an address. */
+  churchLocality?: string;
   expiresAt: Instant;
   /** The Church Timezone `expiresAt` is read in. */
   churchTimezone: string;

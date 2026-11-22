@@ -199,6 +199,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       churchName: church.name,
       churchLogoUrl: message.payload.churchLogoUrl,
       churchAccent: message.payload.churchAccent,
+      churchLocality: message.payload.churchLocality,
       expiresAt: fromDate({ date: offer.expiresAt }),
       churchTimezone: church.timezone,
       redemptionUrl: webLink({
@@ -272,6 +273,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       churchName: church.name,
       churchLogoUrl: message.payload.churchLogoUrl,
       churchAccent: message.payload.churchAccent,
+      churchLocality: message.payload.churchLocality,
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),

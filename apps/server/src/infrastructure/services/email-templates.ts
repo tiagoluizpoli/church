@@ -775,6 +775,21 @@ function invitationContent({
   payload,
   locale,
 }: InvitationContentInput): EmailContent {
+  const { churchName, churchLocality } = payload;
+  const content = invitationBody({ payload, locale });
+  if (!churchLocality) return content;
+  // Tells a same-named Church apart, as the select-church screen does.
+  const placeLine = m.email_invitation_church_place(
+    { churchName, locality: churchLocality },
+    { locale },
+  );
+  return { ...content, facts: [placeLine, ...content.facts] };
+}
+
+function invitationBody({
+  payload,
+  locale,
+}: InvitationContentInput): EmailContent {
   const options = { locale };
   const { to, churchName, churchTimezone, redemptionUrl } = payload;
   const expiresAt = formatInstant({

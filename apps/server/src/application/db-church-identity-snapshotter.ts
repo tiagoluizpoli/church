@@ -1,3 +1,4 @@
+import { formatChurchLocality } from '../domain/church-locality';
 import type {
   ChurchIdentitySnapshot,
   ChurchIdentitySnapshotter,
@@ -27,15 +28,20 @@ export class DbChurchIdentitySnapshotter implements ChurchIdentitySnapshotter {
     churchId,
     tx,
   }: SnapshotChurchIdentityInput): Promise<ChurchIdentitySnapshot> {
-    const { logoKey, accentColor } = await this.churchRepository.getSettings({
-      id: churchId,
-      tx,
-    });
+    const { logoKey, accentColor, addresses } =
+      await this.churchRepository.getSettings({
+        id: churchId,
+        tx,
+      });
+    const churchLocality = formatChurchLocality(
+      addresses.find((address) => address.isMain),
+    );
     return {
       churchLogoUrl: logoKey
         ? this.objectStorage.publicUrl({ key: logoKey })
         : null,
       churchAccent: accentColor,
+      ...(churchLocality ? { churchLocality } : {}),
     };
   }
 }

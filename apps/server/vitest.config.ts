@@ -107,6 +107,7 @@ export default defineConfig({
             'tests/application/db-active-church-resolver.test.ts',
             'tests/application/db-active-church-selection-manager.test.ts',
             'tests/application/db-authority-manager.test.ts',
+            'tests/application/db-church-identity-snapshotter.test.ts',
             'tests/application/db-church-settings-manager.test.ts',
             'tests/application/db-cycle-manager.test.ts',
             'tests/application/db-assignment-manager.teamleader.test.ts',

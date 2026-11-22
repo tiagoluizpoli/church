@@ -56,6 +56,8 @@ export interface FindPublicIdentityBySlugInput {
 
 /** The allow-listed identity fields a visitor may see. */
 export interface PublicChurchIdentity {
+  churchId: ChurchId;
+  timezone: string;
   slug: string;
   name: string;
   accentColor: string | null;

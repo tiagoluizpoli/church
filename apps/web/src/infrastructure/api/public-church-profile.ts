@@ -5,7 +5,9 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
-  GetPublicChurchProfile200
+  GetPublicChurchProfile200,
+  ListPublicChurchEvents200,
+  ListPublicChurchEventsParams
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -26,5 +28,20 @@ const getPublicChurchProfile = (
     },
       );
     }
-  return {getPublicChurchProfile}};
+  /**
+ * Upcoming Public Events of the Church a live or old Church Slug names, 20 per page ordered by start then id. No session needed. Only public blocks are served. Unknown slug: 404.
+ * @summary List upcoming Public Events of a Church
+ */
+const listPublicChurchEvents = (
+    slug: string,
+    params?: ListPublicChurchEventsParams,
+ ) => {
+      return apiClient<ListPublicChurchEvents200>(
+      {url: `/api/v1/public/churches/${slug}/events`, method: 'GET',
+        params
+    },
+      );
+    }
+  return {getPublicChurchProfile,listPublicChurchEvents}};
 export type GetPublicChurchProfileResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPublicChurchProfile>['getPublicChurchProfile']>>>
+export type ListPublicChurchEventsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPublicChurchProfile>['listPublicChurchEvents']>>>

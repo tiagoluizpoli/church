@@ -4,7 +4,9 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PublicChurchProfileController } from '@/api/controllers/public-church-profile-controller';
 import { DbPublicChurchProfileManager } from '@/application/db-public-church-profile-manager';
+import { DbPublicEventManager } from '@/application/db-public-event-manager';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzlePublicEventRepository } from '@/infrastructure/repositories/drizzle-public-event.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurch, buildChurchLogo } from '@/seeds/builders/church';
@@ -37,6 +39,10 @@ beforeAll(async () => {
     publicChurchProfileManager: new DbPublicChurchProfileManager({
       churchRepository: new DrizzleChurchRepository({ db }),
       objectStorage: storage,
+    }),
+    publicEventManager: new DbPublicEventManager({
+      publicEventRepository: new DrizzlePublicEventRepository({ db }),
+      churchRepository: new DrizzleChurchRepository({ db }),
     }),
     config: appConfig,
   });

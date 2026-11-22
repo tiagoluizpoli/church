@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   GetChurchSettings200,
   UpdateChurchSettingsBody,
@@ -1193,6 +1193,82 @@ describe('Church Settings social links', () => {
     expect(
       screen.getByText(m.church_settings_section_errors_many({ count: 2 })),
     ).toBeInTheDocument();
+  });
+});
+
+describe('Church Settings preview addresses', () => {
+  const ANEXO = { ...SEDE, id: 'a3', label: 'Anexo', isMain: false };
+
+  afterEach(() => vi.restoreAllMocks());
+
+  async function openPreview(user: ReturnType<typeof userEvent.setup>) {
+    await nameField();
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_show_preview() }),
+    );
+    return screen.findByRole('dialog', {
+      name: m.church_settings_preview_title(),
+    });
+  }
+
+  it('lists public addresses with the Main Address first, hides private ones and links Como chegar', async () => {
+    const user = userEvent.setup();
+    withAddresses(ANEXO, CASA, SEDE);
+    renderSettings();
+
+    const drawer = await openPreview(user);
+
+    const labels = within(drawer)
+      .getAllByRole('listitem')
+      .filter((item) => item.textContent?.includes('Rua das Flores'))
+      .map((item) => item.querySelector('p')?.textContent);
+    expect(labels).toEqual(['Templo', 'Anexo']);
+    expect(within(drawer).queryByText('Casa do Marcos')).toBeNull();
+    const links = within(drawer).getAllByRole('link', {
+      name: m.church_settings_preview_directions(),
+    });
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute(
+      'href',
+      'https://www.google.com/maps/dir/?api=1&destination=-22.9,-47.06',
+    );
+  });
+
+  it('picks the link by device', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    );
+    withAddresses(SEDE);
+    renderSettings();
+
+    const drawer = await openPreview(user);
+
+    expect(
+      within(drawer).getByRole('link', {
+        name: m.church_settings_preview_directions(),
+      }),
+    ).toHaveAttribute('href', 'https://maps.apple.com/?daddr=-22.9,-47.06');
+  });
+
+  it('copies the formatted address', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE);
+    renderSettings();
+    const drawer = await openPreview(user);
+    const writeText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockResolvedValue();
+
+    await user.click(
+      within(drawer).getByRole('button', {
+        name: m.church_settings_preview_copy_address(),
+      }),
+    );
+
+    expect(writeText).toHaveBeenCalledWith(
+      'Rua das Flores, 120, Centro, Campinas - SP',
+    );
   });
 });
 

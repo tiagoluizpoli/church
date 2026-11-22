@@ -6,6 +6,11 @@ const baseEnv = {
   BETTER_AUTH_URL: 'http://localhost:3000',
   CORS_ORIGIN: 'http://localhost:5173',
   NODE_ENV: 'development',
+  S3_ENDPOINT: 'http://127.0.0.1:9000',
+  S3_BUCKET: 'church-develop',
+  S3_ACCESS_KEY_ID: 'rustfsadmin',
+  S3_SECRET_ACCESS_KEY: 'rustfsadmin',
+  STORAGE_PUBLIC_URL: 'http://127.0.0.1:9000/church-develop',
 };
 
 async function parse(overrides: Record<string, string>) {
@@ -156,5 +161,34 @@ describe('server env: error reporting', () => {
     expect(await invalidIssues({ SENTRY_DSN: 'not a url' })).toContain(
       'SENTRY_DSN',
     );
+  });
+});
+
+describe('server env: object storage', () => {
+  it('parses the storage settings and defaults the region to us-east-1', async () => {
+    const env = await parse({});
+    expect(env.S3_ENDPOINT).toBe('http://127.0.0.1:9000');
+    expect(env.S3_REGION).toBe('us-east-1');
+    expect(env.S3_BUCKET).toBe('church-develop');
+    expect(env.STORAGE_PUBLIC_URL).toBe('http://127.0.0.1:9000/church-develop');
+  });
+
+  it.each([
+    'S3_ENDPOINT',
+    'S3_BUCKET',
+    'S3_ACCESS_KEY_ID',
+    'S3_SECRET_ACCESS_KEY',
+    'STORAGE_PUBLIC_URL',
+  ])('fails startup without %s', async (name) => {
+    expect(await invalidIssues({ [name]: '' })).toContain(name);
+  });
+
+  it.each([
+    ['S3_ENDPOINT', 'rustfs:9000'],
+    ['STORAGE_PUBLIC_URL', 'storage.lunalabs.com.br/church-production'],
+    ['S3_BUCKET', 'church_develop'],
+    ['S3_BUCKET', 'Church-Develop'],
+  ])('fails startup on a malformed %s (%s)', async (name, value) => {
+    expect(await invalidIssues({ [name]: value })).toContain(name);
   });
 });

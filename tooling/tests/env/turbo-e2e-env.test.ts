@@ -30,6 +30,12 @@ const REQUIRED_E2E_ENV = [
   'ENABLE_DEBUG_ENDPOINTS',
   'VITE_SERVER_URL',
   'CHURCH_WORKTREE',
+  'S3_ENDPOINT',
+  'S3_REGION',
+  'S3_BUCKET',
+  'S3_ACCESS_KEY_ID',
+  'S3_SECRET_ACCESS_KEY',
+  'STORAGE_PUBLIC_URL',
 ];
 
 // #263: CI's integration runners also take their configuration from the job

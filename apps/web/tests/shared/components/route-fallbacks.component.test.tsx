@@ -194,7 +194,8 @@ describe('route crash fallback', () => {
   });
 
   it('shows the not-found screen with a way home for an unknown URL', async () => {
-    renderRoute({ initialPath: '/no-such-page', churchTimezone: 'UTC' });
+    // A single root segment is a Church Slug (`/$slug`); deeper paths reach the router default.
+    renderRoute({ initialPath: '/no/such-page', churchTimezone: 'UTC' });
 
     expect(
       await screen.findByRole('heading', { name: m.shell_not_found_title() }),

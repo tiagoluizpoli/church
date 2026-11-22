@@ -69,6 +69,7 @@ const SAVED: GetChurchSettings200 = {
   slug: 'igreja-semente',
   website: 'https://igreja-semente.test',
   accentColor: '#0f766e',
+  addresses: [],
   logoKey: null,
   logoUrl: null,
   publicOrigin: 'https://app.church.test',
@@ -205,6 +206,7 @@ describe('Church Settings screen', () => {
         name: 'Igreja Semente Viva',
         website: 'https://igreja-semente.test',
         accentColor: '#0f766e',
+        addresses: [],
       }),
     );
     expect(toastSuccess).toHaveBeenCalledWith(m.church_settings_saved());
@@ -226,6 +228,7 @@ describe('Church Settings screen', () => {
         name: 'Igreja Semente',
         website: 'https://igreja-semente.test',
         accentColor: null,
+        addresses: [],
       }),
     );
   });
@@ -320,6 +323,20 @@ describe('Church Settings screen', () => {
     );
 
     expect(await nameField()).toBeInTheDocument();
+  });
+
+  it('opens the saved public page in a new tab from "Ver página pública"', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await user.type(await nameField(), ' Nova');
+
+    const link = screen.getByRole('link', { name: 'Ver página pública' });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://app.church.test/igreja-semente',
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   it('opens the preview in a drawer from "Ver prévia"', async () => {
@@ -551,6 +568,7 @@ describe('Church Settings screen', () => {
           name: 'Igreja Semente',
           website: 'https://igreja-semente.test',
           accentColor: '#0f766e',
+          addresses: [],
           slug: 'esperanca',
         }),
       );
@@ -658,5 +676,287 @@ describe('Church Settings screen', () => {
         ),
       );
     });
+  });
+});
+
+const SEDE: GetChurchSettings200['addresses'][number] = {
+  id: 'a1',
+  label: 'Templo',
+  street: 'Rua das Flores',
+  number: '120',
+  complement: null,
+  bairro: 'Centro',
+  city: 'Campinas',
+  uf: 'SP',
+  cep: null,
+  country: 'BR',
+  isPublic: true,
+  isMain: true,
+  latitude: -22.9,
+  longitude: -47.06,
+  pinSource: 'admin',
+  placeId: null,
+};
+const CASA = {
+  ...SEDE,
+  id: 'a2',
+  label: 'Casa do Marcos',
+  street: 'Rua das Acácias',
+  isPublic: false,
+  isMain: false,
+  latitude: null,
+  longitude: null,
+  pinSource: null,
+};
+
+function withAddresses(...addresses: GetChurchSettings200['addresses']) {
+  getChurchSettings.mockResolvedValue({ ...SAVED, addresses });
+}
+
+async function fillNewAddress(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(
+    await screen.findByRole('button', {
+      name: m.church_settings_address_add(),
+    }),
+  );
+  const dialog = await screen.findByRole('dialog');
+  const field = (label: string) =>
+    within(dialog).getByRole('textbox', { name: label });
+  await user.type(field(m.church_settings_address_label_label()), 'Anexo');
+  await user.type(field(m.church_settings_address_street()), 'Avenida Brasil');
+  await user.click(
+    within(dialog).getByRole('checkbox', {
+      name: m.church_settings_address_no_number(),
+    }),
+  );
+  await user.type(field(m.church_settings_address_bairro()), 'Jardim Novo');
+  await user.type(field(m.church_settings_address_city()), 'Campinas');
+  await user.click(
+    within(dialog).getByRole('combobox', {
+      name: m.church_settings_address_uf(),
+    }),
+  );
+  await user.click(await screen.findByRole('option', { name: 'SP' }));
+  return dialog;
+}
+
+describe('Church Settings addresses', () => {
+  it('adds the first address by hand as the Main Address, staged into the save bar', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await fillNewAddress(user);
+    expect(
+      within(dialog).getByText(m.church_settings_address_home_note()),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('switch', {
+        name: new RegExp(m.church_settings_address_public()),
+      }),
+    ).toBeChecked();
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_confirm_add(),
+      }),
+    );
+
+    expect(saveBar()).toBeInTheDocument();
+    expect(
+      screen.getByText(m.church_settings_address_main_badge()),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Avenida Brasil, s/n · Jardim Novo · Campinas/SP'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('church-settings-public-count'),
+    ).toHaveTextContent('4');
+    expect(updateChurchSettings).not.toHaveBeenCalled();
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          addresses: [
+            expect.objectContaining({
+              id: null,
+              label: 'Anexo',
+              street: 'Avenida Brasil',
+              number: 's/n',
+              uf: 'SP',
+              isMain: true,
+              isPublic: true,
+            }),
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('counts private addresses as admin-only and summarises the collapsed section', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE, CASA);
+    renderSettings();
+    await nameField();
+
+    expect(
+      screen.getByTestId('church-settings-public-count'),
+    ).toHaveTextContent('4');
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('1');
+    await user.click(
+      screen.getByRole('button', {
+        name: new RegExp(m.church_settings_section_address()),
+      }),
+    );
+    expect(
+      screen.getByText(
+        m.church_settings_address_summary_many({
+          count: 2,
+          place: 'Campinas/SP',
+        }),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('toggles Público, moves the Main role, reorders and edits, all staged', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE, CASA);
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      screen.getByRole('switch', {
+        name: m.church_settings_address_public_toggle({
+          name: 'Casa do Marcos',
+        }),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_address_make_main(),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_address_move_up({ name: 'Casa do Marcos' }),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_address_edit({ name: 'Templo' }),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    const street = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_street(),
+    });
+    await user.clear(street);
+    await user.type(street, 'Rua Nova');
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_confirm_edit(),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          addresses: [
+            expect.objectContaining({ id: 'a2', isPublic: true, isMain: true }),
+            expect.objectContaining({
+              id: 'a1',
+              street: 'Rua Nova',
+              isMain: false,
+              latitude: -22.9,
+              pinSource: 'admin',
+            }),
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('blocks deleting the Main Address while others exist, and allows the last one', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE, CASA);
+    renderSettings();
+    await nameField();
+
+    expect(
+      screen.getByRole('button', {
+        name: m.church_settings_address_delete({ name: 'Templo' }),
+      }),
+    ).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_address_delete({ name: 'Casa do Marcos' }),
+      }),
+    );
+    expect(
+      screen.getByRole('button', {
+        name: m.church_settings_address_delete({ name: 'Templo' }),
+      }),
+    ).toBeEnabled();
+  });
+
+  it('marks the refused row, counts the errors in the section and reopens it', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE, CASA);
+    updateChurchSettings.mockRejectedValue(
+      refusedSave([
+        {
+          field: 'addresses.1.street',
+          code: 'ADDRESS_REQUIRED',
+          message: 'Preencha este campo.',
+        },
+        {
+          field: 'addresses.1.cep',
+          code: 'ADDRESS_CEP_INVALID',
+          message: 'O CEP deve ter 8 dígitos.',
+        },
+      ]),
+    );
+    renderSettings();
+    await nameField();
+    await user.click(
+      screen.getByRole('switch', {
+        name: m.church_settings_address_public_toggle({
+          name: 'Casa do Marcos',
+        }),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: new RegExp(m.church_settings_section_address()),
+      }),
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    expect(
+      await screen.findByText(
+        m.church_settings_address_row_errors_many({ count: 2 }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(m.church_settings_section_errors_many({ count: 2 })),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_address_edit({ name: 'Casa do Marcos' }),
+      }),
+    );
+    expect(
+      within(await screen.findByRole('dialog')).getByText(
+        'O CEP deve ter 8 dígitos.',
+      ),
+    ).toBeInTheDocument();
   });
 });

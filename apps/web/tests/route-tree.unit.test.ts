@@ -14,12 +14,17 @@ describe('the generated route tree', () => {
     ...new Set(
       Object.keys(router.routesByPath)
         .map((path) => path.split('/')[1])
-        .filter(Boolean),
+        // `$slug` is the Public Church Profile itself, the route slugs live under.
+        .filter((segment) => segment && segment !== '$slug'),
     ),
   ];
 
   it('has top-level routes to check', () => {
     expect(firstSegments).toContain('app');
+  });
+
+  it('serves the Public Church Profile at the root', () => {
+    expect(router.routesByPath).toHaveProperty('/$slug');
   });
 
   it.each(

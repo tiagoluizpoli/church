@@ -39,6 +39,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -81,6 +82,7 @@ async function buildApp({ config = appConfig, notifications }: BuildAppInput) {
   const harness = createMinistryInvitationTestHarness({ db, config });
   const manager = notifications
     ? new DbMinistryInvitationManager({
+        churchIdentity: nullChurchIdentity,
         repo: harness.ministryInvitationRepository,
         roleRepository: harness.roleRepository,
         ministryRepository: harness.ministryRepository,
@@ -327,7 +329,11 @@ describe('POST /ministries/:ministryId/invitations/:invitationId/resend — auth
         kind: 'notification',
         payload: expect.objectContaining({
           kind: 'ministry_invitation',
-          data: { ministryInvitationId: id },
+          data: {
+            ministryInvitationId: id,
+            churchLogoUrl: null,
+            churchAccent: null,
+          },
         }),
       }),
     ]);
@@ -535,7 +541,11 @@ describe('POST .../resend — shared Church offer', () => {
     expect(await outboxRows()).toEqual([
       expect.objectContaining({
         kind: 'invitation.church-bootstrap',
-        payload: { churchInvitationId: 'ci-shared' },
+        payload: {
+          churchInvitationId: 'ci-shared',
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
       }),
     ]);
 
@@ -553,7 +563,11 @@ describe('POST .../resend — shared Church offer', () => {
     expect(await outboxRows()).toEqual([
       expect.objectContaining({
         kind: 'invitation.chained',
-        payload: { ministryInvitationId: target },
+        payload: {
+          ministryInvitationId: target,
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
       }),
     ]);
   });

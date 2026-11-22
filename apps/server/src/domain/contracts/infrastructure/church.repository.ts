@@ -27,11 +27,12 @@ export interface ChurchRepository {
    */
   findUserName(input: FindUserNameInput): Promise<string | null>;
   /** The Church's editable identity (Church Settings). */
-  getSettings(input: GetChurchByIdInput): Promise<ChurchSettings>;
+  getSettings(input: GetChurchSettingsInput): Promise<ChurchSettings>;
   /**
-   * Overwrites the Church's editable identity. A changed slug is written with
-   * the old one recorded in the slug history; a slug someone else holds, live
-   * or in their history, throws `ChurchSlugTakenError`.
+   * Overwrites the Church's editable identity and its addresses. A changed slug
+   * is written with the old one recorded in the slug history; a slug someone
+   * else holds, live or in their history, throws `ChurchSlugTakenError`.
+   * Throws `ChurchAddressesRefused` when the stored addresses make the save invalid.
    */
   saveSettings(input: SaveChurchSettingsInput): Promise<void>;
   /** Whether `slug` is free for this Church; the Church's own current slug counts as free. Never names the holder. */
@@ -40,6 +41,28 @@ export interface ChurchRepository {
   ): Promise<Exclude<ChurchSlugAvailability, 'reserved'>>;
   /** Points the Church at a logo key, or at none; objects are never touched. */
   saveLogoKey(input: SaveChurchLogoKeyInput): Promise<void>;
+  /**
+   * The public identity of the Church whose live slug, or one of whose old
+   * slugs, is `slug`; always carries the current slug. `null` when no Church
+   * ever held it.
+   */
+  findPublicIdentityBySlug(
+    input: FindPublicIdentityBySlugInput,
+  ): Promise<PublicChurchIdentity | null>;
+}
+
+export interface FindPublicIdentityBySlugInput {
+  slug: string;
+}
+
+/** The allow-listed identity fields a visitor may see. */
+export interface PublicChurchIdentity {
+  churchId: ChurchId;
+  timezone: string;
+  slug: string;
+  name: string;
+  accentColor: string | null;
+  logoKey: string | null;
 }
 
 export interface SlugAvailabilityInput {
@@ -61,6 +84,11 @@ export interface SaveChurchSettingsInput {
 export interface ChurchMemberContact {
   email: string;
   name: string;
+}
+
+export interface GetChurchSettingsInput extends GetChurchByIdInput {
+  /** Reads inside the caller's transaction, so it never needs a second connection. */
+  tx?: TransactionContext;
 }
 
 export interface GetChurchByIdInput {

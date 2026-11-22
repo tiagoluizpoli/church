@@ -2405,6 +2405,84 @@ export type SetMinistryDefaultDirection200 = {
   updatedAt: string;
 };
 
+export type GetChurchSettings200AddressesItemUf = typeof GetChurchSettings200AddressesItemUf[keyof typeof GetChurchSettings200AddressesItemUf];
+
+
+export const GetChurchSettings200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type GetChurchSettings200AddressesItemCountry = typeof GetChurchSettings200AddressesItemCountry[keyof typeof GetChurchSettings200AddressesItemCountry];
+
+
+export const GetChurchSettings200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetChurchSettings200AddressesItemPinSource = typeof GetChurchSettings200AddressesItemPinSource[keyof typeof GetChurchSettings200AddressesItemPinSource] | null;
+
+
+export const GetChurchSettings200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type GetChurchSettings200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: GetChurchSettings200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: GetChurchSettings200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: GetChurchSettings200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
 export type GetChurchSettings200 = {
   name: string;
   slug: string;
@@ -2412,6 +2490,7 @@ export type GetChurchSettings200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  addresses: GetChurchSettings200AddressesItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -2434,6 +2513,96 @@ export type GetChurchSettings409 = {
   message: string;
 };
 
+export type UpdateChurchSettingsBodyAddressesItemUf = typeof UpdateChurchSettingsBodyAddressesItemUf[keyof typeof UpdateChurchSettingsBodyAddressesItemUf];
+
+
+export const UpdateChurchSettingsBodyAddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type UpdateChurchSettingsBodyAddressesItemCountry = typeof UpdateChurchSettingsBodyAddressesItemCountry[keyof typeof UpdateChurchSettingsBodyAddressesItemCountry];
+
+
+export const UpdateChurchSettingsBodyAddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettingsBodyAddressesItemPinSource = typeof UpdateChurchSettingsBodyAddressesItemPinSource[keyof typeof UpdateChurchSettingsBodyAddressesItemPinSource] | null;
+
+
+export const UpdateChurchSettingsBodyAddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type UpdateChurchSettingsBodyAddressesItem = {
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  id?: string | null;
+  /** @nullable */
+  label?: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement?: string | null;
+  bairro: string;
+  city: string;
+  uf: UpdateChurchSettingsBodyAddressesItemUf;
+  /** @nullable */
+  cep?: string | null;
+  country?: UpdateChurchSettingsBodyAddressesItemCountry;
+  isPublic?: boolean;
+  isMain?: boolean;
+  /**
+     * @minimum -90
+     * @maximum 90
+     * @nullable
+     */
+  latitude?: number | null;
+  /**
+     * @minimum -180
+     * @maximum 180
+     * @nullable
+     */
+  longitude?: number | null;
+  /** @nullable */
+  pinSource?: UpdateChurchSettingsBodyAddressesItemPinSource;
+  /** @nullable */
+  placeId?: string | null;
+};
+
 export type UpdateChurchSettingsBody = {
   /** Required. Trimmed, inner spaces collapsed, 2–80 characters. */
   name: string;
@@ -2450,6 +2619,89 @@ export type UpdateChurchSettingsBody = {
      * @pattern ^#[0-9a-fA-F]{6}$
      */
   accentColor: string | null;
+  /**
+     * Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.
+     * @maxItems 50
+     */
+  addresses: UpdateChurchSettingsBodyAddressesItem[];
+};
+
+export type UpdateChurchSettings200AddressesItemUf = typeof UpdateChurchSettings200AddressesItemUf[keyof typeof UpdateChurchSettings200AddressesItemUf];
+
+
+export const UpdateChurchSettings200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type UpdateChurchSettings200AddressesItemCountry = typeof UpdateChurchSettings200AddressesItemCountry[keyof typeof UpdateChurchSettings200AddressesItemCountry];
+
+
+export const UpdateChurchSettings200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettings200AddressesItemPinSource = typeof UpdateChurchSettings200AddressesItemPinSource[keyof typeof UpdateChurchSettings200AddressesItemPinSource] | null;
+
+
+export const UpdateChurchSettings200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type UpdateChurchSettings200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: UpdateChurchSettings200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: UpdateChurchSettings200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: UpdateChurchSettings200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
 };
 
 export type UpdateChurchSettings200 = {
@@ -2459,6 +2711,7 @@ export type UpdateChurchSettings200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  addresses: UpdateChurchSettings200AddressesItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -2497,6 +2750,13 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   CHURCH_WEBSITE_INVALID: 'CHURCH_WEBSITE_INVALID',
   CHURCH_WEBSITE_TOO_LONG: 'CHURCH_WEBSITE_TOO_LONG',
   ACCENT_COLOR_INVALID: 'ACCENT_COLOR_INVALID',
+  ADDRESS_REQUIRED: 'ADDRESS_REQUIRED',
+  ADDRESS_TOO_LONG: 'ADDRESS_TOO_LONG',
+  ADDRESS_UF_INVALID: 'ADDRESS_UF_INVALID',
+  ADDRESS_CEP_INVALID: 'ADDRESS_CEP_INVALID',
+  ADDRESS_PIN_INVALID: 'ADDRESS_PIN_INVALID',
+  ADDRESS_MAIN_MULTIPLE: 'ADDRESS_MAIN_MULTIPLE',
+  ADDRESS_MAIN_REQUIRED: 'ADDRESS_MAIN_REQUIRED',
   CHURCH_SLUG_LENGTH: 'CHURCH_SLUG_LENGTH',
   CHURCH_SLUG_FORMAT: 'CHURCH_SLUG_FORMAT',
   CHURCH_SLUG_RESERVED: 'CHURCH_SLUG_RESERVED',
@@ -2556,6 +2816,84 @@ export type UploadChurchLogoBody = {
   file: Blob;
 };
 
+export type UploadChurchLogo200AddressesItemUf = typeof UploadChurchLogo200AddressesItemUf[keyof typeof UploadChurchLogo200AddressesItemUf];
+
+
+export const UploadChurchLogo200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type UploadChurchLogo200AddressesItemCountry = typeof UploadChurchLogo200AddressesItemCountry[keyof typeof UploadChurchLogo200AddressesItemCountry];
+
+
+export const UploadChurchLogo200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UploadChurchLogo200AddressesItemPinSource = typeof UploadChurchLogo200AddressesItemPinSource[keyof typeof UploadChurchLogo200AddressesItemPinSource] | null;
+
+
+export const UploadChurchLogo200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type UploadChurchLogo200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: UploadChurchLogo200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: UploadChurchLogo200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: UploadChurchLogo200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
 export type UploadChurchLogo200 = {
   name: string;
   slug: string;
@@ -2563,6 +2901,7 @@ export type UploadChurchLogo200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  addresses: UploadChurchLogo200AddressesItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -2600,6 +2939,84 @@ export type UploadChurchLogo422 = {
   message: string;
 };
 
+export type RemoveChurchLogo200AddressesItemUf = typeof RemoveChurchLogo200AddressesItemUf[keyof typeof RemoveChurchLogo200AddressesItemUf];
+
+
+export const RemoveChurchLogo200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type RemoveChurchLogo200AddressesItemCountry = typeof RemoveChurchLogo200AddressesItemCountry[keyof typeof RemoveChurchLogo200AddressesItemCountry];
+
+
+export const RemoveChurchLogo200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type RemoveChurchLogo200AddressesItemPinSource = typeof RemoveChurchLogo200AddressesItemPinSource[keyof typeof RemoveChurchLogo200AddressesItemPinSource] | null;
+
+
+export const RemoveChurchLogo200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type RemoveChurchLogo200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: RemoveChurchLogo200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: RemoveChurchLogo200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: RemoveChurchLogo200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
 export type RemoveChurchLogo200 = {
   name: string;
   slug: string;
@@ -2607,6 +3024,7 @@ export type RemoveChurchLogo200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  addresses: RemoveChurchLogo200AddressesItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -2634,6 +3052,84 @@ export type RestoreChurchLogoBody = {
   key: string;
 };
 
+export type RestoreChurchLogo200AddressesItemUf = typeof RestoreChurchLogo200AddressesItemUf[keyof typeof RestoreChurchLogo200AddressesItemUf];
+
+
+export const RestoreChurchLogo200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type RestoreChurchLogo200AddressesItemCountry = typeof RestoreChurchLogo200AddressesItemCountry[keyof typeof RestoreChurchLogo200AddressesItemCountry];
+
+
+export const RestoreChurchLogo200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type RestoreChurchLogo200AddressesItemPinSource = typeof RestoreChurchLogo200AddressesItemPinSource[keyof typeof RestoreChurchLogo200AddressesItemPinSource] | null;
+
+
+export const RestoreChurchLogo200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type RestoreChurchLogo200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: RestoreChurchLogo200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: RestoreChurchLogo200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: RestoreChurchLogo200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
 export type RestoreChurchLogo200 = {
   name: string;
   slug: string;
@@ -2641,6 +3137,7 @@ export type RestoreChurchLogo200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  addresses: RestoreChurchLogo200AddressesItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -5701,6 +6198,10 @@ export type GetNotifications200ItemsItem = {
   roleNames?: string[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   expiresAt?: string;
+  /** @nullable */
+  churchLogoUrl?: string | null;
+  /** @nullable */
+  churchAccent?: string | null;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -7401,6 +7902,105 @@ export type ConfirmVolunteerTransfer401 = {
   message: string;
 };
 
+export type GetPublicChurchProfile200 = {
+  slug: string;
+  name: string;
+  /** @nullable */
+  logoUrl: string | null;
+  /** @nullable */
+  accentColor: string | null;
+};
+
+export type GetPublicChurchProfile404Error = typeof GetPublicChurchProfile404Error[keyof typeof GetPublicChurchProfile404Error];
+
+
+export const GetPublicChurchProfile404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type GetPublicChurchProfile404 = {
+  error: GetPublicChurchProfile404Error;
+  message: string;
+};
+
+export type GetPublicChurchProfile429Error = typeof GetPublicChurchProfile429Error[keyof typeof GetPublicChurchProfile429Error];
+
+
+export const GetPublicChurchProfile429Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type GetPublicChurchProfile429 = {
+  error: GetPublicChurchProfile429Error;
+  message: string;
+};
+
+export type ListPublicChurchEventsParams = {
+cursor?: string;
+};
+
+export type ListPublicChurchEvents200ItemsItemBlocksItemMovePathItem = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type ListPublicChurchEvents200ItemsItemBlocksItem = {
+  /** @nullable */
+  label: string | null;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /** @nullable */
+  place: string | null;
+  cancelled: boolean;
+  movePath: ListPublicChurchEvents200ItemsItemBlocksItemMovePathItem[];
+};
+
+export type ListPublicChurchEvents200ItemsItem = {
+  title: string;
+  cancelled: boolean;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  blocks: ListPublicChurchEvents200ItemsItemBlocksItem[];
+};
+
+export type ListPublicChurchEvents200 = {
+  timezone: string;
+  items: ListPublicChurchEvents200ItemsItem[];
+  nextCursor?: string;
+};
+
+export type ListPublicChurchEvents404Error = typeof ListPublicChurchEvents404Error[keyof typeof ListPublicChurchEvents404Error];
+
+
+export const ListPublicChurchEvents404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type ListPublicChurchEvents404 = {
+  error: ListPublicChurchEvents404Error;
+  message: string;
+};
+
+export type ListPublicChurchEvents429Error = typeof ListPublicChurchEvents429Error[keyof typeof ListPublicChurchEvents429Error];
+
+
+export const ListPublicChurchEvents429Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type ListPublicChurchEvents429 = {
+  error: ListPublicChurchEvents429Error;
+  message: string;
+};
+
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState];
 
 
@@ -7515,6 +8115,10 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   roleNames?: string[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   expiresAt?: string;
+  /** @nullable */
+  churchLogoUrl?: string | null;
+  /** @nullable */
+  churchAccent?: string | null;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;

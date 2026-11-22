@@ -38,6 +38,11 @@ export const appConfigSchema = z.object({
     windowMs: positiveInt,
     maxRequests: positiveInt,
   }),
+  /** Sign-in-free Public Church Profile reads, per client IP. */
+  publicProfileRateLimit: z.object({
+    windowMs: positiveInt,
+    maxRequests: positiveInt,
+  }),
   /** Browser crash reports relayed to the error tracker (ADR 0014). */
   errorReportTunnel: z.object({
     /** The API route the web and desktop SDKs send crash reports to. */
@@ -128,6 +133,7 @@ export const appConfig = appConfigSchema.parse({
   },
   passwordReset: { ttlMs: HOUR_MS },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
+  publicProfileRateLimit: { windowMs: MINUTE_MS, maxRequests: 60 },
   errorReportTunnel: {
     path: '/api/error-reports',
     windowMs: MINUTE_MS,

@@ -23,6 +23,7 @@ export * from './object-storage';
 export * from './outbox.repository';
 export * from './people-list.repository';
 export * from './planning-event.repository';
+export * from './public-event.repository';
 export * from './redemption.repository';
 export * from './redemption-identity-gateway';
 export * from './role.repository';

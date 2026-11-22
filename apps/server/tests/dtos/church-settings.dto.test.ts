@@ -35,11 +35,41 @@ describe('Church Settings body', () => {
         name: ' Igreja  Viva ',
         website: 'igrejaviva.org',
         accentColor: '#ABCDEF',
+        addresses: [
+          {
+            street: ' Rua  A ',
+            number: '1',
+            bairro: 'Centro',
+            city: 'Campinas',
+            uf: 'SP',
+            cep: '13010-000',
+          },
+        ],
       }),
     ).toEqual({
       name: 'Igreja Viva',
       website: 'https://igrejaviva.org',
       accentColor: '#abcdef',
+      addresses: [
+        {
+          id: null,
+          label: null,
+          street: 'Rua A',
+          number: '1',
+          complement: null,
+          bairro: 'Centro',
+          city: 'Campinas',
+          uf: 'SP',
+          cep: '13010000',
+          country: 'BR',
+          isPublic: true,
+          isMain: false,
+          latitude: null,
+          longitude: null,
+          pinSource: null,
+          placeId: null,
+        },
+      ],
     });
   });
 });

@@ -45,6 +45,7 @@ import {
   buildVolunteer,
 } from '@/seeds/builders/volunteer';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -84,6 +85,7 @@ beforeEach(async () => {
   await truncateAll();
   fixture = await seedTwoChurchIdentityFixture({ db: testDb });
   const verificationCodeManager = new InvitationVerificationCodeManager({
+    churchIdentity: nullChurchIdentity,
     repository: verificationCodeRepository,
     emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',

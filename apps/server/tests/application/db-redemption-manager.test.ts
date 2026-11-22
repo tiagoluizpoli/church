@@ -173,6 +173,7 @@ function createHarness({
     saveSettings: vi.fn(),
     slugAvailability: vi.fn(),
     saveLogoKey: vi.fn(),
+    findPublicIdentityBySlug: vi.fn(),
   };
   return {
     acceptedInputs,
@@ -205,6 +206,7 @@ describe('DbRedemptionManager', () => {
 
     expect(sent).toBe(true);
     expect(verificationCodeManager.issue).toHaveBeenCalledWith({
+      churchId: CHURCH_ID,
       churchInvitationId: CHURCH_INVITATION_ID,
       recipientEmail: 'invitee@example.test',
       churchName: 'St. Peter',

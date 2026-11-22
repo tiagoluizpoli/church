@@ -65,6 +65,7 @@ import { runOperatorCommand } from '@/scripts/operator';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -247,6 +248,7 @@ async function createHarness({
   const identityGateway = new FaultInjectingIdentityGateway();
   const failureLog = new RecordingFailureLog();
   const verificationCodeManager = new InvitationVerificationCodeManager({
+    churchIdentity: nullChurchIdentity,
     repository: verificationCodeRepository,
     emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',

@@ -34,6 +34,7 @@ import {
   DrizzleUnitOfWork,
 } from '@/infrastructure/repositories';
 import { buildRole } from '@/seeds/builders/ministry';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
@@ -56,6 +57,7 @@ const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
 const outboxRepository = new DrizzleOutboxRepository({ db: testDb });
 
 const manager = new DbMinistryInvitationManager({
+  churchIdentity: nullChurchIdentity,
   repo: ministryInvitationRepository,
   roleRepository,
   ministryRepository,
@@ -257,6 +259,7 @@ describe('DbMinistryInvitationManager.mint', () => {
 
   it('rolls back the offer and any Church offer when the delivery intent cannot be written', async () => {
     const failingManager = new DbMinistryInvitationManager({
+      churchIdentity: nullChurchIdentity,
       repo: ministryInvitationRepository,
       roleRepository,
       ministryRepository,
@@ -345,6 +348,7 @@ function createManagerWithChurchTtl({
     churchInvitation: { ttlMs: churchInvitationTtlMs },
   };
   return new DbMinistryInvitationManager({
+    churchIdentity: nullChurchIdentity,
     repo: new DrizzleMinistryInvitationRepository({ db: testDb, config }),
     roleRepository,
     ministryRepository,

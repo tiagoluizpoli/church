@@ -36,7 +36,7 @@ vi.mock('@/components/ui/sonner', () => ({
 
 describe('/scheduling retired', () => {
   it('shows not-found with no redirect', async () => {
-    renderRoute({ initialPath: '/scheduling', churchTimezone: 'UTC' });
+    renderRoute({ initialPath: '/app/scheduling', churchTimezone: 'UTC' });
 
     expect(
       await screen.findByRole('heading', { name: m.shell_not_found_title() }),

@@ -10,6 +10,7 @@ export { MinistryRoleController } from './ministry-role-controller';
 export { NotificationController } from './notification-controller';
 export { PeopleController } from './people-controller';
 export { PrepareController } from './prepare-controller';
+export { PublicChurchProfileController } from './public-church-profile-controller';
 export { RedemptionController } from './redemption-controller';
 export { SectorController } from './sector-controller';
 export { SwapRequestController } from './swap-request-controller';

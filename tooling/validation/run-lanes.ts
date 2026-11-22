@@ -33,8 +33,8 @@ interface RunLanesInput {
 interface RunStagesInput extends RunLanesInput {
   /** Steps that run in order only after every lane step has passed. */
   finalSteps: LaneStep[];
-  /** Steps that run in order before any lane starts. */
-  setupSteps?: LaneStep[];
+  /** Steps that run in order before the lanes start; a failure skips the rest. */
+  firstSteps?: LaneStep[];
 }
 
 /**
@@ -245,31 +245,33 @@ export function hasFailure({ results }: HasFailureInput): boolean {
   return results.some((result) => result.status === 'failed');
 }
 
+const skippedResults = ({ steps }: { steps: LaneStep[] }): StepResult[] =>
+  steps.map((step) => ({ label: step.label, ms: 0, status: 'skipped' }));
+
 /**
- * Run the lanes, then the final steps (e.g. E2E, which is expensive and
- * needs the cheaper checks green first) only if nothing failed.
+ * Run the first steps (cheap checks that fail fast), then the lanes, then the
+ * final steps (e.g. E2E, which is expensive and needs the cheaper checks
+ * green first). Each stage starts only if nothing before it failed.
  */
 export async function runStages({
   finalSteps,
-  setupSteps = [],
+  firstSteps = [],
   ...lanesInput
 }: RunStagesInput): Promise<StepResult[]> {
-  const skip = (steps: LaneStep[]): StepResult[] =>
-    steps.map((step) => ({ label: step.label, ms: 0, status: 'skipped' }));
-  const setupResults = await runLanes({ ...lanesInput, lanes: [setupSteps] });
-  if (hasFailure({ results: setupResults })) {
+  const firstResults = await runLanes({ ...lanesInput, lanes: [firstSteps] });
+  if (hasFailure({ results: firstResults })) {
     return [
-      ...setupResults,
-      ...skip(lanesInput.lanes.flat()),
-      ...skip(finalSteps),
+      ...firstResults,
+      ...skippedResults({ steps: lanesInput.lanes.flat() }),
+      ...skippedResults({ steps: finalSteps }),
     ];
   }
-  const laneResults = await runLanes(lanesInput);
+  const laneResults = [...firstResults, ...(await runLanes(lanesInput))];
   if (hasFailure({ results: laneResults })) {
-    return [...setupResults, ...laneResults, ...skip(finalSteps)];
+    return [...laneResults, ...skippedResults({ steps: finalSteps })];
   }
   const finalResults = await runLanes({ ...lanesInput, lanes: [finalSteps] });
-  return [...setupResults, ...laneResults, ...finalResults];
+  return [...laneResults, ...finalResults];
 }
 
 export function formatStepTable({ results }: FormatStepTableInput): string {

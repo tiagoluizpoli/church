@@ -233,6 +233,8 @@ describe('GET /api/v1/active-church/options', () => {
         timezone: 'America/Sao_Paulo',
         accessLevel: 'admin',
         availableAreas: ['dashboard', 'scheduling'],
+        logoUrl: 'https://files.test/logo.png',
+        accentColor: '#0f766e',
         lastOpenedAt: new Date('2026-07-01T00:00:00.000Z'),
       },
       {
@@ -241,6 +243,8 @@ describe('GET /api/v1/active-church/options', () => {
         timezone: 'UTC',
         accessLevel: 'member',
         availableAreas: ['dashboard'],
+        logoUrl: null,
+        accentColor: null,
         lastOpenedAt: null,
       },
     ]);
@@ -259,6 +263,8 @@ describe('GET /api/v1/active-church/options', () => {
           timezone: 'America/Sao_Paulo',
           accessLevel: 'admin',
           availableAreas: ['dashboard', 'scheduling'],
+          logoUrl: 'https://files.test/logo.png',
+          accentColor: '#0f766e',
           lastOpenedAt: '2026-07-01T00:00:00.000Z',
         },
         {
@@ -267,6 +273,8 @@ describe('GET /api/v1/active-church/options', () => {
           timezone: 'UTC',
           accessLevel: 'member',
           availableAreas: ['dashboard'],
+          logoUrl: null,
+          accentColor: null,
           lastOpenedAt: null,
         },
       ],

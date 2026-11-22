@@ -406,6 +406,7 @@ export function buildManagers({
       authorityManager,
       activeChurchResolver,
       churchRepository,
+      objectStorage,
     });
 
   const notificationManager =

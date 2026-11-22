@@ -89,6 +89,35 @@ describe('select-church route (compare-access selector)', () => {
     expect(screen.queryByLabelText(m.select_church_loading())).toBeNull();
   });
 
+  it("shows each Church's logo tile, with the platform logo for a Church that has none", async () => {
+    listActiveChurchOptions.mockResolvedValue({
+      churches: ['church-a', 'church-b'].map((churchId, index) => ({
+        churchId,
+        name: `Igreja ${churchId}`,
+        timezone: 'UTC',
+        accessLevel: 'member',
+        availableAreas: ['dashboard'],
+        logoUrl: index === 0 ? 'https://files.test/a.png' : null,
+        accentColor: null,
+        lastOpenedAt: null,
+      })),
+    });
+    renderSelectChurch();
+
+    const withLogo = await screen.findAllByRole('img', {
+      name: 'Igreja church-a',
+    });
+    for (const logo of withLogo) {
+      expect(logo).toHaveAttribute('src', 'https://files.test/a.png');
+    }
+    const plain = screen
+      .getAllByTestId('select-church-option-church-b')
+      .map((option) => option.querySelector('img'));
+    for (const logo of plain) {
+      expect(logo).toHaveAttribute('src', '/logo.png');
+    }
+  });
+
   it('clears cached caller capabilities when signing out from the selector', async () => {
     listActiveChurchOptions.mockResolvedValue({ churches: [] });
     const { queryClient } = renderSelectChurch();

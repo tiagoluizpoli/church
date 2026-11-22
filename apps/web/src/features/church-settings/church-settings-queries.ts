@@ -10,6 +10,9 @@ import type {
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { churchSettingsApi } from '@/utils/api-instances';
 
+/** The shell and select-church read the Church's name and logo from here. */
+const ACTIVE_CHURCH_OPTIONS_KEY = ['active-church', 'options'] as const;
+
 interface ChurchKeyInput {
   churchId: string | undefined;
 }
@@ -35,6 +38,7 @@ export function useSaveChurchSettings() {
       churchSettingsApi.updateChurchSettings(body),
     onSuccess: (saved) => {
       queryClient.setQueryData(churchSettingsQueryKey({ churchId }), saved);
+      queryClient.invalidateQueries({ queryKey: ACTIVE_CHURCH_OPTIONS_KEY });
     },
   });
 }
@@ -75,6 +79,7 @@ function useApplyLogo() {
       churchSettingsQueryKey({ churchId }),
       (current) => current && { ...current, logoKey, logoUrl },
     );
+    queryClient.invalidateQueries({ queryKey: ACTIVE_CHURCH_OPTIONS_KEY });
   };
 }
 

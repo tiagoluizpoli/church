@@ -60,6 +60,12 @@ contract in `packages/env/src/server.ts`.
 | `PUBLIC_ORIGIN` | yes | the environment's public origin, e.g. `https://staging.example.org`; it becomes `BETTER_AUTH_URL` and `CORS_ORIGIN` |
 | `RESEND_API_KEY` | yes, secret | Resend key for outgoing email |
 | `RESEND_FROM_EMAIL` | yes | sender, e.g. `Church <noreply@example.org>` |
+| `S3_ENDPOINT` | yes | the VPS RustFS S3 endpoint (#976); copied with the next four from Dokploy `Shared/rustfs` `CHURCH_<ENV>_S3_*`, never the homelab backup RustFS |
+| `S3_REGION` | no | default `us-east-1` |
+| `S3_BUCKET` | yes | `church-<environment>` |
+| `S3_ACCESS_KEY_ID` | yes, secret | key scoped to the environment's bucket |
+| `S3_SECRET_ACCESS_KEY` | yes, secret | its secret |
+| `STORAGE_PUBLIC_URL` | yes | anonymous base of the bucket's `public/` objects, e.g. `https://storage.lunalabs.com.br/church-production`; the database stores keys, never URLs |
 | `LOG_LEVEL` | no | `fatal`, `error`, `warn`, `info` (default), `debug` or `trace` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | OTLP/HTTP base URL of the tracing backend, e.g. `http://<tempo>:4318`; unset, no traces are exported |
 | `TRACE_SAMPLE_RATE` | no | share of new traces kept, `0` to `1` (default `1`); an incoming `traceparent`'s decision wins |

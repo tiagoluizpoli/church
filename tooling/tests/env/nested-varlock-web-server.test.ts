@@ -35,6 +35,11 @@ const CI_ENVIRONMENT = {
   BETTER_AUTH_URL: 'http://localhost:4100',
   CORS_ORIGIN: 'http://localhost:4101',
   VITE_SERVER_URL: 'http://localhost:4100',
+  S3_ENDPOINT: 'http://localhost:9000',
+  S3_BUCKET: 'church-unspecified',
+  S3_ACCESS_KEY_ID: 'rustfsadmin',
+  S3_SECRET_ACCESS_KEY: 'rustfsadmin',
+  STORAGE_PUBLIC_URL: 'http://localhost:9000/church-unspecified',
   PORT: '4101',
 };
 

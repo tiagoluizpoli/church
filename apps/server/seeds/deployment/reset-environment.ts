@@ -5,6 +5,7 @@ import { now, today } from '@church/time';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import { s3Bucket } from '../../src/infrastructure/storage/s3-bucket-admin';
 import {
   assertConnectedTo,
   CONNECTED_IDENTITY_QUERY,
@@ -43,6 +44,13 @@ export interface CapturedMessages {
   deleteAll(): Promise<void>;
 }
 
+/** The environment's object-storage bucket (uploaded logos). */
+export interface StoredObjects {
+  /** Fails when the bucket cannot be reached, before anything is destroyed. */
+  assertReachable(): Promise<void>;
+  deleteAll(): Promise<void>;
+}
+
 export interface ResetEnvironmentInput {
   /** Connected to the environment's own database. */
   pool: pg.Pool;
@@ -52,6 +60,8 @@ export interface ResetEnvironmentInput {
   /** Resolves only once the target backup has succeeded. */
   backup: (target: BackupTarget) => Promise<void>;
   capturedMessages: CapturedMessages;
+  /** Emptied on a development reset only; staging keeps its objects. */
+  storedObjects: StoredObjects;
 }
 
 export interface ResetEnvironmentResult {
@@ -162,7 +172,8 @@ async function resetDatabase({
  * Resets a development or staging environment to seeded demo data or a clean
  * installation. Every refusal and prerequisite (target, stopped server,
  * reachable Mailpit, successful backup) happens before anything is deleted.
- * Captured messages are deleted last, so mail sent before the reset is gone too.
+ * Captured messages are deleted last, so mail sent before the reset is gone
+ * too; a development reset then empties the storage bucket.
  */
 export async function resetEnvironment({
   pool,
@@ -170,11 +181,14 @@ export async function resetEnvironment({
   connected,
   backup,
   capturedMessages,
+  storedObjects,
 }: ResetEnvironmentInput): Promise<ResetEnvironmentResult> {
   const { mode, environment: requested } = parseResetArguments({ argv });
   const environment = assertResettableTarget({ requested, connected });
   await assertServerStopped({ pool });
   await capturedMessages.assertReachable();
+  const emptiesStorage = environment === 'development';
+  if (emptiesStorage) await storedObjects.assertReachable();
   const { database } = connected;
 
   await backup({ environment, database });
@@ -186,6 +200,15 @@ export async function resetEnvironment({
     throw new Error(
       `The database was reset, but Mailpit's captured messages were not deleted: ${String(error)}. Delete them in the Mailpit inbox (Delete all) before restarting the server.`,
     );
+  }
+  if (emptiesStorage) {
+    try {
+      await storedObjects.deleteAll();
+    } catch (error) {
+      throw new Error(
+        `The database was reset, but the storage bucket was not emptied: ${String(error)}. Rerun the reset or empty the bucket before restarting the server.`,
+      );
+    }
   }
   return { mode, environment, database };
 }
@@ -258,6 +281,13 @@ if (import.meta.main) {
           role: identity?.role ?? '',
         },
         backup: runBackupCommand,
+        storedObjects: s3Bucket({
+          endpoint: env.S3_ENDPOINT,
+          region: env.S3_REGION,
+          accessKeyId: env.S3_ACCESS_KEY_ID,
+          secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+          bucket: env.S3_BUCKET,
+        }),
         capturedMessages: mailpitUrl
           ? mailpit({ url: mailpitUrl })
           : {

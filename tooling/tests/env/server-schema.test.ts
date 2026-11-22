@@ -24,6 +24,11 @@ const REQUIRED_SERVER_VALUES = [
   'BETTER_AUTH_SECRET=0123456789abcdef0123456789abcdef',
   'BETTER_AUTH_URL=http://localhost:3000',
   'CORS_ORIGIN=http://localhost:3001',
+  'S3_ENDPOINT=http://127.0.0.1:9000',
+  'S3_BUCKET=church-develop',
+  'S3_ACCESS_KEY_ID=rustfsadmin',
+  'S3_SECRET_ACCESS_KEY=rustfsadmin',
+  'STORAGE_PUBLIC_URL=http://127.0.0.1:9000/church-develop',
 ];
 
 let rootDir: string;

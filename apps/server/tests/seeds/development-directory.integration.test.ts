@@ -239,6 +239,27 @@ describe('development seed recipe', () => {
     expect(seeded.anchor).toBe(ANCHOR);
   });
 
+  it('gives the primary Church a website and an accent colour, the second Church neither', async () => {
+    const churches = await testDb
+      .select({
+        id: church.id,
+        website: church.website,
+        accentColor: church.accentColor,
+      })
+      .from(church);
+
+    expect(churches).toEqual(
+      expect.arrayContaining([
+        {
+          id: seeded.church.id,
+          website: 'https://igreja-semente.test',
+          accentColor: '#0f766e',
+        },
+        { id: seeded.secondChurch.id, website: null, accentColor: null },
+      ]),
+    );
+  });
+
   it('seats 305 Ministry Memberships in the primary Church', async () => {
     expect(
       await activeMembershipCounts({ churchId: seeded.church.id }),

@@ -18,6 +18,7 @@ import type { ObjectStorage } from '../domain/contracts/infrastructure/object-st
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import { LogoKeyInvalidError } from '../domain/errors/church-logo';
 import { storeChurchLogo } from './church-logo-pipeline';
+import { churchLogoUrl } from './church-logo-url';
 
 interface DbChurchSettingsManagerDependencies {
   churchRepository: ChurchRepository;
@@ -51,9 +52,10 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
     const settings = await this.churchRepository.getSettings({ id: churchId });
     return {
       ...settings,
-      logoUrl: settings.logoKey
-        ? this.objectStorage.publicUrl({ key: settings.logoKey })
-        : null,
+      logoUrl: churchLogoUrl({
+        objectStorage: this.objectStorage,
+        logoKey: settings.logoKey,
+      }),
       publicOrigin: this.publicOrigin,
     };
   }

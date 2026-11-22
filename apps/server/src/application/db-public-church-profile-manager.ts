@@ -7,6 +7,7 @@ import type {
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { ChurchProgrammeRepository } from '../domain/contracts/infrastructure/church-programme.repository';
 import type { ObjectStorage } from '../domain/contracts/infrastructure/object-storage';
+import { churchLogoUrl } from './church-logo-url';
 
 interface DbPublicChurchProfileManagerDependencies {
   churchRepository: ChurchRepository;
@@ -81,9 +82,10 @@ export class DbPublicChurchProfileManager
       slug: identity.slug,
       name: identity.name,
       accentColor: identity.accentColor,
-      logoUrl: identity.logoKey
-        ? this.objectStorage.publicUrl({ key: identity.logoKey })
-        : null,
+      logoUrl: churchLogoUrl({
+        objectStorage: this.objectStorage,
+        logoKey: identity.logoKey,
+      }),
       contactGroups,
       legalProfile: details.legalProfile
         ? {

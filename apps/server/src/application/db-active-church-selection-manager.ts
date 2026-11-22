@@ -19,6 +19,7 @@ import type {
   ChurchMembershipRepository,
 } from '../domain/contracts/infrastructure/church-membership.repository';
 import type { ObjectStorage } from '../domain/contracts/infrastructure/object-storage';
+import { churchLogoUrl } from './church-logo-url';
 
 interface ToSelectionOptionInput {
   comparison: ChurchMembershipComparison;
@@ -37,9 +38,7 @@ function toSelectionOption({
     timezone: comparison.timezone,
     accessLevel: comparison.accessLevel,
     availableAreas,
-    logoUrl: comparison.logoKey
-      ? objectStorage.publicUrl({ key: comparison.logoKey })
-      : null,
+    logoUrl: churchLogoUrl({ objectStorage, logoKey: comparison.logoKey }),
     accentColor: comparison.accentColor,
     lastOpenedAt: comparison.lastOpenedAt,
     locality: formatChurchLocality(comparison.mainAddress),

@@ -64,7 +64,7 @@ function renderPage(
   });
   const detail = createRoute({
     getParentRoute: () => root,
-    path: '/availability/$checkId',
+    path: '/app/availability/$checkId',
   });
   const router = createRouter({
     routeTree: root.addChildren([detail]),
@@ -161,7 +161,7 @@ describe('Availability checks list', () => {
           name: 'Infantil · Outubro 2026',
         }),
       }),
-    ).toHaveAttribute('href', '/availability/kids-check');
+    ).toHaveAttribute('href', '/app/availability/kids-check');
     expect(
       within(cards[2]).getByText(m.availability_detail_confirmed()),
     ).toHaveClass('text-green-700');
@@ -174,7 +174,7 @@ describe('Availability checks list', () => {
           name: 'Louvor · Outubro 2026',
         }),
       }),
-    ).toHaveAttribute('href', '/availability/music-check');
+    ).toHaveAttribute('href', '/app/availability/music-check');
 
     const grid = desktopTable();
     expect(

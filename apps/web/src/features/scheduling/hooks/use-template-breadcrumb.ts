@@ -4,7 +4,7 @@ import type { BreadcrumbSegmentOverride } from './use-cycle-breadcrumb';
 import { templateDetailQueryKey } from '@/features/scheduling/components/planning-admin/template-query-keys';
 import { adminApi } from '@/utils/api-instances';
 
-/** Labels the `/event-templates/$templateId` segment with the saved template name. */
+/** Labels the `/app/event-templates/$templateId` segment with the saved template name. */
 export function useTemplateBreadcrumb(): BreadcrumbSegmentOverride | null {
   const { templateId } = useParams({ strict: false });
   const templateQuery = useQuery({

@@ -27,7 +27,7 @@ export function TemplateCreatePage() {
           {...editor}
           actions={
             <Link
-              to="/event-templates"
+              to="/app/event-templates"
               data-testid="cancel-template-button"
               className={buttonVariants({ variant: 'outline' })}
             >

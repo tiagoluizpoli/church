@@ -105,7 +105,7 @@ function CycleStatus({ state, isRunning }: CyclesTableRow) {
 function OpenAction({ id, name }: CyclesTableRow) {
   return (
     <Link
-      to="/cycles/$cycleId"
+      to="/app/cycles/$cycleId"
       params={{ cycleId: id }}
       aria-label={m.cycles_open_label({ name })}
       className={buttonVariants({

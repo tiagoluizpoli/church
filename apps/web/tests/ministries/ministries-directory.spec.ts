@@ -26,7 +26,7 @@ test('a ChurchAdmin searches and filters the Ministries page, then opens a Minis
   await admin.dispose();
 
   await signInPersonaPage({ page, persona: journey.personas.admin });
-  await page.goto('/ministries');
+  await page.goto('/app/ministries');
 
   const openLink = (name: string) =>
     page.getByRole('link', { name: m.ministries_open_label({ name }, PT) });
@@ -70,11 +70,11 @@ test('a ChurchAdmin searches and filters the Ministries page, then opens a Minis
   await expect(openLink(worship.name)).toHaveCount(0);
   await expect(openLink(care.name)).toHaveCount(0);
 
-  await page.goto('/ministries');
+  await page.goto('/app/ministries');
   await openLink(worship.name).click();
-  await expect(page).toHaveURL(new RegExp(`/ministries/${worship.id}`));
+  await expect(page).toHaveURL(new RegExp(`/app/ministries/${worship.id}`));
 
-  await page.goto(`/ministries/${worship.id}/usual-setup`);
+  await page.goto(`/app/ministries/${worship.id}/usual-setup`);
   await expect(
     page.getByRole('region', { name: m.usual_setup_list_label({}, PT) }),
   ).toBeVisible();

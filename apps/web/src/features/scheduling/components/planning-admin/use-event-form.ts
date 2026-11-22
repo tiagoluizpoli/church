@@ -78,7 +78,7 @@ export function useEventForm({
       ]);
       toast.success(successMessage);
       await navigate({
-        to: '/cycles/$cycleId',
+        to: '/app/cycles/$cycleId',
         params: { cycleId },
         search: { eventId },
       });

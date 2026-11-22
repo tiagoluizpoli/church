@@ -65,7 +65,7 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
 
     await signIn({ page, persona: memberOnly });
     await expect(page).toHaveURL(
-      new RegExp(`/invitations/ministry/${invitation.id}$`),
+      new RegExp(`/app/invitations/ministry/${invitation.id}$`),
     );
     await expect(
       page.getByRole('heading', {
@@ -97,7 +97,7 @@ test.describe('DL#107 — an existing Church Member redeems a Ministry Invitatio
     expect(acceptOutcome.kind).toBe('full-success');
     expect(acceptOutcome.volunteerId).toEqual(expect.any(String));
 
-    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
+    await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/);
 
     expect(
       await fetchActiveChurchStatus({ request: page.request }),
@@ -221,7 +221,7 @@ test.describe('#861 — a signed-up recipient reviews and accepts exactly the bu
     await signIn({ page, persona: accountOnly });
     // Any half of the offer opens the same review of the whole bundle.
     const reviewedHalf = new RegExp(
-      `/invitations/ministry/(${worshipHalf.id}|${careHalf.id})$`,
+      `/app/invitations/ministry/(${worshipHalf.id}|${careHalf.id})$`,
     );
     await expect(page).toHaveURL(reviewedHalf);
     const reviewedId = page.url().match(reviewedHalf)?.[1];
@@ -306,7 +306,7 @@ test.describe('#861 — a signed-up recipient reviews and accepts exactly the bu
     expect(
       ((await acceptResponse.json()) as AcceptMinistryInvitationOutcome).kind,
     ).toBe('full-success');
-    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
+    await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/);
 
     expect(
       await fetchActiveChurchStatus({ request: page.request }),
@@ -331,7 +331,7 @@ test.describe('#861 — a signed-up recipient reviews and accepts exactly the bu
     const { worship, care } = journey.churchA.ministries;
     const { worshipHalf, careHalf } = await mintChurchOffer({ journey });
 
-    await page.goto(`/invitations/ministry/${worshipHalf.id}`);
+    await page.goto(`/app/invitations/ministry/${worshipHalf.id}`);
     await signIn({ page, persona: journey.memberOnly });
     await expect(
       page.getByRole('heading', {

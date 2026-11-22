@@ -91,4 +91,4 @@ export const EVENT: GetCycleParticipation200EventsItem = {
   generatedFromTemplate: false,
   eventTimeBlocks: [BLOCK],
 };
-export const EDITOR_PATH = `/schedules/${MINISTRY_ID}/${CYCLE_ID}/slots/${BLOCK_ID}`;
+export const EDITOR_PATH = `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}/slots/${BLOCK_ID}`;

@@ -39,6 +39,27 @@ services:
     volumes:
       - mailpit-data:/data
 
+  # Local S3-compatible object storage (RustFS), shared like PostgreSQL: each
+  # worktree gets its own `church-<worktree>` bucket from `db:bootstrap`
+  # (tooling/worktree/storage-buckets.ts). S3 API on 9000; the default root
+  # credentials are local-only and match env:local's generated S3_* values.
+  storage:
+    image: rustfs/rustfs:1.0.6
+    container_name: church-storage
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: rustfsadmin
+      RUSTFS_SECRET_KEY: rustfsadmin
+    ports:
+      - "9000:9000"
+    volumes:
+      - storage-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # Answers only `*.<CHURCH_DEV_DOMAIN>` for this machine's worktree URLs.
   # The profile keeps db:start (and bootstrap), CI and E2E from starting it;
   # `bun run dns:start` renders its config and supplies both values below.
@@ -62,3 +83,4 @@ services:
 volumes:
   postgres-data:
   mailpit-data:
+  storage-data:

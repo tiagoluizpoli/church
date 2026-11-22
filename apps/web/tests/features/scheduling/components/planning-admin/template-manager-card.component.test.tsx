@@ -109,7 +109,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     expect(row).toHaveTextContent('2');
     expect(
       within(row).getByRole('link', { name: 'Editar Sunday Service' }),
-    ).toHaveAttribute('href', '/event-templates/template-1');
+    ).toHaveAttribute('href', '/app/event-templates/template-1');
     expect(
       within(row).getByRole('button', { name: 'Excluir Sunday Service' }),
     ).toBeInTheDocument();
@@ -265,7 +265,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Novo modelo' })).toHaveAttribute(
       'href',
-      '/event-templates/new',
+      '/app/event-templates/new',
     );
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
   });

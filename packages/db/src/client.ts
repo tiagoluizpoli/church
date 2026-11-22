@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { getE2eDatabaseUrl } from './e2e-database-url';
 import { getIntegrationDatabaseUrl } from './integration-database-url';
+import { INTEGRATION_POOL_LIMITS } from './integration-pool-limits';
 import * as schema from './schema';
 
 function resolveConnectionString(): string {
@@ -26,6 +27,9 @@ export function createDb() {
     max: process.env.NODE_ENV === 'test' ? 2 : 10,
     // Let short-lived scripts exit once idle instead of lingering on the 10 s idle timeout.
     allowExitOnIdle: true,
+    ...(process.env.CHURCH_EXEC_PURPOSE === 'integration'
+      ? INTEGRATION_POOL_LIMITS
+      : {}),
   });
   // An idle connection the database drops (restart, failover) is discarded by
   // the pool; unhandled, its error would end the process instead of letting

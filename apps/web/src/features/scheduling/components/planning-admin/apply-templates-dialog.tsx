@@ -180,7 +180,7 @@ export function ApplyTemplatesDialog({
             {m.cycle_apply_empty()}{' '}
             {/* A new tab keeps this Cycle; focus refetches the list. */}
             <a
-              href="/event-templates"
+              href="/app/event-templates"
               target="_blank"
               rel="noopener noreferrer"
               className="underline"

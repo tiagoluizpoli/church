@@ -32,7 +32,7 @@ export function useCreateTemplate(): UseCreateTemplateResult {
         queryKey: TEMPLATE_LIST_QUERY_KEY,
       });
       toast.success(m.event_templates_created_toast());
-      await navigate({ to: '/event-templates' });
+      await navigate({ to: '/app/event-templates' });
     },
     onError: (error) => setRefusal(toSaveRefusal({ error })),
   });

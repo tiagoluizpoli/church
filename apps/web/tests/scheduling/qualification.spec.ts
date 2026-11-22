@@ -87,9 +87,9 @@ test.describe('a plain Volunteer', () => {
     const journey = loadAssignQualificationJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.volunteer });
 
-    await page.goto('/cycles');
+    await page.goto('/app/cycles');
 
-    // The guard redirects to "/", the Home entry.
-    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/, { timeout: 15_000 });
+    // The guard redirects to "/app", the Home entry.
+    await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/, { timeout: 15_000 });
   });
 });

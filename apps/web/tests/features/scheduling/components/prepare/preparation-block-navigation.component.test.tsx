@@ -106,7 +106,7 @@ const MORNING = {
   included: false,
   shifts: [],
 };
-const LIST_PATH = `/schedules/${MINISTRY_ID}/${CYCLE_ID}`;
+const LIST_PATH = `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`;
 
 describe('preparing beside the retained Schedule list', () => {
   // jsdom has no scrolling; the router and the list both scroll to a row hash.

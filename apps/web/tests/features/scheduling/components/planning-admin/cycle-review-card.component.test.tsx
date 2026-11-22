@@ -45,7 +45,7 @@ vi.mock('@tanstack/react-router', () => ({
     <a
       aria-label={label}
       className={className}
-      href={`/cycles/${params?.cycleId}/events/${params?.eventId}`}
+      href={`/app/cycles/${params?.cycleId}/events/${params?.eventId}`}
     >
       {children}
     </a>
@@ -430,7 +430,7 @@ describe('CycleReviewCard day/time block edit and delete (US3)', () => {
     ).not.toBeInTheDocument();
     expect(
       within(table).getByRole('link', { name: 'Editar dia Sunday Service' }),
-    ).toHaveAttribute('href', '/cycles/cycle-1/events/event-1');
+    ).toHaveAttribute('href', '/app/cycles/cycle-1/events/event-1');
 
     const user = userEvent.setup();
     await user.click(

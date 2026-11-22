@@ -79,7 +79,7 @@ export function CyclePreparePicker({
           {ministries.map((ministry) => (
             <li key={ministry.id}>
               <Link
-                to="/schedules/$ministryId/$cycleId"
+                to="/app/schedules/$ministryId/$cycleId"
                 params={{ ministryId: ministry.id, cycleId }}
                 aria-label={m.prepare_cycle_picker_open({
                   ministryName: ministry.name,

@@ -86,7 +86,7 @@ function PersonAction({ person }: PersonProps) {
   return (
     <div className="flex justify-end max-md:ml-auto md:w-full">
       <Link
-        to="/people/$memberId"
+        to="/app/people/$memberId"
         params={{ memberId: person.id }}
         aria-label={m.people_view_label({ name: person.name })}
         className={buttonVariants({

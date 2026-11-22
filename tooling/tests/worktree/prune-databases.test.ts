@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { activeWorktreeIdentities } from '../../worktree/local-env';
-import { selectStaleDatabases } from '../../worktree/prune-databases';
+import {
+  selectStaleBuckets,
+  selectStaleDatabases,
+} from '../../worktree/prune-databases';
 
 /**
  * Which databases `db:prune` selects, and which worktrees it counts as
@@ -80,6 +83,31 @@ describe('selectStaleDatabases', () => {
           'template1',
           'other_gone_dev',
         ],
+        activeIdentities: new Set(),
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('selectStaleBuckets', () => {
+  it('selects the buckets of worktrees that are no longer active', () => {
+    expect(
+      selectStaleBuckets({
+        buckets: [
+          'church-develop',
+          'church-feature-a',
+          'church-gone',
+          'church-gone--1a2b3c4d',
+        ],
+        activeIdentities: new Set(['develop', 'feature_a']),
+      }),
+    ).toEqual(['church-gone', 'church-gone--1a2b3c4d']);
+  });
+
+  it('never selects a bucket outside the worktree namespace', () => {
+    expect(
+      selectStaleBuckets({
+        buckets: ['backups', 'other-gone'],
         activeIdentities: new Set(),
       }),
     ).toEqual([]);

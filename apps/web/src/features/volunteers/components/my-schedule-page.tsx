@@ -186,7 +186,7 @@ function NextAssignment({ row, timeZone, showMinistry }: NextAssignmentProps) {
         </CardHeader>
         <CardContent>
           <Link
-            to="/my-schedule/$assignmentId"
+            to="/app/my-schedule/$assignmentId"
             params={{ assignmentId: assignment.assignmentId }}
             // The panel holds only this one shift, so the link is the panel's content, not a box inside it.
             className="group radius-control flex flex-col gap-3 outline-none focus-visible:ring-2 focus-visible:ring-ring md:gap-4"
@@ -270,7 +270,7 @@ function OpenAssignment({ row, timeZone }: OpenAssignmentProps) {
   return (
     <div className="flex justify-end max-md:ml-auto md:w-full">
       <Link
-        to="/my-schedule/$assignmentId"
+        to="/app/my-schedule/$assignmentId"
         params={{ assignmentId: assignment.assignmentId }}
         aria-label={m.my_schedule_open_label({
           event: assignment.eventTitle,
@@ -472,7 +472,7 @@ function UpcomingTable({
           return (
             <div className={rail}>
               <Link
-                to="/my-schedule/$assignmentId"
+                to="/app/my-schedule/$assignmentId"
                 params={{ assignmentId: assignment.assignmentId }}
                 aria-label={m.my_schedule_open_label({
                   event: assignment.eventTitle,
@@ -720,7 +720,7 @@ function MinistrySchedules({ schedules }: MinistrySchedulesProps) {
           {schedules.map((s) => (
             <li key={`${s.ministryId}:${s.cycleId}`}>
               <Link
-                to="/my-schedule/$ministryId/$cycleId"
+                to="/app/my-schedule/$ministryId/$cycleId"
                 params={{ ministryId: s.ministryId, cycleId: s.cycleId }}
                 className="radius-control flex min-h-11 items-center gap-2 px-2 py-2 text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -781,7 +781,7 @@ function EmptySchedule() {
     <div className="space-y-2" role="status">
       <p className="text-muted-foreground">{m.my_schedule_empty()}</p>
       <Link
-        to="/availability"
+        to="/app/availability"
         className={buttonVariants({
           variant: 'outline',
           className: 'min-h-11 md:min-h-0',

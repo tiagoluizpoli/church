@@ -37,7 +37,7 @@ function EditActions({ disabled, onDelete }: EditActionsProps) {
   return (
     <>
       <Link
-        to="/event-templates"
+        to="/app/event-templates"
         data-testid="cancel-template-button"
         className={buttonVariants({ variant: 'outline' })}
       >
@@ -84,7 +84,7 @@ export function TemplateEditPage({ templateId }: TemplateEditPageProps) {
               <p className="text-muted-foreground text-sm">
                 {m.event_templates_not_found()}
               </p>
-              <Link to="/event-templates" className={buttonVariants()}>
+              <Link to="/app/event-templates" className={buttonVariants()}>
                 {m.event_templates_back_to_list()}
               </Link>
             </div>
@@ -148,7 +148,7 @@ function TemplateEditForm({ template }: TemplateEditFormProps) {
         <TemplateDeleteDialog
           templateId={template.id}
           onClose={() => setDeleting(false)}
-          onDeleted={() => navigate({ to: '/event-templates' })}
+          onDeleted={() => navigate({ to: '/app/event-templates' })}
         />
       ) : null}
       <TemplateBlockRemovalDialog

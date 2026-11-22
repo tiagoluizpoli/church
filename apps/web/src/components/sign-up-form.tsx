@@ -43,7 +43,7 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
         {
           onSuccess: () => {
             navigate({
-              to: '/',
+              to: '/app',
             });
             toast.success(m.auth_sign_up_success());
           },

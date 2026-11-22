@@ -106,7 +106,7 @@ export function UsualSetupBlockEditor({
           {m.usual_setup_block_not_found()}
         </p>
         <Link
-          to="/ministries/$ministryId/usual-setup"
+          to="/app/ministries/$ministryId/usual-setup"
           params={{ ministryId }}
           className="text-sm underline underline-offset-2"
         >
@@ -187,7 +187,7 @@ function UsualSetupBlockForm({
   });
   const backToList = () =>
     navigate({
-      to: '/ministries/$ministryId/usual-setup',
+      to: '/app/ministries/$ministryId/usual-setup',
       params: { ministryId },
     });
 
@@ -382,12 +382,12 @@ function MissingCatalogs({
   const missing = [
     !hasSectors && {
       text: m.usual_setup_missing_sectors(),
-      href: `/ministries/${ministryId}/sectors`,
+      href: `/app/ministries/${ministryId}/sectors`,
       link: m.prepare_set_up_sectors(),
     },
     !hasRoles && {
       text: m.usual_setup_missing_roles(),
-      href: `/ministries/${ministryId}/roles`,
+      href: `/app/ministries/${ministryId}/roles`,
       link: m.usual_setup_set_up_roles(),
     },
   ].filter((item) => item !== false);

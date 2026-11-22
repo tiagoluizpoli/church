@@ -35,7 +35,7 @@ function CycleTimeline({ cycle }: CycleTimelineProps) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <Link
-          to="/cycles/$cycleId"
+          to="/app/cycles/$cycleId"
           params={{ cycleId: cycle.id }}
           className="inline-flex min-h-11 items-center font-semibold text-xl hover:underline focus-visible:outline-2 focus-visible:outline-ring"
         >
@@ -73,7 +73,7 @@ function NextCycle({ cycle }: NextCycleProps) {
       <div className="space-y-1">
         <p className="text-muted-foreground">{m.home_next_cycle_none()}</p>
         <Link
-          to="/cycles"
+          to="/app/cycles"
           className="inline-flex min-h-11 items-center underline underline-offset-4"
         >
           {m.home_next_cycle_plan()}
@@ -83,7 +83,7 @@ function NextCycle({ cycle }: NextCycleProps) {
   return (
     <div className="space-y-1">
       <Link
-        to="/cycles/$cycleId"
+        to="/app/cycles/$cycleId"
         params={{ cycleId: cycle.id }}
         className="inline-flex min-h-11 items-center font-semibold text-lg hover:underline focus-visible:outline-2 focus-visible:outline-ring"
       >

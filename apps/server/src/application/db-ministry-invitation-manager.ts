@@ -77,6 +77,7 @@ interface EnsureOfferAuthorityInput {
   callerId: UserId;
   /** The offer's stored (or, on mint, requested) Ministry Access Level. */
   ministryAccessLevel: MinistryAccessLevel;
+  tx?: TransactionContext;
 }
 
 interface MintForExistingMemberInput extends MintMinistryInvitationInput {
@@ -450,6 +451,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         ministryId,
         callerId,
         ministryAccessLevel: target.ministryAccessLevel,
+        tx,
       });
       const { churchInvitationId } = target;
       const parent = churchInvitationId
@@ -577,6 +579,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         ministryId,
         callerId,
         ministryAccessLevel: target.ministryAccessLevel,
+        tx,
       });
       const revoked = await revokeMinistryHalf({
         repo: this.repo,
@@ -817,11 +820,12 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   private async ensureOfferAuthority(
     input: EnsureOfferAuthorityInput,
   ): Promise<void> {
-    const { churchId, callerId, ministryId, ministryAccessLevel } = input;
+    const { churchId, callerId, ministryId, ministryAccessLevel, tx } = input;
     const [allowed] = await this.authorityManager.canManageInvitations({
       churchId,
       userId: callerId,
       invitations: [{ ministryId, ministryAccessLevel }],
+      tx,
     });
     if (!allowed) throw new InsufficientInvitationAuthorityError();
   }

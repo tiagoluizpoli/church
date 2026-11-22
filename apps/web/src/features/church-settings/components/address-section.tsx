@@ -37,6 +37,7 @@ import {
   type PickedPlace,
   type PinMap,
 } from '@/features/church-settings/google-maps';
+import { useControlSizes } from '@/features/church-settings/use-control-sizes';
 import type { GetChurchAddressUsage200 } from '@/infrastructure/api/churchAPI.schemas';
 import { churchSettingsApi } from '@/utils/api-instances';
 
@@ -152,6 +153,7 @@ function AddressDialog({
   onCancel,
   onConfirm,
 }: AddressDialogProps) {
+  const sizes = useControlSizes();
   const [fields, setFields] = React.useState<DraftFields>(() =>
     toFields({ address: editing ?? null }),
   );
@@ -418,7 +420,7 @@ function AddressDialog({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size={sizes.small}
               disabled={cepStatus === 'loading'}
               onClick={searchCep}
             >
@@ -481,7 +483,7 @@ function AddressDialog({
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
+                      size={sizes.small}
                       onClick={() => setPin({ moved: pin, pinSource: 'admin' })}
                     >
                       {m.church_settings_address_pin_confirm()}
@@ -490,7 +492,7 @@ function AddressDialog({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size={sizes.small}
                     onClick={() => setPin({ moved: null, pinSource: null })}
                   >
                     {m.church_settings_address_pin_remove()}
@@ -718,6 +720,7 @@ export function AddressSection({
   onChange,
   onDelete,
 }: AddressSectionProps) {
+  const sizes = useControlSizes();
   const [deleting, setDeleting] = React.useState<
     { address: AddressDraft; usage: GetChurchAddressUsage200 } | undefined
   >(undefined);
@@ -864,7 +867,7 @@ export function AddressSection({
                   {address.isMain ? null : (
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size={sizes.small}
                       onClick={() => makeMain(address.key)}
                     >
                       {m.church_settings_address_make_main()}
@@ -872,7 +875,7 @@ export function AddressSection({
                   )}
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size={sizes.icon}
                     aria-label={m.church_settings_address_move_up({ name })}
                     disabled={index === 0}
                     onClick={() => move({ index, by: -1 })}
@@ -881,7 +884,7 @@ export function AddressSection({
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size={sizes.icon}
                     aria-label={m.church_settings_address_move_down({ name })}
                     disabled={index === addresses.length - 1}
                     onClick={() => move({ index, by: 1 })}
@@ -890,7 +893,7 @@ export function AddressSection({
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size={sizes.icon}
                     aria-label={m.church_settings_address_edit({ name })}
                     onClick={() => setEditingKey(address.key)}
                   >
@@ -898,7 +901,7 @@ export function AddressSection({
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size={sizes.icon}
                     aria-label={m.church_settings_address_delete({ name })}
                     title={
                       mainBlocked

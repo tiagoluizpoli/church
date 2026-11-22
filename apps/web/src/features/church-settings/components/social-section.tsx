@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import type { SocialLinkDraft } from '@/features/church-settings/church-settings-form';
 import { GroupField } from '@/features/church-settings/components/group-field';
+import { useControlSizes } from '@/features/church-settings/use-control-sizes';
 
 type FieldErrors = Record<string, string>;
 
@@ -76,6 +77,7 @@ export function SocialSection({
   errors,
   onChange,
 }: SocialSectionProps) {
+  const sizes = useControlSizes();
   const counter = React.useRef(0);
 
   const add = (url: string) => {
@@ -208,7 +210,7 @@ export function SocialSection({
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size={sizes.icon}
                         aria-label={m.church_settings_social_move_up({ name })}
                         disabled={index === 0}
                         onClick={() => move({ index, by: -1 })}
@@ -217,7 +219,7 @@ export function SocialSection({
                       </Button>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size={sizes.icon}
                         aria-label={m.church_settings_social_move_down({
                           name,
                         })}
@@ -228,7 +230,7 @@ export function SocialSection({
                       </Button>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size={sizes.icon}
                         aria-label={m.church_settings_social_delete({ name })}
                         onClick={() =>
                           onChange(links.filter((row) => row.key !== link.key))

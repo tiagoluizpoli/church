@@ -2076,6 +2076,27 @@ describe('Church Contacts section', () => {
     ).toHaveTextContent('1');
   });
 
+  it('gives every row and section control a 44 px touch target on a phone', async () => {
+    // The component setup answers every media query as matching: a phone.
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      contacts: [PHONE, EMAIL],
+      contactGroups: [],
+    });
+    renderSettings();
+    await nameField();
+
+    for (const name of [
+      m.church_settings_contact_move_up({ position: 2 }),
+      m.church_settings_contact_move_down({ position: 1 }),
+    ]) {
+      expect(screen.getByRole('button', { name })).toHaveClass('size-11');
+    }
+    expect(
+      screen.getByRole('button', { name: m.church_settings_slug_generate() }),
+    ).toHaveClass('h-11');
+  });
+
   it('reorders with the move controls and saves the new order', async () => {
     const user = userEvent.setup();
     getChurchSettings.mockResolvedValue({

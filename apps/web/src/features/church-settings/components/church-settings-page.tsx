@@ -574,7 +574,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                       </p>
                       <Button
                         variant="outline"
-                        size="sm"
+                        size={isMobile ? 'touch' : 'sm'}
                         onClick={() => patch({ slug: slugFromName(form.name) })}
                       >
                         <Wand2 aria-hidden />{' '}

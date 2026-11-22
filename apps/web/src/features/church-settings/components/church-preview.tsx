@@ -22,6 +22,8 @@ import {
   moveGroup,
   renameGroup,
 } from '@/features/church-settings/contact-groups';
+import { useControlSizes } from '@/features/church-settings/use-control-sizes';
+import { cn } from '@/lib/utils';
 import { AddressActions } from '@/shared/components/address-actions';
 import { formatAddress } from '@/shared/utils/directions';
 
@@ -302,6 +304,7 @@ function GroupHeading({
   count,
   onChange,
 }: GroupHeadingProps) {
+  const sizes = useControlSizes();
   const commit = (to: string) => {
     if (to.trim() !== '' && to !== name)
       onChange(renameGroup({ form, from: name, to }));
@@ -312,7 +315,7 @@ function GroupHeading({
         key={name}
         defaultValue={name}
         aria-label={m.church_settings_preview_group_rename({ name })}
-        className="h-8 font-semibold text-sm"
+        className={cn('font-semibold text-sm', !sizes.touch && 'h-8')}
         onBlur={(event) => commit(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') event.currentTarget.blur();
@@ -320,7 +323,7 @@ function GroupHeading({
       />
       <Button
         variant="ghost"
-        size="icon"
+        size={sizes.icon}
         disabled={position === 0}
         aria-label={m.church_settings_preview_group_move_up({ name })}
         onClick={() =>
@@ -331,7 +334,7 @@ function GroupHeading({
       </Button>
       <Button
         variant="ghost"
-        size="icon"
+        size={sizes.icon}
         disabled={position === count - 1}
         aria-label={m.church_settings_preview_group_move_down({ name })}
         onClick={() =>

@@ -306,6 +306,7 @@ export function buildManagers({
       cycleRepository: cycleRepository,
       eventRepository: planningEventRepository,
       templateRepository: eventTemplateRepository,
+      precedenceRepository: templatePrecedenceRepository,
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository,

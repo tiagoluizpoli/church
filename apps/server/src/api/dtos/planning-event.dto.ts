@@ -11,16 +11,14 @@ import {
   eventTimeBlockMapper,
   eventTimeBlockResponseSchema,
 } from './event-time-block.dto';
+import { timeBlockPlaceFields, withOnePlace } from './time-block-place.dto';
 
-/** Short free text; an empty place is stored as none. */
-const placeSchema = z.string().trim().max(120);
-
-const planningEventTimeBlockBodySchema = z.object({
+const planningEventTimeBlockFieldsSchema = z.object({
   label: z.string().trim().min(1),
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
   isPublic: z.boolean().optional(),
-  place: placeSchema.optional(),
+  ...timeBlockPlaceFields,
 });
 
 /** A complete Draft Event: its fields and every Time block, saved together. */
@@ -29,7 +27,7 @@ export const createPlanningEventBodySchema = z.object({
   location: z.string().optional(),
   start: z.string().datetime(),
   end: z.string().datetime(),
-  eventTimeBlocks: z.array(planningEventTimeBlockBodySchema),
+  eventTimeBlocks: z.array(withOnePlace(planningEventTimeBlockFieldsSchema)),
 });
 
 export type CreatePlanningEventBody = z.infer<
@@ -44,9 +42,11 @@ export const updatePlanningEventBodySchema = createPlanningEventBodySchema
   .omit({ eventTimeBlocks: true })
   .extend({
     eventTimeBlocks: z.array(
-      planningEventTimeBlockBodySchema.extend({
-        id: z.string().uuid().optional(),
-      }),
+      withOnePlace(
+        planningEventTimeBlockFieldsSchema.extend({
+          id: z.string().uuid().optional(),
+        }),
+      ),
     ),
   });
 
@@ -60,11 +60,13 @@ export const updatePlanningEventDetailsBodySchema = z.object({
   location: z.string().optional(),
   eventTimeBlocks: z
     .array(
-      z.object({
-        id: z.string().uuid(),
-        isPublic: z.boolean(),
-        place: placeSchema.optional(),
-      }),
+      withOnePlace(
+        z.object({
+          id: z.string().uuid(),
+          isPublic: z.boolean(),
+          ...timeBlockPlaceFields,
+        }),
+      ),
     )
     .optional(),
 });

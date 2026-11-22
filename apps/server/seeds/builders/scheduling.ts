@@ -171,6 +171,7 @@ export interface BuildEventTimeBlockInput {
   label?: string;
   isPublic?: boolean;
   place?: string;
+  placeAddressId?: string;
   status?: SeededEventTimeBlock['status'];
   /** The TemplateTimeBlock it was generated from; absent for a dynamic Event. */
   sourceTemplateTimeBlockId?: string;
@@ -186,6 +187,7 @@ export async function buildEventTimeBlock({
   label,
   isPublic,
   place,
+  placeAddressId,
   status,
   sourceTemplateTimeBlockId,
 }: BuildEventTimeBlockInput): Promise<SeededEventTimeBlock> {
@@ -201,6 +203,7 @@ export async function buildEventTimeBlock({
         label,
         isPublic,
         place,
+        placeAddressId,
         status,
         sourceTemplateTimeBlockId,
       })

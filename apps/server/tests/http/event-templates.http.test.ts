@@ -1,6 +1,5 @@
 import {
   assignment,
-  churchAddress,
   event,
   eventTemplate,
   eventTimeBlock,
@@ -57,6 +56,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -222,34 +222,6 @@ function patch(input: { templateId: string; payload: unknown }) {
 
 function list() {
   return app.inject({ method: 'GET', url: '/api/v1/admin/event-templates' });
-}
-
-interface InsertAddressInput {
-  churchId: string;
-  street?: string;
-}
-
-/** A Main Address of the Church; returns its id. */
-async function insertAddress({
-  churchId,
-  street = 'Rua A',
-}: InsertAddressInput): Promise<string> {
-  const [row] = await schedulingTestDb
-    .insert(churchAddress)
-    .values({
-      churchId,
-      label: 'Templo',
-      street,
-      number: '10',
-      bairro: 'Centro',
-      city: 'Campinas',
-      uf: 'SP',
-      isMain: true,
-      position: 0,
-    })
-    .returning({ id: churchAddress.id });
-  if (!row) throw new Error('address insert failed');
-  return row.id;
 }
 
 async function storedTemplateCount() {
@@ -569,7 +541,10 @@ describe('TemplateTimeBlock Publico and place', () => {
 
   it('takes a Church Address of the same Church as the place, and moves between address, free text and nothing on edit', async () => {
     const seed = await signIn();
-    const addressId = await insertAddress({ churchId: seed.churchAId });
+    const addressId = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+    });
 
     const created = await post(
       body({ blocks: [{ ...welcome, placeAddressId: addressId }] }),
@@ -601,8 +576,14 @@ describe('TemplateTimeBlock Publico and place', () => {
 
   it("refuses another Church's address and a place given both ways, writing nothing", async () => {
     const seed = await signIn();
-    const foreign = await insertAddress({ churchId: seed.churchBId });
-    const own = await insertAddress({ churchId: seed.churchAId });
+    const foreign = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchBId,
+    });
+    const own = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+    });
 
     const foreignRes = await post(
       body({ blocks: [{ ...welcome, placeAddressId: foreign }] }),

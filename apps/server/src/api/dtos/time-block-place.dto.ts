@@ -7,7 +7,7 @@ import { z } from 'zod';
  */
 export const timeBlockPlaceFields = {
   place: z.string().trim().max(120).optional(),
-  placeAddressId: z.string().uuid().nullable().optional(),
+  placeAddressId: z.string().uuid().toLowerCase().nullable().optional(),
 };
 
 interface PlaceFields {

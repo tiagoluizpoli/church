@@ -74,6 +74,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -910,6 +911,62 @@ describe('Público and place on a created Event', () => {
     });
   });
 
+  it.each([
+    'draft',
+    'sent',
+  ] as const)('saves a Church Address as the place in a %s Cycle', async (state) => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state });
+    const addressId = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+    });
+    const event = eveningEvent();
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: {
+        ...event,
+        eventTimeBlocks: [
+          { ...event.eventTimeBlocks[0], placeAddressId: addressId },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().eventTimeBlocks[0]).toMatchObject({
+      place: null,
+      placeAddressId: addressId,
+    });
+  });
+
+  it("refuses another Church's address and writes nothing", async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId });
+    const foreign = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchBId,
+    });
+    const event = eveningEvent();
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: {
+        ...event,
+        eventTimeBlocks: [
+          { ...event.eventTimeBlocks[0], placeAddressId: foreign },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason: 'PLACE_ADDRESS_NOT_FOUND',
+    });
+    expect(await graphCounts()).toEqual(EMPTY_GRAPH);
+  });
+
   it('defaults a block to private with no place', async () => {
     const seed = await signIn();
     const target = await seedCycle({ churchId: seed.churchAId });
@@ -922,6 +979,7 @@ describe('Público and place on a created Event', () => {
     expect(response.json().eventTimeBlocks[0]).toMatchObject({
       isPublic: false,
       place: null,
+      placeAddressId: null,
     });
   });
 

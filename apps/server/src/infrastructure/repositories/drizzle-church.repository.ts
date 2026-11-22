@@ -162,7 +162,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
           .where(eq(church.id, id))
       : [];
     if (!row) throw new NotFoundError(`Church not found: ${id}`);
-    return { ...row, addresses: await this.listAddresses({ id }) };
+    return { ...row, addresses: await this.listAddresses({ id, tx }) };
   }
 
   private async listAddresses({

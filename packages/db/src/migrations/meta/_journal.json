@@ -498,6 +498,13 @@
       "when": 1795386303727,
       "tag": "0070_church_slug_claim",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795387854534,
+      "tag": "0071_church_contact_group_unique_name",
+      "breakpoints": true
     }
   ]
 }

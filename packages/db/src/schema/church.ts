@@ -121,6 +121,11 @@ export const churchContactGroup = pgTable(
       table.churchId,
       table.position,
     ),
+    // One group per name and Church, case-insensitively (contactGroupKey).
+    uniqueIndex('church_contact_group_church_name_idx').on(
+      table.churchId,
+      sql`lower(${table.name})`,
+    ),
   ],
 );
 

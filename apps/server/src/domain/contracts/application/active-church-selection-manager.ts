@@ -13,6 +13,10 @@ export interface ChurchSelectionOption {
   timezone: string;
   accessLevel: ChurchAccessLevel;
   availableAreas: ApplicationArea[];
+  /** Public URL of the Church logo, or null when it has none (the app shows the platform logo then). */
+  logoUrl: string | null;
+  /** Travels for other channels; the app never renders it. */
+  accentColor: string | null;
   lastOpenedAt: Date | null;
 }
 

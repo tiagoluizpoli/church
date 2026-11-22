@@ -25,6 +25,9 @@ function createManager(): DbActiveChurchSelectionManager {
     authorityManager: authorityManager as never,
     activeChurchResolver: activeChurchResolver as never,
     churchRepository: churchRepository as never,
+    objectStorage: {
+      publicUrl: ({ key }: { key: string }) => `https://files.test/${key}`,
+    },
   });
 }
 
@@ -41,6 +44,8 @@ describe('DbActiveChurchSelectionManager', () => {
           accessLevel: 'admin',
           churchName: 'Church A',
           timezone: 'America/Sao_Paulo',
+          logoKey: 'public/churches/chu_a/logo/abc.png',
+          accentColor: '#0f766e',
           lastOpenedAt: new Date('2026-07-01T00:00:00.000Z'),
         },
         {
@@ -48,6 +53,8 @@ describe('DbActiveChurchSelectionManager', () => {
           accessLevel: 'member',
           churchName: 'Church B',
           timezone: 'UTC',
+          logoKey: null,
+          accentColor: null,
           lastOpenedAt: null,
         },
       ]);
@@ -65,6 +72,8 @@ describe('DbActiveChurchSelectionManager', () => {
           timezone: 'America/Sao_Paulo',
           accessLevel: 'admin',
           availableAreas: ['dashboard', 'scheduling'],
+          logoUrl: 'https://files.test/public/churches/chu_a/logo/abc.png',
+          accentColor: '#0f766e',
           lastOpenedAt: new Date('2026-07-01T00:00:00.000Z'),
         },
         {
@@ -73,6 +82,8 @@ describe('DbActiveChurchSelectionManager', () => {
           timezone: 'UTC',
           accessLevel: 'member',
           availableAreas: ['dashboard'],
+          logoUrl: null,
+          accentColor: null,
           lastOpenedAt: null,
         },
       ]);

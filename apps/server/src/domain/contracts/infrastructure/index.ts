@@ -19,6 +19,7 @@ export * from './ministry-invitation.repository';
 export * from './ministry-membership.repository';
 export * from './ministry-participation.repository';
 export * from './notification.repository';
+export * from './object-storage';
 export * from './outbox.repository';
 export * from './people-list.repository';
 export * from './planning-event.repository';

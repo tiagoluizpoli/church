@@ -55,10 +55,15 @@ export function createAuth({
       sendResetPassword,
       revokeSessionsOnPasswordReset,
     },
-    // Public registration and Church Access Level changes are deliberately
-    // unavailable. Redemption and app-managed access changes use trusted
-    // server APIs, which do not traverse these HTTP routes.
-    disabledPaths: ['/sign-up/email', '/organization/update-member-role'],
+    // Public registration, Church Access Level changes and Church identity
+    // updates are deliberately unavailable. Redemption, app-managed access
+    // changes and Church Settings use trusted server APIs, which do not
+    // traverse these HTTP routes.
+    disabledPaths: [
+      '/sign-up/email',
+      '/organization/update-member-role',
+      '/organization/update',
+    ],
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {

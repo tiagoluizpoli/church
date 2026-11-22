@@ -3,7 +3,7 @@ import {
   detectDevice,
   directionsLink,
   formatAddress,
-} from '@/features/church-settings/directions';
+} from '@/shared/utils/directions';
 
 const address = {
   label: 'Templo',

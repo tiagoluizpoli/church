@@ -1,7 +1,6 @@
 import { SOCIAL_NETWORKS } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { accentTextColor } from '@/features/church-settings/accent-text-color';
@@ -22,11 +21,8 @@ import {
   moveGroup,
   renameGroup,
 } from '@/features/church-settings/contact-groups';
-import {
-  detectDevice,
-  directionsLink,
-  formatAddress,
-} from '@/features/church-settings/directions';
+import { AddressActions } from '@/shared/components/address-actions';
+import { formatAddress } from '@/shared/utils/directions';
 
 interface ChurchPreviewProps {
   form: ChurchSettingsForm;
@@ -172,38 +168,6 @@ function LogoTile({ logoUrl, dark }: LogoTileProps) {
         {label}
       </figcaption>
     </figure>
-  );
-}
-
-interface AddressActionsProps {
-  address: ChurchSettingsForm['addresses'][number];
-}
-
-/** *Como chegar* for the visitor's device and *Copiar endereço*. */
-function AddressActions({ address }: AddressActionsProps) {
-  const copy = async () => {
-    await navigator.clipboard.writeText(formatAddress({ address }));
-    toast.success(m.church_settings_preview_address_copied());
-  };
-  return (
-    <div className="flex flex-wrap gap-3">
-      <a
-        href={directionsLink({
-          address,
-          device: detectDevice({ userAgent: navigator.userAgent }),
-        })}
-        className="font-medium text-primary underline-offset-4 hover:underline"
-      >
-        {m.church_settings_preview_directions()}
-      </a>
-      <button
-        type="button"
-        onClick={copy}
-        className="font-medium text-primary underline-offset-4 hover:underline"
-      >
-        {m.church_settings_preview_copy_address()}
-      </button>
-    </div>
   );
 }
 

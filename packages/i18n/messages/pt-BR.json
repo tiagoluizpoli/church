@@ -2074,6 +2074,7 @@
   "church_settings_address_move_up": "Subir {name}",
   "church_settings_address_move_down": "Descer {name}",
   "church_settings_address_edit": "Editar {name}",
+  "address_copy_failed": "Não foi possível copiar. Endereço: {address}",
   "church_settings_address_usage_failed": "Não foi possível ver onde este endereço é usado. Tente de novo.",
   "church_settings_address_in_use_title": "Excluir {name}?",
   "church_settings_address_in_use_description": "Estes itens ainda usam este endereço. Escolha o que ocupa o lugar dele; a troca é salva junto com o resto.",

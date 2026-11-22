@@ -1,11 +1,7 @@
 import { m } from '@church/i18n/messages';
-import { toast } from 'sonner';
-import {
-  detectDevice,
-  directionsLink,
-  formatAddress,
-} from '@/features/church-settings/directions';
 import type { GetPublicChurchProfile200AddressesItem } from '@/infrastructure/api/churchAPI.schemas';
+import { AddressActions } from '@/shared/components/address-actions';
+import { formatAddress } from '@/shared/utils/directions';
 
 type PublicAddress = GetPublicChurchProfile200AddressesItem;
 
@@ -49,7 +45,7 @@ export function PublicAddressesSection({
             <p className="text-muted-foreground">
               {formatAddress({ address })}
             </p>
-            <AddressActions address={address} />
+            <AddressActions address={address} className="mt-1" />
           </li>
         ))}
       </ul>
@@ -67,35 +63,4 @@ function mapSrc({ address, key }: MapSrcInput): string {
     ? `place_id:${address.placeId}`
     : encodeURIComponent(formatAddress({ address }));
   return `${MAPS_EMBED_URL}?key=${encodeURIComponent(key)}&q=${query}`;
-}
-
-interface AddressActionsProps {
-  address: PublicAddress;
-}
-
-function AddressActions({ address }: AddressActionsProps) {
-  const copy = async () => {
-    await navigator.clipboard.writeText(formatAddress({ address }));
-    toast.success(m.church_settings_preview_address_copied());
-  };
-  return (
-    <div className="mt-1 flex flex-wrap gap-3">
-      <a
-        href={directionsLink({
-          address,
-          device: detectDevice({ userAgent: navigator.userAgent }),
-        })}
-        className="font-medium text-primary underline-offset-4 hover:underline"
-      >
-        {m.church_settings_preview_directions()}
-      </a>
-      <button
-        type="button"
-        onClick={copy}
-        className="font-medium text-primary underline-offset-4 hover:underline"
-      >
-        {m.church_settings_preview_copy_address()}
-      </button>
-    </div>
-  );
 }

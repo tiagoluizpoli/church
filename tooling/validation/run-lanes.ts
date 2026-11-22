@@ -33,7 +33,20 @@ interface RunLanesInput {
 interface RunStagesInput extends RunLanesInput {
   /** Steps that run in order only after every lane step has passed. */
   finalSteps: LaneStep[];
+  /** Steps that run in order before any lane starts. */
+  setupSteps?: LaneStep[];
 }
+
+/**
+ * The gate's lanes import the compiled messages while @church/i18n's own
+ * typecheck/test:unit recompile them, and a checkout or merge never
+ * recompiles them — so compile once, before the lanes split.
+ */
+export const I18N_COMPILE_STEP: LaneStep = {
+  args: ['turbo', 'compile', '--filter', '@church/i18n'],
+  command: 'bunx',
+  label: 'i18n:compile',
+};
 
 interface RunStepInput {
   cwd: string;
@@ -238,19 +251,25 @@ export function hasFailure({ results }: HasFailureInput): boolean {
  */
 export async function runStages({
   finalSteps,
+  setupSteps = [],
   ...lanesInput
 }: RunStagesInput): Promise<StepResult[]> {
-  const laneResults = await runLanes(lanesInput);
-  if (hasFailure({ results: laneResults })) {
+  const skip = (steps: LaneStep[]): StepResult[] =>
+    steps.map((step) => ({ label: step.label, ms: 0, status: 'skipped' }));
+  const setupResults = await runLanes({ ...lanesInput, lanes: [setupSteps] });
+  if (hasFailure({ results: setupResults })) {
     return [
-      ...laneResults,
-      ...finalSteps.map(
-        (step): StepResult => ({ label: step.label, ms: 0, status: 'skipped' }),
-      ),
+      ...setupResults,
+      ...skip(lanesInput.lanes.flat()),
+      ...skip(finalSteps),
     ];
   }
+  const laneResults = await runLanes(lanesInput);
+  if (hasFailure({ results: laneResults })) {
+    return [...setupResults, ...laneResults, ...skip(finalSteps)];
+  }
   const finalResults = await runLanes({ ...lanesInput, lanes: [finalSteps] });
-  return [...laneResults, ...finalResults];
+  return [...setupResults, ...laneResults, ...finalResults];
 }
 
 export function formatStepTable({ results }: FormatStepTableInput): string {

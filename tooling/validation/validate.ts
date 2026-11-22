@@ -1,6 +1,7 @@
 import {
   formatStepTable,
   hasFailure,
+  I18N_COMPILE_STEP,
   type LaneStep,
   runStages,
 } from './run-lanes';
@@ -24,6 +25,8 @@ export const INTEGRATION_LANE: LaneStep[] = [
   },
 ];
 
+export const VALIDATE_SETUP_STEPS: LaneStep[] = [I18N_COMPILE_STEP];
+
 export const E2E_STEPS: LaneStep[] = [
   { args: ['run', 'test:e2e'], command: 'bun', label: 'test:e2e' },
 ];
@@ -35,6 +38,7 @@ if (import.meta.main) {
     results = await runStages({
       finalSteps: E2E_STEPS,
       lanes: [LINT_TYPECHECK_UNIT_LANE, INTEGRATION_LANE],
+      setupSteps: VALIDATE_SETUP_STEPS,
     });
   } finally {
     lock.release();

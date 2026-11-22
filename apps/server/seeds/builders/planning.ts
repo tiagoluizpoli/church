@@ -26,6 +26,8 @@ export interface SeedTemplateTimeBlock {
   endTime: TimeOfDay;
   /** Position in the template; defaults to the block's index. */
   order?: number;
+  isPublic?: boolean;
+  place?: string;
 }
 
 export interface BuildEventTemplateInput {
@@ -74,6 +76,8 @@ export async function buildEventTemplate({
               startTime: block.startTime,
               endTime: block.endTime,
               order: block.order ?? index,
+              isPublic: block.isPublic,
+              place: block.place,
             })),
           )
           .returning();

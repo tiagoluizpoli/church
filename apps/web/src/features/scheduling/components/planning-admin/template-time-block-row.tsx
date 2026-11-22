@@ -6,6 +6,8 @@ import { TimeOfDayField } from '@/components/time-of-day-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
 interface LabelChangeInput {
   blockKey: string;
@@ -19,7 +21,23 @@ interface TimeChangeInput {
   value: TimeOfDay;
 }
 
-type BlockChangeInput = LabelChangeInput | TimeChangeInput;
+interface PlaceChangeInput {
+  blockKey: string;
+  field: 'place';
+  value: string;
+}
+
+interface PublicChangeInput {
+  blockKey: string;
+  field: 'isPublic';
+  value: boolean;
+}
+
+type BlockChangeInput =
+  | LabelChangeInput
+  | TimeChangeInput
+  | PlaceChangeInput
+  | PublicChangeInput;
 
 interface RemoveBlockInput {
   blockKey: string;
@@ -46,6 +64,8 @@ export function TemplateTimeBlockRow({
   onBlockChange,
   onRemoveBlock,
 }: TemplateTimeBlockRowProps) {
+  // Publico and place are a ChurchAdmin decision (ADR 0009); leaders edit the rest.
+  const { isChurchAdmin } = useCallerCapabilities();
   return (
     <div
       className="surface-subtle workspace-panel space-y-2"
@@ -131,6 +151,50 @@ export function TemplateTimeBlockRow({
           />
         </div>
       </div>
+      {isChurchAdmin ? (
+        <div
+          className="grid gap-3 sm:grid-cols-2"
+          data-testid="template-time-block-public-fields"
+        >
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`${block.key}-public`}
+              aria-labelledby={`${block.key}-public-label`}
+              data-testid="template-time-block-public-switch"
+              checked={block.isPublic}
+              onCheckedChange={(checked) =>
+                onBlockChange({
+                  blockKey: block.key,
+                  field: 'isPublic',
+                  value: checked,
+                })
+              }
+            />
+            <Label id={`${block.key}-public-label`}>
+              {m.event_templates_block_public()}
+            </Label>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`${block.key}-place`}>
+              {m.event_templates_block_place()}
+            </Label>
+            <Input
+              id={`${block.key}-place`}
+              data-testid="template-time-block-place-input"
+              maxLength={120}
+              value={block.place}
+              onChange={(event) =>
+                onBlockChange({
+                  blockKey: block.key,
+                  field: 'place',
+                  value: event.target.value,
+                })
+              }
+              placeholder={m.event_templates_block_place_placeholder()}
+            />
+          </div>
+        </div>
+      ) : null}
       {timeError ? (
         <p
           className="text-destructive text-xs"

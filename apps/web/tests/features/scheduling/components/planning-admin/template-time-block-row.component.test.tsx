@@ -16,7 +16,14 @@ const initialBlock: TemplateTimeBlockDraft = {
   label: 'Welcome',
   startTime: parseTimeOfDay({ value: '09:00' }),
   endTime: parseTimeOfDay({ value: '09:30' }),
+  isPublic: false,
+  place: '',
 };
+
+const capabilities = vi.hoisted(() => ({ isChurchAdmin: false }));
+vi.mock('@/shared/hooks/use-caller-capabilities', () => ({
+  useCallerCapabilities: () => capabilities,
+}));
 
 interface HarnessProps {
   onBlockChange: TemplateTimeBlockRowProps['onBlockChange'];
@@ -44,6 +51,54 @@ function Harness({ onBlockChange }: HarnessProps) {
     />
   );
 }
+
+describe('TemplateTimeBlockRow Publico and place', () => {
+  function renderRow(onBlockChange = vi.fn()) {
+    renderWithProviders(
+      <TemplateTimeBlockRow
+        block={initialBlock}
+        index={0}
+        totalBlocks={1}
+        onBlockChange={onBlockChange}
+        onRemoveBlock={vi.fn()}
+      />,
+    );
+    return onBlockChange;
+  }
+
+  it('hides the controls from a non-admin', () => {
+    capabilities.isChurchAdmin = false;
+    renderRow();
+
+    expect(
+      screen.queryByTestId('template-time-block-public-switch'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('template-time-block-place-input'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('template-time-block-label-input')).toBeVisible();
+  });
+
+  it('lets a ChurchAdmin toggle Publico and type a place', async () => {
+    capabilities.isChurchAdmin = true;
+    const user = userEvent.setup();
+    const onBlockChange = renderRow();
+
+    await user.click(screen.getByTestId('template-time-block-public-switch'));
+    await user.type(screen.getByTestId('template-time-block-place-input'), 'A');
+
+    expect(onBlockChange).toHaveBeenCalledWith({
+      blockKey: 'block-1',
+      field: 'isPublic',
+      value: true,
+    });
+    expect(onBlockChange).toHaveBeenLastCalledWith({
+      blockKey: 'block-1',
+      field: 'place',
+      value: 'A',
+    });
+  });
+});
 
 describe('TemplateTimeBlockRow', () => {
   it('drives the start time field and reports a branded TimeOfDay', async () => {

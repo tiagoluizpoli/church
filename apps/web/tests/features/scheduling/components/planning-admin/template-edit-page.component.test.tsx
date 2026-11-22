@@ -65,6 +65,8 @@ const template = {
       startTime: '09:00',
       endTime: '10:00',
       order: 0,
+      isPublic: false,
+      place: null,
     },
     {
       id: 'block-vigil',
@@ -74,6 +76,8 @@ const template = {
       startTime: '22:00',
       endTime: '01:00',
       order: 1,
+      isPublic: false,
+      place: null,
     },
   ],
 };
@@ -170,12 +174,16 @@ describe('TemplateEditPage', () => {
           label: 'Welcome',
           startTime: '09:00',
           endTime: '10:00',
+          isPublic: false,
+          place: '',
         },
         {
           id: 'block-vigil',
           label: 'Vigil',
           startTime: '22:00',
           endTime: '01:00',
+          isPublic: false,
+          place: '',
         },
       ],
     });
@@ -261,6 +269,8 @@ describe('TemplateEditPage', () => {
         label: 'Welcome',
         startTime: '09:00',
         endTime: '10:00',
+        isPublic: false,
+        place: '',
       },
     ]);
   });

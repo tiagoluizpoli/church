@@ -41,6 +41,8 @@ export interface GenerateCycleEventsInput {
 export interface GeneratedCycleEventTimeBlockPlan {
   sourceTemplateTimeBlockId: TemplateTimeBlockId;
   label: string;
+  isPublic: boolean;
+  place?: string;
   startTime: Instant;
   endTime: Instant;
 }
@@ -120,6 +122,8 @@ export class CycleEventGenerator {
           .map((block) => ({
             sourceTemplateTimeBlockId: block.id as TemplateTimeBlockId,
             label: block.label,
+            isPublic: block.isPublic,
+            place: block.place,
             ...buildEventTimeBlockBounds({
               date: eventDate,
               startTime: block.startTime,

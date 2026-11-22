@@ -20,6 +20,8 @@ export interface TemplateTimeBlockDraft {
   label: string;
   startTime: TimeOfDay | null;
   endTime: TimeOfDay | null;
+  isPublic: boolean;
+  place: string;
 }
 
 export interface TemplateFormState {

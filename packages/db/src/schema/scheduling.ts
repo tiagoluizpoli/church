@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   index,
   integer,
@@ -82,6 +83,9 @@ export const eventTimeBlock = pgTable(
       mode: 'date',
     }).notNull(),
     label: varchar('label', { length: 255 }),
+    // Copied from the source TemplateTimeBlock on apply; independent afterwards.
+    isPublic: boolean('is_public').default(false).notNull(),
+    place: varchar('place', { length: 120 }),
     // Cancelling one block; its Shifts are cancelled through it (no Shift status).
     status: eventTimeBlockStatusEnum('status').default('active').notNull(),
     createdAt: timestamp('created_at', {

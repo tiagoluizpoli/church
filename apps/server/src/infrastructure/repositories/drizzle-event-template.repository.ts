@@ -122,6 +122,8 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
           startTime: block.startTime,
           endTime: block.endTime,
           order: block.order,
+          isPublic: block.isPublic,
+          place: block.place,
         })),
       );
     }
@@ -217,6 +219,8 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
           startTime: block.startTime,
           endTime: block.endTime,
           order: block.order,
+          isPublic: block.isPublic,
+          place: block.place,
         })
         .where(eq(templateTimeBlock.id, block.id));
     }
@@ -231,6 +235,8 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
           startTime: block.startTime,
           endTime: block.endTime,
           order: block.order,
+          isPublic: block.isPublic,
+          place: block.place,
         })),
       );
     }

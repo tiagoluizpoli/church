@@ -42,11 +42,22 @@ function GroupSelect({
   value: string | null;
   onChange: (groupId: string | null) => void;
 }) {
+  const NEW = '__new__';
   return (
     <select
       className="h-9 w-36 shrink-0 rounded-md border bg-transparent px-2 text-sm"
       value={value ?? ''}
-      onChange={(e) => onChange(e.target.value || null)}
+      onChange={(e) => {
+        if (e.target.value !== NEW) return onChange(e.target.value || null);
+        // Creating a group from the row itself, so nobody has to find the Groups section first.
+        const name = window
+          .prompt('Nome do novo grupo (ex.: Pastor Marcos)')
+          ?.trim();
+        if (!name) return;
+        const id = newId();
+        c.setForm((f) => ({ ...f, groups: [...f.groups, { id, name }] }));
+        onChange(id);
+      }}
       aria-label="Grupo"
     >
       <option value="">{CHURCH}</option>
@@ -55,6 +66,7 @@ function GroupSelect({
           {g.name}
         </option>
       ))}
+      <option value={NEW}>+ Novo grupo…</option>
     </select>
   );
 }

@@ -226,10 +226,10 @@ export function LogoMark({
   size = 'md',
 }: {
   c: SettingsController;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
 }) {
   const accent = c.form.accent ?? '#1d4ed8';
-  const box = size === 'sm' ? 'h-10 w-24' : 'h-20 w-40';
+  const box = { sm: 'h-10 w-24', md: 'h-20 w-40', lg: 'h-28 w-full' }[size];
   if (c.logo && c.logo !== 'demo') {
     return <img src={c.logo} alt="" className={cn(box, 'object-contain')} />;
   }
@@ -260,10 +260,10 @@ export function LogoMark({
 
 export function LogoControl({
   c,
-  compact = false,
+  stacked = false,
 }: {
   c: SettingsController;
-  compact?: boolean;
+  stacked?: boolean;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [error, setError] = React.useState<string>();
@@ -280,21 +280,63 @@ export function LogoControl({
     setError(undefined);
     c.setLogo(URL.createObjectURL(file));
   };
+  const pick = () => inputRef.current?.click();
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="image/png,image/jpeg,image/webp"
+      className="hidden"
+      onChange={(e) => onFile(e.target.files?.[0])}
+    />
+  );
+  if (stacked) {
+    // Vertical card: image on top, actions side by side underneath.
+    return (
+      <div className="flex h-full flex-col gap-3">
+        <button
+          type="button"
+          onClick={pick}
+          aria-label={c.logo ? 'Trocar logo' : 'Enviar logo'}
+          className="flex items-center justify-center rounded-lg border bg-muted/40 p-3 transition hover:bg-muted"
+        >
+          <LogoMark c={c} size="lg" />
+        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={pick}
+            className={c.logo ? '' : 'col-span-2'}
+          >
+            <ImageUp /> {c.logo ? 'Trocar' : 'Enviar logo'}
+          </Button>
+          {c.logo ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => c.setLogo(null)}
+            >
+              <Trash2 /> Remover
+            </Button>
+          ) : null}
+        </div>
+        <p className="text-muted-foreground text-xs">
+          PNG, JPEG ou WebP, até 5 MB. Salvo na hora.
+        </p>
+        <FieldError message={error} />
+        {fileInput}
+      </div>
+    );
+  }
   return (
-    <div
-      className={cn(
-        'flex gap-4',
-        compact ? 'items-center' : 'flex-col sm:flex-row sm:items-center',
-      )}
-    >
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
       <LogoMark c={c} />
       <div className="space-y-2">
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => inputRef.current?.click()}
-          >
+          <Button variant="outline" type="button" onClick={pick}>
             <ImageUp /> {c.logo ? 'Trocar logo' : 'Enviar logo'}
           </Button>
           {c.logo ? (
@@ -311,13 +353,7 @@ export function LogoControl({
           PNG, JPEG ou WebP, até 5 MB. Aplicado na hora, sem precisar salvar.
         </p>
         <FieldError message={error} />
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          className="hidden"
-          onChange={(e) => onFile(e.target.files?.[0])}
-        />
+        {fileInput}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 // PROTOTYPE, throwaway (wayfinder #980, round 2): variant C, the chosen base, with the user's first-pass feedback:
-// A's save bar, informational header, logo card beside Informações, all sections open + expand/collapse all,
+// A's save bar, informational header, logo card on the left inside Informações, groups explained above the lists, all sections open + expand/collapse all,
 // groups shared by contacts and links (and grouped together in the preview), preview in a drawer on small screens.
 import {
   AlertCircle,
@@ -340,29 +340,34 @@ export function VariantC({ c }: { c: SettingsController }) {
               {allOpen ? 'Recolher tudo' : 'Expandir tudo'}
             </Button>
           </div>
-          <div className="grid items-start gap-3 xl:grid-cols-[1fr_16rem]">
-            <SectionCard
-              title="Informações"
-              summary={`${f.name} · ${f.slug}`}
-              errors={count.info}
-              open={open.info}
-              onToggle={() => toggle('info')}
-            >
-              <div className="grid gap-4 2xl:grid-cols-2">
-                <NameField c={c} />
-                <SlugField c={c} />
-                <WebsiteField c={c} />
+          <SectionCard
+            title="Informações"
+            summary={`${f.name} · ${f.slug}`}
+            errors={count.info}
+            open={open.info}
+            onToggle={() => toggle('info')}
+          >
+            <div className="grid gap-5 md:grid-cols-[13rem_1fr]">
+              <LogoControl c={c} stacked />
+              <div className="min-w-0 space-y-4">
+                <div className="grid gap-4 2xl:grid-cols-2">
+                  <NameField c={c} />
+                  <SlugField c={c} />
+                  <WebsiteField c={c} />
+                </div>
+                <AccentPicker c={c} />
               </div>
-              <AccentPicker c={c} />
-            </SectionCard>
-            <section className="surface-panel space-y-3 p-4">
-              <div>
-                <h2 className="font-semibold">Logo</h2>
-                <p className="text-muted-foreground text-sm">Salvo na hora.</p>
-              </div>
-              <LogoControl c={c} />
-            </section>
-          </div>
+            </div>
+          </SectionCard>
+          <SectionCard
+            title="Grupos de contato"
+            summary="Juntam os contatos e as redes de uma pessoa ou ministério. O que não está em um grupo é da igreja e aparece primeiro."
+            errors={0}
+            open={open.groups}
+            onToggle={() => toggle('groups')}
+          >
+            <GroupsEditor c={c} />
+          </SectionCard>
           <SectionCard
             title="Contatos"
             summary={
@@ -388,19 +393,6 @@ export function VariantC({ c }: { c: SettingsController }) {
             onToggle={() => toggle('links')}
           >
             <GroupedLinksEditor c={c} />
-          </SectionCard>
-          <SectionCard
-            title="Grupos"
-            summary={
-              f.groups.length
-                ? f.groups.map((g) => g.name).join(' · ')
-                : 'Junte contatos e redes de uma pessoa ou ministério'
-            }
-            errors={0}
-            open={open.groups}
-            onToggle={() => toggle('groups')}
-          >
-            <GroupsEditor c={c} />
           </SectionCard>
           <SectionCard
             title="Dados jurídicos"

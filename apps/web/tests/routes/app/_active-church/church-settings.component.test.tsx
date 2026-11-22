@@ -70,6 +70,7 @@ const SAVED: GetChurchSettings200 = {
   website: 'https://igreja-semente.test',
   accentColor: '#0f766e',
   addresses: [],
+  socialLinks: [],
   logoKey: null,
   logoUrl: null,
   publicOrigin: 'https://app.church.test',
@@ -207,6 +208,7 @@ describe('Church Settings screen', () => {
         website: 'https://igreja-semente.test',
         accentColor: '#0f766e',
         addresses: [],
+        socialLinks: [],
       }),
     );
     expect(toastSuccess).toHaveBeenCalledWith(m.church_settings_saved());
@@ -229,6 +231,7 @@ describe('Church Settings screen', () => {
         website: 'https://igreja-semente.test',
         accentColor: null,
         addresses: [],
+        socialLinks: [],
       }),
     );
   });
@@ -586,6 +589,7 @@ describe('Church Settings screen', () => {
           website: 'https://igreja-semente.test',
           accentColor: '#0f766e',
           addresses: [],
+          socialLinks: [],
           slug: 'esperanca',
         }),
       );
@@ -974,6 +978,210 @@ describe('Church Settings addresses', () => {
       within(await screen.findByRole('dialog')).getByText(
         'O CEP deve ter 8 dígitos.',
       ),
+    ).toBeInTheDocument();
+  });
+});
+
+const SOCIAL_PRELOADED = [
+  {
+    url: 'https://instagram.com/semente',
+    network: 'instagram',
+    description: null,
+  },
+  {
+    url: 'https://youtube.com/@semente',
+    network: 'youtube',
+    description: 'Cultos',
+  },
+] as const;
+
+async function addNetwork(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+) {
+  await user.click(
+    await screen.findByRole('button', { name: m.church_settings_social_add() }),
+  );
+  await user.click(await screen.findByRole('menuitem', { name: label }));
+}
+
+describe('Church Settings social links', () => {
+  it('shows a dashed empty state and, from the network menu, pre-fills the address start', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    expect(
+      await screen.findByText(m.church_settings_social_empty()),
+    ).toBeInTheDocument();
+
+    await addNetwork(user, 'Instagram');
+
+    expect(screen.getByRole('textbox', { name: 'Link 1' })).toHaveValue(
+      'https://instagram.com/',
+    );
+    expect(screen.getByRole('combobox', { name: 'Rede 1' })).toHaveTextContent(
+      'Instagram',
+    );
+    expect(saveBar()).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: 'Link 1' }), 'semente');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          socialLinks: [
+            { url: 'https://instagram.com/semente', description: '' },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('keeps the row selector in agreement with the typed URL, and "Colar um link…" starts empty', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await screen.findByText(m.church_settings_social_empty());
+
+    await addNetwork(user, m.church_settings_social_paste());
+    const url = screen.getByRole('textbox', { name: 'Link 1' });
+    const network = screen.getByRole('combobox', { name: 'Rede 1' });
+    expect(url).toHaveValue('');
+    expect(network).toHaveTextContent(
+      m.church_settings_social_network_unknown(),
+    );
+
+    await user.type(url, 'https://t.me/semente');
+    expect(network).toHaveTextContent('Telegram');
+    await user.clear(url);
+    await user.type(url, 'https://example.com/x');
+    expect(network).toHaveTextContent(
+      m.church_settings_social_network_unknown(),
+    );
+    await user.clear(url);
+    await user.type(url, 'https://chat.whatsapp.com/abc');
+    expect(network).toHaveTextContent('Grupo do WhatsApp');
+  });
+
+  it('allows several links on one network with descriptions, and counts them as public', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await screen.findByText(m.church_settings_social_empty());
+
+    await addNetwork(user, 'YouTube');
+    await addNetwork(user, 'YouTube');
+    await user.type(screen.getByRole('textbox', { name: 'Link 1' }), 'igreja');
+    await user.type(screen.getByRole('textbox', { name: 'Link 2' }), 'pastor');
+    await user.type(
+      screen.getByRole('textbox', { name: 'Descrição 2' }),
+      'Canal do pastor',
+    );
+
+    expect(
+      screen.getByTestId('church-settings-public-count'),
+    ).toHaveTextContent('5');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          socialLinks: [
+            { url: 'https://youtube.com/@igreja', description: '' },
+            {
+              url: 'https://youtube.com/@pastor',
+              description: 'Canal do pastor',
+            },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('reorders and deletes with accessible move controls', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      socialLinks: SOCIAL_PRELOADED,
+    });
+    renderSettings();
+    await nameField();
+
+    expect(
+      screen.getByRole('button', {
+        name: m.church_settings_social_move_up({ name: 'Instagram' }),
+      }),
+    ).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_social_move_down({ name: 'Instagram' }),
+      }),
+    );
+    expect(
+      screen
+        .getAllByRole('textbox', { name: /^Link \d$/ })
+        .map((i) => (i as HTMLInputElement).value),
+    ).toEqual([
+      'https://youtube.com/@semente',
+      'https://instagram.com/semente',
+    ]);
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_social_delete({ name: 'YouTube' }),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          socialLinks: [
+            { url: 'https://instagram.com/semente', description: '' },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('shows the unsupported-network and wa.me refusals on their rows, counts them and clears on edit', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      socialLinks: SOCIAL_PRELOADED,
+    });
+    updateChurchSettings.mockRejectedValue(
+      refusedSave([
+        {
+          field: 'socialLinks.0.url',
+          code: 'SOCIAL_LINK_UNSUPPORTED',
+          message: 'Rede não suportada, fale com o suporte.',
+        },
+        {
+          field: 'socialLinks.1.url',
+          code: 'SOCIAL_LINK_USE_CONTACT',
+          message:
+            'Links wa.me são números de telefone: adicione como Contato.',
+        },
+      ]),
+    );
+    renderSettings();
+    await nameField();
+    await user.type(screen.getByRole('textbox', { name: 'Descrição 1' }), ' x');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    expect(
+      await screen.findByText('Rede não suportada, fale com o suporte.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Links wa.me são números de telefone: adicione como Contato.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(m.church_settings_section_errors_many({ count: 2 })),
     ).toBeInTheDocument();
   });
 });

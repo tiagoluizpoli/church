@@ -5806,6 +5806,38 @@ paths:
                         - pinSource
                         - placeId
                       additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -5820,6 +5852,7 @@ paths:
                   - website
                   - accentColor
                   - addresses
+                  - socialLinks
                   - logoKey
                   - logoUrl
                   - publicOrigin
@@ -6006,11 +6039,32 @@ paths:
                     Country is always BR; number is "s/n" without a number; a
                     `placeId` is dropped when street, number or city change from
                     the stored pick.
+                socialLinks:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                      description:
+                        nullable: true
+                        type: string
+                    required:
+                      - url
+                  description: "Every Social Link in display order; the whole list replaces the
+                    stored one. Only `url` and `description` are sent: the
+                    network is detected from the URL. Supported: Instagram,
+                    YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram,
+                    WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer
+                    and Kwai; a wa.me link is refused (add it as a Contact).
+                    Always public."
               required:
                 - name
                 - website
                 - accentColor
                 - addresses
+                - socialLinks
       responses:
         "200":
           description: Default Response
@@ -6125,6 +6179,38 @@ paths:
                         - pinSource
                         - placeId
                       additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -6139,6 +6225,7 @@ paths:
                   - website
                   - accentColor
                   - addresses
+                  - socialLinks
                   - logoKey
                   - logoUrl
                   - publicOrigin
@@ -6223,6 +6310,10 @@ paths:
                             - ADDRESS_PIN_INVALID
                             - ADDRESS_MAIN_MULTIPLE
                             - ADDRESS_MAIN_REQUIRED
+                            - SOCIAL_LINK_INVALID
+                            - SOCIAL_LINK_UNSUPPORTED
+                            - SOCIAL_LINK_USE_CONTACT
+                            - SOCIAL_LINK_TOO_LONG
                             - CHURCH_SLUG_LENGTH
                             - CHURCH_SLUG_FORMAT
                             - CHURCH_SLUG_RESERVED
@@ -6455,6 +6546,38 @@ paths:
                         - pinSource
                         - placeId
                       additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -6469,6 +6592,7 @@ paths:
                   - website
                   - accentColor
                   - addresses
+                  - socialLinks
                   - logoKey
                   - logoUrl
                   - publicOrigin
@@ -6684,6 +6808,38 @@ paths:
                         - pinSource
                         - placeId
                       additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -6698,6 +6854,7 @@ paths:
                   - website
                   - accentColor
                   - addresses
+                  - socialLinks
                   - logoKey
                   - logoUrl
                   - publicOrigin
@@ -6881,6 +7038,38 @@ paths:
                         - pinSource
                         - placeId
                       additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -6895,6 +7084,7 @@ paths:
                   - website
                   - accentColor
                   - addresses
+                  - socialLinks
                   - logoKey
                   - logoUrl
                   - publicOrigin

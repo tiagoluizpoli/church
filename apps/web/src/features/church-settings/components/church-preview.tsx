@@ -1,6 +1,7 @@
 import { SOCIAL_NETWORKS } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
 import { ArrowDown, ArrowUp } from 'lucide-react';
+import { ChurchLogoTile } from '@/components/church-logo-tile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { accentTextColor } from '@/features/church-settings/accent-text-color';
@@ -74,14 +75,7 @@ export function ChurchPreview({
           <span className="flex h-10 w-24 shrink-0 items-center justify-center rounded-md bg-white p-1">
             <LogoImage logoUrl={logoUrl} className="h-full w-full" />
           </span>
-        ) : (
-          <span
-            aria-hidden
-            className="flex size-10 shrink-0 items-center justify-center rounded-md bg-background/90 font-semibold text-foreground"
-          >
-            {name.charAt(0).toUpperCase()}
-          </span>
-        )}
+        ) : null}
         <div className="min-w-0">
           {name ? <p className="truncate font-semibold">{name}</p> : null}
           {website ? (
@@ -132,8 +126,8 @@ export function ChurchPreview({
       ) : null}
       {logoUrl ? (
         <div className="grid grid-cols-2 gap-3 border-t p-4">
-          <LogoTile logoUrl={logoUrl} dark={false} />
-          <LogoTile logoUrl={logoUrl} dark />
+          <LogoTile name={name} logoUrl={logoUrl} dark={false} />
+          <LogoTile name={name} logoUrl={logoUrl} dark />
         </div>
       ) : null}
     </div>
@@ -141,12 +135,13 @@ export function ChurchPreview({
 }
 
 interface LogoTileProps {
+  name: string;
   logoUrl: string;
   dark: boolean;
 }
 
-/** The logo on the app's logo tile, painted as in light or dark mode. */
-function LogoTile({ logoUrl, dark }: LogoTileProps) {
+/** The app's own logo tile (near-white in both themes) on a light or a dark surface. */
+function LogoTile({ name, logoUrl, dark }: LogoTileProps) {
   const label = dark
     ? m.church_settings_preview_logo_dark()
     : m.church_settings_preview_logo_light();
@@ -159,10 +154,10 @@ function LogoTile({ logoUrl, dark }: LogoTileProps) {
         className={
           dark
             ? 'flex h-16 items-center justify-center rounded-md border border-neutral-700 bg-neutral-900 p-2'
-            : 'flex h-16 items-center justify-center rounded-md border bg-white p-2'
+            : 'flex h-16 items-center justify-center rounded-md border bg-sidebar p-2'
         }
       >
-        <LogoImage logoUrl={logoUrl} className="h-full w-full" />
+        <ChurchLogoTile name={name} logoUrl={logoUrl} size="desktop" />
       </div>
       <figcaption className="text-center text-muted-foreground text-xs">
         {label}

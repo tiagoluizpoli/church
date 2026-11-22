@@ -595,7 +595,7 @@ export function AppShell({
             <ChurchLogoTile
               name={churchName ?? ''}
               logoUrl={churchLogoUrl}
-              size="desktop"
+              size="collapsed"
               className="mx-auto"
             />
           )}

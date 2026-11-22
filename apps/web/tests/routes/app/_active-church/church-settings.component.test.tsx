@@ -472,23 +472,40 @@ describe('Church Settings screen', () => {
       );
       expect(await nameField()).toHaveValue('Igreja Semente Viva');
       expect(saveBar()).toBeInTheDocument();
+      // The app's own tile, near-white in both themes, as the header shows it.
       for (const testId of [
         'church-preview-logo-light',
         'church-preview-logo-dark',
-        'church-preview-email-band',
       ]) {
-        const logo = within(screen.getByTestId(testId)).getByRole('img', {
-          name: m.church_settings_logo_alt(),
+        const frame = screen.getByTestId(testId);
+        const logo = within(frame).getByRole('img', {
+          name: 'Igreja Semente Viva',
         });
         expect(logo).toHaveAttribute('src', LOGO_URL);
-        expect(logo).toHaveClass('object-contain');
+        expect(within(frame).getByTestId('church-logo-tile')).toHaveClass(
+          'bg-white',
+        );
       }
+      const bandLogo = within(
+        screen.getByTestId('church-preview-email-band'),
+      ).getByRole('img', { name: m.church_settings_logo_alt() });
+      expect(bandLogo).toHaveAttribute('src', LOGO_URL);
+      expect(bandLogo).toHaveClass('object-contain');
       expect(
         screen.getByRole('button', { name: m.church_settings_logo_replace() }),
       ).toBeInTheDocument();
       expect(
         screen.getByTestId('church-settings-public-count'),
       ).toHaveTextContent('4');
+    });
+
+    it('shows the name alone in the email band of a Church without a logo', async () => {
+      renderSettings();
+      await nameField();
+
+      const band = screen.getByTestId('church-preview-email-band');
+      expect(within(band).queryByText('I')).not.toBeInTheDocument();
+      expect(within(band).getByText('Igreja Semente')).toBeInTheDocument();
     });
 
     it('marks the Active Church options stale after an upload so the header shows the new logo', async () => {

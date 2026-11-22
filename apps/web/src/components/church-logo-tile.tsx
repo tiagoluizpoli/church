@@ -6,7 +6,8 @@ export const PLATFORM_LOGO_SRC = '/logo.png';
 interface ChurchLogoTileProps {
   name: string;
   logoUrl: string | null;
-  size: 'desktop' | 'mobile';
+  /** `collapsed`: the 64 px sidebar, so a wide logo narrows instead of being cut off. */
+  size: 'desktop' | 'mobile' | 'collapsed';
   className?: string;
 }
 
@@ -32,11 +33,12 @@ export function ChurchLogoTile({
     >
       <img
         src={logoUrl ?? PLATFORM_LOGO_SRC}
-        // The name is written beside the tile, so the platform fallback adds nothing for a screen reader.
-        alt={logoUrl ? name : ''}
+        // The Church's name even on the platform fallback: the collapsed sidebar shows no name beside it.
+        alt={name}
         className={cn(
-          'w-auto max-w-32 object-contain',
-          size === 'desktop' ? 'h-8' : 'h-7',
+          'w-auto object-contain',
+          size === 'collapsed' ? 'max-w-9' : 'max-w-32',
+          size === 'mobile' ? 'h-7' : 'h-8',
         )}
       />
     </span>

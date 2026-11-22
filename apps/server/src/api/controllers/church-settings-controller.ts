@@ -21,6 +21,10 @@ import {
 } from '../dtos/church-settings.dto';
 import { refuse } from '../utils/refuse';
 
+interface SlugAvailabilityQuery {
+  slug: string;
+}
+
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
@@ -116,7 +120,7 @@ export class ChurchSettingsController implements FastifyController {
       async (request, reply) => {
         const status = await this.churchSettingsManager.getSlugAvailability({
           churchId: ChurchId.from(request.churchId),
-          slug: (request.query as { slug: string }).slug,
+          slug: (request.query as SlugAvailabilityQuery).slug,
         });
         return reply.send({ status });
       },

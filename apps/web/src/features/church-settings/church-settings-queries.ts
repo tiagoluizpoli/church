@@ -52,6 +52,10 @@ export function fieldErrorsOf({
   );
 }
 
-export function checkChurchSlug({ slug }: { slug: string }) {
+interface CheckChurchSlugInput {
+  slug: string;
+}
+
+export function checkChurchSlug({ slug }: CheckChurchSlugInput) {
   return churchSettingsApi.getChurchSlugAvailability({ slug });
 }

@@ -96,15 +96,17 @@ function isFieldCode(
 }
 
 /** The 422 body for one refused field. */
+interface ChurchSettingsFieldErrorInput {
+  field: string;
+  code: ChurchSettingsFieldCode;
+  locale: Locale;
+}
+
 export function churchSettingsFieldError({
   field,
   code,
   locale,
-}: {
-  field: string;
-  code: ChurchSettingsFieldCode;
-  locale: Locale;
-}): ChurchSettingsFieldError {
+}: ChurchSettingsFieldErrorInput): ChurchSettingsFieldError {
   return { field, code, message: FIELD_CODE_MESSAGES[code]({}, { locale }) };
 }
 

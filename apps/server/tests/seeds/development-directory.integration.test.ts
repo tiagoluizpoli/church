@@ -4,6 +4,7 @@ import {
   availabilityCheck,
   church,
   churchAddress,
+  churchSocialLink,
   cycle,
   event,
   eventTemplate,
@@ -272,6 +273,31 @@ describe('development seed recipe', () => {
         { id: seeded.secondChurch.id, website: null, accentColor: null },
       ]),
     );
+  });
+
+  it('gives the primary Church social links across networks, several on one, and the second none', async () => {
+    const rows = await testDb
+      .select()
+      .from(churchSocialLink)
+      .where(eq(churchSocialLink.churchId, seeded.church.id))
+      .orderBy(asc(churchSocialLink.position));
+
+    expect(rows.map((row) => row.network)).toEqual([
+      'instagram',
+      'youtube',
+      'youtube',
+      'facebook',
+      'telegram',
+      'whatsappChannel',
+      'spotify',
+    ]);
+    expect(rows[1]?.description).toBe('Cultos ao vivo');
+    expect(
+      await testDb
+        .select()
+        .from(churchSocialLink)
+        .where(eq(churchSocialLink.churchId, seeded.secondChurch.id)),
+    ).toEqual([]);
   });
 
   it('gives the primary Church a pinned Main Address, a labelled second and a private one', async () => {

@@ -20,6 +20,7 @@ import {
   buildChurchAddresses,
   buildChurchLogo,
   buildChurchSettings,
+  buildChurchSocialLinks,
   buildProvisionedChurch,
   redeemChurchInvitation,
 } from '../builders/church';
@@ -252,6 +253,11 @@ async function loadChurchDirectory({
     db,
     churchId: church.id,
     addresses: blueprint.church.addresses ?? [],
+  });
+  await buildChurchSocialLinks({
+    db,
+    churchId: church.id,
+    socialLinks: blueprint.church.socialLinks ?? [],
   });
   if (objectStorage && blueprint.church.logoSvg) {
     await buildChurchLogo({

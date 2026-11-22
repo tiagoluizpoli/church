@@ -266,6 +266,7 @@
   "email_invitation_serve_title": "Você foi convidado para servir em {ministryName}",
   "email_invitation_serve_body_inviter": "{inviterName} convidou você para servir em {ministryName} em {churchName}.",
   "email_invitation_roles": "Funções: {roles}",
+  "email_invitation_church_place": "{churchName} · {locality}",
   "email_invitation_expires": "Este convite expira em {expiresAt}.",
   "email_invitation_accept": "Aceitar convite",
   "email_availability_action": "Responder",

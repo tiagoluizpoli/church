@@ -1,4 +1,5 @@
 import type { ChurchId } from '../domain/branded-ids';
+import { formatChurchLocality } from '../domain/church-locality';
 import type {
   ActiveChurchResolution,
   IActiveChurchResolver,
@@ -41,6 +42,7 @@ function toSelectionOption({
       : null,
     accentColor: comparison.accentColor,
     lastOpenedAt: comparison.lastOpenedAt,
+    locality: formatChurchLocality(comparison.mainAddress),
   };
 }
 

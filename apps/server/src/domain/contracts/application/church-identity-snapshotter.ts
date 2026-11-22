@@ -7,6 +7,8 @@ export interface ChurchIdentitySnapshot {
   churchLogoUrl: string | null;
   /** `#rrggbb`; null without an accent. */
   churchAccent: string | null;
+  /** The Main Address's "bairro, city/UF"; absent without an address. */
+  churchLocality?: string;
 }
 
 export interface SnapshotChurchIdentityInput {

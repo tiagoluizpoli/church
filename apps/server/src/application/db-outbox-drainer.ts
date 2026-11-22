@@ -199,6 +199,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       churchName: church.name,
       churchLogoUrl: message.payload.churchLogoUrl,
       churchAccent: message.payload.churchAccent,
+      churchLocality: message.payload.churchLocality,
       expiresAt: fromDate({ date: offer.expiresAt }),
       churchTimezone: church.timezone,
       redemptionUrl: webLink({
@@ -272,6 +273,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       churchName: church.name,
       churchLogoUrl: message.payload.churchLogoUrl,
       churchAccent: message.payload.churchAccent,
+      churchLocality: message.payload.churchLocality,
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
@@ -305,6 +307,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     ministryInvitationId,
     churchLogoUrl,
     churchAccent,
+    churchLocality,
   }: LoadPendingInvitationFactsInput): Promise<MinistryInvitationDeliveryFacts | null> {
     const invitation = await this.invitationRepository.findById({
       churchId,
@@ -330,6 +333,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       churchName: church.name,
       churchLogoUrl,
       churchAccent,
+      churchLocality,
       churchTimezone: church.timezone,
       inviterName,
       ministryAccessLevel: invitation.ministryAccessLevel,
@@ -355,6 +359,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ministryInvitationId: request.data.ministryInvitationId,
           churchLogoUrl: request.data.churchLogoUrl,
           churchAccent: request.data.churchAccent,
+          churchLocality: request.data.churchLocality,
         });
       case 'availability_opened':
       case 'availability_reminder':
@@ -828,6 +833,7 @@ interface LoadPendingInvitationFactsInput {
   ministryInvitationId: string;
   churchLogoUrl?: string | null;
   churchAccent?: string | null;
+  churchLocality?: string;
 }
 
 interface LoadDeliveryFactsInput {

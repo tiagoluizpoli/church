@@ -769,6 +769,8 @@ describe('POST /admin/cycles/:cycleId/send', () => {
     const data = (ministryIds: string[]) => ({
       cycleId: target.id,
       ministryIds: [...ministryIds].sort(),
+      churchLogoUrl: null,
+      churchAccent: null,
     });
     expect(await queuedNotifications()).toEqual([
       {

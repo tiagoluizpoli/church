@@ -407,6 +407,8 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
       eventTitle: 'Sunday',
       start: at('09:00'),
       churchName: 'Scheduling Church A',
+      churchLogoUrl: null,
+      churchAccent: null,
       churchTimezone: 'America/Sao_Paulo',
       shifts: [
         {

@@ -503,7 +503,13 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
         (row) => row.ministryMembershipId === volunteer.membershipId,
       );
       const notice = queued.find(({ to }) => to.userId === volunteer.userId);
-      expect(notice?.data).toEqual({ cycleId, ministryId, checkId: check?.id });
+      expect(notice?.data).toEqual({
+        cycleId,
+        ministryId,
+        checkId: check?.id,
+        churchLogoUrl: null,
+        churchAccent: null,
+      });
     }
   });
 

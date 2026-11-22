@@ -58,6 +58,7 @@ import {
   CHURCH_OCTOBER_1_NOON,
   seedSentSunday,
 } from '@/tests/test-support/cancellation-fixture';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 
 const db = schedulingTestDb;
 const eventRepository = new DrizzlePlanningEventRepository({ db });
@@ -78,6 +79,7 @@ const managerDependencies = {
     volunteerRepository: new DrizzleVolunteerRepository({ db }),
   }),
   notifications: new ChurchNotifications({
+    churchIdentity: nullChurchIdentity,
     outboxRepository: new DrizzleOutboxRepository({ db }),
   }),
 };
@@ -472,6 +474,7 @@ function swapRequestManager(swapRequestRepo: DrizzleSwapRequestRepository) {
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
     }),
     notifications: new ChurchNotifications({
+      churchIdentity: nullChurchIdentity,
       outboxRepository: new DrizzleOutboxRepository({ db }),
     }),
     authorityManager: new DbAuthorityManager({

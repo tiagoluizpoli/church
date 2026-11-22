@@ -39,6 +39,9 @@ export const env = createEnv({
     /** Where the server reads the web's built `index.html` for the Public
      * Church Profile head; the web's alias on the deployed Compose network. */
     WEB_INTERNAL_URL: z.url().default('http://church-web:8080'),
+    /** Reverse proxies in front of the server whose X-Forwarded-For hop is
+     * trusted for `request.ip` (Dokploy's proxy → Caddy deployed: 2). */
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
     OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
     OUTBOX_DRAIN_BATCH_SIZE: z.coerce.number().int().min(1).default(10),
     NODE_ENV: z

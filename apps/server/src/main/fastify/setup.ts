@@ -132,7 +132,11 @@ export async function createFastify({
   const isProd = env.NODE_ENV === 'production';
 
   const logging = loggingOptions({ logStream, isTest, isProd });
-  const app = createFastifyInstance({ genReqId: requestId, ...logging });
+  const app = createFastifyInstance({
+    genReqId: requestId,
+    trustProxy: env.TRUST_PROXY_HOPS,
+    ...logging,
+  });
 
   // First, so its onRequest hook runs right after genReqId (see request-id.ts).
   await app.register(fastifyOtel.plugin());

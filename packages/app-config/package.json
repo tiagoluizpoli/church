@@ -6,6 +6,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./church-slug": {
+      "types": "./src/church-slug.ts",
+      "default": "./src/church-slug.ts"
     }
   },
   "scripts": {

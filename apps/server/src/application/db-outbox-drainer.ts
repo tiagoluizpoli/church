@@ -365,7 +365,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ...request.data,
           actionUrl: webLink({
             baseUrl: this.webBaseUrl,
-            path: '/my-schedule',
+            path: '/app/my-schedule',
           }),
         };
       case 'swap_request':
@@ -373,7 +373,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ...request.data,
           actionUrl: webLink({
             baseUrl: this.webBaseUrl,
-            path: `/schedules/${request.data.ministryId}/${request.data.cycleId}/assign?swapRequest=${request.data.swapRequestId}`,
+            path: `/app/schedules/${request.data.ministryId}/${request.data.cycleId}/assign?swapRequest=${request.data.swapRequestId}`,
           }),
         };
       case 'event_changed': {
@@ -381,8 +381,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         const [only, ...others] = ministries;
         const path =
           only && others.length === 0
-            ? `/schedules/${only.id}/${cycleId}`
-            : `/schedules?cycleId=${cycleId}&ministryIds=${ministries.map(({ id }) => id).join(',')}`;
+            ? `/app/schedules/${only.id}/${cycleId}`
+            : `/app/schedules?cycleId=${cycleId}&ministryIds=${ministries.map(({ id }) => id).join(',')}`;
         return {
           ...request.data,
           actionUrl: webLink({ baseUrl: this.webBaseUrl, path }),
@@ -393,7 +393,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ...request.data,
           actionUrl: webLink({
             baseUrl: this.webBaseUrl,
-            path: `/my-schedule/${request.data.assignmentId}`,
+            path: `/app/my-schedule/${request.data.assignmentId}`,
           }),
         };
       case 'transfer_ministry_digest':
@@ -429,7 +429,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           endsAt: fromDate({ date: endsAt }),
         }),
       ),
-      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/schedules' }),
+      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/app/schedules' }),
     };
   }
 

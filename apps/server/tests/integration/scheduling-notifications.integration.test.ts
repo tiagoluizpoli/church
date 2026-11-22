@@ -457,7 +457,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         (row) => row.ministryMembershipId === membership?.ministryMembershipId,
       );
       expect(email).toMatchObject({
-        actionUrl: `https://app.test/availability/${check?.id}`,
+        actionUrl: `https://app.test/app/availability/${check?.id}`,
       });
       const delivered = emailSender.delivered.find(
         (row) => row.payload.to === email.to,
@@ -545,7 +545,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect.arrayContaining(
         checks.map(({ id }) =>
           expect.objectContaining({
-            actionUrl: `https://app.test/availability/${id}`,
+            actionUrl: `https://app.test/app/availability/${id}`,
           }),
         ),
       ),
@@ -596,7 +596,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       emailSender.sent.find((email) => email.to === 'late@test.com'),
     ).toMatchObject({
       kind: 'availability.opened',
-      actionUrl: `https://app.test/availability/${check?.id}`,
+      actionUrl: `https://app.test/app/availability/${check?.id}`,
     });
     const inbox = await schedulingTestDb
       .select()
@@ -1103,7 +1103,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       kind: 'schedule.published',
       to: 'ana@test.com',
       churchTimezone: 'America/Sao_Paulo',
-      actionUrl: 'https://app.test/my-schedule',
+      actionUrl: 'https://app.test/app/my-schedule',
       shifts: [
         expect.objectContaining({ roleName: 'Host' }),
         expect.objectContaining({ roleName: 'Host' }),
@@ -2126,7 +2126,7 @@ describe('N8 swap_request_answered through the outbox', () => {
     expect(result.failed).toBe(0);
     const [email] = emailSender.delivered;
     const text = email?.request.text ?? '';
-    const link = `https://app.test/my-schedule/${assignmentId}`;
+    const link = `https://app.test/app/my-schedule/${assignmentId}`;
     expect(email?.request.subject).toBe(
       m.notification_swap_request_answered_title({}, pt),
     );
@@ -2302,7 +2302,7 @@ describe('N10 event_changed (add) through the outbox', () => {
     expect(text).toContain('Ana adicionou em dom 13 dez · 19:00–21:00');
     expect(text).toContain(m.notification_event_changed_action({}, pt));
     expect(text).toContain(
-      `https://app.test/schedules/${ids.ministryId}/${cycleId}`,
+      `https://app.test/app/schedules/${ids.ministryId}/${cycleId}`,
     );
     expect(email?.request.html).not.toContain('<b>especial');
     const inbox = await schedulingTestDb.select().from(notification);
@@ -2390,7 +2390,7 @@ describe('N10 event_changed (add) through the outbox', () => {
       `Louvor: 1 voluntário afetado · ${m.prepare_answers_coverage_note({}, pt)}`,
     );
     expect(text).toContain(
-      `https://app.test/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
+      `https://app.test/app/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
     );
     expect(email?.request.html).not.toContain('<b>especial');
     const inbox = await schedulingTestDb.select().from(notification);
@@ -2485,7 +2485,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
       'dom 13 dez · 13:00–14:00 · Vigília <b>especial</b> · Usher · Main Door',
     );
     expect(text).toContain(m.notification_event_cancelled_action({}, pt));
-    expect(text).toContain('https://app.test/my-schedule');
+    expect(text).toContain('https://app.test/app/my-schedule');
     expect(email?.request.html).not.toContain('<b>especial');
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox).toHaveLength(1);
@@ -2563,7 +2563,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
     );
     expect(text).toContain(m.notification_event_changed_action({}, pt));
     expect(text).toContain(
-      `https://app.test/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
+      `https://app.test/app/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
     );
     expect(email?.request.html).not.toContain('<i>Admin');
     const inbox = await schedulingTestDb.select().from(notification);
@@ -2666,7 +2666,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
     const [email] = emailSender.delivered;
     const text = email?.request.text ?? '';
     const html = email?.request.html ?? '';
-    const pickerUrl = `https://app.test/schedules?cycleId=${cycleId}&ministryIds=${kids.id},${ids.ministryId}`;
+    const pickerUrl = `https://app.test/app/schedules?cycleId=${cycleId}&ministryIds=${kids.id},${ids.ministryId}`;
     expect(email?.request.to).toBe('sched-admin@test.com');
     expect(email?.request.subject).toBe(
       m.notification_cycle_ready_to_prepare_title(
@@ -2742,7 +2742,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
       ),
     );
     expect(text).toContain(
-      `https://app.test/schedules/${ids.ministryId}/${cycleId}`,
+      `https://app.test/app/schedules/${ids.ministryId}/${cycleId}`,
     );
   });
 
@@ -3075,10 +3075,10 @@ describe('availability delivery facts resolved per recipient', () => {
 
     expect(result.failed).toBe(0);
     expect(emailSender.sent[0]).toMatchObject({
-      actionUrl: 'https://app.test/availability',
+      actionUrl: 'https://app.test/app/availability',
     });
     expect(emailSender.delivered[0]?.request.html).toContain(
-      'https://app.test/availability',
+      'https://app.test/app/availability',
     );
     expect(emailSender.delivered[0]?.request.text).toContain(
       m.notification_availability_span({
@@ -3151,7 +3151,7 @@ describe('N7 swap_request through the outbox', () => {
       m.notification_swap_request_note({ note: 'João cobre' }, pt),
     );
     expect(text).toContain(
-      `https://app.test/schedules/${ids.ministryId}/${cycleId}/assign?swapRequest=${swapRequestId}`,
+      `https://app.test/app/schedules/${ids.ministryId}/${cycleId}/assign?swapRequest=${swapRequestId}`,
     );
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox).toHaveLength(1);

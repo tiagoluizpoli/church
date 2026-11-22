@@ -3,7 +3,6 @@ import {
   addCalendarDays,
   compareInstants,
   formatMonthYear,
-  formatWeekdayOfIndex,
   instantSpan,
   type Locale,
   now,
@@ -27,7 +26,6 @@ import type {
   SelectedCycle,
   TemplateFormState,
   TemplateLibraryTableRow,
-  TemplateRecurrence,
   TemplateTimeBlockDraft,
 } from './planning-admin.types';
 import type {
@@ -37,6 +35,7 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
+import { describeRecurrence } from '@/shared/utils/recurrence-phrase';
 import { describeSpan } from '@/shared/utils/span-description';
 
 let templateTemplateTimeBlockDraftCounter = 0;
@@ -160,31 +159,6 @@ export function getSelectedCycleIdOrThrow({
   }
 
   return selectedCycleId;
-}
-
-interface RecurrenceInput {
-  recurrence: TemplateRecurrence;
-}
-
-/** The single-weekday picker's value: a weekly Recurrence's first weekday, none for monthly. */
-export function pickerWeekday({ recurrence }: RecurrenceInput): string {
-  return recurrence.kind === 'weekly' ? String(recurrence.weekdays[0]) : '';
-}
-
-interface DescribeRecurrenceInput extends RecurrenceInput {
-  locale: Locale;
-}
-
-/** shortcut: weekday names or "Mensal"; #1018 replaces it with the pt-BR Recurrence phrases. */
-export function describeRecurrence({
-  recurrence,
-  locale,
-}: DescribeRecurrenceInput): string {
-  return recurrence.kind === 'weekly'
-    ? recurrence.weekdays
-        .map((index) => formatWeekdayOfIndex({ index, locale }))
-        .join(', ')
-    : m.event_templates_recurrence_monthly();
 }
 
 export function describeTemplate({

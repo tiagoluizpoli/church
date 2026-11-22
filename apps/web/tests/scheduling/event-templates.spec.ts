@@ -31,8 +31,8 @@ test('church admin lists Event templates, creates an overnight one, edits it on 
   await expect(page).toHaveURL(/\/event-templates\/new$/);
 
   await page.getByTestId('template-name-input').fill(templateName);
-  await page.getByTestId('template-weekday-select').click();
-  await page.getByTestId('template-weekday-option-3').click();
+  await page.getByTestId('template-weekday-toggle-3').click();
+  await page.getByTestId('template-weekday-toggle-0').click();
 
   const block = page.getByTestId('template-time-block-row').first();
   await block.getByTestId('template-time-block-label-input').fill('Vigília');
@@ -72,8 +72,8 @@ test('church admin lists Event templates, creates an overnight one, edits it on 
 
   const renamed = 'Vigília de sexta';
   await nameInput.fill(renamed);
-  await page.getByTestId('template-weekday-select').click();
-  await page.getByTestId('template-weekday-option-5').click();
+  await page.getByTestId('template-weekday-toggle-5').click();
+  await page.getByTestId('template-weekday-toggle-3').click();
   await page.getByTestId('add-template-time-block-button').click();
   const added = page.getByTestId('template-time-block-row').nth(1);
   await added.getByTestId('template-time-block-label-input').fill('Louvor');

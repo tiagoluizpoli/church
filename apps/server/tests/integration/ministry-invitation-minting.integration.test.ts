@@ -64,7 +64,10 @@ const manager = new DbMinistryInvitationManager({
   authorityManager,
   unitOfWork,
   outboxRepository,
-  notifications: new ChurchNotifications({ outboxRepository }),
+  notifications: new ChurchNotifications({
+    outboxRepository,
+    churchIdentity: nullChurchIdentity,
+  }),
   config: appConfig,
 });
 
@@ -355,7 +358,10 @@ function createManagerWithChurchTtl({
     authorityManager,
     unitOfWork,
     outboxRepository,
-    notifications: new ChurchNotifications({ outboxRepository }),
+    notifications: new ChurchNotifications({
+      outboxRepository,
+      churchIdentity: nullChurchIdentity,
+    }),
     config,
   });
 }

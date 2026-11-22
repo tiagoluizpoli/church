@@ -26,8 +26,11 @@ export async function createTemplateOnNestedPage({
   await expect(page).toHaveURL(/\/event-templates\/new$/);
 
   await page.getByTestId('template-name-input').fill(name);
-  await page.getByTestId('template-weekday-select').click();
-  await page.getByTestId(`template-weekday-option-${weekday}`).click();
+  // A new template starts weekly on Sunday (0); pick the weekday, then drop Sunday.
+  if (weekday !== 0) {
+    await page.getByTestId(`template-weekday-toggle-${weekday}`).click();
+    await page.getByTestId('template-weekday-toggle-0').click();
+  }
 
   for (const [index, block] of blocks.entries()) {
     if (index > 0) {

@@ -38,11 +38,12 @@ interface ExpectLogoShownInput {
   page: Page;
 }
 
-/** The preview's light-mode tile shows the stored logo, actually loaded from storage. */
+/** The preview's light-mode tile (the app's shared logo tile) shows the stored logo, actually loaded from storage. */
 async function expectLogoShown({ page }: ExpectLogoShownInput): Promise<void> {
   const logo = page
     .getByTestId('church-preview-logo-light')
-    .getByRole('img', { name: m.church_settings_logo_alt({}, PT) });
+    .getByTestId('church-logo-tile')
+    .getByRole('img');
   await expect(logo).toHaveAttribute('src', /\/logo\/[0-9a-f]{64}\.png$/);
   await expect
     .poll(() => logo.evaluate((image: HTMLImageElement) => image.naturalWidth))

@@ -4,6 +4,7 @@ import { accentTextColor } from '@/features/church-settings/accent-text-color';
 import type { ContactForm } from '@/features/church-settings/church-settings-form';
 import {
   type ChurchSettingsForm,
+  formatCnpj,
   paintableAccent,
 } from '@/features/church-settings/church-settings-form';
 import { LogoImage } from '@/features/church-settings/components/logo-image';
@@ -96,6 +97,23 @@ export function ChurchPreview({ form, logoUrl, titleId }: ChurchPreviewProps) {
               );
             })}
           </ul>
+        </div>
+      ) : null}
+      {form.legalProfile.isPublic &&
+      (form.legalProfile.legalName.trim() || form.legalProfile.cnpj.trim()) ? (
+        <div className="space-y-1 border-t p-4 text-sm">
+          <p className="font-medium text-muted-foreground text-xs">
+            {m.church_settings_preview_legal()}
+          </p>
+          {form.legalProfile.legalName.trim() ? (
+            <p>{form.legalProfile.legalName.trim()}</p>
+          ) : null}
+          {form.legalProfile.cnpj.trim() ? (
+            <p>
+              {m.church_settings_legal_cnpj_label()}{' '}
+              {formatCnpj({ digits: form.legalProfile.cnpj.trim() })}
+            </p>
+          ) : null}
         </div>
       ) : null}
       {logoUrl ? (

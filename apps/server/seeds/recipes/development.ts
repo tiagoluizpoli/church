@@ -19,6 +19,7 @@ import type {
 import {
   buildChurchAddresses,
   buildChurchContacts,
+  buildChurchLegalProfile,
   buildChurchLogo,
   buildChurchSettings,
   buildChurchSocialLinks,
@@ -264,6 +265,11 @@ async function loadChurchDirectory({
     db,
     churchId: church.id,
     socialLinks: blueprint.church.socialLinks ?? [],
+  });
+  await buildChurchLegalProfile({
+    db,
+    churchId: church.id,
+    legalProfile: blueprint.church.legalProfile,
   });
   if (objectStorage && blueprint.church.logoSvg) {
     await buildChurchLogo({

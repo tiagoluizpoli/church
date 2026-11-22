@@ -477,6 +477,13 @@
       "when": 1795361348195,
       "tag": "0067_church_contact",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795363212792,
+      "tag": "0068_church_legal_profile",
+      "breakpoints": true
     }
   ]
 }

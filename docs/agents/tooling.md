@@ -276,7 +276,9 @@ That line means the gate is queued, not hung: it starts when the holder
 finishes. A holder whose process died is taken over (`Taking over the validate
 slot from dead holder …`) with no manual cleanup; the slot is released when
 the gate passes, fails, or gets SIGINT/SIGTERM. After 30 minutes
-(`CHURCH_VALIDATE_LOCK_TIMEOUT_MS` overrides) the run fails naming the holder.
+(`CHURCH_VALIDATE_LOCK_TIMEOUT_MS` overrides) the run exits 75 naming the
+holder: nothing was validated, so run the gate again to keep waiting; it is
+not a check failure to repair.
 The summary ends with `Waited Ns for the validate slot.`
 
 The pre-push hook's `validate:no-docker` does wait, but at most 5 minutes

@@ -6,6 +6,10 @@ import { join } from 'node:path';
 export const DEFAULT_LOCK_DIR = join(homedir(), '.local', 'state', 'church');
 export const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000;
 const DEFAULT_POLL_MS = 2_000;
+/** EX_TEMPFAIL: the gate never ran, so a caller waits again instead of repairing. */
+export const VALIDATE_SLOT_TIMEOUT_EXIT_CODE = 75;
+
+export class ValidateSlotTimeoutError extends Error {}
 const STATUS_EVERY_MS = 30_000;
 
 interface HolderRecord {
@@ -103,7 +107,7 @@ export async function acquireValidateLock({
     }
     const now = performance.now();
     if (now - started >= timeoutMs) {
-      throw new Error(
+      throw new ValidateSlotTimeoutError(
         `Gave up waiting ${Math.round((now - started) / 1000)}s for the validate slot (${path}); held by ${holder ? describeHolder({ holder }) : 'an unreadable record'}.`,
       );
     }
@@ -150,11 +154,19 @@ export async function holdValidateLock({
 }: HoldValidateLockInput): Promise<ValidateLock> {
   if (process.env.CI) return { release: () => {}, waitedMs: 0 };
   const fromEnv = Number(process.env.CHURCH_VALIDATE_LOCK_TIMEOUT_MS);
-  return acquireValidateLock({
-    timeoutMs: fromEnv > 0 ? fromEnv : DEFAULT_TIMEOUT_MS,
-    tier,
-    worktree: process.cwd(),
-  });
+  try {
+    return await acquireValidateLock({
+      timeoutMs: fromEnv > 0 ? fromEnv : DEFAULT_TIMEOUT_MS,
+      tier,
+      worktree: process.cwd(),
+    });
+  } catch (error) {
+    if (!(error instanceof ValidateSlotTimeoutError)) throw error;
+    console.error(
+      `${error.message}\nNothing was validated: this is a busy slot, not a check failure. Run the gate again to keep waiting (exit ${VALIDATE_SLOT_TIMEOUT_EXIT_CODE}).`,
+    );
+    process.exit(VALIDATE_SLOT_TIMEOUT_EXIT_CODE);
+  }
 }
 
 export function formatLockWait({ waitedMs }: FormatLockWaitInput): string {

@@ -29,6 +29,7 @@ beforeEach(() => {
     getSettings: vi.fn().mockResolvedValue(SETTINGS),
     saveLogoKey: vi.fn(),
     findPublicIdentityBySlug: vi.fn(),
+    findPublicAddresses: vi.fn(),
     getPublicContactDetails: vi.fn(),
     getAddressUsage: vi.fn(),
   } as unknown as ChurchRepository;

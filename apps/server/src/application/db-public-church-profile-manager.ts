@@ -42,6 +42,10 @@ export class DbPublicChurchProfileManager
     const activities = await this.programmeRepository.listRegularActivities({
       churchId: identity.churchId,
     });
+    const { addresses, mainAddressArea } =
+      await this.churchRepository.findPublicAddresses({
+        churchId: identity.churchId,
+      });
     const details = await this.churchRepository.getPublicContactDetails({
       churchId: identity.churchId,
     });
@@ -72,6 +76,8 @@ export class DbPublicChurchProfileManager
           contacts.length > 0 || socialLinks.length > 0,
       );
     return {
+      addresses,
+      mainAddressArea,
       slug: identity.slug,
       name: identity.name,
       accentColor: identity.accentColor,

@@ -1,3 +1,7 @@
+import type {
+  MainAddressArea,
+  PublicChurchAddress,
+} from '../../church-address';
 import type { ChurchContact } from '../../church-contact';
 import type { RegularActivity } from '../../entities/regular-activity';
 import type { ChurchSocialLink } from '../../social-link';
@@ -26,6 +30,10 @@ export interface PublicChurchProfile {
   logoUrl: string | null;
   /** The Church Programme; a place is left out when it is the Main Address. */
   programme: Omit<RegularActivity, 'atMainAddress'>[];
+  /** Public Church Addresses, Main first. */
+  addresses: PublicChurchAddress[];
+  /** The Main Address's bairro and city/UF, even when it is private. */
+  mainAddressArea: MainAddressArea | null;
   /** "Da igreja" first, then Contact Groups in the admin's order; empty groups absent. */
   contactGroups: PublicContactGroup[];
   /** Legal name and CNPJ digits, only when public. */

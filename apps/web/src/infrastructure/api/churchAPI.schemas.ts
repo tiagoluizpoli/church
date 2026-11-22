@@ -8599,6 +8599,36 @@ export type GetPublicChurchProfile200ProgrammeItem = {
   place: string | null;
 };
 
+export type GetPublicChurchProfile200AddressesItem = {
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: string;
+  /** @nullable */
+  cep: string | null;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  placeId: string | null;
+  isMain: boolean;
+};
+
+/**
+ * @nullable
+ */
+export type GetPublicChurchProfile200MainAddressArea = {
+  bairro: string;
+  city: string;
+  uf: string;
+} | null;
+
 export type GetPublicChurchProfile200 = {
   slug: string;
   name: string;
@@ -8610,6 +8640,9 @@ export type GetPublicChurchProfile200 = {
   /** @nullable */
   legalProfile: GetPublicChurchProfile200LegalProfile;
   programme: GetPublicChurchProfile200ProgrammeItem[];
+  addresses: GetPublicChurchProfile200AddressesItem[];
+  /** @nullable */
+  mainAddressArea: GetPublicChurchProfile200MainAddressArea;
 };
 
 export type GetPublicChurchProfile404Error = typeof GetPublicChurchProfile404Error[keyof typeof GetPublicChurchProfile404Error];

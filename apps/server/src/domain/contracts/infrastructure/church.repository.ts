@@ -1,5 +1,8 @@
 import type { ChurchId, UserId } from '../../branded-ids';
-import type { ChurchAddressUsage } from '../../church-address';
+import type {
+  ChurchAddressUsage,
+  PublicChurchAddresses,
+} from '../../church-address';
 import type { ChurchContact } from '../../church-contact';
 import type { ChurchLegalProfile } from '../../church-legal-profile';
 import type {
@@ -57,6 +60,15 @@ export interface ChurchRepository {
   findPublicIdentityBySlug(
     input: FindPublicIdentityBySlugInput,
   ): Promise<PublicChurchIdentity | null>;
+  /**
+   * What a visitor may see of the Church's addresses: the public ones, Main
+   * first, then display order; and the Main Address's bairro and city/UF even
+   * when it is private. Nothing else of a private address leaves.
+   */
+  findPublicAddresses(
+    input: FindPublicAddressesInput,
+  ): Promise<PublicChurchAddresses>;
+
   /** The public contact facts of the Church; privacy is enforced in the queries. */
   getPublicContactDetails(
     input: GetPublicContactDetailsInput,
@@ -75,6 +87,10 @@ export interface PublicContactDetails {
   groupNames: string[];
   /** Only when the Church made it public. */
   legalProfile: ChurchLegalProfile | null;
+}
+
+export interface FindPublicAddressesInput {
+  churchId: ChurchId;
 }
 
 export interface FindPublicIdentityBySlugInput {

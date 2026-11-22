@@ -125,6 +125,7 @@ export function createChurchRepositoryFake() {
     getAddressUsage: vi.fn<ChurchRepository['getAddressUsage']>(),
     findPublicIdentityBySlug:
       vi.fn<ChurchRepository['findPublicIdentityBySlug']>(),
+    findPublicAddresses: vi.fn<ChurchRepository['findPublicAddresses']>(),
     getPublicContactDetails:
       vi.fn<ChurchRepository['getPublicContactDetails']>(),
   } satisfies ChurchRepository;

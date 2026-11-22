@@ -174,6 +174,7 @@ function createHarness({
     slugAvailability: vi.fn(),
     saveLogoKey: vi.fn(),
     findPublicIdentityBySlug: vi.fn(),
+    findPublicAddresses: vi.fn(),
     getPublicContactDetails: vi.fn(),
     getAddressUsage: vi.fn(),
   };

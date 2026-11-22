@@ -251,3 +251,28 @@ export function resolveChurchAddresses({
   if (refusals.length > 0) throw new ChurchAddressesRefused({ refusals });
   return writes;
 }
+
+/** The allow-listed fields of a public Church Address. */
+export type PublicChurchAddress = Pick<
+  ChurchAddress,
+  | 'label'
+  | 'street'
+  | 'number'
+  | 'complement'
+  | 'bairro'
+  | 'city'
+  | 'uf'
+  | 'cep'
+  | 'latitude'
+  | 'longitude'
+  | 'placeId'
+  | 'isMain'
+>;
+
+export type MainAddressArea = Pick<ChurchAddress, 'bairro' | 'city' | 'uf'>;
+
+export interface PublicChurchAddresses {
+  addresses: PublicChurchAddress[];
+  /** `null` when the Church has no Main Address. */
+  mainAddressArea: MainAddressArea | null;
+}

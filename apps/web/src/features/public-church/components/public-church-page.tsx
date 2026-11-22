@@ -1,6 +1,8 @@
 import { appConfig } from '@church/app-config';
+import { env } from '@church/env/web';
 import { m } from '@church/i18n/messages';
 import { PoweredByFooter } from './powered-by-footer';
+import { PublicAddressesSection } from './public-addresses-section';
 import { PublicContactsSection } from './public-contacts-section';
 import { PublicEventsSection } from './public-events-section';
 import { PublicLegalSection } from './public-legal-section';
@@ -38,6 +40,10 @@ export function PublicChurchPage({ profile }: PublicChurchPageProps) {
           </h1>
         </header>
         <PublicProgrammeSection programme={profile.programme} />
+        <PublicAddressesSection
+          addresses={profile.addresses}
+          mapsEmbedKey={env.VITE_GOOGLE_MAPS_EMBED_KEY}
+        />
         <PublicEventsSection slug={profile.slug} />
         <PublicContactsSection contactGroups={profile.contactGroups} />
         <PublicLegalSection legalProfile={profile.legalProfile} />

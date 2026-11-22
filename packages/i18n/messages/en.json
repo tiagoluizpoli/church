@@ -2210,5 +2210,7 @@
   "church_settings_address_pin_source_admin": "Confirmed by you.",
   "church_settings_address_pin_confirm": "Confirm pin",
   "church_settings_address_pin_remove": "Remove pin",
-  "church_settings_address_pin_map": "Map with a draggable pin"
+  "church_settings_address_pin_map": "Map with a draggable pin",
+  "public_addresses_title": "Address",
+  "public_addresses_map_title": "Main address map"
 }

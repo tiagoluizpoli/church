@@ -22,6 +22,7 @@ import {
   fromDate,
   type Instant,
   parseCalendarDay,
+  parseInstant,
   resetClock,
   setTestClock,
 } from '@church/time';
@@ -933,6 +934,8 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
             ministryId: fixture.ministryInB,
             volunteerId: fixture.dualMemberABVolunteerInB,
             transferCorrelationId: CORRELATION_ID,
+            churchLogoUrl: null,
+            churchAccent: null,
           },
         }),
         expect.objectContaining({
@@ -2141,6 +2144,103 @@ describe('Church identity snapshot at queue time (ticket #1030, integration)', (
       churchLogoUrl: LOGO_URL,
       churchAccent: ACCENT,
     });
+  });
+
+  it('freezes the identity into a Notification when it is queued, whatever the Church changes before the send', async () => {
+    await setIdentity({ logoKey: LOGO_KEY, accentColor: ACCENT });
+    const shift = {
+      eventTitle: 'Vigil',
+      roleName: 'Guitar',
+      sectorName: 'Band',
+      startsAt: parseInstant({ value: '2026-12-24T22:00:00.000Z' }),
+      endsAt: parseInstant({ value: '2026-12-24T23:00:00.000Z' }),
+    };
+    await unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'event_cancelled',
+        to: [
+          {
+            userId: UserId.from(fixture.adminA),
+            churchId: ChurchId.from(fixture.churchA.id),
+          },
+        ],
+        data: {
+          churchName: 'Church A',
+          cycleId: crypto.randomUUID(),
+          eventId: crypto.randomUUID(),
+          eventTitle: 'Vigil',
+          start: shift.startsAt,
+          churchTimezone: 'UTC',
+          shifts: [shift],
+        },
+      }),
+    );
+    await setIdentity({ logoKey: null, accentColor: null });
+
+    const [queued] = await testDb.select().from(outboxMessage);
+    expect(queued?.payload).toMatchObject({
+      kind: 'event_cancelled',
+      data: { churchLogoUrl: LOGO_URL, churchAccent: ACCENT },
+    });
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+    expect(emailSender.sent[0]).toMatchObject({
+      kind: 'event.cancelled',
+      churchLogoUrl: LOGO_URL,
+      churchAccent: ACCENT,
+    });
+  });
+
+  it('still sends a Notification stored before the identity fields existed, name-only', async () => {
+    const shift = {
+      eventTitle: 'Vigil',
+      roleName: 'Guitar',
+      sectorName: 'Band',
+      startsAt: parseInstant({ value: '2026-12-24T22:00:00.000Z' }),
+      endsAt: parseInstant({ value: '2026-12-24T23:00:00.000Z' }),
+    };
+    await unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'event_cancelled',
+        to: [
+          {
+            userId: UserId.from(fixture.adminA),
+            churchId: ChurchId.from(fixture.churchA.id),
+          },
+        ],
+        data: {
+          churchName: 'Church A',
+          cycleId: crypto.randomUUID(),
+          eventId: crypto.randomUUID(),
+          eventTitle: 'Vigil',
+          start: shift.startsAt,
+          churchTimezone: 'UTC',
+          shifts: [shift],
+        },
+      }),
+    );
+    // Rewrite the row into the shape stored before the identity fields.
+    const [queued] = await testDb.select().from(outboxMessage);
+    const { churchLogoUrl, churchAccent, ...oldData } = (
+      queued?.payload as { data: Record<string, unknown> }
+    ).data;
+    await testDb
+      .update(outboxMessage)
+      .set({ payload: { ...(queued?.payload as object), data: oldData } });
+
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.sent[0]).toMatchObject({ kind: 'event.cancelled' });
+    const sentIdentity = emailSender.sent[0] as {
+      churchLogoUrl?: string | null;
+      churchAccent?: string | null;
+    };
+    expect(sentIdentity.churchLogoUrl ?? null).toBeNull();
+    expect(sentIdentity.churchAccent ?? null).toBeNull();
   });
 
   it('reads the current logo and accent when it snapshots', async () => {

@@ -74,7 +74,14 @@ export function createMinistryInvitationTestHarness({
   });
   const unitOfWork = new DrizzleUnitOfWork({ db });
   const notificationRepository = new DrizzleNotificationRepository({ db });
-  const notifications = new ChurchNotifications({ outboxRepository });
+  const churchIdentity = new DbChurchIdentitySnapshotter({
+    churchRepository,
+    objectStorage: new InMemoryObjectStorage(),
+  });
+  const notifications = new ChurchNotifications({
+    outboxRepository,
+    churchIdentity,
+  });
   const schedulingFacts = new SchedulingNotificationFacts({
     churchRepository,
     ministryRepository,
@@ -82,10 +89,6 @@ export function createMinistryInvitationTestHarness({
     eventRepository: new DrizzlePlanningEventRepository({ db }),
     availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({ db }),
     webBaseUrl: 'https://app.test',
-  });
-  const churchIdentity = new DbChurchIdentitySnapshotter({
-    churchRepository,
-    objectStorage: new InMemoryObjectStorage(),
   });
   const manager = new DbMinistryInvitationManager({
     churchIdentity,

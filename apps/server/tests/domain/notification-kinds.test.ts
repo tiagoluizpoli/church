@@ -30,17 +30,26 @@ describe('notification kinds', () => {
   });
 
   it('enqueues identifiers only, rejecting anything else', () => {
+    const identity = { churchLogoUrl: null, churchAccent: '#112233' };
     const ids = {
       cycleId: '11111111-1111-4111-8111-111111111111',
       ministryId: '22222222-2222-4222-8222-222222222222',
     };
 
     expect(
+      notificationRequestDataSchemas.availability_opened.parse({
+        ...ids,
+        ...identity,
+      }),
+    ).toEqual({ ...ids, ...identity });
+    // The Church identity is required (each field nullable) on every Church kind.
+    expect(() =>
       notificationRequestDataSchemas.availability_opened.parse(ids),
-    ).toEqual(ids);
+    ).toThrow();
     expect(() =>
       notificationRequestDataSchemas.availability_opened.parse({
         ...ids,
+        ...identity,
         ministryId: 'Worship',
       }),
     ).toThrow();
@@ -51,12 +60,14 @@ describe('notification kinds', () => {
     expect(() =>
       notificationRequestDataSchemas.cycle_ready_to_prepare.parse({
         cycleId: ids.cycleId,
+        ...identity,
         ministryIds: [],
       }),
     ).toThrow();
     expect(() =>
       notificationRequestDataSchemas.cycle_ready_to_prepare.parse({
         cycleId: ids.cycleId,
+        ...identity,
         ministryIds: ['Worship'],
       }),
     ).toThrow();

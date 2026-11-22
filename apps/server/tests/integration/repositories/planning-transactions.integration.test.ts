@@ -27,6 +27,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 
 function createManagers() {
   const cycleRepository = new DrizzleCycleRepository({
@@ -75,6 +76,7 @@ function createManagers() {
         db: schedulingTestDb,
       }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db: schedulingTestDb }),
       }),
     }),
@@ -101,6 +103,7 @@ function createManagers() {
         }),
       }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db: schedulingTestDb }),
       }),
     }),

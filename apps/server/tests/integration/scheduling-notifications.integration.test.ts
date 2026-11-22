@@ -89,11 +89,15 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
 const harness = createMinistryInvitationTestHarness({ db: schedulingTestDb });
 const { outboxRepository, unitOfWork } = harness;
-const notifications = new ChurchNotifications({ outboxRepository });
+const notifications = new ChurchNotifications({
+  outboxRepository,
+  churchIdentity: nullChurchIdentity,
+});
 
 /** Inbox repository whose next `create` calls throw. */
 class FlakyInboxRepository extends DrizzleNotificationRepository {
@@ -424,7 +428,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect.objectContaining({
         kind: 'availability_opened',
         to: { userId: first, churchId: ids.churchId },
-        data: { cycleId, ministryId: ids.ministryId, checkId: firstCheck?.id },
+        data: {
+          cycleId,
+          ministryId: ids.ministryId,
+          checkId: firstCheck?.id,
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
       }),
     );
 
@@ -529,7 +539,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect.arrayContaining(
         checks.map(({ id }) =>
           expect.objectContaining({
-            data: { cycleId, ministryId: ids.ministryId, checkId: id },
+            data: {
+              cycleId,
+              ministryId: ids.ministryId,
+              checkId: id,
+              churchLogoUrl: null,
+              churchAccent: null,
+            },
           }),
         ),
       ),
@@ -587,7 +603,13 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect.objectContaining({
         kind: 'availability_opened',
         to: { userId, churchId: ids.churchId },
-        data: { cycleId, ministryId: ids.ministryId, checkId: check?.id },
+        data: {
+          cycleId,
+          ministryId: ids.ministryId,
+          checkId: check?.id,
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
       }),
     );
     const emailSender = new CaptureEmailSender({ appName: 'Church' });

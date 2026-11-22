@@ -147,6 +147,30 @@ describe('lookupCep', () => {
     await expect(lookupCep({ cep: '13015904' })).resolves.toEqual(FILLED);
   });
 
+  it('falls back when ViaCEP answers a body of another shape', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(reply({ logradouro: 42, uf: ['SP'] }))
+      .mockResolvedValueOnce(reply(BRASILAPI_BODY));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(lookupCep({ cep: '13015904' })).resolves.toEqual(FILLED);
+  });
+
+  it('fails the lookup when neither provider answers a body of its shape', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(reply('<html>'))
+        .mockResolvedValueOnce(reply({ city: { name: 'Campinas' } })),
+    );
+
+    await expect(lookupCep({ cep: '13015904' })).rejects.toBeInstanceOf(
+      CepLookupFailed,
+    );
+  });
+
   it('throws CepLookupFailed when both providers fail', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network')));
 

@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /** The fields a CEP fills in the address dialog; the same ones manual entry edits. */
 export interface CepAddress {
   cep: string;
@@ -25,23 +27,36 @@ export function normalizeCep(value: string): string | null {
   return new RegExp(`^\\d{${CEP_DIGITS}}$`).test(digits) ? digits : null;
 }
 
-interface ViaCepResponse {
-  erro?: boolean | string;
-  cep?: string;
-  logradouro?: string;
-  bairro?: string;
-  localidade?: string;
-  uf?: string;
-}
+// Third-party bodies are validated before use; an unexpected shape is a provider failure.
+const viaCepResponseSchema = z.object({
+  erro: z.union([z.boolean(), z.string()]).optional(),
+  cep: z.string().optional(),
+  logradouro: z.string().optional(),
+  bairro: z.string().optional(),
+  localidade: z.string().optional(),
+  uf: z.string().optional(),
+});
+type ViaCepResponse = z.infer<typeof viaCepResponseSchema>;
 
-interface BrasilApiResponse {
-  cep?: string;
-  street?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  location?: { coordinates?: { latitude?: string; longitude?: string } };
-}
+const brasilApiResponseSchema = z.object({
+  cep: z.string().optional(),
+  street: z.string().optional(),
+  neighborhood: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  location: z
+    .object({
+      coordinates: z
+        .object({
+          // BrasilAPI sends strings; a number is read the same way.
+          latitude: z.union([z.string(), z.number()]).optional(),
+          longitude: z.union([z.string(), z.number()]).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+type BrasilApiResponse = z.infer<typeof brasilApiResponseSchema>;
 
 interface ProviderInput {
   cep: string;
@@ -53,7 +68,7 @@ interface GetJsonInput {
   signal?: AbortSignal;
 }
 
-async function getJson({ url, signal }: GetJsonInput) {
+async function getJson({ url, signal }: GetJsonInput): Promise<unknown> {
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`${url} answered ${response.status}`);
   return response.json();
@@ -98,20 +113,20 @@ export function fromBrasilApi({ data }: FromBrasilApiInput) {
 }
 
 async function viaCep({ cep, signal }: ProviderInput) {
-  const data = await getJson({
+  const body = await getJson({
     url: `https://viacep.com.br/ws/${cep}/json/`,
     signal,
   });
-  return fromViaCep({ data });
+  return fromViaCep({ data: viaCepResponseSchema.parse(body) });
 }
 
 /** BrasilAPI answers 404 for an unknown CEP, which is a failure here: it only backs ViaCEP up. */
 async function brasilApi({ cep, signal }: ProviderInput) {
-  const data = await getJson({
+  const body = await getJson({
     url: `https://brasilapi.com.br/api/cep/v2/${cep}`,
     signal,
   });
-  return fromBrasilApi({ data });
+  return fromBrasilApi({ data: brasilApiResponseSchema.parse(body) });
 }
 
 /**

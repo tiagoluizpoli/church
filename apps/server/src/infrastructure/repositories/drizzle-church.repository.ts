@@ -11,6 +11,7 @@ import type {
   GetChurchByIdInput,
   GetChurchBySlugInput,
   ListChurchAdminUserIdsInput,
+  SaveChurchLogoKeyInput,
   SaveChurchSettingsInput,
 } from '../../domain/contracts/infrastructure/church.repository';
 import type { Church } from '../../domain/entities/church';
@@ -113,6 +114,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
             slug: organization.slug,
             website: church.website,
             accentColor: church.accentColor,
+            logoKey: church.logoKey,
           })
           .from(church)
           .innerJoin(organization, eq(organization.id, church.id))
@@ -135,6 +137,13 @@ export class DrizzleChurchRepository implements ChurchRepository {
     await client
       .update(church)
       .set({ website: changes.website, accentColor: changes.accentColor })
+      .where(eq(church.id, id));
+  }
+
+  async saveLogoKey({ id, logoKey }: SaveChurchLogoKeyInput): Promise<void> {
+    await getClient({ db: this.db })
+      .update(church)
+      .set({ logoKey })
       .where(eq(church.id, id));
   }
 }

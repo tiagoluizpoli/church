@@ -1968,5 +1968,10 @@
   "church_settings_section_errors_many": "{count} errors",
   "church_settings_failed_one": "Nothing was saved. Fix the marked field below and save again.",
   "church_settings_failed_many": "Nothing was saved. Fix the {count} marked fields below and save again.",
-  "church_settings_accent_hex_placeholder": "#rrggbb"
+  "church_settings_accent_hex_placeholder": "#rrggbb",
+  "error_logo_too_large": "The image is over 5 MB. Upload a smaller file.",
+  "error_logo_too_small": "The image is too small: its longest side must be at least 128 px.",
+  "error_logo_bad_aspect_ratio": "The image is too wide or too tall: its ratio must be between 1:4 and 4:1.",
+  "error_logo_unsupported_type": "Unsupported format. Upload a PNG, JPEG or WebP image.",
+  "error_logo_key_invalid": "This logo does not belong to your church."
 }

@@ -2,6 +2,7 @@ export * from '../conflict/errors';
 export * from './admin-cancellation-window-closed';
 export * from './below-full-publish';
 export * from './check-access-denied';
+export * from './church-logo';
 export * from './church-slug-taken';
 export * from './cross-church-volunteer-conflict';
 export * from './cross-ministry-scope';

@@ -1968,5 +1968,10 @@
   "church_settings_section_errors_many": "{count} erros",
   "church_settings_failed_one": "Nada foi salvo. Corrija o campo marcado abaixo e salve de novo.",
   "church_settings_failed_many": "Nada foi salvo. Corrija os {count} campos marcados abaixo e salve de novo.",
-  "church_settings_accent_hex_placeholder": "#rrggbb"
+  "church_settings_accent_hex_placeholder": "#rrggbb",
+  "error_logo_too_large": "A imagem passa de 5 MB. Envie um arquivo menor.",
+  "error_logo_too_small": "A imagem é pequena demais: o lado maior precisa ter pelo menos 128 px.",
+  "error_logo_bad_aspect_ratio": "A imagem é larga ou alta demais: a proporção precisa ficar entre 1:4 e 4:1.",
+  "error_logo_unsupported_type": "Formato não aceito. Envie uma imagem PNG, JPEG ou WebP.",
+  "error_logo_key_invalid": "Este logo não pertence à sua igreja."
 }

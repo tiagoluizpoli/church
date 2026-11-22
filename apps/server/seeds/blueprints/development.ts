@@ -39,6 +39,36 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
     timezone: 'America/Sao_Paulo',
     website: 'https://igreja-semente.test',
     accentColor: '#0f766e',
+    addresses: [
+      {
+        label: 'Templo',
+        street: 'Avenida Francisco Glicério',
+        number: '1250',
+        bairro: 'Centro',
+        city: 'Campinas',
+        uf: 'SP',
+        cep: '13012-100',
+        pin: { latitude: -22.9057, longitude: -47.0608, source: 'admin' },
+      },
+      {
+        label: 'Salão anexo',
+        street: 'Rua Barão de Jaguara',
+        number: 's/n',
+        complement: 'Ao lado da padaria',
+        bairro: 'Cambuí',
+        city: 'Campinas',
+        uf: 'SP',
+      },
+      {
+        label: 'Célula na casa do Marcos',
+        street: 'Rua das Acácias',
+        number: '88',
+        bairro: 'Jardim Chapadão',
+        city: 'Campinas',
+        uf: 'SP',
+        isPublic: false,
+      },
+    ],
     contacts: [
       {
         kind: 'phone',

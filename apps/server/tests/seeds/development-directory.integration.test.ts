@@ -3,6 +3,7 @@ import {
   assignment,
   availabilityCheck,
   church,
+  churchAddress,
   churchContact,
   cycle,
   event,
@@ -28,7 +29,16 @@ import {
 } from '@church/db';
 import { parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
-import { and, count, countDistinct, eq, isNull, ne, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  eq,
+  isNull,
+  ne,
+  sql,
+} from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { expectAssignmentRequirementsToAgree } from './assignment-requirement-contract';
 import { createFastify } from '@/main/fastify/setup';
@@ -282,6 +292,29 @@ describe('development seed recipe', () => {
       },
       { churchId: seeded.church.id, value: '+551134567890', isPublic: false },
     ]);
+  });
+
+  it('gives the primary Church a pinned Main Address, a labelled second and a private one', async () => {
+    const rows = await testDb
+      .select()
+      .from(churchAddress)
+      .where(eq(churchAddress.churchId, seeded.church.id))
+      .orderBy(asc(churchAddress.position));
+
+    expect(
+      rows.map((row) => [row.label, row.isMain, row.isPublic, row.pinSource]),
+    ).toEqual([
+      ['Templo', true, true, 'admin'],
+      ['Salão anexo', false, true, null],
+      ['Célula na casa do Marcos', false, false, null],
+    ]);
+    expect(rows[0]).toMatchObject({ latitude: -22.9057, cep: '13012100' });
+    expect(
+      await testDb
+        .select()
+        .from(churchAddress)
+        .where(eq(churchAddress.churchId, seeded.secondChurch.id)),
+    ).toEqual([]);
   });
 
   it('uploads a logo for the primary Church through the logo pipeline, none for the second', async () => {

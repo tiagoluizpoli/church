@@ -3,6 +3,7 @@ import {
   type ChurchAccessLevel,
   type ChurchRecord,
   church,
+  churchAddress,
   churchContact,
   createChurch,
   invitation,
@@ -19,7 +20,9 @@ import type { ObjectStorage } from '../../src/domain/contracts/infrastructure/ob
 import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
 import { provisionChurch } from '../../src/scripts/provision-church';
 import { SEED_PLATFORM_OPERATOR_ID } from '../blueprints/credentials';
+import type { ChurchAddressBlueprint } from '../blueprints/directory/types';
 import type { SeedWriter } from '../recipe';
+import { deriveSeedId } from './derived-id';
 
 const ChurchAccessLevelSchema = z.enum(CHURCH_ACCESS_LEVEL_OPTIONS);
 
@@ -174,6 +177,44 @@ export async function buildChurchContacts({
     .values(
       contacts.map((contact, position) => ({ ...contact, churchId, position })),
     );
+}
+
+export interface BuildChurchAddressesInput {
+  db: SeedWriter;
+  churchId: string;
+  addresses: readonly ChurchAddressBlueprint[];
+}
+
+/** Direct-state builder: the Church's addresses in order, the first one main. */
+export async function buildChurchAddresses({
+  db,
+  churchId,
+  addresses,
+}: BuildChurchAddressesInput): Promise<void> {
+  if (addresses.length === 0) return;
+  await db.insert(churchAddress).values(
+    addresses.map((address, position) => ({
+      id: deriveSeedId({
+        kind: 'church-address',
+        parentIds: [churchId, String(position)],
+      }),
+      churchId,
+      label: address.label ?? null,
+      street: address.street,
+      number: address.number,
+      complement: address.complement ?? null,
+      bairro: address.bairro,
+      city: address.city,
+      uf: address.uf,
+      cep: address.cep?.replace('-', '') ?? null,
+      isPublic: address.isPublic ?? true,
+      isMain: position === 0,
+      position,
+      latitude: address.pin?.latitude ?? null,
+      longitude: address.pin?.longitude ?? null,
+      pinSource: address.pin?.source ?? null,
+    })),
+  );
 }
 
 export interface BuildChurchLogoInput {

@@ -1,4 +1,15 @@
-import type { GetChurchSettings200 } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetChurchSettings200,
+  UpdateChurchSettingsBody,
+} from '@/infrastructure/api/churchAPI.schemas';
+
+type AddressBody = UpdateChurchSettingsBody['addresses'][number];
+
+/** One Church Address being edited; `key` is the row's stable React key (its id once saved). */
+export type AddressDraft = Required<Omit<AddressBody, 'country' | 'id'>> & {
+  key: string;
+  id: string | null;
+};
 
 export type ContactType = 'mobile' | 'landline' | 'email';
 
@@ -59,12 +70,14 @@ export interface ChurchSettingsForm {
   accentColor: string | null;
   /** In display order. */
   contacts: ContactForm[];
+  /** In display order; the server owns the rules on which is main. */
+  addresses: AddressDraft[];
 }
 
 interface ToChurchSettingsFormInput {
   settings: Pick<
     GetChurchSettings200,
-    'name' | 'slug' | 'website' | 'accentColor' | 'contacts'
+    'name' | 'slug' | 'website' | 'accentColor' | 'addresses' | 'contacts'
   >;
 }
 
@@ -76,6 +89,13 @@ export function toChurchSettingsForm({
     slug: settings.slug,
     website: settings.website ?? '',
     accentColor: settings.accentColor,
+    addresses: settings.addresses.map(
+      ({ id, country: _country, ...address }) => ({
+        ...address,
+        id,
+        key: id,
+      }),
+    ),
     contacts: settings.contacts.map((contact, index) =>
       toContactForm({ contact, index }),
     ),
@@ -91,4 +111,35 @@ interface IsHexColorInput {
 /** The typed accent when it is a complete `#rrggbb`, safe to paint with; otherwise `null`. */
 export function paintableAccent({ value }: IsHexColorInput): string | null {
   return value !== null && HEX_COLOR.test(value) ? value : null;
+}
+
+interface ToSaveBodyInput {
+  form: ChurchSettingsForm;
+  /** Sent only when the slug changed; omitted, the slug stays. */
+  slugChanged: boolean;
+}
+
+/** The PUT body: the draft rows without their React keys. */
+export function toSaveBody({
+  form,
+  slugChanged,
+}: ToSaveBodyInput): UpdateChurchSettingsBody {
+  const { slug, addresses, contacts, ...rest } = form;
+  return {
+    ...rest,
+    ...(slugChanged ? { slug: slug.trim() } : {}),
+    addresses: addresses.map(({ key: _key, ...address }) => address),
+    contacts: contacts.map((contact) => toContactBody({ contact })),
+  };
+}
+
+/** `Rua A, 120 · Centro · Campinas/SP`, one line. */
+interface AddressSummaryInput {
+  address: AddressDraft;
+}
+
+export function addressSummary({ address }: AddressSummaryInput): string {
+  const line = [address.street, address.number].join(', ');
+  const complement = address.complement ? ` – ${address.complement}` : '';
+  return `${line}${complement} · ${address.bairro} · ${address.city}/${address.uf}`;
 }

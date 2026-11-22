@@ -14,6 +14,7 @@ const SETTINGS = {
   accentColor: null,
   logoKey: null,
   contacts: [],
+  addresses: [],
 };
 
 let churchRepository: ChurchRepository;

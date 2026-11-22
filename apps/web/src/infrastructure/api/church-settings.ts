@@ -24,7 +24,7 @@ import { apiClient } from '../../utils/api-client';
 
   export const getChurchSettings = () => {
 /**
- * The Church Settings of the Active Church (name, slug, website, accent colour) and the public origin the `…/slug` address is shown under. Empty optional fields are null. ChurchAdmin only.
+ * The Church Settings of the Active Church (name, slug, website, accent colour, addresses) and the public origin the `…/slug` address is shown under. Empty optional fields are null. ChurchAdmin only.
  * @summary Get the Active Church settings
  */
 const getChurchSettings = (

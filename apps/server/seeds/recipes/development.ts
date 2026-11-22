@@ -17,6 +17,7 @@ import type {
   Person,
 } from '../blueprints/directory/types';
 import {
+  buildChurchAddresses,
   buildChurchContacts,
   buildChurchLogo,
   buildChurchSettings,
@@ -252,6 +253,11 @@ async function loadChurchDirectory({
     db,
     churchId: church.id,
     contacts: blueprint.church.contacts ?? [],
+  });
+  await buildChurchAddresses({
+    db,
+    churchId: church.id,
+    addresses: blueprint.church.addresses ?? [],
   });
   if (objectStorage && blueprint.church.logoSvg) {
     await buildChurchLogo({

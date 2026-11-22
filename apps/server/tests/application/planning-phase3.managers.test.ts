@@ -182,7 +182,9 @@ function createPlanningEventHarness() {
   const manager = new DbPlanningEventManager({
     ...dependencies,
     templateRepository,
-    precedenceRepository: {} as never,
+    precedenceRepository: {
+      listByTemplate: vi.fn().mockResolvedValue([]),
+    } as never,
     eventTimeBlockRepository,
     // Move confirmation is covered by the HTTP suite on real PostgreSQL.
     assignmentRepository: {} as never,

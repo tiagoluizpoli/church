@@ -194,7 +194,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
           startTime: '10:30',
           endTime: '12:30',
           isPublic: true,
-          place: 'Templo',
+          placeAddress: 'Templo',
         },
       ],
     },

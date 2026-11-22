@@ -159,7 +159,14 @@ export async function loadGatherings({
       }) as EventTemplateId,
       answer: 'thisWins',
     });
-    await db.insert(templatePrecedence).values({ churchId, ...stored });
+    await db.insert(templatePrecedence).values({
+      id: deriveSeedId({
+        kind: 'template-precedence',
+        parentIds: [churchId, winner, loser],
+      }),
+      churchId,
+      ...stored,
+    });
   }
 
   for (const rule of blueprint.servingRules) {

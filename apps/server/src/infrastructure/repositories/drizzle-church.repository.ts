@@ -70,7 +70,7 @@ import type {
 import { mapChurch } from '../mappers/church.mapper';
 import { getClient, isValidUuid } from './helpers';
 import type { AnyDrizzleDb } from './types';
-import { isUniqueViolation } from './unique-violation';
+import { isChurchSlugConflict, isUniqueViolation } from './unique-violation';
 
 // Church identity lives on the `organization` row and the rest on the `church`
 // extension row keyed by the same id, so every read joins the two.
@@ -94,7 +94,6 @@ interface ListAddressesInput {
   tx?: TransactionContext;
 }
 
-const ORGANIZATION_SLUG_UNIQUE = 'organization_slug_unique';
 const LEGAL_DOCUMENT_UNIQUE = 'church_legal_profile_document_idx';
 
 type DrizzleClient = ReturnType<typeof getClient>;
@@ -766,20 +765,18 @@ export class DrizzleChurchRepository implements ChurchRepository {
     await client
       .delete(churchSlugHistory)
       .where(eq(churchSlugHistory.slug, slug));
-    await client
-      .insert(churchSlugHistory)
-      .values({ slug: current.slug, churchId: id })
-      .onConflictDoNothing();
     try {
+      await client
+        .insert(churchSlugHistory)
+        .values({ slug: current.slug, churchId: id })
+        .onConflictDoNothing();
       await client
         .update(organization)
         .set({ slug })
         .where(eq(organization.id, id));
     } catch (error) {
-      // Another save took the slug between the check above and this write.
-      if (isUniqueViolation({ error, constraint: ORGANIZATION_SLUG_UNIQUE })) {
-        throw new ChurchSlugTakenError(slug);
-      }
+      // Another write claimed the slug after the check above (the database holds the rule, 0070).
+      if (isChurchSlugConflict({ error })) throw new ChurchSlugTakenError(slug);
       throw error;
     }
   }
@@ -794,7 +791,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
   async findPublicIdentityBySlug({
     slug,
   }: FindPublicIdentityBySlugInput): Promise<PublicChurchIdentity | null> {
-    // A live slug and the slug history are disjoint, so at most one row matches.
+    // The database keeps live slugs and history disjoint (0070); a live match still wins.
     const [row] = await getClient({ db: this.db })
       .select({
         churchId: church.id,
@@ -814,6 +811,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
         ),
       )
       .where(or(eq(organization.slug, slug), eq(churchSlugHistory.slug, slug)))
+      .orderBy(desc(eq(organization.slug, slug)), church.id)
       .limit(1);
     return row ? { ...row, churchId: ChurchId.from(row.churchId) } : null;
   }

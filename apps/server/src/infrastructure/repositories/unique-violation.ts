@@ -49,3 +49,20 @@ export function isUniqueViolation({
     constraint,
   });
 }
+
+const ORGANIZATION_SLUG_UNIQUE = 'organization_slug_unique';
+/** Raised by migration 0070's trigger: the slug is live or history of another Church. */
+const CHURCH_SLUG_CLAIM = 'church_slug_claim';
+
+export interface IsChurchSlugConflictInput {
+  error: unknown;
+}
+
+/** True when a Church Slug write lost to another Church's live or given-up slug. */
+export function isChurchSlugConflict({
+  error,
+}: IsChurchSlugConflictInput): boolean {
+  return [ORGANIZATION_SLUG_UNIQUE, CHURCH_SLUG_CLAIM].some((constraint) =>
+    isUniqueViolation({ error, constraint }),
+  );
+}

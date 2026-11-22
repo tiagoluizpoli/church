@@ -4,6 +4,7 @@ import { nowAsDate } from '@church/time';
 import { and, asc, eq, or, sql } from 'drizzle-orm';
 import type { EventTemplateId } from '../../domain/branded-ids';
 import type {
+  DeleteTemplatePrecedencesInput,
   ListTemplatePrecedencesInput,
   SaveTemplatePrecedencesInput,
   TemplatePrecedenceRepository,
@@ -88,6 +89,27 @@ export class DrizzleTemplatePrecedenceRepository
         ],
         set: { outcome: sql`excluded.outcome`, updatedAt: nowAsDate() },
       });
+  }
+
+  async delete(input: DeleteTemplatePrecedencesInput): Promise<void> {
+    if (input.precedences.length === 0) return;
+    const pairs = input.precedences.map(({ templateAId, templateBId }) =>
+      and(
+        eq(templatePrecedence.templateAId, templateAId),
+        eq(templatePrecedence.templateBId, templateBId),
+      ),
+    );
+    await getClient({ db: this.db, tx: input.tx })
+      .delete(templatePrecedence)
+      .where(
+        and(
+          withChurchIsolation({
+            table: templatePrecedence,
+            churchId: input.churchId,
+          }),
+          or(...pairs),
+        ),
+      );
   }
 
   async update(input: UpdateTemplatePrecedenceInput): Promise<void> {

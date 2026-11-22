@@ -14,6 +14,9 @@ export interface SaveTemplatePrecedencesInput {
   tx?: TransactionContext;
 }
 
+/** The pairs to forget; their outcome is ignored. */
+export type DeleteTemplatePrecedencesInput = SaveTemplatePrecedencesInput;
+
 export interface UpdateTemplatePrecedenceInput {
   churchId: ChurchId;
   precedence: TemplatePrecedence;
@@ -27,6 +30,8 @@ export interface TemplatePrecedenceRepository {
   ): Promise<TemplatePrecedence[]>;
   /** Inserts each pair, replacing a stored outcome for the same pair. */
   save(input: SaveTemplatePrecedencesInput): Promise<void>;
+  /** Forgets each pair's answer. */
+  delete(input: DeleteTemplatePrecedencesInput): Promise<void>;
   /** Changes a stored pair's outcome; NotFoundError when the Church has no such pair. */
   update(input: UpdateTemplatePrecedenceInput): Promise<void>;
 }

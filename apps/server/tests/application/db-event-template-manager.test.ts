@@ -34,6 +34,7 @@ describe('DbEventTemplateManager', () => {
       precedenceRepository: {
         listByTemplate: vi.fn().mockResolvedValue([]),
         save: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
         update: vi.fn(),
       },
       unitOfWork,

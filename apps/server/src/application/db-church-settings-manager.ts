@@ -1,14 +1,4 @@
-import { createHash } from 'node:crypto';
-import sharp from 'sharp';
-import {
-  churchLogoKey,
-  detectLogoFormat,
-  isChurchLogoKey,
-  LOGO_CACHE_CONTROL,
-  LOGO_CONTENT_TYPE,
-  LOGO_MAX_LONGEST_SIDE,
-  logoDimensionRefusal,
-} from '../domain/church-logo';
+import { isChurchLogoKey } from '../domain/church-logo';
 import type {
   ChurchSettingsView,
   GetChurchSettingsInput,
@@ -20,13 +10,8 @@ import type {
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { ObjectStorage } from '../domain/contracts/infrastructure/object-storage';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import {
-  LogoBadAspectRatioError,
-  LogoKeyInvalidError,
-  LogoTooLargeError,
-  LogoTooSmallError,
-  LogoUnsupportedTypeError,
-} from '../domain/errors/church-logo';
+import { LogoKeyInvalidError } from '../domain/errors/church-logo';
+import { storeChurchLogo } from './church-logo-pipeline';
 
 interface DbChurchSettingsManagerDependencies {
   churchRepository: ChurchRepository;
@@ -34,41 +19,6 @@ interface DbChurchSettingsManagerDependencies {
   objectStorage: ObjectStorage;
   /** The web app's origin, under which the public Church page lives. */
   publicOrigin: string;
-}
-
-interface NormaliseLogoInput {
-  bytes: Uint8Array;
-}
-
-/** Decodes (sharp's pixel limit on), checks the rules and returns one ≤512 px PNG without metadata. */
-async function normaliseLogo({ bytes }: NormaliseLogoInput): Promise<Buffer> {
-  if (!detectLogoFormat({ bytes })) throw new LogoUnsupportedTypeError();
-  let width: number;
-  let height: number;
-  try {
-    ({ width, height } = await sharp(bytes).metadata());
-  } catch (error) {
-    if (String(error).includes('pixel limit')) throw new LogoTooLargeError();
-    throw new LogoUnsupportedTypeError();
-  }
-  const refusal = logoDimensionRefusal({ width, height });
-  if (refusal === 'LOGO_TOO_SMALL') throw new LogoTooSmallError();
-  if (refusal === 'LOGO_BAD_ASPECT_RATIO') throw new LogoBadAspectRatioError();
-  try {
-    return await sharp(bytes)
-      .autoOrient()
-      .resize({
-        width: LOGO_MAX_LONGEST_SIDE,
-        height: LOGO_MAX_LONGEST_SIDE,
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .png()
-      .toBuffer();
-  } catch (error) {
-    if (String(error).includes('pixel limit')) throw new LogoTooLargeError();
-    throw new LogoUnsupportedTypeError();
-  }
 }
 
 export class DbChurchSettingsManager implements IChurchSettingsManager {
@@ -116,15 +66,10 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
     churchId,
     bytes,
   }: UploadChurchLogoInput): Promise<ChurchSettingsView> {
-    const png = await normaliseLogo({ bytes });
-    const sha256 = createHash('sha256').update(png).digest('hex');
-    const key = churchLogoKey({ churchId, sha256 });
-    // Same bytes, same key: re-putting it stores identical content, never a new object.
-    await this.objectStorage.put({
-      key,
-      body: png,
-      contentType: LOGO_CONTENT_TYPE,
-      cacheControl: LOGO_CACHE_CONTROL,
+    const key = await storeChurchLogo({
+      objectStorage: this.objectStorage,
+      churchId,
+      bytes,
     });
     await this.churchRepository.saveLogoKey({ id: churchId, logoKey: key });
     return this.getChurchSettings({ churchId });

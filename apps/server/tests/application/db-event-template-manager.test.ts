@@ -67,6 +67,7 @@ describe('DbEventTemplateManager', () => {
           order: 0,
           isPublic: false,
           place: null,
+          placeAddressId: null,
         },
         {
           label: 'Tie B',
@@ -75,6 +76,7 @@ describe('DbEventTemplateManager', () => {
           order: 1,
           isPublic: false,
           place: null,
+          placeAddressId: null,
         },
         {
           label: 'Late',
@@ -83,6 +85,7 @@ describe('DbEventTemplateManager', () => {
           order: 2,
           isPublic: false,
           place: null,
+          placeAddressId: null,
         },
       ],
       tx: 'tx',
@@ -139,6 +142,7 @@ describe('DbEventTemplateManager', () => {
           order: 0,
           isPublic: false,
           place: null,
+          placeAddressId: null,
         },
       ],
       tx: 'tx',

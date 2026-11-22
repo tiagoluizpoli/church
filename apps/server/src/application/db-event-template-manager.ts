@@ -58,17 +58,22 @@ function normalizeBlocks({
 }: NormalizeBlocksInput): EventTemplateTimeBlockInput[] {
   EventTemplate.assertBlocks({ blocks });
   return blocks
-    .map(({ id, label, startTime, endTime, isPublic, place }) => {
-      const normalizedId = id?.toLowerCase();
-      return {
-        ...(normalizedId ? { id: TemplateTimeBlockId.from(normalizedId) } : {}),
-        label,
-        startTime,
-        endTime,
-        isPublic: isPublic ?? false,
-        place: place || null,
-      };
-    })
+    .map(
+      ({ id, label, startTime, endTime, isPublic, place, placeAddressId }) => {
+        const normalizedId = id?.toLowerCase();
+        return {
+          ...(normalizedId
+            ? { id: TemplateTimeBlockId.from(normalizedId) }
+            : {}),
+          label,
+          startTime,
+          endTime,
+          isPublic: isPublic ?? false,
+          place: place || null,
+          placeAddressId: placeAddressId ?? null,
+        };
+      },
+    )
     .sort((left, right) => left.startTime.localeCompare(right.startTime))
     .map((block, order) => ({ ...block, order }));
 }

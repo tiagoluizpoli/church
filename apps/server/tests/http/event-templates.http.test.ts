@@ -1,5 +1,6 @@
 import {
   assignment,
+  churchAddress,
   event,
   eventTemplate,
   eventTimeBlock,
@@ -179,6 +180,7 @@ interface BlockBody {
   id?: string;
   isPublic?: boolean;
   place?: string;
+  placeAddressId?: string | null;
 }
 
 interface TemplateBody {
@@ -220,6 +222,34 @@ function patch(input: { templateId: string; payload: unknown }) {
 
 function list() {
   return app.inject({ method: 'GET', url: '/api/v1/admin/event-templates' });
+}
+
+interface InsertAddressInput {
+  churchId: string;
+  street?: string;
+}
+
+/** A Main Address of the Church; returns its id. */
+async function insertAddress({
+  churchId,
+  street = 'Rua A',
+}: InsertAddressInput): Promise<string> {
+  const [row] = await schedulingTestDb
+    .insert(churchAddress)
+    .values({
+      churchId,
+      label: 'Templo',
+      street,
+      number: '10',
+      bairro: 'Centro',
+      city: 'Campinas',
+      uf: 'SP',
+      isMain: true,
+      position: 0,
+    })
+    .returning({ id: churchAddress.id });
+  if (!row) throw new Error('address insert failed');
+  return row.id;
 }
 
 async function storedTemplateCount() {
@@ -535,6 +565,60 @@ describe('TemplateTimeBlock Publico and place', () => {
       isPublic: true,
       place: 'Lobby',
     });
+  });
+
+  it('takes a Church Address of the same Church as the place, and moves between address, free text and nothing on edit', async () => {
+    const seed = await signIn();
+    const addressId = await insertAddress({ churchId: seed.churchAId });
+
+    const created = await post(
+      body({ blocks: [{ ...welcome, placeAddressId: addressId }] }),
+    );
+
+    expect(created.statusCode).toBe(201);
+    expect(created.json().blocks[0]).toMatchObject({
+      place: null,
+      placeAddressId: addressId,
+    });
+    const [block] = created.json().blocks;
+    const toText = await patch({
+      templateId: created.json().id,
+      payload: body({ blocks: [{ ...welcome, id: block.id, place: 'Lobby' }] }),
+    });
+    expect(toText.json().blocks[0]).toMatchObject({
+      place: 'Lobby',
+      placeAddressId: null,
+    });
+    const toNothing = await patch({
+      templateId: created.json().id,
+      payload: body({ blocks: [{ ...welcome, id: block.id }] }),
+    });
+    expect(toNothing.json().blocks[0]).toMatchObject({
+      place: null,
+      placeAddressId: null,
+    });
+  });
+
+  it("refuses another Church's address and a place given both ways, writing nothing", async () => {
+    const seed = await signIn();
+    const foreign = await insertAddress({ churchId: seed.churchBId });
+    const own = await insertAddress({ churchId: seed.churchAId });
+
+    const foreignRes = await post(
+      body({ blocks: [{ ...welcome, placeAddressId: foreign }] }),
+    );
+    const both = await post(
+      body({ blocks: [{ ...welcome, place: 'Lobby', placeAddressId: own }] }),
+    );
+
+    expect(foreignRes.statusCode).toBe(422);
+    expect(foreignRes.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason: 'PLACE_ADDRESS_NOT_FOUND',
+    });
+    expect(both.statusCode).toBe(422);
+    expect(both.json().error).toBe('VALIDATION_ERROR');
+    expect(await storedTemplateCount()).toBe(0);
   });
 
   it.each([

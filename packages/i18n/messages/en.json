@@ -88,6 +88,7 @@
   "error_remind_on_cooldown": "This Schedule was reminded recently. You can remind again once the wait is over.",
   "error_validation_ask_no_eligible_volunteers": "No Volunteer holds a Role these Shifts need, so there is nobody to ask.",
   "error_validation_cancel_confirmation": "Type the confirmation word exactly to cancel.",
+  "error_validation_place_address_not_found": "The place must be one of this Church's addresses.",
   "cancellation_confirm_word": "cancel",
   "builder_shift_started": "{shift} started at {time} and is read-only.",
   "error_shift_started": "This Shift has started and can no longer be changed.",

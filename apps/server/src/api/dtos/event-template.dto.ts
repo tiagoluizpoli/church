@@ -1,27 +1,30 @@
 import { fromDate, instantSchema, timeOfDaySchema } from '@church/time';
 import { z } from 'zod';
 import type { EventTemplate } from '../../domain/entities/event-template';
+import { timeBlockPlaceFields, withOnePlace } from './time-block-place.dto';
 
 /** The single trim point for template names and block labels. */
 const requiredTextSchema = z.string().trim().min(1).max(255);
 
-/** Short free text; an empty place is stored as none. */
-const placeSchema = z.string().trim().max(120);
-
-/** Create takes no persisted id or caller-controlled order: the server derives `order`. */
-export const eventTemplateTimeBlockBodySchema = z
+const templateTimeBlockFieldsSchema = z
   .object({
     label: requiredTextSchema,
     startTime: timeOfDaySchema,
     endTime: timeOfDaySchema,
     isPublic: z.boolean().optional(),
-    place: placeSchema.optional(),
+    ...timeBlockPlaceFields,
   })
   .strict();
 
+/** Create takes no persisted id or caller-controlled order: the server derives `order`. */
+export const eventTemplateTimeBlockBodySchema = withOnePlace(
+  templateTimeBlockFieldsSchema,
+);
+
 /** Edit may name a persisted block `id` to update it in place; absent creates a block. */
-export const updateEventTemplateTimeBlockBodySchema =
-  eventTemplateTimeBlockBodySchema.extend({ id: z.string().uuid().optional() });
+export const updateEventTemplateTimeBlockBodySchema = withOnePlace(
+  templateTimeBlockFieldsSchema.extend({ id: z.string().uuid().optional() }),
+);
 
 type UpdateEventTemplateTimeBlockBody = z.infer<
   typeof updateEventTemplateTimeBlockBodySchema
@@ -143,7 +146,9 @@ export const eventTemplateTimeBlockResponseSchema = z.object({
   endTime: timeOfDaySchema,
   order: z.number(),
   isPublic: z.boolean(),
+  /** Free text; null when the place is a Church Address or nothing. */
   place: z.string().nullable(),
+  placeAddressId: z.string().nullable(),
 });
 
 export const eventTemplateResponseSchema = z.object({
@@ -190,6 +195,7 @@ function toEventTemplateResponse(template: EventTemplate) {
       order: block.order,
       isPublic: block.isPublic,
       place: block.place ?? null,
+      placeAddressId: block.placeAddressId ?? null,
     })),
     createdAt: fromDate({ date: template.createdAt }),
     updatedAt: fromDate({ date: template.updatedAt }),

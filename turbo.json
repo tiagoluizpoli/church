@@ -6,7 +6,12 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "passThroughEnv": ["VITE_SERVER_URL", "VITE_APP_REVISION"],
+      "passThroughEnv": [
+        "VITE_SERVER_URL",
+        "VITE_APP_REVISION",
+        "VITE_GOOGLE_MAPS_BROWSER_KEY",
+        "VITE_GOOGLE_MAPS_EMBED_KEY"
+      ],
       "outputs": ["dist/**"]
     },
     "lint": {

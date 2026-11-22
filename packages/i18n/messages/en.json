@@ -2200,5 +2200,15 @@
   "church_settings_preview_addresses": "Addresses",
   "church_settings_preview_directions": "How to get there",
   "church_settings_preview_copy_address": "Copy address",
-  "church_settings_preview_address_copied": "Address copied"
+  "church_settings_preview_address_copied": "Address copied",
+  "church_settings_address_google_search": "Search on Google",
+  "church_settings_address_google_search_hint": "Brazil only. Picking a result fills the fields below.",
+  "church_settings_address_pin_label": "Pin on the map",
+  "church_settings_address_pin_none": "No pin. Search an address, look up a CEP or save without one.",
+  "church_settings_address_pin_source_google": "Proposed from the Google result. Confirm it or drag it.",
+  "church_settings_address_pin_source_cep": "Proposed from the CEP. Confirm it or drag it.",
+  "church_settings_address_pin_source_admin": "Confirmed by you.",
+  "church_settings_address_pin_confirm": "Confirm pin",
+  "church_settings_address_pin_remove": "Remove pin",
+  "church_settings_address_pin_map": "Map with a draggable pin"
 }

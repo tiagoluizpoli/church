@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -29,6 +29,25 @@ vi.mock('@/features/church-settings/cep-client', async (importOriginal) => ({
     typeof import('@/features/church-settings/cep-client')
   >()),
   lookupCep: (...args: unknown[]) => lookupCep(...args),
+}));
+
+// The Google widgets never run in tests: the module is faked at its boundary.
+const maps = vi.hoisted(() => ({
+  enabled: false,
+  onPick: undefined as undefined | ((place: unknown) => void),
+  onDrag: undefined as undefined | ((pin: unknown) => void),
+}));
+
+vi.mock('@/features/church-settings/google-maps', () => ({
+  isMapsEnabled: () => maps.enabled,
+  attachPlaceSearch: ({ onPick }: { onPick: (place: unknown) => void }) => {
+    maps.onPick = onPick;
+    return () => undefined;
+  },
+  mountPinMap: ({ onDrag }: { onDrag: (pin: unknown) => void }) => {
+    maps.onDrag = onDrag;
+    return { setPin: () => undefined, destroy: () => undefined };
+  },
 }));
 
 vi.mock('@/utils/api-instances', async () => ({
@@ -893,6 +912,208 @@ describe('Church Settings addresses', () => {
         }),
       ),
     );
+  });
+
+  const PLACE = {
+    placeId: 'ChIJ-place',
+    street: 'Avenida Brasil',
+    number: '500',
+    bairro: 'Jardim Novo',
+    city: 'Campinas',
+    uf: 'SP',
+    cep: '13000000',
+    latitude: -22.9,
+    longitude: -47.06,
+  };
+
+  async function saveNewAddress(
+    user: ReturnType<typeof userEvent.setup>,
+    dialog: HTMLElement,
+  ) {
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_confirm_add(),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() => expect(updateChurchSettings).toHaveBeenCalled());
+    return updateChurchSettings.mock.calls.at(-1)?.[0].addresses[0];
+  }
+
+  it('offers neither search nor map without a Google key, and still saves by CEP', async () => {
+    maps.enabled = false;
+    lookupCep.mockResolvedValue({
+      cep: '13015904',
+      street: 'Rua Barão de Jaguara',
+      bairro: 'Centro',
+      city: 'Campinas',
+      uf: 'SP',
+    });
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    expect(
+      within(dialog).queryByLabelText(
+        m.church_settings_address_google_search(),
+      ),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('application')).not.toBeInTheDocument();
+    await searchCep(user, dialog, '13015904');
+    await user.type(
+      await within(dialog).findByRole('textbox', {
+        name: m.church_settings_address_number(),
+      }),
+      '10',
+    );
+    const saved = await saveNewAddress(user, dialog);
+    expect(saved).toEqual(
+      expect.objectContaining({
+        street: 'Rua Barão de Jaguara',
+        cep: '13015904',
+      }),
+    );
+    expect(saved.latitude ?? null).toBeNull();
+  });
+
+  describe('with a Google key', () => {
+    beforeEach(() => {
+      maps.enabled = true;
+    });
+    afterEach(() => {
+      maps.enabled = false;
+    });
+
+    it('fills the fields from a picked place and proposes a pin from Google', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const dialog = await openNewAddress(user);
+      expect(within(dialog).getByRole('application')).toBeInTheDocument();
+
+      act(() => maps.onPick?.(PLACE));
+
+      await waitFor(() =>
+        expect(
+          within(dialog).getByRole('textbox', {
+            name: m.church_settings_address_street(),
+          }),
+        ).toHaveValue('Avenida Brasil'),
+      );
+      expect(
+        within(dialog).getByText(m.church_settings_address_pin_source_google()),
+      ).toBeInTheDocument();
+      const saved = await saveNewAddress(user, dialog);
+      expect(saved).toEqual(
+        expect.objectContaining({
+          street: 'Avenida Brasil',
+          number: '500',
+          city: 'Campinas',
+          uf: 'SP',
+          placeId: 'ChIJ-place',
+          latitude: -22.9,
+          longitude: -47.06,
+          pinSource: 'google',
+        }),
+      );
+    });
+
+    it('stores a confirmed pin as admin data', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const dialog = await openNewAddress(user);
+      act(() => maps.onPick?.(PLACE));
+      await user.click(
+        await within(dialog).findByRole('button', {
+          name: m.church_settings_address_pin_confirm(),
+        }),
+      );
+      const saved = await saveNewAddress(user, dialog);
+      expect(saved).toEqual(
+        expect.objectContaining({ latitude: -22.9, pinSource: 'admin' }),
+      );
+    });
+
+    it('stores a dragged pin as admin data', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const dialog = await openNewAddress(user);
+      act(() => maps.onPick?.(PLACE));
+      act(() => maps.onDrag?.({ latitude: -22.95, longitude: -47.1 }));
+      const saved = await saveNewAddress(user, dialog);
+      expect(saved).toEqual(
+        expect.objectContaining({
+          latitude: -22.95,
+          longitude: -47.1,
+          pinSource: 'admin',
+        }),
+      );
+    });
+
+    it('saves without a pin when the admin removes it', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const dialog = await openNewAddress(user);
+      act(() => maps.onPick?.(PLACE));
+      await user.click(
+        await within(dialog).findByRole('button', {
+          name: m.church_settings_address_pin_remove(),
+        }),
+      );
+      const saved = await saveNewAddress(user, dialog);
+      expect(saved).toEqual(
+        expect.objectContaining({
+          latitude: null,
+          longitude: null,
+          pinSource: null,
+        }),
+      );
+    });
+
+    it('proposes a pin with source cep from a CEP that yields coordinates', async () => {
+      lookupCep.mockResolvedValue({
+        cep: '13015904',
+        street: 'Rua Barão de Jaguara',
+        bairro: 'Centro',
+        city: 'Campinas',
+        uf: 'SP',
+        latitude: -22.9,
+        longitude: -47.06,
+      });
+      const user = userEvent.setup();
+      renderSettings();
+      const dialog = await openNewAddress(user);
+      await searchCep(user, dialog, '13015904');
+      await user.type(
+        await within(dialog).findByRole('textbox', {
+          name: m.church_settings_address_number(),
+        }),
+        '10',
+      );
+      const saved = await saveNewAddress(user, dialog);
+      expect(saved).toEqual(
+        expect.objectContaining({
+          latitude: -22.9,
+          longitude: -47.06,
+          pinSource: 'cep',
+        }),
+      );
+    });
+
+    it('drops the place id once street, number or city change', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const dialog = await openNewAddress(user);
+      act(() => maps.onPick?.(PLACE));
+      const city = await within(dialog).findByRole('textbox', {
+        name: m.church_settings_address_city(),
+      });
+      await user.clear(city);
+      await user.type(city, 'Valinhos');
+      const saved = await saveNewAddress(user, dialog);
+      expect(saved.placeId).toBeNull();
+    });
   });
 
   it.each([

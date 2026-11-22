@@ -6194,6 +6194,29 @@ paths:
                     Country is always BR; number is "s/n" without a number; a
                     `placeId` is dropped when street, number or city change from
                     the stored pick.
+                addressReplacements:
+                  description: "What replaces each deleted address that templates or upcoming
+                    public events still use: another kept address of the Church,
+                    or null for no place. Deleting such an address without an
+                    entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the
+                    replacement is applied to every reference in the same save."
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      addressId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      replacementAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                    required:
+                      - addressId
+                      - replacementAddressId
                 socialLinks:
                   maxItems: 50
                   type: array
@@ -6551,6 +6574,7 @@ paths:
                             - ADDRESS_PIN_INVALID
                             - ADDRESS_MAIN_MULTIPLE
                             - ADDRESS_MAIN_REQUIRED
+                            - ADDRESS_REPLACEMENT_REQUIRED
                             - SOCIAL_LINK_INVALID
                             - SOCIAL_LINK_UNSUPPORTED
                             - SOCIAL_LINK_USE_CONTACT
@@ -6631,6 +6655,129 @@ paths:
                   - message
                 additionalProperties: false
         "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/church-settings/addresses/{addressId}/usage:
+    get:
+      operationId: getChurchAddressUsage
+      summary: Where a Church Address is used
+      tags:
+        - church-settings
+      description: The Event Templates and upcoming Public Events whose time block
+        places the address; shown before deleting it so a replacement can be
+        chosen. ChurchAdmin only.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: addressId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                    description: Event Templates with a time block at this address, by name.
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        start:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      required:
+                        - id
+                        - title
+                        - start
+                      additionalProperties: false
+                    description: Upcoming Public Events (sent, not cancelled, a public block here
+                      that has not ended), by start.
+                required:
+                  - templates
+                  - events
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:
@@ -19098,6 +19245,28 @@ paths:
                                 - kind
                                 - entries
                               additionalProperties: false
+                        exceptOrdinals:
+                          type: array
+                          items:
+                            anyOf:
+                              - type: number
+                                enum:
+                                  - 1
+                              - type: number
+                                enum:
+                                  - 2
+                              - type: number
+                                enum:
+                                  - 3
+                              - type: number
+                                enum:
+                                  - 4
+                              - type: number
+                                enum:
+                                  - 5
+                              - type: string
+                                enum:
+                                  - last
                         startTime:
                           type: string
                         label:
@@ -19107,6 +19276,7 @@ paths:
                           type: string
                       required:
                         - recurrence
+                        - exceptOrdinals
                         - startTime
                         - label
                         - place

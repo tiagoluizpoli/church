@@ -2792,6 +2792,16 @@ export type UpdateChurchSettingsBodyAddressesItem = {
   placeId?: string | null;
 };
 
+export type UpdateChurchSettingsBodyAddressReplacementsItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  addressId: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  replacementAddressId: string | null;
+};
+
 export type UpdateChurchSettingsBodySocialLinksItem = {
   url: string;
   /** @nullable */
@@ -2843,6 +2853,11 @@ export type UpdateChurchSettingsBody = {
      * @maxItems 50
      */
   addresses: UpdateChurchSettingsBodyAddressesItem[];
+  /**
+     * What replaces each deleted address that templates or upcoming public events still use: another kept address of the Church, or null for no place. Deleting such an address without an entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the replacement is applied to every reference in the same save.
+     * @maxItems 50
+     */
+  addressReplacements?: UpdateChurchSettingsBodyAddressReplacementsItem[];
   /**
      * Every Social Link in display order; the whole list replaces the stored one. Only `url` and `description` are sent: the network is detected from the URL. Supported: Instagram, YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram, WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer and Kwai; a wa.me link is refused (add it as a Contact). Always public.
      * @maxItems 50
@@ -3058,6 +3073,7 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   ADDRESS_PIN_INVALID: 'ADDRESS_PIN_INVALID',
   ADDRESS_MAIN_MULTIPLE: 'ADDRESS_MAIN_MULTIPLE',
   ADDRESS_MAIN_REQUIRED: 'ADDRESS_MAIN_REQUIRED',
+  ADDRESS_REPLACEMENT_REQUIRED: 'ADDRESS_REPLACEMENT_REQUIRED',
   SOCIAL_LINK_INVALID: 'SOCIAL_LINK_INVALID',
   SOCIAL_LINK_UNSUPPORTED: 'SOCIAL_LINK_UNSUPPORTED',
   SOCIAL_LINK_USE_CONTACT: 'SOCIAL_LINK_USE_CONTACT',
@@ -3122,6 +3138,45 @@ export type GetChurchSlugAvailability403 = {
 };
 
 export type GetChurchSlugAvailability409 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage200TemplatesItem = {
+  id: string;
+  name: string;
+};
+
+export type GetChurchAddressUsage200EventsItem = {
+  id: string;
+  title: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+};
+
+export type GetChurchAddressUsage200 = {
+  /** Event Templates with a time block at this address, by name. */
+  templates: GetChurchAddressUsage200TemplatesItem[];
+  /** Upcoming Public Events (sent, not cancelled, a public block here that has not ended), by start. */
+  events: GetChurchAddressUsage200EventsItem[];
+};
+
+export type GetChurchAddressUsage401 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage403 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage404 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage409 = {
   error: string;
   message: string;
 };
@@ -8474,8 +8529,16 @@ export type GetPublicChurchProfile200ProgrammeItemRecurrence = {
 })[];
 };
 
+export const GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem = {  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+  NUMBER_4: 4,
+  NUMBER_5: 5,
+  last: 'last',
+} as const
 export type GetPublicChurchProfile200ProgrammeItem = {
   recurrence: GetPublicChurchProfile200ProgrammeItemRecurrence;
+  exceptOrdinals: typeof GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem[keyof typeof GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem][];
   startTime: string;
   label: string;
   /** @nullable */

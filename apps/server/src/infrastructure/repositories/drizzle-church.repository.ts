@@ -7,14 +7,24 @@ import {
   churchLegalProfile,
   churchSlugHistory,
   churchSocialLink,
+  cycle,
+  event,
+  eventTemplate,
+  eventTimeBlock,
   member,
   organization,
+  templateTimeBlock,
   user,
 } from '@church/db';
-import { and, asc, eq, ne, notInArray, or } from 'drizzle-orm';
+import { fromDate, nowAsDate } from '@church/time';
+import { and, asc, eq, gt, ne, notInArray, or } from 'drizzle-orm';
 import { ChurchId, type UserId } from '../../domain/branded-ids';
 import {
+  type AddressReplacement,
   type ChurchAddress,
+  ChurchAddressesRefused,
+  type ChurchAddressRefusal,
+  type ChurchAddressUsage,
   resolveChurchAddresses,
 } from '../../domain/church-address';
 import type { ChurchLegalProfile } from '../../domain/church-legal-profile';
@@ -32,6 +42,7 @@ import type {
   FindChurchMemberEmailInput,
   FindPublicIdentityBySlugInput,
   FindUserNameInput,
+  GetChurchAddressUsageInput,
   GetChurchByIdInput,
   GetChurchBySlugInput,
   GetChurchSettingsInput,
@@ -57,6 +68,15 @@ import { isUniqueViolation } from './unique-violation';
 // Church identity lives on the `organization` row and the rest on the `church`
 // extension row keyed by the same id, so every read joins the two.
 const churchJoinShape = { church, organization };
+
+interface ReplaceDeletedAddressUsageInput {
+  client: AnyDrizzleDb;
+  tx?: TransactionContext;
+  id: ChurchId;
+  stored: readonly ChurchAddress[];
+  kept: readonly string[];
+  replacements: readonly AddressReplacement[];
+}
 
 interface ListAddressesInput {
   id: string;
@@ -399,6 +419,14 @@ export class DrizzleChurchRepository implements ChurchRepository {
       incoming: changes.addresses,
     });
     const kept = writes.flatMap((write) => (write.id ? [write.id] : []));
+    await this.replaceDeletedAddressUsage({
+      client,
+      tx,
+      id,
+      stored: await this.listAddresses({ id, tx }),
+      kept,
+      replacements: changes.addressReplacements ?? [],
+    });
     await client
       .delete(churchAddress)
       .where(
@@ -522,6 +550,118 @@ export class DrizzleChurchRepository implements ChurchRepository {
         eq(churchContactGroup.id, churchContact.groupId),
       )
       .where(eq(churchContact.churchId, id));
+  }
+
+  async getAddressUsage({
+    id,
+    addressId,
+    tx,
+  }: GetChurchAddressUsageInput): Promise<ChurchAddressUsage | null> {
+    const client = getClient({ db: this.db, tx });
+    const [address] = await client
+      .select({ id: churchAddress.id })
+      .from(churchAddress)
+      .where(
+        and(eq(churchAddress.id, addressId), eq(churchAddress.churchId, id)),
+      );
+    if (!address) return null;
+    const templates = await client
+      .selectDistinct({ id: eventTemplate.id, name: eventTemplate.name })
+      .from(templateTimeBlock)
+      .innerJoin(
+        eventTemplate,
+        eq(eventTemplate.id, templateTimeBlock.templateId),
+      )
+      .where(eq(templateTimeBlock.placeAddressId, addressId))
+      .orderBy(asc(eventTemplate.name), asc(eventTemplate.id));
+    const events = await client
+      .selectDistinct({ id: event.id, title: event.title, start: event.start })
+      .from(eventTimeBlock)
+      .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
+      .innerJoin(cycle, eq(cycle.id, event.cycleId))
+      .where(
+        and(
+          eq(eventTimeBlock.placeAddressId, addressId),
+          eq(eventTimeBlock.isPublic, true),
+          ne(eventTimeBlock.status, 'cancelled'),
+          ne(event.status, 'cancelled'),
+          eq(cycle.hasBeenSent, true),
+          gt(eventTimeBlock.endTime, nowAsDate()),
+        ),
+      )
+      .orderBy(asc(event.start), asc(event.id));
+    return {
+      templates,
+      events: events.map((item) => ({
+        ...item,
+        start: fromDate({ date: item.start }),
+      })),
+    };
+  }
+
+  /**
+   * A deleted address that templates or upcoming Public Events still use needs
+   * a replacement (a kept address, or null); it is applied to every reference.
+   */
+  private async replaceDeletedAddressUsage({
+    client,
+    tx,
+    id,
+    stored,
+    kept,
+    replacements,
+  }: ReplaceDeletedAddressUsageInput): Promise<void> {
+    const refusals: ChurchAddressRefusal[] = [];
+    replacements.forEach(({ addressId, replacementAddressId }, index) => {
+      if (
+        replacementAddressId !== null &&
+        (replacementAddressId === addressId ||
+          !kept.includes(replacementAddressId))
+      ) {
+        refusals.push({
+          field: `addressReplacements.${index}.replacementAddressId`,
+          code: 'INVALID',
+        });
+      }
+    });
+    const deleted = stored.filter((address) => !kept.includes(address.id));
+    for (const { id: addressId } of deleted) {
+      const replacement = replacements.find(
+        (entry) => entry.addressId === addressId,
+      );
+      const usage = await this.getAddressUsage({ id, addressId, tx });
+      const inUse =
+        usage !== null &&
+        (usage.templates.length > 0 || usage.events.length > 0);
+      if (inUse && !replacement) {
+        refusals.push({
+          field: 'addresses',
+          code: 'ADDRESS_REPLACEMENT_REQUIRED',
+        });
+      }
+    }
+    if (refusals.length > 0) throw new ChurchAddressesRefused({ refusals });
+    for (const { addressId, replacementAddressId } of replacements) {
+      if (!deleted.some((address) => address.id === addressId)) continue;
+      await client
+        .update(templateTimeBlock)
+        .set({ placeAddressId: replacementAddressId })
+        .where(
+          and(
+            eq(templateTimeBlock.churchId, id),
+            eq(templateTimeBlock.placeAddressId, addressId),
+          ),
+        );
+      await client
+        .update(eventTimeBlock)
+        .set({ placeAddressId: replacementAddressId })
+        .where(
+          and(
+            eq(eventTimeBlock.churchId, id),
+            eq(eventTimeBlock.placeAddressId, addressId),
+          ),
+        );
+    }
   }
 
   /** The whole list replaces the stored one; list order is the position. */

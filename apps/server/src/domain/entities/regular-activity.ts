@@ -5,6 +5,8 @@ import type { Recurrence } from '../recurrence';
 export interface RegularActivity {
   /** The template's Recurrence. */
   recurrence: Recurrence;
+  /** Ordinals of the nth weekdays on which a template that won over this one replaces it ("exceto o 1º"). */
+  exceptOrdinals: (1 | 2 | 3 | 4 | 5 | 'last')[];
   startTime: TimeOfDay;
   label: string;
   place: string | null;

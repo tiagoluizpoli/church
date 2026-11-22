@@ -18,12 +18,14 @@ describe('PublicProgrammeSection', () => {
         programme={[
           {
             recurrence: { kind: 'weekly', weekdays: [0] },
+            exceptOrdinals: [1],
             startTime: '19:00',
             label: 'Culto',
             place: null,
           },
           {
             recurrence: { kind: 'weekly', weekdays: [3] },
+            exceptOrdinals: [],
             startTime: '20:00',
             label: 'Oração',
             place: 'Salão anexo',
@@ -34,7 +36,7 @@ describe('PublicProgrammeSection', () => {
 
     const items = screen.getAllByRole('listitem');
     expect(items.map((item) => item.textContent)).toEqual([
-      'Todo domingo · 19:00 · Culto',
+      'Todo domingo, exceto o 1º · 19:00 · Culto',
       'Toda quarta-feira · 20:00 · Oração · Salão anexo',
     ]);
   });

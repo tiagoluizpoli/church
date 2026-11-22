@@ -604,7 +604,11 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
               <AddressSection
                 addresses={form.addresses}
                 errors={errors}
+                replacements={form.addressReplacements}
                 onChange={(addresses) => patch({ addresses })}
+                onDelete={({ addresses, replacements }) =>
+                  patch({ addresses, addressReplacements: replacements })
+                }
               />
             </SectionCard>
             <SectionCard

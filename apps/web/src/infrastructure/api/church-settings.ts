@@ -5,6 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  GetChurchAddressUsage200,
   GetChurchSettings200,
   GetChurchSlugAvailability200,
   GetChurchSlugAvailabilityParams,
@@ -63,6 +64,18 @@ const getChurchSlugAvailability = (
       );
     }
   /**
+ * The Event Templates and upcoming Public Events whose time block places the address; shown before deleting it so a replacement can be chosen. ChurchAdmin only.
+ * @summary Where a Church Address is used
+ */
+const getChurchAddressUsage = (
+    addressId: string,
+ ) => {
+      return apiClient<GetChurchAddressUsage200>(
+      {url: `/api/v1/church-settings/addresses/${addressId}/usage`, method: 'GET'
+    },
+      );
+    }
+  /**
  * Applies at once, outside the settings save. PNG, JPEG or WebP by content, at most 5 MB, longest side at least 128 px, ratio within 1:4–4:1; stored as one PNG of at most 512 px under a content-hashed key. Earlier logos stay stored. ChurchAdmin only.
  * @summary Upload the Active Church logo
  */
@@ -104,10 +117,11 @@ const restoreChurchLogo = (
     },
       );
     }
-  return {getChurchSettings,updateChurchSettings,getChurchSlugAvailability,uploadChurchLogo,removeChurchLogo,restoreChurchLogo}};
+  return {getChurchSettings,updateChurchSettings,getChurchSlugAvailability,getChurchAddressUsage,uploadChurchLogo,removeChurchLogo,restoreChurchLogo}};
 export type GetChurchSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['getChurchSettings']>>>
 export type UpdateChurchSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['updateChurchSettings']>>>
 export type GetChurchSlugAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['getChurchSlugAvailability']>>>
+export type GetChurchAddressUsageResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['getChurchAddressUsage']>>>
 export type UploadChurchLogoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['uploadChurchLogo']>>>
 export type RemoveChurchLogoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['removeChurchLogo']>>>
 export type RestoreChurchLogoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['restoreChurchLogo']>>>

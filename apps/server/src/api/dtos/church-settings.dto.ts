@@ -3,6 +3,7 @@ import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { z } from 'zod';
 import {
+  addressReplacementsSchema,
   BRAZILIAN_UFS,
   type ChurchAddressRefusal,
   churchAddressesSchema,
@@ -122,6 +123,9 @@ export const updateChurchSettingsBodySchema = z.object({
   addresses: churchAddressesSchema.describe(
     'Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.',
   ),
+  addressReplacements: addressReplacementsSchema.describe(
+    'What replaces each deleted address that templates or upcoming public events still use: another kept address of the Church, or null for no place. Deleting such an address without an entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the replacement is applied to every reference in the same save.',
+  ),
   socialLinks: socialLinksSchema.describe(
     'Every Social Link in display order; the whole list replaces the stored one. Only `url` and `description` are sent: the network is detected from the URL. Supported: Instagram, YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram, WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer and Kwai; a wa.me link is refused (add it as a Contact). Always public.',
   ),
@@ -132,6 +136,23 @@ export const updateChurchSettingsBodySchema = z.object({
 export type UpdateChurchSettingsBody = z.output<
   typeof updateChurchSettingsBodySchema
 >;
+
+export const churchAddressUsageParamsSchema = z.object({
+  addressId: z.uuid(),
+});
+
+export const churchAddressUsageResponseSchema = z.object({
+  templates: z
+    .array(z.object({ id: z.string(), name: z.string() }))
+    .describe('Event Templates with a time block at this address, by name.'),
+  events: z
+    .array(
+      z.object({ id: z.string(), title: z.string(), start: z.iso.datetime() }),
+    )
+    .describe(
+      'Upcoming Public Events (sent, not cancelled, a public block here that has not ended), by start.',
+    ),
+});
 
 export const slugAvailabilityQuerySchema = z.object({
   slug: z.string().trim().max(200),
@@ -177,6 +198,8 @@ const FIELD_CODE_MESSAGES: Record<ChurchSettingsFieldCode, ErrorMessage> = {
   ADDRESS_PIN_INVALID: m.error_church_settings_address_pin_invalid,
   ADDRESS_MAIN_MULTIPLE: m.error_church_settings_address_main_multiple,
   ADDRESS_MAIN_REQUIRED: m.error_church_settings_address_main_required,
+  ADDRESS_REPLACEMENT_REQUIRED:
+    m.error_church_settings_address_replacement_required,
   SOCIAL_LINK_INVALID: m.error_church_settings_social_link_invalid,
   SOCIAL_LINK_UNSUPPORTED: m.error_church_settings_social_link_unsupported,
   SOCIAL_LINK_USE_CONTACT: m.error_church_settings_social_link_use_contact,

@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
  * config load, so a new spec is classified deliberately.
  */
 export const ISOLATED_SPECS = [
+  'church-settings/church-settings-journey.spec.ts',
   'identity/active-church-switching.spec.ts',
   'identity/cross-tenant-invitation-isolation.spec.ts',
   'identity/first-admin-onboarding.spec.ts',

@@ -1,3 +1,6 @@
+import { eventTimeBlock, templateTimeBlock } from '@church/db';
+import { parseInstant, parseTimeOfDay } from '@church/time';
+import { eq } from 'drizzle-orm';
 import {
   afterAll,
   beforeAll,
@@ -19,6 +22,12 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
+import { buildEventTemplate } from '@/seeds/builders/planning';
+import {
+  buildCycle,
+  buildEvent,
+  buildEventTimeBlock,
+} from '@/seeds/builders/scheduling';
 import {
   testDb as db,
   truncateAll,
@@ -536,6 +545,66 @@ describe('Church Addresses', () => {
     expect(res.statusCode).toBe(422);
     expect(res.json().fieldErrors).toEqual([
       expect.objectContaining({ field: 'addresses.0.id', code: 'INVALID' }),
+    ]);
+  });
+
+  it('keeps every template and Event time block pointing at an address it edits', async () => {
+    signIn();
+    const [sede] = (await saveAddresses([SEDE])).json().addresses;
+    const { blocks } = await buildEventTemplate({
+      db,
+      churchId: CHURCH_A,
+      name: 'Domingo',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+      blocks: [
+        {
+          label: 'Culto',
+          startTime: parseTimeOfDay({ value: '19:00' }),
+          endTime: parseTimeOfDay({ value: '21:00' }),
+          placeAddressId: sede.id,
+        },
+      ],
+    });
+    const cycle = await buildCycle({
+      db,
+      churchId: CHURCH_A,
+      name: 'Sent',
+      state: 'sent',
+      startDate: '2099-01-01' as never,
+      endDate: '2099-12-31' as never,
+    });
+    const planned = await buildEvent({
+      db,
+      churchId: CHURCH_A,
+      cycleId: cycle.id,
+      title: 'Culto',
+      start: parseInstant({ value: '2099-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2099-03-02T00:00:00.000Z' }),
+      status: 'scheduled',
+    });
+    const eventBlock = await buildEventTimeBlock({
+      db,
+      churchId: CHURCH_A,
+      eventId: planned.id,
+      start: parseInstant({ value: '2099-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2099-03-02T00:00:00.000Z' }),
+      placeAddressId: sede.id,
+    });
+
+    const saved = await saveAddresses([{ ...sede, street: 'Avenida Nova' }]);
+
+    expect(saved.statusCode).toBe(200);
+    const [templateRow] = await db
+      .select({ placeAddressId: templateTimeBlock.placeAddressId })
+      .from(templateTimeBlock)
+      .where(eq(templateTimeBlock.id, blocks[0]?.id ?? ''));
+    const [eventRow] = await db
+      .select({ placeAddressId: eventTimeBlock.placeAddressId })
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, eventBlock.id));
+    expect([templateRow?.placeAddressId, eventRow?.placeAddressId]).toEqual([
+      sede.id,
+      sede.id,
     ]);
   });
 

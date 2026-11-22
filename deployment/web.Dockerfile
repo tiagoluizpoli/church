@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Frontend image: static build served by nginx, which proxies /api (API and
+# Frontend image: static build served by Caddy, which proxies /api (API and
 # auth) to the server service. Built for the same-origin API (`/`), so one
 # image serves any environment's hostname.
 FROM oven/bun:1.4.3 AS build
@@ -22,7 +22,9 @@ RUN --mount=type=secret,id=SENTRY_URL,env=SENTRY_URL \
  && bun run --cwd /app release:source-maps --dist=/app/apps/web/dist --revision="$APP_REVISION" \
  && printf '%s\n' "$APP_REVISION" > dist/revision.txt
 
-FROM nginxinc/nginx-unprivileged:1.28-alpine
-COPY deployment/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+FROM caddy:2.11-alpine
+RUN adduser -D -u 10001 web
+COPY deployment/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/apps/web/dist /srv
+USER web
 EXPOSE 8080

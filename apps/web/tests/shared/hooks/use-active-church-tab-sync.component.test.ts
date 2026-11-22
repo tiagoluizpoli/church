@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useActiveChurchTabSync } from '@/shared/hooks/use-active-church-tab-sync';
 import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
 
-let mockHref = '/dashboard';
+let mockHref = '/app/dashboard';
 const mockNavigate = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
@@ -53,7 +53,7 @@ describe('useActiveChurchTabSync', () => {
   });
 
   it('clears cache, navigates per route policy, and dismisses the block on continue', async () => {
-    mockHref = '/cycles?view=board';
+    mockHref = '/app/cycles?view=board';
     const queryClient = new QueryClient();
     queryClient.setQueryData(['cycles'], { church: 'church-a' });
     const { result } = renderTabSync(queryClient);
@@ -72,7 +72,7 @@ describe('useActiveChurchTabSync', () => {
     });
 
     expect(queryClient.getQueryData(['cycles'])).toBeUndefined();
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/app' });
     expect(result.current.pendingSwitch).toBeNull();
   });
 });

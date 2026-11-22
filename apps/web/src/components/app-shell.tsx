@@ -110,68 +110,70 @@ interface NavGroupModel {
   entries: NavEntry[];
 }
 
+const APP_HOME = '/app';
+
 // The one nav list: add or retarget an entry here. Order is render order.
 const NAV_ENTRIES: NavEntry[] = [
   {
     group: 'home',
     label: () => m.nav_home(),
-    to: '/',
+    to: APP_HOME,
     icon: House,
     isVisible: () => true,
   },
   {
     group: 'serving',
     label: () => m.nav_my_schedule(),
-    to: '/my-schedule',
+    to: '/app/my-schedule',
     icon: CalendarCheck,
     isVisible: (c) => c.hasVolunteerMembership,
   },
   {
     group: 'serving',
     label: () => m.nav_availability(),
-    to: '/availability',
+    to: '/app/availability',
     icon: Clock,
     isVisible: (c) => c.hasVolunteerMembership,
   },
   {
     group: 'scheduling',
     label: () => m.nav_schedules(),
-    to: '/schedules',
+    to: '/app/schedules',
     icon: UsersRound,
     isVisible: isAdminOrLeader,
   },
   {
     group: 'scheduling',
     label: () => m.nav_cycles(),
-    to: '/cycles',
+    to: '/app/cycles',
     icon: CalendarRange,
     isVisible: (c) => c.isChurchAdmin,
   },
   {
     group: 'scheduling',
     label: () => m.nav_event_templates(),
-    to: '/event-templates',
+    to: '/app/event-templates',
     icon: LayoutTemplate,
     isVisible: (c) => c.isChurchAdmin,
   },
   {
     group: 'church',
     label: () => m.nav_ministries(),
-    to: '/ministries',
+    to: '/app/ministries',
     icon: Layers,
     isVisible: isAdminOrLeader,
   },
   {
     group: 'church',
     label: () => m.nav_people(),
-    to: '/people',
+    to: '/app/people',
     icon: Users,
     isVisible: isAdminOrLeader,
   },
   {
     group: 'church',
     label: () => m.nav_invitations(),
-    to: '/invitations',
+    to: '/app/invitations',
     icon: Mail,
     isVisible: isAdminOrLeader,
   },
@@ -213,11 +215,11 @@ const BREADCRUMB_SEGMENT_LABELS: Record<string, () => string> = {
 };
 
 function isEntryActive({ pathname, entry }: IsEntryActiveInput): boolean {
-  if (entry.to === '/' && pathname === '/') {
+  if (entry.to === APP_HOME && pathname === APP_HOME) {
     return true;
   }
   const targets = [
-    ...(entry.to === '/' ? [] : [entry.to]),
+    ...(entry.to === APP_HOME ? [] : [entry.to]),
     ...(EXTRA_ACTIVE_PATHS[entry.to] ?? []),
   ];
   return targets.some(
@@ -274,7 +276,7 @@ function ChurchName({ name }: ChurchNameProps) {
 function getSelectChurchDestination({
   destination,
 }: GetSelectChurchDestinationInput): string {
-  return `/select-church?redirect=${encodeURIComponent(destination)}`;
+  return `/app/select-church?redirect=${encodeURIComponent(destination)}`;
 }
 
 // One render for the desktop sidebar (expanded or icon-only) and the drawer.
@@ -445,7 +447,8 @@ export function AppShell({
   // active). When no label is known yet, the hidden-id rule still applies,
   // so the last visible crumb remains a real link rather than being
   // mislabeled as the current page.
-  const pathSegments = location.pathname.split('/').filter(Boolean);
+  // Crumbs start below `/app`, which is Home.
+  const pathSegments = location.pathname.split('/').filter(Boolean).slice(1);
   const overridesBySegment = React.useMemo(
     () =>
       new Map([
@@ -459,7 +462,7 @@ export function AppShell({
     [breadcrumbOverrides],
   );
   const breadcrumbs: BreadcrumbItemModel[] = [
-    { label: m.nav_home(), to: '/', isLast: pathSegments.length === 0 },
+    { label: m.nav_home(), to: APP_HOME, isLast: pathSegments.length === 0 },
     ...pathSegments.flatMap((segment, index) => {
       // A Schedule is Ministry × Cycle; the Ministry has no intermediate page.
       const isSchedulePath = pathSegments[0] === 'schedules';
@@ -481,7 +484,7 @@ export function AppShell({
         return [];
       }
 
-      const to = `/${pathSegments.slice(0, index + 1).join('/')}`;
+      const to = `${APP_HOME}/${pathSegments.slice(0, index + 1).join('/')}`;
       return [
         {
           label,

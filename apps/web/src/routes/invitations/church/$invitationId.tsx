@@ -209,7 +209,7 @@ function ChurchInvitationJoinRoute() {
     return finishRedemptionAtHome({
       queryClient,
       getSession: authClient.getSession,
-      navigateToHome: () => navigate({ to: '/', search }),
+      navigateToHome: () => navigate({ to: '/app', search }),
     });
   }
 
@@ -290,7 +290,7 @@ function ChurchInvitationJoinRoute() {
   ) {
     return (
       <Navigate
-        to="/invitations/church/$invitationId/review"
+        to="/app/invitations/church/$invitationId/review"
         params={{ invitationId }}
         replace
       />
@@ -561,7 +561,7 @@ function SignedInReviewLink({
   if (ministryInvitationId === undefined) {
     return (
       <Link
-        to="/invitations/church/$invitationId/review"
+        to="/app/invitations/church/$invitationId/review"
         params={{ invitationId: churchInvitationId }}
         className={REVIEW_LINK_CLASS}
       >
@@ -571,7 +571,7 @@ function SignedInReviewLink({
   }
   return (
     <Link
-      to="/invitations/ministry/$invitationId"
+      to="/app/invitations/ministry/$invitationId"
       params={{ invitationId: ministryInvitationId }}
       className={REVIEW_LINK_CLASS}
     >

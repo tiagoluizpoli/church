@@ -91,7 +91,7 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
           </p>
           {isChurchAdmin ? (
             <Link
-              to="/event-templates"
+              to="/app/event-templates"
               className="text-sm underline underline-offset-2"
             >
               {m.usual_setup_open_event_templates()}
@@ -170,7 +170,7 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
             const block = item.leaf;
             return (
               <Link
-                to="/ministries/$ministryId/usual-setup/$blockId"
+                to="/app/ministries/$ministryId/usual-setup/$blockId"
                 params={{
                   ministryId,
                   blockId: block.sourceTemplateTimeBlockId,
@@ -210,7 +210,7 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
             return (
               <div className="flex w-full justify-end gap-2 max-md:hidden">
                 <Link
-                  to="/ministries/$ministryId/usual-setup/$blockId"
+                  to="/app/ministries/$ministryId/usual-setup/$blockId"
                   params={{
                     ministryId,
                     blockId: item.leaf.sourceTemplateTimeBlockId,

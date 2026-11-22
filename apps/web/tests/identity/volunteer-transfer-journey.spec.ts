@@ -89,7 +89,9 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
       await expect(page).toHaveURL(/\/login(\?.*)?$/);
       await signIn({ page, persona: transferee });
       await expect(page).toHaveURL(
-        new RegExp(`/invitations/ministry/${churchAMinistryInvitation.id}$`),
+        new RegExp(
+          `/app/invitations/ministry/${churchAMinistryInvitation.id}$`,
+        ),
       );
       await expect(
         page.getByRole('heading', {
@@ -210,7 +212,7 @@ test.describe('#65 — a Volunteer transfers between Churches', () => {
 
       // The continuation makes the destination Church (A) active and lands
       // on Home, so the dual-membership User is not asked to choose.
-      await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
+      await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/);
 
       expect(
         await fetchActiveChurchStatus({ request: page.request }),

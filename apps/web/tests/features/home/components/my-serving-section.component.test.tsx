@@ -162,7 +162,10 @@ describe('Home serving widgets', () => {
 
     const next = await widget(m.home_next_assignment());
     await within(next).findByRole('link', { name: 'Sunday' });
-    expect(hrefs(next)).toEqual(['/my-schedule/a-1', '/my-schedule/a-1']);
+    expect(hrefs(next)).toEqual([
+      '/app/my-schedule/a-1',
+      '/app/my-schedule/a-1',
+    ]);
     expect(within(next).getByText(/^domingo, 11 de outubro · /)).toBeVisible();
     expect(within(next).getByText('Kids a-1 · Room · Teacher')).toBeVisible();
 
@@ -170,9 +173,9 @@ describe('Home serving widgets', () => {
     await within(checks).findByText('Ministry open · Cycle open');
     expect(within(checks).queryByText(/Ministry done/)).not.toBeInTheDocument();
     expect(hrefs(checks)).toEqual([
-      '/availability/open',
-      '/availability/soon',
-      '/availability/late',
+      '/app/availability/open',
+      '/app/availability/soon',
+      '/app/availability/late',
     ]);
     // Each check row is one link naming its Ministry, Cycle and the action.
     expect(
@@ -204,13 +207,13 @@ describe('Home serving widgets', () => {
     // The next assignment is not repeated in the upcoming list.
     const upcoming = await widget(m.home_upcoming_assignments());
     expect(hrefs(upcoming)).toEqual([
-      '/my-schedule',
-      '/my-schedule/a-2',
-      '/my-schedule/a-3',
+      '/app/my-schedule',
+      '/app/my-schedule/a-2',
+      '/app/my-schedule/a-3',
     ]);
     expect(
       within(upcoming).getByRole('link', { name: m.home_see_all() }),
-    ).toHaveAttribute('href', '/my-schedule');
+    ).toHaveAttribute('href', '/app/my-schedule');
   });
 
   it('keeps the upcoming and pending-check slots with their empty states', async () => {
@@ -232,7 +235,7 @@ describe('Home serving widgets', () => {
 
     expect(await screen.findByRole('link', { name: 'Sunday' })).toHaveAttribute(
       'href',
-      '/my-schedule/a-1',
+      '/app/my-schedule/a-1',
     );
     expect(await screen.findByText(m.home_upcoming_none())).toBeVisible();
     expect(screen.getByText(m.home_pending_checks_none())).toBeVisible();
@@ -248,7 +251,7 @@ describe('Home serving widgets', () => {
     renderHomePage();
     expect(
       await screen.findByRole('link', { name: m.home_open_assignment() }),
-    ).toHaveAttribute('href', '/my-schedule/a-1');
+    ).toHaveAttribute('href', '/app/my-schedule/a-1');
   });
 
   it('keeps the next-assignment slot and points it at an open check', async () => {
@@ -442,7 +445,11 @@ describe('Home serving widgets', () => {
         within(upcoming)
           .getAllByRole('link')
           .map((link) => link.getAttribute('href')),
-      ).toEqual(['/my-schedule', '/my-schedule/a-2', '/my-schedule/a-3']),
+      ).toEqual([
+        '/app/my-schedule',
+        '/app/my-schedule/a-2',
+        '/app/my-schedule/a-3',
+      ]),
     );
     expect(within(upcoming).queryByText(/recusad/i)).not.toBeInTheDocument();
   });

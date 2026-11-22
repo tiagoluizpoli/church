@@ -37,14 +37,14 @@ export function useContinueToChurch(): (
       : undefined;
     if (!church) {
       await clearActiveChurchScopedCache({ queryClient });
-      navigate({ to: '/', search: homeSearch });
+      navigate({ to: '/app', search: homeSearch });
       return;
     }
     await switchActiveChurch({
       availableAreas: church.availableAreas,
       churchId: church.churchId,
       churchName: church.name,
-      destination: '/',
+      destination: '/app',
       navigate: ({ destination }) =>
         navigate({ to: destination, search: homeSearch }),
       queryClient,

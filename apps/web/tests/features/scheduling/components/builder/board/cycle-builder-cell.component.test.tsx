@@ -267,11 +267,11 @@ describe('CycleBuilderCell', () => {
     expect(screen.getByText('No one holds Greeter')).toBeVisible();
     expect(screen.getByRole('link', { name: 'People' })).toHaveAttribute(
       'href',
-      '/people',
+      '/app/people',
     );
     expect(screen.getByRole('link', { name: 'Invitations' })).toHaveAttribute(
       'href',
-      '/invitations',
+      '/app/invitations',
     );
     for (const link of screen.getAllByRole('link')) {
       expect(link).toHaveAttribute('target', '_blank');

@@ -75,7 +75,7 @@ test.describe('#67 — Active Church selection and switching', () => {
     );
 
     await churchOptionRow({ page, churchId: churchA.id }).click();
-    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
+    await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/);
 
     expect(
       await fetchActiveChurchStatus({ request: page.request }),
@@ -83,7 +83,7 @@ test.describe('#67 — Active Church selection and switching', () => {
 
     // Prove Church A's real values are actually on the page before the
     // switch — otherwise their later absence would prove nothing.
-    await page.goto('/cycles');
+    await page.goto('/app/cycles');
     await expect(page.getByTestId('planning-admin-page')).toBeVisible();
     await expect(cycleRow({ page, cycleId: firstCycle.id })).toContainText(
       firstCycle.name,
@@ -105,7 +105,7 @@ test.describe('#67 — Active Church selection and switching', () => {
     await churchOptionRow({ page, churchId: churchB.id }).click();
     // Church B has no scheduling access, so the "preserve" route policy
     // falls back to Home (spec 024 §1.5) once the switch commits.
-    await expect(page).toHaveURL(/\/(\?.*)?$/);
+    await expect(page).toHaveURL(/\/app(\?.*)?$/);
     // The URL commits before the code-split dashboard chunk renders.
     await expect(
       page.getByRole('heading', {

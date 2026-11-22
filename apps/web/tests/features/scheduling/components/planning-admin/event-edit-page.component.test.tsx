@@ -186,7 +186,7 @@ describe('EventEditPage', () => {
     ]);
     expect(
       screen.getByRole('link', { name: m.event_editor_cancel() }),
-    ).toHaveAttribute('href', '/cycles/cycle-1');
+    ).toHaveAttribute('href', '/app/cycles/cycle-1');
     expect(updatePlanningEvent).not.toHaveBeenCalled();
   });
 
@@ -213,7 +213,7 @@ describe('EventEditPage', () => {
 
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
-        to: '/cycles/$cycleId',
+        to: '/app/cycles/$cycleId',
         params: { cycleId: 'cycle-1' },
         search: { eventId: 'event-1' },
       }),
@@ -423,7 +423,7 @@ describe('Delete a Draft Event', () => {
     resolveDelete(undefined);
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
-        to: '/cycles/$cycleId',
+        to: '/app/cycles/$cycleId',
         params: { cycleId: 'cycle-1' },
       }),
     );
@@ -548,7 +548,7 @@ describe('Edit Sent Event details', () => {
       ),
     );
     expect(navigate).toHaveBeenCalledWith({
-      to: '/cycles/$cycleId',
+      to: '/app/cycles/$cycleId',
       params: { cycleId: 'cycle-1' },
       search: { eventId: 'event-1' },
     });

@@ -15,7 +15,7 @@ test('an unreachable API shows one reconnecting banner and the page recovers by 
   const journey = loadMinistryWorkspaceIndexJourney({ testInfo });
   const { worship } = journey.ministries;
   await signInPersonaPage({ page, persona: journey.personas.admin });
-  await page.goto('/ministries');
+  await page.goto('/app/ministries');
   const worshipLink = page.getByRole('link', {
     name: m.ministries_open_label({ name: worship.name }, PT),
   });

@@ -33,7 +33,10 @@ export function NewCycleDialog({
     ]);
     toast.success(m.cycles_created());
     onOpenChange(false);
-    await navigate({ to: '/cycles/$cycleId', params: { cycleId: cycle.id } });
+    await navigate({
+      to: '/app/cycles/$cycleId',
+      params: { cycleId: cycle.id },
+    });
   }
 
   return (

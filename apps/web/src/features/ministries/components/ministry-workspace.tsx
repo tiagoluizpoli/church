@@ -15,9 +15,9 @@ import { cn } from '@/lib/utils';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
 type MinistryTabPath =
-  | '/ministries/$ministryId/operational'
-  | '/ministries/$ministryId/usual-setup'
-  | '/ministries/$ministryId/settings';
+  | '/app/ministries/$ministryId/operational'
+  | '/app/ministries/$ministryId/usual-setup'
+  | '/app/ministries/$ministryId/settings';
 
 interface MinistryTab {
   to: MinistryTabPath;
@@ -28,15 +28,15 @@ interface MinistryTab {
 /** Routed tabs, in the order #385 fixes; Settings is ChurchAdmin-only. */
 const MINISTRY_TABS: MinistryTab[] = [
   {
-    to: '/ministries/$ministryId/operational',
+    to: '/app/ministries/$ministryId/operational',
     label: m.ministry_tab_structure,
   },
   {
-    to: '/ministries/$ministryId/usual-setup',
+    to: '/app/ministries/$ministryId/usual-setup',
     label: m.ministry_tab_usual_setup,
   },
   {
-    to: '/ministries/$ministryId/settings',
+    to: '/app/ministries/$ministryId/settings',
     label: m.ministry_tab_settings,
     adminOnly: true,
   },
@@ -92,7 +92,10 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
         <p className="text-muted-foreground">
           {kind === 'forbidden' ? m.shell_no_access() : m.ministry_not_found()}
         </p>
-        <Link to="/ministries" className="text-sm underline underline-offset-2">
+        <Link
+          to="/app/ministries"
+          className="text-sm underline underline-offset-2"
+        >
           {m.ministry_back_to_list()}
         </Link>
       </div>

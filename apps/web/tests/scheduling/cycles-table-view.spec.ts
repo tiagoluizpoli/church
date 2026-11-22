@@ -66,7 +66,7 @@ async function createCycleWithSundayTemplateApplied({
     templateIds: [template.id],
   });
 
-  await page.goto(`/cycles/${cycle.id}`);
+  await page.goto(`/app/cycles/${cycle.id}`);
   // First visit: Vite dev transforms the route's module graph on demand.
   await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName, {
     timeout: 15_000,
@@ -85,7 +85,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
       testInfo,
     });
 
-    await page.goto('/cycles');
+    await page.goto('/app/cycles');
     const cyclesTable = page.getByRole('grid', { name: 'Ciclos' });
     await expect(cyclesTable).toBeVisible();
     await expect(
@@ -117,7 +117,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
       page,
       testInfo,
     });
-    await page.goto('/event-templates');
+    await page.goto('/app/event-templates');
 
     const templatesTable = page.getByRole('grid', { name: 'Modelos salvos' });
     await expect(templatesTable).toBeVisible();
@@ -255,7 +255,7 @@ test.describe('Cycles table view — mobile no-regression (US3)', () => {
     await expect(page.getByTestId('planning-event-card').first()).toBeVisible();
 
     const cycleReviewUrl = page.url();
-    await page.goto('/event-templates');
+    await page.goto('/app/event-templates');
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('saved-template-row').first()).toBeVisible();
 
@@ -263,7 +263,7 @@ test.describe('Cycles table view — mobile no-regression (US3)', () => {
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('planning-event-card').first()).toBeVisible();
 
-    await page.goto('/cycles');
+    await page.goto('/app/cycles');
     await expect(page.getByRole('grid')).toHaveCount(0);
     await expect(page.getByTestId('cycle-option').first()).toBeVisible();
   });
@@ -279,7 +279,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     const templateName = 'US3 Template';
     const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
 
-    await page.goto('/cycles');
+    await page.goto('/app/cycles');
     await page.getByTestId('open-create-cycle-dialog-button').click();
     const createCycleDialog = page.getByRole('dialog', {
       name: 'Novo ciclo',
@@ -299,7 +299,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(cycleName);
 
     const cycleReviewUrl = page.url();
-    await page.goto('/event-templates');
+    await page.goto('/app/event-templates');
     await createTemplateOnNestedPage({
       page,
       name: templateName,

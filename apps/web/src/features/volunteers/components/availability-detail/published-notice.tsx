@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 export function MyScheduleLink() {
   return (
-    <Link to="/my-schedule" className={LINK_CLASS}>
+    <Link to="/app/my-schedule" className={LINK_CLASS}>
       {m.availability_detail_published_link()}
     </Link>
   );

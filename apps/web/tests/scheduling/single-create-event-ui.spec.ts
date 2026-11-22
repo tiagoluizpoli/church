@@ -41,7 +41,7 @@ async function createOpenCycle({
     startDate,
     endDate,
   });
-  await page.goto(`/cycles/${cycle.id}`);
+  await page.goto(`/app/cycles/${cycle.id}`);
   await expect(
     page.getByRole('link', { name: m.cycles_add_event_button({}, LOCALE) }),
   ).toBeVisible();
@@ -66,7 +66,7 @@ test('a Draft Cycle has exactly one create-Event entry: its nested New Event pag
     .getByRole('link', { name: m.cycles_add_event_button({}, LOCALE) })
     .click();
 
-  await expect(page).toHaveURL(`/cycles/${cycleId}/events/new`);
+  await expect(page).toHaveURL(`/app/cycles/${cycleId}/events/new`);
   await expect(
     page.getByLabel(m.event_editor_title_label({}, LOCALE)),
   ).toBeVisible();
@@ -78,7 +78,7 @@ test('a Draft Cycle has exactly one create-Event entry: its nested New Event pag
   await page
     .getByRole('link', { name: m.event_editor_cancel({}, LOCALE) })
     .click();
-  await expect(page).toHaveURL(`/cycles/${cycleId}`);
+  await expect(page).toHaveURL(`/app/cycles/${cycleId}`);
 });
 
 test.describe('the New Event page stores church-local Instants (#149)', () => {

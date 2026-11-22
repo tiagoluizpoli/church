@@ -41,7 +41,7 @@ export function EventDetailsForm({ cycleId, graph }: EventDetailsFormProps) {
       const updated = m.event_details_updated_toast();
       toast.success(updated);
       await navigate({
-        to: '/cycles/$cycleId',
+        to: '/app/cycles/$cycleId',
         params: { cycleId },
         search: { eventId },
       });

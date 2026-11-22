@@ -47,7 +47,7 @@ export default function SignInForm({
           // Arriving in the app is the confirmation; no toast.
           onSuccess: () => {
             navigate({
-              href: redirectTo ?? '/',
+              href: redirectTo ?? '/app',
             });
           },
           onError: (error) => {

@@ -414,7 +414,7 @@ function PreparationBlockForm({
   const isMobile = useMediaQuery('(max-width: 767px)');
   const backToSchedule = () =>
     navigate({
-      to: '/schedules/$ministryId/$cycleId',
+      to: '/app/schedules/$ministryId/$cycleId',
       params: { ministryId, cycleId },
       search: (previous) => previous,
       hash: `event-time-block-${eventTimeBlockId}`,
@@ -560,7 +560,7 @@ function PreparationBlockForm({
   });
   function openBlock(id: string) {
     void navigate({
-      to: '/schedules/$ministryId/$cycleId/slots/$timeSlotId',
+      to: '/app/schedules/$ministryId/$cycleId/slots/$timeSlotId',
       params: { ministryId, cycleId, timeSlotId: id },
       search: (previous) => previous,
     });

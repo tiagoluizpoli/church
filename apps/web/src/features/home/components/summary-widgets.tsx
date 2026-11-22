@@ -101,7 +101,7 @@ export function ScheduleSummary(props: SummaryProps) {
             {STAGES.map(({ stage, fill, label }) => (
               <li key={stage}>
                 <Link
-                  to="/schedules"
+                  to="/app/schedules"
                   search={{ stage }}
                   className="radius-control -mx-2 flex min-h-11 items-center gap-3 px-2 py-1 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
                 >
@@ -244,7 +244,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_people_without_ministry(),
             count: people.data.counts.withoutMinistry,
             link: linkOptions({
-              to: '/people',
+              to: '/app/people',
               search: { withoutMinistry: true },
             }),
             Icon: UserX,
@@ -253,7 +253,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_invites_pending(),
             count: invitations.data.counts.pending,
             link: linkOptions({
-              to: '/invitations',
+              to: '/app/invitations',
               search: { status: 'pending' },
             }),
             Icon: Mail,
@@ -262,7 +262,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_invites_expired(),
             count: invitations.data.counts.expired,
             link: linkOptions({
-              to: '/invitations',
+              to: '/app/invitations',
               search: { status: 'expired' },
             }),
             Icon: MailX,
@@ -271,7 +271,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_ministries_review(),
             count: ministries.data.counts.review,
             link: linkOptions({
-              to: '/ministries',
+              to: '/app/ministries',
               search: { status: 'review' },
             }),
             Icon: ClipboardCheck,
@@ -280,7 +280,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_ministries_no_sectors(),
             count: ministries.data.counts.noSectors,
             link: linkOptions({
-              to: '/ministries',
+              to: '/app/ministries',
               search: { status: 'no-sectors' },
             }),
             Icon: Layers,
@@ -311,7 +311,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
           <section aria-label={m.home_people_group()} className="space-y-3">
             <h3 className="font-medium text-sm">{m.home_people_group()}</h3>
             <Link
-              to="/people"
+              to="/app/people"
               className="radius-control -mx-2 block space-y-2 px-2 py-1.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
             >
               <span className="flex items-baseline justify-between gap-3">
@@ -344,7 +344,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
                 label={m.home_admins()}
                 count={counts.admins}
                 link={linkOptions({
-                  to: '/people',
+                  to: '/app/people',
                   search: { access: 'admin' },
                 })}
                 Icon={ShieldCheck}
@@ -353,7 +353,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
                 label={m.home_leaders()}
                 count={counts.leaders}
                 link={linkOptions({
-                  to: '/people',
+                  to: '/app/people',
                   search: { access: 'leader' },
                 })}
                 Icon={UserCog}
@@ -362,7 +362,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
                 label={m.home_volunteers()}
                 count={counts.volunteers}
                 link={linkOptions({
-                  to: '/people',
+                  to: '/app/people',
                   search: { access: 'volunteer' },
                 })}
                 Icon={HandHeart}
@@ -413,7 +413,7 @@ export function NotificationSummary({ churchId, userId }: HomeSectionProps) {
     );
   return (
     <Link
-      to="/notifications"
+      to="/app/notifications"
       className="inline-flex min-h-11 items-center gap-2 text-sm underline underline-offset-4"
     >
       {m.home_notifications()} ·{' '}

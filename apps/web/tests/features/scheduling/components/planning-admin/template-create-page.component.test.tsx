@@ -81,7 +81,7 @@ describe('TemplateCreatePage', () => {
     expect(screen.getByTestId('create-template-button')).toBeDisabled();
     expect(screen.getByTestId('cancel-template-button')).toHaveAttribute(
       'href',
-      '/event-templates',
+      '/app/event-templates',
     );
     expect(createEventTemplate).not.toHaveBeenCalled();
   });
@@ -146,7 +146,7 @@ describe('TemplateCreatePage', () => {
     await user.click(screen.getByTestId('create-template-button'));
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
     );
     expect(createEventTemplate).toHaveBeenCalledTimes(1);
     expect(createEventTemplate).toHaveBeenCalledWith({

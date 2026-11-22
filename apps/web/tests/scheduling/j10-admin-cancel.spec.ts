@@ -52,7 +52,7 @@ test('J10 admin cancellation: impact, typed gate, N9 and N10, closed SwapRequest
         timeout: 20_000,
       })
       .toBe(true);
-    await who.goto('/dashboard');
+    await who.goto('/app/dashboard');
     await who
       .getByRole('button', { name: m.notification_bell_label({}, locale) })
       .click();
@@ -60,20 +60,20 @@ test('J10 admin cancellation: impact, typed gate, N9 and N10, closed SwapRequest
   };
 
   const assignmentLink = volunteerPage.locator(
-    `a[href="/my-schedule/${journey.assignmentId}"]`,
+    `a[href="/app/my-schedule/${journey.assignmentId}"]`,
   );
   // Before: the Volunteer is scheduled and the leader sees the open swap.
-  await volunteerPage.goto('/my-schedule');
+  await volunteerPage.goto('/app/my-schedule');
   await expect(
     volunteerPage
       .getByRole('region', { name: m.home_next_assignment({}, locale) })
-      .locator(`a[href="/my-schedule/${journey.assignmentId}"]`),
+      .locator(`a[href="/app/my-schedule/${journey.assignmentId}"]`),
   ).toBeVisible();
   await leaderPage.goto(assignPreparePath({ ministryId, cycleId }));
   await expect(leaderPage.getByTestId('swap-requests-link')).toBeVisible();
 
   // The admin previews the impact and passes the typed gate.
-  await page.goto(`/cycles/${cycleId}/events/${journey.event.id}`);
+  await page.goto(`/app/cycles/${cycleId}/events/${journey.event.id}`);
   await page
     .getByRole('button', {
       name: m.event_cancel_action_label({ title: eventTitle }, locale),
@@ -101,7 +101,7 @@ test('J10 admin cancellation: impact, typed gate, N9 and N10, closed SwapRequest
 
   // The Volunteer is told (N9) and the Assignment is gone, at once.
   await expectBellNotice(volunteerPage, 'event_cancelled');
-  await volunteerPage.goto('/my-schedule');
+  await volunteerPage.goto('/app/my-schedule');
   await expect(
     volunteerPage.getByText(m.my_schedule_empty({}, locale)),
   ).toBeVisible();

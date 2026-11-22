@@ -283,7 +283,7 @@ function CompactModeInbox({
         </div>
       )}
       <Link
-        to="/notifications"
+        to="/app/notifications"
         onClick={onViewAll}
         className="text-center text-primary text-sm hover:underline"
       >

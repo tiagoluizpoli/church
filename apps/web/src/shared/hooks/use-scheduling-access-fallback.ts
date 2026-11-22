@@ -11,6 +11,6 @@ export function useSchedulingAccessFallback({
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (shouldRedirect) void navigate({ to: '/', replace: true });
+    if (shouldRedirect) void navigate({ to: '/app', replace: true });
   }, [navigate, shouldRedirect]);
 }

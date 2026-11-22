@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { z } from 'zod';
 import { ChurchId, UserId } from '../../domain/branded-ids';
+import { ChurchAddressesRefused } from '../../domain/church-address';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IChurchSettingsManager } from '../../domain/contracts/application/church-settings-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
@@ -9,6 +10,7 @@ import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   type ChurchSettingsValidationIssue,
+  churchAddressRefusalsToFieldErrors,
   churchSettingsResponseSchema,
   churchSettingsValidationErrorResponseSchema,
   toChurchSettingsFieldErrors,
@@ -74,7 +76,7 @@ export class ChurchSettingsController implements FastifyController {
           operationId: 'getChurchSettings',
           summary: 'Get the Active Church settings',
           description:
-            'The Church Settings of the Active Church (name, slug, website, accent colour) and the public origin the `…/slug` address is shown under. Empty optional fields are null. ChurchAdmin only.',
+            'The Church Settings of the Active Church (name, slug, website, accent colour, addresses) and the public origin the `…/slug` address is shown under. Empty optional fields are null. ChurchAdmin only.',
           response: {
             200: churchSettingsResponseSchema,
             401: errorResponseSchema,
@@ -124,11 +126,25 @@ export class ChurchSettingsController implements FastifyController {
             }),
           });
         }
-        const settings = await this.churchSettingsManager.updateChurchSettings({
-          churchId: ChurchId.from(request.churchId),
-          changes: request.body as UpdateChurchSettingsBody,
-        });
-        return reply.send(settings);
+        try {
+          const settings =
+            await this.churchSettingsManager.updateChurchSettings({
+              churchId: ChurchId.from(request.churchId),
+              changes: request.body as UpdateChurchSettingsBody,
+            });
+          return reply.send(settings);
+        } catch (error) {
+          if (!(error instanceof ChurchAddressesRefused)) throw error;
+          const { locale } = request;
+          return reply.code(422).send({
+            error: 'VALIDATION_ERROR',
+            message: m.common_validation_error({}, { locale }),
+            fieldErrors: churchAddressRefusalsToFieldErrors({
+              refusals: error.refusals,
+              locale,
+            }),
+          });
+        }
       },
     );
   }

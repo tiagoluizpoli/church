@@ -2,6 +2,12 @@ import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { z } from 'zod';
 import {
+  BRAZILIAN_UFS,
+  type ChurchAddressRefusal,
+  churchAddressesSchema,
+  PIN_SOURCES,
+} from '../../domain/church-address';
+import {
   accentColorSchema,
   CHURCH_SETTINGS_FIELD_CODES,
   type ChurchSettingsFieldCode,
@@ -10,11 +16,31 @@ import {
 } from '../../domain/church-settings';
 import type { ErrorMessage } from '../utils/error-table';
 
+const churchAddressResponseSchema = z.object({
+  id: z.string(),
+  label: z.string().nullable(),
+  street: z.string(),
+  number: z.string(),
+  complement: z.string().nullable(),
+  bairro: z.string(),
+  city: z.string(),
+  uf: z.enum(BRAZILIAN_UFS),
+  cep: z.string().nullable(),
+  country: z.literal('BR'),
+  isPublic: z.boolean(),
+  isMain: z.boolean(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  pinSource: z.enum(PIN_SOURCES).nullable(),
+  placeId: z.string().nullable(),
+});
+
 export const churchSettingsResponseSchema = z.object({
   name: z.string(),
   slug: z.string(),
   website: z.string().nullable(),
   accentColor: z.string().nullable(),
+  addresses: z.array(churchAddressResponseSchema),
   /** The web origin the public `…/slug` address is shown under. */
   publicOrigin: z.string(),
 });
@@ -29,6 +55,9 @@ export const updateChurchSettingsBodySchema = z.object({
   ),
   accentColor: accentColorSchema.describe(
     '#rrggbb, or null for the app default.',
+  ),
+  addresses: churchAddressesSchema.describe(
+    'Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.',
   ),
 });
 export type UpdateChurchSettingsBody = z.output<
@@ -57,6 +86,13 @@ const FIELD_CODE_MESSAGES: Record<ChurchSettingsFieldCode, ErrorMessage> = {
   CHURCH_WEBSITE_INVALID: m.error_church_settings_website_invalid,
   CHURCH_WEBSITE_TOO_LONG: m.error_church_settings_website_too_long,
   ACCENT_COLOR_INVALID: m.error_church_settings_accent_color_invalid,
+  ADDRESS_REQUIRED: m.error_church_settings_address_required,
+  ADDRESS_TOO_LONG: m.error_church_settings_address_too_long,
+  ADDRESS_UF_INVALID: m.error_church_settings_address_uf_invalid,
+  ADDRESS_CEP_INVALID: m.error_church_settings_address_cep_invalid,
+  ADDRESS_PIN_INVALID: m.error_church_settings_address_pin_invalid,
+  ADDRESS_MAIN_MULTIPLE: m.error_church_settings_address_main_multiple,
+  ADDRESS_MAIN_REQUIRED: m.error_church_settings_address_main_required,
   INVALID: m.error_church_settings_invalid,
 };
 
@@ -94,4 +130,20 @@ export function toChurchSettingsFieldErrors({
     });
   }
   return [...errors.values()];
+}
+
+interface RefusalFieldErrorsInput {
+  refusals: readonly ChurchAddressRefusal[];
+  locale: Locale;
+}
+
+export function churchAddressRefusalsToFieldErrors({
+  refusals,
+  locale,
+}: RefusalFieldErrorsInput): ChurchSettingsFieldError[] {
+  return refusals.map(({ field, code }) => ({
+    field,
+    code,
+    message: FIELD_CODE_MESSAGES[code]({}, { locale }),
+  }));
 }

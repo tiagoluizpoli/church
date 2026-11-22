@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  CHURCH_ADDRESS_FIELD_CODES,
+  type ChurchAddress,
+  type ChurchAddressChange,
+} from './church-address';
 
 /** Church Settings as stored; empty optional fields are `null`. */
 export interface ChurchSettings {
@@ -6,12 +11,14 @@ export interface ChurchSettings {
   slug: string;
   website: string | null;
   accentColor: string | null;
+  addresses: ChurchAddress[];
 }
 
 export interface ChurchSettingsChanges {
   name: string;
   website: string | null;
   accentColor: string | null;
+  addresses: ChurchAddressChange[];
 }
 
 /**
@@ -24,6 +31,7 @@ export const CHURCH_SETTINGS_FIELD_CODES = [
   'CHURCH_WEBSITE_INVALID',
   'CHURCH_WEBSITE_TOO_LONG',
   'ACCENT_COLOR_INVALID',
+  ...CHURCH_ADDRESS_FIELD_CODES,
   'INVALID',
 ] as const;
 export type ChurchSettingsFieldCode =

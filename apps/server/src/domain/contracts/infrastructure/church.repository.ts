@@ -27,7 +27,10 @@ export interface ChurchRepository {
   findUserName(input: FindUserNameInput): Promise<string | null>;
   /** The Church's editable identity (Church Settings). */
   getSettings(input: GetChurchByIdInput): Promise<ChurchSettings>;
-  /** Overwrites the Church's editable identity; the slug is never touched. */
+  /**
+   * Overwrites the Church's editable identity and its addresses; the slug is never touched.
+   * Throws `ChurchAddressesRefused` when the stored addresses make the save invalid.
+   */
   saveSettings(input: SaveChurchSettingsInput): Promise<void>;
 }
 

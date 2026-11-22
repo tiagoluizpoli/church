@@ -1,7 +1,11 @@
 import { NotFoundError } from '@church/core';
-import { church, member, organization, user } from '@church/db';
-import { and, asc, eq } from 'drizzle-orm';
+import { church, churchAddress, member, organization, user } from '@church/db';
+import { and, asc, eq, notInArray } from 'drizzle-orm';
 import type { UserId } from '../../domain/branded-ids';
+import {
+  type ChurchAddress,
+  resolveChurchAddresses,
+} from '../../domain/church-address';
 import type { ChurchSettings } from '../../domain/church-settings';
 import type {
   ChurchMemberContact,
@@ -13,6 +17,7 @@ import type {
   ListChurchAdminUserIdsInput,
   SaveChurchSettingsInput,
 } from '../../domain/contracts/infrastructure/church.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { Church } from '../../domain/entities/church';
 import { mapChurch } from '../mappers/church.mapper';
 import { getClient, isValidUuid } from './helpers';
@@ -21,6 +26,11 @@ import type { AnyDrizzleDb } from './types';
 // Church identity lives on the `organization` row and the rest on the `church`
 // extension row keyed by the same id, so every read joins the two.
 const churchJoinShape = { church, organization };
+
+interface ListAddressesInput {
+  id: string;
+  tx?: TransactionContext;
+}
 
 interface DrizzleChurchRepositoryInput {
   db: AnyDrizzleDb;
@@ -119,7 +129,36 @@ export class DrizzleChurchRepository implements ChurchRepository {
           .where(eq(church.id, id))
       : [];
     if (!row) throw new NotFoundError(`Church not found: ${id}`);
-    return row;
+    return { ...row, addresses: await this.listAddresses({ id }) };
+  }
+
+  private async listAddresses({
+    id,
+    tx,
+  }: ListAddressesInput): Promise<ChurchAddress[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        id: churchAddress.id,
+        label: churchAddress.label,
+        street: churchAddress.street,
+        number: churchAddress.number,
+        complement: churchAddress.complement,
+        bairro: churchAddress.bairro,
+        city: churchAddress.city,
+        uf: churchAddress.uf,
+        cep: churchAddress.cep,
+        country: churchAddress.country,
+        isPublic: churchAddress.isPublic,
+        isMain: churchAddress.isMain,
+        latitude: churchAddress.latitude,
+        longitude: churchAddress.longitude,
+        pinSource: churchAddress.pinSource,
+        placeId: churchAddress.placeId,
+      })
+      .from(churchAddress)
+      .where(eq(churchAddress.churchId, id))
+      .orderBy(asc(churchAddress.position), asc(churchAddress.id));
+    return rows as ChurchAddress[];
   }
 
   async saveSettings({
@@ -136,5 +175,39 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .update(church)
       .set({ website: changes.website, accentColor: changes.accentColor })
       .where(eq(church.id, id));
+    const writes = resolveChurchAddresses({
+      stored: await this.listAddresses({ id, tx }),
+      incoming: changes.addresses,
+    });
+    const kept = writes.flatMap((write) => (write.id ? [write.id] : []));
+    await client
+      .delete(churchAddress)
+      .where(
+        kept.length === 0
+          ? eq(churchAddress.churchId, id)
+          : and(
+              eq(churchAddress.churchId, id),
+              notInArray(churchAddress.id, kept),
+            ),
+      );
+    // The Main Address goes last so the one-main index never sees two.
+    for (const write of [...writes].sort(
+      (a, b) => Number(a.isMain) - Number(b.isMain),
+    )) {
+      const { id: addressId, ...values } = write;
+      if (addressId) {
+        await client
+          .update(churchAddress)
+          .set(values)
+          .where(
+            and(
+              eq(churchAddress.id, addressId),
+              eq(churchAddress.churchId, id),
+            ),
+          );
+      } else {
+        await client.insert(churchAddress).values({ ...values, churchId: id });
+      }
+    }
   }
 }

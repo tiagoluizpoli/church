@@ -2081,5 +2081,18 @@
   "public_events_load_more": "Load more",
   "public_events_cancelled": "Cancelled",
   "public_events_history_show": "See history",
-  "public_events_history_hide": "Hide history"
+  "public_events_history_hide": "Hide history",
+  "event_templates_precedence_both": "Keep both",
+  "event_templates_precedence_this_wins": "This one wins",
+  "event_templates_precedence_other_wins": "The other wins",
+  "event_templates_collision_title": "Choose which template wins",
+  "event_templates_collision_description": "This template shares days and times with the templates below. Decide once for each pair.",
+  "event_templates_collision_confirm": "Save with these answers",
+  "event_templates_precedences_title": "Precedences",
+  "event_templates_precedences_description": "What happens when this template shares a day and time with another one. Changing an answer does not edit either template.",
+  "event_templates_precedences_empty": "No precedences yet. They are asked when this template collides with another.",
+  "event_templates_precedences_loading": "Loading precedences",
+  "event_templates_precedences_load_failed": "Could not load the precedences.",
+  "event_templates_precedence_change_failed": "Could not change the precedence.",
+  "event_templates_precedence_changed_toast": "Precedence updated"
 }

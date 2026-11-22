@@ -6,8 +6,10 @@ import { useState } from 'react';
 import type { PlanningTemplateSummary } from './planning-admin.types';
 import { RetryAlert } from './retry-alert';
 import { TemplateBlockRemovalDialog } from './template-block-removal-dialog';
+import { TemplateCollisionDialog } from './template-collision-dialog';
 import { TemplateDeleteDialog } from './template-delete-dialog';
 import { TemplateEditorForm } from './template-editor-form';
+import { TemplatePrecedenceList } from './template-precedence-list';
 import { templateDetailQueryKey } from './template-query-keys';
 import { useEditTemplate } from './use-edit-template';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -119,6 +121,7 @@ function TemplateEditForm({ template }: TemplateEditFormProps) {
     confirmation,
     onConfirmRemoval,
     onCancelRemoval,
+    collisionDialog,
     ...editor
   } = useEditTemplate({ template });
   const navigate = useNavigate();
@@ -152,6 +155,8 @@ function TemplateEditForm({ template }: TemplateEditFormProps) {
           onDeleted={() => navigate({ to: '/app/event-templates' })}
         />
       ) : null}
+      <TemplateCollisionDialog {...collisionDialog} />
+      <TemplatePrecedenceList templateId={template.id} />
       <TemplateBlockRemovalDialog
         blocks={confirmation ?? []}
         open={confirmation !== null}

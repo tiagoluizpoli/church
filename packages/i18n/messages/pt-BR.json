@@ -2081,5 +2081,18 @@
   "public_events_load_more": "Carregar mais",
   "public_events_cancelled": "Cancelado",
   "public_events_history_show": "Ver histórico",
-  "public_events_history_hide": "Esconder histórico"
+  "public_events_history_hide": "Esconder histórico",
+  "event_templates_precedence_both": "Manter os dois",
+  "event_templates_precedence_this_wins": "Este vence",
+  "event_templates_precedence_other_wins": "O outro vence",
+  "event_templates_collision_title": "Escolha qual modelo vence",
+  "event_templates_collision_description": "Este modelo divide dias e horários com os modelos abaixo. Decida uma vez para cada par.",
+  "event_templates_collision_confirm": "Salvar com estas respostas",
+  "event_templates_precedences_title": "Precedências",
+  "event_templates_precedences_description": "O que acontece quando este modelo divide dia e horário com outro. Mudar uma resposta não edita nenhum dos modelos.",
+  "event_templates_precedences_empty": "Nenhuma precedência ainda. Elas são perguntadas quando este modelo coincide com outro.",
+  "event_templates_precedences_loading": "Carregando precedências",
+  "event_templates_precedences_load_failed": "Não foi possível carregar as precedências.",
+  "event_templates_precedence_change_failed": "Não foi possível mudar a precedência.",
+  "event_templates_precedence_changed_toast": "Precedência atualizada"
 }

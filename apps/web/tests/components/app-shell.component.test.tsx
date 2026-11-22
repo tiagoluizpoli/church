@@ -159,6 +159,7 @@ const HOME = m.nav_home();
 const SERVING = [m.nav_my_schedule(), m.nav_availability()];
 const SCHEDULES = [m.nav_schedules()];
 const CHURCH_LEADER = [m.nav_ministries(), m.nav_people(), m.nav_invitations()];
+const CHURCH_ADMIN = [...CHURCH_LEADER, m.nav_church_settings()];
 const ADMIN_SCHEDULING = [
   m.nav_schedules(),
   m.nav_cycles(),
@@ -202,13 +203,13 @@ const PERSONAS: {
   {
     name: 'admin who does not serve',
     persona: { isChurchAdmin: true },
-    labels: [HOME, ...ADMIN_SCHEDULING, ...CHURCH_LEADER],
+    labels: [HOME, ...ADMIN_SCHEDULING, ...CHURCH_ADMIN],
     headings: [m.nav_group_scheduling(), m.nav_group_church()],
   },
   {
     name: 'admin who serves',
     persona: { isChurchAdmin: true, hasVolunteerMembership: true },
-    labels: [HOME, ...SERVING, ...ADMIN_SCHEDULING, ...CHURCH_LEADER],
+    labels: [HOME, ...SERVING, ...ADMIN_SCHEDULING, ...CHURCH_ADMIN],
     headings: HEADINGS,
   },
 ];

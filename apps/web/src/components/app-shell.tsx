@@ -16,6 +16,7 @@ import {
   Mail,
   Menu,
   Search,
+  Settings,
   Users,
   UsersRound,
 } from 'lucide-react';
@@ -177,6 +178,13 @@ const NAV_ENTRIES: NavEntry[] = [
     icon: Mail,
     isVisible: isAdminOrLeader,
   },
+  {
+    group: 'church',
+    label: () => m.nav_church_settings(),
+    to: '/app/church-settings',
+    icon: Settings,
+    isVisible: (c) => c.isChurchAdmin,
+  },
 ];
 
 const GROUP_ORDER: NavGroup[] = ['home', 'serving', 'scheduling', 'church'];
@@ -206,6 +214,7 @@ const BREADCRUMB_SEGMENT_LABELS: Record<string, () => string> = {
   ministries: () => m.nav_ministries(),
   people: () => m.nav_people(),
   invitations: () => m.nav_invitations(),
+  'church-settings': () => m.nav_church_settings(),
   ministry: () => m.breadcrumb_ministry(),
   operational: () => m.ministry_tab_structure(),
   sectors: () => m.ministry_tab_sectors(),

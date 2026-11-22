@@ -68,6 +68,14 @@ export interface SocialLinkDraft {
   description: string;
 }
 
+/** The Church Legal Profile being edited; both text fields empty means none. */
+export interface LegalProfileDraft {
+  legalName: string;
+  /** Typed with or without the mask; the server stores its 14 digits. */
+  cnpj: string;
+  isPublic: boolean;
+}
+
 /** What the screen edits; the server normalises it on save. */
 export interface ChurchSettingsForm {
   name: string;
@@ -82,6 +90,7 @@ export interface ChurchSettingsForm {
   addresses: AddressDraft[];
   /** In display order; always public. */
   socialLinks: SocialLinkDraft[];
+  legalProfile: LegalProfileDraft;
 }
 
 interface ToChurchSettingsFormInput {
@@ -94,6 +103,7 @@ interface ToChurchSettingsFormInput {
     | 'addresses'
     | 'contacts'
     | 'socialLinks'
+    | 'legalProfile'
   >;
 }
 
@@ -120,7 +130,25 @@ export function toChurchSettingsForm({
       url,
       description: description ?? '',
     })),
+    legalProfile: settings.legalProfile
+      ? {
+          ...settings.legalProfile,
+          cnpj: formatCnpj({ digits: settings.legalProfile.cnpj }),
+        }
+      : { legalName: '', cnpj: '', isPublic: false },
   };
+}
+
+interface FormatCnpjInput {
+  digits: string;
+}
+
+/** `11222333000181` as `11.222.333/0001-81`. */
+export function formatCnpj({ digits }: FormatCnpjInput): string {
+  return digits.replace(
+    /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+    '$1.$2.$3/$4-$5',
+  );
 }
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;

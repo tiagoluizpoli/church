@@ -2,7 +2,7 @@ import { m } from '@church/i18n/messages';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   GetChurchSettings200,
   UpdateChurchSettingsBody,
@@ -74,8 +74,11 @@ const SAVED: GetChurchSettings200 = {
   logoKey: null,
   logoUrl: null,
   contacts: [],
+  legalProfile: null,
   publicOrigin: 'https://app.church.test',
 };
+
+const NO_LEGAL_DRAFT = { legalName: '', cnpj: '', isPublic: false };
 
 const LOGO_KEY = `public/churches/c1/logo/${'a'.repeat(64)}.png`;
 const LOGO_URL = `https://storage.test/church/${LOGO_KEY}`;
@@ -211,6 +214,7 @@ describe('Church Settings screen', () => {
         addresses: [],
         socialLinks: [],
         contacts: [],
+        legalProfile: NO_LEGAL_DRAFT,
       }),
     );
     expect(toastSuccess).toHaveBeenCalledWith(m.church_settings_saved());
@@ -235,6 +239,7 @@ describe('Church Settings screen', () => {
         addresses: [],
         socialLinks: [],
         contacts: [],
+        legalProfile: NO_LEGAL_DRAFT,
       }),
     );
   });
@@ -594,6 +599,7 @@ describe('Church Settings screen', () => {
           addresses: [],
           socialLinks: [],
           contacts: [],
+          legalProfile: NO_LEGAL_DRAFT,
           slug: 'esperanca',
         }),
       );
@@ -1190,6 +1196,82 @@ describe('Church Settings social links', () => {
   });
 });
 
+describe('Church Settings preview addresses', () => {
+  const ANEXO = { ...SEDE, id: 'a3', label: 'Anexo', isMain: false };
+
+  afterEach(() => vi.restoreAllMocks());
+
+  async function openPreview(user: ReturnType<typeof userEvent.setup>) {
+    await nameField();
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_show_preview() }),
+    );
+    return screen.findByRole('dialog', {
+      name: m.church_settings_preview_title(),
+    });
+  }
+
+  it('lists public addresses with the Main Address first, hides private ones and links Como chegar', async () => {
+    const user = userEvent.setup();
+    withAddresses(ANEXO, CASA, SEDE);
+    renderSettings();
+
+    const drawer = await openPreview(user);
+
+    const labels = within(drawer)
+      .getAllByRole('listitem')
+      .filter((item) => item.textContent?.includes('Rua das Flores'))
+      .map((item) => item.querySelector('p')?.textContent);
+    expect(labels).toEqual(['Templo', 'Anexo']);
+    expect(within(drawer).queryByText('Casa do Marcos')).toBeNull();
+    const links = within(drawer).getAllByRole('link', {
+      name: m.church_settings_preview_directions(),
+    });
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute(
+      'href',
+      'https://www.google.com/maps/dir/?api=1&destination=-22.9,-47.06',
+    );
+  });
+
+  it('picks the link by device', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    );
+    withAddresses(SEDE);
+    renderSettings();
+
+    const drawer = await openPreview(user);
+
+    expect(
+      within(drawer).getByRole('link', {
+        name: m.church_settings_preview_directions(),
+      }),
+    ).toHaveAttribute('href', 'https://maps.apple.com/?daddr=-22.9,-47.06');
+  });
+
+  it('copies the formatted address', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE);
+    renderSettings();
+    const drawer = await openPreview(user);
+    const writeText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockResolvedValue();
+
+    await user.click(
+      within(drawer).getByRole('button', {
+        name: m.church_settings_preview_copy_address(),
+      }),
+    );
+
+    expect(writeText).toHaveBeenCalledWith(
+      'Rua das Flores, 120, Centro, Campinas - SP',
+    );
+  });
+});
+
 describe('Church Contacts section', () => {
   const PHONE = {
     kind: 'phone' as const,
@@ -1428,5 +1510,154 @@ describe('Church Contacts section', () => {
     await user.type(second(), '0');
 
     expect(second()).not.toHaveAttribute('aria-invalid');
+  });
+});
+
+describe('Church Settings legal profile', () => {
+  const LEGAL = {
+    legalName: 'Igreja Semente Ltda',
+    cnpj: '11222333000181',
+    isPublic: false,
+  };
+
+  it('starts empty with the Público toggle off and counts nothing', async () => {
+    renderSettings();
+
+    expect(
+      await screen.findByRole('textbox', {
+        name: m.church_settings_legal_name_label(),
+      }),
+    ).toHaveValue('');
+    expect(
+      screen.getByRole('switch', {
+        name: m.church_settings_legal_public_toggle(),
+      }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('0');
+  });
+
+  it('shows the saved profile with a masked CNPJ and counts it as admin-only', async () => {
+    getChurchSettings.mockResolvedValue({ ...SAVED, legalProfile: LEGAL });
+    renderSettings();
+
+    expect(
+      await screen.findByRole('textbox', {
+        name: m.church_settings_legal_cnpj_label(),
+      }),
+    ).toHaveValue('11.222.333/0001-81');
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('1');
+  });
+
+  it('moves the legal profile between the header chips with the Público toggle, and saves it', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await user.type(
+      await screen.findByRole('textbox', {
+        name: m.church_settings_legal_name_label(),
+      }),
+      'Igreja Semente Ltda',
+    );
+    await user.type(
+      screen.getByRole('textbox', {
+        name: m.church_settings_legal_cnpj_label(),
+      }),
+      '11.222.333/0001-81',
+    );
+    const publicBefore = Number(
+      screen.getByTestId('church-settings-public-count').textContent,
+    );
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('1');
+
+    await user.click(
+      screen.getByRole('switch', {
+        name: m.church_settings_legal_public_toggle(),
+      }),
+    );
+
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('0');
+    expect(
+      screen.getByTestId('church-settings-public-count'),
+    ).toHaveTextContent(String(publicBefore + 1));
+    expect(
+      screen.getByText('CNPJ 11.222.333/0001-81', { exact: false }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          legalProfile: {
+            legalName: 'Igreja Semente Ltda',
+            cnpj: '11.222.333/0001-81',
+            isPublic: true,
+          },
+        }),
+      ),
+    );
+  });
+
+  it('keeps the legal profile out of the preview while it is private', async () => {
+    getChurchSettings.mockResolvedValue({ ...SAVED, legalProfile: LEGAL });
+    renderSettings();
+
+    await screen.findByRole('textbox', {
+      name: m.church_settings_legal_cnpj_label(),
+    });
+
+    expect(screen.queryByText(/CNPJ 11\.222/)).not.toBeInTheDocument();
+  });
+
+  it('marks the refused CNPJ, counts it on the section and clears it on edit', async () => {
+    const user = userEvent.setup();
+    updateChurchSettings.mockRejectedValue(
+      refusedSave([
+        {
+          field: 'legalProfile.cnpj',
+          code: 'CNPJ_TAKEN',
+          message: 'Este CNPJ já está cadastrado; fale com o suporte.',
+        },
+      ]),
+    );
+    renderSettings();
+    await user.type(
+      await screen.findByRole('textbox', {
+        name: m.church_settings_legal_name_label(),
+      }),
+      'Igreja',
+    );
+    const cnpj = screen.getByRole('textbox', {
+      name: m.church_settings_legal_cnpj_label(),
+    });
+    await user.type(cnpj, '11222333000181');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Este CNPJ já está cadastrado; fale com o suporte.',
+      ),
+    ).toBeInTheDocument();
+    expect(cnpj).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      within(
+        screen.getByRole('button', {
+          name: new RegExp(m.church_settings_section_legal()),
+        }),
+      ).getByText(m.church_settings_section_errors_one()),
+    ).toBeInTheDocument();
+
+    await user.type(cnpj, '0');
+
+    expect(cnpj).not.toHaveAttribute('aria-invalid', 'true');
   });
 });

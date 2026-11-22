@@ -1,13 +1,20 @@
 import { SOCIAL_NETWORKS } from '@church/app-config/social-networks';
 import { m } from '@church/i18n/messages';
+import { toast } from 'sonner';
 import { accentTextColor } from '@/features/church-settings/accent-text-color';
 import type { ContactForm } from '@/features/church-settings/church-settings-form';
 import {
   type ChurchSettingsForm,
+  formatCnpj,
   paintableAccent,
 } from '@/features/church-settings/church-settings-form';
 import { LogoImage } from '@/features/church-settings/components/logo-image';
 import { detectedNetwork } from '@/features/church-settings/components/social-section';
+import {
+  detectDevice,
+  directionsLink,
+  formatAddress,
+} from '@/features/church-settings/directions';
 
 interface ChurchPreviewProps {
   form: ChurchSettingsForm;
@@ -25,6 +32,10 @@ export function ChurchPreview({ form, logoUrl, titleId }: ChurchPreviewProps) {
     : undefined;
   const website = form.website.trim().replace(/^https?:\/\//i, '');
   const name = form.name.trim();
+  // The Main Address leads; private addresses are never shown to visitors.
+  const publicAddresses = form.addresses
+    .filter((address) => address.isPublic)
+    .sort((a, b) => Number(b.isMain) - Number(a.isMain));
   return (
     <div className="overflow-hidden rounded-xl border bg-background">
       {titleId ? (
@@ -63,6 +74,24 @@ export function ChurchPreview({ form, logoUrl, titleId }: ChurchPreviewProps) {
           ) : null}
         </div>
       </div>
+      {publicAddresses.length > 0 ? (
+        <div className="space-y-2 border-t p-4">
+          <p className="font-medium text-muted-foreground text-xs">
+            {m.church_settings_preview_addresses()}
+          </p>
+          <ul className="space-y-3 text-sm">
+            {publicAddresses.map((address) => (
+              <li key={address.key} className="space-y-1">
+                <p className="font-medium">{address.label ?? address.street}</p>
+                <p className="text-muted-foreground">
+                  {formatAddress({ address })}
+                </p>
+                <AddressActions address={address} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <PreviewContacts
         title={m.church_settings_preview_public_contacts()}
         contacts={form.contacts.filter(({ isPublic }) => isPublic)}
@@ -96,6 +125,23 @@ export function ChurchPreview({ form, logoUrl, titleId }: ChurchPreviewProps) {
               );
             })}
           </ul>
+        </div>
+      ) : null}
+      {form.legalProfile.isPublic &&
+      (form.legalProfile.legalName.trim() || form.legalProfile.cnpj.trim()) ? (
+        <div className="space-y-1 border-t p-4 text-sm">
+          <p className="font-medium text-muted-foreground text-xs">
+            {m.church_settings_preview_legal()}
+          </p>
+          {form.legalProfile.legalName.trim() ? (
+            <p>{form.legalProfile.legalName.trim()}</p>
+          ) : null}
+          {form.legalProfile.cnpj.trim() ? (
+            <p>
+              {m.church_settings_legal_cnpj_label()}{' '}
+              {formatCnpj({ digits: form.legalProfile.cnpj.trim() })}
+            </p>
+          ) : null}
         </div>
       ) : null}
       {logoUrl ? (
@@ -136,6 +182,38 @@ function LogoTile({ logoUrl, dark }: LogoTileProps) {
         {label}
       </figcaption>
     </figure>
+  );
+}
+
+interface AddressActionsProps {
+  address: ChurchSettingsForm['addresses'][number];
+}
+
+/** *Como chegar* for the visitor's device and *Copiar endereço*. */
+function AddressActions({ address }: AddressActionsProps) {
+  const copy = async () => {
+    await navigator.clipboard.writeText(formatAddress({ address }));
+    toast.success(m.church_settings_preview_address_copied());
+  };
+  return (
+    <div className="flex flex-wrap gap-3">
+      <a
+        href={directionsLink({
+          address,
+          device: detectDevice({ userAgent: navigator.userAgent }),
+        })}
+        className="font-medium text-primary underline-offset-4 hover:underline"
+      >
+        {m.church_settings_preview_directions()}
+      </a>
+      <button
+        type="button"
+        onClick={copy}
+        className="font-medium text-primary underline-offset-4 hover:underline"
+      >
+        {m.church_settings_preview_copy_address()}
+      </button>
+    </div>
   );
 }
 

@@ -3,6 +3,7 @@ import {
   church,
   churchAddress,
   churchContact,
+  churchLegalProfile,
   churchSlugHistory,
   churchSocialLink,
   member,
@@ -15,6 +16,7 @@ import {
   type ChurchAddress,
   resolveChurchAddresses,
 } from '../../domain/church-address';
+import type { ChurchLegalProfile } from '../../domain/church-legal-profile';
 import type {
   ChurchSettings,
   ChurchSlugAvailability,
@@ -36,6 +38,7 @@ import type {
 } from '../../domain/contracts/infrastructure/church.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { Church } from '../../domain/entities/church';
+import { ChurchLegalDocumentTakenError } from '../../domain/errors/church-legal-document-taken';
 import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import type {
   ChurchSocialLink,
@@ -56,6 +59,7 @@ interface ListAddressesInput {
 }
 
 const ORGANIZATION_SLUG_UNIQUE = 'organization_slug_unique';
+const LEGAL_DOCUMENT_UNIQUE = 'church_legal_profile_document_idx';
 
 type DrizzleClient = ReturnType<typeof getClient>;
 
@@ -69,6 +73,12 @@ interface ReplaceSocialLinksInput {
   client: DrizzleClient;
   id: string;
   links: readonly SocialLinkChange[];
+}
+
+interface ReplaceLegalProfileInput {
+  client: DrizzleClient;
+  id: string;
+  profile: ChurchLegalProfile | null;
 }
 
 type ChangeSlugInput = FindSlugAvailabilityInput;
@@ -193,8 +203,24 @@ export class DrizzleChurchRepository implements ChurchRepository {
       ...row,
       addresses: await this.listAddresses({ id, tx }),
       socialLinks: await this.listSocialLinks({ id, tx }),
+      legalProfile: await this.findLegalProfile({ id, tx }),
       contacts,
     };
+  }
+
+  private async findLegalProfile({
+    id,
+    tx,
+  }: ListAddressesInput): Promise<ChurchLegalProfile | null> {
+    const [row] = await getClient({ db: this.db, tx })
+      .select({
+        legalName: churchLegalProfile.legalName,
+        cnpj: churchLegalProfile.documentNumber,
+        isPublic: churchLegalProfile.isPublic,
+      })
+      .from(churchLegalProfile)
+      .where(eq(churchLegalProfile.churchId, id));
+    return row ?? null;
   }
 
   private async listSocialLinks({
@@ -296,6 +322,11 @@ export class DrizzleChurchRepository implements ChurchRepository {
       id,
       links: changes.socialLinks,
     });
+    await this.replaceLegalProfile({
+      client,
+      id,
+      profile: changes.legalProfile,
+    });
     const writes = resolveChurchAddresses({
       stored: await this.listAddresses({ id, tx }),
       incoming: changes.addresses,
@@ -359,6 +390,36 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .values(
         links.map((link, position) => ({ ...link, churchId: id, position })),
       );
+  }
+
+  /** No profile deletes the stored one; a CNPJ another Church holds throws without naming it. */
+  private async replaceLegalProfile({
+    client,
+    id,
+    profile,
+  }: ReplaceLegalProfileInput): Promise<void> {
+    if (!profile) {
+      await client
+        .delete(churchLegalProfile)
+        .where(eq(churchLegalProfile.churchId, id));
+      return;
+    }
+    const { legalName, cnpj, isPublic } = profile;
+    const values = { legalName, documentNumber: cnpj, isPublic };
+    try {
+      await client
+        .insert(churchLegalProfile)
+        .values({ ...values, churchId: id })
+        .onConflictDoUpdate({
+          target: churchLegalProfile.churchId,
+          set: values,
+        });
+    } catch (error) {
+      if (isUniqueViolation({ error, constraint: LEGAL_DOCUMENT_UNIQUE })) {
+        throw new ChurchLegalDocumentTakenError();
+      }
+      throw error;
+    }
   }
 
   /** Records the slug given up and takes the new one; a slug taken back leaves the history. */

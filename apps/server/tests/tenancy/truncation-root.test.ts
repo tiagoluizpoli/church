@@ -8,6 +8,7 @@ import {
   availabilityCheck,
   churchAddress,
   churchContact,
+  churchLegalProfile,
   churchSlugHistory,
   churchSocialLink,
   createChurch,
@@ -200,6 +201,12 @@ async function seedEveryTenantedTable(): Promise<void> {
     kind: 'email',
     value: 'contato@test.com',
     position: 0,
+  });
+
+  await testDb.insert(churchLegalProfile).values({
+    churchId: IDS.church,
+    legalName: 'Truncation Ltda',
+    documentNumber: '11222333000181',
   });
 
   await testDb.insert(churchSocialLink).values({

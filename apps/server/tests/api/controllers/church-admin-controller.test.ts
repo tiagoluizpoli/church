@@ -221,6 +221,7 @@ describe('Church admin planning routes', () => {
     planningEventManager.generateFromTemplates.mockResolvedValue({
       generatedEventCount: 5,
       generatedEventTimeBlockCount: 9,
+      leftoverEventTimeBlocks: [],
     });
 
     const success = await app.inject({
@@ -235,6 +236,7 @@ describe('Church admin planning routes', () => {
     expect(success.json()).toEqual({
       generatedEventCount: 5,
       generatedEventTimeBlockCount: 9,
+      leftoverEventTimeBlocks: [],
     });
 
     const invalid = await app.inject({

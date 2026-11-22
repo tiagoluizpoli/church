@@ -653,7 +653,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'applyPlanningTemplates',
           summary: 'Apply EventTemplates to a Cycle',
           description:
-            'Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock.',
+            'Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock. A loser of a Template Precedence skips only its blocks overlapping the winner’s on days the winner’s Recurrence names; blocks already in the Cycle that would now lose are listed in `leftoverEventTimeBlocks` and never deleted.',
           body: applyTemplatesBodySchema,
           response: { 201: generatedPlanningCountsResponseSchema },
         },
@@ -666,7 +666,21 @@ export class ChurchAdminController implements FastifyController {
           cycleId: CycleId.from(cycleId),
           templateIds: body.templateIds.map(EventTemplateId.from),
         });
-        return reply.status(201).send(result);
+        const { leftoverEventTimeBlocks, ...counts } = result;
+        return reply.status(201).send({
+          ...counts,
+          leftoverEventTimeBlocks: leftoverEventTimeBlocks.map(
+            ({
+              eventDate: _day,
+              sourceTemplateTimeBlockId: _source,
+              label,
+              ...block
+            }) => ({
+              ...block,
+              label: label ?? null,
+            }),
+          ),
+        });
       },
     );
 

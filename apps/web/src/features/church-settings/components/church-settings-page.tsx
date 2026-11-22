@@ -11,6 +11,7 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   Church as ChurchIcon,
+  ExternalLink,
   Eye,
   Globe,
   Link2,
@@ -32,7 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Drawer,
   DrawerContent,
@@ -332,6 +333,15 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                 label={m.church_settings_admin_only_chip()}
                 value={0}
               />
+              <a
+                href={`${saved.publicOrigin}/${saved.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonVariants({ variant: 'outline' })}
+              >
+                <ExternalLink aria-hidden />{' '}
+                {m.church_settings_view_public_page()}
+              </a>
               <Button
                 variant="outline"
                 className="xl:hidden"

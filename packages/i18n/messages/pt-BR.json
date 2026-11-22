@@ -1999,5 +1999,10 @@
   "church_settings_slug_confirm_title": "Mudar o link da igreja?",
   "church_settings_slug_confirm_body": "Links já compartilhados e materiais impressos com o link antigo (/{old}) precisam ser atualizados. O novo link será /{slug}.",
   "church_settings_slug_confirm_action": "Mudar o link",
-  "church_settings_slug_confirm_cancel": "Voltar"
+  "church_settings_slug_confirm_cancel": "Voltar",
+  "church_settings_view_public_page": "Ver página pública",
+  "public_church_logo_alt": "Logo de {name}",
+  "public_church_powered_by": "Desenvolvido com {appName}",
+  "public_church_not_found_title": "Igreja não encontrada",
+  "public_church_not_found_description": "Confira o endereço. O link pode estar errado ou desatualizado."
 }

@@ -1999,5 +1999,10 @@
   "church_settings_slug_confirm_title": "Change the Church link?",
   "church_settings_slug_confirm_body": "Links already shared and printed material with the old link (/{old}) must be updated. The new link will be /{slug}.",
   "church_settings_slug_confirm_action": "Change the link",
-  "church_settings_slug_confirm_cancel": "Go back"
+  "church_settings_slug_confirm_cancel": "Go back",
+  "church_settings_view_public_page": "View public page",
+  "public_church_logo_alt": "{name} logo",
+  "public_church_powered_by": "Built with {appName}",
+  "public_church_not_found_title": "Church not found",
+  "public_church_not_found_description": "Check the address. The link may be wrong or out of date."
 }

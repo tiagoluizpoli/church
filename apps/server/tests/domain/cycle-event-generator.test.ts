@@ -52,7 +52,7 @@ function createTemplate(): EventTemplate {
     props: {
       churchId,
       name: 'Wednesday Service',
-      weekday: 3,
+      recurrence: { kind: 'weekly', weekdays: [3] },
       blocks: [
         new TemplateTimeBlock({
           props: {
@@ -87,6 +87,51 @@ const generator = new CycleEventGenerator();
 const timeZone = 'UTC';
 
 describe('CycleEventGenerator', () => {
+  it('generates a monthly template on the Church Timezone calendar days its entries name', () => {
+    const monthly = new EventTemplate({
+      props: {
+        churchId,
+        name: 'Vigília',
+        recurrence: {
+          kind: 'monthly',
+          entries: [
+            { kind: 'lastDayOfMonth' },
+            { kind: 'nthWeekday', ordinal: 1, weekday: 3 },
+          ],
+        },
+        blocks: [
+          new TemplateTimeBlock({
+            props: {
+              churchId,
+              templateId,
+              label: 'Vigília',
+              startTime: parseTimeOfDay({ value: '22:00' }),
+              endTime: parseTimeOfDay({ value: '23:30' }),
+              order: 0,
+            },
+            id: blockAId,
+          }),
+        ],
+      },
+      id: templateId,
+    });
+
+    // A Cycle across a month boundary: June's last day and July's 1st Wednesday.
+    const plans = generator.generate({
+      cycle: createCycle({ startDate: '2026-06-20', endDate: '2026-07-14' }),
+      templates: [monthly],
+      existingEvents: [],
+      existingFingerprints: [],
+      timeZone: 'America/Sao_Paulo',
+    }) as GeneratedCycleCreateEventPlan[];
+
+    // 22:00 in São Paulo is 01:00 UTC the next day; the CalendarDay stays local.
+    expect(plans.map((plan) => [plan.start, plan.end])).toEqual([
+      ['2026-07-01T01:00:00.000Z', '2026-07-01T02:30:00.000Z'],
+      ['2026-07-02T01:00:00.000Z', '2026-07-02T02:30:00.000Z'],
+    ]);
+  });
+
   it('creates a new event plan for every matching weekday with event time blocks for each template block', () => {
     const plans = generator.generate({
       cycle: createCycle(),
@@ -219,7 +264,7 @@ describe('CycleEventGenerator', () => {
       props: {
         churchId,
         name: 'Overnight Watch',
-        weekday: 3,
+        recurrence: { kind: 'weekly', weekdays: [3] },
         blocks: [
           new TemplateTimeBlock({
             props: {
@@ -257,7 +302,7 @@ describe('CycleEventGenerator', () => {
       props: {
         churchId,
         name: 'Monday Group',
-        weekday: 1,
+        recurrence: { kind: 'weekly', weekdays: [1] },
         blocks: [
           new TemplateTimeBlock({
             props: {
@@ -331,7 +376,7 @@ describe('CycleEventGenerator', () => {
       props: {
         churchId,
         name: 'Vigil',
-        weekday: 3,
+        recurrence: { kind: 'weekly', weekdays: [3] },
         blocks: [
           new TemplateTimeBlock({
             props: {

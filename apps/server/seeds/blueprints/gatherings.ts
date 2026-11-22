@@ -1,3 +1,4 @@
+import type { Recurrence } from '../../src/domain/recurrence';
 import { ESTACIONAMENTO } from './directory/estacionamento';
 import { INTERCESSAO } from './directory/intercessao';
 import { KIDS } from './directory/kids';
@@ -9,7 +10,8 @@ export type GatheringBlockKey =
   | 'sunday-08:00'
   | 'sunday-10:30'
   | 'sunday-18:30'
-  | 'wednesday-20:00';
+  | 'wednesday-20:00'
+  | 'day15-07:00';
 
 export interface TemplateTimeBlockBlueprint {
   key: GatheringBlockKey;
@@ -22,11 +24,10 @@ export interface TemplateTimeBlockBlueprint {
   place?: string;
 }
 
-/** A weekly gathering: applied to a cycle, one Event per matching day. */
+/** A recurring gathering: applied to a cycle, one Event per day its Recurrence names. */
 export interface EventTemplateBlueprint {
   name: string;
-  /** 0 (Sunday) … 6 (Saturday). */
-  weekday: number;
+  recurrence: Recurrence;
   blocks: readonly TemplateTimeBlockBlueprint[];
 }
 
@@ -117,7 +118,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
   templates: [
     {
       name: 'Culto de Domingo',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
           key: 'sunday-08:00',
@@ -147,13 +148,29 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
     },
     {
       name: 'Culto de Quarta',
-      weekday: 3,
+      recurrence: { kind: 'weekly', weekdays: [3] },
       blocks: [
         {
           key: 'wednesday-20:00',
           label: 'Culto 20:00',
           startTime: '20:00',
           endTime: '22:00',
+        },
+      ],
+    },
+    {
+      // A day-of-month template: the 15th of every month, unstaffed.
+      name: 'Oração do Dia 15',
+      recurrence: {
+        kind: 'monthly',
+        entries: [{ kind: 'dayOfMonth', day: 15 }],
+      },
+      blocks: [
+        {
+          key: 'day15-07:00',
+          label: 'Oração 07:00',
+          startTime: '07:00',
+          endTime: '08:00',
         },
       ],
     },
@@ -168,6 +185,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
         'sunday-10:30': PROJECAO_TWO_PLACEMENTS,
         'sunday-18:30': PROJECAO_TWO_PLACEMENTS,
         'wednesday-20:00': PROJECAO_TWO_PLACEMENTS,
+        'day15-07:00': null,
       },
     }),
     serveGatherings({
@@ -177,6 +195,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
         'sunday-10:30': KIDS_BLOCK,
         'sunday-18:30': KIDS_BLOCK,
         'wednesday-20:00': KIDS_BLOCK,
+        'day15-07:00': null,
       },
     }),
     serveGatherings({
@@ -194,6 +213,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
         'wednesday-20:00': [
           { role: 'Intercessor', sector: 'Sala de Oração', peopleNeeded: 8 },
         ],
+        'day15-07:00': null,
       },
     }),
     serveGatherings({
@@ -227,6 +247,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
             peopleNeeded: 4,
           },
         ],
+        'day15-07:00': null,
       },
     }),
   ],

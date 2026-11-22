@@ -123,7 +123,7 @@ async function setUpLiveChanges({
     {
       data: {
         name: 'US5 Live Changes Template',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: [
           {
             label: 'Gathering',

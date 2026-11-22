@@ -316,7 +316,7 @@ async function applySunday({ churchId, cycleId }: ApplySundayInput) {
     db,
     churchId,
     name: 'Sunday',
-    weekday: SUNDAY,
+    recurrence: { kind: 'weekly', weekdays: [SUNDAY] },
     blocks: [
       {
         label: 'Service',

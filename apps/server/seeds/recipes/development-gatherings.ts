@@ -108,7 +108,7 @@ export async function loadGatherings({
       churchId,
       id: templateId,
       name: templateBlueprint.name,
-      weekday: templateBlueprint.weekday,
+      recurrence: templateBlueprint.recurrence,
       blocks: templateTemplateTimeBlocks.map((block) => ({
         id: block.id,
         label: block.label,

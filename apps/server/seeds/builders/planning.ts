@@ -6,6 +6,7 @@ import {
   usualSetup,
 } from '@church/db';
 import type { TimeOfDay } from '@church/time';
+import type { Recurrence } from '../../src/domain/recurrence';
 import type { SeedWriter } from '../recipe';
 import { requireInsertedRow } from './require-inserted-row';
 
@@ -35,8 +36,7 @@ export interface BuildEventTemplateInput {
   churchId: string;
   id?: string;
   name: string;
-  /** 0 (Sunday) … 6 (Saturday). */
-  weekday: number;
+  recurrence: Recurrence;
   /** In order; a block without an explicit `order` takes its position. */
   blocks: readonly SeedTemplateTimeBlock[];
 }
@@ -51,13 +51,13 @@ export async function buildEventTemplate({
   churchId,
   id,
   name,
-  weekday,
+  recurrence,
   blocks,
 }: BuildEventTemplateInput): Promise<SeededEventTemplateWithBlocks> {
   const template = requireInsertedRow({
     rows: await db
       .insert(eventTemplate)
-      .values({ id, churchId, name, weekday })
+      .values({ id, churchId, name, recurrence })
       .returning(),
     description: `Event Template ${name}`,
   });

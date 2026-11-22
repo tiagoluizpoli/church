@@ -328,7 +328,7 @@ describe('repository list ordering', () => {
         db,
         churchId: base.seed.churchAId,
         name: 'Sunday',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: ['Closing', 'Opening'].map((label, index) => ({
           label,
           startTime: parseTimeOfDay({ value: '09:00' }),

@@ -176,7 +176,7 @@ const reopenPlanningEvent = (
       );
     }
   /**
- * Create a church-owned EventTemplate with its ordered TemplateTimeBlocks for a given weekday.
+ * Create a church-owned EventTemplate with its ordered TemplateTimeBlocks on a weekly or monthly Recurrence.
  * @summary Create an EventTemplate
  */
 const createEventTemplate = (
@@ -214,7 +214,7 @@ const getEventTemplate = (
       );
     }
   /**
- * Apply an EventTemplate's complete desired name, weekday and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries.
+ * Apply an EventTemplate's complete desired name, Recurrence and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries.
  * @summary Update an EventTemplate
  */
 const updateEventTemplate = (

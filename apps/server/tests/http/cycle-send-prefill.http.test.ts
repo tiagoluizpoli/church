@@ -280,7 +280,7 @@ async function seed() {
     db,
     churchId,
     name: 'Sunday',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       { label: 'Welcome', startTime: time('09:00'), endTime: time('10:00') },
       { label: 'Service', startTime: time('10:00'), endTime: time('12:00') },
@@ -290,7 +290,7 @@ async function seed() {
     db,
     churchId,
     name: 'Saturday',
-    weekday: 6,
+    recurrence: { kind: 'weekly', weekdays: [6] },
     blocks: [
       { label: 'Night', startTime: time('22:00'), endTime: time('02:00') },
     ],

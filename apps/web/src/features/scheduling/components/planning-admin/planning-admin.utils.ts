@@ -27,6 +27,7 @@ import type {
   SelectedCycle,
   TemplateFormState,
   TemplateLibraryTableRow,
+  TemplateRecurrence,
   TemplateTimeBlockDraft,
 } from './planning-admin.types';
 import type {
@@ -120,7 +121,7 @@ export function createEmptyTemplateTimeBlock(): TemplateTimeBlockDraft {
 export function createEmptyTemplateForm(): TemplateFormState {
   return {
     name: '',
-    weekday: '0',
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [createEmptyTemplateTimeBlock()],
   };
 }
@@ -130,7 +131,7 @@ export function createTemplateFormFromTemplate({
 }: TemplateFormFromTemplateInput): TemplateFormState {
   return {
     name: template.name,
-    weekday: String(template.weekday),
+    recurrence: template.recurrence,
     blocks: [...template.blocks]
       .sort((leftBlock, rightBlock) => leftBlock.order - rightBlock.order)
       .map((block) => ({
@@ -159,14 +160,36 @@ export function getSelectedCycleIdOrThrow({
   return selectedCycleId;
 }
 
+interface RecurrenceInput {
+  recurrence: TemplateRecurrence;
+}
+
+/** The single-weekday picker's value: a weekly Recurrence's first weekday, none for monthly. */
+export function pickerWeekday({ recurrence }: RecurrenceInput): string {
+  return recurrence.kind === 'weekly' ? String(recurrence.weekdays[0]) : '';
+}
+
+interface DescribeRecurrenceInput extends RecurrenceInput {
+  locale: Locale;
+}
+
+/** shortcut: weekday names or "Mensal"; #1018 replaces it with the pt-BR Recurrence phrases. */
+export function describeRecurrence({
+  recurrence,
+  locale,
+}: DescribeRecurrenceInput): string {
+  return recurrence.kind === 'weekly'
+    ? recurrence.weekdays
+        .map((index) => formatWeekdayOfIndex({ index, locale }))
+        .join(', ')
+    : m.event_templates_recurrence_monthly();
+}
+
 export function describeTemplate({
   template,
   locale,
 }: DescribeTemplateInput): string {
-  const day = formatWeekdayOfIndex({
-    index: template.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-    locale,
-  });
+  const day = describeRecurrence({ recurrence: template.recurrence, locale });
   const count = template.blocks.length;
   const blockCount = pluralMessage({
     count,
@@ -223,7 +246,7 @@ export function toTemplateRequestBody({
 }: TemplateRequestBodyInput): UpdateEventTemplateBody {
   return {
     name: form.name.trim(),
-    weekday: Number.parseInt(form.weekday, 10),
+    recurrence: form.recurrence,
     blocks: toTemplateRequestBlocks({ blocks: form.blocks }),
   };
 }
@@ -552,10 +575,7 @@ export function toTemplateLibraryTableRow({
   return {
     id: template.id,
     name: template.name,
-    weekday: formatWeekdayOfIndex({
-      index: template.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-      locale,
-    }),
+    weekday: describeRecurrence({ recurrence: template.recurrence, locale }),
     blockCount: template.blocks.length,
     publicBlockCount: template.publicBlockCount,
     description: describeTemplate({ template, locale }),

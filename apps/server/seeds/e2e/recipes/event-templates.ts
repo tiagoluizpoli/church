@@ -80,7 +80,7 @@ export function createEventTemplatesRecipe({
         churchId: graph.church.id,
         id: idOf({ kind: seeded.kind }),
         name: seeded.name,
-        weekday: seeded.weekday,
+        recurrence: { kind: 'weekly', weekdays: [seeded.weekday] },
         blocks: [
           {
             id: idOf({ kind: `${seeded.kind}-block` }),
@@ -93,7 +93,7 @@ export function createEventTemplatesRecipe({
       templates.push({
         id: template.id,
         name: template.name,
-        weekday: template.weekday,
+        weekday: seeded.weekday,
         blockCount: blocks.length,
       });
     }

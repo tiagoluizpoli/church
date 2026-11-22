@@ -35,9 +35,53 @@ function hasRepeatedIds(blocks: UpdateEventTemplateTimeBlockBody[]): boolean {
   return new Set(ids).size !== ids.length;
 }
 
+const weekdaySchema = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+]);
+
+/** Weekly on weekdays, or monthly on nth weekdays, days of the month and the last day. */
+export const recurrenceSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('weekly'),
+    weekdays: z.array(weekdaySchema).min(1),
+  }),
+  z.object({
+    kind: z.literal('monthly'),
+    entries: z
+      .array(
+        z.discriminatedUnion('kind', [
+          z.object({
+            kind: z.literal('nthWeekday'),
+            ordinal: z.union([
+              z.literal(1),
+              z.literal(2),
+              z.literal(3),
+              z.literal(4),
+              z.literal(5),
+              z.literal('last'),
+            ]),
+            weekday: weekdaySchema,
+          }),
+          z.object({
+            kind: z.literal('dayOfMonth'),
+            day: z.number().int().min(1).max(31),
+          }),
+          z.object({ kind: z.literal('lastDayOfMonth') }),
+        ]),
+      )
+      .min(1),
+  }),
+]);
+
 export const createEventTemplateBodySchema = z.object({
   name: requiredTextSchema,
-  weekday: z.number().int().min(0).max(6),
+  recurrence: recurrenceSchema,
   blocks: z.array(eventTemplateTimeBlockBodySchema).min(1),
 });
 
@@ -71,7 +115,7 @@ export const eventTemplateResponseSchema = z.object({
   id: z.string(),
   churchId: z.string(),
   name: z.string(),
-  weekday: z.number(),
+  recurrence: recurrenceSchema,
   /** How many blocks feed the Church Programme; the list badge and delete warning read it. */
   publicBlockCount: z.number(),
   blocks: z.array(eventTemplateTimeBlockResponseSchema),
@@ -99,7 +143,7 @@ function toEventTemplateResponse(template: EventTemplate) {
     id: template.id as string,
     churchId: template.churchId as string,
     name: template.name,
-    weekday: template.weekday,
+    recurrence: template.recurrence,
     publicBlockCount: template.blocks.filter((block) => block.isPublic).length,
     blocks: template.blocks.map((block) => ({
       id: block.id as string,

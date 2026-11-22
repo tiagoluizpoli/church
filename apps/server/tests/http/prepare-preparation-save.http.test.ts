@@ -385,7 +385,7 @@ async function seedTemplatedBlock({ base, entry }: SeedTemplatedBlockInput) {
   const { blocks } = await createSchedulingPhase3Template({
     churchId,
     name: 'Sunday',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       {
         label: 'Service',

@@ -70,7 +70,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [
             {
               id: 'b1',
@@ -121,14 +121,14 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           publicBlockCount: 2,
           blocks: [],
         },
         {
           id: 'template-2',
           name: 'Kitchen crew',
-          weekday: 1,
+          recurrence: { kind: 'weekly', weekdays: [1] },
           publicBlockCount: 0,
           blocks: [],
         },
@@ -153,7 +153,12 @@ describe('TemplateManagerCard table view (US1)', () => {
   it('moves keyboard focus between the actions in a desktop row', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
       ],
     });
     const user = userEvent.setup();
@@ -181,7 +186,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [],
         },
       ],
@@ -209,7 +214,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [],
         },
       ],
@@ -234,7 +239,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [
             {
               id: 'b1',
@@ -272,7 +277,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [],
         },
       ],
@@ -309,7 +314,12 @@ describe('TemplateManagerCard table view (US1)', () => {
     listEventTemplates.mockRejectedValueOnce(new Error('boom'));
     listEventTemplates.mockResolvedValueOnce({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
       ],
     });
     const user = userEvent.setup();
@@ -337,7 +347,12 @@ describe('TemplateManagerCard loading', () => {
   it('keeps the rows on screen while a refetch is in flight', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
       ],
     });
     const queryClient = new QueryClient();

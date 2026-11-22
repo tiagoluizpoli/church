@@ -3,6 +3,7 @@ import type {
   EventTemplate,
   EventTemplateUsage,
 } from '../../entities/event-template';
+import type { Recurrence } from '../../recurrence';
 
 /** Submitted block; `order` is derived from start time by the manager. */
 export interface EventTemplateTimeBlockManagerInput {
@@ -18,7 +19,7 @@ export interface EventTemplateTimeBlockManagerInput {
 export interface CreateEventTemplateManagerInput {
   churchId: ChurchId;
   name: string;
-  weekday: number;
+  recurrence: Recurrence;
   blocks: EventTemplateTimeBlockManagerInput[];
 }
 
@@ -26,7 +27,7 @@ export interface UpdateEventTemplateManagerInput {
   churchId: ChurchId;
   templateId: EventTemplateId;
   name: string;
-  weekday: number;
+  recurrence: Recurrence;
   blocks: EventTemplateTimeBlockManagerInput[];
 }
 

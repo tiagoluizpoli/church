@@ -1,5 +1,6 @@
 // PROTOTYPE, throwaway: Church Settings screen (wayfinder #980). In-memory state only, no API.
 import * as React from 'react';
+import { toast } from 'sonner';
 
 export type ContactKind = 'email' | 'phone';
 
@@ -256,6 +257,7 @@ export interface SettingsController {
   pendingSlugConfirm: boolean;
   confirmSlug: (ok: boolean) => void;
   log: string[];
+  clearError: (prefix: string) => void;
 }
 
 export function useSettingsController(
@@ -285,6 +287,7 @@ export function useSettingsController(
     setSaved(form);
     setErrors({});
     push('PUT /church-settings → 200 (tudo salvo de uma vez)');
+    toast.success('Configurações salvas');
   };
 
   return {
@@ -325,5 +328,11 @@ export function useSettingsController(
       if (ok) commit();
     },
     log,
+    clearError: (prefix) =>
+      setErrors((e) =>
+        Object.fromEntries(
+          Object.entries(e).filter(([k]) => !k.startsWith(prefix)),
+        ),
+      ),
   };
 }

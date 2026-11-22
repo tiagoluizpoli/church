@@ -71,10 +71,13 @@ const SAVED: GetChurchSettings200 = {
   accentColor: '#0f766e',
   addresses: [],
   socialLinks: [],
+  legalProfile: null,
   logoKey: null,
   logoUrl: null,
   publicOrigin: 'https://app.church.test',
 };
+
+const NO_LEGAL_DRAFT = { legalName: '', cnpj: '', isPublic: false };
 
 const LOGO_KEY = `public/churches/c1/logo/${'a'.repeat(64)}.png`;
 const LOGO_URL = `https://storage.test/church/${LOGO_KEY}`;
@@ -209,6 +212,7 @@ describe('Church Settings screen', () => {
         accentColor: '#0f766e',
         addresses: [],
         socialLinks: [],
+        legalProfile: NO_LEGAL_DRAFT,
       }),
     );
     expect(toastSuccess).toHaveBeenCalledWith(m.church_settings_saved());
@@ -232,6 +236,7 @@ describe('Church Settings screen', () => {
         accentColor: null,
         addresses: [],
         socialLinks: [],
+        legalProfile: NO_LEGAL_DRAFT,
       }),
     );
   });
@@ -590,6 +595,7 @@ describe('Church Settings screen', () => {
           accentColor: '#0f766e',
           addresses: [],
           socialLinks: [],
+          legalProfile: NO_LEGAL_DRAFT,
           slug: 'esperanca',
         }),
       );
@@ -1183,5 +1189,154 @@ describe('Church Settings social links', () => {
     expect(
       screen.getByText(m.church_settings_section_errors_many({ count: 2 })),
     ).toBeInTheDocument();
+  });
+});
+
+describe('Church Settings legal profile', () => {
+  const LEGAL = {
+    legalName: 'Igreja Semente Ltda',
+    cnpj: '11222333000181',
+    isPublic: false,
+  };
+
+  it('starts empty with the Público toggle off and counts nothing', async () => {
+    renderSettings();
+
+    expect(
+      await screen.findByRole('textbox', {
+        name: m.church_settings_legal_name_label(),
+      }),
+    ).toHaveValue('');
+    expect(
+      screen.getByRole('switch', {
+        name: m.church_settings_legal_public_toggle(),
+      }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('0');
+  });
+
+  it('shows the saved profile with a masked CNPJ and counts it as admin-only', async () => {
+    getChurchSettings.mockResolvedValue({ ...SAVED, legalProfile: LEGAL });
+    renderSettings();
+
+    expect(
+      await screen.findByRole('textbox', {
+        name: m.church_settings_legal_cnpj_label(),
+      }),
+    ).toHaveValue('11.222.333/0001-81');
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('1');
+  });
+
+  it('moves the legal profile between the header chips with the Público toggle, and saves it', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await user.type(
+      await screen.findByRole('textbox', {
+        name: m.church_settings_legal_name_label(),
+      }),
+      'Igreja Semente Ltda',
+    );
+    await user.type(
+      screen.getByRole('textbox', {
+        name: m.church_settings_legal_cnpj_label(),
+      }),
+      '11.222.333/0001-81',
+    );
+    const publicBefore = Number(
+      screen.getByTestId('church-settings-public-count').textContent,
+    );
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('1');
+
+    await user.click(
+      screen.getByRole('switch', {
+        name: m.church_settings_legal_public_toggle(),
+      }),
+    );
+
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('0');
+    expect(
+      screen.getByTestId('church-settings-public-count'),
+    ).toHaveTextContent(String(publicBefore + 1));
+    expect(
+      screen.getByText('CNPJ 11.222.333/0001-81', { exact: false }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          legalProfile: {
+            legalName: 'Igreja Semente Ltda',
+            cnpj: '11.222.333/0001-81',
+            isPublic: true,
+          },
+        }),
+      ),
+    );
+  });
+
+  it('keeps the legal profile out of the preview while it is private', async () => {
+    getChurchSettings.mockResolvedValue({ ...SAVED, legalProfile: LEGAL });
+    renderSettings();
+
+    await screen.findByRole('textbox', {
+      name: m.church_settings_legal_cnpj_label(),
+    });
+
+    expect(screen.queryByText(/CNPJ 11\.222/)).not.toBeInTheDocument();
+  });
+
+  it('marks the refused CNPJ, counts it on the section and clears it on edit', async () => {
+    const user = userEvent.setup();
+    updateChurchSettings.mockRejectedValue(
+      refusedSave([
+        {
+          field: 'legalProfile.cnpj',
+          code: 'CNPJ_TAKEN',
+          message: 'Este CNPJ já está cadastrado; fale com o suporte.',
+        },
+      ]),
+    );
+    renderSettings();
+    await user.type(
+      await screen.findByRole('textbox', {
+        name: m.church_settings_legal_name_label(),
+      }),
+      'Igreja',
+    );
+    const cnpj = screen.getByRole('textbox', {
+      name: m.church_settings_legal_cnpj_label(),
+    });
+    await user.type(cnpj, '11222333000181');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Este CNPJ já está cadastrado; fale com o suporte.',
+      ),
+    ).toBeInTheDocument();
+    expect(cnpj).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      within(
+        screen.getByRole('button', {
+          name: new RegExp(m.church_settings_section_legal()),
+        }),
+      ).getByText(m.church_settings_section_errors_one()),
+    ).toBeInTheDocument();
+
+    await user.type(cnpj, '0');
+
+    expect(cnpj).not.toHaveAttribute('aria-invalid', 'true');
   });
 });

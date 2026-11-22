@@ -118,6 +118,37 @@ describe('select-church route (compare-access selector)', () => {
     }
   });
 
+  it('tells same-named Churches apart by their Main Address locality', async () => {
+    listActiveChurchOptions.mockResolvedValue({
+      churches: [
+        ['church-a', 'Centro, Curitiba/PR'],
+        ['church-b', 'Batel, Curitiba/PR'],
+        ['church-c', null],
+      ].map(([churchId, locality]) => ({
+        churchId,
+        name: 'Igreja Central',
+        timezone: 'UTC',
+        accessLevel: 'member',
+        availableAreas: ['dashboard'],
+        logoUrl: null,
+        accentColor: null,
+        lastOpenedAt: null,
+        locality,
+      })),
+    });
+    renderSelectChurch();
+
+    const [first, second, third] = await Promise.all(
+      ['church-a', 'church-b', 'church-c'].map(
+        async (churchId) =>
+          (await screen.findAllByTestId(`select-church-option-${churchId}`))[0],
+      ),
+    );
+    expect(first).toHaveTextContent('Centro, Curitiba/PR');
+    expect(second).toHaveTextContent('Batel, Curitiba/PR');
+    expect(third).not.toHaveTextContent('/');
+  });
+
   it('clears cached caller capabilities when signing out from the selector', async () => {
     listActiveChurchOptions.mockResolvedValue({ churches: [] });
     const { queryClient } = renderSelectChurch();

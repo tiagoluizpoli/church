@@ -236,6 +236,7 @@ describe('GET /api/v1/active-church/options', () => {
         logoUrl: 'https://files.test/logo.png',
         accentColor: '#0f766e',
         lastOpenedAt: new Date('2026-07-01T00:00:00.000Z'),
+        locality: 'Centro, Campinas/SP',
       },
       {
         churchId: 'church-never-opened',
@@ -246,6 +247,7 @@ describe('GET /api/v1/active-church/options', () => {
         logoUrl: null,
         accentColor: null,
         lastOpenedAt: null,
+        locality: null,
       },
     ]);
 
@@ -266,6 +268,7 @@ describe('GET /api/v1/active-church/options', () => {
           logoUrl: 'https://files.test/logo.png',
           accentColor: '#0f766e',
           lastOpenedAt: '2026-07-01T00:00:00.000Z',
+          locality: 'Centro, Campinas/SP',
         },
         {
           churchId: 'church-never-opened',
@@ -276,6 +279,7 @@ describe('GET /api/v1/active-church/options', () => {
           logoUrl: null,
           accentColor: null,
           lastOpenedAt: null,
+          locality: null,
         },
       ],
     });

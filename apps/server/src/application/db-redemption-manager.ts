@@ -274,6 +274,7 @@ export class DbRedemptionManager implements RedemptionManager {
     const preview = await this.getPublicPreview({ churchInvitationId, now });
     if (!preview) return false;
     await this.invitationVerificationCodeManager.issue({
+      churchId: preview.churchId,
       churchInvitationId,
       recipientEmail: preview.email,
       churchName: preview.churchName,

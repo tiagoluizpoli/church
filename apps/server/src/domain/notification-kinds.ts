@@ -16,6 +16,12 @@ const ministryInvitationOfferFactsSchema = z.object({
   expiresAt: instantSchema,
 });
 
+/** The Church identity frozen when the notification is queued; absent on older rows. */
+const queuedChurchIdentitySchema = z.object({
+  churchLogoUrl: z.string().nullable().optional(),
+  churchAccent: z.string().nullable().optional(),
+});
+
 /**
  * The typed kind/data map of member Notifications (ADR-0008). Data holds
  * identifiers for deep links plus display facts frozen at first delivery —
@@ -31,6 +37,7 @@ export const ministryInvitationNotificationDataSchema = z.object({
   ministryId: z.uuid(),
   ministryName: z.string(),
   ...ministryInvitationOfferFactsSchema.partial().shape,
+  ...queuedChurchIdentitySchema.shape,
 });
 
 /** Availability opened (initial Ask) and the reminder share their facts. */
@@ -289,7 +296,10 @@ const availabilityRequestDataSchema = z.object({
 
 export const notificationRequestDataSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
-  ministry_invitation: z.object({ ministryInvitationId: z.uuid() }),
+  ministry_invitation: z.object({
+    ministryInvitationId: z.uuid(),
+    ...queuedChurchIdentitySchema.shape,
+  }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   availability_opened: availabilityRequestDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
@@ -352,6 +362,8 @@ export interface MinistryInvitationDeliveryFacts {
   ministryId: string;
   ministryName: string;
   churchName: string;
+  churchLogoUrl?: string | null;
+  churchAccent?: string | null;
   churchTimezone: string;
   inviterName: string;
   ministryAccessLevel: MinistryAccessLevel;
@@ -426,9 +438,9 @@ export interface WithdrawnAssignmentEmailLine {
 export interface TransferDigestDeliveryFacts {
   churchName: string;
   /** Absolute URL; absent on payloads queued before the Church identity. */
-  churchLogoUrl?: string;
+  churchLogoUrl?: string | null;
   /** `#rrggbb`; absent means the app's default brand colour. */
-  churchAccent?: string;
+  churchAccent?: string | null;
   churchTimezone: string;
   recipientFirstName: string;
   ministryName: string;

@@ -5,6 +5,7 @@ import {
   type ChurchNotifier,
 } from '@/application/church-notifier';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
+import { DbChurchIdentitySnapshotter } from '@/application/db-church-identity-snapshotter';
 import { DbMinistryInvitationManager } from '@/application/db-ministry-invitation-manager';
 import { SchedulingNotificationFacts } from '@/application/scheduling-notification-facts';
 import type { EmailSender } from '@/domain/contracts/infrastructure/email-sender';
@@ -28,6 +29,7 @@ import {
   DrizzleVolunteerTransferRepository,
 } from '@/infrastructure/repositories';
 import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
+import { InMemoryObjectStorage } from '@/tests/test-support/in-memory-object-storage';
 
 export interface MinistryInvitationTestHarnessOptions {
   db: AnyDrizzleDb;
@@ -81,7 +83,12 @@ export function createMinistryInvitationTestHarness({
     availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({ db }),
     webBaseUrl: 'https://app.test',
   });
+  const churchIdentity = new DbChurchIdentitySnapshotter({
+    churchRepository,
+    objectStorage: new InMemoryObjectStorage(),
+  });
   const manager = new DbMinistryInvitationManager({
+    churchIdentity,
     repo: ministryInvitationRepository,
     roleRepository,
     ministryRepository,
@@ -122,6 +129,7 @@ export function createMinistryInvitationTestHarness({
     notifications,
     schedulingFacts,
     buildNotifier,
+    churchIdentity,
     manager,
   };
 }

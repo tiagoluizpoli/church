@@ -1,6 +1,7 @@
-import type { ChurchInvitationId } from '../../branded-ids';
+import type { ChurchId, ChurchInvitationId } from '../../branded-ids';
 
 export interface IssueInvitationVerificationCodeInput {
+  churchId: ChurchId;
   churchInvitationId: ChurchInvitationId;
   recipientEmail: string;
   churchName: string;

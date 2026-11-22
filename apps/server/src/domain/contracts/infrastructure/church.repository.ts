@@ -27,7 +27,7 @@ export interface ChurchRepository {
    */
   findUserName(input: FindUserNameInput): Promise<string | null>;
   /** The Church's editable identity (Church Settings). */
-  getSettings(input: GetChurchByIdInput): Promise<ChurchSettings>;
+  getSettings(input: GetChurchSettingsInput): Promise<ChurchSettings>;
   /**
    * Overwrites the Church's editable identity. A changed slug is written with
    * the old one recorded in the slug history; a slug someone else holds, live
@@ -61,6 +61,11 @@ export interface SaveChurchSettingsInput {
 export interface ChurchMemberContact {
   email: string;
   name: string;
+}
+
+export interface GetChurchSettingsInput extends GetChurchByIdInput {
+  /** Reads inside the caller's transaction, so it never needs a second connection. */
+  tx?: TransactionContext;
 }
 
 export interface GetChurchByIdInput {

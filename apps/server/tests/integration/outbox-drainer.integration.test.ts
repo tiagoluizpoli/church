@@ -88,6 +88,7 @@ const {
   notifications,
   schedulingFacts,
   buildNotifier,
+  churchIdentity,
   manager,
 } = createMinistryInvitationTestHarness({ db: testDb });
 
@@ -1421,6 +1422,8 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       ministryId: fixture.ministryOneA,
       ministryName,
       churchName,
+      churchLogoUrl: null,
+      churchAccent: null,
       churchTimezone: 'America/Sao_Paulo',
       inviterName,
       ministryAccessLevel: 'volunteer',
@@ -2039,5 +2042,111 @@ describe('Admin Church Invitation T1 (Spec 15, integration)', () => {
     );
     const [firstKey, secondKey] = emailSender.attemptedKeys;
     expect(secondKey).toBe(firstKey);
+  });
+});
+
+describe('Church identity snapshot at queue time (ticket #1030, integration)', () => {
+  const LOGO_KEY = 'public/churches/a/logo/first.png';
+  const LOGO_URL = `https://storage.test/church/${LOGO_KEY}`;
+  const ACCENT = '#2255aa';
+
+  async function setIdentity({
+    logoKey,
+    accentColor,
+  }: {
+    logoKey: string | null;
+    accentColor: string | null;
+  }): Promise<void> {
+    await testDb
+      .update(church)
+      .set({ logoKey, accentColor })
+      .where(eq(church.id, fixture.churchA.id));
+  }
+
+  it('freezes the logo URL and accent into a chained invitation, whatever the Church changes before the send', async () => {
+    await setIdentity({ logoKey: LOGO_KEY, accentColor: ACCENT });
+    await mintInvitation();
+    const [queued] = await testDb.select().from(outboxMessage);
+    expect(queued?.payload).toMatchObject({
+      churchLogoUrl: LOGO_URL,
+      churchAccent: ACCENT,
+    });
+
+    await setIdentity({
+      logoKey: 'public/churches/a/logo/second.png',
+      accentColor: '#ff0000',
+    });
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(emailSender.sent[0]).toMatchObject({
+      kind: 'invitation.chained',
+      churchLogoUrl: LOGO_URL,
+      churchAccent: ACCENT,
+    });
+  });
+
+  it('snapshots nulls for a Church without a logo or accent', async () => {
+    await mintInvitation();
+    const [queued] = await testDb.select().from(outboxMessage);
+    expect(queued?.payload).toMatchObject({
+      churchLogoUrl: null,
+      churchAccent: null,
+    });
+
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+    expect(emailSender.sent[0]).toMatchObject({
+      churchLogoUrl: null,
+      churchAccent: null,
+    });
+  });
+
+  it('freezes the identity into a Church bootstrap offer', async () => {
+    await setIdentity({ logoKey: LOGO_KEY, accentColor: ACCENT });
+    await manager.mintAdmin({
+      churchId: ChurchId.from(fixture.churchA.id),
+      inviterId: UserId.from(fixture.adminA),
+      email: 'new-admin@fixture.test',
+    });
+    await setIdentity({ logoKey: null, accentColor: null });
+
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(emailSender.sent[0]).toMatchObject({
+      kind: 'invitation.church-bootstrap',
+      churchLogoUrl: LOGO_URL,
+      churchAccent: ACCENT,
+    });
+  });
+
+  it('freezes the identity into a Ministry invitation to an existing Member', async () => {
+    await setIdentity({ logoKey: LOGO_KEY, accentColor: ACCENT });
+    await manager.mint({
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: UserId.from(fixture.adminA),
+      email: `${fixture.memberNoVolunteerA}@fixture.test`,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    });
+    await setIdentity({ logoKey: null, accentColor: null });
+
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(emailSender.sent[0]).toMatchObject({
+      kind: 'invitation.ministry',
+      churchLogoUrl: LOGO_URL,
+      churchAccent: ACCENT,
+    });
+  });
+
+  it('reads the current logo and accent when it snapshots', async () => {
+    await setIdentity({ logoKey: LOGO_KEY, accentColor: ACCENT });
+    await expect(
+      churchIdentity.snapshot({ churchId: ChurchId.from(fixture.churchA.id) }),
+    ).resolves.toEqual({ churchLogoUrl: LOGO_URL, churchAccent: ACCENT });
   });
 });

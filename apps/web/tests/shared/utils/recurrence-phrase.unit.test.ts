@@ -83,8 +83,10 @@ describe('describeRecurrence in pt-BR', () => {
   });
 
   it('words a weekly Recurrence that loses to nth weekdays as "exceto"', () => {
-    const weekly = (weekday: 0 | 3) =>
-      ({ kind: 'weekly', weekdays: [weekday] }) as const;
+    const weekly = (weekday: 0 | 3) => ({
+      kind: 'weekly' as const,
+      weekdays: [weekday],
+    });
     expect(
       describeRecurrence({
         recurrence: weekly(0),

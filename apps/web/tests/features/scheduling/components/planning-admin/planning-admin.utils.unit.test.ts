@@ -85,6 +85,8 @@ function makeTemplateTimeBlock(
     label: 'Welcome',
     startTime: fromTimeColumn({ value: '09:00:00' }),
     endTime: fromTimeColumn({ value: '09:30:00' }),
+    isPublic: false,
+    place: '',
     ...overrides,
   };
 }

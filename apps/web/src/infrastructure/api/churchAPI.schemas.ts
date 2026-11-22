@@ -2301,6 +2301,8 @@ export type GetChurchSettings409 = {
 export type UpdateChurchSettingsBody = {
   /** Required. Trimmed, inner spaces collapsed, 2–80 characters. */
   name: string;
+  /** Church Slug: 3–63 characters, lower-case letters, digits and single hyphens, not reserved, not taken. Omitted, the slug stays. */
+  slug?: string;
   /**
      * https:// only; a bare domain gets it prepended; empty or null clears it; at most 2048 characters.
      * @nullable
@@ -2359,6 +2361,10 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   CHURCH_WEBSITE_INVALID: 'CHURCH_WEBSITE_INVALID',
   CHURCH_WEBSITE_TOO_LONG: 'CHURCH_WEBSITE_TOO_LONG',
   ACCENT_COLOR_INVALID: 'ACCENT_COLOR_INVALID',
+  CHURCH_SLUG_LENGTH: 'CHURCH_SLUG_LENGTH',
+  CHURCH_SLUG_FORMAT: 'CHURCH_SLUG_FORMAT',
+  CHURCH_SLUG_RESERVED: 'CHURCH_SLUG_RESERVED',
+  CHURCH_SLUG_TAKEN: 'CHURCH_SLUG_TAKEN',
   INVALID: 'INVALID',
 } as const;
 
@@ -2372,6 +2378,42 @@ export type UpdateChurchSettings422 = {
   error: UpdateChurchSettings422Error;
   message: string;
   fieldErrors: UpdateChurchSettings422FieldErrorsItem[];
+};
+
+export type GetChurchSlugAvailabilityParams = {
+/**
+ * @maxLength 200
+ */
+slug: string;
+};
+
+export type GetChurchSlugAvailability200Status = typeof GetChurchSlugAvailability200Status[keyof typeof GetChurchSlugAvailability200Status];
+
+
+export const GetChurchSlugAvailability200Status = {
+  free: 'free',
+  taken: 'taken',
+  reserved: 'reserved',
+  own_history: 'own_history',
+} as const;
+
+export type GetChurchSlugAvailability200 = {
+  status: GetChurchSlugAvailability200Status;
+};
+
+export type GetChurchSlugAvailability401 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSlugAvailability403 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSlugAvailability409 = {
+  error: string;
+  message: string;
 };
 
 export type UploadChurchLogoBody = {

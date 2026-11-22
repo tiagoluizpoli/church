@@ -55,6 +55,14 @@ export function fieldErrorsOf({
   );
 }
 
+interface CheckChurchSlugInput {
+  slug: string;
+}
+
+export function checkChurchSlug({ slug }: CheckChurchSlugInput) {
+  return churchSettingsApi.getChurchSlugAvailability({ slug });
+}
+
 /**
  * Logo changes apply at once and touch only the logo in the cached read, so
  * unsaved edits in the form survive an upload.

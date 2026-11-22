@@ -1,9 +1,12 @@
+import { churchSlugRefusal } from '@church/app-config/church-slug';
 import { isChurchLogoKey } from '../domain/church-logo';
+import type { ChurchSlugAvailability } from '../domain/church-settings';
 import type {
   ChurchSettingsView,
   GetChurchSettingsInput,
   IChurchSettingsManager,
   RestoreChurchLogoInput,
+  SlugAvailabilityInput,
   UpdateChurchSettingsInput,
   UploadChurchLogoInput,
 } from '../domain/contracts/application/church-settings-manager';
@@ -50,6 +53,14 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
         : null,
       publicOrigin: this.publicOrigin,
     };
+  }
+
+  async getSlugAvailability({
+    churchId,
+    slug,
+  }: SlugAvailabilityInput): Promise<ChurchSlugAvailability> {
+    if (churchSlugRefusal(slug) === 'RESERVED') return 'reserved';
+    return this.churchRepository.slugAvailability({ id: churchId, slug });
   }
 
   async updateChurchSettings({

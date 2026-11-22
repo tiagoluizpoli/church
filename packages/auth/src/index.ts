@@ -63,6 +63,7 @@ export function createAuth({
       '/sign-up/email',
       '/organization/update-member-role',
       '/organization/update',
+      '/organization/check-slug',
     ],
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,

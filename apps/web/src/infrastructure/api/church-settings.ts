@@ -6,6 +6,8 @@
  */
 import type {
   GetChurchSettings200,
+  GetChurchSlugAvailability200,
+  GetChurchSlugAvailabilityParams,
   RemoveChurchLogo200,
   RestoreChurchLogo200,
   RestoreChurchLogoBody,
@@ -34,7 +36,7 @@ const getChurchSettings = (
       );
     }
   /**
- * Saves the whole set of Church Settings in one transaction, last write wins; the slug never changes here. A refused save changes nothing and answers 422 with one entry per refused field (list rows addressed by index). ChurchAdmin only.
+ * Saves the whole set of Church Settings in one transaction, last write wins; the slug changes only when one is sent (its old value moves to the slug history). A refused save changes nothing and answers 422 with one entry per refused field (list rows addressed by index). ChurchAdmin only.
  * @summary Save the Active Church settings
  */
 const updateChurchSettings = (
@@ -44,6 +46,19 @@ const updateChurchSettings = (
       {url: `/api/v1/church-settings`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: updateChurchSettingsBody
+    },
+      );
+    }
+  /**
+ * Whether a Church Slug is free, taken, reserved, or held in the Active Church's own slug history (it may take it back). Never says which Church holds a taken slug. ChurchAdmin only.
+ * @summary Check a Church Slug for the Active Church
+ */
+const getChurchSlugAvailability = (
+    params: GetChurchSlugAvailabilityParams,
+ ) => {
+      return apiClient<GetChurchSlugAvailability200>(
+      {url: `/api/v1/church-settings/slug-availability`, method: 'GET',
+        params
     },
       );
     }
@@ -89,9 +104,10 @@ const restoreChurchLogo = (
     },
       );
     }
-  return {getChurchSettings,updateChurchSettings,uploadChurchLogo,removeChurchLogo,restoreChurchLogo}};
+  return {getChurchSettings,updateChurchSettings,getChurchSlugAvailability,uploadChurchLogo,removeChurchLogo,restoreChurchLogo}};
 export type GetChurchSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['getChurchSettings']>>>
 export type UpdateChurchSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['updateChurchSettings']>>>
+export type GetChurchSlugAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['getChurchSlugAvailability']>>>
 export type UploadChurchLogoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['uploadChurchLogo']>>>
 export type RemoveChurchLogoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['removeChurchLogo']>>>
 export type RestoreChurchLogoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['restoreChurchLogo']>>>

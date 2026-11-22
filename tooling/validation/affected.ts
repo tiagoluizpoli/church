@@ -127,15 +127,32 @@ const RELATED_UNIT_WORKSPACE_PATHS = new Map(
   ).map(({ name, path }) => [name, path]),
 );
 
+/** Per-branch git config naming the branch a ticket merges into. */
+const VALIDATE_BASE_CONFIG = 'validateBase';
+
 /**
  * A clean worktree with committed branch changes must not report nothing to
  * check — a working-tree-only diff sees no uncommitted changes and silently
- * skips them. With no explicit `--base`, fall back to the task branch's
- * likely target so committed work is still included, using its merge base
- * (not its tip) so unrelated changes landing on the target after the branch
- * forked don't inflate the local plan.
+ * skips them. With no explicit `--base`, use the branch's configured
+ * integration branch (`git config branch.<branch>.validateBase <ref>`), so a
+ * ticket that merged its spec branch diffs only its own commits; otherwise
+ * fall back to `develop`. The diff uses the merge base (not the tip), so
+ * changes landing on the target after the branch forked don't inflate the
+ * local plan.
  */
 function resolveDefaultBaseRef(): string | undefined {
+  try {
+    const branch = execFileSync('git', ['symbolic-ref', '--short', 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    const configured = execFileSync(
+      'git',
+      ['config', '--get', `branch.${branch}.${VALIDATE_BASE_CONFIG}`],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    ).trim();
+    if (configured) return configured;
+  } catch {} // detached HEAD or no setting: fall back to develop
   for (const candidate of ['develop', 'origin/develop']) {
     try {
       execFileSync('git', ['rev-parse', '--verify', '--quiet', candidate], {

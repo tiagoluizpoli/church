@@ -12,7 +12,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 /**
  * Exercises the real CLI at its dry-run seam against representative
  * temporary Git histories (#286's Testing Decisions), proving the default
- * local base-ref resolution (merge base with `develop`, not its tip),
+ * local base-ref resolution (merge base with the branch's configured
+ * `validateBase`, else `develop`, not its tip),
  * uncommitted-state inclusion, and journey-mapping selection all work
  * against actual `git` plumbing rather than a mocked diff.
  */
@@ -151,6 +152,31 @@ describe('affected.ts --dry-run against a temporary Git history', () => {
     const { stderr } = runAffected({ args: ['--base', 'release-target'] });
 
     expect(stderr).toContain('Base ref: release-target');
+  });
+
+  it('diffs a ticket branch against its configured integration branch, not develop', () => {
+    git(['checkout', '--quiet', '-b', 'spec/9-integration', 'develop']);
+    writeRepoFile('apps/web/src/earlier-ticket.ts');
+    commitAll('feat: earlier ticket');
+    git(['checkout', '--quiet', 'feature/x']);
+    git(['config', 'branch.feature/x.validateBase', 'spec/9-integration']);
+    git(['merge', '--quiet', '--no-edit', 'spec/9-integration']);
+    writeRepoFile('apps/web/src/this-ticket.ts');
+    commitAll('feat: this ticket');
+
+    const { plan, stderr } = runAffected();
+
+    expect(stderr).toContain('Base ref: spec/9-integration');
+    expect(plan.lintPaths).toEqual(['apps/web/src/this-ticket.ts']);
+  });
+
+  it('keeps an explicit --base ahead of the configured integration branch', () => {
+    git(['branch', 'spec/9-integration']);
+    git(['config', 'branch.feature/x.validateBase', 'spec/9-integration']);
+
+    const { stderr } = runAffected({ args: ['--base', 'develop'] });
+
+    expect(stderr).toContain('Base ref: develop');
   });
 
   it('keeps stdout as pure JSON so CI can parse it with jq, moving the explanation to stderr', () => {

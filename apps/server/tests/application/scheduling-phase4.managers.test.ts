@@ -210,7 +210,12 @@ it('lists and saves a valid usual setup and rejects invalid splits', async () =>
   });
   const template = new EventTemplate({
     id: templateId,
-    props: { churchId, name: 'Sunday', weekday: 0, blocks: [block] },
+    props: {
+      churchId,
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+      blocks: [block],
+    },
   });
   vi.mocked(repositories.eventTemplateRepository.list).mockResolvedValue([
     template,

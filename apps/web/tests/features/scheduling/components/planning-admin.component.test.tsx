@@ -206,7 +206,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     const template = {
       id: 'template-1',
       name: 'Sunday Service',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
           id: 'block-1',
@@ -239,7 +239,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     getEventTemplate.mockResolvedValue({
       id: 'template-9',
       name: 'Vigil',
-      weekday: 5,
+      recurrence: { kind: 'weekly', weekdays: [5] },
       blocks: [
         {
           id: 'block-9',
@@ -286,7 +286,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [
             {
               id: 'block-1',
@@ -570,7 +570,7 @@ describe('Cycle deletion and Apply against a stale Draft', () => {
     const sunday = {
       id: 'template-1',
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [],
     };
     listEventTemplates.mockResolvedValue({ templates: [sunday] });
@@ -734,8 +734,18 @@ describe('Cycle header visibility (chip-leak fix)', () => {
     listCycles.mockResolvedValue({ cycles: [] });
     listEventTemplates.mockResolvedValue({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
-        { id: 'template-2', name: 'Midweek', weekday: 3, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
+        {
+          id: 'template-2',
+          name: 'Midweek',
+          recurrence: { kind: 'weekly', weekdays: [3] },
+          blocks: [],
+        },
       ],
     });
 

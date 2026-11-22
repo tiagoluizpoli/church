@@ -722,7 +722,7 @@ describe('Cycle last day', () => {
       db,
       churchId,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         { label: 'Service', startTime: time('19:00'), endTime: time('21:00') },
       ],
@@ -1174,7 +1174,7 @@ describe('DELETE /admin/cycles/:cycleId', () => {
       db,
       churchId: seed.churchAId,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [],
     });
     const doomed = await seedCycle({

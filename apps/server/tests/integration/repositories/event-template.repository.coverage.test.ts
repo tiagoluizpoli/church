@@ -24,7 +24,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
           '99999999-9999-4999-8999-999999999999',
         ),
         name: 'Nope',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: [],
       }),
     ).rejects.toThrow(NotFoundError);
@@ -71,7 +71,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
     const alpha = await repo.create({
       churchId,
       name: 'Alpha',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         { label: 'Second', startTime: '11:00', endTime: '12:00', order: 2 },
         { label: 'First', startTime: '09:00', endTime: '10:00', order: 1 },
@@ -80,7 +80,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
     const beta = await repo.create({
       churchId,
       name: 'Beta',
-      weekday: 1,
+      recurrence: { kind: 'weekly', weekdays: [1] },
       blocks: [
         { label: 'Only', startTime: '18:00', endTime: '19:00', order: 1 },
       ],
@@ -88,7 +88,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
     const empty = await repo.create({
       churchId,
       name: 'Gamma',
-      weekday: 2,
+      recurrence: { kind: 'weekly', weekdays: [2] },
       blocks: [],
     });
 
@@ -103,7 +103,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
     const facts = (t: (typeof listed)[number]) => ({
       id: t.id,
       name: t.name,
-      weekday: t.weekday,
+      recurrence: t.recurrence,
       blocks: t.blocks.map((b) => [
         b.id,
         b.label,
@@ -136,7 +136,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
     const template = await repo.create({
       churchId,
       name: 'Overnight Watch',
-      weekday: 3,
+      recurrence: { kind: 'weekly', weekdays: [3] },
       blocks: [
         { label: 'Vigil', startTime: '22:00', endTime: '02:00', order: 1 },
       ],
@@ -156,7 +156,7 @@ describe('DrizzleEventTemplateRepository (extra coverage)', () => {
       repo.create({
         churchId,
         name: 'Broken',
-        weekday: 3,
+        recurrence: { kind: 'weekly', weekdays: [3] },
         blocks: [
           {
             label: 'Zero-length',

@@ -33,6 +33,7 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import type { Recurrence } from '@/domain/recurrence';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
@@ -238,7 +239,7 @@ const time = (value: string) => parseTimeOfDay({ value });
 interface TemplateInput {
   churchId: string;
   name?: string;
-  weekday?: number;
+  recurrence?: Recurrence;
   blocks?: {
     label: string;
     start: string;
@@ -252,14 +253,14 @@ interface TemplateInput {
 async function seedTemplate({
   churchId,
   name = 'Sunday',
-  weekday = 0,
+  recurrence = { kind: 'weekly', weekdays: [0] },
   blocks = [{ label: 'Service', start: '19:00', end: '21:00' }],
 }: TemplateInput) {
   return buildEventTemplate({
     db,
     churchId,
     name,
-    weekday,
+    recurrence,
     blocks: blocks.map((block) => ({
       label: block.label,
       startTime: time(block.start),
@@ -372,7 +373,7 @@ describe('POST /admin/cycles/:cycleId/apply-templates', () => {
       url: `/api/v1/admin/event-templates/${sunday.template.id}`,
       payload: {
         name: 'Sunday',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: [
           {
             id: service?.id,
@@ -404,6 +405,95 @@ describe('POST /admin/cycles/:cycleId/apply-templates', () => {
       .from(templateTimeBlock)
       .where(eq(templateTimeBlock.id, service?.id ?? ''));
     expect(stored[0]).toMatchObject({ isPublic: false, place: 'Annex' });
+  });
+
+  it('generates a mixed monthly template on the calendar-month days it names, each once', async () => {
+    const seed = await signIn();
+    const monthly = await seedTemplate({
+      churchId: seed.churchAId,
+      name: 'Monthly',
+      recurrence: {
+        kind: 'monthly',
+        entries: [
+          { kind: 'nthWeekday', ordinal: 1, weekday: 0 },
+          { kind: 'nthWeekday', ordinal: 5, weekday: 0 },
+          { kind: 'nthWeekday', ordinal: 'last', weekday: 6 },
+          { kind: 'dayOfMonth', day: 31 },
+        ],
+      },
+    });
+    // Starts mid-October, after its 1st Sunday (4th); November has no 31st.
+    const cycle = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-11-30',
+    });
+
+    const res = await apply(cycle.id, [monthly.template.id]);
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toEqual({
+      generatedEventCount: 4,
+      generatedEventTimeBlockCount: 4,
+    });
+    // 19:00 in the Church Timezone (UTC-3) is 22:00 UTC the same day.
+    expect((await storedEvents(cycle.id)).map((row) => row.start)).toEqual([
+      '2026-10-31T22:00:00.000Z',
+      '2026-11-01T22:00:00.000Z',
+      '2026-11-28T22:00:00.000Z',
+      '2026-11-29T22:00:00.000Z',
+    ]);
+  });
+
+  it('applies an edited Recurrence only from then on, keeping block identity', async () => {
+    const seed = await signIn();
+    const sunday = await seedTemplate({ churchId: seed.churchAId });
+    const [block] = sunday.blocks;
+    const cycle = await seedCycle({ churchId: seed.churchAId, ...FORTNIGHT });
+    await apply(cycle.id, [sunday.template.id]);
+    const before = await storedEvents(cycle.id);
+
+    const edit = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/event-templates/${sunday.template.id}`,
+      payload: {
+        name: 'Sunday',
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'dayOfMonth', day: 20 }],
+        },
+        blocks: [
+          {
+            id: block?.id,
+            label: 'Service',
+            startTime: '19:00',
+            endTime: '21:00',
+          },
+        ],
+      },
+    });
+    const again = await apply(cycle.id, [sunday.template.id]);
+
+    expect(edit.statusCode).toBe(200);
+    expect(edit.json().blocks.map((saved: { id: string }) => saved.id)).toEqual(
+      [block?.id],
+    );
+    expect(again.json()).toEqual({
+      generatedEventCount: 1,
+      generatedEventTimeBlockCount: 1,
+    });
+    const after = await storedEvents(cycle.id);
+    expect(
+      after.filter((row) => before.some((old) => old.id === row.id)),
+    ).toEqual(before);
+    expect(after.map((row) => row.start)).toEqual([
+      '2026-10-18T22:00:00.000Z',
+      '2026-10-20T22:00:00.000Z',
+      '2026-10-25T22:00:00.000Z',
+    ]);
+    expect(
+      new Set((await storedBlocks(cycle.id)).map((row) => row.source)),
+    ).toEqual(new Set([block?.id]));
   });
 
   it('includes both bounds and ignores nonmatching days', async () => {
@@ -671,7 +761,7 @@ describe('POST /admin/cycles/:cycleId/apply-templates', () => {
     const doomed = await seedTemplate({
       churchId: seed.churchAId,
       name: 'Doomed',
-      weekday: 1,
+      recurrence: { kind: 'weekly', weekdays: [1] },
       blocks: [{ label: 'Boom', start: '10:00', end: '11:00' }],
     });
     const cycle = await seedCycle({ churchId: seed.churchAId, ...FORTNIGHT });
@@ -720,7 +810,7 @@ describe('POST /admin/cycles/:cycleId/apply-templates', () => {
     const saturday = await seedTemplate({
       churchId: seed.churchAId,
       name: 'Saturday',
-      weekday: 6,
+      recurrence: { kind: 'weekly', weekdays: [6] },
     });
     const sunday = await seedTemplate({ churchId: seed.churchAId });
     const cycle = await seedCycle({ churchId: seed.churchAId, ...FORTNIGHT });

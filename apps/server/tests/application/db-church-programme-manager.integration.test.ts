@@ -47,7 +47,7 @@ describe('DbChurchProgrammeManager', () => {
     await templates.createTemplate({
       churchId: churchA,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         block('Worship', '09:00', true, 'Main hall'),
         block('Rehearsal', '07:00', false),
@@ -59,13 +59,13 @@ describe('DbChurchProgrammeManager', () => {
 
     expect(result).toEqual([
       {
-        recurrence: { kind: 'weekly', weekday: 0 },
+        recurrence: { kind: 'weekly', weekdays: [0] },
         startTime: '09:00',
         label: 'Worship',
         place: 'Main hall',
       },
       {
-        recurrence: { kind: 'weekly', weekday: 0 },
+        recurrence: { kind: 'weekly', weekdays: [0] },
         startTime: '09:30',
         label: 'Kids',
         place: null,
@@ -77,19 +77,19 @@ describe('DbChurchProgrammeManager', () => {
     await templates.createTemplate({
       churchId: churchA,
       name: 'Wednesday',
-      weekday: 3,
+      recurrence: { kind: 'weekly', weekdays: [3] },
       blocks: [block('Study', '19:30', true)],
     });
     await templates.createTemplate({
       churchId: churchA,
       name: 'Sunday morning',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [block('Worship', '09:00', true), block('Tie B', '18:00', true)],
     });
     await templates.createTemplate({
       churchId: churchA,
       name: 'Sunday evening',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [block('Tie A', '18:00', true), block('Prayer', '08:00', true)],
     });
 
@@ -108,7 +108,7 @@ describe('DbChurchProgrammeManager', () => {
     const template = await templates.createTemplate({
       churchId: churchA,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [block('Worship', '09:00', true)],
     });
     const [existing] = template.blocks;
@@ -117,7 +117,7 @@ describe('DbChurchProgrammeManager', () => {
       churchId: churchA,
       templateId: template.id,
       name: 'Sunday',
-      weekday: 6,
+      recurrence: { kind: 'weekly', weekdays: [6] },
       blocks: [
         {
           id: existing?.id as string,
@@ -128,7 +128,7 @@ describe('DbChurchProgrammeManager', () => {
 
     expect(await programme.getProgramme({ churchId: churchA })).toEqual([
       {
-        recurrence: { kind: 'weekly', weekday: 6 },
+        recurrence: { kind: 'weekly', weekdays: [6] },
         startTime: '20:00',
         label: 'Vigil',
         place: 'Chapel',
@@ -140,7 +140,7 @@ describe('DbChurchProgrammeManager', () => {
     await templates.createTemplate({
       churchId: churchB,
       name: 'Other',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [block('Foreign', '09:00', true)],
     });
 

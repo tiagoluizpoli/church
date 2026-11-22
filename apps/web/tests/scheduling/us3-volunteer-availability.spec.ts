@@ -123,7 +123,7 @@ async function setUpTwoMinistryOverlapCycle({
     {
       data: {
         name: 'US3 Overlap Template',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: [
           {
             label: 'Gathering',

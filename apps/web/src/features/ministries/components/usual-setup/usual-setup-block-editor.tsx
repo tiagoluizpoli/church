@@ -241,7 +241,10 @@ function UsualSetupBlockForm({
               {block.templateName} · {block.label}
             </h2>
             <p className="text-muted-foreground text-sm">
-              {formatWeekday(block)} · {formatTimeRange(block)}
+              {block.weekday === null
+                ? null
+                : `${formatWeekday({ weekday: block.weekday })} · `}
+              {formatTimeRange(block)}
             </p>
           </div>
 

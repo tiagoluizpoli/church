@@ -46,7 +46,7 @@ describe('useTemplateBreadcrumb', () => {
       id: 'template-1',
       churchId: 'church-1',
       name: 'Culto de domingo',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       publicBlockCount: 0,
       blocks: [],
       createdAt: '2026-07-01T00:00:00.000Z',

@@ -28,6 +28,7 @@ function createManager(): DbActiveChurchSelectionManager {
     authorityManager: {} as never,
     activeChurchResolver: {} as never,
     churchRepository: new DrizzleChurchRepository({ db: testDb }),
+    objectStorage: { publicUrl: ({ key }) => key },
   });
 }
 

@@ -1,6 +1,7 @@
 import * as schema from '@church/db';
 import { clearPublicTables } from '@church/db/clear-public-tables';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -139,6 +140,8 @@ describe('DrizzleChurchMembershipRepository (integration)', () => {
           accessLevel: 'member',
           churchName: 'Membership Church A',
           timezone: 'UTC',
+          logoKey: null,
+          accentColor: null,
           lastOpenedAt: null,
         }),
         expect.objectContaining({
@@ -149,6 +152,25 @@ describe('DrizzleChurchMembershipRepository (integration)', () => {
           lastOpenedAt: null,
         }),
       ]),
+    );
+  });
+
+  it("carries the Church's logo key and accent colour", async () => {
+    await testDb
+      .update(schema.church)
+      .set({ logoKey: 'public/churches/a/logo/x.png', accentColor: '#0f766e' })
+      .where(eq(schema.church.id, churchAId));
+    const repository = new DrizzleChurchMembershipRepository({ db: testDb });
+
+    const comparisons = await repository.listComparisonsByUserId({
+      userId: dualMemberUserId,
+    });
+
+    expect(comparisons.find((row) => row.churchId === churchAId)).toEqual(
+      expect.objectContaining({
+        logoKey: 'public/churches/a/logo/x.png',
+        accentColor: '#0f766e',
+      }),
     );
   });
 

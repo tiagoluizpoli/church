@@ -191,6 +191,22 @@ export interface BuildChurchAddressesInput {
   addresses: readonly ChurchAddressBlueprint[];
 }
 
+export interface ChurchAddressSeedIdInput {
+  churchId: string;
+  position: number;
+}
+
+/** The derived id of the Church's address at `position` in its blueprint. */
+export function churchAddressSeedId({
+  churchId,
+  position,
+}: ChurchAddressSeedIdInput): string {
+  return deriveSeedId({
+    kind: 'church-address',
+    parentIds: [churchId, String(position)],
+  });
+}
+
 /** Direct-state builder: the Church's addresses in order, the first one main. */
 export async function buildChurchAddresses({
   db,
@@ -200,10 +216,7 @@ export async function buildChurchAddresses({
   if (addresses.length === 0) return;
   await db.insert(churchAddress).values(
     addresses.map((address, position) => ({
-      id: deriveSeedId({
-        kind: 'church-address',
-        parentIds: [churchId, String(position)],
-      }),
+      id: churchAddressSeedId({ churchId, position }),
       churchId,
       label: address.label ?? null,
       street: address.street,

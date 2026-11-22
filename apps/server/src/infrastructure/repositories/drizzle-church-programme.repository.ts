@@ -1,4 +1,4 @@
-import { eventTemplate, templateTimeBlock } from '@church/db';
+import { churchAddress, eventTemplate, templateTimeBlock } from '@church/db';
 import { fromTimeColumn } from '@church/time';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type {
@@ -8,6 +8,7 @@ import type {
 import type { RegularActivity } from '../../domain/entities/regular-activity';
 import type { Recurrence } from '../../domain/recurrence';
 import { withChurchIsolation } from './helpers';
+import { resolvedPlace } from './time-block-place';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzleChurchProgrammeRepositoryInput {
@@ -31,12 +32,16 @@ export class DrizzleChurchProgrammeRepository
         recurrence: eventTemplate.recurrence,
         startTime: templateTimeBlock.startTime,
         label: templateTimeBlock.label,
-        place: templateTimeBlock.place,
+        place: resolvedPlace(templateTimeBlock.place),
       })
       .from(templateTimeBlock)
       .innerJoin(
         eventTemplate,
         eq(templateTimeBlock.templateId, eventTemplate.id),
+      )
+      .leftJoin(
+        churchAddress,
+        eq(churchAddress.id, templateTimeBlock.placeAddressId),
       )
       .where(
         and(

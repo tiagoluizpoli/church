@@ -99,6 +99,7 @@ describe('eventTimeBlockMapper', () => {
         label: 'Morning Event time block',
         isPublic: false,
         place: null,
+        placeAddressId: null,
         status: 'active',
         requirements: [
           {
@@ -140,6 +141,7 @@ describe('eventTimeBlockMapper', () => {
         label: undefined,
         isPublic: false,
         place: null,
+        placeAddressId: null,
         status: 'active',
         requirements: [],
       });
@@ -179,6 +181,7 @@ describe('eventTimeBlockMapper', () => {
         label: 'Event time block A',
         isPublic: false,
         place: null,
+        placeAddressId: null,
         status: 'active',
         requirements: [],
       });

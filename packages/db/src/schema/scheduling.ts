@@ -11,7 +11,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { church } from './church';
+import { church, churchAddress } from './church';
 import { role, sector } from './core';
 import { eventStatusEnum, eventTimeBlockStatusEnum } from './enums';
 import { ministryParticipation } from './participation';
@@ -86,6 +86,13 @@ export const eventTimeBlock = pgTable(
     // Copied from the source TemplateTimeBlock on apply; independent afterwards.
     isPublic: boolean('is_public').default(false).notNull(),
     place: varchar('place', { length: 120 }),
+    // A Church Address as the place instead of free text; resolved when read.
+    placeAddressId: uuid('place_address_id').references(
+      () => churchAddress.id,
+      {
+        onDelete: 'set null',
+      },
+    ),
     // Cancelling one block; its Shifts are cancelled through it (no Shift status).
     status: eventTimeBlockStatusEnum('status').default('active').notNull(),
     createdAt: timestamp('created_at', {
@@ -97,6 +104,10 @@ export const eventTimeBlock = pgTable(
   },
   (table) => [
     index('event_time_block_event_idx').on(table.eventId),
+    check(
+      'event_time_block_place_check',
+      sql`${table.place} IS NULL OR ${table.placeAddressId} IS NULL`,
+    ),
     check(
       'event_time_block_duration_check',
       sql`${table.startTime} < ${table.endTime}`,

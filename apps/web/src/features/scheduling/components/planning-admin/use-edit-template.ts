@@ -8,6 +8,7 @@ import {
   createTemplateFormFromTemplate,
   toTemplateRequestBody,
 } from './planning-admin.utils';
+import type { TemplateCollisionDialogProps } from './template-collision-dialog';
 import type { TemplateEditorState } from './template-editor-form';
 import {
   TEMPLATE_LIST_QUERY_KEY,
@@ -15,6 +16,7 @@ import {
   templateUsageQueryKey,
   USUAL_SETUP_QUERY_KEY,
 } from './template-query-keys';
+import { useTemplateCollisions } from './use-template-collisions';
 import { toSaveRefusal, useTemplateForm } from './use-template-form';
 import { adminApi } from '@/utils/api-instances';
 
@@ -35,6 +37,7 @@ export interface UseEditTemplateResult extends TemplateEditorState {
   confirmation: RemovedBlockUsage[] | null;
   onConfirmRemoval: () => void;
   onCancelRemoval: () => void;
+  collisionDialog: TemplateCollisionDialogProps;
 }
 
 /**
@@ -56,13 +59,18 @@ export function useEditTemplate({
     null,
   );
 
+  const collisions = useTemplateCollisions();
+
   const removedBlocks = template.blocks.filter(
     (block) => !form.blocks.some((draft) => draft.persistedId === block.id),
   );
 
   const save = useMutation({
     mutationFn: () =>
-      adminApi.updateEventTemplate(templateId, toTemplateRequestBody({ form })),
+      adminApi.updateEventTemplate(
+        templateId,
+        toTemplateRequestBody({ form, precedences: collisions.precedences }),
+      ),
     onSuccess: async () => {
       setConfirmation(null);
       await Promise.all(
@@ -78,7 +86,9 @@ export function useEditTemplate({
     },
     onError: (error) => {
       setConfirmation(null);
-      setRefusal(toSaveRefusal({ error }));
+      if (!collisions.handleError(error)) {
+        setRefusal(toSaveRefusal({ error }));
+      }
     },
   });
 
@@ -129,5 +139,13 @@ export function useEditTemplate({
     confirmation,
     onConfirmRemoval: () => save.mutate(),
     onCancelRemoval: () => setConfirmation(null),
+    collisionDialog: {
+      ...collisions.dialog,
+      pending: save.isPending,
+      onConfirm: () => {
+        collisions.dialog.onCancel();
+        save.mutate();
+      },
+    },
   };
 }

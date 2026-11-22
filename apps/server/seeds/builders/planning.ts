@@ -29,6 +29,7 @@ export interface SeedTemplateTimeBlock {
   order?: number;
   isPublic?: boolean;
   place?: string;
+  placeAddressId?: string;
 }
 
 export interface BuildEventTemplateInput {
@@ -78,6 +79,7 @@ export async function buildEventTemplate({
               order: block.order ?? index,
               isPublic: block.isPublic,
               place: block.place,
+              placeAddressId: block.placeAddressId,
             })),
           )
           .returning();

@@ -56,6 +56,8 @@ export class DrizzleChurchMembershipRepository
         lastOpenedAt: member.lastOpenedAt,
         churchName: organization.name,
         timezone: church.timezone,
+        logoKey: church.logoKey,
+        accentColor: church.accentColor,
       })
       .from(member)
       .innerJoin(organization, eq(organization.id, member.organizationId))
@@ -67,6 +69,8 @@ export class DrizzleChurchMembershipRepository
       accessLevel: row.role as ChurchAccessLevel,
       churchName: row.churchName,
       timezone: row.timezone,
+      logoKey: row.logoKey,
+      accentColor: row.accentColor,
       lastOpenedAt: row.lastOpenedAt,
     }));
   }

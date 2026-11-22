@@ -32,6 +32,7 @@ export function mapTemplateTimeBlock(
     order: row.order,
     isPublic: row.isPublic,
     place: row.place ?? undefined,
+    placeAddressId: row.placeAddressId ?? undefined,
   };
 
   return new TemplateTimeBlock({

@@ -5,7 +5,6 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import {
   CalendarCheck,
-  CalendarClock,
   CalendarRange,
   ChevronLeft,
   ChevronRight,
@@ -28,6 +27,7 @@ import {
   useCallerCapabilities,
 } from '../shared/hooks/use-caller-capabilities';
 import { ActiveChurchTabSyncGuard } from './active-church-tab-sync-guard';
+import { ChurchLogoTile } from './church-logo-tile';
 import { CommandPalette } from './command-palette';
 import { MobileDrawer } from './mobile-drawer';
 import { ModeToggle } from './mode-toggle';
@@ -427,10 +427,13 @@ export function AppShell({
   const churches = churchOptions?.churches ?? [];
   // Outside an Active Church (e.g. a Ministry Invitation for someone with no
   // Church Membership yet) there is no Church name to wait for.
+  const activeChurch = churchScope
+    ? churches.find((church) => church.churchId === churchScope.churchId)
+    : undefined;
   const churchName = churchScope
-    ? (churches.find((church) => church.churchId === churchScope.churchId)
-        ?.name ?? null)
+    ? (activeChurch?.name ?? null)
     : appConfig.appName;
+  const churchLogoUrl = activeChurch?.logoUrl ?? null;
   const canSwitchChurch = churches.length >= 2;
   const selectChurchDestination = getSelectChurchDestination({
     destination: location.href,
@@ -525,9 +528,11 @@ export function AppShell({
         className="sticky top-0 z-40 flex h-(--app-topbar-h) shrink-0 items-center justify-between border-sidebar-border border-b bg-sidebar/95 px-4 backdrop-blur md:hidden"
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="radius-icon flex h-10 w-10 shrink-0 items-center justify-center bg-primary/12 text-primary shadow-sm">
-            <CalendarClock className="h-5 w-5" />
-          </div>
+          <ChurchLogoTile
+            name={churchName ?? ''}
+            logoUrl={churchLogoUrl}
+            size="mobile"
+          />
           <div className="min-w-0 space-y-0.5">
             <ChurchName name={churchName} />
             {mobileSubtitle ? (
@@ -577,17 +582,22 @@ export function AppShell({
         >
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
-              <div className="radius-icon flex h-10 w-10 items-center justify-center bg-primary/12 text-primary shadow-sm">
-                <CalendarClock className="h-5 w-5" />
-              </div>
+              <ChurchLogoTile
+                name={churchName ?? ''}
+                logoUrl={churchLogoUrl}
+                size="desktop"
+              />
               <div className="space-y-0.5">
                 <ChurchName name={churchName} />
               </div>
             </div>
           ) : (
-            <div className="radius-icon mx-auto flex h-10 w-10 items-center justify-center bg-primary/12 text-primary shadow-sm">
-              <CalendarClock className="h-5 w-5" />
-            </div>
+            <ChurchLogoTile
+              name={churchName ?? ''}
+              logoUrl={churchLogoUrl}
+              size="desktop"
+              className="mx-auto"
+            />
           )}
         </div>
 

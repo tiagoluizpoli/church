@@ -13,7 +13,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { church } from './church';
+import { church, churchAddress } from './church';
 import { ministry } from './core';
 import { cycleStateEnum, templatePrecedenceOutcomeEnum } from './enums';
 
@@ -155,8 +155,19 @@ export const templateTimeBlock = pgTable(
     // Public Page visibility and a free-text place; copied onto generated EventTimeBlocks.
     isPublic: boolean('is_public').default(false).notNull(),
     place: varchar('place', { length: 120 }),
+    // A Church Address as the place instead of free text; resolved when read.
+    placeAddressId: uuid('place_address_id').references(
+      () => churchAddress.id,
+      {
+        onDelete: 'set null',
+      },
+    ),
   },
   (table) => [
+    check(
+      'template_time_block_place_check',
+      sql`${table.place} IS NULL OR ${table.placeAddressId} IS NULL`,
+    ),
     check(
       'template_time_block_time_not_empty_check',
       sql`${table.startTime} != ${table.endTime}`,

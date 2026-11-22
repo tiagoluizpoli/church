@@ -483,6 +483,7 @@ export function createDevelopmentRecipe({
         churchId: church.id,
         blueprint: blueprint.gatherings,
         ministries: primary.ministries,
+        addresses: blueprint.primary.church.addresses ?? [],
       });
       const historicalCycle = await loadDevelopmentHistory({
         db,

@@ -1,5 +1,5 @@
 {
-  "id": "427c199d-6c23-4483-b696-ad6f744ccf9e",
+  "id": "f3ab27a4-5fb3-48c2-a9d4-6f75922a09cd",
   "prevId": "827d1f87-fc20-43e3-862c-661398936406",
   "version": "7",
   "dialect": "postgresql",
@@ -1429,112 +1429,6 @@
           "value": "(\"church_address\".\"latitude\" IS NULL) = (\"church_address\".\"longitude\" IS NULL) AND (\"church_address\".\"latitude\" IS NULL) = (\"church_address\".\"pin_source\" IS NULL) AND \"church_address\".\"pin_source\" IN ('google', 'cep', 'admin')"
         }
       },
-      "isRLSEnabled": false
-    },
-    "public.church_contact": {
-      "name": "church_contact",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "church_id": {
-          "name": "church_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "phone_type": {
-          "name": "phone_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "value": {
-          "name": "value",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_whatsapp": {
-          "name": "is_whatsapp",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "is_public": {
-          "name": "is_public",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "church_contact_church_id_position_idx": {
-          "name": "church_contact_church_id_position_idx",
-          "columns": [
-            {
-              "expression": "church_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "church_contact_church_id_church_id_fk": {
-          "name": "church_contact_church_id_church_id_fk",
-          "tableFrom": "church_contact",
-          "tableTo": "church",
-          "columnsFrom": [
-            "church_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.church_slug_history": {
@@ -4848,6 +4742,12 @@
           "type": "varchar(120)",
           "primaryKey": false,
           "notNull": false
+        },
+        "place_address_id": {
+          "name": "place_address_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -4920,12 +4820,29 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "template_time_block_place_address_id_church_address_id_fk": {
+          "name": "template_time_block_place_address_id_church_address_id_fk",
+          "tableFrom": "template_time_block",
+          "tableTo": "church_address",
+          "columnsFrom": [
+            "place_address_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "template_time_block_place_check": {
+          "name": "template_time_block_place_check",
+          "value": "\"template_time_block\".\"place\" IS NULL OR \"template_time_block\".\"place_address_id\" IS NULL"
+        },
         "template_time_block_time_not_empty_check": {
           "name": "template_time_block_time_not_empty_check",
           "value": "\"template_time_block\".\"start_time\" != \"template_time_block\".\"end_time\""
@@ -5316,6 +5233,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "place_address_id": {
+          "name": "place_address_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "event_time_block_status",
@@ -5388,12 +5311,29 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        },
+        "event_time_block_place_address_id_church_address_id_fk": {
+          "name": "event_time_block_place_address_id_church_address_id_fk",
+          "tableFrom": "event_time_block",
+          "tableTo": "church_address",
+          "columnsFrom": [
+            "place_address_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "event_time_block_place_check": {
+          "name": "event_time_block_place_check",
+          "value": "\"event_time_block\".\"place\" IS NULL OR \"event_time_block\".\"place_address_id\" IS NULL"
+        },
         "event_time_block_duration_check": {
           "name": "event_time_block_duration_check",
           "value": "\"event_time_block\".\"start_time\" < \"event_time_block\".\"end_time\""

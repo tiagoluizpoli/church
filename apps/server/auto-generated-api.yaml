@@ -115,6 +115,12 @@ paths:
                             enum:
                               - dashboard
                               - scheduling
+                        logoUrl:
+                          nullable: true
+                          type: string
+                        accentColor:
+                          nullable: true
+                          type: string
                         lastOpenedAt:
                           nullable: true
                           type: string
@@ -126,6 +132,8 @@ paths:
                         - timezone
                         - accessLevel
                         - availableAreas
+                        - logoUrl
+                        - accentColor
                         - lastOpenedAt
                       additionalProperties: false
                 required:
@@ -856,6 +864,9 @@ paths:
                               place:
                                 nullable: true
                                 type: string
+                              placeAddressId:
+                                nullable: true
+                                type: string
                               status:
                                 type: string
                                 enum:
@@ -893,6 +904,7 @@ paths:
                               - endTime
                               - isPublic
                               - place
+                              - placeAddressId
                               - status
                               - requirements
                             additionalProperties: false
@@ -1397,6 +1409,11 @@ paths:
                       place:
                         type: string
                         maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                     required:
                       - label
                       - startTime
@@ -1596,6 +1613,9 @@ paths:
                         place:
                           nullable: true
                           type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                       required:
                         - id
                         - churchId
@@ -1606,6 +1626,7 @@ paths:
                         - order
                         - isPublic
                         - place
+                        - placeAddressId
                       additionalProperties: false
                   createdAt:
                     type: string
@@ -1683,6 +1704,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -1875,6 +1897,9 @@ paths:
                               place:
                                 nullable: true
                                 type: string
+                              placeAddressId:
+                                nullable: true
+                                type: string
                             required:
                               - id
                               - churchId
@@ -1885,6 +1910,7 @@ paths:
                               - order
                               - isPublic
                               - place
+                              - placeAddressId
                             additionalProperties: false
                         createdAt:
                           type: string
@@ -2093,6 +2119,9 @@ paths:
                         place:
                           nullable: true
                           type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                       required:
                         - id
                         - churchId
@@ -2103,6 +2132,7 @@ paths:
                         - order
                         - isPublic
                         - place
+                        - placeAddressId
                       additionalProperties: false
                   createdAt:
                     type: string
@@ -2290,6 +2320,11 @@ paths:
                       place:
                         type: string
                         maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                       id:
                         type: string
                         format: uuid
@@ -2499,6 +2534,9 @@ paths:
                         place:
                           nullable: true
                           type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                       required:
                         - id
                         - churchId
@@ -2509,6 +2547,7 @@ paths:
                         - order
                         - isPublic
                         - place
+                        - placeAddressId
                       additionalProperties: false
                   createdAt:
                     type: string
@@ -2586,6 +2625,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -2787,6 +2827,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -2894,6 +2935,11 @@ paths:
                       place:
                         type: string
                         maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                     required:
                       - label
                       - startTime
@@ -2994,6 +3040,9 @@ paths:
                         place:
                           nullable: true
                           type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -3031,6 +3080,7 @@ paths:
                         - endTime
                         - isPublic
                         - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -3068,6 +3118,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -3130,6 +3181,11 @@ paths:
                       place:
                         type: string
                         maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                       id:
                         type: string
                         format: uuid
@@ -3239,6 +3295,9 @@ paths:
                         place:
                           nullable: true
                           type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -3276,6 +3335,7 @@ paths:
                         - endTime
                         - isPublic
                         - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -3313,6 +3373,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -3385,6 +3446,11 @@ paths:
                       place:
                         type: string
                         maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                     required:
                       - id
                       - isPublic
@@ -3486,6 +3552,9 @@ paths:
                         place:
                           nullable: true
                           type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -3523,6 +3592,7 @@ paths:
                         - endTime
                         - isPublic
                         - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -3560,6 +3630,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -3707,6 +3778,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -3869,6 +3941,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -4096,6 +4169,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -4230,6 +4304,9 @@ paths:
                         place:
                           nullable: true
                           type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -4267,6 +4344,7 @@ paths:
                         - endTime
                         - isPublic
                         - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -4355,6 +4433,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -4431,6 +4510,9 @@ paths:
                   place:
                     nullable: true
                     type: string
+                  placeAddressId:
+                    nullable: true
+                    type: string
                   status:
                     type: string
                     enum:
@@ -4468,6 +4550,7 @@ paths:
                   - endTime
                   - isPublic
                   - place
+                  - placeAddressId
                   - status
                   - requirements
                 additionalProperties: false
@@ -4721,6 +4804,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -4856,6 +4940,9 @@ paths:
                         place:
                           nullable: true
                           type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -4893,6 +4980,7 @@ paths:
                         - endTime
                         - isPublic
                         - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -4996,6 +5084,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -5162,6 +5251,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -5340,6 +5430,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -5418,6 +5509,9 @@ paths:
                   place:
                     nullable: true
                     type: string
+                  placeAddressId:
+                    nullable: true
+                    type: string
                   status:
                     type: string
                     enum:
@@ -5455,6 +5549,7 @@ paths:
                   - endTime
                   - isPublic
                   - place
+                  - placeAddressId
                   - status
                   - requirements
                 additionalProperties: false
@@ -8451,6 +8546,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -10769,6 +10865,9 @@ paths:
                                   place:
                                     nullable: true
                                     type: string
+                                  placeAddressId:
+                                    nullable: true
+                                    type: string
                                   status:
                                     type: string
                                     enum:
@@ -10806,6 +10905,7 @@ paths:
                                   - endTime
                                   - isPublic
                                   - place
+                                  - placeAddressId
                                   - status
                                   - requirements
                                 additionalProperties: false
@@ -11351,6 +11451,9 @@ paths:
                       place:
                         nullable: true
                         type: string
+                      placeAddressId:
+                        nullable: true
+                        type: string
                       status:
                         type: string
                         enum:
@@ -11388,6 +11491,7 @@ paths:
                       - endTime
                       - isPublic
                       - place
+                      - placeAddressId
                       - status
                       - requirements
                     additionalProperties: false
@@ -11690,6 +11794,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   issues:
                     type: array
                     items: {}
@@ -11877,6 +11982,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   issues:
                     type: array
                     items: {}
@@ -12020,6 +12126,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   issues:
                     type: array
                     items: {}
@@ -12481,6 +12588,9 @@ paths:
                                   place:
                                     nullable: true
                                     type: string
+                                  placeAddressId:
+                                    nullable: true
+                                    type: string
                                   status:
                                     type: string
                                     enum:
@@ -12518,6 +12628,7 @@ paths:
                                   - endTime
                                   - isPublic
                                   - place
+                                  - placeAddressId
                                   - status
                                   - requirements
                                 additionalProperties: false

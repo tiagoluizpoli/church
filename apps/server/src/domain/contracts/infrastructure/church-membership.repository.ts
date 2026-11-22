@@ -11,6 +11,8 @@ export interface ChurchMembershipSummary {
 export interface ChurchMembershipComparison extends ChurchMembershipSummary {
   churchName: string;
   timezone: string;
+  logoKey: string | null;
+  accentColor: string | null;
   lastOpenedAt: Date | null;
 }
 

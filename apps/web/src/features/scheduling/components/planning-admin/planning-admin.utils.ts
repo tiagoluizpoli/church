@@ -114,6 +114,7 @@ export function createEmptyTemplateTimeBlock(): TemplateTimeBlockDraft {
     endTime: null,
     isPublic: false,
     place: '',
+    placeAddressId: null,
   };
 }
 
@@ -141,6 +142,7 @@ export function createTemplateFormFromTemplate({
         endTime: parseTimeOfDay({ value: block.endTime }),
         isPublic: block.isPublic,
         place: block.place ?? '',
+        placeAddressId: block.placeAddressId,
       })),
   };
 }
@@ -206,22 +208,26 @@ export function toTemplateRequestBlocks({
       endTime: block.endTime,
       isPublic: block.isPublic,
       place: block.place.trim(),
+      placeAddressId: block.placeAddressId,
     };
   });
 }
 
 interface TemplateRequestBodyInput {
   form: TemplateFormState;
+  precedences?: UpdateEventTemplateBody['precedences'];
 }
 
 /** The complete desired state sent by both create and edit. */
 export function toTemplateRequestBody({
   form,
+  precedences,
 }: TemplateRequestBodyInput): UpdateEventTemplateBody {
   return {
     name: form.name.trim(),
     recurrence: form.recurrence,
     blocks: toTemplateRequestBlocks({ blocks: form.blocks }),
+    ...(precedences?.length ? { precedences } : {}),
   };
 }
 

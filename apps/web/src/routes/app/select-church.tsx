@@ -11,7 +11,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { z } from 'zod';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ChurchLogoTile } from '@/components/church-logo-tile';
 import { Button } from '@/components/ui/button';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,20 +53,6 @@ function formatLastOpened({
     timeZone,
     locale: getLocale(),
   });
-}
-
-interface InitialsForInput {
-  name: string;
-}
-
-function initialsFor({ name }: InitialsForInput): string {
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-  return initials || '?';
 }
 
 interface AccessLabelInput {
@@ -237,11 +223,11 @@ function SelectChurchRoute() {
                   }
                   className="group flex min-h-24 w-full items-center gap-4 rounded-lg border bg-card px-4 py-4 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-60"
                 >
-                  <Avatar className="size-11 shrink-0 rounded-md after:rounded-md">
-                    <AvatarFallback className="rounded-md bg-primary/12 font-semibold text-primary">
-                      {initialsFor({ name: church.name })}
-                    </AvatarFallback>
-                  </Avatar>
+                  <ChurchLogoTile
+                    name={church.name}
+                    logoUrl={church.logoUrl}
+                    size="mobile"
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold">{church.name}</span>
                     <span className="mt-1 block text-muted-foreground text-sm">
@@ -287,11 +273,11 @@ function SelectChurchRoute() {
                     className="grid min-h-20 w-full grid-cols-[minmax(15rem,1.4fr)_minmax(9rem,0.8fr)_minmax(9rem,0.8fr)_minmax(12rem,1fr)_3rem] items-center border-border border-t px-8 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-60"
                   >
                     <span className="flex items-center gap-3">
-                      <Avatar className="size-9 rounded-md after:rounded-md">
-                        <AvatarFallback className="rounded-md bg-primary/12 font-semibold text-primary">
-                          {initialsFor({ name: church.name })}
-                        </AvatarFallback>
-                      </Avatar>
+                      <ChurchLogoTile
+                        name={church.name}
+                        logoUrl={church.logoUrl}
+                        size="desktop"
+                      />
                       <span>
                         <span className="block font-semibold">
                           {church.name}

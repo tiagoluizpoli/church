@@ -704,6 +704,7 @@ export class ChurchAdminController implements FastifyController {
             endTime: dateFromInstantString({ value: block.endTime }),
             isPublic: block.isPublic,
             place: block.place,
+            placeAddressId: block.placeAddressId,
           })),
         });
         return reply.status(201).send(eventGraphMapper.toResponse(graph));
@@ -745,6 +746,7 @@ export class ChurchAdminController implements FastifyController {
             endTime: dateFromInstantString({ value: block.endTime }),
             isPublic: block.isPublic,
             place: block.place,
+            placeAddressId: block.placeAddressId,
           })),
         });
         return reply.send(eventGraphMapper.toResponse(graph));

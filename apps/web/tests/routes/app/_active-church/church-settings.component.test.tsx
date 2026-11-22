@@ -413,6 +413,23 @@ describe('Church Settings screen', () => {
       ).toHaveTextContent('4');
     });
 
+    it('marks the Active Church options stale after an upload so the header shows the new logo', async () => {
+      const user = userEvent.setup();
+      uploadChurchLogo.mockResolvedValue(WITH_LOGO);
+      const { queryClient } = renderSettings();
+      await nameField();
+      queryClient.setQueryData(['active-church', 'options'], { churches: [] });
+
+      await user.upload(fileInput(), logoFile());
+
+      await waitFor(() =>
+        expect(
+          queryClient.getQueryState(['active-church', 'options'])
+            ?.isInvalidated,
+        ).toBe(true),
+      );
+    });
+
     it.each([
       [
         413,

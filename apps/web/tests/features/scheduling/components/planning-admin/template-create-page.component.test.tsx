@@ -1,5 +1,5 @@
 import { parseTimeOfDay } from '@church/time';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import type { ReactNode } from 'react';
@@ -159,6 +159,7 @@ describe('TemplateCreatePage', () => {
           endTime: parseTimeOfDay({ value: '02:00' }),
           isPublic: false,
           place: '',
+          placeAddressId: null,
         },
       ],
     });
@@ -225,5 +226,90 @@ describe('TemplateCreatePage', () => {
     expect(screen.getByTestId('template-time-block-label-input')).toHaveValue(
       'Watch',
     );
+  });
+
+  it('asks once per unanswered pair, then resubmits with the answers', async () => {
+    createEventTemplate
+      .mockRejectedValueOnce(
+        new AxiosError('conflict', '409', undefined, undefined, {
+          status: 409,
+          data: {
+            error: 'UNANSWERED_TEMPLATE_COLLISIONS',
+            message: 'x',
+            collisions: [
+              { templateId: 'other-1', name: 'Culto' },
+              { templateId: 'other-2', name: 'Jovens' },
+            ],
+          },
+        } as AxiosResponse),
+      )
+      .mockResolvedValueOnce({ id: 'new-1' });
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreatePage />);
+
+    await fillValidForm({ user });
+    await user.click(screen.getByTestId('create-template-button'));
+
+    const dialog = await screen.findByTestId('template-collision-dialog');
+    const pairs = within(dialog).getAllByTestId('template-collision-pair');
+    expect(pairs).toHaveLength(2);
+    const confirm = within(dialog).getByTestId(
+      'confirm-template-collision-button',
+    );
+    expect(confirm).toBeDisabled();
+
+    await user.click(
+      within(pairs[0]).getByRole('radio', { name: 'Este vence' }),
+    );
+    expect(confirm).toBeDisabled();
+    await user.click(
+      within(pairs[1]).getByRole('radio', { name: 'O outro vence' }),
+    );
+    await user.click(confirm);
+
+    await waitFor(() => expect(createEventTemplate).toHaveBeenCalledTimes(2));
+    expect(createEventTemplate.mock.calls[1][0].precedences).toEqual([
+      { otherTemplateId: 'other-1', answer: 'thisWins' },
+      { otherTemplateId: 'other-2', answer: 'otherWins' },
+    ]);
+    expect(createEventTemplate.mock.calls[0][0]).not.toHaveProperty(
+      'precedences',
+    );
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+    );
+  });
+
+  it('offers Manter os dois and Cancel keeps the draft without resubmitting', async () => {
+    createEventTemplate.mockRejectedValue(
+      new AxiosError('conflict', '409', undefined, undefined, {
+        status: 409,
+        data: {
+          error: 'UNANSWERED_TEMPLATE_COLLISIONS',
+          message: 'x',
+          collisions: [{ templateId: 'other-1', name: 'Culto' }],
+        },
+      } as AxiosResponse),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreatePage />);
+
+    await fillValidForm({ user });
+    await user.click(screen.getByTestId('create-template-button'));
+
+    const dialog = await screen.findByTestId('template-collision-dialog');
+    expect(
+      within(dialog).getByRole('radio', { name: 'Manter os dois' }),
+    ).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('template-collision-dialog'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(createEventTemplate).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('template-name-input')).toHaveValue('  Vigil ');
+    expect(screen.queryByTestId('template-form-error')).not.toBeInTheDocument();
   });
 });

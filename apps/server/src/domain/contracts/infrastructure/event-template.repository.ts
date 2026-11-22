@@ -20,6 +20,8 @@ export interface EventTemplateTimeBlockInput {
   /** Defaults to private. */
   isPublic?: boolean;
   place?: string | null;
+  /** A Church Address of the same Church; exclusive with `place`. */
+  placeAddressId?: string | null;
 }
 
 export interface CreateEventTemplateInput {

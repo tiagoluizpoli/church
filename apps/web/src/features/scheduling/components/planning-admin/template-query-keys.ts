@@ -17,3 +17,9 @@ export function templateDetailQueryKey({ templateId }: TemplateQueryKeyInput) {
 export function templateUsageQueryKey({ templateId }: TemplateQueryKeyInput) {
   return ['planning-template-usage', templateId] as const;
 }
+
+export function templatePrecedencesQueryKey({
+  templateId,
+}: TemplateQueryKeyInput) {
+  return ['planning-template-precedences', templateId] as const;
+}

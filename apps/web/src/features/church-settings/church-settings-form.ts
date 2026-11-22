@@ -135,7 +135,10 @@ export function toSaveBody({
 
 /** `Rua A, 120 · Centro · Campinas/SP`, one line. */
 interface AddressSummaryInput {
-  address: AddressDraft;
+  address: Pick<
+    AddressDraft,
+    'street' | 'number' | 'complement' | 'bairro' | 'city' | 'uf'
+  >;
 }
 
 export function addressSummary({ address }: AddressSummaryInput): string {

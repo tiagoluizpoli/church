@@ -18,6 +18,8 @@ export interface TemplateTimeBlockProps {
   isPublic?: boolean;
   /** Trimmed free text; absent when empty. */
   place?: string;
+  /** A Church Address as the place; exclusive with `place`. */
+  placeAddressId?: string;
 }
 
 export interface TemplateTimeBlockInput {
@@ -76,5 +78,9 @@ export class TemplateTimeBlock extends Entity<
 
   get place(): string | undefined {
     return this._props.place;
+  }
+
+  get placeAddressId(): string | undefined {
+    return this._props.placeAddressId;
   }
 }

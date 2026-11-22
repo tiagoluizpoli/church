@@ -29,10 +29,13 @@ import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import { mapChurch } from '../mappers/church.mapper';
 import { getClient, isValidUuid } from './helpers';
 import type { AnyDrizzleDb } from './types';
+import { isUniqueViolation } from './unique-violation';
 
 // Church identity lives on the `organization` row and the rest on the `church`
 // extension row keyed by the same id, so every read joins the two.
 const churchJoinShape = { church, organization };
+
+const ORGANIZATION_SLUG_UNIQUE = 'organization_slug_unique';
 
 type DrizzleClient = ReturnType<typeof getClient>;
 
@@ -217,10 +220,18 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .insert(churchSlugHistory)
       .values({ slug: current.slug, churchId: id })
       .onConflictDoNothing();
-    await client
-      .update(organization)
-      .set({ slug })
-      .where(eq(organization.id, id));
+    try {
+      await client
+        .update(organization)
+        .set({ slug })
+        .where(eq(organization.id, id));
+    } catch (error) {
+      // Another save took the slug between the check above and this write.
+      if (isUniqueViolation({ error, constraint: ORGANIZATION_SLUG_UNIQUE })) {
+        throw new ChurchSlugTakenError(slug);
+      }
+      throw error;
+    }
   }
 
   async saveLogoKey({ id, logoKey }: SaveChurchLogoKeyInput): Promise<void> {

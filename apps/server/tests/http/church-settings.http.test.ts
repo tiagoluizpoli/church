@@ -12,6 +12,7 @@ import { ChurchSettingsController } from '@/api/controllers/church-settings-cont
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbChurchSettingsManager } from '@/application/db-church-settings-manager';
 import { ChurchId, UserId } from '@/domain/branded-ids';
+import { ChurchSlugTakenError } from '@/domain/errors/church-slug-taken';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
@@ -405,6 +406,51 @@ describe('Church Slug', () => {
       status: 'reserved',
     });
     expect((await availability({ slug: 'ib-esperanca' })).json()).toEqual({
+      status: 'free',
+    });
+  });
+
+  it('answers slug taken, not a server error, when two saves race for the same slug', async () => {
+    const repository = new DrizzleChurchRepository({ db });
+    const unitOfWork = new DrizzleUnitOfWork({ db });
+    const changes = { slug: 'raced-slug', website: null, accentColor: null };
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let firstWritten!: () => void;
+    const written = new Promise<void>((resolve) => {
+      firstWritten = resolve;
+    });
+    // The first save has written the slug but not committed, so the second one's availability check still sees it free.
+    const first = unitOfWork.run(async (tx) => {
+      await repository.saveSettings({
+        id: ChurchId.from(CHURCH_A),
+        changes: { ...changes, name: 'Igreja Batista Esperança' },
+        tx,
+      });
+      firstWritten();
+      await held;
+    });
+    await written;
+    const second = unitOfWork
+      .run((tx) =>
+        repository.saveSettings({
+          id: ChurchId.from(CHURCH_B),
+          changes: { ...changes, name: 'Church B' },
+          tx,
+        }),
+      )
+      .then(
+        () => null,
+        (error: unknown) => error,
+      );
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    release();
+    await first;
+
+    expect(await second).toBeInstanceOf(ChurchSlugTakenError);
+    expect((await availability({ slug: 'raced-slug' })).json()).toEqual({
       status: 'free',
     });
   });

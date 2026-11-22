@@ -2192,6 +2192,53 @@ describe('Church identity snapshot at queue time (ticket #1030, integration)', (
     });
   });
 
+  it('still sends a Notification stored before the identity fields existed, name-only', async () => {
+    const shift = {
+      eventTitle: 'Vigil',
+      roleName: 'Guitar',
+      sectorName: 'Band',
+      startsAt: parseInstant({ value: '2026-12-24T22:00:00.000Z' }),
+      endsAt: parseInstant({ value: '2026-12-24T23:00:00.000Z' }),
+    };
+    await unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'event_cancelled',
+        to: [
+          {
+            userId: UserId.from(fixture.adminA),
+            churchId: ChurchId.from(fixture.churchA.id),
+          },
+        ],
+        data: {
+          churchName: 'Church A',
+          cycleId: crypto.randomUUID(),
+          eventId: crypto.randomUUID(),
+          eventTitle: 'Vigil',
+          start: shift.startsAt,
+          churchTimezone: 'UTC',
+          shifts: [shift],
+        },
+      }),
+    );
+    // Rewrite the row into the shape stored before the identity fields.
+    const [queued] = await testDb.select().from(outboxMessage);
+    const { churchLogoUrl, churchAccent, ...oldData } = (
+      queued?.payload as { data: Record<string, unknown> }
+    ).data;
+    await testDb
+      .update(outboxMessage)
+      .set({ payload: { ...queued?.payload, data: oldData } });
+
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.sent[0]).toMatchObject({ kind: 'event.cancelled' });
+    expect(emailSender.sent[0]?.churchLogoUrl ?? null).toBeNull();
+    expect(emailSender.sent[0]?.churchAccent ?? null).toBeNull();
+  });
+
   it('reads the current logo and accent when it snapshots', async () => {
     await setIdentity({ logoKey: LOGO_KEY, accentColor: ACCENT });
     await expect(

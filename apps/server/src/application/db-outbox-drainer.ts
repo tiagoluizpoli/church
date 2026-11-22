@@ -453,7 +453,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     message,
   }: ProcessNotificationMessageInput): Promise<'sent' | 'failed'> {
     const { to, kind, data } = message.payload;
-    const request = notificationRequestDataSchemas[kind]?.safeParse(data);
+    // Rows queued before the Church identity existed render name-only.
+    const request = notificationRequestDataSchemas[kind]?.safeParse({
+      churchLogoUrl: null,
+      churchAccent: null,
+      ...data,
+    });
     if (
       !request?.success &&
       (kind === 'schedule_published' || kind === 'schedule_updated')

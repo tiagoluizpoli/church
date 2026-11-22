@@ -44,6 +44,9 @@ let app: FastifyTypedInstance;
 
 beforeAll(async () => {
   await truncateAll();
+  // As autovacuum may right after the clear: statistics saying every table is
+  // empty, which the seed's bulk load would otherwise leave standing.
+  await testDb.execute(sql`analyze`);
   phases = createDevelopmentReseedPhases({
     pool: testDb.$client,
     anchor: ANCHOR,
@@ -105,6 +108,20 @@ async function kidsMinistryId(): Promise<string> {
 }
 
 describe('development upcoming Cycle step', () => {
+  it('leaves planner statistics counting the rows it loaded, so the first reads plan for them', async () => {
+    const stale = await testDb.execute<{ table: string }>(sql`
+      select c.relname as table from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r'
+        and c.reltuples is distinct from (
+          xpath('/row/n/text()', query_to_xml(
+            format('select count(*) as n from public.%I', c.relname),
+            false, true, ''))
+        )[1]::text::real
+      order by c.relname`);
+    expect(stale.rows).toEqual([]);
+  });
+
   it("leaves one sent Cycle covering the month two months after the anchor's", () => {
     const lastDay = new Date(
       `${addCalendarMonths({ day: ANCHOR, months: 3 })}T00:00:00Z`,

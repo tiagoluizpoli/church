@@ -104,7 +104,15 @@ interface LoggingOptionsInput {
 function loggingOptions({ logStream, isTest, isProd }: LoggingOptionsInput) {
   const loggerOptions = { level: env.LOG_LEVEL, serializers: logSerializers };
   if (logStream) return { loggerInstance: pino(loggerOptions, logStream) };
-  if (isTest) return { logger: false };
+  // Errors only, unredacted with their cause chain (test data is synthetic),
+  // so a test's unexpected 500 names its cause instead of a bare requestId.
+  if (isTest) {
+    const testOptions = {
+      level: 'error',
+      serializers: { ...logSerializers, err: pino.stdSerializers.errWithCause },
+    };
+    return { loggerInstance: pino(testOptions, process.stderr) };
+  }
   if (isProd) return { logger: loggerOptions };
   // Bun doesn't support pino worker-thread transports — use a synchronous
   // pino-pretty stream in dev instead of the transport API.

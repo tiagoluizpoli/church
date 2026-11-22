@@ -48,6 +48,7 @@ import {
 } from '@/components/workspace-page';
 import {
   type ChurchSettingsForm,
+  clearEditedErrors,
   toChurchSettingsForm,
   toSaveBody,
 } from '@/features/church-settings/church-settings-form';
@@ -338,7 +339,9 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     form.contacts.length -
     publicContacts +
     (legalFilled && !legalPublic ? 1 : 0);
-  const mainAddress = form.addresses.find((address) => address.isMain);
+  // Until a Main Address is marked, the first one places the summary.
+  const mainAddress =
+    form.addresses.find((address) => address.isMain) ?? form.addresses[0];
   const addressSummary =
     form.addresses.length === 0
       ? m.church_settings_address_summary_none()
@@ -351,31 +354,25 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             place: `${mainAddress?.city}/${mainAddress?.uf}`,
           });
 
+  /** Clears the errors of what changed only: an edited row, not its whole list. */
   const patch = (changes: Partial<ChurchSettingsForm>) => {
     setForm((current) => ({ ...current, ...changes }));
     setErrors((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(
-          ([field]) =>
-            !Object.keys(changes).some(
-              (key) => field === key || field.startsWith(`${key}.`),
-            ),
-        ),
+      Object.entries(changes).reduce(
+        (left, [field, after]) =>
+          clearEditedErrors({
+            errors: left,
+            field,
+            before: form[field as keyof ChurchSettingsForm],
+            after,
+          }),
+        current,
       ),
     );
   };
 
-  /** Rows move and vanish, so every row error is dropped rather than left on the wrong row. */
-  const setContacts = (nextContacts: ChurchSettingsForm['contacts']) => {
-    setForm((current) => ({ ...current, contacts: nextContacts }));
-    setErrors((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(
-          ([field]) => !field.startsWith(CONTACTS_PREFIX),
-        ),
-      ),
-    );
-  };
+  const setContacts = (contacts: ChurchSettingsForm['contacts']) =>
+    patch({ contacts });
 
   // The slug the field holds now, so a late answer about an older one is dropped.
   const typedSlug = React.useRef(form.slug);

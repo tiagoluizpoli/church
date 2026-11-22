@@ -232,3 +232,42 @@ export function addressSummary({ address }: AddressSummaryInput): string {
   const complement = address.complement ? ` – ${address.complement}` : '';
   return `${line}${complement} · ${address.bairro} · ${address.city}/${address.uf}`;
 }
+
+interface ClearEditedErrorsInput {
+  errors: Readonly<Record<string, string>>;
+  field: string;
+  before: unknown;
+  after: unknown;
+}
+
+/**
+ * The errors left once `field` changed from `before` to `after`: a list keeps
+ * the errors of rows that did not change; a row added, removed or a non-list
+ * value clears every error of the field (rows would shift under them).
+ */
+export function clearEditedErrors({
+  errors,
+  field,
+  before,
+  after,
+}: ClearEditedErrorsInput): Record<string, string> {
+  const sameLength =
+    Array.isArray(before) &&
+    Array.isArray(after) &&
+    before.length === after.length;
+  const changedRows = sameLength
+    ? after.flatMap((row, index) =>
+        JSON.stringify(row) === JSON.stringify(before[index]) ? [] : [index],
+      )
+    : [];
+  const cleared = (key: string) => {
+    if (key === field) return true;
+    if (!key.startsWith(`${field}.`)) return false;
+    if (!sameLength) return true;
+    const row = Number(key.slice(field.length + 1).split('.')[0]);
+    return changedRows.includes(row);
+  };
+  return Object.fromEntries(
+    Object.entries(errors).filter(([key]) => !cleared(key)),
+  );
+}

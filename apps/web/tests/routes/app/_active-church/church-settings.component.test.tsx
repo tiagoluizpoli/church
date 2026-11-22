@@ -2064,6 +2064,39 @@ describe('Church Contacts section', () => {
 
     expect(second()).not.toHaveAttribute('aria-invalid');
   });
+
+  it('clears only the edited row of a list, keeping the other rows marked', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      contacts: [PHONE, { ...PHONE, value: '+5511912345678' }],
+    });
+    updateChurchSettings.mockRejectedValue(
+      refusedSave(
+        [0, 1].map((row) => ({
+          field: `contacts.${row}.value`,
+          code: 'CONTACT_PHONE_INVALID',
+          message: `Telefone ${row} inválido.`,
+        })),
+      ),
+    );
+    renderSettings();
+    await nameField();
+    const phone = (row: number) =>
+      within(rows()[row] as HTMLElement).getByRole('textbox', {
+        name: m.church_settings_contact_phone_label(),
+      });
+    await user.type(phone(1), '9');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await screen.findByText('Telefone 0 inválido.');
+
+    await user.type(phone(0), '1');
+
+    expect(phone(0)).not.toHaveAttribute('aria-invalid');
+    expect(phone(1)).toHaveAttribute('aria-invalid', 'true');
+  });
 });
 
 describe('Church Settings legal profile', () => {

@@ -14,6 +14,7 @@ const SETTINGS = {
   accentColor: null,
   logoKey: null,
   contacts: [],
+  contactGroups: [],
   addresses: [],
   socialLinks: [],
   legalProfile: null,

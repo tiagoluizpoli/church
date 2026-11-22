@@ -77,6 +77,7 @@ const SAVED: GetChurchSettings200 = {
   logoKey: null,
   logoUrl: null,
   contacts: [],
+  contactGroups: [],
   legalProfile: null,
   publicOrigin: 'https://app.church.test',
 };
@@ -217,6 +218,7 @@ describe('Church Settings screen', () => {
         addresses: [],
         socialLinks: [],
         contacts: [],
+        contactGroups: [],
         legalProfile: NO_LEGAL_DRAFT,
       }),
     );
@@ -242,6 +244,7 @@ describe('Church Settings screen', () => {
         addresses: [],
         socialLinks: [],
         contacts: [],
+        contactGroups: [],
         legalProfile: NO_LEGAL_DRAFT,
       }),
     );
@@ -602,6 +605,7 @@ describe('Church Settings screen', () => {
           addresses: [],
           socialLinks: [],
           contacts: [],
+          contactGroups: [],
           legalProfile: NO_LEGAL_DRAFT,
           slug: 'esperanca',
         }),
@@ -1105,7 +1109,11 @@ describe('Church Settings social links', () => {
       expect(updateChurchSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           socialLinks: [
-            { url: 'https://instagram.com/semente', description: '' },
+            {
+              url: 'https://instagram.com/semente',
+              description: '',
+              group: null,
+            },
           ],
         }),
       ),
@@ -1161,10 +1169,15 @@ describe('Church Settings social links', () => {
       expect(updateChurchSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           socialLinks: [
-            { url: 'https://youtube.com/@igreja', description: '' },
+            {
+              url: 'https://youtube.com/@igreja',
+              description: '',
+              group: null,
+            },
             {
               url: 'https://youtube.com/@pastor',
               description: 'Canal do pastor',
+              group: null,
             },
           ],
         }),
@@ -1212,7 +1225,11 @@ describe('Church Settings social links', () => {
       expect(updateChurchSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           socialLinks: [
-            { url: 'https://instagram.com/semente', description: '' },
+            {
+              url: 'https://instagram.com/semente',
+              description: '',
+              group: null,
+            },
           ],
         }),
       ),
@@ -1345,6 +1362,7 @@ describe('Church Contacts section', () => {
     description: 'Secretaria',
     isWhatsApp: true,
     isPublic: false,
+    group: null,
   };
   const EMAIL = {
     kind: 'email' as const,
@@ -1353,6 +1371,7 @@ describe('Church Contacts section', () => {
     description: null,
     isWhatsApp: false,
     isPublic: false,
+    group: null,
   };
 
   function rows() {
@@ -1400,6 +1419,7 @@ describe('Church Contacts section', () => {
               description: 'Secretaria',
               isWhatsApp: true,
               isPublic: false,
+              group: null,
             },
           ],
         }),
@@ -1724,5 +1744,143 @@ describe('Church Settings legal profile', () => {
     await user.type(cnpj, '0');
 
     expect(cnpj).not.toHaveAttribute('aria-invalid', 'true');
+  });
+});
+
+describe('Contact Groups', () => {
+  const PUBLIC_PHONE = {
+    kind: 'phone' as const,
+    phoneType: 'mobile' as const,
+    value: '+5511987654321',
+    description: 'Secretaria',
+    isWhatsApp: false,
+    isPublic: true,
+    group: null,
+  };
+  const LOUVOR_EMAIL = {
+    kind: 'email' as const,
+    phoneType: null,
+    value: 'louvor@igreja.org',
+    description: null,
+    isWhatsApp: false,
+    isPublic: true,
+    group: 'Louvor',
+  };
+  const HELENA_LINK = {
+    url: 'https://instagram.com/helena',
+    network: 'instagram' as const,
+    description: null,
+    group: 'Pastora Helena',
+  };
+  const GROUPED = {
+    ...SAVED,
+    contacts: [LOUVOR_EMAIL, PUBLIC_PHONE],
+    socialLinks: [HELENA_LINK],
+    contactGroups: ['Pastora Helena', 'Louvor'],
+  };
+
+  function groupBlocks() {
+    return screen.getAllByTestId('church-preview-group');
+  }
+
+  it('shows each group with its public contacts and links together, "Da igreja" first', async () => {
+    getChurchSettings.mockResolvedValue(GROUPED);
+    renderSettings();
+    await nameField();
+
+    const [church, helena, louvor] = groupBlocks();
+    expect(church).toHaveTextContent(m.church_settings_preview_group_church());
+    expect(church).toHaveTextContent('+5511987654321');
+    expect(helena).toHaveTextContent('Instagram');
+    expect(louvor).toHaveTextContent('louvor@igreja.org');
+    expect(groupBlocks()).toHaveLength(3);
+  });
+
+  it('suggests existing groups, creates one from a typed name and saves the group of each row', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue(GROUPED);
+    renderSettings();
+    await nameField();
+
+    const field = screen.getAllByRole('combobox', {
+      name: new RegExp(`^${m.church_settings_group_label()} 2$`),
+    });
+    expect(
+      document.querySelectorAll(`option[value="Pastora Helena"]`).length,
+    ).toBeGreaterThan(0);
+    await user.type(field[0] as HTMLElement, 'Jovens');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contacts: [
+            expect.objectContaining({ group: 'Louvor' }),
+            expect.objectContaining({ group: 'Jovens' }),
+          ],
+          socialLinks: [expect.objectContaining({ group: 'Pastora Helena' })],
+          contactGroups: ['Pastora Helena', 'Louvor', 'Jovens'],
+        }),
+      ),
+    );
+  });
+
+  it('renames a group from the preview on every member and keeps its place', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue(GROUPED);
+    renderSettings();
+    await nameField();
+
+    const rename = screen.getByRole('textbox', {
+      name: m.church_settings_preview_group_rename({ name: 'Louvor' }),
+    });
+    await user.clear(rename);
+    await user.type(rename, 'Banda{Enter}');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contacts: [
+            expect.objectContaining({ group: 'Banda' }),
+            expect.objectContaining({ group: null }),
+          ],
+          contactGroups: ['Pastora Helena', 'Banda'],
+        }),
+      ),
+    );
+  });
+
+  it('reorders groups from the preview and saves the new order', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue(GROUPED);
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_preview_group_move_down({
+          name: 'Pastora Helena',
+        }),
+      }),
+    );
+
+    const [, first, second] = groupBlocks();
+    expect(first).toHaveTextContent('louvor@igreja.org');
+    expect(second).toHaveTextContent('Instagram');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contactGroups: ['Louvor', 'Pastora Helena'],
+        }),
+      ),
+    );
   });
 });

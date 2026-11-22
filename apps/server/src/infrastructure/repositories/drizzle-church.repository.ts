@@ -3,6 +3,7 @@ import {
   church,
   churchAddress,
   churchContact,
+  churchContactGroup,
   churchLegalProfile,
   churchSlugHistory,
   churchSocialLink,
@@ -31,6 +32,10 @@ import type {
   ChurchSettings,
   ChurchSlugAvailability,
 } from '../../domain/church-settings';
+import {
+  contactGroupKey,
+  resolveContactGroups,
+} from '../../domain/contact-group';
 import type {
   ChurchMemberContact,
   ChurchRepository,
@@ -92,7 +97,29 @@ interface FindSlugAvailabilityInput {
 interface ReplaceSocialLinksInput {
   client: DrizzleClient;
   id: string;
-  links: readonly SocialLinkChange[];
+  links: readonly (Omit<SocialLinkChange, 'group'> & {
+    groupId: string | null;
+  })[];
+}
+
+interface GroupedRow {
+  group: string | null;
+}
+
+interface CreatedGroup {
+  id: string;
+}
+
+interface ReplaceGroupsInput {
+  client: DrizzleClient;
+  id: string;
+  requested: readonly string[];
+  members: readonly (string | null)[];
+}
+
+interface DeleteUnusedGroupsInput {
+  client: DrizzleClient;
+  id: string;
 }
 
 interface ReplaceLegalProfileInput {
@@ -215,8 +242,13 @@ export class DrizzleChurchRepository implements ChurchRepository {
         description: churchContact.description,
         isWhatsApp: churchContact.isWhatsApp,
         isPublic: churchContact.isPublic,
+        group: churchContactGroup.name,
       })
       .from(churchContact)
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchContact.groupId),
+      )
       .where(eq(churchContact.churchId, id))
       .orderBy(asc(churchContact.position), asc(churchContact.id));
     return {
@@ -225,7 +257,20 @@ export class DrizzleChurchRepository implements ChurchRepository {
       socialLinks: await this.listSocialLinks({ id, tx }),
       legalProfile: await this.findLegalProfile({ id, tx }),
       contacts,
+      contactGroups: await this.listGroupNames({ id, tx }),
     };
+  }
+
+  private async listGroupNames({
+    id,
+    tx,
+  }: ListAddressesInput): Promise<string[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({ name: churchContactGroup.name })
+      .from(churchContactGroup)
+      .where(eq(churchContactGroup.churchId, id))
+      .orderBy(asc(churchContactGroup.position), asc(churchContactGroup.id));
+    return rows.map(({ name }) => name);
   }
 
   private async findLegalProfile({
@@ -252,8 +297,13 @@ export class DrizzleChurchRepository implements ChurchRepository {
         url: churchSocialLink.url,
         network: churchSocialLink.network,
         description: churchSocialLink.description,
+        group: churchContactGroup.name,
       })
       .from(churchSocialLink)
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchSocialLink.groupId),
+      )
       .where(eq(churchSocialLink.churchId, id))
       .orderBy(asc(churchSocialLink.position), asc(churchSocialLink.id));
     return rows as ChurchSocialLink[];
@@ -327,7 +377,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     tx,
   }: SaveChurchSettingsInput): Promise<void> {
     const client = getClient({ db: this.db, tx });
-    const { slug, contacts, ...fields } = changes;
+    const { slug, contacts, contactGroups, ...fields } = changes;
     await client
       .update(organization)
       .set({ name: fields.name })
@@ -337,10 +387,27 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .set({ website: fields.website, accentColor: fields.accentColor })
       .where(eq(church.id, id));
     if (slug !== undefined) await this.changeSlug({ client, id, slug });
+    const groupIds = await this.replaceGroups({
+      client,
+      id,
+      requested: contactGroups ?? (await this.listGroupNames({ id, tx })),
+      // Omitted contacts stay, so their groups must stay too.
+      members: [
+        ...(contacts ?? (await this.listContacts({ id, tx }))).map(
+          ({ group }) => group,
+        ),
+        ...changes.socialLinks.map(({ group }) => group),
+      ],
+    });
+    const groupIdOf = ({ group }: GroupedRow) =>
+      group ? (groupIds.get(contactGroupKey({ name: group })) ?? null) : null;
     await this.replaceSocialLinks({
       client,
       id,
-      links: changes.socialLinks,
+      links: changes.socialLinks.map((link) => ({
+        ...link,
+        groupId: groupIdOf(link),
+      })),
     });
     await this.replaceLegalProfile({
       client,
@@ -393,14 +460,96 @@ export class DrizzleChurchRepository implements ChurchRepository {
       await client.delete(churchContact).where(eq(churchContact.churchId, id));
       if (contacts.length > 0) {
         await client.insert(churchContact).values(
-          contacts.map((contact, position) => ({
-            ...contact,
-            churchId: id,
-            position,
-          })),
+          contacts.map((contact, position) => {
+            const { group: _group, ...columns } = contact;
+            return {
+              ...columns,
+              groupId: groupIdOf(contact),
+              churchId: id,
+              position,
+            };
+          }),
         );
       }
     }
+    await this.deleteUnusedGroups({ client, id });
+  }
+
+  /** Keeps a stored group (same name, any case) in place, creates the new ones, and returns their ids by name key. */
+  private async replaceGroups({
+    client,
+    id,
+    requested,
+    members,
+  }: ReplaceGroupsInput): Promise<Map<string, string>> {
+    const names = resolveContactGroups({ requested, members });
+    const stored = await client
+      .select({ id: churchContactGroup.id, name: churchContactGroup.name })
+      .from(churchContactGroup)
+      .where(eq(churchContactGroup.churchId, id));
+    const storedByKey = new Map(
+      stored.map((row) => [contactGroupKey({ name: row.name }), row.id]),
+    );
+    const ids = new Map<string, string>();
+    for (const [position, name] of names.entries()) {
+      const key = contactGroupKey({ name });
+      const storedId = storedByKey.get(key);
+      if (storedId) {
+        await client
+          .update(churchContactGroup)
+          .set({ name, position })
+          .where(eq(churchContactGroup.id, storedId));
+        ids.set(key, storedId);
+      } else {
+        const [created] = await client
+          .insert(churchContactGroup)
+          .values({ churchId: id, name, position })
+          .returning({ id: churchContactGroup.id });
+        ids.set(key, (created as CreatedGroup).id);
+      }
+    }
+    return ids;
+  }
+
+  /** A group no contact or link uses any more is deleted. */
+  private async deleteUnusedGroups({
+    client,
+    id,
+  }: DeleteUnusedGroupsInput): Promise<void> {
+    const [contactRows, linkRows] = await Promise.all([
+      client
+        .select({ groupId: churchContact.groupId })
+        .from(churchContact)
+        .where(eq(churchContact.churchId, id)),
+      client
+        .select({ groupId: churchSocialLink.groupId })
+        .from(churchSocialLink)
+        .where(eq(churchSocialLink.churchId, id)),
+    ]);
+    const used = [...contactRows, ...linkRows].flatMap(({ groupId }) =>
+      groupId ? [groupId] : [],
+    );
+    await client
+      .delete(churchContactGroup)
+      .where(
+        used.length === 0
+          ? eq(churchContactGroup.churchId, id)
+          : and(
+              eq(churchContactGroup.churchId, id),
+              notInArray(churchContactGroup.id, used),
+            ),
+      );
+  }
+
+  private listContacts({ id, tx }: ListAddressesInput): Promise<GroupedRow[]> {
+    return getClient({ db: this.db, tx })
+      .select({ group: churchContactGroup.name })
+      .from(churchContact)
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchContact.groupId),
+      )
+      .where(eq(churchContact.churchId, id));
   }
 
   async getAddressUsage({

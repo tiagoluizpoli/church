@@ -1,8 +1,14 @@
 import { SOCIAL_NETWORKS } from '@church/app-config/social-networks';
 import { m } from '@church/i18n/messages';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { accentTextColor } from '@/features/church-settings/accent-text-color';
-import type { ContactForm } from '@/features/church-settings/church-settings-form';
+import type {
+  ContactForm,
+  SocialLinkDraft,
+} from '@/features/church-settings/church-settings-form';
 import {
   type ChurchSettingsForm,
   formatCnpj,
@@ -10,6 +16,12 @@ import {
 } from '@/features/church-settings/church-settings-form';
 import { LogoImage } from '@/features/church-settings/components/logo-image';
 import { detectedNetwork } from '@/features/church-settings/components/social-section';
+import {
+  groupOrder,
+  membersOf,
+  moveGroup,
+  renameGroup,
+} from '@/features/church-settings/contact-groups';
 import {
   detectDevice,
   directionsLink,
@@ -22,10 +34,17 @@ interface ChurchPreviewProps {
   logoUrl: string | null;
   /** Set when the preview names itself (beside the sections); the drawer names it instead. */
   titleId?: string;
+  /** Renaming or reordering a Contact Group edits the form from here. */
+  onChange: (changes: Partial<ChurchSettingsForm>) => void;
 }
 
 /** "Como sua igreja aparece": the public face as the form stands, empty fields left out. */
-export function ChurchPreview({ form, logoUrl, titleId }: ChurchPreviewProps) {
+export function ChurchPreview({
+  form,
+  logoUrl,
+  titleId,
+  onChange,
+}: ChurchPreviewProps) {
   const accent = paintableAccent({ value: form.accentColor });
   const band = accent
     ? { background: accent, color: accentTextColor({ accentColor: accent }) }
@@ -92,41 +111,12 @@ export function ChurchPreview({ form, logoUrl, titleId }: ChurchPreviewProps) {
           </ul>
         </div>
       ) : null}
-      <PreviewContacts
-        title={m.church_settings_preview_public_contacts()}
-        contacts={form.contacts.filter(({ isPublic }) => isPublic)}
-        testId="church-preview-public-contacts"
-      />
+      <PreviewPublic form={form} onChange={onChange} />
       <PreviewContacts
         title={m.church_settings_preview_admin_contacts()}
         contacts={form.contacts.filter(({ isPublic }) => !isPublic)}
         testId="church-preview-admin-contacts"
       />
-      {form.socialLinks.length > 0 ? (
-        <div className="space-y-1.5 border-t p-4">
-          <p className="font-medium text-muted-foreground text-xs">
-            {m.church_settings_preview_social()}
-          </p>
-          <ul className="space-y-1 text-sm">
-            {form.socialLinks.map((link) => {
-              const network = detectedNetwork({ url: link.url });
-              return (
-                <li key={link.key} className="truncate">
-                  <span className="font-medium">
-                    {network ? SOCIAL_NETWORKS[network].label : link.url}
-                  </span>
-                  {link.description.trim() ? (
-                    <span className="text-muted-foreground">
-                      {' · '}
-                      {link.description.trim()}
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
       {form.legalProfile.isPublic &&
       (form.legalProfile.legalName.trim() || form.legalProfile.cnpj.trim()) ? (
         <div className="space-y-1 border-t p-4 text-sm">
@@ -240,6 +230,152 @@ function PreviewContacts({ title, contacts, testId }: PreviewContactsProps) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+interface PreviewPublicProps {
+  form: ChurchSettingsForm;
+  onChange: ChurchPreviewProps['onChange'];
+}
+
+/** What the public sees: contacts and links together per group, "Da igreja" (ungrouped) first. */
+function PreviewPublic({ form, onChange }: PreviewPublicProps) {
+  const order = groupOrder({ form });
+  const contacts = form.contacts.filter(
+    ({ isPublic, value }) => isPublic && value.trim() !== '',
+  );
+  const links = form.socialLinks.filter(({ url }) => url.trim() !== '');
+  const blocks = [null, ...order].filter(
+    (name) =>
+      membersOf({ rows: contacts, name }).length +
+        membersOf({ rows: links, name }).length >
+      0,
+  );
+  if (blocks.length === 0) return null;
+  return (
+    <div data-testid="church-preview-public-contacts" className="border-t">
+      <p className="px-4 pt-3 font-medium text-muted-foreground text-xs">
+        {m.church_settings_preview_public_contacts()}
+      </p>
+      {blocks.map((name) => (
+        <div
+          key={name ?? ''}
+          data-testid="church-preview-group"
+          className="space-y-1 p-4 pt-2"
+        >
+          {name === null ? (
+            <p className="font-semibold text-sm">
+              {m.church_settings_preview_group_church()}
+            </p>
+          ) : (
+            <GroupHeading
+              form={form}
+              name={name}
+              position={order.indexOf(name)}
+              count={order.length}
+              onChange={onChange}
+            />
+          )}
+          <ul className="space-y-0.5 text-sm">
+            {membersOf({ rows: contacts, name }).map((contact) => (
+              <li key={contact.key} className="truncate">
+                {contact.value}
+                {contact.description ? (
+                  <span className="text-muted-foreground">
+                    {' · '}
+                    {contact.description}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+            {membersOf({ rows: links, name }).map((link) => (
+              <PreviewLink key={link.key} link={link} />
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+interface PreviewLinkProps {
+  link: SocialLinkDraft;
+}
+
+function PreviewLink({ link }: PreviewLinkProps) {
+  const network = detectedNetwork({ url: link.url });
+  const description = link.description.trim();
+  return (
+    <li className="truncate">
+      <span className="font-medium">
+        {network ? SOCIAL_NETWORKS[network].label : link.url}
+      </span>
+      {description ? (
+        <span className="text-muted-foreground">
+          {' · '}
+          {description}
+        </span>
+      ) : null}
+    </li>
+  );
+}
+
+interface GroupHeadingProps {
+  form: ChurchSettingsForm;
+  name: string;
+  /** Among the named groups, not counting those with no public row. */
+  position: number;
+  count: number;
+  onChange: ChurchPreviewProps['onChange'];
+}
+
+/** A group's name, renamed on blur or Enter, with move controls. */
+function GroupHeading({
+  form,
+  name,
+  position,
+  count,
+  onChange,
+}: GroupHeadingProps) {
+  const commit = (to: string) => {
+    if (to.trim() !== '' && to !== name)
+      onChange(renameGroup({ form, from: name, to }));
+  };
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        key={name}
+        defaultValue={name}
+        aria-label={m.church_settings_preview_group_rename({ name })}
+        className="h-8 font-semibold text-sm"
+        onBlur={(event) => commit(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.currentTarget.blur();
+        }}
+      />
+      <Button
+        variant="ghost"
+        size="icon"
+        disabled={position === 0}
+        aria-label={m.church_settings_preview_group_move_up({ name })}
+        onClick={() =>
+          onChange({ contactGroups: moveGroup({ form, name, by: -1 }) })
+        }
+      >
+        <ArrowUp aria-hidden />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        disabled={position === count - 1}
+        aria-label={m.church_settings_preview_group_move_down({ name })}
+        onClick={() =>
+          onChange({ contactGroups: moveGroup({ form, name, by: 1 }) })
+        }
+      >
+        <ArrowDown aria-hidden />
+      </Button>
     </div>
   );
 }

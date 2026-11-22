@@ -27,6 +27,7 @@ import type {
   ContactForm,
   ContactType,
 } from '@/features/church-settings/church-settings-form';
+import { GroupField } from '@/features/church-settings/components/group-field';
 
 const CONTACT_TYPES: ContactType[] = ['mobile', 'landline', 'email'];
 
@@ -52,6 +53,8 @@ interface MoveInput {
 
 interface ContactsSectionProps {
   contacts: ContactForm[];
+  /** The existing Contact Groups, suggested on each row. */
+  groups: string[];
   /** Refusals by field, e.g. `contacts.1.value`. */
   errors: Record<string, string>;
   onChange: (contacts: ContactForm[]) => void;
@@ -60,6 +63,7 @@ interface ContactsSectionProps {
 /** The *Contatos* section: any number of Church Contacts, private until confirmed public. */
 export function ContactsSection({
   contacts,
+  groups,
   errors,
   onChange,
 }: ContactsSectionProps) {
@@ -85,6 +89,7 @@ export function ContactsSection({
         description: '',
         isWhatsApp: false,
         isPublic: false,
+        group: '',
       },
     ]);
   };
@@ -160,6 +165,15 @@ export function ContactsSection({
                     }
                   />
                 </div>
+                <GroupField
+                  value={contact.group}
+                  suggestions={groups}
+                  rowLabel={String(position)}
+                  error={errors[`contacts.${index}.group`]}
+                  onChange={(group) =>
+                    update({ key: contact.key, changes: { group } })
+                  }
+                />
                 <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
                   <div className="min-w-48 flex-1">
                     <IconInputField

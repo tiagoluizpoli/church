@@ -5878,10 +5878,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -5929,6 +5933,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -5936,7 +5943,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -5950,6 +5962,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -6062,6 +6075,9 @@ paths:
                         type: boolean
                       isPublic:
                         type: boolean
+                      group:
+                        nullable: true
+                        type: string
                     required:
                       - kind
                       - phoneType
@@ -6069,6 +6085,17 @@ paths:
                       - description
                       - isWhatsApp
                       - isPublic
+                contactGroups:
+                  description: Contact Group names in display order, for the `group` of contacts
+                    and links. A group is created by naming it on a row,
+                    case-insensitively one group; unlisted groups follow in
+                    first-use order; a group no row uses is deleted on save.
+                    Omitted, the stored order stays.
+                  maxItems: 100
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 120
                 addresses:
                   maxItems: 50
                   type: array
@@ -6203,6 +6230,9 @@ paths:
                       url:
                         type: string
                       description:
+                        nullable: true
+                        type: string
+                      group:
                         nullable: true
                         type: string
                     required:
@@ -6381,10 +6411,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -6432,6 +6466,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -6439,7 +6476,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -6453,6 +6495,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -6552,6 +6595,7 @@ paths:
                             - CONTACT_PHONE_INVALID
                             - CONTACT_EMAIL_INVALID
                             - CONTACT_DESCRIPTION_TOO_LONG
+                            - CONTACT_GROUP_TOO_LONG
                             - INVALID
                         message:
                           type: string
@@ -6930,10 +6974,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -6981,6 +7029,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -6988,7 +7039,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -7002,6 +7058,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -7242,10 +7299,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -7293,6 +7354,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -7300,7 +7364,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -7314,6 +7383,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -7522,10 +7592,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -7573,6 +7647,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -7580,7 +7657,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -7594,6 +7676,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":

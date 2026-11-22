@@ -1,3 +1,4 @@
+import { groupOrder } from '@/features/church-settings/contact-groups';
 import type {
   GetChurchSettings200,
   UpdateChurchSettingsBody,
@@ -26,6 +27,8 @@ export interface ContactForm {
   description: string;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** *Pessoa ou ministério*; empty means "Da igreja". */
+  group: string;
 }
 
 type SavedContact = GetChurchSettings200['contacts'][number];
@@ -36,7 +39,8 @@ interface ToContactFormInput {
 }
 
 function toContactForm({ contact, index }: ToContactFormInput): ContactForm {
-  const { kind, phoneType, value, description, isWhatsApp, isPublic } = contact;
+  const { kind, phoneType, value, description, isWhatsApp, isPublic, group } =
+    contact;
   return {
     key: `saved-${index}`,
     type: kind === 'email' ? 'email' : (phoneType ?? 'mobile'),
@@ -44,6 +48,7 @@ function toContactForm({ contact, index }: ToContactFormInput): ContactForm {
     description: description ?? '',
     isWhatsApp,
     isPublic,
+    group: group ?? '',
   };
 }
 
@@ -53,7 +58,7 @@ interface ToContactBodyInput {
 
 /** The request row of an edited contact. */
 export function toContactBody({ contact }: ToContactBodyInput) {
-  const { type, value, description, isWhatsApp, isPublic } = contact;
+  const { type, value, description, isWhatsApp, isPublic, group } = contact;
   const isEmail = type === 'email';
   return {
     kind: isEmail ? ('email' as const) : ('phone' as const),
@@ -62,6 +67,7 @@ export function toContactBody({ contact }: ToContactBodyInput) {
     description: description || null,
     isWhatsApp: !isEmail && isWhatsApp,
     isPublic,
+    group: group.trim() || null,
   };
 }
 
@@ -71,6 +77,8 @@ export interface SocialLinkDraft {
   url: string;
   /** Empty means no description. */
   description: string;
+  /** *Pessoa ou ministério*; empty means "Da igreja". */
+  group: string;
 }
 
 /** The Church Legal Profile being edited; both text fields empty means none. */
@@ -97,6 +105,8 @@ export interface ChurchSettingsForm {
   addressReplacements: AddressReplacement[];
   /** In display order; always public. */
   socialLinks: SocialLinkDraft[];
+  /** The saved order of the Contact Groups; the effective order is `groupOrder`. */
+  contactGroups: string[];
   legalProfile: LegalProfileDraft;
 }
 
@@ -110,6 +120,7 @@ interface ToChurchSettingsFormInput {
     | 'addresses'
     | 'contacts'
     | 'socialLinks'
+    | 'contactGroups'
     | 'legalProfile'
   >;
 }
@@ -133,11 +144,15 @@ export function toChurchSettingsForm({
     contacts: settings.contacts.map((contact, index) =>
       toContactForm({ contact, index }),
     ),
-    socialLinks: settings.socialLinks.map(({ url, description }, index) => ({
-      key: `saved-${index}`,
-      url,
-      description: description ?? '',
-    })),
+    socialLinks: settings.socialLinks.map(
+      ({ url, description, group }, index) => ({
+        key: `saved-${index}`,
+        url,
+        description: description ?? '',
+        group: group ?? '',
+      }),
+    ),
+    contactGroups: settings.contactGroups,
     legalProfile: settings.legalProfile
       ? {
           ...settings.legalProfile,
@@ -187,6 +202,7 @@ export function toSaveBody({
     addressReplacements,
     contacts,
     socialLinks,
+    contactGroups: _saved,
     ...rest
   } = form;
   return {
@@ -195,7 +211,11 @@ export function toSaveBody({
     addresses: addresses.map(({ key: _key, ...address }) => address),
     ...(addressReplacements.length > 0 ? { addressReplacements } : {}),
     contacts: contacts.map((contact) => toContactBody({ contact })),
-    socialLinks: socialLinks.map(({ key: _key, ...link }) => link),
+    socialLinks: socialLinks.map(({ key: _key, group, ...link }) => ({
+      ...link,
+      group: group.trim() || null,
+    })),
+    contactGroups: groupOrder({ form }),
   };
 }
 

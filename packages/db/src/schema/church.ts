@@ -104,6 +104,26 @@ export const churchSlugHistory = pgTable(
   (table) => [index('church_slug_history_church_id_idx').on(table.churchId)],
 );
 
+// Contact Groups: a person or ministry that Church Contacts and Social Links
+// are shown under. Saved with the Church Settings; one with no member is deleted.
+export const churchContactGroup = pgTable(
+  'church_contact_group',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    position: integer('position').notNull(),
+  },
+  (table) => [
+    index('church_contact_group_church_position_idx').on(
+      table.churchId,
+      table.position,
+    ),
+  ],
+);
+
 // A link to the Church's presence on a supported network. Always public. The
 // network is detected from the URL on save; several links may share a network.
 export const churchSocialLink = pgTable(
@@ -116,6 +136,9 @@ export const churchSocialLink = pgTable(
     url: text('url').notNull(),
     network: text('network').notNull(),
     description: text('description'),
+    groupId: uuid('group_id').references(() => churchContactGroup.id, {
+      onDelete: 'set null',
+    }),
     position: integer('position').notNull(),
   },
   (table) => [
@@ -142,6 +165,9 @@ export const churchContact = pgTable(
     description: text('description'),
     isWhatsApp: boolean('is_whatsapp').default(false).notNull(),
     isPublic: boolean('is_public').default(false).notNull(),
+    groupId: uuid('group_id').references(() => churchContactGroup.id, {
+      onDelete: 'set null',
+    }),
     position: integer('position').notNull(),
   },
   (table) => [

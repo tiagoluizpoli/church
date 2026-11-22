@@ -2592,6 +2592,8 @@ export type GetChurchSettings200SocialLinksItem = {
   network: GetChurchSettings200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -2631,6 +2633,8 @@ export type GetChurchSettings200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type GetChurchSettings200 = {
@@ -2649,6 +2653,7 @@ export type GetChurchSettings200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: GetChurchSettings200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 
@@ -2695,6 +2700,8 @@ export type UpdateChurchSettingsBodyContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group?: string | null;
 };
 
 export type UpdateChurchSettingsBodyAddressesItemUf = typeof UpdateChurchSettingsBodyAddressesItemUf[keyof typeof UpdateChurchSettingsBodyAddressesItemUf];
@@ -2801,6 +2808,8 @@ export type UpdateChurchSettingsBodySocialLinksItem = {
   url: string;
   /** @nullable */
   description?: string | null;
+  /** @nullable */
+  group?: string | null;
 };
 
 /**
@@ -2835,6 +2844,12 @@ export type UpdateChurchSettingsBody = {
      * @maxItems 50
      */
   contacts?: UpdateChurchSettingsBodyContactsItem[];
+  /**
+     * Contact Group names in display order, for the `group` of contacts and links. A group is created by naming it on a row, case-insensitively one group; unlisted groups follow in first-use order; a group no row uses is deleted on save. Omitted, the stored order stays.
+     * @maxItems 100
+     * @items.maxLength 120
+     */
+  contactGroups?: string[];
   /**
      * Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.
      * @maxItems 50
@@ -2957,6 +2972,8 @@ export type UpdateChurchSettings200SocialLinksItem = {
   network: UpdateChurchSettings200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -2996,6 +3013,8 @@ export type UpdateChurchSettings200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type UpdateChurchSettings200 = {
@@ -3014,6 +3033,7 @@ export type UpdateChurchSettings200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: UpdateChurchSettings200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 
@@ -3072,6 +3092,7 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   CONTACT_PHONE_INVALID: 'CONTACT_PHONE_INVALID',
   CONTACT_EMAIL_INVALID: 'CONTACT_EMAIL_INVALID',
   CONTACT_DESCRIPTION_TOO_LONG: 'CONTACT_DESCRIPTION_TOO_LONG',
+  CONTACT_GROUP_TOO_LONG: 'CONTACT_GROUP_TOO_LONG',
   INVALID: 'INVALID',
 } as const;
 
@@ -3269,6 +3290,8 @@ export type UploadChurchLogo200SocialLinksItem = {
   network: UploadChurchLogo200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -3308,6 +3331,8 @@ export type UploadChurchLogo200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type UploadChurchLogo200 = {
@@ -3326,6 +3351,7 @@ export type UploadChurchLogo200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: UploadChurchLogo200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 
@@ -3462,6 +3488,8 @@ export type RemoveChurchLogo200SocialLinksItem = {
   network: RemoveChurchLogo200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -3501,6 +3529,8 @@ export type RemoveChurchLogo200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type RemoveChurchLogo200 = {
@@ -3519,6 +3549,7 @@ export type RemoveChurchLogo200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: RemoveChurchLogo200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 
@@ -3645,6 +3676,8 @@ export type RestoreChurchLogo200SocialLinksItem = {
   network: RestoreChurchLogo200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -3684,6 +3717,8 @@ export type RestoreChurchLogo200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type RestoreChurchLogo200 = {
@@ -3702,6 +3737,7 @@ export type RestoreChurchLogo200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: RestoreChurchLogo200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 

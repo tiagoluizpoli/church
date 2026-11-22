@@ -2005,5 +2005,10 @@
   "public_church_logo_alt": "{name} logo",
   "public_church_powered_by": "Built with {appName}",
   "public_church_not_found_title": "Church not found",
-  "public_church_not_found_description": "Check the address. The link may be wrong or out of date."
+  "public_church_not_found_description": "Check the address. The link may be wrong or out of date.",
+  "public_events_title": "Upcoming events",
+  "public_events_load_more": "Load more",
+  "public_events_cancelled": "Cancelled",
+  "public_events_history_show": "See history",
+  "public_events_history_hide": "Hide history"
 }

@@ -12,6 +12,8 @@ vi.mock('@/utils/api-instances', async () => ({
   publicChurchProfileApi: {
     getPublicChurchProfile: (...args: unknown[]) =>
       getPublicChurchProfile(...args),
+    listPublicChurchEvents: () =>
+      Promise.resolve({ timezone: 'UTC', items: [] }),
   },
 }));
 

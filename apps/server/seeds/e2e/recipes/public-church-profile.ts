@@ -138,6 +138,7 @@ export function createPublicChurchProfileRecipe({
       recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
+          id: idOf({ kind: 'programme-block' }),
           label: PROGRAMME_LABEL,
           startTime: parseTimeOfDay({ value: '19:00' }),
           endTime: parseTimeOfDay({ value: '20:30' }),

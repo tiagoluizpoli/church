@@ -114,6 +114,11 @@ under Bun.
   migrate` once, and exits. `server` starts only
   after it succeeds, so a failed migration stops the deployment.
 - `server` is not routed publicly. Its healthcheck calls `/api/health`.
+- `web` routes a slug-shaped single root segment that is not an app route
+  (`/{slug}`, see [Caddyfile](Caddyfile)) to the server, which reads
+  `index.html` back from `web` through its `church-web` alias
+  (`WEB_INTERNAL_URL`, default `http://church-web:8080`) and answers it with
+  the Church's meta tags, a 301 for an old slug or a 404.
 - `web` is the only public service. Its healthcheck reads `/revision.txt`, and
   it starts once `server` is healthy.
 - `migrate` and `server` join `DATABASE_NETWORK` to reach PostgreSQL. `web`

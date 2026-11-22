@@ -54,10 +54,11 @@ export function EventDetailsForm({ cycleId, graph }: EventDetailsFormProps) {
       const eventTimeBlocks = isChurchAdmin
         ? blocks
             .filter(({ id, locked }) => id && !locked)
-            .map(({ id = '', isPublic, place }) => ({
+            .map(({ id = '', isPublic, place, placeAddressId }) => ({
               id,
               isPublic,
               place: place.trim(),
+              placeAddressId,
             }))
         : undefined;
       const details = {
@@ -140,6 +141,7 @@ export function EventDetailsForm({ cycleId, graph }: EventDetailsFormProps) {
             idPrefix={block.key}
             isPublic={block.isPublic}
             place={block.place}
+            placeAddressId={block.placeAddressId}
             locked={block.locked}
             onIsPublicChange={(value) =>
               setBlocks(
@@ -155,7 +157,7 @@ export function EventDetailsForm({ cycleId, graph }: EventDetailsFormProps) {
                 updateBlock({
                   blocks,
                   key: block.key,
-                  patch: { place: value },
+                  patch: value,
                 }),
               )
             }

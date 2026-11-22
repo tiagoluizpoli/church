@@ -27,6 +27,7 @@ export interface EventEditorBlock {
   end: Instant;
   isPublic: boolean;
   place: string;
+  placeAddressId: string | null;
   /** A persisted block that has started: Público and place no longer change. */
   locked: boolean;
   /** The initial whole-Event row follows title and bounds until edited. */
@@ -83,6 +84,7 @@ export function createEventForm({
         end,
         isPublic: false,
         place: '',
+        placeAddressId: null,
         locked: false,
         followsEvent: true,
       },
@@ -112,6 +114,7 @@ export function editEventForm({
       end: parseInstant({ value: block.endTime }),
       isPublic: block.isPublic,
       place: block.place ?? '',
+      placeAddressId: block.placeAddressId,
       locked:
         compareInstants({
           left: parseInstant({ value: block.startTime }),
@@ -139,6 +142,7 @@ export function addEventBlock({ form }: AddBlockInput): EventEditorFormState {
         end: form.end,
         isPublic: false,
         place: '',
+        placeAddressId: null,
         locked: false,
         followsEvent: false,
       },
@@ -175,7 +179,8 @@ export type EventBlockChange =
   | { blockKey: string; field: 'label'; value: string }
   | { blockKey: string; field: 'start' | 'end'; value: Instant }
   | { blockKey: string; field: 'isPublic'; value: boolean }
-  | { blockKey: string; field: 'place'; value: string };
+  | { blockKey: string; field: 'place'; value: string }
+  | { blockKey: string; field: 'placeAddressId'; value: string | null };
 
 interface ChangeBlockInput {
   form: EventEditorFormState;
@@ -317,6 +322,7 @@ export function toCreateEventBody({
       endTime: block.end,
       isPublic: block.isPublic,
       place: block.place.trim(),
+      placeAddressId: block.placeAddressId,
     })),
   };
 }

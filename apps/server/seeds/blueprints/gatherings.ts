@@ -21,7 +21,10 @@ export interface TemplateTimeBlockBlueprint {
   endTime: string;
   /** Público: a Regular Activity of the Church Programme. Private when absent. */
   isPublic?: boolean;
+  /** Free-text place. */
   place?: string;
+  /** The label of one of the Church's addresses, as the place. */
+  placeAddress?: string;
 }
 
 /** A recurring gathering: applied to a cycle, one Event per day its Recurrence names. */
@@ -126,7 +129,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
           startTime: '08:00',
           endTime: '09:30',
           isPublic: true,
-          place: 'Templo',
+          placeAddress: 'Templo',
         },
         {
           key: 'sunday-10:30',
@@ -134,7 +137,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
           startTime: '10:30',
           endTime: '12:30',
           isPublic: true,
-          place: 'Templo',
+          placeAddress: 'Templo',
         },
         {
           key: 'sunday-18:30',
@@ -142,7 +145,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
           startTime: '18:30',
           endTime: '20:30',
           isPublic: true,
-          place: 'Salão anexo',
+          placeAddress: 'Salão anexo',
         },
       ],
     },

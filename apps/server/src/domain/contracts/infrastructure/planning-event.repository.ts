@@ -74,6 +74,7 @@ export interface CreatePlanningEventTimeBlockInput {
   label?: string;
   isPublic?: boolean;
   place?: string;
+  placeAddressId?: string;
   tx?: TransactionContext;
 }
 

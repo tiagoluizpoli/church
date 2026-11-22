@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import type { TimeOfDay } from '@church/time';
 import type { TemplateTimeBlockDraft } from './planning-admin.types';
 import { describeTemplateTimeBlockSpan } from './planning-admin.utils';
+import { TimeBlockPlacePicker } from './time-block-place-picker';
 import { TimeOfDayField } from '@/components/time-of-day-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,12 @@ interface PlaceChangeInput {
   value: string;
 }
 
+interface PlaceAddressChangeInput {
+  blockKey: string;
+  field: 'placeAddressId';
+  value: string | null;
+}
+
 interface PublicChangeInput {
   blockKey: string;
   field: 'isPublic';
@@ -37,6 +44,7 @@ type BlockChangeInput =
   | LabelChangeInput
   | TimeChangeInput
   | PlaceChangeInput
+  | PlaceAddressChangeInput
   | PublicChangeInput;
 
 interface RemoveBlockInput {
@@ -174,25 +182,26 @@ export function TemplateTimeBlockRow({
               {m.event_templates_block_public()}
             </Label>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`${block.key}-place`}>
-              {m.event_templates_block_place()}
-            </Label>
-            <Input
-              id={`${block.key}-place`}
-              data-testid="template-time-block-place-input"
-              maxLength={120}
-              value={block.place}
-              onChange={(event) =>
-                onBlockChange({
-                  blockKey: block.key,
-                  field: 'place',
-                  value: event.target.value,
-                })
-              }
-              placeholder={m.event_templates_block_place_placeholder()}
-            />
-          </div>
+          <TimeBlockPlacePicker
+            id={`${block.key}-place`}
+            testIdPrefix="template-time-block"
+            label={m.event_templates_block_place()}
+            placeholder={m.event_templates_block_place_placeholder()}
+            place={block.place}
+            placeAddressId={block.placeAddressId}
+            onChange={({ place, placeAddressId }) => {
+              onBlockChange({
+                blockKey: block.key,
+                field: 'place',
+                value: place,
+              });
+              onBlockChange({
+                blockKey: block.key,
+                field: 'placeAddressId',
+                value: placeAddressId,
+              });
+            }}
+          />
         </div>
       ) : null}
       {timeError ? (

@@ -18,6 +18,7 @@ export interface EventTemplateTimeBlockManagerInput {
   endTime: string;
   isPublic?: boolean;
   place?: string;
+  placeAddressId?: string | null;
 }
 
 export interface CreateEventTemplateManagerInput {

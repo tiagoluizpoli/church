@@ -1,9 +1,11 @@
 import { parseTimeOfDay } from '@church/time';
+import type { ChurchAddressBlueprint } from '../blueprints/directory/types';
 import type {
   GatheringBlockKey,
   GatheringsBlueprint,
   StaffingNeed,
 } from '../blueprints/gatherings';
+import { churchAddressSeedId } from '../builders/church';
 import { deriveSeedId } from '../builders/derived-id';
 import { buildEventTemplate, buildUsualSetup } from '../builders/planning';
 import type { SeedWriter } from '../recipe';
@@ -21,6 +23,7 @@ export interface SeededTemplateTimeBlock {
   templateId: string;
   templateName: string;
   label: string;
+  placeAddressId?: string;
 }
 
 export interface SeededGatherings {
@@ -76,6 +79,8 @@ export interface LoadGatheringsInput {
   churchId: string;
   blueprint: GatheringsBlueprint;
   ministries: Map<string, SeededMinistryStructure>;
+  /** The Church's addresses, which a block names by label as its place. */
+  addresses: readonly ChurchAddressBlueprint[];
 }
 
 /**
@@ -87,7 +92,14 @@ export async function loadGatherings({
   churchId,
   blueprint,
   ministries,
+  addresses,
 }: LoadGatheringsInput): Promise<SeededGatherings> {
+  const addressIdOf = (label: string | undefined) => {
+    if (label === undefined) return undefined;
+    const position = addresses.findIndex((address) => address.label === label);
+    if (position < 0) throw new Error(`Church Address ${label} is not seeded.`);
+    return churchAddressSeedId({ churchId, position });
+  };
   const blocks: SeededTemplateTimeBlock[] = [];
   for (const templateBlueprint of blueprint.templates) {
     const templateId = deriveSeedId({
@@ -101,6 +113,7 @@ export async function loadGatherings({
           kind: 'template-time-block',
           parentIds: [templateId, block.key],
         }),
+        placeAddressId: addressIdOf(block.placeAddress),
       }),
     );
     await buildEventTemplate({
@@ -116,6 +129,7 @@ export async function loadGatherings({
         endTime: parseTimeOfDay({ value: block.endTime }),
         isPublic: block.isPublic,
         place: block.place,
+        placeAddressId: block.placeAddressId,
       })),
     });
     blocks.push(
@@ -125,6 +139,7 @@ export async function loadGatherings({
         templateId,
         templateName: templateBlueprint.name,
         label: block.label,
+        placeAddressId: block.placeAddressId,
       })),
     );
   }

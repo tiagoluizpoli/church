@@ -18,7 +18,11 @@ const deletePlanningEvent = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
 
+const getChurchSettings = vi.fn();
 vi.mock('@/utils/api-instances', () => ({
+  churchSettingsApi: {
+    getChurchSettings: (...args: unknown[]) => getChurchSettings(...args),
+  },
   adminApi: {
     getCycle: (...args: unknown[]) => getCycle(...args),
     updatePlanningEvent: (...args: unknown[]) => updatePlanningEvent(...args),
@@ -101,6 +105,7 @@ function cycleResponse({
             label: 'Welcome',
             isPublic: false,
             place: null,
+            placeAddressId: null,
             startTime: '2026-10-18T12:00:00.000Z',
             endTime: '2026-10-18T13:00:00.000Z',
           },
@@ -109,6 +114,7 @@ function cycleResponse({
             label: 'Service',
             isPublic: false,
             place: null,
+            placeAddressId: null,
             startTime: '2026-10-18T13:00:00.000Z',
             endTime: '2026-10-18T15:00:00.000Z',
           },
@@ -240,6 +246,7 @@ describe('EventEditPage', () => {
           endTime: '2026-10-18T13:00:00.000Z',
           isPublic: false,
           place: '',
+          placeAddressId: null,
         },
         {
           label: 'Lunch',
@@ -247,6 +254,7 @@ describe('EventEditPage', () => {
           endTime: '2026-10-18T15:00:00.000Z',
           isPublic: false,
           place: '',
+          placeAddressId: null,
         },
       ],
     });
@@ -555,8 +563,18 @@ describe('Edit Sent Event details', () => {
           title: 'Worship',
           location: '',
           eventTimeBlocks: [
-            { id: 'block-welcome', isPublic: false, place: '' },
-            { id: 'block-service', isPublic: false, place: '' },
+            {
+              id: 'block-welcome',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
+            {
+              id: 'block-service',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
           ],
         },
       ),
@@ -613,8 +631,17 @@ describe('Edit Sent Event details', () => {
   });
 });
 
+const CAMPINAS = {
+  number: '10',
+  complement: null,
+  bairro: 'Centro',
+  city: 'Campinas',
+  uf: 'SP',
+};
+
 describe('Público and place on a Sent Event', () => {
   beforeEach(() => {
+    getChurchSettings.mockResolvedValue({ addresses: [] });
     getCycle.mockResolvedValue(
       cycleResponse({ state: 'sent', eventStatus: 'scheduled' }),
     );
@@ -644,8 +671,74 @@ describe('Público and place on a Sent Event', () => {
         'event-1',
         expect.objectContaining({
           eventTimeBlocks: [
-            { id: 'block-welcome', isPublic: true, place: 'Annex' },
-            { id: 'block-service', isPublic: false, place: '' },
+            {
+              id: 'block-welcome',
+              isPublic: true,
+              place: 'Annex',
+              placeAddressId: null,
+            },
+            {
+              id: 'block-service',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it("picks one of the Church's addresses as a block's place, beside free text", async () => {
+    getChurchSettings.mockResolvedValue({
+      addresses: [
+        { id: 'address-templo', label: 'Templo', ...CAMPINAS },
+        { id: 'address-anexo', label: null, ...CAMPINAS, street: 'Rua B' },
+      ],
+    });
+    updatePlanningEventDetails.mockResolvedValue(SAVED_GRAPH);
+    setTestClock({ instant: parseInstant({ value: '2026-10-01T12:00:00Z' }) });
+    const user = userEvent.setup();
+    renderPage();
+    const form = await screen.findByTestId('event-details-form');
+
+    const [picker] = await within(form).findAllByTestId(
+      'event-block-place-select',
+    );
+    await user.click(picker as HTMLElement);
+    expect(
+      (await screen.findAllByRole('option')).map(
+        (option) => option.textContent,
+      ),
+    ).toEqual([
+      m.time_block_place_none(),
+      'Templo',
+      'Rua B, 10 · Centro · Campinas/SP',
+      m.time_block_place_free_text(),
+    ]);
+    await user.click(screen.getByRole('option', { name: 'Templo' }));
+    await user.click(
+      within(form).getByRole('button', { name: m.event_details_submit() }),
+    );
+
+    await waitFor(() =>
+      expect(updatePlanningEventDetails).toHaveBeenCalledWith(
+        'cycle-1',
+        'event-1',
+        expect.objectContaining({
+          eventTimeBlocks: [
+            {
+              id: 'block-welcome',
+              isPublic: false,
+              place: '',
+              placeAddressId: 'address-templo',
+            },
+            {
+              id: 'block-service',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
           ],
         }),
       ),
@@ -674,7 +767,12 @@ describe('Público and place on a Sent Event', () => {
         'event-1',
         expect.objectContaining({
           eventTimeBlocks: [
-            { id: 'block-service', isPublic: false, place: '' },
+            {
+              id: 'block-service',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
           ],
         }),
       ),

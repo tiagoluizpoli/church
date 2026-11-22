@@ -77,7 +77,12 @@ import type {
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  assertPlaceAddresses,
+  getClient,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
@@ -270,6 +275,11 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     input: CreatePlanningEventTimeBlockInput,
   ): Promise<EventTimeBlockId> {
     const db = getClient({ db: this.db, tx: input.tx });
+    await assertPlaceAddresses({
+      db,
+      churchId: input.churchId,
+      addressIds: [input.placeAddressId],
+    });
     const [eventTimeBlockRow] = await db
       .insert(eventTimeBlock)
       .values({
@@ -281,6 +291,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         label: input.label ?? null,
         isPublic: input.isPublic ?? false,
         place: input.place ?? null,
+        placeAddressId: input.placeAddressId ?? null,
       })
       .returning();
 

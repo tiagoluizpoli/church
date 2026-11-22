@@ -486,7 +486,7 @@ describe('development seed recipe', () => {
       .select({
         churchId: eventTemplate.churchId,
         template: eventTemplate.name,
-        weekday: eventTemplate.weekday,
+        recurrence: eventTemplate.recurrence,
         startTime: templateTimeBlock.startTime,
         endTime: templateTimeBlock.endTime,
       })
@@ -495,12 +495,12 @@ describe('development seed recipe', () => {
         eventTemplate,
         eq(eventTemplate.id, templateTimeBlock.templateId),
       )
-      .orderBy(eventTemplate.weekday, templateTimeBlock.order);
+      .orderBy(eventTemplate.name, templateTimeBlock.order);
 
     const sunday = {
       churchId: seeded.church.id,
       template: 'Culto de Domingo',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
     };
     expect(blocks).toEqual([
       { ...sunday, startTime: '08:00:00', endTime: '09:30:00' },
@@ -509,9 +509,19 @@ describe('development seed recipe', () => {
       {
         churchId: seeded.church.id,
         template: 'Culto de Quarta',
-        weekday: 3,
+        recurrence: { kind: 'weekly', weekdays: [3] },
         startTime: '20:00:00',
         endTime: '22:00:00',
+      },
+      {
+        churchId: seeded.church.id,
+        template: 'Oração do Dia 15',
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'dayOfMonth', day: 15 }],
+        },
+        startTime: '07:00:00',
+        endTime: '08:00:00',
       },
     ]);
   });
@@ -530,7 +540,7 @@ describe('development seed recipe', () => {
     const profiles = await testDb
       .select({
         ministry: ministry.name,
-        weekday: eventTemplate.weekday,
+        template: eventTemplate.name,
         startTime: templateTimeBlock.startTime,
         serves: usualSetup.serves,
         shiftSplit: usualSetup.shiftSplit,
@@ -547,11 +557,11 @@ describe('development seed recipe', () => {
         eq(eventTemplate.id, templateTimeBlock.templateId),
       )
       .where(eq(usualSetup.churchId, seeded.church.id))
-      .orderBy(ministry.name, eventTemplate.weekday, templateTimeBlock.order);
+      .orderBy(ministry.name, eventTemplate.name, templateTimeBlock.order);
 
     const readable = profiles.map((profile) => ({
       ministry: profile.ministry,
-      block: `${profile.weekday} ${profile.startTime.slice(0, 5)}`,
+      block: `${profile.template} ${profile.startTime.slice(0, 5)}`,
       serves: profile.serves,
       shiftSplit: profile.shiftSplit,
       headcounts: profile.headcounts.map((headcount) =>
@@ -571,15 +581,29 @@ describe('development seed recipe', () => {
       '1 Líder Maternal',
       '3 Auxiliar Maternal',
     ];
-    const blocks = ['0 08:00', '0 10:30', '0 18:30', '3 20:00'];
-    const everyBlock = ({ ministryName, headcounts }: ServedBlocksInput) =>
-      blocks.map((block) => ({
+    const blocks = [
+      'Culto de Domingo 08:00',
+      'Culto de Domingo 10:30',
+      'Culto de Domingo 18:30',
+      'Culto de Quarta 20:00',
+    ];
+    // The day-of-month template is declared for every Ministry, served by none.
+    const everyBlock = ({ ministryName, headcounts }: ServedBlocksInput) => [
+      ...blocks.map((block) => ({
         ministry: ministryName,
         block,
         serves: true,
         shiftSplit: oneShift,
         headcounts,
-      }));
+      })),
+      {
+        ministry: ministryName,
+        block: 'Oração do Dia 15 07:00',
+        serves: false,
+        shiftSplit: oneShift,
+        headcounts: [],
+      },
+    ];
 
     expect(readable).toEqual([
       ...everyBlock({
@@ -592,7 +616,7 @@ describe('development seed recipe', () => {
       }),
       {
         ministry: 'Kids',
-        block: '0 08:00',
+        block: 'Culto de Domingo 08:00',
         serves: false,
         shiftSplit: oneShift,
         headcounts: [],
@@ -600,7 +624,7 @@ describe('development seed recipe', () => {
       ...everyBlock({ ministryName: 'Kids', headcounts: kids }).slice(1),
       {
         ministry: 'Projeção',
-        block: '0 08:00',
+        block: 'Culto de Domingo 08:00',
         serves: true,
         shiftSplit: oneShift,
         headcounts: ['1 Operador de Projeção Templo'],
@@ -641,7 +665,7 @@ describe('development seed recipe', () => {
     ]);
   });
 
-  it("materializes February's Sundays and Wednesdays and one manual Encontro Teens, all past", async () => {
+  it("materializes February's Sundays, Wednesdays, the 15th and one manual Encontro Teens, all past", async () => {
     const events = await testDb
       .select({
         title: event.title,
@@ -678,6 +702,13 @@ describe('development seed recipe', () => {
       wednesday({ day: '04', next: '05' }),
       sunday({ day: '08' }),
       wednesday({ day: '11', next: '12' }),
+      {
+        title: 'Oração do Dia 15',
+        start: '2026-02-15T10:00:00.000Z',
+        end: '2026-02-15T11:00:00.000Z',
+        status: 'past',
+        fromTemplate: true,
+      },
       sunday({ day: '15' }),
       wednesday({ day: '18', next: '19' }),
       sunday({ day: '22' }),
@@ -697,7 +728,7 @@ describe('development seed recipe', () => {
         fromBlocks: sql<number>`count(${eventTimeBlock.sourceTemplateTimeBlockId})::int`,
       })
       .from(eventTimeBlock);
-    expect(eventTimeBlocks).toEqual({ total: 17, fromBlocks: 16 });
+    expect(eventTimeBlocks).toEqual({ total: 18, fromBlocks: 17 });
   });
 
   it('publishes one MinistryParticipation per serving Ministry and Event, Kids not on Sunday at 08:00', async () => {

@@ -1,13 +1,11 @@
 import {
   addCalendarDays,
   type CalendarDay,
-  compareCalendarDays,
   compareInstants,
   type Instant,
   type TimeOfDay,
   timeOfDaySpan,
   toInstant,
-  weekdayIndex,
 } from '@church/time';
 import type {
   EventId,
@@ -16,6 +14,7 @@ import type {
 } from '../branded-ids';
 import type { Cycle } from '../entities/cycle';
 import type { EventTemplate } from '../entities/event-template';
+import { expandRecurrence } from '../recurrence';
 
 export interface ExistingGeneratedEventTimeBlockFingerprint {
   eventDate: CalendarDay;
@@ -78,11 +77,6 @@ interface EventTimeBlockBounds {
   endTime: Instant;
 }
 
-interface ListMatchingCycleDatesInput {
-  cycle: Cycle;
-  weekday: number;
-}
-
 export class CycleEventGenerator {
   generate({
     cycle,
@@ -108,9 +102,10 @@ export class CycleEventGenerator {
     const plans: GeneratedCycleEventPlan[] = [];
 
     for (const template of templates) {
-      const matchingDates = listMatchingCycleDates({
-        cycle,
-        weekday: template.weekday,
+      const matchingDates = expandRecurrence({
+        recurrence: template.recurrence,
+        start: cycle.startDate,
+        end: cycle.endDate,
       });
 
       for (const eventDate of matchingDates) {
@@ -194,24 +189,6 @@ export function eventTimeBlockEnvelope({
     }
   }
   return { start, end };
-}
-
-function listMatchingCycleDates({
-  cycle,
-  weekday,
-}: ListMatchingCycleDatesInput): CalendarDay[] {
-  const dates: CalendarDay[] = [];
-  let cursor = cycle.startDate;
-
-  while (compareCalendarDays({ left: cursor, right: cycle.endDate }) <= 0) {
-    if (weekdayIndex({ day: cursor }) === weekday) {
-      dates.push(cursor);
-    }
-
-    cursor = addCalendarDays({ day: cursor, days: 1 });
-  }
-
-  return dates;
 }
 
 /**

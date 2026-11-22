@@ -655,7 +655,7 @@ async function templateBlockId() {
     db,
     churchId: CHURCH_A,
     name: 'Sunday',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       {
         label: 'Morning',

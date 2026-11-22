@@ -4,6 +4,7 @@ import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { fromDate, fromDateColumn, type TimeOfDay } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import type { Recurrence } from '@/domain/recurrence';
 import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { buildMinistry } from '@/seeds/builders/ministry';
@@ -61,7 +62,7 @@ export interface CreatePhase3EventGraphInput {
 export interface CreatePhase3TemplateInput {
   churchId: string;
   name: string;
-  weekday: number;
+  recurrence: Recurrence;
   blocks: Array<{
     label: string;
     startTime: TimeOfDay;
@@ -168,7 +169,7 @@ export async function createSchedulingPhase3Template(
     db: schedulingTestDb,
     churchId: input.churchId,
     name: input.name,
-    weekday: input.weekday,
+    recurrence: input.recurrence,
     blocks: input.blocks,
   });
 }

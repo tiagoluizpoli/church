@@ -16,6 +16,7 @@ import {
   weekdayIndex,
 } from '@church/time';
 import { and, asc, eq, inArray } from 'drizzle-orm';
+import { recurrenceNamesDay } from '../../src/domain/recurrence';
 import type {
   ChurchDirectoryBlueprint,
   MinistryBlueprint,
@@ -203,7 +204,9 @@ function planEvents({
     seenByWeekday.set(weekday, week);
 
     for (const template of gatherings.templates) {
-      if (template.weekday !== weekday) continue;
+      if (!recurrenceNamesDay({ recurrence: template.recurrence, day })) {
+        continue;
+      }
       const eventTimeBlocks = template.blocks.map((block) => {
         const seededBlock = seededGatherings.blocks.find(
           (candidate) => candidate.key === block.key,

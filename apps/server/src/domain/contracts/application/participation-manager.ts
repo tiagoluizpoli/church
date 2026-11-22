@@ -201,7 +201,8 @@ export interface SaveUsualSetupBlockInput {
 export interface UsualSetupBlockView {
   templateId: EventTemplateId;
   templateName: string;
-  weekday: number;
+  /** The weekday of a template weekly on exactly one weekday; otherwise null. */
+  weekday: number | null;
   sourceTemplateTimeBlockId: TemplateTimeBlockId;
   label: string;
   startTime: TimeOfDay;

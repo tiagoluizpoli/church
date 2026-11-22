@@ -1,3 +1,4 @@
+import { churchSlugRefusal } from '@church/app-config/church-slug';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import {
@@ -11,6 +12,8 @@ const NOT_FOUND_STATUS = 404;
 /** The sign-in-free Public Church Profile at the web root. */
 export const Route = createFileRoute('/$slug')({
   loader: async ({ context, params: { slug } }) => {
+    // No Church can hold a malformed or reserved slug: skip the read.
+    if (churchSlugRefusal(slug)) throw notFound();
     try {
       const profile = await context.queryClient.ensureQueryData({
         queryKey: ['public-church-profile', slug],

@@ -96,4 +96,13 @@ describe('/$slug', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it('shows the not-found page for a slug no Church can hold, without a read', async () => {
+    renderRoute({ initialPath: '/login-' });
+
+    expect(
+      await screen.findByRole('heading', { name: 'Igreja não encontrada' }),
+    ).toBeInTheDocument();
+    expect(getPublicChurchProfile).not.toHaveBeenCalled();
+  });
 });

@@ -4,6 +4,7 @@ import {
   availabilityCheck,
   event,
   eventTimeBlock,
+  eventTimeBlockMove,
   ministry,
   ministryMembership,
   ministryParticipation,
@@ -551,6 +552,29 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     if (eventTimeBlockIds.length === 0) return;
     const client = getClient({ db: this.db, tx });
     const delta = sql`(${deltaMs} * interval '1 millisecond')`;
+    // Same transaction as the update below, so the record cannot drift.
+    await client.insert(eventTimeBlockMove).select(
+      client
+        .select({
+          id: sql<string>`gen_random_uuid()`.as('id'),
+          churchId: eventTimeBlock.churchId,
+          eventTimeBlockId: eventTimeBlock.id,
+          previousStart: eventTimeBlock.startTime,
+          previousEnd: eventTimeBlock.endTime,
+          newStart: sql<Date>`${eventTimeBlock.startTime} + ${delta}`.as(
+            'new_start',
+          ),
+          newEnd: sql<Date>`${eventTimeBlock.endTime} + ${delta}`.as('new_end'),
+          movedAt: sql<Date>`now()`.as('moved_at'),
+        })
+        .from(eventTimeBlock)
+        .where(
+          and(
+            withChurchIsolation({ table: eventTimeBlock, churchId }),
+            inArray(eventTimeBlock.id, eventTimeBlockIds),
+          ),
+        ),
+    );
     await client
       .update(eventTimeBlock)
       .set({

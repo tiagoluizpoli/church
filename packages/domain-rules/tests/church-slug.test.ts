@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BaseChurchSlugSchema,
   churchSlugRefusal,
+  LEGACY_APP_ROUTE_SLUGS,
   RESERVED_CHURCH_SLUGS,
   slugFromName,
 } from '../src/church-slug';
@@ -26,7 +27,25 @@ describe('BaseChurchSlugSchema', () => {
       'terms',
       'static',
       'www',
+      'availability',
+      'cycles',
+      'dashboard',
+      'event-templates',
+      'ministries',
+      'my-schedule',
+      'no-access',
+      'notifications',
+      'people',
+      'schedules',
+      'select-church',
+      'switch-church-confirm',
     ]);
+  });
+
+  it('reserves every app route that lived at the root before the move under /app', () => {
+    expect(RESERVED_CHURCH_SLUGS).toEqual(
+      expect.arrayContaining([...LEGACY_APP_ROUTE_SLUGS]),
+    );
   });
 
   it.each(

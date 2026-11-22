@@ -32,13 +32,19 @@
 		file_server
 	}
 
+	# App routes that lived at the root before the move under /app (#1006,
+	# LEGACY_APP_ROUTE_SLUGS in @church/domain-rules): old links and emails keep
+	# working. `redir` runs before every `handle` below.
+	@legacyApp path /availability /availability/* /cycles /cycles/* /dashboard /dashboard/* /event-templates /event-templates/* /ministries /ministries/* /my-schedule /my-schedule/* /no-access /no-access/* /notifications /notifications/* /people /people/* /schedules /schedules/* /select-church /select-church/* /switch-church-confirm /switch-church-confirm/*
+	redir @legacyApp /app{uri} 301
+
 	# A Church's public page `/{slug}`: a single slug-shaped root segment that
 	# is not an app route (the reserved Church Slugs, @church/domain-rules). The
 	# server answers the SPA's index.html with the Church's meta tags, a real
 	# 301 for an old slug and a 404 for an unknown one; the SPA then renders.
 	@churchPage {
 		path_regexp ^/[a-z0-9]+(-[a-z0-9]+)*$
-		not path /app /api /assets /login /logout /signup /forgot-password /reset-password /invitations /church /admin /help /about /privacy /terms /static /www
+		not path /app /api /assets /login /logout /signup /forgot-password /reset-password /invitations /church /admin /help /about /privacy /terms /static /www /availability /cycles /dashboard /event-templates /ministries /my-schedule /no-access /notifications /people /schedules /select-church /switch-church-confirm
 	}
 	handle @churchPage {
 		rewrite * /api/v1/public/churches{path}/page

@@ -1,6 +1,22 @@
 import { z } from 'zod';
 
-/** Words a Church Slug may never be: a Church's public page must not shadow, or be shadowed by, an app page. */
+/** First segments of the app routes that lived at the root before they moved under `/app` (#1006); old links redirect to `/app/…`. */
+export const LEGACY_APP_ROUTE_SLUGS = [
+  'availability',
+  'cycles',
+  'dashboard',
+  'event-templates',
+  'ministries',
+  'my-schedule',
+  'no-access',
+  'notifications',
+  'people',
+  'schedules',
+  'select-church',
+  'switch-church-confirm',
+] as const;
+
+/** Words a Church Slug may never be: a Church's public page must not shadow, or be shadowed by, an app page, present or legacy. */
 export const RESERVED_CHURCH_SLUGS = [
   'app',
   'api',
@@ -19,6 +35,7 @@ export const RESERVED_CHURCH_SLUGS = [
   'terms',
   'static',
   'www',
+  ...LEGACY_APP_ROUTE_SLUGS,
 ] as const;
 
 const reservedSlugs: ReadonlySet<string> = new Set(RESERVED_CHURCH_SLUGS);

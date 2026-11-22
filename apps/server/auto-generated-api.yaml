@@ -5376,6 +5376,12 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
                   publicOrigin:
                     type: string
                 required:
@@ -5383,6 +5389,8 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - logoKey
+                  - logoUrl
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -5481,6 +5489,12 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
                   publicOrigin:
                     type: string
                 required:
@@ -5488,6 +5502,8 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - logoKey
+                  - logoUrl
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -5575,6 +5591,355 @@ paths:
                   - error
                   - message
                   - fieldErrors
+                additionalProperties: false
+  /api/v1/church-settings/logo:
+    put:
+      operationId: uploadChurchLogo
+      summary: Upload the Active Church logo
+      tags:
+        - church-settings
+      description: Applies at once, outside the settings save. PNG, JPEG or WebP by
+        content, at most 5 MB, longest side at least 128 px, ratio within
+        1:4–4:1; stored as one PNG of at most 512 px under a content-hashed key.
+        Earlier logos stay stored. ChurchAdmin only.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+                - file
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - logoKey
+                  - logoUrl
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "413":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "415":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    delete:
+      operationId: removeChurchLogo
+      summary: Remove the Active Church logo
+      tags:
+        - church-settings
+      description: Drops the logo reference at once; the stored image stays, so older
+        emails keep rendering. ChurchAdmin only.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - logoKey
+                  - logoUrl
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/church-settings/logo/restore:
+    put:
+      operationId: restoreChurchLogo
+      summary: Re-apply an earlier logo of the Active Church
+      tags:
+        - church-settings
+      description: "Undo for a removal: points the Church back at one of its own
+        earlier logo keys. ChurchAdmin only."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                  description: A logo key this Church used before.
+              required:
+                - key
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - logoKey
+                  - logoUrl
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/events/schedule-builder:
     get:

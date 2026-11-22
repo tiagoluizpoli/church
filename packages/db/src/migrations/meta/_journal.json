@@ -428,6 +428,13 @@
       "when": 1795340193895,
       "tag": "0060_event_template_drop_weekday",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1795342393260,
+      "tag": "0061_church_logo_key",
+      "breakpoints": true
     }
   ]
 }

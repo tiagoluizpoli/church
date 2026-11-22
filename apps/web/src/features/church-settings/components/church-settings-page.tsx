@@ -41,6 +41,7 @@ import {
 } from '@/features/church-settings/church-settings-queries';
 import { AccentPicker } from '@/features/church-settings/components/accent-picker';
 import { ChurchPreview } from '@/features/church-settings/components/church-preview';
+import { LogoCard } from '@/features/church-settings/components/logo-card';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import type { GetChurchSettings200 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
@@ -172,9 +173,11 @@ interface ChurchSettingsEditorProps {
 }
 
 function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
+  // Keyed on the form fields only: a logo change (applied at once) must not reset unsaved edits.
+  const { name, website, accentColor } = saved;
   const savedForm = React.useMemo(
-    () => toChurchSettingsForm({ settings: saved }),
-    [saved],
+    () => toChurchSettingsForm({ settings: { name, website, accentColor } }),
+    [name, website, accentColor],
   );
   const [form, setForm] = React.useState<ChurchSettingsForm>(savedForm);
   const [errors, setErrors] = React.useState<FieldErrors>({});
@@ -192,9 +195,12 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   const errorCount = Object.keys(errors).length;
   const infoErrors = INFO_FIELDS.filter((field) => errors[field]).length;
   const churchAddress = `${saved.publicOrigin}/${saved.slug}`;
-  const publicCount = [form.name, form.website, form.accentColor].filter(
-    Boolean,
-  ).length;
+  const publicCount = [
+    form.name,
+    form.website,
+    form.accentColor,
+    saved.logoUrl,
+  ].filter(Boolean).length;
 
   const patch = (changes: Partial<ChurchSettingsForm>) => {
     setForm((current) => ({ ...current, ...changes }));
@@ -308,41 +314,48 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
               open={open.info}
               onToggle={() => toggle('info')}
             >
-              <div className="grid gap-4 2xl:grid-cols-2">
-                <IconInputField
-                  icon={ChurchIcon}
-                  label={m.church_settings_name_label()}
-                  value={form.name}
-                  error={errors.name}
-                  autoComplete="organization"
-                  onChange={(event) => patch({ name: event.target.value })}
-                />
-                <IconInputField
-                  icon={Globe}
-                  label={m.church_settings_website_label()}
-                  hint={m.church_settings_website_hint()}
-                  placeholder="https://"
-                  inputMode="url"
-                  value={form.website}
-                  error={errors.website}
-                  onChange={(event) => patch({ website: event.target.value })}
-                />
+              <div className="grid gap-6 md:grid-cols-[13rem_minmax(0,1fr)]">
+                <LogoCard logoUrl={saved.logoUrl} logoKey={saved.logoKey} />
+                <div className="min-w-0 space-y-4">
+                  <div className="grid gap-4 2xl:grid-cols-2">
+                    <IconInputField
+                      icon={ChurchIcon}
+                      label={m.church_settings_name_label()}
+                      value={form.name}
+                      error={errors.name}
+                      autoComplete="organization"
+                      onChange={(event) => patch({ name: event.target.value })}
+                    />
+                    <IconInputField
+                      icon={Globe}
+                      label={m.church_settings_website_label()}
+                      hint={m.church_settings_website_hint()}
+                      placeholder="https://"
+                      inputMode="url"
+                      value={form.website}
+                      error={errors.website}
+                      onChange={(event) =>
+                        patch({ website: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="font-medium text-sm">
+                      {m.church_settings_slug_label()}
+                    </p>
+                    <p className="flex min-w-0 items-center gap-2 text-muted-foreground text-sm">
+                      <Link2 className="size-4 shrink-0" aria-hidden />
+                      <span className="truncate">{churchAddress}</span>
+                    </p>
+                  </div>
+                  <AccentPicker
+                    value={form.accentColor}
+                    error={errors.accentColor}
+                    touch={isMobile}
+                    onChange={(accentColor) => patch({ accentColor })}
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <p className="font-medium text-sm">
-                  {m.church_settings_slug_label()}
-                </p>
-                <p className="flex min-w-0 items-center gap-2 text-muted-foreground text-sm">
-                  <Link2 className="size-4 shrink-0" aria-hidden />
-                  <span className="truncate">{churchAddress}</span>
-                </p>
-              </div>
-              <AccentPicker
-                value={form.accentColor}
-                error={errors.accentColor}
-                touch={isMobile}
-                onChange={(accentColor) => patch({ accentColor })}
-              />
             </SectionCard>
             <SectionCard
               id="address"
@@ -373,6 +386,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
           >
             <ChurchPreview
               form={form}
+              logoUrl={saved.logoUrl}
               titleId="church-settings-preview-title"
             />
           </aside>
@@ -387,7 +401,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
               <DrawerTitle>{m.church_settings_preview_title()}</DrawerTitle>
             </DrawerHeader>
             <div className="overflow-y-auto p-4 pt-0">
-              <ChurchPreview form={form} />
+              <ChurchPreview form={form} logoUrl={saved.logoUrl} />
             </div>
           </DrawerContent>
         </Drawer>

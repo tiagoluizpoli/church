@@ -63,6 +63,8 @@ export interface ChurchIdentity {
   /** Church Settings; omitted means the Church leaves it empty. */
   website?: string;
   accentColor?: string;
+  /** The logo as SVG source, rasterised and uploaded like a ChurchAdmin's PNG. */
+  logoSvg?: string;
 }
 
 /** One Church's complete directory: its ChurchAdmin, Ministries and cross-Ministry service. */

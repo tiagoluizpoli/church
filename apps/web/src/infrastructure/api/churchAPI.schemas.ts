@@ -2276,6 +2276,10 @@ export type GetChurchSettings200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
   publicOrigin: string;
 };
 
@@ -2317,6 +2321,10 @@ export type UpdateChurchSettings200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
   publicOrigin: string;
 };
 
@@ -2364,6 +2372,122 @@ export type UpdateChurchSettings422 = {
   error: UpdateChurchSettings422Error;
   message: string;
   fieldErrors: UpdateChurchSettings422FieldErrorsItem[];
+};
+
+export type UploadChurchLogoBody = {
+  file: Blob;
+};
+
+export type UploadChurchLogo200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  publicOrigin: string;
+};
+
+export type UploadChurchLogo401 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo403 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo409 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo413 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo415 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo422 = {
+  error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  publicOrigin: string;
+};
+
+export type RemoveChurchLogo401 = {
+  error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo403 = {
+  error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo409 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogoBody = {
+  /** A logo key this Church used before. */
+  key: string;
+};
+
+export type RestoreChurchLogo200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  publicOrigin: string;
+};
+
+export type RestoreChurchLogo401 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogo403 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogo409 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogo422 = {
+  error: string;
+  message: string;
 };
 
 export type GetScheduleBuilderDataParams = {

@@ -3,14 +3,32 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { toEventSaveRefusal } from './event-editor.utils';
+import { EventBlockPublicFields } from './event-block-public-fields';
+import {
+  type EventEditorBlock,
+  editEventForm,
+  toEventSaveRefusal,
+} from './event-editor.utils';
 import { CancelToCycle } from './event-editor-page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import type { GetCycle200EventsItem } from '@/infrastructure/api/churchAPI.schemas';
+import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 import { adminApi } from '@/utils/api-instances';
+
+interface UpdateBlockInput {
+  blocks: EventEditorBlock[];
+  key: string;
+  patch: Partial<EventEditorBlock>;
+}
+
+function updateBlock({ blocks, key, patch }: UpdateBlockInput) {
+  return blocks.map((block) =>
+    block.key === key ? { ...block, ...patch } : block,
+  );
+}
 
 export interface EventDetailsFormProps {
   cycleId: string;
@@ -26,11 +44,27 @@ export function EventDetailsForm({ cycleId, graph }: EventDetailsFormProps) {
   const navigate = useNavigate();
   const [title, setTitle] = useState(savedTitle);
   const [location, setLocation] = useState(savedLocation ?? '');
+  const [blocks, setBlocks] = useState(() => editEventForm({ graph }).blocks);
+  const { isChurchAdmin } = useCallerCapabilities();
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => {
-      const details = { title: title.trim(), location: location.trim() };
+      // Started blocks are locked: only the others may carry a change.
+      const eventTimeBlocks = isChurchAdmin
+        ? blocks
+            .filter(({ id, locked }) => id && !locked)
+            .map(({ id = '', isPublic, place }) => ({
+              id,
+              isPublic,
+              place: place.trim(),
+            }))
+        : undefined;
+      const details = {
+        title: title.trim(),
+        location: location.trim(),
+        eventTimeBlocks,
+      };
       return adminApi.updatePlanningEventDetails(cycleId, eventId, details);
     },
     onSuccess: async () => {
@@ -95,6 +129,39 @@ export function EventDetailsForm({ cycleId, graph }: EventDetailsFormProps) {
           }}
         />
       </div>
+      {blocks.map((block) => (
+        <fieldset
+          key={block.key}
+          className="surface-subtle workspace-panel space-y-2"
+          data-testid="event-details-block"
+        >
+          <legend className="font-medium text-sm">{block.label}</legend>
+          <EventBlockPublicFields
+            idPrefix={block.key}
+            isPublic={block.isPublic}
+            place={block.place}
+            locked={block.locked}
+            onIsPublicChange={(value) =>
+              setBlocks(
+                updateBlock({
+                  blocks,
+                  key: block.key,
+                  patch: { isPublic: value },
+                }),
+              )
+            }
+            onPlaceChange={(value) =>
+              setBlocks(
+                updateBlock({
+                  blocks,
+                  key: block.key,
+                  patch: { place: value },
+                }),
+              )
+            }
+          />
+        </fieldset>
+      ))}
       {error ? (
         <p
           className="text-destructive text-sm"

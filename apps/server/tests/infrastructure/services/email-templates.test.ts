@@ -6,11 +6,13 @@ import type {
   ChainedInvitationEmail,
   ChurchBootstrapInvitationEmail,
   EmailDuration,
+  EmailPayload,
   MinistryInvitationEmail,
   PasswordResetEmail,
   TransferDigestEmail,
   TransferMinistryDigestEmail,
 } from '@/domain/contracts/infrastructure/email-sender';
+import { contrastOnWhite } from '@/domain/services/email-accent';
 import { escapeHtml } from '@/infrastructure/services/email-layout';
 import { formatShiftLine } from '@/infrastructure/services/email-shift-line';
 import {
@@ -284,7 +286,7 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
 
     expect(
       text?.startsWith(
-        `${appName}\n\n${m.email_greeting_transactional({}, ptBR)}`,
+        `${memberInvitation.churchName}\n\n${m.email_greeting_transactional({}, ptBR)}`,
       ),
     ).toBe(true);
   });
@@ -339,7 +341,7 @@ describe('prepareEmail — Volunteer Transfer digests (N11–12)', () => {
     expect(request.subject).toBe(subject);
     expect(request.text).toBe(
       [
-        appName,
+        churchName,
         m.email_greeting_notification({ firstName: 'Léo' }, ptBR),
         subject,
         m.email_transfer_digest_body({}, ptBR),
@@ -771,7 +773,7 @@ describe('prepareEmail — verification code (T2)', () => {
     );
     expect(request.text).toBe(
       [
-        appName,
+        churchName,
         m.email_greeting_transactional({}, ptBR),
         m.email_verification_code_heading({ code: '042137' }, ptBR),
         m.email_verification_code_body({ churchName }, ptBR),
@@ -960,7 +962,7 @@ describe('prepareEmail — platform layout (Faixa)', () => {
     linkLifetime: { minutes: 60 },
   };
   const prepareWith = (
-    payload: TransferMinistryDigestEmail | PasswordResetEmail,
+    payload: EmailPayload,
     branding: PlatformBranding = platform,
   ) =>
     prepareEmail({
@@ -977,7 +979,6 @@ describe('prepareEmail — platform layout (Faixa)', () => {
     expect(html).toContain('color-scheme" content="light only"');
     expect(html).toContain('max-width:600px');
     expect(html).toContain('border-top:6px solid #18181b');
-    expect(html).toContain(`<img src="${platform.logoUrl}" alt="Igreja App"`);
     expect(html).toContain(m.email_layout_details({}, ptBR));
     expect(html).toContain('border:2px solid #18181b');
     expect(html).toContain('border-radius:999px');
@@ -986,11 +987,65 @@ describe('prepareEmail — platform layout (Faixa)', () => {
     expect(preheader).toBe(escapeHtml(m.email_transfer_digest_body({}, ptBR)));
   });
 
-  it('shows the name alone without a logo', () => {
-    const { html } = prepareWith(digest, {});
+  it('shows the Church name alone without a logo, on the default accent', () => {
+    const { html } = prepareWith(digest);
 
     expect(html).not.toContain('<img');
     expect(html).toContain('font-size:20px;font-weight:700');
+    expect(html).toContain('>Grace</div>');
+  });
+
+  it('shows the Church logo with the name as alt text and the layout size bounds', () => {
+    const logo = 'https://cdn.test/grace.png';
+    const { html } = prepareWith({ ...digest, churchLogoUrl: logo });
+
+    expect(html).toContain(
+      `<img src="${logo}" alt="Grace" style="display:block;margin:0 auto 12px;border:0;max-height:56px;max-width:200px">`,
+    );
+    expect(html).not.toContain(platform.logoUrl);
+  });
+
+  it('draws the Church accent only as band tint, top rule and button border', () => {
+    const { html } = prepareWith({ ...digest, churchAccent: '#1d4ed8' });
+
+    expect(html).toContain('background:#e8edfb;border-top:6px solid #1d4ed8');
+    expect(html).toContain('border:2px solid #1d4ed8');
+    expect(html.match(/#1d4ed8/g)).toHaveLength(2);
+    expect(html).not.toMatch(/color:#1d4ed8/);
+  });
+
+  it('darkens a very light accent so the rule and button border still show', () => {
+    const { html } = prepareWith({ ...digest, churchAccent: '#fde68a' });
+    const rule = html.match(/border-top:6px solid (#[0-9a-f]{6})/)?.[1];
+
+    expect(rule).toBeDefined();
+    expect(rule).not.toBe('#fde68a');
+    expect(contrastOnWhite(rule ?? '')).toBeGreaterThanOrEqual(3);
+    expect(html).toContain(`border:2px solid ${rule}`);
+  });
+
+  it('carries the Church identity on every Church kind', () => {
+    const logo = 'https://cdn.test/grace.png';
+    const church = { churchLogoUrl: logo, churchAccent: '#1d4ed8' };
+    const payloads: EmailPayload[] = [
+      { ...digest, ...church },
+      { ...digest, kind: 'transfer.leaderless-ministry', ...church },
+      {
+        kind: 'invitation.verification-code',
+        to: 'a@example.com',
+        churchName: 'Grace',
+        code: '042137',
+        codeLifetime: { minutes: 10 },
+        ...church,
+      },
+      { ...memberInvitation, churchName: 'Grace', ...church },
+    ];
+    for (const payload of payloads) {
+      const { html, text } = prepareWith(payload);
+      expect(html).toContain(`alt="Grace"`);
+      expect(html).toContain('border-top:6px solid #1d4ed8');
+      expect(text?.startsWith('Grace\n\n')).toBe(true);
+    }
   });
 
   it('links the credit when the platform site is set and prints it plain when not', () => {
@@ -1008,7 +1063,7 @@ describe('prepareEmail — platform layout (Faixa)', () => {
   it('puts the sender name first, then content, action, footer and credit in the plain text', () => {
     const text = prepareWith(digest).text ?? '';
     const order = [
-      'Igreja App',
+      digest.churchName,
       `${m.email_transfer_digest_action({}, ptBR)}: ${digest.actionUrl}`,
       '--\n',
       m.email_layout_credit({ appName: 'Igreja App' }, ptBR),
@@ -1023,6 +1078,7 @@ describe('prepareEmail — platform layout (Faixa)', () => {
     const { html, text } = prepareWith(reset);
 
     expect(html).toContain(`alt="Igreja App"`);
+    expect(html).toContain('border:2px solid #18181b');
     expect(html).not.toContain('platform.test');
     expect(html).not.toContain(
       m.email_layout_credit({ appName: 'Igreja App' }, ptBR),

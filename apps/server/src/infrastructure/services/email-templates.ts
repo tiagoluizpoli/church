@@ -65,7 +65,7 @@ export function prepareEmail({
   appName,
   platform = {},
 }: PrepareEmailFromInput): PreparedEmail {
-  const identity: EmailIdentity = {
+  const platformIdentity: EmailIdentity = {
     displayName: appName,
     logoUrl: platform.logoUrl,
     accent: PLATFORM_ACCENT,
@@ -77,7 +77,10 @@ export function prepareEmail({
   ) =>
     prepareLayoutEmail({
       ...input,
-      identity,
+      identity:
+        input.payload.kind === 'auth.password-reset'
+          ? platformIdentity
+          : churchIdentity(input.payload),
       credit: input.payload.kind === 'auth.password-reset' ? undefined : credit,
     });
   const sender = (displayName: string) =>
@@ -158,6 +161,17 @@ export function prepareEmail({
       throw new Error(`No email template for ${JSON.stringify(unhandled)}`);
     }
   }
+}
+
+/** The Church's own band; an unset accent is the app's default brand colour. */
+function churchIdentity(
+  payload: Exclude<EmailPayload, PasswordResetEmail>,
+): EmailIdentity {
+  return {
+    displayName: payload.churchName,
+    logoUrl: payload.churchLogoUrl,
+    accent: payload.churchAccent ?? PLATFORM_ACCENT,
+  };
 }
 
 interface PrepareLayoutEmailInput {

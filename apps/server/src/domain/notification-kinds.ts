@@ -425,6 +425,10 @@ export interface WithdrawnAssignmentEmailLine {
  */
 export interface TransferDigestDeliveryFacts {
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   churchTimezone: string;
   recipientFirstName: string;
   ministryName: string;

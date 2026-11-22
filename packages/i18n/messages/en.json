@@ -2198,6 +2198,7 @@
   "church_settings_group_placeholder": "E.g. Pastor Helena",
   "church_settings_group_hint": "Optional. Empty shows under “From the church”.",
   "church_settings_preview_group_church": "From the church",
+  "church_settings_preview_group_private_only": "No public contact in this group.",
   "church_settings_preview_group_rename": "Rename {name}",
   "church_settings_preview_group_move_up": "Move {name} up",
   "church_settings_preview_group_move_down": "Move {name} down",

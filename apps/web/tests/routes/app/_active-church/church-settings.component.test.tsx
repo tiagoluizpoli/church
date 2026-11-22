@@ -2470,4 +2470,49 @@ describe('Contact Groups', () => {
       ),
     );
   });
+
+  it('keeps a group of only private contacts renamable and in the move order, marked as not public', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...GROUPED,
+      contacts: [
+        LOUVOR_EMAIL,
+        PUBLIC_PHONE,
+        {
+          ...LOUVOR_EMAIL,
+          value: 'diacono@igreja.org',
+          isPublic: false,
+          group: 'Diaconia',
+        },
+      ],
+      contactGroups: ['Pastora Helena', 'Diaconia', 'Louvor'],
+    });
+    renderSettings();
+    await nameField();
+
+    const [, , diaconia] = groupBlocks();
+    expect(diaconia).toHaveTextContent(
+      m.church_settings_preview_group_private_only(),
+    );
+    expect(diaconia).not.toHaveTextContent('diacono@igreja.org');
+    expect(
+      screen.getByRole('textbox', {
+        name: m.church_settings_preview_group_rename({ name: 'Diaconia' }),
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_preview_group_move_down({
+          name: 'Pastora Helena',
+        }),
+      }),
+    );
+
+    const [, first, second] = groupBlocks();
+    expect(first).toHaveTextContent(
+      m.church_settings_preview_group_private_only(),
+    );
+    expect(second).toHaveTextContent('Instagram');
+  });
 });

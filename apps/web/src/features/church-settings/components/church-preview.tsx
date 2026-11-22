@@ -205,12 +205,12 @@ function PreviewPublic({ form, onChange }: PreviewPublicProps) {
     ({ isPublic, value }) => isPublic && value.trim() !== '',
   );
   const links = form.socialLinks.filter(({ url }) => url.trim() !== '');
-  const blocks = [null, ...order].filter(
-    (name) =>
-      membersOf({ rows: contacts, name }).length +
-        membersOf({ rows: links, name }).length >
-      0,
-  );
+  const publicRows = (name: string | null) =>
+    membersOf({ rows: contacts, name }).length +
+    membersOf({ rows: links, name }).length;
+  // Every named group gets its block, so one of only private contacts can
+  // still be renamed and moved, and a move never swaps with a hidden group.
+  const blocks = [...(publicRows(null) > 0 ? [null] : []), ...order];
   if (blocks.length === 0) return null;
   return (
     <div data-testid="church-preview-public-contacts" className="border-t">
@@ -236,6 +236,11 @@ function PreviewPublic({ form, onChange }: PreviewPublicProps) {
               onChange={onChange}
             />
           )}
+          {publicRows(name) === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              {m.church_settings_preview_group_private_only()}
+            </p>
+          ) : null}
           <ul className="space-y-0.5 text-sm">
             {membersOf({ rows: contacts, name }).map((contact) => (
               <li key={contact.key} className="truncate">
@@ -283,7 +288,7 @@ function PreviewLink({ link }: PreviewLinkProps) {
 interface GroupHeadingProps {
   form: ChurchSettingsForm;
   name: string;
-  /** Among the named groups, not counting those with no public row. */
+  /** Among every named group. */
   position: number;
   count: number;
   onChange: ChurchPreviewProps['onChange'];

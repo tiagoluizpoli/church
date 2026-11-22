@@ -22,6 +22,7 @@ pre-push:
   jobs:
     - name: no-docker-validation
       # Waits at most 5 minutes behind a running gate, then fails naming the holder.
+      # Exits at once when this commit's tree already passed a local gate.
       env:
         CHURCH_VALIDATE_LOCK_TIMEOUT_MS: "300000"
       run: bun run validate:no-docker

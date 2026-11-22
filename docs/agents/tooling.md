@@ -47,6 +47,15 @@ Local validation has three tiers, all planned by the same
 - `validate:affected`: once per ticket, before reporting it done (see below).
 - `validate`: final handoff or merge.
 
+A whole local run that passes records its tier against the committed tree
+(`~/.local/state/church/gate-passes/`). `validate:no-docker` and
+`validate:affected` then exit 0 at once on that tree when it already passed
+an equal or stronger tier (`no-docker` < `affected` < `validate`), and say
+which run they reuse, so `git push` after a green `validate:affected` skips
+the hook's validation. Any uncommitted or untracked file, an amend or a new
+commit validates again. Runs with `--base`, `--e2e`, `--only-e2e`,
+`--skip-e2e`, `--daily-gate` or under CI neither reuse nor record a pass.
+
 `validate:affected` runs lint, its guards and typecheck first and stops on a
 failure; then unit tests run concurrently with integration tests, then E2E
 only if both lanes pass. `validate` runs lint → typecheck → unit tests

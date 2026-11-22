@@ -14,6 +14,12 @@ import {
 } from './affected-plan';
 import { readE2eImportGraph } from './e2e-import-graph';
 import {
+  findReusablePass,
+  formatReusedPass,
+  readCleanTree,
+  recordPass,
+} from './gate-pass';
+import {
   hasFailure,
   type LaneStep,
   type OutputSink,
@@ -870,7 +876,22 @@ export function formatTimingSummary({
 
 if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
-  if (argumentsResult.tier === 'no-docker') {
+  const { tier } = argumentsResult;
+  // Only a whole local run of the tier may reuse or record a pass; a narrowed or CI run stands for nothing.
+  const isWholeLocalRun =
+    !process.env.CI &&
+    !argumentsResult.dryRun &&
+    !argumentsResult.onlyE2e &&
+    !argumentsResult.skipE2e &&
+    !argumentsResult.dailyGate &&
+    !argumentsResult.baseRef &&
+    argumentsResult.e2eSpecPaths.length === 0;
+  const reusablePass = isWholeLocalRun ? findReusablePass({ tier }) : null;
+  if (reusablePass) {
+    console.log(formatReusedPass({ pass: reusablePass }));
+    process.exit(0);
+  }
+  if (tier === 'no-docker') {
     console.log(
       'validate:no-docker skips integration tests and browser journeys; CI runs them.',
     );
@@ -919,7 +940,8 @@ if (import.meta.main) {
     console.error('');
     console.error(explainPlan({ baseRef, plan }));
   } else {
-    const lock = await holdValidateLock({ tier: argumentsResult.tier });
+    const tree = isWholeLocalRun ? readCleanTree({}) : null;
+    const lock = await holdValidateLock({ tier });
     let failed: boolean;
     let timings: Awaited<ReturnType<typeof runValidation>>['timings'];
     try {
@@ -927,7 +949,7 @@ if (import.meta.main) {
         onlyE2e: argumentsResult.onlyE2e,
         plan,
         skipE2e: argumentsResult.skipE2e,
-        tier: argumentsResult.tier,
+        tier,
         wholeUnitSuites: argumentsResult.dailyGate,
       }));
     } finally {
@@ -937,7 +959,7 @@ if (import.meta.main) {
     const explanation = explainPlan({
       baseRef,
       plan,
-      tier: argumentsResult.tier,
+      tier,
       wholeUnitSuites: argumentsResult.dailyGate,
     });
     console.log('');
@@ -952,5 +974,6 @@ if (import.meta.main) {
       );
     }
     if (failed) process.exitCode = 1;
+    else if (tree) recordPass({ tier, tree });
   }
 }

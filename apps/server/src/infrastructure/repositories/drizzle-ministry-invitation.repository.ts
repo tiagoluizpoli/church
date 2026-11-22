@@ -21,12 +21,13 @@ import {
   toDate,
 } from '@church/time';
 import { and, asc, desc, eq, gt, ne, or, sql } from 'drizzle-orm';
-import type {
-  ChurchId,
-  MinistryId,
-  MinistryInvitationId,
-  RoleId,
-  UserId,
+import {
+  type ChurchId,
+  ChurchInvitationId,
+  type MinistryId,
+  type MinistryInvitationId,
+  type RoleId,
+  type UserId,
 } from '../../domain/branded-ids';
 import type {
   AcquireChurchOfferLockInput,
@@ -36,6 +37,7 @@ import type {
   ApplyResendInput,
   CancelChurchInvitationInput,
   CancelMinistryInvitationInput,
+  ChurchInvitationAccessLevel,
   ChurchInvitationContext,
   ChurchInvitationStatus,
   ChurchInvitationSummary,
@@ -92,6 +94,17 @@ const PENDING_HALF_CONSTRAINTS = [
   'ministry_invitation_ministry_invitee_pending_idx',
   'ministry_invitation_ministry_church_invitation_pending_idx',
 ];
+
+interface ChurchAccessLevelOfInput {
+  role: string | null;
+}
+
+/** The Church Access Level a stored Church Invitation role grants. */
+function churchAccessLevelOf({
+  role,
+}: ChurchAccessLevelOfInput): ChurchInvitationAccessLevel {
+  return role === 'admin' ? 'admin' : 'member';
+}
 
 interface HydrateMinistryInvitationInput {
   row: typeof ministryInvitation.$inferSelect;
@@ -428,7 +441,7 @@ export class DrizzleMinistryInvitationRepository
       churchInvitationId,
       email: found.email,
       churchName: found.churchName,
-      churchAccessLevel: found.role === 'admin' ? 'admin' : 'member',
+      churchAccessLevel: churchAccessLevelOf({ role: found.role }),
       expiresAt: found.expiresAt,
       ministries: await this.findPendingPairedMinistries({
         churchInvitationId,
@@ -572,6 +585,9 @@ export class DrizzleMinistryInvitationRepository
       'churchInvitation' in input
         ? input.churchInvitation
         : input.ministryInvitation;
+    // A Church Invitation entry always has its id, so only a standalone half lands here.
+    const standaloneMinistryInvitationId =
+      'ministryInvitation' in input ? input.ministryInvitation.id : '';
     const [parent] = churchInvitationId
       ? await db
           .select({
@@ -589,17 +605,13 @@ export class DrizzleMinistryInvitationRepository
       : [];
     const churchHalf = parent?.status === 'pending' ? parent : null;
     const churchAccessLevel = churchHalf
-      ? churchHalf.role === 'admin'
-        ? 'admin'
-        : 'member'
+      ? churchAccessLevelOf({ role: churchHalf.role })
       : null;
     // A chained offer is every pending half of its Church Invitation; a
     // standalone Ministry offer stays alone.
     const offerScope = churchInvitationId
       ? eq(ministryInvitation.churchInvitationId, churchInvitationId)
-      : 'ministryInvitation' in input
-        ? eq(ministryInvitation.id, input.ministryInvitation.id)
-        : sql`false`;
+      : eq(ministryInvitation.id, standaloneMinistryInvitationId);
     const rows = await db
       .select({
         ministryInvitationId: ministryInvitation.id,
@@ -684,7 +696,7 @@ export class DrizzleMinistryInvitationRepository
       churchName: row.churchName,
       email: row.email,
       status: row.status as ChurchInvitationStatus,
-      churchAccessLevel: row.role === 'admin' ? 'admin' : 'member',
+      churchAccessLevel: churchAccessLevelOf({ role: row.role }),
       expiresAt: row.expiresAt,
     };
   }
@@ -696,7 +708,9 @@ export class DrizzleMinistryInvitationRepository
   }: IsInvitationAddressedToUserInput): Promise<boolean> {
     if (invitation.inviteeUserId) return invitation.inviteeUserId === userId;
     return this.isChurchInvitationAddressedToUser({
-      churchInvitationId: invitation.churchInvitationId as string,
+      churchInvitationId: ChurchInvitationId.from(
+        invitation.churchInvitationId as string,
+      ),
       userId,
       tx,
     });
@@ -764,7 +778,7 @@ export class DrizzleMinistryInvitationRepository
     return {
       id: row.id,
       expiresAt: row.expiresAt,
-      churchAccessLevel: row.role === 'admin' ? 'admin' : 'member',
+      churchAccessLevel: churchAccessLevelOf({ role: row.role }),
     };
   }
 
@@ -858,7 +872,7 @@ export class DrizzleMinistryInvitationRepository
       .orderBy(asc(ministryInvitation.createdAt), asc(ministryInvitation.id));
     return {
       email: offer.email,
-      churchAccessLevel: offer.role === 'admin' ? 'admin' : 'member',
+      churchAccessLevel: churchAccessLevelOf({ role: offer.role }),
       expiresAt: offer.expiresAt,
       pendingMinistryInvitationIds: halves.map((half) => half.id),
     };

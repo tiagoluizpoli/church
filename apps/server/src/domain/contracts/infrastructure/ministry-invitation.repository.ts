@@ -254,6 +254,12 @@ export interface MinistryInvitationContext {
   roleNames: string[];
 }
 
+/** The Church Invitation entry point of a redemption bundle lookup. */
+export interface ChurchInvitationBundleEntry {
+  churchId: ChurchId;
+  churchInvitationId: string;
+}
+
 export type FindRedemptionBundleInput = (
   | {
       /** Any half of the offer: a chained one resolves its whole Church offer. */
@@ -261,7 +267,7 @@ export type FindRedemptionBundleInput = (
     }
   | {
       /** The Church Invitation entry point: the Church half plus every pending, unexpired half. */
-      churchInvitation: { churchId: ChurchId; churchInvitationId: string };
+      churchInvitation: ChurchInvitationBundleEntry;
     }
 ) & {
   now: Date;
@@ -269,7 +275,7 @@ export type FindRedemptionBundleInput = (
 };
 
 export interface FindChurchInvitationContextInput {
-  churchInvitationId: string;
+  churchInvitationId: ChurchInvitationId;
   tx?: TransactionContext;
 }
 
@@ -284,7 +290,7 @@ export interface ChurchInvitationContext {
 }
 
 export interface IsChurchInvitationAddressedToUserInput {
-  churchInvitationId: string;
+  churchInvitationId: ChurchInvitationId;
   userId: UserId;
   tx?: TransactionContext;
 }

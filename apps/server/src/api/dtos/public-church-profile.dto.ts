@@ -15,6 +15,30 @@ export const publicChurchProfileResponseSchema = z.strictObject({
   name: z.string(),
   logoUrl: z.string().nullable(),
   accentColor: z.string().nullable(),
+  contactGroups: z.array(
+    z.strictObject({
+      name: z.string().nullable(),
+      contacts: z.array(
+        z.strictObject({
+          kind: z.enum(['email', 'phone']),
+          phoneType: z.enum(['mobile', 'landline']).nullable(),
+          value: z.string(),
+          description: z.string().nullable(),
+          isWhatsApp: z.boolean(),
+        }),
+      ),
+      socialLinks: z.array(
+        z.strictObject({
+          url: z.string(),
+          network: z.string(),
+          description: z.string().nullable(),
+        }),
+      ),
+    }),
+  ),
+  legalProfile: z
+    .strictObject({ legalName: z.string(), cnpj: z.string() })
+    .nullable(),
   programme: z.array(
     z.strictObject({
       recurrence: recurrenceSchema,

@@ -14767,6 +14767,8 @@ paths:
                                 churchAccent:
                                   nullable: true
                                   type: string
+                                churchLocality:
+                                  type: string
                               required:
                                 - ministryInvitationId
                                 - ministryId
@@ -19114,6 +19116,78 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  contactGroups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          nullable: true
+                          type: string
+                        contacts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - email
+                                  - phone
+                              phoneType:
+                                nullable: true
+                                type: string
+                                enum:
+                                  - mobile
+                                  - landline
+                              value:
+                                type: string
+                              description:
+                                nullable: true
+                                type: string
+                              isWhatsApp:
+                                type: boolean
+                            required:
+                              - kind
+                              - phoneType
+                              - value
+                              - description
+                              - isWhatsApp
+                            additionalProperties: false
+                        socialLinks:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              url:
+                                type: string
+                              network:
+                                type: string
+                              description:
+                                nullable: true
+                                type: string
+                            required:
+                              - url
+                              - network
+                              - description
+                            additionalProperties: false
+                      required:
+                        - name
+                        - contacts
+                        - socialLinks
+                      additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                    required:
+                      - legalName
+                      - cnpj
+                    additionalProperties: false
                   programme:
                     type: array
                     items:
@@ -19290,6 +19364,8 @@ paths:
                   - name
                   - logoUrl
                   - accentColor
+                  - contactGroups
+                  - legalProfile
                   - programme
                 additionalProperties: false
         "404":
@@ -19690,6 +19766,8 @@ paths:
                                   type: string
                                 churchAccent:
                                   nullable: true
+                                  type: string
+                                churchLocality:
                                   type: string
                               required:
                                 - ministryInvitationId

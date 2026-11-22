@@ -1,11 +1,14 @@
 import type { ChurchId, UserId } from '../../branded-ids';
 import type { ChurchAddressUsage } from '../../church-address';
+import type { ChurchContact } from '../../church-contact';
+import type { ChurchLegalProfile } from '../../church-legal-profile';
 import type {
   ChurchSettings,
   ChurchSettingsChanges,
   ChurchSlugAvailability,
 } from '../../church-settings';
 import type { Church, ChurchSlug } from '../../entities/church';
+import type { ChurchSocialLink } from '../../social-link';
 import type { TransactionContext } from './transaction-context';
 
 export interface ChurchRepository {
@@ -54,6 +57,24 @@ export interface ChurchRepository {
   findPublicIdentityBySlug(
     input: FindPublicIdentityBySlugInput,
   ): Promise<PublicChurchIdentity | null>;
+  /** The public contact facts of the Church; privacy is enforced in the queries. */
+  getPublicContactDetails(
+    input: GetPublicContactDetailsInput,
+  ): Promise<PublicContactDetails>;
+}
+
+export interface GetPublicContactDetailsInput {
+  churchId: ChurchId;
+}
+
+export interface PublicContactDetails {
+  /** Public Church Contacts only, in the admin's order. */
+  contacts: ChurchContact[];
+  socialLinks: ChurchSocialLink[];
+  /** Contact Group names in the admin's order. */
+  groupNames: string[];
+  /** Only when the Church made it public. */
+  legalProfile: ChurchLegalProfile | null;
 }
 
 export interface FindPublicIdentityBySlugInput {

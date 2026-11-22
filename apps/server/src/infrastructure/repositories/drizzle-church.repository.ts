@@ -2,6 +2,7 @@ import { NotFoundError } from '@church/core';
 import {
   church,
   churchAddress,
+  churchContact,
   churchLegalProfile,
   churchSlugHistory,
   churchSocialLink,
@@ -186,11 +187,24 @@ export class DrizzleChurchRepository implements ChurchRepository {
           .where(eq(church.id, id))
       : [];
     if (!row) throw new NotFoundError(`Church not found: ${id}`);
+    const contacts = await getClient({ db: this.db, tx })
+      .select({
+        kind: churchContact.kind,
+        phoneType: churchContact.phoneType,
+        value: churchContact.value,
+        description: churchContact.description,
+        isWhatsApp: churchContact.isWhatsApp,
+        isPublic: churchContact.isPublic,
+      })
+      .from(churchContact)
+      .where(eq(churchContact.churchId, id))
+      .orderBy(asc(churchContact.position), asc(churchContact.id));
     return {
       ...row,
       addresses: await this.listAddresses({ id, tx }),
       socialLinks: await this.listSocialLinks({ id, tx }),
       legalProfile: await this.findLegalProfile({ id, tx }),
+      contacts,
     };
   }
 
@@ -293,7 +307,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     tx,
   }: SaveChurchSettingsInput): Promise<void> {
     const client = getClient({ db: this.db, tx });
-    const { slug, ...fields } = changes;
+    const { slug, contacts, ...fields } = changes;
     await client
       .update(organization)
       .set({ name: fields.name })
@@ -345,6 +359,18 @@ export class DrizzleChurchRepository implements ChurchRepository {
           );
       } else {
         await client.insert(churchAddress).values({ ...values, churchId: id });
+      }
+    }
+    if (contacts !== undefined) {
+      await client.delete(churchContact).where(eq(churchContact.churchId, id));
+      if (contacts.length > 0) {
+        await client.insert(churchContact).values(
+          contacts.map((contact, position) => ({
+            ...contact,
+            churchId: id,
+            position,
+          })),
+        );
       }
     }
   }

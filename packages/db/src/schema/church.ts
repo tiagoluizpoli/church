@@ -126,6 +126,32 @@ export const churchSocialLink = pgTable(
   ],
 );
 
+// Church Contacts: how people reach the Church. Private unless `isPublic`.
+// `value` is E.164 for a phone, lower-case for an email; `position` is the
+// admin's order. Saved whole with the Church Settings, so rows are replaced.
+export const churchContact = pgTable(
+  'church_contact',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['email', 'phone'] }).notNull(),
+    phoneType: text('phone_type', { enum: ['mobile', 'landline'] }),
+    value: text('value').notNull(),
+    description: text('description'),
+    isWhatsApp: boolean('is_whatsapp').default(false).notNull(),
+    isPublic: boolean('is_public').default(false).notNull(),
+    position: integer('position').notNull(),
+  },
+  (table) => [
+    index('church_contact_church_id_position_idx').on(
+      table.churchId,
+      table.position,
+    ),
+  ],
+);
+
 // The Church's legal identity, 1:1 with the Church. Fiscal data are added later
 // as typed columns. `(document_type, document_number)` is unique across Churches.
 export const churchLegalProfile = pgTable(

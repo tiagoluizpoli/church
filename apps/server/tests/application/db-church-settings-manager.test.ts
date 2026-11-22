@@ -13,6 +13,7 @@ const SETTINGS = {
   website: null,
   accentColor: null,
   logoKey: null,
+  contacts: [],
   addresses: [],
   socialLinks: [],
   legalProfile: null,

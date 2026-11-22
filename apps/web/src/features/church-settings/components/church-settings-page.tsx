@@ -60,6 +60,7 @@ import {
 import { AccentPicker } from '@/features/church-settings/components/accent-picker';
 import { AddressSection } from '@/features/church-settings/components/address-section';
 import { ChurchPreview } from '@/features/church-settings/components/church-preview';
+import { ContactsSection } from '@/features/church-settings/components/contacts-section';
 import { LegalSection } from '@/features/church-settings/components/legal-section';
 import { LogoCard } from '@/features/church-settings/components/logo-card';
 import { SocialSection } from '@/features/church-settings/components/social-section';
@@ -67,12 +68,13 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import type { GetChurchSettings200 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
 
-const SECTIONS = ['info', 'address', 'social', 'legal'] as const;
+const SECTIONS = ['info', 'contacts', 'address', 'social', 'legal'] as const;
 type SectionKey = (typeof SECTIONS)[number];
 type SectionOpenState = Record<SectionKey, boolean>;
 type FieldErrors = Record<string, string>;
 
 const INFO_FIELDS = ['name', 'slug', 'website', 'accentColor'];
+const CONTACTS_PREFIX = 'contacts.';
 
 const SLUG_REFUSAL_MESSAGES: Record<ChurchSlugRefusal, () => string> = {
   LENGTH: m.error_church_settings_slug_length,
@@ -105,7 +107,13 @@ interface AllSectionsInput {
 }
 
 function allSections({ open }: AllSectionsInput): SectionOpenState {
-  return { info: open, address: open, social: open, legal: open };
+  return {
+    info: open,
+    contacts: open,
+    address: open,
+    social: open,
+    legal: open,
+  };
 }
 
 interface SectionCardProps {
@@ -218,6 +226,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     accentColor,
     addresses,
     socialLinks,
+    contacts,
     legalProfile,
   } = saved;
   const savedForm = React.useMemo(
@@ -230,10 +239,20 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
           accentColor,
           addresses,
           socialLinks,
+          contacts,
           legalProfile,
         },
       }),
-    [name, slug, website, accentColor, addresses, socialLinks, legalProfile],
+    [
+      name,
+      slug,
+      website,
+      accentColor,
+      addresses,
+      socialLinks,
+      contacts,
+      legalProfile,
+    ],
   );
   const [form, setForm] = React.useState<ChurchSettingsForm>(savedForm);
   const [errors, setErrors] = React.useState<FieldErrors>({});
@@ -260,6 +279,9 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   const addressErrors = Object.keys(errors).filter((field) =>
     field.startsWith('addresses'),
   ).length;
+  const contactErrors = Object.keys(errors).filter((field) =>
+    field.startsWith(CONTACTS_PREFIX),
+  ).length;
   const socialErrors = Object.keys(errors).filter((field) =>
     field.startsWith('socialLinks'),
   ).length;
@@ -281,15 +303,25 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     ? form.legalProfile.legalName.trim() || m.church_settings_legal_cnpj_label()
     : m.church_settings_legal_summary_none();
   const legalPublic = legalFilled && form.legalProfile.isPublic;
-  const privateCount =
-    form.addresses.filter((address) => !address.isPublic).length +
-    (legalFilled && !legalPublic ? 1 : 0);
+  const privateAddresses = form.addresses.filter(
+    (address) => !address.isPublic,
+  ).length;
+  const publicContacts = form.contacts.filter(
+    ({ isPublic }) => isPublic,
+  ).length;
   const publicCount =
     [form.name, form.website, form.accentColor, saved.logoUrl].filter(Boolean)
       .length +
-    form.addresses.filter((address) => address.isPublic).length +
+    form.addresses.length -
+    privateAddresses +
+    publicContacts +
     form.socialLinks.length +
     (legalPublic ? 1 : 0);
+  const privateCount =
+    privateAddresses +
+    form.contacts.length -
+    publicContacts +
+    (legalFilled && !legalPublic ? 1 : 0);
   const mainAddress = form.addresses.find((address) => address.isMain);
   const addressSummary =
     form.addresses.length === 0
@@ -312,6 +344,18 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             !Object.keys(changes).some(
               (key) => field === key || field.startsWith(`${key}.`),
             ),
+        ),
+      ),
+    );
+  };
+
+  /** Rows move and vanish, so every row error is dropped rather than left on the wrong row. */
+  const setContacts = (nextContacts: ChurchSettingsForm['contacts']) => {
+    setForm((current) => ({ ...current, contacts: nextContacts }));
+    setErrors((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([field]) => !field.startsWith(CONTACTS_PREFIX),
         ),
       ),
     );
@@ -352,6 +396,11 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
         setOpen((current) => ({
           ...current,
           info: current.info || INFO_FIELDS.some((field) => field in refused),
+          contacts:
+            current.contacts ||
+            Object.keys(refused).some((field) =>
+              field.startsWith(CONTACTS_PREFIX),
+            ),
           address:
             current.address ||
             Object.keys(refused).some((field) => field.startsWith('addresses')),
@@ -521,6 +570,22 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                   />
                 </div>
               </div>
+            </SectionCard>
+            <SectionCard
+              id="contacts"
+              title={m.church_settings_section_contacts()}
+              summary={m.church_settings_contacts_summary({
+                count: form.contacts.length,
+              })}
+              errors={contactErrors}
+              open={open.contacts}
+              onToggle={() => toggle('contacts')}
+            >
+              <ContactsSection
+                contacts={form.contacts}
+                errors={errors}
+                onChange={setContacts}
+              />
             </SectionCard>
             <SectionCard
               id="address"

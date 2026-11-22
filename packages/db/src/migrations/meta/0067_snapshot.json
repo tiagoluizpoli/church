@@ -1,5 +1,5 @@
 {
-  "id": "55dd2850-0e81-406d-8b5a-f6f99f07c6ec",
+  "id": "311fbbba-5582-4b4f-ae36-7604f9893ab6",
   "prevId": "4aea0bb2-4ee3-43d2-8a0c-ed54cb076c2c",
   "version": "7",
   "dialect": "postgresql",
@@ -1431,34 +1431,53 @@
       },
       "isRLSEnabled": false
     },
-    "public.church_legal_profile": {
-      "name": "church_legal_profile",
+    "public.church_contact": {
+      "name": "church_contact",
       "schema": "",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
         "church_id": {
           "name": "church_id",
           "type": "uuid",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
         },
-        "legal_name": {
-          "name": "legal_name",
+        "kind": {
+          "name": "kind",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "document_type": {
-          "name": "document_type",
+        "phone_type": {
+          "name": "phone_type",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_whatsapp": {
+          "name": "is_whatsapp",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": "'CNPJ'"
-        },
-        "document_number": {
-          "name": "document_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
+          "default": false
         },
         "is_public": {
           "name": "is_public",
@@ -1466,35 +1485,41 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
-        "church_legal_profile_document_idx": {
-          "name": "church_legal_profile_document_idx",
+        "church_contact_church_id_position_idx": {
+          "name": "church_contact_church_id_position_idx",
           "columns": [
             {
-              "expression": "document_type",
+              "expression": "church_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "document_number",
+              "expression": "position",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": true,
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "church_legal_profile_church_id_church_id_fk": {
-          "name": "church_legal_profile_church_id_church_id_fk",
-          "tableFrom": "church_legal_profile",
+        "church_contact_church_id_church_id_fk": {
+          "name": "church_contact_church_id_church_id_fk",
+          "tableFrom": "church_contact",
           "tableTo": "church",
           "columnsFrom": [
             "church_id"
@@ -1509,12 +1534,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "church_legal_profile_cnpj_check": {
-          "name": "church_legal_profile_cnpj_check",
-          "value": "\"church_legal_profile\".\"document_type\" = 'CNPJ' AND \"church_legal_profile\".\"document_number\" ~ '^[0-9]{14}$'"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.church_slug_history": {

@@ -7,6 +7,7 @@ import {
   availabilityAsk,
   availabilityCheck,
   churchAddress,
+  churchContact,
   churchLegalProfile,
   churchSlugHistory,
   churchSocialLink,
@@ -193,6 +194,12 @@ async function seedEveryTenantedTable(): Promise<void> {
     city: 'Campinas',
     uf: 'SP',
     isMain: true,
+    position: 0,
+  });
+  await testDb.insert(churchContact).values({
+    churchId: IDS.church,
+    kind: 'email',
+    value: 'contato@test.com',
     position: 0,
   });
 

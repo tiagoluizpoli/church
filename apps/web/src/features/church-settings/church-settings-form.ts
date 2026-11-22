@@ -11,6 +11,55 @@ export type AddressDraft = Required<Omit<AddressBody, 'country' | 'id'>> & {
   id: string | null;
 };
 
+export type ContactType = 'mobile' | 'landline' | 'email';
+
+/** One Church Contact row as edited; `key` only identifies the row in the list. */
+export interface ContactForm {
+  key: string;
+  type: ContactType;
+  value: string;
+  description: string;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+}
+
+type SavedContact = GetChurchSettings200['contacts'][number];
+
+interface ToContactFormInput {
+  contact: SavedContact;
+  index: number;
+}
+
+function toContactForm({ contact, index }: ToContactFormInput): ContactForm {
+  const { kind, phoneType, value, description, isWhatsApp, isPublic } = contact;
+  return {
+    key: `saved-${index}`,
+    type: kind === 'email' ? 'email' : (phoneType ?? 'mobile'),
+    value,
+    description: description ?? '',
+    isWhatsApp,
+    isPublic,
+  };
+}
+
+interface ToContactBodyInput {
+  contact: ContactForm;
+}
+
+/** The request row of an edited contact. */
+export function toContactBody({ contact }: ToContactBodyInput) {
+  const { type, value, description, isWhatsApp, isPublic } = contact;
+  const isEmail = type === 'email';
+  return {
+    kind: isEmail ? ('email' as const) : ('phone' as const),
+    phoneType: isEmail ? null : type,
+    value,
+    description: description || null,
+    isWhatsApp: !isEmail && isWhatsApp,
+    isPublic,
+  };
+}
+
 /** One Social Link being edited; the network is never stored, it is detected from the URL. */
 export interface SocialLinkDraft {
   key: string;
@@ -35,6 +84,8 @@ export interface ChurchSettingsForm {
   website: string;
   /** `null` means "Padrão do app". */
   accentColor: string | null;
+  /** In display order. */
+  contacts: ContactForm[];
   /** In display order; the server owns the rules on which is main. */
   addresses: AddressDraft[];
   /** In display order; always public. */
@@ -50,6 +101,7 @@ interface ToChurchSettingsFormInput {
     | 'website'
     | 'accentColor'
     | 'addresses'
+    | 'contacts'
     | 'socialLinks'
     | 'legalProfile'
   >;
@@ -69,6 +121,9 @@ export function toChurchSettingsForm({
         id,
         key: id,
       }),
+    ),
+    contacts: settings.contacts.map((contact, index) =>
+      toContactForm({ contact, index }),
     ),
     socialLinks: settings.socialLinks.map(({ url, description }, index) => ({
       key: `saved-${index}`,
@@ -118,12 +173,13 @@ export function toSaveBody({
   form,
   slugChanged,
 }: ToSaveBodyInput): UpdateChurchSettingsBody {
-  const { slug, ...rest } = form;
+  const { slug, addresses, contacts, socialLinks, ...rest } = form;
   return {
     ...rest,
     ...(slugChanged ? { slug: slug.trim() } : {}),
-    addresses: form.addresses.map(({ key: _key, ...address }) => address),
-    socialLinks: form.socialLinks.map(({ key: _key, ...link }) => link),
+    addresses: addresses.map(({ key: _key, ...address }) => address),
+    contacts: contacts.map((contact) => toContactBody({ contact })),
+    socialLinks: socialLinks.map(({ key: _key, ...link }) => link),
   };
 }
 

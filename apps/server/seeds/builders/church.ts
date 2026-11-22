@@ -5,6 +5,7 @@ import {
   type ChurchRecord,
   church,
   churchAddress,
+  churchContact,
   churchLegalProfile,
   churchSocialLink,
   createChurch,
@@ -17,6 +18,7 @@ import { z } from 'zod';
 import { storeChurchLogo } from '../../src/application/church-logo-pipeline';
 import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../src/domain/authority/types';
 import { ChurchId } from '../../src/domain/branded-ids';
+import type { ChurchContact } from '../../src/domain/church-contact';
 import type { ObjectStorage } from '../../src/domain/contracts/infrastructure/object-storage';
 import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
 import { provisionChurch } from '../../src/scripts/provision-church';
@@ -161,6 +163,32 @@ export async function buildChurchSettings({
     .update(church)
     .set({ website, accentColor })
     .where(eq(church.id, churchId));
+}
+
+export interface BuildChurchContactsInput {
+  db: SeedWriter;
+  churchId: string;
+  contacts: ChurchContact[];
+}
+
+/** Direct-state builder: the Church Contacts of a Church, in the given order. */
+export async function buildChurchContacts({
+  db,
+  churchId,
+  contacts,
+}: BuildChurchContactsInput): Promise<void> {
+  if (contacts.length === 0) return;
+  await db.insert(churchContact).values(
+    contacts.map((contact, position) => ({
+      ...contact,
+      id: deriveSeedId({
+        kind: 'church-contact',
+        parentIds: [churchId, String(position)],
+      }),
+      churchId,
+      position,
+    })),
+  );
 }
 
 export interface BuildChurchAddressesInput {

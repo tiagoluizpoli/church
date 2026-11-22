@@ -1,6 +1,7 @@
 import { SOCIAL_NETWORKS } from '@church/app-config/social-networks';
 import { m } from '@church/i18n/messages';
 import { accentTextColor } from '@/features/church-settings/accent-text-color';
+import type { ContactForm } from '@/features/church-settings/church-settings-form';
 import {
   type ChurchSettingsForm,
   formatCnpj,
@@ -63,6 +64,16 @@ export function ChurchPreview({ form, logoUrl, titleId }: ChurchPreviewProps) {
           ) : null}
         </div>
       </div>
+      <PreviewContacts
+        title={m.church_settings_preview_public_contacts()}
+        contacts={form.contacts.filter(({ isPublic }) => isPublic)}
+        testId="church-preview-public-contacts"
+      />
+      <PreviewContacts
+        title={m.church_settings_preview_admin_contacts()}
+        contacts={form.contacts.filter(({ isPublic }) => !isPublic)}
+        testId="church-preview-admin-contacts"
+      />
       {form.socialLinks.length > 0 ? (
         <div className="space-y-1.5 border-t p-4">
           <p className="font-medium text-muted-foreground text-xs">
@@ -140,5 +151,32 @@ function LogoTile({ logoUrl, dark }: LogoTileProps) {
         {label}
       </figcaption>
     </figure>
+  );
+}
+
+interface PreviewContactsProps {
+  title: string;
+  contacts: ContactForm[];
+  testId: string;
+}
+
+/** One list of contacts in the preview; nothing renders while it is empty. */
+function PreviewContacts({ title, contacts, testId }: PreviewContactsProps) {
+  const filled = contacts.filter(({ value }) => value.trim() !== '');
+  if (filled.length === 0) return null;
+  return (
+    <div data-testid={testId} className="space-y-1 border-t p-4">
+      <p className="font-medium text-muted-foreground text-xs">{title}</p>
+      <ul className="space-y-0.5 text-sm">
+        {filled.map(({ key, value, description }) => (
+          <li key={key} className="truncate">
+            {value}
+            {description ? (
+              <span className="text-muted-foreground"> · {description}</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -18,6 +18,7 @@ import type {
 } from '../blueprints/directory/types';
 import {
   buildChurchAddresses,
+  buildChurchContacts,
   buildChurchLegalProfile,
   buildChurchLogo,
   buildChurchSettings,
@@ -249,6 +250,11 @@ async function loadChurchDirectory({
     churchId: church.id,
     website: blueprint.church.website ?? null,
     accentColor: blueprint.church.accentColor ?? null,
+  });
+  await buildChurchContacts({
+    db,
+    churchId: church.id,
+    contacts: blueprint.church.contacts ?? [],
   });
   await buildChurchAddresses({
     db,

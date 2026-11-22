@@ -2586,6 +2586,36 @@ export type GetChurchSettings200LegalProfile = {
   isPublic: boolean;
 } | null;
 
+export type GetChurchSettings200ContactsItemKind = typeof GetChurchSettings200ContactsItemKind[keyof typeof GetChurchSettings200ContactsItemKind];
+
+
+export const GetChurchSettings200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetChurchSettings200ContactsItemPhoneType = typeof GetChurchSettings200ContactsItemPhoneType[keyof typeof GetChurchSettings200ContactsItemPhoneType] | null;
+
+
+export const GetChurchSettings200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type GetChurchSettings200ContactsItem = {
+  kind: GetChurchSettings200ContactsItemKind;
+  /** @nullable */
+  phoneType: GetChurchSettings200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+};
+
 export type GetChurchSettings200 = {
   name: string;
   slug: string;
@@ -2601,6 +2631,7 @@ export type GetChurchSettings200 = {
   logoKey: string | null;
   /** @nullable */
   logoUrl: string | null;
+  contacts: GetChurchSettings200ContactsItem[];
   publicOrigin: string;
 };
 
@@ -2617,6 +2648,36 @@ export type GetChurchSettings403 = {
 export type GetChurchSettings409 = {
   error: string;
   message: string;
+};
+
+export type UpdateChurchSettingsBodyContactsItemKind = typeof UpdateChurchSettingsBodyContactsItemKind[keyof typeof UpdateChurchSettingsBodyContactsItemKind];
+
+
+export const UpdateChurchSettingsBodyContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettingsBodyContactsItemPhoneType = typeof UpdateChurchSettingsBodyContactsItemPhoneType[keyof typeof UpdateChurchSettingsBodyContactsItemPhoneType] | null;
+
+
+export const UpdateChurchSettingsBodyContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type UpdateChurchSettingsBodyContactsItem = {
+  kind: UpdateChurchSettingsBodyContactsItemKind;
+  /** @nullable */
+  phoneType: UpdateChurchSettingsBodyContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
 };
 
 export type UpdateChurchSettingsBodyAddressesItemUf = typeof UpdateChurchSettingsBodyAddressesItemUf[keyof typeof UpdateChurchSettingsBodyAddressesItemUf];
@@ -2742,6 +2803,11 @@ export type UpdateChurchSettingsBody = {
      * @pattern ^#[0-9a-fA-F]{6}$
      */
   accentColor: string | null;
+  /**
+     * Church Contacts in order; phones validated as allowed-country numbers and stored as E.164, emails lower-cased. Omitted, the contacts stay; sent, the list replaces them. A refused row is reported by index, e.g. contacts.1.value.
+     * @maxItems 50
+     */
+  contacts?: UpdateChurchSettingsBodyContactsItem[];
   /**
      * Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.
      * @maxItems 50
@@ -2870,6 +2936,36 @@ export type UpdateChurchSettings200LegalProfile = {
   isPublic: boolean;
 } | null;
 
+export type UpdateChurchSettings200ContactsItemKind = typeof UpdateChurchSettings200ContactsItemKind[keyof typeof UpdateChurchSettings200ContactsItemKind];
+
+
+export const UpdateChurchSettings200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettings200ContactsItemPhoneType = typeof UpdateChurchSettings200ContactsItemPhoneType[keyof typeof UpdateChurchSettings200ContactsItemPhoneType] | null;
+
+
+export const UpdateChurchSettings200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type UpdateChurchSettings200ContactsItem = {
+  kind: UpdateChurchSettings200ContactsItemKind;
+  /** @nullable */
+  phoneType: UpdateChurchSettings200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+};
+
 export type UpdateChurchSettings200 = {
   name: string;
   slug: string;
@@ -2885,6 +2981,7 @@ export type UpdateChurchSettings200 = {
   logoKey: string | null;
   /** @nullable */
   logoUrl: string | null;
+  contacts: UpdateChurchSettings200ContactsItem[];
   publicOrigin: string;
 };
 
@@ -2939,6 +3036,9 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   CHURCH_SLUG_FORMAT: 'CHURCH_SLUG_FORMAT',
   CHURCH_SLUG_RESERVED: 'CHURCH_SLUG_RESERVED',
   CHURCH_SLUG_TAKEN: 'CHURCH_SLUG_TAKEN',
+  CONTACT_PHONE_INVALID: 'CONTACT_PHONE_INVALID',
+  CONTACT_EMAIL_INVALID: 'CONTACT_EMAIL_INVALID',
+  CONTACT_DESCRIPTION_TOO_LONG: 'CONTACT_DESCRIPTION_TOO_LONG',
   INVALID: 'INVALID',
 } as const;
 
@@ -3108,6 +3208,36 @@ export type UploadChurchLogo200LegalProfile = {
   isPublic: boolean;
 } | null;
 
+export type UploadChurchLogo200ContactsItemKind = typeof UploadChurchLogo200ContactsItemKind[keyof typeof UploadChurchLogo200ContactsItemKind];
+
+
+export const UploadChurchLogo200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UploadChurchLogo200ContactsItemPhoneType = typeof UploadChurchLogo200ContactsItemPhoneType[keyof typeof UploadChurchLogo200ContactsItemPhoneType] | null;
+
+
+export const UploadChurchLogo200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type UploadChurchLogo200ContactsItem = {
+  kind: UploadChurchLogo200ContactsItemKind;
+  /** @nullable */
+  phoneType: UploadChurchLogo200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+};
+
 export type UploadChurchLogo200 = {
   name: string;
   slug: string;
@@ -3123,6 +3253,7 @@ export type UploadChurchLogo200 = {
   logoKey: string | null;
   /** @nullable */
   logoUrl: string | null;
+  contacts: UploadChurchLogo200ContactsItem[];
   publicOrigin: string;
 };
 
@@ -3270,6 +3401,36 @@ export type RemoveChurchLogo200LegalProfile = {
   isPublic: boolean;
 } | null;
 
+export type RemoveChurchLogo200ContactsItemKind = typeof RemoveChurchLogo200ContactsItemKind[keyof typeof RemoveChurchLogo200ContactsItemKind];
+
+
+export const RemoveChurchLogo200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type RemoveChurchLogo200ContactsItemPhoneType = typeof RemoveChurchLogo200ContactsItemPhoneType[keyof typeof RemoveChurchLogo200ContactsItemPhoneType] | null;
+
+
+export const RemoveChurchLogo200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type RemoveChurchLogo200ContactsItem = {
+  kind: RemoveChurchLogo200ContactsItemKind;
+  /** @nullable */
+  phoneType: RemoveChurchLogo200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+};
+
 export type RemoveChurchLogo200 = {
   name: string;
   slug: string;
@@ -3285,6 +3446,7 @@ export type RemoveChurchLogo200 = {
   logoKey: string | null;
   /** @nullable */
   logoUrl: string | null;
+  contacts: RemoveChurchLogo200ContactsItem[];
   publicOrigin: string;
 };
 
@@ -3422,6 +3584,36 @@ export type RestoreChurchLogo200LegalProfile = {
   isPublic: boolean;
 } | null;
 
+export type RestoreChurchLogo200ContactsItemKind = typeof RestoreChurchLogo200ContactsItemKind[keyof typeof RestoreChurchLogo200ContactsItemKind];
+
+
+export const RestoreChurchLogo200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type RestoreChurchLogo200ContactsItemPhoneType = typeof RestoreChurchLogo200ContactsItemPhoneType[keyof typeof RestoreChurchLogo200ContactsItemPhoneType] | null;
+
+
+export const RestoreChurchLogo200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type RestoreChurchLogo200ContactsItem = {
+  kind: RestoreChurchLogo200ContactsItemKind;
+  /** @nullable */
+  phoneType: RestoreChurchLogo200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+};
+
 export type RestoreChurchLogo200 = {
   name: string;
   slug: string;
@@ -3437,6 +3629,7 @@ export type RestoreChurchLogo200 = {
   logoKey: string | null;
   /** @nullable */
   logoUrl: string | null;
+  contacts: RestoreChurchLogo200ContactsItem[];
   publicOrigin: string;
 };
 

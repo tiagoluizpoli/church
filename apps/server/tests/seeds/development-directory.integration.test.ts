@@ -4,6 +4,7 @@ import {
   availabilityCheck,
   church,
   churchAddress,
+  churchContact,
   churchLegalProfile,
   churchSocialLink,
   cycle,
@@ -381,6 +382,27 @@ describe('development seed recipe', () => {
       { label: 'Culto 18:30', place: null, address: 'Salão anexo' },
     ]);
     expect(copiedWithoutAddress).toEqual([]);
+  });
+
+  it('gives the primary Church public and private contacts in order, the second none', async () => {
+    const contacts = await testDb
+      .select({
+        churchId: churchContact.churchId,
+        value: churchContact.value,
+        isPublic: churchContact.isPublic,
+      })
+      .from(churchContact)
+      .orderBy(churchContact.position);
+
+    expect(contacts).toEqual([
+      { churchId: seeded.church.id, value: '+5511987654321', isPublic: true },
+      {
+        churchId: seeded.church.id,
+        value: 'contato@igreja-semente.test',
+        isPublic: true,
+      },
+      { churchId: seeded.church.id, value: '+551134567890', isPublic: false },
+    ]);
   });
 
   it('uploads a logo for the primary Church through the logo pipeline, none for the second', async () => {

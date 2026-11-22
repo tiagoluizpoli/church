@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, waitFor } from '@testing-library/react';
 import { AxiosError, AxiosHeaders } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -70,6 +71,68 @@ describe('/$slug', () => {
     expect(screen.getByRole('contentinfo')).toHaveTextContent(
       'Desenvolvido com Church',
     );
+  });
+
+  it('orders the sections contacts, legal, addresses, programme, events, and names the Main Address area', async () => {
+    getPublicChurchProfile.mockResolvedValue({
+      ...PROFILE,
+      mainAddressArea: { bairro: 'Centro', city: 'Campinas', uf: 'SP' },
+      contactGroups: [
+        {
+          name: null,
+          contacts: [
+            {
+              kind: 'email',
+              phoneType: null,
+              value: 'contato@esperanca.test',
+              description: null,
+              isWhatsApp: false,
+            },
+          ],
+          socialLinks: [],
+        },
+      ],
+      legalProfile: { legalName: 'Igreja Ltda', cnpj: '11222333000181' },
+      addresses: [
+        {
+          label: 'Templo',
+          street: 'Rua A',
+          number: '10',
+          complement: null,
+          bairro: 'Centro',
+          city: 'Campinas',
+          uf: 'SP',
+          cep: null,
+          latitude: null,
+          longitude: null,
+          placeId: null,
+          isMain: true,
+        },
+      ],
+      programme: [
+        {
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          exceptOrdinals: [],
+          startTime: '09:00',
+          label: 'Culto',
+          place: null,
+          atMainAddress: false,
+        },
+      ],
+    });
+
+    renderRoute({ initialPath: '/ib-esperanca' });
+
+    expect(await screen.findByText('Centro · Campinas/SP')).toBeInTheDocument();
+    const titles = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((heading) => heading.textContent);
+    expect(titles).toEqual([
+      m.public_contacts_title(),
+      m.public_legal_title(),
+      m.public_addresses_title(),
+      m.public_programme_title(),
+    ]);
   });
 
   it('moves an old slug to the current URL', async () => {

@@ -77,7 +77,7 @@ export function PublicContactsSection({
               {contacts.map((contact) => {
                 const { href, label } = contactTarget({ contact });
                 return (
-                  <li key={contact.value}>
+                  <li key={contact.value} className="flex flex-wrap gap-x-3">
                     <a
                       href={href}
                       className="underline-offset-4 hover:underline"
@@ -95,6 +95,16 @@ export function PublicContactsSection({
                         </span>
                       ) : null}
                     </a>
+                    {/* A WhatsApp number is a phone too: calling stays one tap away. */}
+                    {contact.isWhatsApp ? (
+                      <a
+                        href={`tel:${contact.value}`}
+                        aria-label={m.public_contacts_call({ number: label })}
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        {m.public_contacts_call_short()}
+                      </a>
+                    ) : null}
                   </li>
                 );
               })}

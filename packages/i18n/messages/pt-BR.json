@@ -2132,6 +2132,8 @@
   "public_church_not_found_title": "Igreja não encontrada",
   "public_church_not_found_description": "Confira o endereço. O link pode estar errado ou desatualizado.",
   "public_contacts_title": "Contatos",
+  "public_contacts_call": "Ligar para {number}",
+  "public_contacts_call_short": "Ligar",
   "public_contacts_whatsapp": "WhatsApp",
   "public_legal_title": "Dados jurídicos",
   "public_legal_cnpj": "CNPJ",

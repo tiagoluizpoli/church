@@ -2132,6 +2132,8 @@
   "public_church_not_found_title": "Church not found",
   "public_church_not_found_description": "Check the address. The link may be wrong or out of date.",
   "public_contacts_title": "Contacts",
+  "public_contacts_call": "Call {number}",
+  "public_contacts_call_short": "Call",
   "public_contacts_whatsapp": "WhatsApp",
   "public_legal_title": "Legal details",
   "public_legal_cnpj": "CNPJ",

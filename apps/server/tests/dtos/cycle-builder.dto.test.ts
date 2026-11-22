@@ -39,6 +39,8 @@ describe('cycleBuilderResponseSchema', () => {
                 eventId: 'event-1',
                 startTime: '2027-01-01T09:00:00.000Z',
                 endTime: '2027-01-01T11:00:00.000Z',
+                isPublic: false,
+                place: null,
                 status: 'active',
                 requirements: [],
               },

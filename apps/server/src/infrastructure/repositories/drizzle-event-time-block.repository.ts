@@ -163,6 +163,8 @@ export class DrizzleEventTimeBlockRepository
           : {}),
         ...(input.endTime !== undefined ? { endTime: input.endTime } : {}),
         ...(input.label !== undefined ? { label: input.label ?? null } : {}),
+        ...(input.isPublic !== undefined ? { isPublic: input.isPublic } : {}),
+        ...(input.place !== undefined ? { place: input.place } : {}),
       })
       .where(
         and(

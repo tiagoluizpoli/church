@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import type { Instant } from '@church/time';
 import type { ReactNode } from 'react';
+import { EventBlockPublicFields } from './event-block-public-fields';
 import type {
   EventBlockErrors,
   EventEditorBlock,
@@ -178,6 +179,18 @@ function EventBlockRow({
           }
         />
       </div>
+      <EventBlockPublicFields
+        idPrefix={id}
+        isPublic={block.isPublic}
+        place={block.place}
+        locked={block.locked}
+        onIsPublicChange={(value) =>
+          onBlockChange({ blockKey: block.key, field: 'isPublic', value })
+        }
+        onPlaceChange={(value) =>
+          onBlockChange({ blockKey: block.key, field: 'place', value })
+        }
+      />
     </fieldset>
   );
 }

@@ -20,6 +20,10 @@ vi.mock('@/utils/api-instances', () => ({
     createPlanningEvent: (...args: unknown[]) => createPlanningEvent(...args),
   },
 }));
+const capabilities = vi.hoisted(() => ({ isChurchAdmin: true }));
+vi.mock('@/shared/hooks/use-caller-capabilities', () => ({
+  useCallerCapabilities: () => capabilities,
+}));
 vi.mock('sonner', () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
@@ -129,6 +133,18 @@ function setDay({ user, testId, date }: SetDayInput) {
 beforeEach(() => {
   vi.clearAllMocks();
   getCycle.mockResolvedValue(cycleResponse());
+});
+
+describe('Público and place visibility', () => {
+  it('hides the controls from a non-admin', async () => {
+    capabilities.isChurchAdmin = false;
+    renderPage();
+    await screen.findByTestId('event-editor-form');
+    expect(
+      screen.queryByTestId('event-block-public-checkbox'),
+    ).not.toBeInTheDocument();
+    capabilities.isChurchAdmin = true;
+  });
 });
 
 describe('EventCreatePage', () => {
@@ -298,6 +314,10 @@ describe('EventCreatePage', () => {
     await setTime({ user, testId: 'event-block-2-start', time: '22:00' });
     await setDay({ user, testId: 'event-block-2-end', date: '2026-10-26' });
     await setTime({ user, testId: 'event-block-2-end', time: '02:00' });
+    const [publicBox] = screen.getAllByTestId('event-block-public-checkbox');
+    const [placeInput] = screen.getAllByTestId('event-block-place-input');
+    await user.click(publicBox as HTMLElement);
+    await user.type(placeInput as HTMLElement, 'Camp hall');
     await user.click(saveButton());
 
     await waitFor(() =>
@@ -318,11 +338,15 @@ describe('EventCreatePage', () => {
           label: 'Retreat',
           startTime: '2026-10-25T22:00:00.000Z',
           endTime: '2026-10-27T15:00:00.000Z',
+          isPublic: true,
+          place: 'Camp hall',
         },
         {
           label: 'Vigil',
           startTime: '2026-10-26T01:00:00.000Z',
           endTime: '2026-10-26T05:00:00.000Z',
+          isPublic: false,
+          place: '',
         },
       ],
     });

@@ -60,6 +60,8 @@ export const BLOCK: PreparationBlock = {
     startTime: '2027-01-04T01:00:00.000Z',
     endTime: '2027-01-04T05:00:00.000Z',
     label: 'Night',
+    isPublic: false,
+    place: null,
     status: 'active',
     requirements: [],
   },

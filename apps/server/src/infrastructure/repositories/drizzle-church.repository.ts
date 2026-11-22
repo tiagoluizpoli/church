@@ -129,12 +129,15 @@ interface FindSlugAvailabilityInput {
   slug: string;
 }
 
+/** A Social Link row with its Contact Group resolved to an id. */
+interface GroupedSocialLinkRow extends Omit<SocialLinkChange, 'group'> {
+  groupId: string | null;
+}
+
 interface ReplaceSocialLinksInput {
   client: DrizzleClient;
   id: string;
-  links: readonly (Omit<SocialLinkChange, 'group'> & {
-    groupId: string | null;
-  })[];
+  links: readonly GroupedSocialLinkRow[];
 }
 
 interface GroupedRow {

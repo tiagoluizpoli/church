@@ -75,6 +75,19 @@ export const CHURCH_ADDRESS_FIELD_CODES = [
 export type ChurchAddressFieldCode =
   (typeof CHURCH_ADDRESS_FIELD_CODES)[number];
 
+/** Longest accepted value of each text field, after trimming. */
+const ADDRESS_FIELD_MAX = {
+  label: 60,
+  street: 120,
+  number: 20,
+  complement: 60,
+  bairro: 80,
+  city: 80,
+  placeId: 300,
+} as const;
+const LATITUDE_LIMIT = 90;
+const LONGITUDE_LIMIT = 180;
+
 function requiredText(max: number) {
   return z
     .string()
@@ -110,12 +123,12 @@ const churchAddressChangeSchema = z
       .uuid()
       .nullish()
       .transform((value) => value ?? null),
-    label: optionalText(60),
-    street: requiredText(120),
-    number: requiredText(20),
-    complement: optionalText(60),
-    bairro: requiredText(80),
-    city: requiredText(80),
+    label: optionalText(ADDRESS_FIELD_MAX.label),
+    street: requiredText(ADDRESS_FIELD_MAX.street),
+    number: requiredText(ADDRESS_FIELD_MAX.number),
+    complement: optionalText(ADDRESS_FIELD_MAX.complement),
+    bairro: requiredText(ADDRESS_FIELD_MAX.bairro),
+    city: requiredText(ADDRESS_FIELD_MAX.city),
     uf: z.enum(BRAZILIAN_UFS, 'ADDRESS_UF_INVALID'),
     cep: cepSchema,
     country: z.literal('BR').default('BR'),
@@ -123,21 +136,21 @@ const churchAddressChangeSchema = z
     isMain: z.boolean().default(false),
     latitude: z
       .number()
-      .min(-90)
-      .max(90)
+      .min(-LATITUDE_LIMIT)
+      .max(LATITUDE_LIMIT)
       .nullish()
       .transform((v) => v ?? null),
     longitude: z
       .number()
-      .min(-180)
-      .max(180)
+      .min(-LONGITUDE_LIMIT)
+      .max(LONGITUDE_LIMIT)
       .nullish()
       .transform((v) => v ?? null),
     pinSource: z
       .enum(PIN_SOURCES)
       .nullish()
       .transform((v) => v ?? null),
-    placeId: optionalText(300),
+    placeId: optionalText(ADDRESS_FIELD_MAX.placeId),
   })
   .superRefine((address, context) => {
     const parts = [address.latitude, address.longitude, address.pinSource];
@@ -180,9 +193,20 @@ export const addressReplacementsSchema = z
   .optional();
 
 /** What still points at a Church Address: templates and Events with a time block not yet started. */
+export interface ChurchAddressUsingTemplate {
+  id: string;
+  name: string;
+}
+
+export interface ChurchAddressUsingEvent {
+  id: string;
+  title: string;
+  start: Instant;
+}
+
 export interface ChurchAddressUsage {
-  templates: { id: string; name: string }[];
-  events: { id: string; title: string; start: Instant }[];
+  templates: ChurchAddressUsingTemplate[];
+  events: ChurchAddressUsingEvent[];
 }
 
 export interface ChurchAddressRefusal {

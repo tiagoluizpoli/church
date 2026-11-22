@@ -287,11 +287,6 @@ gate, and it must not push unvalidated behind one either. If the holder is
 still running, the push fails naming it; retry when it finishes. A deliberate
 `git push --no-verify` is the maintainer's override.
 
-In the next multi-ticket run, record per ticket the affected-gate run count,
-the reason for each rerun, the final outcome, and any waiting failures (sleep
-guard, unsupported monitor calls), and report them as follow-up evidence for
-[#580](https://github.com/tiagoluizpoli/church/issues/580).
-
 Local `test:e2e` runs hold one lock shared by every worktree: a second run
 prints that it is waiting and starts nothing until the first ends (CI skips
 the lock). A failed run keeps its E2E database state for inspection; the next

@@ -6808,6 +6808,7 @@ export type GetNotifications200ItemsItem = {
   churchLogoUrl?: string | null;
   /** @nullable */
   churchAccent?: string | null;
+  churchLocality?: string;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -8508,6 +8509,57 @@ export type ConfirmVolunteerTransfer401 = {
   message: string;
 };
 
+export type GetPublicChurchProfile200ContactGroupsItemContactsItemKind = typeof GetPublicChurchProfile200ContactGroupsItemContactsItemKind[keyof typeof GetPublicChurchProfile200ContactGroupsItemContactsItemKind];
+
+
+export const GetPublicChurchProfile200ContactGroupsItemContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType = typeof GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType[keyof typeof GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType] | null;
+
+
+export const GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type GetPublicChurchProfile200ContactGroupsItemContactsItem = {
+  kind: GetPublicChurchProfile200ContactGroupsItemContactsItemKind;
+  /** @nullable */
+  phoneType: GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+};
+
+export type GetPublicChurchProfile200ContactGroupsItemSocialLinksItem = {
+  url: string;
+  network: string;
+  /** @nullable */
+  description: string | null;
+};
+
+export type GetPublicChurchProfile200ContactGroupsItem = {
+  /** @nullable */
+  name: string | null;
+  contacts: GetPublicChurchProfile200ContactGroupsItemContactsItem[];
+  socialLinks: GetPublicChurchProfile200ContactGroupsItemSocialLinksItem[];
+};
+
+/**
+ * @nullable
+ */
+export type GetPublicChurchProfile200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+} | null;
+
 export type GetPublicChurchProfile200ProgrammeItemRecurrence = {
   kind: 'weekly';
   /** @minItems 1 */
@@ -8554,6 +8606,9 @@ export type GetPublicChurchProfile200 = {
   logoUrl: string | null;
   /** @nullable */
   accentColor: string | null;
+  contactGroups: GetPublicChurchProfile200ContactGroupsItem[];
+  /** @nullable */
+  legalProfile: GetPublicChurchProfile200LegalProfile;
   programme: GetPublicChurchProfile200ProgrammeItem[];
 };
 
@@ -8765,6 +8820,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   churchLogoUrl?: string | null;
   /** @nullable */
   churchAccent?: string | null;
+  churchLocality?: string;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;

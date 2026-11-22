@@ -1,10 +1,16 @@
-import { type CalendarDay, parseCalendarDay } from '@church/time';
+import {
+  type CalendarDay,
+  parseCalendarDay,
+  parseInstant,
+  today,
+} from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { InvalidRecurrenceError } from '@/domain/errors/invalid-recurrence';
 import {
   assertRecurrence,
   expandRecurrence,
   type Recurrence,
+  recurrenceNamesDay,
 } from '@/domain/recurrence';
 
 function day(value: string): CalendarDay {
@@ -180,5 +186,33 @@ describe('assertRecurrence', () => {
         },
       }),
     ).not.toThrow();
+  });
+});
+
+describe('Recurrence on the Church Timezone calendar', () => {
+  // 2026-11-01T01:30Z is still Saturday 31 October, 22:30, in São Paulo.
+  const lateSaturday = parseInstant({ value: '2026-11-01T01:30:00.000Z' });
+  const firstSunday: Recurrence = {
+    kind: 'monthly',
+    entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+  };
+  const lastDay: Recurrence = {
+    kind: 'monthly',
+    entries: [{ kind: 'lastDayOfMonth' }],
+  };
+
+  it('names the Church-local day of an instant past UTC midnight, not the UTC one', () => {
+    const churchDay = today({
+      instant: lateSaturday,
+      timeZone: 'America/Sao_Paulo',
+    });
+
+    expect(churchDay).toBe('2026-10-31');
+    expect(recurrenceNamesDay({ recurrence: lastDay, day: churchDay })).toBe(
+      true,
+    );
+    expect(
+      recurrenceNamesDay({ recurrence: firstSunday, day: churchDay }),
+    ).toBe(false);
   });
 });

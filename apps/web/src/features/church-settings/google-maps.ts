@@ -26,9 +26,14 @@ export function isMapsEnabled(): boolean {
 // Minimal view of the Maps JavaScript API; it ships no bundled types and one dialog needs little of it.
 interface GoogleMapsApi {
   maps: {
-    Map: new (element: HTMLElement, options: object) => MapInstance;
+    // named-parameters-ignore: Google Maps JavaScript API signature, not ours
+    Map: new (
+      element: HTMLElement,
+      options: object,
+    ) => MapInstance;
     Marker: new (options: object) => MarkerInstance;
     places: {
+      // named-parameters-ignore: Google Maps JavaScript API signature, not ours
       Autocomplete: new (
         input: HTMLInputElement,
         options: object,
@@ -42,10 +47,12 @@ interface MapInstance {
 interface MarkerInstance {
   setPosition: (position: object) => void;
   setMap: (map: MapInstance | null) => void;
+  // named-parameters-ignore: Google Maps JavaScript API signature, not ours
   addListener: (event: string, handler: () => void) => void;
   getPosition: () => { lat: () => number; lng: () => number } | null;
 }
 interface AutocompleteInstance {
+  // named-parameters-ignore: Google Maps JavaScript API signature, not ours
   addListener: (event: string, handler: () => void) => void;
   getPlace: () => PlaceResult;
 }
@@ -63,6 +70,10 @@ interface PlaceResult {
   geometry?: { location?: { lat: () => number; lng: () => number } };
 }
 
+interface WindowWithGoogle {
+  google: GoogleMapsApi;
+}
+
 let loading: Promise<GoogleMapsApi> | undefined;
 
 function loadApi(): Promise<GoogleMapsApi> {
@@ -72,7 +83,7 @@ function loadApi(): Promise<GoogleMapsApi> {
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&language=pt-BR&region=BR`;
     script.async = true;
     script.onload = () =>
-      resolve((window as unknown as { google: GoogleMapsApi }).google);
+      resolve((window as unknown as WindowWithGoogle).google);
     script.onerror = () => {
       loading = undefined;
       reject(new Error('Google Maps failed to load'));
@@ -82,7 +93,13 @@ function loadApi(): Promise<GoogleMapsApi> {
   return loading;
 }
 
-function component(place: PlaceResult, type: string, short = false) {
+interface ComponentInput {
+  place: PlaceResult;
+  type: string;
+  short?: boolean;
+}
+
+function component({ place, type, short = false }: ComponentInput) {
   const found = place.address_components?.find((item) =>
     item.types.includes(type),
   );
@@ -95,17 +112,17 @@ export function toPickedPlace(place: PlaceResult): PickedPlace | null {
   const location = place.geometry?.location;
   return {
     placeId: place.place_id,
-    street: component(place, 'route'),
-    number: component(place, 'street_number'),
+    street: component({ place, type: 'route' }),
+    number: component({ place, type: 'street_number' }),
     bairro:
-      component(place, 'sublocality_level_1') ||
-      component(place, 'sublocality') ||
-      component(place, 'neighborhood'),
+      component({ place, type: 'sublocality_level_1' }) ||
+      component({ place, type: 'sublocality' }) ||
+      component({ place, type: 'neighborhood' }),
     city:
-      component(place, 'administrative_area_level_2') ||
-      component(place, 'locality'),
-    uf: component(place, 'administrative_area_level_1', true),
-    cep: component(place, 'postal_code').replace(/\D/g, ''),
+      component({ place, type: 'administrative_area_level_2' }) ||
+      component({ place, type: 'locality' }),
+    uf: component({ place, type: 'administrative_area_level_1', short: true }),
+    cep: component({ place, type: 'postal_code' }).replace(/\D/g, ''),
     latitude: location ? location.lat() : null,
     longitude: location ? location.lng() : null,
   };

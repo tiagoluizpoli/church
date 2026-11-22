@@ -130,6 +130,16 @@ function toFields({ address }: ToFieldsInput): DraftFields {
   };
 }
 
+interface ProposePinInput {
+  proposed: LatLng;
+  pinSource: 'google' | 'cep';
+}
+
+interface SetPinInput {
+  moved: LatLng | null;
+  pinSource: 'admin' | null;
+}
+
 interface AddressDialogProps {
   /** `undefined` closed, `null` adding, a draft editing it. */
   editing: AddressDraft | null | undefined;
@@ -175,10 +185,10 @@ function AddressDialog({
         found.longitude !== undefined &&
         fields.pinSource !== 'admin'
       ) {
-        proposePin(
-          { latitude: found.latitude, longitude: found.longitude },
-          'cep',
-        );
+        proposePin({
+          proposed: { latitude: found.latitude, longitude: found.longitude },
+          pinSource: 'cep',
+        });
       }
       set({
         cep: found.cep || cep,
@@ -204,9 +214,9 @@ function AddressDialog({
   const pinMap = React.useRef<PinMap | null>(null);
   const initialPin = React.useRef(pin);
 
-  const proposePin = (proposed: LatLng, pinSource: 'google' | 'cep') =>
+  const proposePin = ({ proposed, pinSource }: ProposePinInput) =>
     set({ ...proposed, pinSource });
-  const setPin = (moved: LatLng | null, pinSource: 'admin' | null) =>
+  const setPin = ({ moved, pinSource }: SetPinInput) =>
     set({
       latitude: moved?.latitude ?? null,
       longitude: moved?.longitude ?? null,
@@ -237,8 +247,10 @@ function AddressDialog({
         : {}),
     }));
   };
-  const dragged = React.useRef((moved: LatLng) => setPin(moved, 'admin'));
-  dragged.current = (moved) => setPin(moved, 'admin');
+  const dragged = React.useRef((moved: LatLng) =>
+    setPin({ moved, pinSource: 'admin' }),
+  );
+  dragged.current = (moved) => setPin({ moved, pinSource: 'admin' });
   const picker = React.useRef(pick);
   picker.current = pick;
 
@@ -471,7 +483,7 @@ function AddressDialog({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setPin(pin, 'admin')}
+                      onClick={() => setPin({ moved: pin, pinSource: 'admin' })}
                     >
                       {m.church_settings_address_pin_confirm()}
                     </Button>
@@ -480,7 +492,7 @@ function AddressDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setPin(null, null)}
+                    onClick={() => setPin({ moved: null, pinSource: null })}
                   >
                     {m.church_settings_address_pin_remove()}
                   </Button>

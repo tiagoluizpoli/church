@@ -88,10 +88,12 @@ window.matchMedia =
     dispatchEvent: vi.fn(),
   }));
 
-function church(churchId: string, name: string) {
+function church(churchId: string, name: string, logoUrl: string | null = null) {
   return {
     churchId,
     name,
+    logoUrl,
+    accentColor: null,
     timezone: 'UTC',
     accessLevel: 'church_admin',
     availableAreas: ['dashboard'],
@@ -261,6 +263,34 @@ describe('AppShell flat nav per persona (F7)', () => {
     renderShell();
 
     expect(screen.getAllByTestId('bell-slot').length).toBeGreaterThan(0);
+  });
+
+  it("shows the Active Church's logo with its name in the desktop and mobile headers", async () => {
+    asChurches(
+      church('church-1', 'Igreja Esperança', 'https://files.test/a.png'),
+    );
+    renderShell();
+
+    const mobile = screen.getByTestId('mobile-top-header');
+    expect(
+      await within(mobile).findByRole('img', { name: 'Igreja Esperança' }),
+    ).toHaveAttribute('src', 'https://files.test/a.png');
+    expect(
+      screen
+        .getAllByRole('img', { name: 'Igreja Esperança' })
+        .map((logo) => logo.getAttribute('src')),
+    ).toEqual(['https://files.test/a.png', 'https://files.test/a.png']);
+  });
+
+  it('shows the platform logo on the same tile when the Active Church has no logo', async () => {
+    renderShell();
+
+    await screen.findAllByText('Igreja Esperança');
+    const tiles = screen.getAllByTestId('church-logo-tile');
+    expect(tiles.length).toBeGreaterThanOrEqual(2);
+    for (const tile of tiles) {
+      expect(tile.querySelector('img')).toHaveAttribute('src', '/logo.png');
+    }
   });
 
   it('has no mobile bottom bar', () => {

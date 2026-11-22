@@ -66,6 +66,7 @@ import type {
   SetupProgressRepository,
   ShiftRepository,
   SwapRequestRepository,
+  TemplatePrecedenceRepository,
   Tracing,
   UnavailableShiftRepository,
   UnitOfWork,
@@ -81,6 +82,7 @@ export interface CompositionRootDependencies {
   // Repositories
   eventRepository: EventRepository;
   eventTemplateRepository: EventTemplateRepository;
+  templatePrecedenceRepository: TemplatePrecedenceRepository;
   cycleRepository: CycleRepository;
   planningEventRepository: PlanningEventRepository;
   volunteerRepository: VolunteerRepository;

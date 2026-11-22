@@ -26,6 +26,7 @@ import {
   DrizzleSetupProgressRepository,
   DrizzleShiftRepository,
   DrizzleSwapRequestRepository,
+  DrizzleTemplatePrecedenceRepository,
   DrizzleUnavailableShiftRepository,
   DrizzleUnitOfWork,
   DrizzleUsualSetupRepository,
@@ -38,6 +39,7 @@ export type Repositories = Pick<
   CompositionRootDependencies,
   | 'eventRepository'
   | 'eventTemplateRepository'
+  | 'templatePrecedenceRepository'
   | 'cycleRepository'
   | 'planningEventRepository'
   | 'volunteerRepository'
@@ -86,6 +88,9 @@ export function buildRepositories({
   const eventTemplateRepository =
     overrides.eventTemplateRepository ??
     new DrizzleEventTemplateRepository({ db: database });
+  const templatePrecedenceRepository =
+    overrides.templatePrecedenceRepository ??
+    new DrizzleTemplatePrecedenceRepository({ db: database });
   const cycleRepository =
     overrides.cycleRepository ?? new DrizzleCycleRepository({ db: database });
   const planningEventRepository =
@@ -174,6 +179,7 @@ export function buildRepositories({
   return {
     eventRepository,
     eventTemplateRepository,
+    templatePrecedenceRepository,
     cycleRepository,
     planningEventRepository,
     volunteerRepository,

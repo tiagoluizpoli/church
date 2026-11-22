@@ -26,6 +26,7 @@ export { DrizzleSecurityLogRepository } from './drizzle-security-log.repository'
 export { DrizzleSetupProgressRepository } from './drizzle-setup-progress.repository';
 export { DrizzleShiftRepository } from './drizzle-shift.repository';
 export { DrizzleSwapRequestRepository } from './drizzle-swap-request.repository';
+export { DrizzleTemplatePrecedenceRepository } from './drizzle-template-precedence.repository';
 export { DrizzleTransactionContext } from './drizzle-transaction-context';
 export { DrizzleUnavailableShiftRepository } from './drizzle-unavailable-shift.repository';
 export { DrizzleUnitOfWork } from './drizzle-unit-of-work';

@@ -57,6 +57,7 @@
   "error_isolation_breach": "This item belongs to another Church.",
   "error_cross_ministry_scope": "This item belongs to another Ministry.",
   "error_overlapping_cycle": "This Cycle overlaps an existing Cycle.",
+  "error_unanswered_template_collisions": "This template collides with other templates. Choose which one wins on shared days.",
   "error_illegal_state_transition": "This change is not allowed in the current state.",
   "error_draft_staffing_reconciliation_required": "This Cycle already has staffing from earlier preparation. It needs to be reconciled before the Cycle can be sent; nothing was changed.",
   "error_empty_cycle": "Add at least one Event before sending this Cycle.",

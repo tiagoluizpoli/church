@@ -59,6 +59,10 @@ async function createCycleWithSundayTemplateApplied({
     name: templateName,
     weekday: 0,
     blocks: [{ label: 'Worship', startTime: '09:00', endTime: '10:00' }],
+    // It overlaps the recipe's Sunday template; both keep running.
+    precedences: [
+      { otherTemplateId: journey.sundayTemplate.id, answer: 'both' },
+    ],
   });
   await applyTemplatesViaApi({
     page,
@@ -305,8 +309,9 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
       name: templateName,
       weekday: 0,
       blocks: [
-        { label: 'Worship', startTime: '09:00', endTime: '10:00' },
-        { label: 'Message', startTime: '10:00', endTime: '11:00' },
+        // After the recipe's Sunday template ends at 11:00: no collision to answer.
+        { label: 'Worship', startTime: '11:00', endTime: '12:00' },
+        { label: 'Message', startTime: '12:00', endTime: '13:00' },
       ],
     });
 

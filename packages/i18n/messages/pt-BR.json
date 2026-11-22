@@ -57,6 +57,7 @@
   "error_isolation_breach": "Este item pertence a outra igreja.",
   "error_cross_ministry_scope": "Este item pertence a outro ministério.",
   "error_overlapping_cycle": "Este ciclo se sobrepõe a um ciclo existente.",
+  "error_unanswered_template_collisions": "Este modelo coincide com outros modelos. Escolha qual vence nos dias em comum.",
   "error_illegal_state_transition": "Esta mudança não é permitida no estado atual.",
   "error_draft_staffing_reconciliation_required": "Este ciclo já tem turnos e pessoas necessárias de uma preparação anterior. Eles precisam ser conciliados antes de enviar o ciclo; nada foi alterado.",
   "error_empty_cycle": "Adicione pelo menos um evento antes de enviar este ciclo.",

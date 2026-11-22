@@ -15,7 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { church } from './church';
 import { ministry } from './core';
-import { cycleStateEnum } from './enums';
+import { cycleStateEnum, templatePrecedenceOutcomeEnum } from './enums';
 
 export interface EqualShiftSplitSpec {
   kind: 'equal';
@@ -94,6 +94,47 @@ export const eventTemplate = pgTable(
       table.churchId,
       sql`lower(${table.name})`,
     ),
+  ],
+);
+
+/**
+ * One Template Precedence answer per unordered pair of colliding
+ * EventTemplates, stored with `template_a_id < template_b_id`; deleting either
+ * template drops it.
+ */
+export const templatePrecedence = pgTable(
+  'template_precedence',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    templateAId: uuid('template_a_id')
+      .notNull()
+      .references(() => eventTemplate.id, { onDelete: 'cascade' }),
+    templateBId: uuid('template_b_id')
+      .notNull()
+      .references(() => eventTemplate.id, { onDelete: 'cascade' }),
+    outcome: templatePrecedenceOutcomeEnum('outcome').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    check(
+      'template_precedence_ordered_pair_check',
+      sql`${table.templateAId} < ${table.templateBId}`,
+    ),
+    uniqueIndex('template_precedence_pair_idx').on(
+      table.templateAId,
+      table.templateBId,
+    ),
+    index('template_precedence_template_b_idx').on(table.templateBId),
+    index('template_precedence_church_idx').on(table.churchId),
   ],
 );
 

@@ -13,6 +13,7 @@ import { readE2eImportGraph } from './e2e-import-graph';
 import {
   hasFailure,
   type LaneStep,
+  type OutputSink,
   runStages,
   type StepResult,
 } from './run-lanes';
@@ -338,17 +339,21 @@ function pushLayerTiming({
 }
 
 export interface ValidationSteps {
+  /** Lint, guards and typecheck: run first, and a failure stops the gate. */
   checkLane: LaneStep[];
   checkedLabels: string[];
   e2eLabel: string;
   e2eSteps: LaneStep[];
   integrationLane: LaneStep[];
+  unitLane: LaneStep[];
 }
 
 /**
- * Lint, typecheck and unit tests share one lane; integration tests run in
- * the other so the CPU-bound and DB-bound work overlap. Only the scheduling
- * differs from running each layer in turn — the commands are unchanged.
+ * Lint, guards and typecheck run first, so a cheap failure never pays for
+ * the test lanes. Then unit tests and integration tests run in two lanes so
+ * the CPU-bound and DB-bound work overlap, and E2E runs last. Only the
+ * scheduling differs from running each layer in turn — the commands are
+ * unchanged.
  */
 export function buildValidationSteps({
   onlyE2e,
@@ -361,6 +366,7 @@ export function buildValidationSteps({
   const skipE2e = skipE2eArgument || noDocker;
   const checkedLabels: string[] = [];
   const checkLane: LaneStep[] = [];
+  const unitLane: LaneStep[] = [];
   const integrationLane: LaneStep[] = [];
 
   if (!onlyE2e) {
@@ -430,7 +436,7 @@ export function buildValidationSteps({
               workspaceNames: plan.workspaceNames,
             });
       if (testLayer === 'test:integration') integrationLane.push(...layerSteps);
-      else checkLane.push(...layerSteps);
+      else unitLane.push(...layerSteps);
     }
     checkedLabels.push(
       'lint',
@@ -444,7 +450,7 @@ export function buildValidationSteps({
       ...ALL_TEST_LAYERS,
     );
     if (plan.toolingTestPaths.length > 0) {
-      checkLane.push({
+      unitLane.push({
         args: ['test', 'tooling'],
         command: 'bun',
         label: 'test:tooling',
@@ -471,7 +477,34 @@ export function buildValidationSteps({
     });
   }
 
-  return { checkLane, checkedLabels, e2eLabel, e2eSteps, integrationLane };
+  return {
+    checkLane,
+    checkedLabels,
+    e2eLabel,
+    e2eSteps,
+    integrationLane,
+    unitLane,
+  };
+}
+
+interface RunValidationStepsInput {
+  cwd?: string;
+  output?: OutputSink;
+  steps: ValidationSteps;
+}
+
+export function runValidationSteps({
+  cwd,
+  output,
+  steps,
+}: RunValidationStepsInput): Promise<StepResult[]> {
+  return runStages({
+    cwd,
+    finalSteps: steps.e2eSteps,
+    firstSteps: steps.checkLane,
+    lanes: [steps.unitLane, steps.integrationLane],
+    output,
+  });
 }
 
 async function runValidation({
@@ -482,13 +515,16 @@ async function runValidation({
   wholeUnitSuites,
 }: RunValidationInput): Promise<RunValidationResult> {
   const timings: CheckTiming[] = [];
-  const { checkLane, checkedLabels, e2eLabel, e2eSteps, integrationLane } =
-    buildValidationSteps({ onlyE2e, plan, skipE2e, tier, wholeUnitSuites });
-
-  const results = await runStages({
-    finalSteps: e2eSteps,
-    lanes: [checkLane, integrationLane],
+  const steps = buildValidationSteps({
+    onlyE2e,
+    plan,
+    skipE2e,
+    tier,
+    wholeUnitSuites,
   });
+  const { checkedLabels, e2eLabel } = steps;
+
+  const results = await runValidationSteps({ steps });
 
   for (const label of checkedLabels) {
     const layerResults = results.filter((result) => result.label === label);

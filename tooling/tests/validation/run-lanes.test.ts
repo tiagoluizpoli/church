@@ -250,6 +250,40 @@ describe('runStages', () => {
     ]);
     expect(existsSync(markerPath('stage-e2e'))).toBe(false);
   });
+  it('skips the lanes and final steps when a first step failed', async () => {
+    const results = await runStages({
+      finalSteps: [passing({ label: 'e2e' })],
+      firstSteps: [failing({ label: 'lint' }), passing({ label: 'typecheck' })],
+      lanes: [[markerStep({ label: 'integration', marker: 'stage-first' })]],
+      output: captureOutput(),
+    });
+
+    expect(results.map(({ label, status }) => [label, status])).toEqual([
+      ['lint', 'failed'],
+      ['typecheck', 'skipped'],
+      ['integration', 'skipped'],
+      ['e2e', 'skipped'],
+    ]);
+    expect(existsSync(markerPath('stage-first'))).toBe(false);
+  });
+
+  it('runs the lanes after the first steps passed', async () => {
+    const results = await runStages({
+      finalSteps: [],
+      firstSteps: [passing({ label: 'lint' })],
+      lanes: [
+        [passing({ label: 'unit' })],
+        [passing({ label: 'integration' })],
+      ],
+      output: captureOutput(),
+    });
+
+    expect(results.map(({ label, status }) => [label, status])).toEqual([
+      ['lint', 'passed'],
+      ['unit', 'passed'],
+      ['integration', 'passed'],
+    ]);
+  });
 });
 
 describe('formatStepTable', () => {

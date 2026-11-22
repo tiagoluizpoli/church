@@ -47,8 +47,10 @@ Local validation has three tiers, all planned by the same
 - `validate:affected`: once per ticket, before reporting it done (see below).
 - `validate`: final handoff or merge.
 
-`validate` and `validate:affected` run lint → typecheck → unit tests
-concurrently with integration tests, then E2E only if both lanes pass. Output
+`validate:affected` runs lint, its guards and typecheck first and stops on a
+failure; then unit tests run concurrently with integration tests, then E2E
+only if both lanes pass. `validate` runs lint → typecheck → unit tests
+concurrently with integration tests, then E2E. Output
 lines carry a `[stage]` prefix and a final table reports each stage's status.
 
 Every command that reads configuration runs through Varlock from its

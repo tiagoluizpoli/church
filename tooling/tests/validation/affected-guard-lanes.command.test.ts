@@ -9,14 +9,18 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { buildValidationSteps } from '../../validation/affected';
+import {
+  buildValidationSteps,
+  runValidationSteps,
+} from '../../validation/affected';
 import { runLanes } from '../../validation/run-lanes';
 import { makePlan } from './plan';
 
 /**
  * Runs the planned `presentation-text` and `date-time-seam` lane steps for
  * real, inside a throwaway checkout holding a copy of the guards, so a clean
- * tree passes and a finding fails the lane (#859).
+ * tree passes and a finding fails the lane (#859), and a guard finding stops
+ * the gate before integration tests start (#1048).
  */
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..');
@@ -60,6 +64,8 @@ beforeEach(() => {
     join(checkoutDir, 'package.json'),
     JSON.stringify({
       scripts: {
+        'validate:named-parameters':
+          'bun tooling/validation/named-parameters-guard.ts',
         'validate:date-time-seam':
           'bun tooling/validation/date-time-seam-guards.ts',
         'validate:presentation-text':
@@ -118,5 +124,38 @@ describe('affected guard lane steps, executed', () => {
       label: 'date-time-seam',
       status: 'failed',
     });
+  });
+});
+
+describe('affected gate fail-fast, executed', () => {
+  it('fails on a named-parameters violation without starting integration tests', async () => {
+    writeSource({
+      path: 'apps/server/src/pair.ts',
+      source: 'export function pair(a: string, b: string) { return a + b; }\n',
+    });
+    const steps = buildValidationSteps({
+      onlyE2e: false,
+      plan: makePlan({
+        testLayers: ['test:integration'],
+        workspaceNames: ['server'],
+      }),
+      skipE2e: true,
+    });
+
+    const results = await runValidationSteps({
+      cwd: checkoutDir,
+      output: { stderr: () => {}, stdout: () => {} },
+      steps: {
+        ...steps,
+        checkLane: steps.checkLane.filter(
+          ({ label }) => label === 'named-parameters',
+        ),
+      },
+    });
+
+    expect(results.map(({ label, status }) => [label, status])).toEqual([
+      ['named-parameters', 'failed'],
+      ['test:integration', 'skipped'],
+    ]);
   });
 });

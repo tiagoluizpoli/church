@@ -51,7 +51,8 @@ export interface PlatformBranding {
   siteUrl?: string;
 }
 
-const PLATFORM_ACCENT = '#18181b';
+/** The app's primary navy (`--primary`, apps/web/src/index.css) in sRGB: the platform band and an unset Church accent. */
+const PLATFORM_ACCENT = '#1d4270';
 
 /**
  * The one renderer every EmailSender adapter prepares with, so capture and

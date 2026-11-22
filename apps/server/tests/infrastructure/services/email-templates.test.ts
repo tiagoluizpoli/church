@@ -1012,9 +1012,9 @@ describe('prepareEmail — platform layout (Faixa)', () => {
 
     expect(html).toContain('color-scheme" content="light only"');
     expect(html).toContain('max-width:600px');
-    expect(html).toContain('border-top:6px solid #18181b');
+    expect(html).toContain('border-top:6px solid #1d4270');
     expect(html).toContain(m.email_layout_details({}, ptBR));
-    expect(html).toContain('border:2px solid #18181b');
+    expect(html).toContain('border:2px solid #1d4270');
     expect(html).toContain('border-radius:999px');
     expect(html.split(digest.actionUrl)).toHaveLength(3);
     const preheader = html.match(/display:none[^>]*>([^<]*)</)?.[1];
@@ -1112,7 +1112,7 @@ describe('prepareEmail — platform layout (Faixa)', () => {
     const { html, text } = prepareWith(reset);
 
     expect(html).toContain(`alt="Igreja App"`);
-    expect(html).toContain('border:2px solid #18181b');
+    expect(html).toContain('border:2px solid #1d4270');
     expect(html).not.toContain('platform.test');
     expect(html).not.toContain(
       m.email_layout_credit({ appName: 'Igreja App' }, ptBR),

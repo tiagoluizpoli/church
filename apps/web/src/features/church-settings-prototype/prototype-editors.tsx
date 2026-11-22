@@ -2,10 +2,13 @@
 import {
   ArrowDown,
   ArrowUp,
+  Building2,
   Church,
+  FileText,
   Globe,
   ImageUp,
   Lock,
+  type LucideIcon,
   Mail,
   MapPin,
   MessageCircle,
@@ -39,6 +42,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+
+/** The standard: every text field shows its icon inside the box, on the left. */
+export function IconInput({
+  icon: Icon,
+  className,
+  wrapperClassName,
+  ...props
+}: React.ComponentProps<typeof Input> & {
+  icon: LucideIcon;
+  wrapperClassName?: string;
+}) {
+  return (
+    <div className={cn('relative min-w-0', wrapperClassName)}>
+      <Icon
+        className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+        aria-hidden
+      />
+      <Input className={cn('pl-8', className)} {...props} />
+    </div>
+  );
+}
 
 export function FieldError({ message }: { message?: string }) {
   return message ? <p className="text-destructive text-sm">{message}</p> : null;
@@ -162,7 +186,9 @@ export function WebsiteField({ c }: { c: SettingsController }) {
       hint="Opcional. https:// é adicionado se faltar."
       error={c.errors.website}
     >
-      <Input
+      <IconInput
+        icon={Globe}
+        aria-label="Site"
         placeholder="https://"
         value={c.form.website}
         onChange={(e) => c.patch({ website: e.target.value })}
@@ -773,13 +799,18 @@ export function LegalEditor({ c }: { c: SettingsController }) {
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Razão social" error={c.errors['legal.legalName']}>
-          <Input
+          <IconInput
+            icon={Building2}
+            aria-label="Razão social"
             value={legal.legalName}
             onChange={(e) => set({ legalName: e.target.value })}
           />
         </Field>
         <Field label="CNPJ" error={c.errors['legal.cnpj']}>
-          <Input
+          <IconInput
+            icon={FileText}
+            aria-label="CNPJ"
+            inputMode="numeric"
             placeholder="00.000.000/0000-00"
             aria-invalid={!!c.errors['legal.cnpj']}
             value={legal.cnpj}

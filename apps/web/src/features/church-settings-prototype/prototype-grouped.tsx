@@ -1,35 +1,58 @@
-// PROTOTYPE, throwaway (wayfinder #980, round 3): Contact Groups as a field on each row.
+// PROTOTYPE, throwaway (wayfinder #980, round 4): Contact Groups as a field on each row.
 // Typing a new "Pessoa ou ministério" creates the group; a group nobody uses disappears.
 // Ungrouped items belong to the church and come first. Two-line rows, design-system controls, touch sizing.
+// Round 4: every input carries its icon inside (IconInput), phones say Celular or Fixo, and a social link
+// starts from a chosen network (menu + per-row selector that pre-fills the address; detection stays authoritative).
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
+  Link2,
   Lock,
   Mail,
   Phone,
   Plus,
+  Smartphone,
+  Tag,
   Trash2,
   Users,
 } from 'lucide-react';
 import * as React from 'react';
-import { Confirm, EmptyList, FieldError } from './prototype-editors';
+import { Confirm, EmptyList, FieldError, IconInput } from './prototype-editors';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useFormControlSize } from '@/components/ui/form-control-size';
+import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+
+export { IconInput };
+
 import {
   type Contact,
   detectNetwork,
   type LinkGroup,
   move,
+  NETWORKS,
   newId,
   type SettingsController,
   type SettingsForm,
   type SocialLink,
 } from './prototype-state';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useFormControlSize } from '@/components/ui/form-control-size';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
 
 export const CHURCH = 'Da igreja';
 
@@ -95,10 +118,11 @@ function PersonField({
       c.setForm((f) => assignGroup(f, kind, item.id, text));
   };
   return (
-    <label className="flex min-w-0 flex-1 basis-56 items-center gap-2 sm:max-w-72">
-      <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="sr-only">Pessoa ou ministério</span>
-      <Input
+    <>
+      <IconInput
+        icon={Users}
+        wrapperClassName="flex-1 basis-56 sm:max-w-72"
+        aria-label="Pessoa ou ministério"
         list={listId}
         placeholder="Pessoa ou ministério"
         value={text}
@@ -116,7 +140,7 @@ function PersonField({
           <option key={g.id} value={g.name} />
         ))}
       </datalist>
-    </label>
+    </>
   );
 }
 
@@ -234,6 +258,50 @@ export function GroupHint() {
   );
 }
 
+type ContactType = 'mobile' | 'landline' | 'email';
+
+const typeOf = (ct: Contact): ContactType =>
+  ct.kind === 'email'
+    ? 'email'
+    : ct.phoneType === 'landline'
+      ? 'landline'
+      : 'mobile';
+
+// Same leading choice on every contact row, so every value box starts at the same place.
+function ContactTypeChoice({
+  value,
+  onChange,
+}: {
+  value: ContactType;
+  onChange: (v: ContactType) => void;
+}) {
+  return (
+    <RadioGroup
+      aria-label="Tipo de contato"
+      value={value}
+      onValueChange={(v) => onChange(v as ContactType)}
+      className="flex h-full items-center gap-4"
+    >
+      {(
+        [
+          ['mobile', 'Celular'],
+          ['landline', 'Fixo'],
+          ['email', 'E-mail'],
+        ] as const
+      ).map(([v, label]) => (
+        // biome-ignore lint/a11y/noLabelWithoutControl: wraps the design-system radio
+        <label
+          key={v}
+          className="flex min-h-11 items-center gap-2 text-sm md:min-h-0"
+        >
+          <RadioGroupItem value={v} />
+          {label}
+        </label>
+      ))}
+    </RadioGroup>
+  );
+}
+
 export function GroupedContactsEditor({ c }: { c: SettingsController }) {
   const [confirming, setConfirming] = React.useState<Contact | null>(null);
   const contacts = c.form.contacts;
@@ -250,6 +318,7 @@ export function GroupedContactsEditor({ c }: { c: SettingsController }) {
         {
           id: newId(),
           kind,
+          phoneType: kind === 'phone' ? 'mobile' : undefined,
           value: '',
           label: '',
           isWhatsApp: false,
@@ -259,14 +328,9 @@ export function GroupedContactsEditor({ c }: { c: SettingsController }) {
       ],
     }));
   const addButtons = (
-    <div className="flex flex-wrap gap-2">
-      <Button variant="outline" onClick={() => add('phone')}>
-        <Plus /> Telefone
-      </Button>
-      <Button variant="outline" onClick={() => add('email')}>
-        <Plus /> E-mail
-      </Button>
-    </div>
+    <Button variant="outline" className="w-fit" onClick={() => add('phone')}>
+      <Plus /> Contato
+    </Button>
   );
   if (!contacts.length) {
     return (
@@ -287,7 +351,8 @@ export function GroupedContactsEditor({ c }: { c: SettingsController }) {
         renderRow={(ct, m) => {
           const key = `contacts.${ct.id}.value`;
           const err = c.errors[key];
-          const Icon = ct.kind === 'phone' ? Phone : Mail;
+          const mobile = ct.phoneType !== 'landline';
+          const icon = ct.kind === 'email' ? Mail : mobile ? Smartphone : Phone;
           return (
             <li
               key={ct.id}
@@ -296,32 +361,48 @@ export function GroupedContactsEditor({ c }: { c: SettingsController }) {
                 err && '-mx-2 rounded-md bg-destructive/5 px-2',
               )}
             >
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_14rem]">
+              <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)_14rem] sm:items-start">
+                <div className="sm:h-8 sm:pr-2">
+                  <ContactTypeChoice
+                    value={typeOf(ct)}
+                    onChange={(t) => {
+                      update(
+                        ct.id,
+                        t === 'email'
+                          ? {
+                              kind: 'email',
+                              phoneType: undefined,
+                              isWhatsApp: false,
+                            }
+                          : { kind: 'phone', phoneType: t },
+                      );
+                      c.clearError(key);
+                    }}
+                  />
+                </div>
                 <div className="space-y-1">
-                  <div className="relative">
-                    <Icon
-                      className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden
-                    />
-                    <Input
-                      className="pl-8"
-                      aria-label={ct.kind === 'phone' ? 'Telefone' : 'E-mail'}
-                      aria-invalid={!!err}
-                      placeholder={
-                        ct.kind === 'phone'
+                  <IconInput
+                    icon={icon}
+                    aria-label={ct.kind === 'phone' ? 'Telefone' : 'E-mail'}
+                    aria-invalid={!!err}
+                    inputMode={ct.kind === 'phone' ? 'tel' : 'email'}
+                    placeholder={
+                      ct.kind === 'email'
+                        ? 'nome@igreja.org.br'
+                        : mobile
                           ? '(11) 98765-4321'
-                          : 'nome@igreja.org.br'
-                      }
-                      value={ct.value}
-                      onChange={(e) => {
-                        update(ct.id, { value: e.target.value });
-                        c.clearError(key);
-                      }}
-                    />
-                  </div>
+                          : '(11) 3456-7890'
+                    }
+                    value={ct.value}
+                    onChange={(e) => {
+                      update(ct.id, { value: e.target.value });
+                      c.clearError(key);
+                    }}
+                  />
                   <FieldError message={err} />
                 </div>
-                <Input
+                <IconInput
+                  icon={Tag}
                   aria-label="Descrição"
                   placeholder="Descrição (ex.: Secretaria)"
                   value={ct.label}
@@ -331,16 +412,18 @@ export function GroupedContactsEditor({ c }: { c: SettingsController }) {
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <PersonField c={c} kind="contacts" item={ct} />
                 {ct.kind === 'phone' ? (
-                  // biome-ignore lint/a11y/noLabelWithoutControl: wraps the design-system Checkbox
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={ct.isWhatsApp}
-                      onCheckedChange={(on) =>
-                        update(ct.id, { isWhatsApp: !!on })
-                      }
-                    />
-                    WhatsApp
-                  </label>
+                  <>
+                    {/* biome-ignore lint/a11y/noLabelWithoutControl: wraps the design-system Checkbox */}
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={ct.isWhatsApp}
+                        onCheckedChange={(on) =>
+                          update(ct.id, { isWhatsApp: !!on })
+                        }
+                      />
+                      WhatsApp
+                    </label>
+                  </>
                 ) : null}
                 <div className="flex items-center gap-2 text-sm">
                   <Switch
@@ -398,43 +481,94 @@ export function GroupedContactsEditor({ c }: { c: SettingsController }) {
   );
 }
 
-function NetworkTag({ url }: { url: string }) {
+const networkOf = (url: string) => {
   const d = detectNetwork(url);
-  if (!d) return <span className="text-muted-foreground text-sm">Rede</span>;
-  if ('error' in d) return <Badge variant="destructive">Não reconhecida</Badge>;
-  return <Badge variant="secondary">{d.network}</Badge>;
+  return d && 'network' in d ? d.network : null;
+};
+
+// Picking a network rewrites the address to that network's start; the detected network stays the truth.
+function NetworkSelect({
+  url,
+  onPick,
+  invalid,
+}: {
+  url: string;
+  onPick: (start: string) => void;
+  invalid: boolean;
+}) {
+  const current = networkOf(url);
+  return (
+    <Select
+      value={current ?? ''}
+      onValueChange={(name) => {
+        const n = NETWORKS.find((x) => x.name === name);
+        if (n && n.name !== current) onPick(n.start);
+      }}
+    >
+      <SelectTrigger
+        aria-label="Rede social"
+        aria-invalid={invalid}
+        className="w-full sm:w-52"
+      >
+        <SelectValue>
+          {current ?? (url.trim() ? 'Rede não reconhecida' : 'Escolha a rede')}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {NETWORKS.map((n) => (
+          <SelectItem key={n.name} value={n.name}>
+            {n.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 export function GroupedLinksEditor({ c }: { c: SettingsController }) {
   const links = c.form.links;
+  const [focusId, setFocusId] = React.useState<string | null>(null);
   const update = (id: string, p: Partial<SocialLink>) =>
     c.setForm((f) => ({
       ...f,
       links: f.links.map((x) => (x.id === id ? { ...x, ...p } : x)),
     }));
-  const addButton = (
-    <Button
-      variant="outline"
-      className="w-fit"
-      onClick={() =>
-        c.setForm((f) => ({
-          ...f,
-          links: [
-            ...f.links,
-            { id: newId(), url: '', label: '', groupId: null },
-          ],
-        }))
-      }
-    >
-      <Plus /> Rede social
-    </Button>
+  const addWith = (start: string) => {
+    const id = newId();
+    c.setForm((f) => ({
+      ...f,
+      links: [...f.links, { id, url: start, label: '', groupId: null }],
+    }));
+    setFocusId(id);
+  };
+  const addMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" className="w-fit" />}
+      >
+        <Plus /> Rede social <ChevronDown />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="max-h-80 w-56 overflow-y-auto"
+      >
+        {NETWORKS.map((n) => (
+          <DropdownMenuItem key={n.name} onClick={() => addWith(n.start)}>
+            {n.name}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuItem onClick={() => addWith('')}>
+          Colar um link…
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
   if (!links.length) {
     return (
       <EmptyList
-        icon={<Users className="size-4" />}
-        text="Nenhuma rede social ainda. Cole o endereço e a rede é reconhecida sozinha."
-        action={addButton}
+        icon={<Link2 className="size-4" />}
+        text="Nenhuma rede social ainda. Escolha a rede ou cole o link, e ela é reconhecida sozinha."
+        action={addMenu}
       />
     );
   }
@@ -457,13 +591,31 @@ export function GroupedLinksEditor({ c }: { c: SettingsController }) {
                 err && '-mx-2 rounded-md bg-destructive/5 px-2',
               )}
             >
-              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_14rem]">
-                <div className="space-y-1">
-                  <Input
-                    aria-label="Endereço da rede social"
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                <NetworkSelect
+                  url={l.url}
+                  invalid={!!err}
+                  onPick={(start) => {
+                    update(l.id, { url: start });
+                    c.clearError(key);
+                    setFocusId(l.id);
+                  }}
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <IconInput
+                    icon={Link2}
+                    aria-label="Link da rede social"
                     aria-invalid={!!err}
-                    placeholder="https://instagram.com/suaigreja"
+                    inputMode="url"
+                    placeholder="Cole o link (ex.: https://instagram.com/suaigreja)"
                     value={l.url}
+                    ref={(el) => {
+                      if (el && focusId === l.id) {
+                        el.focus();
+                        el.setSelectionRange(el.value.length, el.value.length);
+                        setFocusId(null);
+                      }
+                    }}
                     onChange={(e) => {
                       update(l.id, { url: e.target.value });
                       c.clearError(key);
@@ -471,15 +623,16 @@ export function GroupedLinksEditor({ c }: { c: SettingsController }) {
                   />
                   <FieldError message={err} />
                 </div>
-                <Input
+              </div>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <IconInput
+                  icon={Tag}
+                  wrapperClassName="flex-1 basis-56 sm:max-w-72"
                   aria-label="Descrição"
                   placeholder="Descrição (opcional)"
                   value={l.label}
                   onChange={(e) => update(l.id, { label: e.target.value })}
                 />
-              </div>
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                <NetworkTag url={l.url} />
                 <PersonField c={c} kind="links" item={l} />
                 <RowActions
                   first={m.first}
@@ -501,7 +654,7 @@ export function GroupedLinksEditor({ c }: { c: SettingsController }) {
           );
         }}
       />
-      {addButton}
+      {addMenu}
     </div>
   );
 }

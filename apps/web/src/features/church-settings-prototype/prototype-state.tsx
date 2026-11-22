@@ -7,6 +7,7 @@ export type ContactKind = 'email' | 'phone';
 export interface Contact {
   id: string;
   kind: ContactKind;
+  phoneType?: 'mobile' | 'landline';
   value: string;
   label: string;
   isWhatsApp: boolean;
@@ -59,6 +60,7 @@ export const FILLED: SettingsForm = {
       kind: 'phone',
       value: '+55 11 3456-7890',
       label: 'Secretaria',
+      phoneType: 'landline',
       isWhatsApp: false,
       isPublic: true,
       groupId: null,
@@ -67,7 +69,8 @@ export const FILLED: SettingsForm = {
       id: 'c2',
       kind: 'phone',
       value: '+55 11 98765-4321',
-      label: 'Celular',
+      label: '',
+      phoneType: 'mobile',
       isWhatsApp: true,
       isPublic: true,
       groupId: 'g1',
@@ -159,21 +162,64 @@ export const ACCENT_PRESETS = [
 ];
 
 // One data table + one pure function, as decided in "Church Settings fields and validation".
-const NETWORKS: { name: string; hosts: string[]; path?: RegExp }[] = [
-  { name: 'Instagram', hosts: ['instagram.com'] },
-  { name: 'YouTube', hosts: ['youtube.com', 'youtu.be'] },
-  { name: 'Facebook', hosts: ['facebook.com', 'fb.com'] },
-  { name: 'TikTok', hosts: ['tiktok.com'] },
-  { name: 'Spotify', hosts: ['open.spotify.com', 'spotify.com'] },
-  { name: 'X', hosts: ['x.com', 'twitter.com'] },
-  { name: 'Threads', hosts: ['threads.net', 'threads.com'] },
-  { name: 'Telegram', hosts: ['t.me'] },
-  { name: 'WhatsApp', hosts: ['whatsapp.com'], path: /^\/channel\// },
-  { name: 'WhatsApp', hosts: ['chat.whatsapp.com'] },
-  { name: 'LinkedIn', hosts: ['linkedin.com'] },
-  { name: 'Apple Podcasts', hosts: ['podcasts.apple.com'] },
-  { name: 'Deezer', hosts: ['deezer.com'] },
-  { name: 'Kwai', hosts: ['kwai.com'] },
+// `start` pre-fills the address when the admin picks the network before pasting a link.
+export const NETWORKS: {
+  name: string;
+  hosts: string[];
+  path?: RegExp;
+  start: string;
+}[] = [
+  {
+    name: 'Instagram',
+    hosts: ['instagram.com'],
+    start: 'https://instagram.com/',
+  },
+  {
+    name: 'YouTube',
+    hosts: ['youtube.com', 'youtu.be'],
+    start: 'https://youtube.com/@',
+  },
+  {
+    name: 'Facebook',
+    hosts: ['facebook.com', 'fb.com'],
+    start: 'https://facebook.com/',
+  },
+  { name: 'TikTok', hosts: ['tiktok.com'], start: 'https://tiktok.com/@' },
+  {
+    name: 'Spotify',
+    hosts: ['open.spotify.com', 'spotify.com'],
+    start: 'https://open.spotify.com/',
+  },
+  { name: 'X', hosts: ['x.com', 'twitter.com'], start: 'https://x.com/' },
+  {
+    name: 'Threads',
+    hosts: ['threads.net', 'threads.com'],
+    start: 'https://threads.net/@',
+  },
+  { name: 'Telegram', hosts: ['t.me'], start: 'https://t.me/' },
+  {
+    name: 'Canal do WhatsApp',
+    hosts: ['whatsapp.com'],
+    path: /^\/channel\//,
+    start: 'https://whatsapp.com/channel/',
+  },
+  {
+    name: 'Grupo do WhatsApp',
+    hosts: ['chat.whatsapp.com'],
+    start: 'https://chat.whatsapp.com/',
+  },
+  {
+    name: 'LinkedIn',
+    hosts: ['linkedin.com'],
+    start: 'https://linkedin.com/company/',
+  },
+  {
+    name: 'Apple Podcasts',
+    hosts: ['podcasts.apple.com'],
+    start: 'https://podcasts.apple.com/',
+  },
+  { name: 'Deezer', hosts: ['deezer.com'], start: 'https://deezer.com/' },
+  { name: 'Kwai', hosts: ['kwai.com'], start: 'https://kwai.com/@' },
 ];
 
 export type Detection = { network: string } | { error: string } | null;

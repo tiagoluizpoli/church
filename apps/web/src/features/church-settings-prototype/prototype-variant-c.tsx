@@ -6,18 +6,22 @@ import {
   AlertCircle,
   ArrowDown,
   ArrowUp,
+  AtSign,
   Check,
   ChevronDown,
   ChevronsDownUp,
   ChevronsUpDown,
+  Church as ChurchIcon,
   Eye,
   Globe,
+  Hash,
   ImageUp,
   Lock,
   Mail,
   MessageCircle,
   Pencil,
   Phone,
+  Smartphone,
   Trash2,
   Zap,
 } from 'lucide-react';
@@ -26,6 +30,7 @@ import { toast } from 'sonner';
 import {
   AddressSlot,
   FieldError,
+  IconInput,
   LegalEditor,
   LogoMark,
   ProgrammeHint,
@@ -95,7 +100,8 @@ function NameFieldC({ c }: { c: SettingsController }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor="church-name">Nome da igreja</Label>
-      <Input
+      <IconInput
+        icon={ChurchIcon}
         id="church-name"
         value={c.form.name}
         aria-invalid={!!c.errors.name}
@@ -116,9 +122,10 @@ function SlugFieldC({ c }: { c: SettingsController }) {
     <div className="space-y-1.5">
       <Label htmlFor="church-slug">Link da igreja</Label>
       <div className="flex gap-2">
-        <Input
+        <IconInput
+          icon={AtSign}
+          wrapperClassName="flex-1"
           id="church-slug"
-          className="min-w-0 flex-1"
           value={c.form.slug}
           aria-invalid={!!c.errors.slug}
           onChange={(e) => c.patch({ slug: e.target.value.toLowerCase() })}
@@ -192,9 +199,11 @@ function AccentPickerC({ c }: { c: SettingsController }) {
           value={value ?? '#1d4ed8'}
           onChange={(e) => c.patch({ accent: e.target.value })}
         />
-        <Input
+        <IconInput
+          icon={Hash}
+          wrapperClassName="w-36"
           aria-label="Código da cor"
-          className="w-32 font-mono"
+          className="font-mono"
           value={value ?? ''}
           placeholder="#rrggbb"
           onChange={(e) => c.patch({ accent: e.target.value || null })}
@@ -333,7 +342,9 @@ function SectionCard({
 function ContactLine({ x }: { x: Contact }) {
   return (
     <li className="flex items-center gap-2">
-      {x.kind === 'phone' ? (
+      {x.kind === 'phone' && x.phoneType !== 'landline' ? (
+        <Smartphone className="size-3.5" aria-hidden />
+      ) : x.kind === 'phone' ? (
         <Phone className="size-3.5" aria-hidden />
       ) : (
         <Mail className="size-3.5" aria-hidden />
@@ -448,7 +459,7 @@ function GroupHeader({
   );
 }
 
-function Preview({ c }: { c: SettingsController }) {
+function Preview({ c, titleId }: { c: SettingsController; titleId?: string }) {
   const f = c.form;
   const accent = f.accent ?? '#1d4ed8';
   const blocks = [{ id: null as string | null, name: '' }, ...f.groups].map(
@@ -466,6 +477,14 @@ function Preview({ c }: { c: SettingsController }) {
   return (
     <div className="space-y-3">
       <div className="overflow-hidden rounded-xl border bg-background">
+        {titleId ? (
+          <h2
+            id={titleId}
+            className="border-b px-4 py-3 font-semibold text-base"
+          >
+            Como sua igreja aparece
+          </h2>
+        ) : null}
         <div
           className="flex items-center gap-3 p-4"
           style={{ background: accent, color: textOn(accent) }}
@@ -639,6 +658,10 @@ export function VariantC({ c }: { c: SettingsController }) {
               >
                 <Eye /> Ver prévia
               </Button>
+              <Button variant="ghost" onClick={() => setAll(!allOpen)}>
+                {allOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
+                {allOpen ? 'Recolher tudo' : 'Expandir tudo'}
+              </Button>
             </div>
           }
         />
@@ -655,12 +678,6 @@ export function VariantC({ c }: { c: SettingsController }) {
         ) : null}
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="min-w-0 space-y-3">
-            <div className="flex justify-end">
-              <Button variant="ghost" onClick={() => setAll(!allOpen)}>
-                {allOpen ? <ChevronsDownUp /> : <ChevronsUpDown />}
-                {allOpen ? 'Recolher tudo' : 'Expandir tudo'}
-              </Button>
-            </div>
             <SectionCard
               id="info"
               title="Informações"
@@ -739,10 +756,7 @@ export function VariantC({ c }: { c: SettingsController }) {
             className="hidden min-w-0 space-y-3 xl:sticky xl:top-4 xl:block xl:self-start"
             aria-labelledby="preview-title"
           >
-            <h2 id="preview-title" className="font-semibold text-base">
-              Como sua igreja aparece
-            </h2>
-            <Preview c={c} />
+            <Preview c={c} titleId="preview-title" />
           </aside>
         </div>
         <Drawer

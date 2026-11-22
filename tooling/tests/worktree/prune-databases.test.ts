@@ -100,6 +100,7 @@ describe('selectStaleBuckets', () => {
           'church-gone--1a2b3c4d',
         ],
         activeIdentities: new Set(['develop', 'feature_a']),
+        staleDatabases: ['church_gone_dev'],
       }),
     ).toEqual(['church-gone', 'church-gone--1a2b3c4d']);
   });
@@ -109,8 +110,38 @@ describe('selectStaleBuckets', () => {
       selectStaleBuckets({
         buckets: ['backups', 'other-gone'],
         activeIdentities: new Set(),
+        staleDatabases: [],
       }),
     ).toEqual([]);
+  });
+
+  it('keeps hand-made church- buckets that no worktree identity produced', () => {
+    expect(
+      selectStaleBuckets({
+        buckets: [
+          'church-unspecified',
+          'church-uploads',
+          'church-Shared',
+          'church-a--b',
+          'church-x--1a2b3c4',
+          'church-x--1A2B3C4D',
+          'church-x_y',
+          'church-',
+        ],
+        activeIdentities: new Set(),
+        staleDatabases: ['church_unspecified_dev'],
+      }),
+    ).toEqual([]);
+  });
+
+  it('selects a readable-name bucket only with a stale database of that worktree', () => {
+    expect(
+      selectStaleBuckets({
+        buckets: ['church-feature-b', 'church-uploads'],
+        activeIdentities: new Set(),
+        staleDatabases: ['church_feature_b_int'],
+      }),
+    ).toEqual(['church-feature-b']);
   });
 });
 

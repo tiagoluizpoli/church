@@ -23,6 +23,7 @@ import { Route as InvitationsChurchInvitationIdRouteImport } from './routes/invi
 import { Route as AppActiveChurchSchedulesRouteImport } from './routes/app/_active-church/schedules'
 import { Route as AppActiveChurchNotificationsRouteImport } from './routes/app/_active-church/notifications'
 import { Route as AppActiveChurchDashboardRouteImport } from './routes/app/_active-church/dashboard'
+import { Route as AppActiveChurchChurchSettingsRouteImport } from './routes/app/_active-church/church-settings'
 import { Route as AppActiveChurchAvailabilityRouteImport } from './routes/app/_active-church/availability'
 import { Route as AppActiveChurchPlanningAdminRouteImport } from './routes/app/_active-church/_planning-admin'
 import { Route as AppActiveChurchSchedulesIndexRouteImport } from './routes/app/_active-church/schedules/index'
@@ -127,6 +128,12 @@ const AppActiveChurchDashboardRoute =
   AppActiveChurchDashboardRouteImport.update({
     id: '/dashboard',
     path: '/dashboard',
+    getParentRoute: () => AppActiveChurchRoute,
+  } as any)
+const AppActiveChurchChurchSettingsRoute =
+  AppActiveChurchChurchSettingsRouteImport.update({
+    id: '/church-settings',
+    path: '/church-settings',
     getParentRoute: () => AppActiveChurchRoute,
   } as any)
 const AppActiveChurchAvailabilityRoute =
@@ -334,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/app/select-church': typeof AppSelectChurchRoute
   '/app/switch-church-confirm': typeof AppSwitchChurchConfirmRoute
   '/app/availability': typeof AppActiveChurchAvailabilityRoute
+  '/app/church-settings': typeof AppActiveChurchChurchSettingsRoute
   '/app/dashboard': typeof AppActiveChurchDashboardRoute
   '/app/notifications': typeof AppActiveChurchNotificationsRoute
   '/app/schedules': typeof AppActiveChurchSchedulesRouteWithChildren
@@ -380,6 +388,7 @@ export interface FileRoutesByTo {
   '/app/select-church': typeof AppSelectChurchRoute
   '/app/switch-church-confirm': typeof AppSwitchChurchConfirmRoute
   '/app/availability': typeof AppActiveChurchAvailabilityRoute
+  '/app/church-settings': typeof AppActiveChurchChurchSettingsRoute
   '/app/dashboard': typeof AppActiveChurchDashboardRoute
   '/app/notifications': typeof AppActiveChurchNotificationsRoute
   '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
@@ -425,6 +434,7 @@ export interface FileRoutesById {
   '/app/switch-church-confirm': typeof AppSwitchChurchConfirmRoute
   '/app/_active-church/_planning-admin': typeof AppActiveChurchPlanningAdminRouteWithChildren
   '/app/_active-church/availability': typeof AppActiveChurchAvailabilityRoute
+  '/app/_active-church/church-settings': typeof AppActiveChurchChurchSettingsRoute
   '/app/_active-church/dashboard': typeof AppActiveChurchDashboardRoute
   '/app/_active-church/notifications': typeof AppActiveChurchNotificationsRoute
   '/app/_active-church/schedules': typeof AppActiveChurchSchedulesRouteWithChildren
@@ -473,6 +483,7 @@ export interface FileRouteTypes {
     | '/app/select-church'
     | '/app/switch-church-confirm'
     | '/app/availability'
+    | '/app/church-settings'
     | '/app/dashboard'
     | '/app/notifications'
     | '/app/schedules'
@@ -519,6 +530,7 @@ export interface FileRouteTypes {
     | '/app/select-church'
     | '/app/switch-church-confirm'
     | '/app/availability'
+    | '/app/church-settings'
     | '/app/dashboard'
     | '/app/notifications'
     | '/invitations/church/$invitationId'
@@ -563,6 +575,7 @@ export interface FileRouteTypes {
     | '/app/switch-church-confirm'
     | '/app/_active-church/_planning-admin'
     | '/app/_active-church/availability'
+    | '/app/_active-church/church-settings'
     | '/app/_active-church/dashboard'
     | '/app/_active-church/notifications'
     | '/app/_active-church/schedules'
@@ -707,6 +720,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/app/dashboard'
       preLoaderRoute: typeof AppActiveChurchDashboardRouteImport
+      parentRoute: typeof AppActiveChurchRoute
+    }
+    '/app/_active-church/church-settings': {
+      id: '/app/_active-church/church-settings'
+      path: '/church-settings'
+      fullPath: '/app/church-settings'
+      preLoaderRoute: typeof AppActiveChurchChurchSettingsRouteImport
       parentRoute: typeof AppActiveChurchRoute
     }
     '/app/_active-church/availability': {
@@ -1043,6 +1063,7 @@ const AppActiveChurchMinistriesMinistryIdRouteWithChildren =
 interface AppActiveChurchRouteChildren {
   AppActiveChurchPlanningAdminRoute: typeof AppActiveChurchPlanningAdminRouteWithChildren
   AppActiveChurchAvailabilityRoute: typeof AppActiveChurchAvailabilityRoute
+  AppActiveChurchChurchSettingsRoute: typeof AppActiveChurchChurchSettingsRoute
   AppActiveChurchDashboardRoute: typeof AppActiveChurchDashboardRoute
   AppActiveChurchNotificationsRoute: typeof AppActiveChurchNotificationsRoute
   AppActiveChurchSchedulesRoute: typeof AppActiveChurchSchedulesRouteWithChildren
@@ -1062,6 +1083,7 @@ const AppActiveChurchRouteChildren: AppActiveChurchRouteChildren = {
   AppActiveChurchPlanningAdminRoute:
     AppActiveChurchPlanningAdminRouteWithChildren,
   AppActiveChurchAvailabilityRoute: AppActiveChurchAvailabilityRoute,
+  AppActiveChurchChurchSettingsRoute: AppActiveChurchChurchSettingsRoute,
   AppActiveChurchDashboardRoute: AppActiveChurchDashboardRoute,
   AppActiveChurchNotificationsRoute: AppActiveChurchNotificationsRoute,
   AppActiveChurchSchedulesRoute: AppActiveChurchSchedulesRouteWithChildren,

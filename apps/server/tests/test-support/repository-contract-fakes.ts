@@ -118,6 +118,8 @@ export function createChurchRepositoryFake() {
     findMemberEmail: vi.fn<ChurchRepository['findMemberEmail']>(),
     findMemberContact: vi.fn<ChurchRepository['findMemberContact']>(),
     findUserName: vi.fn<ChurchRepository['findUserName']>(),
+    getSettings: vi.fn<ChurchRepository['getSettings']>(),
+    saveSettings: vi.fn<ChurchRepository['saveSettings']>(),
   } satisfies ChurchRepository;
 }
 

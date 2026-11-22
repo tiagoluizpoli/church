@@ -2,6 +2,7 @@ import {
   addChurchMember,
   type ChurchAccessLevel,
   type ChurchRecord,
+  church,
   createChurch,
   invitation,
   user,
@@ -126,6 +127,26 @@ export async function redeemChurchInvitation({
     accessLevel,
     id: churchMembershipId,
   });
+}
+
+export interface BuildChurchSettingsInput {
+  db: SeedWriter;
+  churchId: string;
+  website: string | null;
+  accentColor: string | null;
+}
+
+/** Direct-state builder: the Church Settings fields the Church extension row holds. */
+export async function buildChurchSettings({
+  db,
+  churchId,
+  website,
+  accentColor,
+}: BuildChurchSettingsInput): Promise<void> {
+  await db
+    .update(church)
+    .set({ website, accentColor })
+    .where(eq(church.id, churchId));
 }
 
 export interface BuildChurchInput {

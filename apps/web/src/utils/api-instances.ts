@@ -1,6 +1,7 @@
 import { getActiveChurch } from '@/infrastructure/api/active-church';
 import { getAssign } from '@/infrastructure/api/assign';
 import { getCallerCapabilities } from '@/infrastructure/api/caller-capabilities';
+import { getChurchSettings } from '@/infrastructure/api/church-settings';
 import { getEvents } from '@/infrastructure/api/events';
 import { getInvitations } from '@/infrastructure/api/invitations';
 import { getMinistries } from '@/infrastructure/api/ministries';
@@ -33,3 +34,4 @@ export const callerCapabilitiesApi = getCallerCapabilities();
 export const invitationsApi = getInvitations();
 export const peopleApi = getPeople();
 export const setupApi = getSetup();
+export const churchSettingsApi = getChurchSettings();

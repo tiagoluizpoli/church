@@ -169,6 +169,8 @@ function createHarness({
     findMemberEmail: vi.fn(),
     findMemberContact: vi.fn(),
     findUserName: vi.fn(),
+    getSettings: vi.fn(),
+    saveSettings: vi.fn(),
   };
   return {
     acceptedInputs,

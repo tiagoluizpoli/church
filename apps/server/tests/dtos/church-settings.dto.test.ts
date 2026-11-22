@@ -1,0 +1,45 @@
+import { describe, expect, it } from 'vitest';
+import {
+  toChurchSettingsFieldErrors,
+  updateChurchSettingsBodySchema,
+} from '@/api/dtos/church-settings.dto';
+
+describe('Church Settings field errors', () => {
+  it('words each refused field once, in request order, in the request locale', () => {
+    expect(
+      toChurchSettingsFieldErrors({
+        issues: [
+          { instancePath: '/name', message: 'CHURCH_NAME_LENGTH' },
+          { instancePath: '/name', message: 'INVALID' },
+          { instancePath: '/website', message: 'Invalid input' },
+          { instancePath: '/contacts/1/value' },
+        ],
+        locale: 'en',
+      }),
+    ).toEqual([
+      {
+        field: 'name',
+        code: 'CHURCH_NAME_LENGTH',
+        message: 'The name must be 2 to 80 characters long.',
+      },
+      { field: 'website', code: 'INVALID', message: 'Invalid value.' },
+      { field: 'contacts.1.value', code: 'INVALID', message: 'Invalid value.' },
+    ]);
+  });
+});
+
+describe('Church Settings body', () => {
+  it('normalises every field through the domain value objects', () => {
+    expect(
+      updateChurchSettingsBodySchema.parse({
+        name: ' Igreja  Viva ',
+        website: 'igrejaviva.org',
+        accentColor: '#ABCDEF',
+      }),
+    ).toEqual({
+      name: 'Igreja Viva',
+      website: 'https://igrejaviva.org',
+      accentColor: '#abcdef',
+    });
+  });
+});

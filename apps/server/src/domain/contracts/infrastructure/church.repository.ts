@@ -1,4 +1,8 @@
 import type { ChurchId, UserId } from '../../branded-ids';
+import type {
+  ChurchSettings,
+  ChurchSettingsChanges,
+} from '../../church-settings';
 import type { Church, ChurchSlug } from '../../entities/church';
 import type { TransactionContext } from './transaction-context';
 
@@ -21,6 +25,16 @@ export interface ChurchRepository {
    * `null` when the User is missing or the name is blank.
    */
   findUserName(input: FindUserNameInput): Promise<string | null>;
+  /** The Church's editable identity (Church Settings). */
+  getSettings(input: GetChurchByIdInput): Promise<ChurchSettings>;
+  /** Overwrites the Church's editable identity; the slug is never touched. */
+  saveSettings(input: SaveChurchSettingsInput): Promise<void>;
+}
+
+export interface SaveChurchSettingsInput {
+  id: ChurchId;
+  changes: ChurchSettingsChanges;
+  tx?: TransactionContext;
 }
 
 export interface ChurchMemberContact {

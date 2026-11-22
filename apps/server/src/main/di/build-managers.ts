@@ -5,6 +5,7 @@ import {
   DbAssignmentManager,
   DbAvailabilityCheckManager,
   DbChurchAccessManager,
+  DbChurchSettingsManager,
   DbCycleManager,
   DbEventManager,
   DbEventTemplateManager,
@@ -63,6 +64,7 @@ export type Managers = Pick<
   | 'invitationListManager'
   | 'peopleListManager'
   | 'setupProgressManager'
+  | 'churchSettingsManager'
   | 'churchAccessManager'
   | 'ministryMembershipManager'
 >;
@@ -415,6 +417,14 @@ export function buildManagers({
     overrides.setupProgressManager ??
     new DbSetupProgressManager({ setupProgressRepository });
 
+  const churchSettingsManager =
+    overrides.churchSettingsManager ??
+    new DbChurchSettingsManager({
+      churchRepository,
+      unitOfWork,
+      publicOrigin: env.CORS_ORIGIN,
+    });
+
   const churchAccessManager =
     overrides.churchAccessManager ??
     new DbChurchAccessManager({
@@ -457,6 +467,7 @@ export function buildManagers({
     invitationListManager,
     peopleListManager,
     setupProgressManager,
+    churchSettingsManager,
     churchAccessManager,
     ministryMembershipManager,
   };

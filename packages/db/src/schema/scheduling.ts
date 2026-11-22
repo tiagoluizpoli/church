@@ -100,6 +100,49 @@ export const eventTimeBlock = pgTable(
   ],
 );
 
+/**
+ * Append-only: one row per EventTimeBlock move made after its Cycle was sent,
+ * written in the move's transaction. The first row's previous bounds are the
+ * as-sent time.
+ */
+export const eventTimeBlockMove = pgTable(
+  'event_time_block_move',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    eventTimeBlockId: uuid('event_time_block_id')
+      .notNull()
+      .references(() => eventTimeBlock.id, { onDelete: 'cascade' }),
+    previousStart: timestamp('previous_start', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    previousEnd: timestamp('previous_end', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    newStart: timestamp('new_start', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    newEnd: timestamp('new_end', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    movedAt: timestamp('moved_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index('event_time_block_move_block_idx').on(
+      table.eventTimeBlockId,
+      table.movedAt,
+    ),
+  ],
+);
+
 export const shift = pgTable(
   'shift',
   {

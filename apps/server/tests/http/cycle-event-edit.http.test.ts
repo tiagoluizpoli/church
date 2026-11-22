@@ -1,4 +1,9 @@
-import { event, eventTimeBlock, outboxMessage } from '@church/db';
+import {
+  event,
+  eventTimeBlock,
+  eventTimeBlockMove,
+  outboxMessage,
+} from '@church/db';
 import {
   parseCalendarDay,
   parseInstant,
@@ -498,6 +503,28 @@ describe('PATCH /admin/cycles/:cycleId/events/:eventId', () => {
       ['2026-10-18T12:00:00.000Z', '2026-10-18T13:00:00.000Z'],
       ['2026-10-18T13:00:00.000Z', '2026-10-18T15:00:00.000Z'],
     ]);
+  });
+
+  it('records no move when a block is rescheduled in a draft Cycle', async () => {
+    const { cycleId, fixture } = await setUp();
+    const graph = currentGraph(fixture);
+    const [welcome, service] = graph.eventTimeBlocks;
+
+    const response = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        ...graph,
+        start: at('08:00'),
+        eventTimeBlocks: [
+          { ...welcome, startTime: at('08:00'), endTime: at('09:00') },
+          service,
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await db.select().from(eventTimeBlockMove)).toEqual([]);
   });
 
   it('refuses a shrink that leaves a retained block outside and keeps the original graph', async () => {

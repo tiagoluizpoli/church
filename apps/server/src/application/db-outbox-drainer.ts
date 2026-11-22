@@ -457,7 +457,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     const request = notificationRequestDataSchemas[kind]?.safeParse({
       churchLogoUrl: null,
       churchAccent: null,
-      ...data,
+      ...(data as Partial<typeof data>),
     });
     if (
       !request?.success &&

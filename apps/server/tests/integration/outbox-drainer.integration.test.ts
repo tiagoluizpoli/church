@@ -2228,15 +2228,19 @@ describe('Church identity snapshot at queue time (ticket #1030, integration)', (
     ).data;
     await testDb
       .update(outboxMessage)
-      .set({ payload: { ...queued?.payload, data: oldData } });
+      .set({ payload: { ...(queued?.payload as object), data: oldData } });
 
     const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
 
     expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
     expect(emailSender.sent[0]).toMatchObject({ kind: 'event.cancelled' });
-    expect(emailSender.sent[0]?.churchLogoUrl ?? null).toBeNull();
-    expect(emailSender.sent[0]?.churchAccent ?? null).toBeNull();
+    const sentIdentity = emailSender.sent[0] as {
+      churchLogoUrl?: string | null;
+      churchAccent?: string | null;
+    };
+    expect(sentIdentity.churchLogoUrl ?? null).toBeNull();
+    expect(sentIdentity.churchAccent ?? null).toBeNull();
   });
 
   it('reads the current logo and accent when it snapshots', async () => {

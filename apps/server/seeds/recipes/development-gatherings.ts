@@ -1,4 +1,7 @@
+import { templatePrecedence } from '@church/db';
 import { parseTimeOfDay } from '@church/time';
+import type { EventTemplateId } from '../../src/domain/branded-ids';
+import { toStoredPrecedence } from '../../src/domain/template-precedence';
 import type { ChurchAddressBlueprint } from '../blueprints/directory/types';
 import type {
   GatheringBlockKey,
@@ -142,6 +145,28 @@ export async function loadGatherings({
         placeAddressId: block.placeAddressId,
       })),
     );
+  }
+
+  for (const { winner, loser } of blueprint.precedences) {
+    const stored = toStoredPrecedence({
+      templateId: deriveSeedId({
+        kind: 'event-template',
+        parentIds: [churchId, winner],
+      }) as EventTemplateId,
+      otherTemplateId: deriveSeedId({
+        kind: 'event-template',
+        parentIds: [churchId, loser],
+      }) as EventTemplateId,
+      answer: 'thisWins',
+    });
+    await db.insert(templatePrecedence).values({
+      id: deriveSeedId({
+        kind: 'template-precedence',
+        parentIds: [churchId, winner, loser],
+      }),
+      churchId,
+      ...stored,
+    });
   }
 
   for (const rule of blueprint.servingRules) {

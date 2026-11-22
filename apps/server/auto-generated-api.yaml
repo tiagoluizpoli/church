@@ -2844,7 +2844,11 @@ paths:
       tags:
         - planning
       description: Generate one Event per matching CalendarDay in the Cycle for each
-        selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock.
+        selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock. A
+        loser of a Template Precedence skips only its blocks overlapping the
+        winner’s on days the winner’s Recurrence names; blocks already in the
+        Cycle that would now lose are listed in `leftoverEventTimeBlocks` and
+        never deleted.
       requestBody:
         required: true
         content:
@@ -2877,9 +2881,46 @@ paths:
                     type: number
                   generatedEventTimeBlockCount:
                     type: number
+                  leftoverEventTimeBlocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        eventId:
+                          type: string
+                        eventTitle:
+                          type: string
+                        eventTimeBlockId:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        startTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        endTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        loserTemplateName:
+                          type: string
+                        winnerTemplateName:
+                          type: string
+                      required:
+                        - eventId
+                        - eventTitle
+                        - eventTimeBlockId
+                        - label
+                        - startTime
+                        - endTime
+                        - loserTemplateName
+                        - winnerTemplateName
+                      additionalProperties: false
                 required:
                   - generatedEventCount
                   - generatedEventTimeBlockCount
+                  - leftoverEventTimeBlocks
                 additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/events:
     post:
@@ -5844,6 +5885,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -5855,6 +5929,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -5937,6 +6012,43 @@ paths:
                   description: "#rrggbb, or null for the app default."
                   type: string
                   pattern: ^#[0-9a-fA-F]{6}$
+                contacts:
+                  description: Church Contacts in order; phones validated as allowed-country
+                    numbers and stored as E.164, emails lower-cased. Omitted,
+                    the contacts stay; sent, the list replaces them. A refused
+                    row is reported by index, e.g. contacts.1.value.
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - email
+                          - phone
+                      phoneType:
+                        nullable: true
+                        type: string
+                        enum:
+                          - mobile
+                          - landline
+                      value:
+                        type: string
+                      description:
+                        nullable: true
+                        type: string
+                      isWhatsApp:
+                        type: boolean
+                      isPublic:
+                        type: boolean
+                    required:
+                      - kind
+                      - phoneType
+                      - value
+                      - description
+                      - isWhatsApp
+                      - isPublic
                 addresses:
                   maxItems: 50
                   type: array
@@ -6217,6 +6329,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -6228,6 +6373,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -6318,6 +6464,9 @@ paths:
                             - CHURCH_SLUG_FORMAT
                             - CHURCH_SLUG_RESERVED
                             - CHURCH_SLUG_TAKEN
+                            - CONTACT_PHONE_INVALID
+                            - CONTACT_EMAIL_INVALID
+                            - CONTACT_DESCRIPTION_TOO_LONG
                             - INVALID
                         message:
                           type: string
@@ -6584,6 +6733,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -6595,6 +6777,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -6846,6 +7029,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -6857,6 +7073,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -7076,6 +7293,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -7087,6 +7337,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -18524,11 +18775,160 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  programme:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        recurrence:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - weekly
+                                weekdays:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 0
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: number
+                                        enum:
+                                          - 6
+                              required:
+                                - kind
+                                - weekdays
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - monthly
+                                entries:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    oneOf:
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - nthWeekday
+                                          ordinal:
+                                            anyOf:
+                                              - type: number
+                                                enum:
+                                                  - 1
+                                              - type: number
+                                                enum:
+                                                  - 2
+                                              - type: number
+                                                enum:
+                                                  - 3
+                                              - type: number
+                                                enum:
+                                                  - 4
+                                              - type: number
+                                                enum:
+                                                  - 5
+                                              - type: string
+                                                enum:
+                                                  - last
+                                          weekday:
+                                            anyOf:
+                                              - type: number
+                                                enum:
+                                                  - 0
+                                              - type: number
+                                                enum:
+                                                  - 1
+                                              - type: number
+                                                enum:
+                                                  - 2
+                                              - type: number
+                                                enum:
+                                                  - 3
+                                              - type: number
+                                                enum:
+                                                  - 4
+                                              - type: number
+                                                enum:
+                                                  - 5
+                                              - type: number
+                                                enum:
+                                                  - 6
+                                        required:
+                                          - kind
+                                          - ordinal
+                                          - weekday
+                                        additionalProperties: false
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - dayOfMonth
+                                          day:
+                                            type: integer
+                                            minimum: 1
+                                            maximum: 31
+                                        required:
+                                          - kind
+                                          - day
+                                        additionalProperties: false
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - lastDayOfMonth
+                                        required:
+                                          - kind
+                                        additionalProperties: false
+                              required:
+                                - kind
+                                - entries
+                              additionalProperties: false
+                        startTime:
+                          type: string
+                        label:
+                          type: string
+                        place:
+                          nullable: true
+                          type: string
+                      required:
+                        - recurrence
+                        - startTime
+                        - label
+                        - place
+                      additionalProperties: false
                 required:
                   - slug
                   - name
                   - logoUrl
                   - accentColor
+                  - programme
                 additionalProperties: false
         "404":
           description: Default Response

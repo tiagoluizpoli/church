@@ -11,7 +11,8 @@ export type GatheringBlockKey =
   | 'sunday-10:30'
   | 'sunday-18:30'
   | 'wednesday-20:00'
-  | 'day15-07:00';
+  | 'day15-07:00'
+  | 'first-sunday-10:30';
 
 export interface TemplateTimeBlockBlueprint {
   key: GatheringBlockKey;
@@ -99,6 +100,8 @@ export interface DynamicEventBlueprint {
 
 export interface GatheringsBlueprint {
   templates: readonly EventTemplateBlueprint[];
+  /** Template names: `winner` beats `loser` where their Recurrences share a day and blocks overlap. */
+  precedences: readonly { winner: string; loser: string }[];
   servingRules: readonly MinistryServingRule[];
   dynamicEvents: readonly DynamicEventBlueprint[];
 }
@@ -177,6 +180,27 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
         },
       ],
     },
+    {
+      // Wins over the weekly Sunday template: on the 1st Sunday the 10:30 service is replaced.
+      name: 'Santa Ceia (1º Domingo)',
+      recurrence: {
+        kind: 'monthly',
+        entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+      },
+      blocks: [
+        {
+          key: 'first-sunday-10:30',
+          label: 'Santa Ceia 10:30',
+          startTime: '10:30',
+          endTime: '12:30',
+          isPublic: true,
+          placeAddress: 'Templo',
+        },
+      ],
+    },
+  ],
+  precedences: [
+    { winner: 'Santa Ceia (1º Domingo)', loser: 'Culto de Domingo' },
   ],
   servingRules: [
     serveGatherings({
@@ -189,6 +213,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
         'sunday-18:30': PROJECAO_TWO_PLACEMENTS,
         'wednesday-20:00': PROJECAO_TWO_PLACEMENTS,
         'day15-07:00': null,
+        'first-sunday-10:30': null,
       },
     }),
     serveGatherings({
@@ -199,6 +224,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
         'sunday-18:30': KIDS_BLOCK,
         'wednesday-20:00': KIDS_BLOCK,
         'day15-07:00': null,
+        'first-sunday-10:30': null,
       },
     }),
     serveGatherings({
@@ -217,6 +243,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
           { role: 'Intercessor', sector: 'Sala de Oração', peopleNeeded: 8 },
         ],
         'day15-07:00': null,
+        'first-sunday-10:30': null,
       },
     }),
     serveGatherings({
@@ -251,6 +278,7 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
           },
         ],
         'day15-07:00': null,
+        'first-sunday-10:30': null,
       },
     }),
   ],

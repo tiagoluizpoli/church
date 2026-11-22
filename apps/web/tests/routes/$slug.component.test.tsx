@@ -30,6 +30,7 @@ const PROFILE = {
   name: 'Igreja Batista Esperança',
   logoUrl: 'https://storage.test/public/churches/a/logo/x.png',
   accentColor: '#1D4ED8',
+  programme: [],
 };
 
 function notFound(): AxiosError {

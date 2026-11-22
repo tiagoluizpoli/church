@@ -52,6 +52,7 @@
     "drizzle-orm": "catalog:",
     "fastify": "^5.3.3",
     "fastify-type-provider-zod": "^7.0.0",
+    "libphonenumber-js": "^1.13.17",
     "nodemailer": "^10.5.0",
     "pg": "^8.17.1",
     "pino": "^10.3.1",

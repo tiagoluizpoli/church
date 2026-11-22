@@ -1,3 +1,4 @@
+import type { ChurchContact } from '../../../src/domain/church-contact';
 /** A fixed fake person. The email is the sign-in identity and must end in `.test`. */
 export interface Person {
   name: string;
@@ -86,6 +87,8 @@ export interface ChurchIdentity {
   /** Church Settings; omitted means the Church leaves it empty. */
   website?: string;
   accentColor?: string;
+  /** Church Contacts in order; omitted means none. */
+  contacts?: ChurchContact[];
   addresses?: readonly ChurchAddressBlueprint[];
   /** In display order; the network is detected from each URL. */
   socialLinks?: readonly ChurchSocialLinkBlueprint[];

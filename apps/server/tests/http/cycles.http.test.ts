@@ -138,6 +138,7 @@ beforeAll(async () => {
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository,
       churchRepository,
       unitOfWork,
@@ -773,6 +774,7 @@ describe('Cycle last day', () => {
     expect(fortnightApply.json()).toEqual({
       generatedEventCount: 2,
       generatedEventTimeBlockCount: 2,
+      leftoverEventTimeBlocks: [],
     });
     expect(await eventStarts(fortnight.id)).toEqual([
       '2026-10-18T22:00:00.000Z',

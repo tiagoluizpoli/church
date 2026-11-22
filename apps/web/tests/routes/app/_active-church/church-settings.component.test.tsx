@@ -73,6 +73,7 @@ const SAVED: GetChurchSettings200 = {
   socialLinks: [],
   logoKey: null,
   logoUrl: null,
+  contacts: [],
   publicOrigin: 'https://app.church.test',
 };
 
@@ -209,6 +210,7 @@ describe('Church Settings screen', () => {
         accentColor: '#0f766e',
         addresses: [],
         socialLinks: [],
+        contacts: [],
       }),
     );
     expect(toastSuccess).toHaveBeenCalledWith(m.church_settings_saved());
@@ -232,6 +234,7 @@ describe('Church Settings screen', () => {
         accentColor: null,
         addresses: [],
         socialLinks: [],
+        contacts: [],
       }),
     );
   });
@@ -590,6 +593,7 @@ describe('Church Settings screen', () => {
           accentColor: '#0f766e',
           addresses: [],
           socialLinks: [],
+          contacts: [],
           slug: 'esperanca',
         }),
       );
@@ -1259,5 +1263,246 @@ describe('Church Settings preview addresses', () => {
     expect(writeText).toHaveBeenCalledWith(
       'Rua das Flores, 120, Centro, Campinas - SP',
     );
+  });
+});
+
+describe('Church Contacts section', () => {
+  const PHONE = {
+    kind: 'phone' as const,
+    phoneType: 'mobile' as const,
+    value: '+5511987654321',
+    description: 'Secretaria',
+    isWhatsApp: true,
+    isPublic: false,
+  };
+  const EMAIL = {
+    kind: 'email' as const,
+    phoneType: null,
+    value: 'a@igreja.org',
+    description: null,
+    isWhatsApp: false,
+    isPublic: false,
+  };
+
+  function rows() {
+    return screen.getAllByTestId('church-contact-row');
+  }
+
+  it('adds a private mobile contact with + Contato and saves it in the one request', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await nameField();
+    expect(screen.getByText(m.church_settings_contacts_empty())).toBeVisible();
+
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_contacts_add() }),
+    );
+    await user.type(
+      within(rows()[0]).getByRole('textbox', {
+        name: m.church_settings_contact_phone_label(),
+      }),
+      '11987654321',
+    );
+    await user.type(
+      within(rows()[0]).getByRole('textbox', {
+        name: m.church_settings_contact_description_label(),
+      }),
+      'Secretaria',
+    );
+    await user.click(
+      within(rows()[0]).getByRole('checkbox', {
+        name: m.church_settings_contact_whatsapp(),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contacts: [
+            {
+              kind: 'phone',
+              phoneType: 'mobile',
+              value: '11987654321',
+              description: 'Secretaria',
+              isWhatsApp: true,
+              isPublic: false,
+            },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('switching the type to email drops the WhatsApp mark option', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({ ...SAVED, contacts: [PHONE] });
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      within(rows()[0]).getByRole('combobox', {
+        name: new RegExp(m.church_settings_contact_kind_label()),
+      }),
+    );
+    await user.click(
+      await screen.findByRole('option', {
+        name: m.church_settings_contact_kind_email(),
+      }),
+    );
+
+    expect(
+      within(rows()[0]).queryByRole('checkbox', {
+        name: m.church_settings_contact_whatsapp(),
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(rows()[0]).getByRole('textbox', {
+        name: m.church_settings_contact_email_label(),
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('asks before making a contact public and moves the header counts and the preview only on confirm', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({ ...SAVED, contacts: [PHONE] });
+    renderSettings();
+    await nameField();
+    const publicSwitch = within(rows()[0]).getByRole('switch', {
+      name: m.church_settings_contact_public(),
+    });
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('1');
+    expect(
+      screen.getByTestId('church-preview-admin-contacts'),
+    ).toHaveTextContent('+5511987654321');
+
+    await user.click(publicSwitch);
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.church_settings_contact_public_confirm_cancel(),
+      }),
+    );
+    expect(publicSwitch).not.toBeChecked();
+    expect(saveBar()).not.toBeInTheDocument();
+
+    await user.click(publicSwitch);
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.church_settings_contact_public_confirm_action(),
+      }),
+    );
+
+    expect(publicSwitch).toBeChecked();
+    expect(
+      screen.getByTestId('church-settings-public-count'),
+    ).toHaveTextContent('4');
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('0');
+    expect(
+      screen.getByTestId('church-preview-public-contacts'),
+    ).toHaveTextContent('+5511987654321');
+  });
+
+  it('making a contact private again needs no confirmation', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      contacts: [{ ...PHONE, isPublic: true }],
+    });
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      within(rows()[0]).getByRole('switch', {
+        name: m.church_settings_contact_public(),
+      }),
+    );
+
+    expect(
+      screen.queryByText(m.church_settings_contact_public_confirm_title()),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('church-settings-admin-only-count'),
+    ).toHaveTextContent('1');
+  });
+
+  it('reorders with the move controls and saves the new order', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      contacts: [PHONE, EMAIL],
+    });
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_contact_move_up({ position: 2 }),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    await waitFor(() => expect(updateChurchSettings).toHaveBeenCalled());
+    const [{ contacts }] = updateChurchSettings.mock.calls[0];
+    expect(contacts.map((c: { kind: string }) => c.kind)).toEqual([
+      'email',
+      'phone',
+    ]);
+    expect(
+      screen.getByRole('button', {
+        name: m.church_settings_contact_move_up({ position: 1 }),
+      }),
+    ).toBeDisabled();
+  });
+
+  it('marks the refused row, opens the section, counts it, and clears it on edit', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      contacts: [PHONE, { ...PHONE, value: '+5511912345678' }],
+    });
+    updateChurchSettings.mockRejectedValue(
+      refusedSave([
+        {
+          field: 'contacts.1.value',
+          code: 'CONTACT_PHONE_INVALID',
+          message: 'Informe um telefone brasileiro válido, com DDD.',
+        },
+      ]),
+    );
+    renderSettings();
+    await nameField();
+    const second = () =>
+      within(rows()[1]).getByRole('textbox', {
+        name: m.church_settings_contact_phone_label(),
+      });
+
+    await user.type(second(), '9');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Informe um telefone brasileiro válido, com DDD.',
+      ),
+    ).toBeInTheDocument();
+    expect(second()).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      within(rows()[0]).getByRole('textbox', {
+        name: m.church_settings_contact_phone_label(),
+      }),
+    ).not.toHaveAttribute('aria-invalid');
+
+    await user.type(second(), '0');
+
+    expect(second()).not.toHaveAttribute('aria-invalid');
   });
 });

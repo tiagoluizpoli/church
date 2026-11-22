@@ -4,6 +4,7 @@ import {
   DrizzleAssignmentRepository,
   DrizzleAvailabilityCheckRepository,
   DrizzleChurchAccessRepository,
+  DrizzleChurchProgrammeRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
   DrizzleEventRepository,
@@ -55,6 +56,7 @@ export type Repositories = Pick<
   | 'shiftRepository'
   | 'churchRepository'
   | 'publicEventRepository'
+  | 'churchProgrammeRepository'
   | 'ministryRepository'
   | 'invitationVerificationCodeRepository'
   | 'redemptionRepository'
@@ -129,6 +131,10 @@ export function buildRepositories({
     overrides.shiftRepository ?? new DrizzleShiftRepository({ db: database });
   const churchRepository =
     overrides.churchRepository ?? new DrizzleChurchRepository({ db: database });
+  const churchProgrammeRepository =
+    overrides.churchProgrammeRepository ??
+    new DrizzleChurchProgrammeRepository({ db: database });
+
   const publicEventRepository =
     overrides.publicEventRepository ??
     new DrizzlePublicEventRepository({ db: database });
@@ -199,6 +205,7 @@ export function buildRepositories({
     shiftRepository,
     churchRepository,
     publicEventRepository,
+    churchProgrammeRepository,
     ministryRepository,
     invitationVerificationCodeRepository,
     redemptionRepository,

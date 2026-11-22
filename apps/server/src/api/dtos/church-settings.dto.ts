@@ -9,6 +9,12 @@ import {
   PIN_SOURCES,
 } from '../../domain/church-address';
 import {
+  CHURCH_CONTACT_KINDS,
+  CHURCH_CONTACT_PHONE_TYPES,
+  CONTACTS_MAX,
+  churchContactSchema,
+} from '../../domain/church-contact';
+import {
   accentColorSchema,
   CHURCH_SETTINGS_FIELD_CODES,
   type ChurchSettingsFieldCode,
@@ -18,6 +24,15 @@ import {
 } from '../../domain/church-settings';
 import { socialLinksSchema } from '../../domain/social-link';
 import type { ErrorMessage } from '../utils/error-table';
+
+const churchContactResponseSchema = z.object({
+  kind: z.enum(CHURCH_CONTACT_KINDS),
+  phoneType: z.enum(CHURCH_CONTACT_PHONE_TYPES).nullable(),
+  value: z.string(),
+  description: z.string().nullable(),
+  isWhatsApp: z.boolean(),
+  isPublic: z.boolean(),
+});
 
 const churchAddressResponseSchema = z.object({
   id: z.string(),
@@ -56,6 +71,8 @@ export const churchSettingsResponseSchema = z.object({
   logoKey: z.string().nullable(),
   /** Anonymous URL of the logo, built from its key. */
   logoUrl: z.string().nullable(),
+  /** Church Contacts in the admin's order. */
+  contacts: z.array(churchContactResponseSchema),
   /** The web origin the public `…/slug` address is shown under. */
   publicOrigin: z.string(),
 });
@@ -76,6 +93,13 @@ export const updateChurchSettingsBodySchema = z.object({
   accentColor: accentColorSchema.describe(
     '#rrggbb, or null for the app default.',
   ),
+  contacts: z
+    .array(churchContactSchema)
+    .max(CONTACTS_MAX)
+    .optional()
+    .describe(
+      'Church Contacts in order; phones validated as allowed-country numbers and stored as E.164, emails lower-cased. Omitted, the contacts stay; sent, the list replaces them. A refused row is reported by index, e.g. contacts.1.value.',
+    ),
   addresses: churchAddressesSchema.describe(
     'Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.',
   ),
@@ -139,6 +163,10 @@ const FIELD_CODE_MESSAGES: Record<ChurchSettingsFieldCode, ErrorMessage> = {
   CHURCH_SLUG_FORMAT: m.error_church_settings_slug_format,
   CHURCH_SLUG_RESERVED: m.error_church_settings_slug_reserved,
   CHURCH_SLUG_TAKEN: m.error_church_settings_slug_taken,
+  CONTACT_PHONE_INVALID: m.error_church_settings_contact_phone_invalid,
+  CONTACT_EMAIL_INVALID: m.error_church_settings_contact_email_invalid,
+  CONTACT_DESCRIPTION_TOO_LONG:
+    m.error_church_settings_contact_description_too_long,
   INVALID: m.error_church_settings_invalid,
 };
 

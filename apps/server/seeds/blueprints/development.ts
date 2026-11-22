@@ -69,6 +69,32 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
         isPublic: false,
       },
     ],
+    contacts: [
+      {
+        kind: 'phone',
+        phoneType: 'mobile',
+        value: '+5511987654321',
+        description: 'Secretaria',
+        isWhatsApp: true,
+        isPublic: true,
+      },
+      {
+        kind: 'email',
+        phoneType: null,
+        value: 'contato@igreja-semente.test',
+        description: null,
+        isWhatsApp: false,
+        isPublic: true,
+      },
+      {
+        kind: 'phone',
+        phoneType: 'landline',
+        value: '+551134567890',
+        description: 'Pastor (só admins)',
+        isWhatsApp: false,
+        isPublic: false,
+      },
+    ],
     socialLinks: [
       { url: 'https://instagram.com/igrejasemente' },
       {

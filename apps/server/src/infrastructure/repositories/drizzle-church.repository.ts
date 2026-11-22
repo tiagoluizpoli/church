@@ -27,6 +27,7 @@ import {
   type ChurchAddressUsage,
   resolveChurchAddresses,
 } from '../../domain/church-address';
+import type { ChurchContact } from '../../domain/church-contact';
 import type { ChurchLegalProfile } from '../../domain/church-legal-profile';
 import type {
   ChurchSettings,
@@ -46,8 +47,10 @@ import type {
   GetChurchByIdInput,
   GetChurchBySlugInput,
   GetChurchSettingsInput,
+  GetPublicContactDetailsInput,
   ListChurchAdminUserIdsInput,
   PublicChurchIdentity,
+  PublicContactDetails,
   SaveChurchLogoKeyInput,
   SaveChurchSettingsInput,
   SlugAvailabilityInput,
@@ -76,6 +79,10 @@ interface ReplaceDeletedAddressUsageInput {
   stored: readonly ChurchAddress[];
   kept: readonly string[];
   replacements: readonly AddressReplacement[];
+}
+
+interface ListContactsInput extends ListAddressesInput {
+  onlyPublic?: boolean;
 }
 
 interface ListAddressesInput {
@@ -234,7 +241,23 @@ export class DrizzleChurchRepository implements ChurchRepository {
           .where(eq(church.id, id))
       : [];
     if (!row) throw new NotFoundError(`Church not found: ${id}`);
-    const contacts = await getClient({ db: this.db, tx })
+    const contacts = await this.listChurchContacts({ id, tx });
+    return {
+      ...row,
+      addresses: await this.listAddresses({ id, tx }),
+      socialLinks: await this.listSocialLinks({ id, tx }),
+      legalProfile: await this.findLegalProfile({ id, tx }),
+      contacts,
+      contactGroups: await this.listGroupNames({ id, tx }),
+    };
+  }
+
+  private async listChurchContacts({
+    id,
+    tx,
+    onlyPublic = false,
+  }: ListContactsInput): Promise<ChurchContact[]> {
+    return getClient({ db: this.db, tx })
       .select({
         kind: churchContact.kind,
         phoneType: churchContact.phoneType,
@@ -249,15 +272,26 @@ export class DrizzleChurchRepository implements ChurchRepository {
         churchContactGroup,
         eq(churchContactGroup.id, churchContact.groupId),
       )
-      .where(eq(churchContact.churchId, id))
+      .where(
+        and(
+          eq(churchContact.churchId, id),
+          onlyPublic ? eq(churchContact.isPublic, true) : undefined,
+        ),
+      )
       .orderBy(asc(churchContact.position), asc(churchContact.id));
+  }
+
+  async getPublicContactDetails({
+    churchId,
+  }: GetPublicContactDetailsInput): Promise<PublicContactDetails> {
+    const id = churchId;
+    const legalProfile = await this.findLegalProfile({ id });
     return {
-      ...row,
-      addresses: await this.listAddresses({ id, tx }),
-      socialLinks: await this.listSocialLinks({ id, tx }),
-      legalProfile: await this.findLegalProfile({ id, tx }),
-      contacts,
-      contactGroups: await this.listGroupNames({ id, tx }),
+      contacts: await this.listChurchContacts({ id, onlyPublic: true }),
+      socialLinks: await this.listSocialLinks({ id }),
+      groupNames: await this.listGroupNames({ id }),
+      // Private legal data never leaves the query's result.
+      legalProfile: legalProfile?.isPublic ? legalProfile : null,
     };
   }
 

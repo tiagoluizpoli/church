@@ -6,7 +6,7 @@ import {
   organization,
   user,
 } from '@church/db';
-import { and, asc, eq, ne } from 'drizzle-orm';
+import { and, asc, eq, ne, or } from 'drizzle-orm';
 import type { UserId } from '../../domain/branded-ids';
 import type {
   ChurchSettings,
@@ -16,10 +16,12 @@ import type {
   ChurchMemberContact,
   ChurchRepository,
   FindChurchMemberEmailInput,
+  FindPublicIdentityBySlugInput,
   FindUserNameInput,
   GetChurchByIdInput,
   GetChurchBySlugInput,
   ListChurchAdminUserIdsInput,
+  PublicChurchIdentity,
   SaveChurchLogoKeyInput,
   SaveChurchSettingsInput,
   SlugAvailabilityInput,
@@ -239,5 +241,30 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .update(church)
       .set({ logoKey })
       .where(eq(church.id, id));
+  }
+
+  async findPublicIdentityBySlug({
+    slug,
+  }: FindPublicIdentityBySlugInput): Promise<PublicChurchIdentity | null> {
+    // A live slug and the slug history are disjoint, so at most one row matches.
+    const [row] = await getClient({ db: this.db })
+      .select({
+        slug: organization.slug,
+        name: organization.name,
+        accentColor: church.accentColor,
+        logoKey: church.logoKey,
+      })
+      .from(church)
+      .innerJoin(organization, eq(organization.id, church.id))
+      .leftJoin(
+        churchSlugHistory,
+        and(
+          eq(churchSlugHistory.churchId, church.id),
+          eq(churchSlugHistory.slug, slug),
+        ),
+      )
+      .where(or(eq(organization.slug, slug), eq(churchSlugHistory.slug, slug)))
+      .limit(1);
+    return row ?? null;
   }
 }

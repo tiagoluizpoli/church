@@ -23,6 +23,7 @@ import type {
   IParticipationManager,
   IPeopleListManager,
   IPlanningEventManager,
+  IPublicChurchProfileManager,
   ISectorManager,
   ISetupProgressManager,
   ISwapRequestListManager,
@@ -153,5 +154,6 @@ export interface CompositionRootDependencies {
   setupProgressManager: ISetupProgressManager;
   churchAccessManager: IChurchAccessManager;
   churchSettingsManager: IChurchSettingsManager;
+  publicChurchProfileManager: IPublicChurchProfileManager;
   ministryMembershipManager: IMinistryMembershipManager;
 }

@@ -7265,6 +7265,41 @@ export type ConfirmVolunteerTransfer401 = {
   message: string;
 };
 
+export type GetPublicChurchProfile200 = {
+  slug: string;
+  name: string;
+  /** @nullable */
+  logoUrl: string | null;
+  /** @nullable */
+  accentColor: string | null;
+};
+
+export type GetPublicChurchProfile404Error = typeof GetPublicChurchProfile404Error[keyof typeof GetPublicChurchProfile404Error];
+
+
+export const GetPublicChurchProfile404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type GetPublicChurchProfile404 = {
+  error: GetPublicChurchProfile404Error;
+  message: string;
+};
+
+export type GetPublicChurchProfile429Error = typeof GetPublicChurchProfile429Error[keyof typeof GetPublicChurchProfile429Error];
+
+
+export const GetPublicChurchProfile429Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type GetPublicChurchProfile429 = {
+  error: GetPublicChurchProfile429Error;
+  message: string;
+};
+
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState];
 
 

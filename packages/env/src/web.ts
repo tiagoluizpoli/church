@@ -13,6 +13,9 @@ export const env = createEnv({
     VITE_SERVER_URL: z.union([z.url(), z.literal('/')]),
     // The source revision baked in at build; error reports carry it so they
     // resolve against that build's source maps.
+    // The browser-restricted Google Maps Embed key of the Public Church Profile
+    // map; unset, the page shows the address and links without a map.
+    VITE_MAPS_EMBED_API_KEY: z.string().min(1).optional(),
     VITE_APP_REVISION: z.string().min(1).default('unversioned'),
   },
   runtimeEnv: (import.meta as unknown as ViteImportMeta).env,

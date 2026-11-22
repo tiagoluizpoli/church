@@ -2170,5 +2170,7 @@
   "church_settings_preview_addresses": "Endereços",
   "church_settings_preview_directions": "Como chegar",
   "church_settings_preview_copy_address": "Copiar endereço",
-  "church_settings_preview_address_copied": "Endereço copiado"
+  "church_settings_preview_address_copied": "Endereço copiado",
+  "public_addresses_title": "Endereço",
+  "public_addresses_map_title": "Mapa do endereço principal"
 }

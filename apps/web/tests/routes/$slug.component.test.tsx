@@ -31,6 +31,8 @@ const PROFILE = {
   logoUrl: 'https://storage.test/public/churches/a/logo/x.png',
   accentColor: '#1D4ED8',
   programme: [],
+  addresses: [],
+  mainAddressArea: null,
 };
 
 function notFound(): AxiosError {

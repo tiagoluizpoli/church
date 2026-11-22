@@ -28,7 +28,7 @@ The deployment workflows build and push them for you; see
 [docs/operations/deployments.md](../docs/operations/deployments.md) for the
 develop pipeline, its checks and the deployment runbook.
 
-`APP_REVISION` is the only build argument, and the build fails without it.
+`APP_REVISION` is the only required build argument, and the build fails without it. The web image also takes an optional `MAPS_EMBED_API_KEY` (a browser-restricted Google Maps Embed key); without it the Public Church Profile shows its addresses and directions links but no map.
 The web build takes the error tracker settings as optional build secrets
 (`tooling/deployment/.env.schema`): it uploads the web source maps under the
 revision and deletes them before the served stage, so no `.map` is ever

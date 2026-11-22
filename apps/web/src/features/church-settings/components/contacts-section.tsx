@@ -40,6 +40,16 @@ function isContactType(value: unknown): value is ContactType {
   return CONTACT_TYPES.some((type) => type === value);
 }
 
+interface UpdateInput {
+  key: string;
+  changes: Partial<ContactForm>;
+}
+
+interface MoveInput {
+  index: number;
+  offset: number;
+}
+
 interface ContactsSectionProps {
   contacts: ContactForm[];
   /** Refusals by field, e.g. `contacts.1.value`. */
@@ -57,7 +67,7 @@ export function ContactsSection({
   const counter = React.useRef(0);
   const confirmingContact = contacts.find(({ key }) => key === confirming);
 
-  const update = (key: string, changes: Partial<ContactForm>) =>
+  const update = ({ key, changes }: UpdateInput) =>
     onChange(
       contacts.map((contact) =>
         contact.key === key ? { ...contact, ...changes } : contact,
@@ -79,7 +89,7 @@ export function ContactsSection({
     ]);
   };
 
-  const move = (index: number, offset: number) => {
+  const move = ({ index, offset }: MoveInput) => {
     const next = [...contacts];
     const [moved] = next.splice(index, 1);
     if (!moved) return;
@@ -112,7 +122,8 @@ export function ContactsSection({
                     <Select
                       value={contact.type}
                       onValueChange={(type) => {
-                        if (isContactType(type)) update(contact.key, { type });
+                        if (isContactType(type))
+                          update({ key: contact.key, changes: { type } });
                       }}
                     >
                       <SelectTrigger
@@ -142,7 +153,10 @@ export function ContactsSection({
                     inputMode={isEmail ? 'email' : 'tel'}
                     autoComplete="off"
                     onChange={(event) =>
-                      update(contact.key, { value: event.target.value })
+                      update({
+                        key: contact.key,
+                        changes: { value: event.target.value },
+                      })
                     }
                   />
                 </div>
@@ -155,7 +169,10 @@ export function ContactsSection({
                       value={contact.description}
                       error={errors[`contacts.${index}.description`]}
                       onChange={(event) =>
-                        update(contact.key, { description: event.target.value })
+                        update({
+                          key: contact.key,
+                          changes: { description: event.target.value },
+                        })
                       }
                     />
                   </div>
@@ -164,7 +181,10 @@ export function ContactsSection({
                       <Checkbox
                         checked={contact.isWhatsApp}
                         onCheckedChange={(checked) =>
-                          update(contact.key, { isWhatsApp: checked === true })
+                          update({
+                            key: contact.key,
+                            changes: { isWhatsApp: checked === true },
+                          })
                         }
                       />
                       {m.church_settings_contact_whatsapp()}
@@ -176,7 +196,11 @@ export function ContactsSection({
                       checked={contact.isPublic}
                       onCheckedChange={(checked) => {
                         if (checked) setConfirming(contact.key);
-                        else update(contact.key, { isPublic: false });
+                        else
+                          update({
+                            key: contact.key,
+                            changes: { isPublic: false },
+                          });
                       }}
                     />
                     <span aria-hidden>
@@ -191,7 +215,7 @@ export function ContactsSection({
                       aria-label={m.church_settings_contact_move_up({
                         position,
                       })}
-                      onClick={() => move(index, -1)}
+                      onClick={() => move({ index, offset: -1 })}
                     >
                       <ArrowUp aria-hidden />
                     </Button>
@@ -202,7 +226,7 @@ export function ContactsSection({
                       aria-label={m.church_settings_contact_move_down({
                         position,
                       })}
-                      onClick={() => move(index, 1)}
+                      onClick={() => move({ index, offset: 1 })}
                     >
                       <ArrowDown aria-hidden />
                     </Button>
@@ -253,7 +277,8 @@ export function ContactsSection({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (confirming) update(confirming, { isPublic: true });
+                if (confirming)
+                  update({ key: confirming, changes: { isPublic: true } });
                 setConfirming(null);
               }}
             >

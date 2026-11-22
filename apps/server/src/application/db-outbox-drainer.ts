@@ -453,7 +453,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     message,
   }: ProcessNotificationMessageInput): Promise<'sent' | 'failed'> {
     const { to, kind, data } = message.payload;
-    const request = notificationRequestDataSchemas[kind]?.safeParse(data);
+    // Rows queued before the Church identity existed render name-only.
+    const request = notificationRequestDataSchemas[kind]?.safeParse({
+      churchLogoUrl: null,
+      churchAccent: null,
+      ...(data as Partial<typeof data>),
+    });
     if (
       !request?.success &&
       (kind === 'schedule_published' || kind === 'schedule_updated')
@@ -515,12 +520,15 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         });
         return 'sent';
       }
-      facts = resolved;
+      // The identity frozen at queue time, never the Church's current one.
+      const { churchLogoUrl, churchAccent } = request.data;
+      facts = { ...resolved, churchLogoUrl, churchAccent };
+      const frozenFacts = facts;
       // Every retry re-renders from these, never from live scheduling objects.
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.recordDeliveryFacts({
           id: message.id,
-          facts: resolved,
+          facts: frozenFacts,
           tx,
         }),
       );

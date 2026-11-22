@@ -194,11 +194,7 @@ describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
       expect.objectContaining({
         kind: 'ministry_invitation',
         to: [{ userId: inviteeUserId, churchId }],
-        data: {
-          ministryInvitationId: 'invitation-1',
-          churchLogoUrl: null,
-          churchAccent: null,
-        },
+        data: { ministryInvitationId: 'invitation-1' },
       }),
     );
     expect(repo.enqueueOutboxMessage).not.toHaveBeenCalled();

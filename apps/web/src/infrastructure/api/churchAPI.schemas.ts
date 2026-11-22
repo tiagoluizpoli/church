@@ -8438,8 +8438,16 @@ export type GetPublicChurchProfile200ProgrammeItemRecurrence = {
 })[];
 };
 
+export const GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem = {  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+  NUMBER_4: 4,
+  NUMBER_5: 5,
+  last: 'last',
+} as const
 export type GetPublicChurchProfile200ProgrammeItem = {
   recurrence: GetPublicChurchProfile200ProgrammeItemRecurrence;
+  exceptOrdinals: typeof GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem[keyof typeof GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem][];
   startTime: string;
   label: string;
   /** @nullable */

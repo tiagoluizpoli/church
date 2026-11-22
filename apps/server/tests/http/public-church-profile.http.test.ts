@@ -219,12 +219,14 @@ describe('GET /public/churches/:slug', () => {
       expect(await programmeOf('ib-esperanca')).toEqual([
         {
           recurrence: SUNDAY,
+          exceptOrdinals: [],
           startTime: clock('19:00'),
           label: 'Culto',
           place: null,
         },
         {
           recurrence: { kind: 'weekly', weekdays: [3] },
+          exceptOrdinals: [],
           startTime: clock('20:00'),
           label: 'Oração',
           place: null,

@@ -22,18 +22,20 @@ export function PublicProgrammeSection({
         {m.public_programme_title()}
       </h2>
       <ul className="mt-4 flex flex-col gap-2">
-        {programme.map(({ recurrence, startTime, label, place }) => (
-          <li key={`${JSON.stringify(recurrence)}-${startTime}-${label}`}>
-            {[
-              describeRecurrence({ recurrence, locale }),
-              startTime,
-              label,
-              place,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </li>
-        ))}
+        {programme.map(
+          ({ recurrence, exceptOrdinals, startTime, label, place }) => (
+            <li key={`${JSON.stringify(recurrence)}-${startTime}-${label}`}>
+              {[
+                describeRecurrence({ recurrence, exceptOrdinals, locale }),
+                startTime,
+                label,
+                place,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </li>
+          ),
+        )}
       </ul>
     </section>
   );

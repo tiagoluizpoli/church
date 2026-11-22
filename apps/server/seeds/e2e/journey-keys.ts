@@ -33,6 +33,7 @@ export const E2E_JOURNEY_RECIPE_NAMES = {
   ministryWorkspaceIndex: 'ministry-workspace-index',
   invitationJourney: 'invitation-journey',
   peopleJourney: 'people-journey',
+  publicChurchProfile: 'public-church-profile',
   /** Not a journey: the suite's shared read-only personas, which global
    * setup loads once (`recipes/shared-personas.ts`). */
   sharedPersonas: 'shared-personas',

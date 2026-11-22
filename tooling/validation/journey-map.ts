@@ -71,6 +71,12 @@ const CHURCH_SETTINGS_JOURNEY_SPEC_PATHS = [
   'tests/church-settings/church-settings-journey.spec.ts',
 ];
 
+// #1045 (#1001): the Public Church Profile read signed out: Programme, a moved
+// and a cancelled Public Event, the old-slug redirect, a private contact absent.
+const PUBLIC_CHURCH_PROFILE_SPEC_PATHS = [
+  'tests/public-church/public-church-profile.spec.ts',
+];
+
 // #1027 (#1002): a monthly template winning over the weekly Sunday one, saved
 // through the collision prompt and applied to a Cycle.
 const TEMPLATE_PRECEDENCE_SPEC_PATHS = [
@@ -166,6 +172,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   ...PEOPLE_JOURNEY_SPEC_PATHS,
   ...MINISTRIES_JOURNEY_SPEC_PATHS,
   ...CHURCH_SETTINGS_JOURNEY_SPEC_PATHS,
+  ...PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
   'tests/scheduling/a11y-builder.spec.ts',
   'tests/scheduling/a11y-planning-nav.spec.ts',
   'tests/scheduling/builder-event-time-block-focus.spec.ts',
@@ -314,6 +321,26 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   ].map((sourcePathPrefix) => ({
     sourcePathPrefix,
     specPaths: CHURCH_SETTINGS_JOURNEY_SPEC_PATHS,
+  })),
+  ...[
+    'apps/web/src/features/public-church/',
+    'apps/web/src/routes/$slug.tsx',
+    'apps/web/src/infrastructure/api/public-church-profile.ts',
+    'apps/server/src/api/controllers/public-church-profile-controller.ts',
+    'apps/server/src/api/dtos/public-church-profile.dto.ts',
+    'apps/server/src/api/dtos/public-event.dto.ts',
+    'apps/server/src/api/utils/church-page-head.ts',
+    'apps/server/src/application/db-church-programme-manager.ts',
+    'apps/server/src/application/db-public-church-profile-manager.ts',
+    'apps/server/src/application/db-public-event-manager.ts',
+    'apps/server/src/domain/public-event-cursor.ts',
+    'apps/server/src/domain/programme-order.ts',
+    'apps/server/src/domain/entities/public-event.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-church-programme.repository.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-public-event.repository.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
   })),
   // #900: the server-side list filtering, counts and paging of #899.
   ...[

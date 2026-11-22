@@ -89,6 +89,8 @@ export interface ChurchIdentity {
   /** Church Settings; omitted means the Church leaves it empty. */
   website?: string;
   accentColor?: string;
+  /** Slugs the Church gave up; each redirects to `slug`. */
+  previousSlugs?: readonly string[];
   /** Church Contacts in order; omitted means none. */
   contacts?: ChurchContact[];
   /** Contact Group names in display order, for the `group` of contacts and links. */

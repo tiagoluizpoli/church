@@ -5,6 +5,11 @@ import type {
 
 type AddressBody = UpdateChurchSettingsBody['addresses'][number];
 
+/** Where the references of a deleted saved address go: another address, or `null` for no place. */
+export type AddressReplacement = NonNullable<
+  UpdateChurchSettingsBody['addressReplacements']
+>[number];
+
 /** One Church Address being edited; `key` is the row's stable React key (its id once saved). */
 export type AddressDraft = Required<Omit<AddressBody, 'country' | 'id'>> & {
   key: string;
@@ -88,6 +93,8 @@ export interface ChurchSettingsForm {
   contacts: ContactForm[];
   /** In display order; the server owns the rules on which is main. */
   addresses: AddressDraft[];
+  /** Deleted saved addresses still in use, each with its chosen replacement. */
+  addressReplacements: AddressReplacement[];
   /** In display order; always public. */
   socialLinks: SocialLinkDraft[];
   legalProfile: LegalProfileDraft;
@@ -115,6 +122,7 @@ export function toChurchSettingsForm({
     slug: settings.slug,
     website: settings.website ?? '',
     accentColor: settings.accentColor,
+    addressReplacements: [],
     addresses: settings.addresses.map(
       ({ id, country: _country, ...address }) => ({
         ...address,
@@ -173,11 +181,19 @@ export function toSaveBody({
   form,
   slugChanged,
 }: ToSaveBodyInput): UpdateChurchSettingsBody {
-  const { slug, addresses, contacts, socialLinks, ...rest } = form;
+  const {
+    slug,
+    addresses,
+    addressReplacements,
+    contacts,
+    socialLinks,
+    ...rest
+  } = form;
   return {
     ...rest,
     ...(slugChanged ? { slug: slug.trim() } : {}),
     addresses: addresses.map(({ key: _key, ...address }) => address),
+    ...(addressReplacements.length > 0 ? { addressReplacements } : {}),
     contacts: contacts.map((contact) => toContactBody({ contact })),
     socialLinks: socialLinks.map(({ key: _key, ...link }) => link),
   };

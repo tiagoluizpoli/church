@@ -15,6 +15,7 @@ const getCallerCapabilities = vi.fn();
 const getChurchSettings = vi.fn();
 const updateChurchSettings = vi.fn();
 const getChurchSlugAvailability = vi.fn();
+const getChurchAddressUsage = vi.fn();
 const toastSuccess = vi.fn();
 const toastPlain = vi.fn();
 const uploadChurchLogo = vi.fn();
@@ -27,6 +28,8 @@ vi.mock('@/utils/api-instances', async () => ({
     updateChurchSettings: (...args: unknown[]) => updateChurchSettings(...args),
     getChurchSlugAvailability: (...args: unknown[]) =>
       getChurchSlugAvailability(...args),
+    getChurchAddressUsage: (...args: unknown[]) =>
+      getChurchAddressUsage(...args),
     uploadChurchLogo: (...args: unknown[]) => uploadChurchLogo(...args),
     removeChurchLogo: (...args: unknown[]) => removeChurchLogo(...args),
     restoreChurchLogo: (...args: unknown[]) => restoreChurchLogo(...args),
@@ -915,6 +918,7 @@ describe('Church Settings addresses', () => {
   it('blocks deleting the Main Address while others exist, and allows the last one', async () => {
     const user = userEvent.setup();
     withAddresses(SEDE, CASA);
+    getChurchAddressUsage.mockResolvedValue({ templates: [], events: [] });
     renderSettings();
     await nameField();
 
@@ -929,10 +933,71 @@ describe('Church Settings addresses', () => {
       }),
     );
     expect(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: m.church_settings_address_delete({ name: 'Templo' }),
       }),
     ).toBeEnabled();
+  });
+
+  it('lists where an address in use is used and defaults the replacement to the Main Address', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE, CASA);
+    getChurchAddressUsage.mockResolvedValue({
+      templates: [{ id: 't1', name: 'Domingo' }],
+      events: [
+        {
+          id: 'e1',
+          title: 'Culto de março',
+          start: '2099-03-01T22:00:00.000Z',
+        },
+      ],
+    });
+    updateChurchSettings.mockResolvedValue({ ...SAVED, addresses: [SEDE] });
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_address_delete({ name: 'Casa do Marcos' }),
+      }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(getChurchAddressUsage).toHaveBeenCalledWith('a2');
+    expect(
+      within(dialog).getByText(
+        m.church_settings_address_in_use_template({ name: 'Domingo' }),
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        m.church_settings_address_in_use_event({ title: 'Culto de março' }),
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole('combobox', {
+        name: m.church_settings_address_replacement_label(),
+      }),
+    ).toHaveTextContent('Templo');
+
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_in_use_confirm(),
+      }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: m.church_settings_save() }),
+    );
+
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          addressReplacements: [
+            { addressId: 'a2', replacementAddressId: 'a1' },
+          ],
+        }),
+      ),
+    );
   });
 
   it('marks the refused row, counts the errors in the section and reopens it', async () => {

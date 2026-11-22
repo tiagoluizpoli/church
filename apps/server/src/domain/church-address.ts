@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import { z } from 'zod';
 
 export const BRAZILIAN_UFS = [
@@ -69,6 +70,7 @@ export const CHURCH_ADDRESS_FIELD_CODES = [
   'ADDRESS_PIN_INVALID',
   'ADDRESS_MAIN_MULTIPLE',
   'ADDRESS_MAIN_REQUIRED',
+  'ADDRESS_REPLACEMENT_REQUIRED',
 ] as const;
 export type ChurchAddressFieldCode =
   (typeof CHURCH_ADDRESS_FIELD_CODES)[number];
@@ -160,6 +162,28 @@ export const churchAddressesSchema = z
       context.addIssue({ code: 'custom', message: 'ADDRESS_MAIN_MULTIPLE' });
     }
   });
+
+/** Where the references of a deleted address go: another address, or `null` for no place. */
+export interface AddressReplacement {
+  addressId: string;
+  replacementAddressId: string | null;
+}
+
+export const addressReplacementsSchema = z
+  .array(
+    z.object({
+      addressId: z.uuid(),
+      replacementAddressId: z.uuid().nullable(),
+    }),
+  )
+  .max(CHURCH_ADDRESS_MAX)
+  .optional();
+
+/** What still points at a Church Address: templates and upcoming Public Events. */
+export interface ChurchAddressUsage {
+  templates: { id: string; name: string }[];
+  events: { id: string; title: string; start: Instant }[];
+}
 
 export interface ChurchAddressRefusal {
   field: string;

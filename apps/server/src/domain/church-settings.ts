@@ -1,6 +1,7 @@
 import { churchSlugRefusal } from '@church/app-config/church-slug';
 import { z } from 'zod';
 import {
+  type AddressReplacement,
   CHURCH_ADDRESS_FIELD_CODES,
   type ChurchAddress,
   type ChurchAddressChange,
@@ -42,6 +43,8 @@ export interface ChurchSettingsChanges {
   /** Omitted, the contacts stay; sent, the whole list replaces them. */
   contacts?: ChurchContact[];
   addresses: ChurchAddressChange[];
+  /** Omitted, none: deleting an address that is in use is refused. */
+  addressReplacements?: AddressReplacement[];
   socialLinks: SocialLinkChange[];
   legalProfile: ChurchLegalProfile | null;
 }

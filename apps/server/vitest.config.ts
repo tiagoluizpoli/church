@@ -152,6 +152,7 @@ export default defineConfig({
           include: [
             'tests/application/event-builder.assign.integration.test.ts',
             'tests/application/db-church-programme-manager.integration.test.ts',
+            'tests/application/db-public-event-manager.integration.test.ts',
             'tests/behavior/**/*.test.ts',
             'tests/http/**/*.test.ts',
             'tests/integration/**/*.test.ts',

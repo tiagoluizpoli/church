@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import {
+  type ChurchScopedRequestSchemas,
   NOTIFICATION_KIND_OPTIONS,
   notificationRequestDataSchemas,
 } from '@/domain/notification-kinds';
@@ -71,5 +73,21 @@ describe('notification kinds', () => {
         ministryIds: ['Worship'],
       }),
     ).toThrow();
+  });
+});
+
+describe('Church identity on every Church-scoped kind (type-checked)', () => {
+  it('refuses a kind persisted without the Church identity snapshot', () => {
+    const withoutIdentity = z.object({ churchName: z.string() });
+    const kind = 'swap_request';
+    const schemas: ChurchScopedRequestSchemas = {
+      ...notificationRequestDataSchemas,
+      // @ts-expect-error: the logo URL and accent are required on every kind.
+      [kind]: withoutIdentity,
+    };
+
+    expect(Object.keys(schemas)).toEqual(
+      Object.keys(notificationRequestDataSchemas),
+    );
   });
 });

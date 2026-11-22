@@ -51,6 +51,10 @@ export function createDevelopmentReseedPhases({
             loadDevelopmentUpcomingCycle({ ...seeded.upcoming, db: tx }),
         },
       });
+      // The last load: until autovacuum catches up, statistics taken before
+      // this bulk load (an emptied table reads as zero rows) make the planner
+      // nest-loop over every loaded row; one schedule count ran past 25s.
+      await pool.query('analyze');
     },
   };
 }

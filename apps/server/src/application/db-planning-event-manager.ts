@@ -858,6 +858,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const adminName =
       (await this.churchRepository.findUserName({
         userId: actingUserId,
+        tx,
       })) ?? '';
     const recipients = await this.recipients.eventChangedRecipients({
       tx,
@@ -985,8 +986,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       });
     if (ministries.length === 0) return;
     const adminName =
-      (await this.churchRepository.findUserName({ userId: actingUserId })) ??
-      '';
+      (await this.churchRepository.findUserName({
+        userId: actingUserId,
+        tx,
+      })) ?? '';
     const recipients = await this.recipients.eventChangedRecipients({
       tx,
       churchId,
@@ -1256,8 +1259,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const { ministries } = impact;
     if (ministries.length === 0) return;
     const adminName =
-      (await this.churchRepository.findUserName({ userId: actingUserId })) ??
-      '';
+      (await this.churchRepository.findUserName({
+        userId: actingUserId,
+        tx,
+      })) ?? '';
     const recipients = await this.recipients.eventChangedRecipients({
       tx,
       churchId,

@@ -157,7 +157,7 @@ export class ChurchSettingsController implements FastifyController {
           operationId: 'getChurchAddressUsage',
           summary: 'Where a Church Address is used',
           description:
-            'The Event Templates and upcoming Public Events whose time block places the address; shown before deleting it so a replacement can be chosen. ChurchAdmin only.',
+            'The Event Templates and the Events with a time block not yet started that place the address (started blocks keep their place); shown before deleting it so a replacement can be chosen. ChurchAdmin only.',
           params: churchAddressUsageParamsSchema,
           response: {
             200: churchAddressUsageResponseSchema,

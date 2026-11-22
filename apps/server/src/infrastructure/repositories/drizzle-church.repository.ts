@@ -17,7 +17,19 @@ import {
   user,
 } from '@church/db';
 import { fromDate, nowAsDate } from '@church/time';
-import { and, asc, desc, eq, gt, ne, notInArray, or } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  lte,
+  ne,
+  notInArray,
+  or,
+} from 'drizzle-orm';
+import { union } from 'drizzle-orm/pg-core';
 import { ChurchId, type UserId } from '../../domain/branded-ids';
 import {
   type AddressReplacement,
@@ -69,6 +81,7 @@ import type {
 } from '../../domain/social-link';
 import { mapChurch } from '../mappers/church.mapper';
 import { getClient, isValidUuid } from './helpers';
+import { resolvedPlace } from './time-block-place';
 import type { AnyDrizzleDb } from './types';
 import { isChurchSlugConflict, isUniqueViolation } from './unique-violation';
 
@@ -76,9 +89,17 @@ import { isChurchSlugConflict, isUniqueViolation } from './unique-violation';
 // extension row keyed by the same id, so every read joins the two.
 const churchJoinShape = { church, organization };
 
+interface FreezeStartedBlockPlacesInput {
+  client: AnyDrizzleDb;
+  id: ChurchId;
+}
+
+interface AddressesInUseInput extends FreezeStartedBlockPlacesInput {
+  addressIds: readonly string[];
+}
+
 interface ReplaceDeletedAddressUsageInput {
   client: AnyDrizzleDb;
-  tx?: TransactionContext;
   id: ChurchId;
   stored: readonly ChurchAddress[];
   kept: readonly string[];
@@ -456,9 +477,9 @@ export class DrizzleChurchRepository implements ChurchRepository {
       incoming: changes.addresses,
     });
     const kept = writes.flatMap((write) => (write.id ? [write.id] : []));
+    await this.freezeStartedBlockPlaces({ client, id });
     await this.replaceDeletedAddressUsage({
       client,
-      tx,
       id,
       stored: await this.listAddresses({ id, tx }),
       kept,
@@ -619,11 +640,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .where(
         and(
           eq(eventTimeBlock.placeAddressId, addressId),
-          eq(eventTimeBlock.isPublic, true),
-          ne(eventTimeBlock.status, 'cancelled'),
-          ne(event.status, 'cancelled'),
-          eq(cycle.hasBeenSent, true),
-          gt(eventTimeBlock.endTime, nowAsDate()),
+          gt(eventTimeBlock.startTime, nowAsDate()),
         ),
       )
       .orderBy(asc(event.start), asc(event.id));
@@ -637,12 +654,68 @@ export class DrizzleChurchRepository implements ChurchRepository {
   }
 
   /**
-   * A deleted address that templates or upcoming Public Events still use needs
+   * Started EventTimeBlocks keep the place they had: their resolved place is
+   * copied into `place` and the address link dropped, before any address of
+   * the Church is edited or deleted. Blocks not yet started follow the address.
+   */
+  private async freezeStartedBlockPlaces({
+    client,
+    id,
+  }: FreezeStartedBlockPlacesInput): Promise<void> {
+    await client
+      .update(eventTimeBlock)
+      .set({
+        place: resolvedPlace(eventTimeBlock.place),
+        placeAddressId: null,
+      })
+      .from(churchAddress)
+      .where(
+        and(
+          eq(eventTimeBlock.churchId, id),
+          eq(churchAddress.id, eventTimeBlock.placeAddressId),
+          lte(eventTimeBlock.startTime, nowAsDate()),
+        ),
+      );
+  }
+
+  /** The given addresses a template or a not-yet-started EventTimeBlock uses. */
+  private async addressesInUse({
+    client,
+    id,
+    addressIds,
+  }: AddressesInUseInput): Promise<Set<string>> {
+    if (addressIds.length === 0) return new Set();
+    const templateUses = client
+      .selectDistinct({ addressId: templateTimeBlock.placeAddressId })
+      .from(templateTimeBlock)
+      .where(
+        and(
+          eq(templateTimeBlock.churchId, id),
+          inArray(templateTimeBlock.placeAddressId, addressIds),
+        ),
+      );
+    const eventUses = client
+      .selectDistinct({ addressId: eventTimeBlock.placeAddressId })
+      .from(eventTimeBlock)
+      .where(
+        and(
+          eq(eventTimeBlock.churchId, id),
+          inArray(eventTimeBlock.placeAddressId, addressIds),
+          gt(eventTimeBlock.startTime, nowAsDate()),
+        ),
+      );
+    const rows = await union(templateUses, eventUses);
+    return new Set(
+      rows.flatMap(({ addressId }) => (addressId ? [addressId] : [])),
+    );
+  }
+
+  /**
+   * A deleted address that templates or not-yet-started Events still use needs
    * a replacement (a kept address, or null); it is applied to every reference.
    */
   private async replaceDeletedAddressUsage({
     client,
-    tx,
     id,
     stored,
     kept,
@@ -662,15 +735,16 @@ export class DrizzleChurchRepository implements ChurchRepository {
       }
     });
     const deleted = stored.filter((address) => !kept.includes(address.id));
+    const inUse = await this.addressesInUse({
+      client,
+      id,
+      addressIds: deleted.map((address) => address.id),
+    });
     for (const { id: addressId } of deleted) {
       const replacement = replacements.find(
         (entry) => entry.addressId === addressId,
       );
-      const usage = await this.getAddressUsage({ id, addressId, tx });
-      const inUse =
-        usage !== null &&
-        (usage.templates.length > 0 || usage.events.length > 0);
-      if (inUse && !replacement) {
+      if (inUse.has(addressId) && !replacement) {
         refusals.push({
           field: 'addresses',
           code: 'ADDRESS_REPLACEMENT_REQUIRED',

@@ -179,7 +179,7 @@ export const addressReplacementsSchema = z
   .max(CHURCH_ADDRESS_MAX)
   .optional();
 
-/** What still points at a Church Address: templates and upcoming Public Events. */
+/** What still points at a Church Address: templates and Events with a time block not yet started. */
 export interface ChurchAddressUsage {
   templates: { id: string; name: string }[];
   events: { id: string; title: string; start: Instant }[];

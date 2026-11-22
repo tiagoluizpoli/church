@@ -2077,7 +2077,7 @@
   "church_settings_address_in_use_title": "Delete {name}?",
   "church_settings_address_in_use_description": "These still use this address. Choose what takes its place; the change is saved with the rest.",
   "church_settings_address_in_use_template": "Template {name}",
-  "church_settings_address_in_use_event": "Public event {title}",
+  "church_settings_address_in_use_event": "Event {title}",
   "church_settings_address_replacement_label": "Replace it with",
   "church_settings_address_replacement_none": "No place",
   "church_settings_address_in_use_confirm": "Delete and replace",

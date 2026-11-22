@@ -42,7 +42,7 @@ export interface ChurchRepository {
    * Throws `ChurchAddressesRefused` when the stored addresses make the save invalid.
    */
   saveSettings(input: SaveChurchSettingsInput): Promise<void>;
-  /** What templates and upcoming Public Events still use this address; `null` when it is not an address of this Church. */
+  /** What templates and not-yet-started EventTimeBlocks still use this address; `null` when it is not an address of this Church. */
   getAddressUsage(
     input: GetChurchAddressUsageInput,
   ): Promise<ChurchAddressUsage | null>;

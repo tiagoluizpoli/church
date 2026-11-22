@@ -2077,7 +2077,7 @@
   "church_settings_address_in_use_title": "Excluir {name}?",
   "church_settings_address_in_use_description": "Estes itens ainda usam este endereço. Escolha o que ocupa o lugar dele; a troca é salva junto com o resto.",
   "church_settings_address_in_use_template": "Modelo {name}",
-  "church_settings_address_in_use_event": "Evento público {title}",
+  "church_settings_address_in_use_event": "Evento {title}",
   "church_settings_address_replacement_label": "Substituir por",
   "church_settings_address_replacement_none": "Sem local",
   "church_settings_address_in_use_confirm": "Excluir e substituir",

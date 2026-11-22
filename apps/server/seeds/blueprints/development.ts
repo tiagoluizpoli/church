@@ -39,6 +39,32 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
     timezone: 'America/Sao_Paulo',
     website: 'https://igreja-semente.test',
     accentColor: '#0f766e',
+    contacts: [
+      {
+        kind: 'phone',
+        phoneType: 'mobile',
+        value: '+5511987654321',
+        description: 'Secretaria',
+        isWhatsApp: true,
+        isPublic: true,
+      },
+      {
+        kind: 'email',
+        phoneType: null,
+        value: 'contato@igreja-semente.test',
+        description: null,
+        isWhatsApp: false,
+        isPublic: true,
+      },
+      {
+        kind: 'phone',
+        phoneType: 'landline',
+        value: '+551134567890',
+        description: 'Pastor (só admins)',
+        isWhatsApp: false,
+        isPublic: false,
+      },
+    ],
     logoSvg: IGREJA_SEMENTE_LOGO_SVG,
   },
   churchAdmin: {

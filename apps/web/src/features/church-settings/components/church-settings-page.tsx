@@ -50,6 +50,7 @@ import {
 import {
   type ChurchSettingsForm,
   toChurchSettingsForm,
+  toContactBody,
 } from '@/features/church-settings/church-settings-form';
 import {
   checkChurchSlug,
@@ -59,17 +60,19 @@ import {
 } from '@/features/church-settings/church-settings-queries';
 import { AccentPicker } from '@/features/church-settings/components/accent-picker';
 import { ChurchPreview } from '@/features/church-settings/components/church-preview';
+import { ContactsSection } from '@/features/church-settings/components/contacts-section';
 import { LogoCard } from '@/features/church-settings/components/logo-card';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import type { GetChurchSettings200 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
 
-const SECTIONS = ['info', 'address'] as const;
+const SECTIONS = ['info', 'contacts', 'address'] as const;
 type SectionKey = (typeof SECTIONS)[number];
 type SectionOpenState = Record<SectionKey, boolean>;
 type FieldErrors = Record<string, string>;
 
 const INFO_FIELDS = ['name', 'slug', 'website', 'accentColor'];
+const CONTACTS_PREFIX = 'contacts.';
 
 const SLUG_REFUSAL_MESSAGES: Record<ChurchSlugRefusal, () => string> = {
   LENGTH: m.error_church_settings_slug_length,
@@ -102,7 +105,7 @@ interface AllSectionsInput {
 }
 
 function allSections({ open }: AllSectionsInput): SectionOpenState {
-  return { info: open, address: open };
+  return { info: open, contacts: open, address: open };
 }
 
 interface SectionCardProps {
@@ -208,13 +211,13 @@ interface ChurchSettingsEditorProps {
 
 function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   // Keyed on the form fields only: a logo change (applied at once) must not reset unsaved edits.
-  const { name, slug, website, accentColor } = saved;
+  const { name, slug, website, accentColor, contacts } = saved;
   const savedForm = React.useMemo(
     () =>
       toChurchSettingsForm({
-        settings: { name, slug, website, accentColor },
+        settings: { name, slug, website, accentColor, contacts },
       }),
-    [name, slug, website, accentColor],
+    [name, slug, website, accentColor, contacts],
   );
   const [form, setForm] = React.useState<ChurchSettingsForm>(savedForm);
   const [errors, setErrors] = React.useState<FieldErrors>({});
@@ -238,18 +241,34 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     : undefined;
   const shownSlugError = errors.slug ?? typedSlugError;
   const churchAddress = `${saved.publicOrigin}/${form.slug.trim()}`;
-  const publicCount = [
-    form.name,
-    form.website,
-    form.accentColor,
-    saved.logoUrl,
-  ].filter(Boolean).length;
+  const contactErrors = Object.keys(errors).filter((field) =>
+    field.startsWith(CONTACTS_PREFIX),
+  ).length;
+  const publicContacts = form.contacts.filter(
+    ({ isPublic }) => isPublic,
+  ).length;
+  const publicCount =
+    [form.name, form.website, form.accentColor, saved.logoUrl].filter(Boolean)
+      .length + publicContacts;
+  const adminOnlyCount = form.contacts.length - publicContacts;
 
   const patch = (changes: Partial<ChurchSettingsForm>) => {
     setForm((current) => ({ ...current, ...changes }));
     setErrors((current) =>
       Object.fromEntries(
         Object.entries(current).filter(([field]) => !(field in changes)),
+      ),
+    );
+  };
+
+  /** Rows move and vanish, so every row error is dropped rather than left on the wrong row. */
+  const setContacts = (nextContacts: ChurchSettingsForm['contacts']) => {
+    setForm((current) => ({ ...current, contacts: nextContacts }));
+    setErrors((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([field]) => !field.startsWith(CONTACTS_PREFIX),
+        ),
       ),
     );
   };
@@ -274,8 +293,12 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
       return;
     }
     setConfirmingSlug(false);
-    const { slug, ...rest } = form;
-    saveSettings.mutate(slugChanged ? { ...rest, slug: slug.trim() } : rest, {
+    const { slug, contacts: contactRows, ...rest } = form;
+    const body = {
+      ...rest,
+      contacts: contactRows.map((contact) => toContactBody({ contact })),
+    };
+    saveSettings.mutate(slugChanged ? { ...body, slug: slug.trim() } : body, {
       onSuccess: () => {
         setErrors({});
         toast.success(m.church_settings_saved());
@@ -290,6 +313,11 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
         setOpen((current) => ({
           ...current,
           info: current.info || INFO_FIELDS.some((field) => field in refused),
+          contacts:
+            current.contacts ||
+            Object.keys(refused).some((field) =>
+              field.startsWith(CONTACTS_PREFIX),
+            ),
         }));
       },
     });
@@ -331,7 +359,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                 testId="church-settings-admin-only-count"
                 testIdOnValue
                 label={m.church_settings_admin_only_chip()}
-                value={0}
+                value={adminOnlyCount}
               />
               <a
                 href={`${saved.publicOrigin}/${saved.slug}`}
@@ -446,6 +474,22 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                   />
                 </div>
               </div>
+            </SectionCard>
+            <SectionCard
+              id="contacts"
+              title={m.church_settings_section_contacts()}
+              summary={m.church_settings_contacts_summary({
+                count: form.contacts.length,
+              })}
+              errors={contactErrors}
+              open={open.contacts}
+              onToggle={() => toggle('contacts')}
+            >
+              <ContactsSection
+                contacts={form.contacts}
+                errors={errors}
+                onChange={setContacts}
+              />
             </SectionCard>
             <SectionCard
               id="address"

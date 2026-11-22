@@ -125,3 +125,28 @@ export const churchSocialLink = pgTable(
     ),
   ],
 );
+
+// The Church's legal identity, 1:1 with the Church. Fiscal data are added later
+// as typed columns. `(document_type, document_number)` is unique across Churches.
+export const churchLegalProfile = pgTable(
+  'church_legal_profile',
+  {
+    churchId: uuid('church_id')
+      .primaryKey()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    legalName: text('legal_name').notNull(),
+    documentType: text('document_type').default('CNPJ').notNull(),
+    documentNumber: text('document_number').notNull(),
+    isPublic: boolean('is_public').default(false).notNull(),
+  },
+  (table) => [
+    uniqueIndex('church_legal_profile_document_idx').on(
+      table.documentType,
+      table.documentNumber,
+    ),
+    check(
+      'church_legal_profile_cnpj_check',
+      sql`${table.documentType} = 'CNPJ' AND ${table.documentNumber} ~ '^[0-9]{14}$'`,
+    ),
+  ],
+);

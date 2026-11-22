@@ -470,6 +470,13 @@
       "when": 1795358721758,
       "tag": "0066_church_social_link",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1795362322900,
+      "tag": "0067_church_legal_profile",
+      "breakpoints": true
     }
   ]
 }

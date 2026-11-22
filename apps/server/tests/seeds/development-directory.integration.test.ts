@@ -4,6 +4,7 @@ import {
   availabilityCheck,
   church,
   churchAddress,
+  churchLegalProfile,
   churchSocialLink,
   cycle,
   event,
@@ -298,6 +299,20 @@ describe('development seed recipe', () => {
         .from(churchSocialLink)
         .where(eq(churchSocialLink.churchId, seeded.secondChurch.id)),
     ).toEqual([]);
+  });
+
+  it('gives the primary Church a private legal profile and the second none', async () => {
+    const rows = await testDb.select().from(churchLegalProfile);
+
+    expect(rows).toEqual([
+      {
+        churchId: seeded.church.id,
+        legalName: 'Igreja Semente de Campinas',
+        documentType: 'CNPJ',
+        documentNumber: '11222333000181',
+        isPublic: false,
+      },
+    ]);
   });
 
   it('gives the primary Church a pinned Main Address, a labelled second and a private one', async () => {

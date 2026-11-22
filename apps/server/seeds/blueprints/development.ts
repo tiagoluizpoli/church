@@ -87,6 +87,11 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
       },
       { url: 'https://open.spotify.com/show/semente', description: 'Podcast' },
     ],
+    legalProfile: {
+      legalName: 'Igreja Semente de Campinas',
+      cnpj: '11222333000181',
+      isPublic: false,
+    },
     logoSvg: IGREJA_SEMENTE_LOGO_SVG,
   },
   churchAdmin: {

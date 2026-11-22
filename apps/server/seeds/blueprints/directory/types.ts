@@ -89,6 +89,12 @@ export interface ChurchIdentity {
   addresses?: readonly ChurchAddressBlueprint[];
   /** In display order; the network is detected from each URL. */
   socialLinks?: readonly ChurchSocialLinkBlueprint[];
+  /** The Church Legal Profile; the CNPJ is its 14 digits. */
+  legalProfile?: {
+    legalName: string;
+    cnpj: string;
+    isPublic: boolean;
+  };
   /** The logo as SVG source, rasterised and uploaded like a ChurchAdmin's PNG. */
   logoSvg?: string;
 }

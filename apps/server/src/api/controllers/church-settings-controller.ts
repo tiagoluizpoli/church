@@ -6,6 +6,7 @@ import { ChurchAddressesRefused } from '../../domain/church-address';
 import { LOGO_MAX_BYTES } from '../../domain/church-logo';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IChurchSettingsManager } from '../../domain/contracts/application/church-settings-manager';
+import { ChurchLegalDocumentTakenError } from '../../domain/errors/church-legal-document-taken';
 import {
   LogoTooLargeError,
   LogoUnsupportedTypeError,
@@ -191,6 +192,19 @@ export class ChurchSettingsController implements FastifyController {
                 refusals: error.refusals,
                 locale,
               }),
+            });
+          }
+          if (error instanceof ChurchLegalDocumentTakenError) {
+            return reply.code(422).send({
+              error: 'VALIDATION_ERROR',
+              message: m.common_validation_error({}, { locale }),
+              fieldErrors: [
+                churchSettingsFieldError({
+                  field: 'legalProfile.cnpj',
+                  code: 'CNPJ_TAKEN',
+                  locale,
+                }),
+              ],
             });
           }
           if (!(error instanceof ChurchSlugTakenError)) throw error;

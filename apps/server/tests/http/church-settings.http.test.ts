@@ -59,6 +59,7 @@ const UNTOUCHED = {
   accentColor: null,
   addresses: [],
   socialLinks: [],
+  legalProfile: null,
   logoKey: null,
   logoUrl: null,
   publicOrigin: PUBLIC_ORIGIN,
@@ -165,6 +166,8 @@ function signIn({ persona = 'admin', churchId = CHURCH_A }: SignInInput = {}) {
   });
 }
 
+const NO_LEGAL = { legalName: null, cnpj: null, isPublic: false };
+
 function getSettings() {
   return app.inject({ method: 'GET', url: '/api/v1/church-settings' });
 }
@@ -173,7 +176,12 @@ function saveSettings(payload: Record<string, unknown>) {
   return app.inject({
     method: 'PUT',
     url: '/api/v1/church-settings',
-    payload: { addresses: [], socialLinks: [], ...payload },
+    payload: {
+      addresses: [],
+      socialLinks: [],
+      legalProfile: NO_LEGAL,
+      ...payload,
+    },
   });
 }
 
@@ -203,6 +211,7 @@ describe('Church Settings', () => {
       accentColor: '#1d4ed8',
       addresses: [],
       socialLinks: [],
+      legalProfile: null,
       logoKey: null,
       logoUrl: null,
       publicOrigin: PUBLIC_ORIGIN,
@@ -257,6 +266,7 @@ describe('Church Settings', () => {
       accentColor: null,
       addresses: [],
       socialLinks: [],
+      legalProfile: null,
       logoKey: null,
       logoUrl: null,
       publicOrigin: PUBLIC_ORIGIN,
@@ -527,7 +537,7 @@ describe('Church Addresses', () => {
     const res = await app.inject({
       method: 'PUT',
       url: '/api/v1/church-settings',
-      payload: { ...BASE, socialLinks: [] },
+      payload: { ...BASE, socialLinks: [], legalProfile: NO_LEGAL },
     });
 
     expect(res.statusCode).toBe(422);
@@ -772,6 +782,7 @@ describe('Church Slug', () => {
       accentColor: null,
       addresses: [],
       socialLinks: [],
+      legalProfile: null,
     };
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
@@ -933,7 +944,7 @@ describe('Social Links', () => {
     const res = await app.inject({
       method: 'PUT',
       url: '/api/v1/church-settings',
-      payload: { ...BASE, addresses: [] },
+      payload: { ...BASE, addresses: [], legalProfile: NO_LEGAL },
     });
 
     expect(res.statusCode).toBe(422);
@@ -949,5 +960,132 @@ describe('Social Links', () => {
     signIn({ churchId: CHURCH_B });
 
     expect((await getSettings()).json().socialLinks).toEqual([]);
+  });
+});
+
+const LEGAL = {
+  legalName: 'Igreja Batista Esperança Ltda',
+  cnpj: '11.222.333/0001-81',
+  isPublic: false,
+};
+
+function saveLegal(legalProfile: Record<string, unknown>) {
+  return saveSettings({ ...BASE, legalProfile });
+}
+
+describe('Church Legal Profile', () => {
+  it('saves the legal profile with the CNPJ as digits, private by default, and reads it back', async () => {
+    signIn();
+
+    const res = await saveLegal({
+      ...LEGAL,
+      legalName: '  Igreja  Batista Esperança Ltda ',
+    });
+
+    const expected = {
+      legalName: 'Igreja Batista Esperança Ltda',
+      cnpj: '11222333000181',
+      isPublic: false,
+    };
+    expect(res.statusCode).toBe(200);
+    expect(res.json().legalProfile).toEqual(expected);
+    expect((await getSettings()).json().legalProfile).toEqual(expected);
+  });
+
+  it('saves the Público toggle and clears the profile when both fields are blank', async () => {
+    signIn();
+
+    const shown = await saveLegal({ ...LEGAL, isPublic: true });
+    const cleared = await saveLegal({
+      legalName: '',
+      cnpj: '',
+      isPublic: true,
+    });
+
+    expect(shown.json().legalProfile).toMatchObject({ isPublic: true });
+    expect(cleared.statusCode).toBe(200);
+    expect(cleared.json().legalProfile).toBeNull();
+  });
+
+  it('answers each refused field and saves nothing', async () => {
+    signIn();
+    await saveLegal(LEGAL);
+
+    const res = await saveLegal({
+      legalName: '',
+      cnpj: '11.222.333/0001-82',
+      isPublic: true,
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(
+      res
+        .json()
+        .fieldErrors.map((e: { field: string; code: string }) => [
+          e.field,
+          e.code,
+        ]),
+    ).toEqual([
+      ['legalProfile.legalName', 'LEGAL_NAME_REQUIRED'],
+      ['legalProfile.cnpj', 'CNPJ_INVALID'],
+    ]);
+    expect((await getSettings()).json().legalProfile).toMatchObject({
+      cnpj: '11222333000181',
+      isPublic: false,
+    });
+  });
+
+  it('names a missing legal profile instead of clearing it', async () => {
+    signIn();
+    await saveLegal(LEGAL);
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/church-settings',
+      payload: { ...BASE, addresses: [], socialLinks: [] },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().fieldErrors).toEqual([
+      expect.objectContaining({ field: 'legalProfile', code: 'INVALID' }),
+    ]);
+    expect((await getSettings()).json().legalProfile).not.toBeNull();
+  });
+
+  it('answers a generic error, never the other Church, when another Church holds the CNPJ', async () => {
+    signIn({ churchId: CHURCH_B });
+    await saveLegal({ ...LEGAL, legalName: 'Church B Ltda' });
+    signIn();
+
+    const res = await saveLegal(LEGAL);
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().fieldErrors).toEqual([
+      {
+        field: 'legalProfile.cnpj',
+        code: 'CNPJ_TAKEN',
+        message: 'Este CNPJ já está cadastrado; fale com o suporte.',
+      },
+    ]);
+    expect(res.body).not.toMatch(/Church B|church-b|22222222/);
+    expect((await getSettings()).json().legalProfile).toBeNull();
+  });
+
+  it('lets a Church save its own CNPJ again', async () => {
+    signIn();
+    await saveLegal(LEGAL);
+
+    const res = await saveLegal({ ...LEGAL, isPublic: true });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().legalProfile).toMatchObject({ isPublic: true });
+  });
+
+  it('keeps one Church out of the other', async () => {
+    signIn();
+    await saveLegal(LEGAL);
+    signIn({ churchId: CHURCH_B });
+
+    expect((await getSettings()).json().legalProfile).toBeNull();
   });
 });

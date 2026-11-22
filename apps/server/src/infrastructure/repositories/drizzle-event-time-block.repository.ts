@@ -20,7 +20,12 @@ import type {
 import type { EventTimeBlock } from '../../domain/entities/event-time-block';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  assertPlaceAddresses,
+  getClient,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzleEventTimeBlockRepositoryInput {
@@ -155,6 +160,11 @@ export class DrizzleEventTimeBlockRepository
     tx,
   }: UpdateEventTimeBlockRepositoryInput): Promise<EventTimeBlock> {
     const db = getClient({ db: this.db, tx });
+    await assertPlaceAddresses({
+      db,
+      churchId,
+      addressIds: [input.placeAddressId],
+    });
     const [row] = await db
       .update(eventTimeBlock)
       .set({
@@ -165,6 +175,9 @@ export class DrizzleEventTimeBlockRepository
         ...(input.label !== undefined ? { label: input.label ?? null } : {}),
         ...(input.isPublic !== undefined ? { isPublic: input.isPublic } : {}),
         ...(input.place !== undefined ? { place: input.place } : {}),
+        ...(input.placeAddressId !== undefined
+          ? { placeAddressId: input.placeAddressId }
+          : {}),
       })
       .where(
         and(

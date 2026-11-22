@@ -22,6 +22,8 @@ export interface EventTimeBlockProps {
   label?: string;
   isPublic: boolean;
   place?: string;
+  /** A Church Address as the place; exclusive with `place`. */
+  placeAddressId?: string;
   status: EventTimeBlockStatus;
   requirements: ShiftRequirement[];
 }
@@ -98,6 +100,10 @@ export class EventTimeBlock extends Entity<
 
   get place(): string | undefined {
     return this._props.place;
+  }
+
+  get placeAddressId(): string | undefined {
+    return this._props.placeAddressId;
   }
 
   get status(): EventTimeBlockStatus {

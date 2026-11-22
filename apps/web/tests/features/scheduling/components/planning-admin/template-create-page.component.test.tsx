@@ -159,6 +159,7 @@ describe('TemplateCreatePage', () => {
           endTime: parseTimeOfDay({ value: '02:00' }),
           isPublic: false,
           place: '',
+          placeAddressId: null,
         },
       ],
     });

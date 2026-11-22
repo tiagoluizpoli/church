@@ -142,6 +142,7 @@ interface PlannedEventTimeBlock {
   label: string;
   isPublic?: boolean;
   place?: string;
+  placeAddressId?: string;
   start: Instant;
   end: Instant;
   servers: PlannedServer[];
@@ -221,6 +222,7 @@ function planEvents({
           label: block.label,
           isPublic: block.isPublic,
           place: block.place,
+          placeAddressId: seededBlock.placeAddressId,
           start: instantAt({ day, time: block.startTime, timeZone }),
           end: instantAt({ day, time: block.endTime, timeZone }),
           servers: gatherings.servingRules.flatMap((rule) => {
@@ -345,6 +347,7 @@ async function materializeEvent({
       label: eventTimeBlock.label,
       isPublic: eventTimeBlock.isPublic,
       place: eventTimeBlock.place,
+      placeAddressId: eventTimeBlock.placeAddressId,
       sourceTemplateTimeBlockId: eventTimeBlock.blockId,
     });
     eventTimeBlockIdByKey.set(eventTimeBlock.key, eventTimeBlockId);

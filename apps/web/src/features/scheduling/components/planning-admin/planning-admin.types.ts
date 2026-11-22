@@ -23,6 +23,7 @@ export interface TemplateTimeBlockDraft {
   endTime: TimeOfDay | null;
   isPublic: boolean;
   place: string;
+  placeAddressId: string | null;
 }
 
 export type TemplateRecurrence = UpdateEventTemplateBodyRecurrence;

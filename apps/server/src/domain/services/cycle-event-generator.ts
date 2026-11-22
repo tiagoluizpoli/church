@@ -42,6 +42,7 @@ export interface GeneratedCycleEventTimeBlockPlan {
   label: string;
   isPublic: boolean;
   place?: string;
+  placeAddressId?: string;
   startTime: Instant;
   endTime: Instant;
 }
@@ -119,6 +120,7 @@ export class CycleEventGenerator {
             label: block.label,
             isPublic: block.isPublic,
             place: block.place,
+            placeAddressId: block.placeAddressId,
             ...buildEventTimeBlockBounds({
               date: eventDate,
               startTime: block.startTime,

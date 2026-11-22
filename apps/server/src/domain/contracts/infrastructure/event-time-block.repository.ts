@@ -21,6 +21,7 @@ export interface UpdateEventTimeBlockInput {
   isPublic?: boolean;
   /** `null` clears the place. */
   place?: string | null;
+  placeAddressId?: string | null;
 }
 
 export interface GetEventTimeBlockInput {

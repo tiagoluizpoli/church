@@ -77,6 +77,7 @@ describe('eventTemplateMapper', () => {
         order: 1,
         isPublic: false,
         place: null,
+        placeAddressId: null,
       },
       {
         id: '33333333-3333-3333-3333-333333333332',
@@ -88,6 +89,7 @@ describe('eventTemplateMapper', () => {
         order: 2,
         isPublic: false,
         place: null,
+        placeAddressId: null,
       },
     ]);
     expect(() => eventTemplateResponseSchema.parse(response)).not.toThrow();

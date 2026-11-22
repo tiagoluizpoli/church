@@ -381,6 +381,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             label: eventTimeBlock.label,
             isPublic: eventTimeBlock.isPublic,
             place: eventTimeBlock.place,
+            placeAddressId: eventTimeBlock.placeAddressId,
             tx,
           });
           generatedEventTimeBlockCount += 1;
@@ -447,6 +448,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             endTime: block.endTime,
             isPublic: block.isPublic,
             place: block.place || undefined,
+            placeAddressId: block.placeAddressId ?? undefined,
             tx,
           }),
         );
@@ -549,10 +551,16 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const blockIds: EventTimeBlockId[] = [];
       for (const block of input.eventTimeBlocks) {
         const { id, label, startTime, endTime, isPublic, place } = block;
+        const { placeAddressId } = block;
         if (id) {
           const current = persisted.find((stored) => stored.id === id);
           const publicFields = current
-            ? changedPublicFields({ block: current, isPublic, place })
+            ? changedPublicFields({
+                block: current,
+                isPublic,
+                place,
+                placeAddressId,
+              })
             : {};
           await this.eventTimeBlockRepository.update({
             churchId,
@@ -571,6 +579,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
               endTime,
               isPublic,
               place: place || undefined,
+              placeAddressId: placeAddressId ?? undefined,
               tx,
             }),
           );
@@ -622,7 +631,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         tx,
       });
       const edits = input.eventTimeBlocks ?? [];
-      const patches = edits.map(({ id, isPublic, place }) => {
+      const patches = edits.map(({ id, isPublic, place, placeAddressId }) => {
         const block = stored.find((candidate) => candidate.id === id);
         if (!block) {
           throw new NotFoundError(`EventTimeBlock not found: ${id}`);
@@ -632,6 +641,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           block,
           isPublic,
           place: place ?? '',
+          placeAddressId: placeAddressId ?? null,
         });
         return { id, patch };
       });
@@ -1402,13 +1412,16 @@ interface ListInOrderInput {
 interface ChangedPublicFieldsInput {
   block: EventTimeBlock;
   isPublic?: boolean;
-  /** Empty clears; absent keeps. */
+  /** Empty clears; absent keeps (with `placeAddressId` absent too). */
   place?: string;
+  /** Null or absent with `place` given means no address. */
+  placeAddressId?: string | null;
 }
 
 interface PublicFieldsPatch {
   isPublic?: boolean;
   place?: string | null;
+  placeAddressId?: string | null;
 }
 
 /** The Público/place values that differ from the block; refused once it started. */
@@ -1416,14 +1429,22 @@ function changedPublicFields({
   block,
   isPublic,
   place,
+  placeAddressId,
 }: ChangedPublicFieldsInput): PublicFieldsPatch {
-  const nextPlace = place === undefined ? undefined : place || null;
+  // The place is one value: free text, an address or nothing, set together.
+  const placeGiven = place !== undefined || placeAddressId !== undefined;
+  const nextPlace = place || null;
+  const nextAddressId = placeAddressId ?? null;
+  const placeChanged =
+    placeGiven &&
+    (nextPlace !== (block.place ?? null) ||
+      nextAddressId !== (block.placeAddressId ?? null));
   const patch = {
     ...(isPublic !== undefined && isPublic !== block.isPublic
       ? { isPublic }
       : {}),
-    ...(nextPlace !== undefined && nextPlace !== (block.place ?? null)
-      ? { place: nextPlace }
+    ...(placeChanged
+      ? { place: nextPlace, placeAddressId: nextAddressId }
       : {}),
   };
   const changed = Object.keys(patch).length > 0;

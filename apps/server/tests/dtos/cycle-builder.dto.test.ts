@@ -41,6 +41,7 @@ describe('cycleBuilderResponseSchema', () => {
                 endTime: '2027-01-01T11:00:00.000Z',
                 isPublic: false,
                 place: null,
+                placeAddressId: null,
                 status: 'active',
                 requirements: [],
               },

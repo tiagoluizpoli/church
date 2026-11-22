@@ -56,6 +56,24 @@ export function joinMinistry<TRole extends string, TSector extends string>(
   return group;
 }
 
+/** A Church Address in display order; the first one is the Main Address. */
+export interface ChurchAddressBlueprint {
+  label?: string;
+  street: string;
+  number: string;
+  complement?: string;
+  bairro: string;
+  city: string;
+  uf: string;
+  cep?: string;
+  isPublic?: boolean;
+  pin?: {
+    latitude: number;
+    longitude: number;
+    source: 'google' | 'cep' | 'admin';
+  };
+}
+
 export interface ChurchIdentity {
   name: string;
   slug: string;
@@ -63,6 +81,7 @@ export interface ChurchIdentity {
   /** Church Settings; omitted means the Church leaves it empty. */
   website?: string;
   accentColor?: string;
+  addresses?: readonly ChurchAddressBlueprint[];
 }
 
 /** One Church's complete directory: its ChurchAdmin, Ministries and cross-Ministry service. */

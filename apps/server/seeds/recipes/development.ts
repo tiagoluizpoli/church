@@ -16,6 +16,7 @@ import type {
   Person,
 } from '../blueprints/directory/types';
 import {
+  buildChurchAddresses,
   buildChurchSettings,
   buildProvisionedChurch,
   redeemChurchInvitation,
@@ -238,6 +239,11 @@ async function loadChurchDirectory({
     churchId: church.id,
     website: blueprint.church.website ?? null,
     accentColor: blueprint.church.accentColor ?? null,
+  });
+  await buildChurchAddresses({
+    db,
+    churchId: church.id,
+    addresses: blueprint.church.addresses ?? [],
   });
   const context: ChurchDirectoryContext = {
     db,

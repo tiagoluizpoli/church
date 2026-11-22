@@ -82,6 +82,18 @@ const CHURCH_INVITATION_SPEC_PATHS = [
   ...REDEMPTION_SPEC_PATHS,
 ];
 
+const CHURCH_INVITATION_SOURCE_PREFIXES = [
+  'apps/web/src/features/invitations/components/invitation-review-parts.tsx',
+  'apps/server/src/api/dtos/redemption.dto.ts',
+  'apps/server/src/application/db-redemption-manager.ts',
+  'apps/server/src/domain/contracts/application/redemption-manager.ts',
+  'apps/server/src/domain/contracts/infrastructure/ministry-invitation.repository.ts',
+  'apps/server/src/domain/entities/redemption-bundle.ts',
+  'apps/server/src/domain/services/redemption-review-token.ts',
+  'apps/server/src/infrastructure/repositories/drizzle-ministry-invitation.repository.ts',
+  'apps/web/src/routeTree.gen.ts',
+];
+
 const VOLUNTEER_TRANSFER_SPEC_PATHS = [
   'tests/identity/volunteer-transfer-journey.spec.ts',
 ];
@@ -415,42 +427,10 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: CHURCH_INVITATION_SPEC_PATHS,
   },
   // #945: signed-in acceptance of a Church Invitation (review, accept, route tree).
-  {
-    sourcePathPrefix: 'apps/server/src/api/dtos/redemption.dto.ts',
+  ...CHURCH_INVITATION_SOURCE_PREFIXES.map((sourcePathPrefix) => ({
+    sourcePathPrefix,
     specPaths: CHURCH_INVITATION_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix: 'apps/server/src/application/db-redemption-manager.ts',
-    specPaths: CHURCH_INVITATION_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/server/src/domain/contracts/application/redemption-manager.ts',
-    specPaths: CHURCH_INVITATION_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/server/src/domain/contracts/infrastructure/ministry-invitation.repository.ts',
-    specPaths: CHURCH_INVITATION_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix: 'apps/server/src/domain/entities/redemption-bundle.ts',
-    specPaths: CHURCH_INVITATION_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/server/src/domain/services/redemption-review-token.ts',
-    specPaths: CHURCH_INVITATION_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/server/src/infrastructure/repositories/drizzle-ministry-invitation.repository.ts',
-    specPaths: CHURCH_INVITATION_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix: 'apps/web/src/routeTree.gen.ts',
-    specPaths: CHURCH_INVITATION_SPEC_PATHS,
-  },
+  })),
   {
     sourcePathPrefix: 'apps/web/src/routes/_authenticated/_active-church.tsx',
     specPaths: [

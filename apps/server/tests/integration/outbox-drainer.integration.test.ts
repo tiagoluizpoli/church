@@ -1320,7 +1320,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       },
     });
     expect(emailSender.delivered[0]?.request.html).toContain(
-      `/invitations/ministry/${ministryInvitationId}`,
+      `/app/invitations/ministry/${ministryInvitationId}`,
     );
     const inbox = await inboxRows();
     expect(inbox).toHaveLength(1);
@@ -1408,7 +1408,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
     );
     expect(text).toContain(m.notification_ministry_invitation_action({}, pt));
     expect(text).toContain(
-      `https://app.test/invitations/ministry/${ministryInvitationId}`,
+      `https://app.test/app/invitations/ministry/${ministryInvitationId}`,
     );
     expect(html).not.toContain('<script>');
     expect(html).toContain(
@@ -1475,7 +1475,7 @@ describe('Ministry Invitation Notification through email and inbox (ticket #621,
       ministryAccessLevel: 'volunteer',
       roleNames: [],
       expiresAt: '2026-11-09T12:00:00.000Z',
-      redemptionUrl: `https://app.test/invitations/ministry/${ministryInvitationId}`,
+      redemptionUrl: `https://app.test/app/invitations/ministry/${ministryInvitationId}`,
     };
     const [row] = await outboxRows();
     if (!row) throw new Error('expected the N1 row');

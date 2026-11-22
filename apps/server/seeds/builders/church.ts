@@ -7,6 +7,7 @@ import {
   churchAddress,
   churchContact,
   churchContactGroup,
+  churchLegalProfile,
   churchSocialLink,
   createChurch,
   invitation,
@@ -376,4 +377,25 @@ export async function buildChurchSocialLinks({
       };
     }),
   );
+}
+
+export interface BuildChurchLegalProfileInput {
+  db: SeedWriter;
+  churchId: string;
+  legalProfile?: { legalName: string; cnpj: string; isPublic: boolean };
+}
+
+/** Direct-state builder: the Church Legal Profile, when the blueprint has one. */
+export async function buildChurchLegalProfile({
+  db,
+  churchId,
+  legalProfile,
+}: BuildChurchLegalProfileInput): Promise<void> {
+  if (!legalProfile) return;
+  await db.insert(churchLegalProfile).values({
+    churchId,
+    legalName: legalProfile.legalName,
+    documentNumber: legalProfile.cnpj,
+    isPublic: legalProfile.isPublic,
+  });
 }

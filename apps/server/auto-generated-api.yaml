@@ -5883,6 +5883,21 @@ paths:
                         - description
                         - group
                       additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -5939,6 +5954,7 @@ paths:
                   - accentColor
                   - addresses
                   - socialLinks
+                  - legalProfile
                   - logoKey
                   - logoUrl
                   - contacts
@@ -6201,12 +6217,32 @@ paths:
                     WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer
                     and Kwai; a wa.me link is refused (add it as a Contact).
                     Always public."
+                legalProfile:
+                  description: "The Church Legal Profile: `legalName` and `cnpj` (mask accepted,
+                    check digits validated; stored as 14 digits) and the
+                    `isPublic` toggle (visitors see it only when true). Both
+                    blank clears the profile; one without the other is refused
+                    on the blank one. A CNPJ another Church holds is refused
+                    with a generic CNPJ_TAKEN that never names that Church."
+                  type: object
+                  properties:
+                    legalName:
+                      nullable: true
+                      type: string
+                    cnpj:
+                      nullable: true
+                      type: string
+                    isPublic:
+                      type: boolean
+                  required:
+                    - isPublic
               required:
                 - name
                 - website
                 - accentColor
                 - addresses
                 - socialLinks
+                - legalProfile
       responses:
         "200":
           description: Default Response
@@ -6357,6 +6393,21 @@ paths:
                         - description
                         - group
                       additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -6413,6 +6464,7 @@ paths:
                   - accentColor
                   - addresses
                   - socialLinks
+                  - legalProfile
                   - logoKey
                   - logoUrl
                   - contacts
@@ -6503,6 +6555,11 @@ paths:
                             - SOCIAL_LINK_UNSUPPORTED
                             - SOCIAL_LINK_USE_CONTACT
                             - SOCIAL_LINK_TOO_LONG
+                            - LEGAL_NAME_REQUIRED
+                            - LEGAL_NAME_TOO_LONG
+                            - CNPJ_REQUIRED
+                            - CNPJ_INVALID
+                            - CNPJ_TAKEN
                             - CHURCH_SLUG_LENGTH
                             - CHURCH_SLUG_FORMAT
                             - CHURCH_SLUG_RESERVED
@@ -6775,6 +6832,21 @@ paths:
                         - description
                         - group
                       additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -6831,6 +6903,7 @@ paths:
                   - accentColor
                   - addresses
                   - socialLinks
+                  - legalProfile
                   - logoKey
                   - logoUrl
                   - contacts
@@ -7084,6 +7157,21 @@ paths:
                         - description
                         - group
                       additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -7140,6 +7228,7 @@ paths:
                   - accentColor
                   - addresses
                   - socialLinks
+                  - legalProfile
                   - logoKey
                   - logoUrl
                   - contacts
@@ -7361,6 +7450,21 @@ paths:
                         - description
                         - group
                       additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -7417,6 +7521,7 @@ paths:
                   - accentColor
                   - addresses
                   - socialLinks
+                  - legalProfile
                   - logoKey
                   - logoUrl
                   - contacts

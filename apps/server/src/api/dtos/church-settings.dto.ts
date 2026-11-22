@@ -14,6 +14,7 @@ import {
   CONTACTS_MAX,
   churchContactSchema,
 } from '../../domain/church-contact';
+import { legalProfileSchema } from '../../domain/church-legal-profile';
 import {
   accentColorSchema,
   CHURCH_SETTINGS_FIELD_CODES,
@@ -63,6 +64,13 @@ const socialLinkResponseSchema = z.object({
   group: z.string().nullable(),
 });
 
+const legalProfileResponseSchema = z.object({
+  legalName: z.string(),
+  /** The 14 digits, no mask. */
+  cnpj: z.string(),
+  isPublic: z.boolean(),
+});
+
 export const churchSettingsResponseSchema = z.object({
   name: z.string(),
   slug: z.string(),
@@ -70,6 +78,7 @@ export const churchSettingsResponseSchema = z.object({
   accentColor: z.string().nullable(),
   addresses: z.array(churchAddressResponseSchema),
   socialLinks: z.array(socialLinkResponseSchema),
+  legalProfile: legalProfileResponseSchema.nullable(),
   /** Object-storage key of the logo (re-applied by *Desfazer*). */
   logoKey: z.string().nullable(),
   /** Anonymous URL of the logo, built from its key. */
@@ -115,6 +124,9 @@ export const updateChurchSettingsBodySchema = z.object({
   ),
   socialLinks: socialLinksSchema.describe(
     'Every Social Link in display order; the whole list replaces the stored one. Only `url` and `description` are sent: the network is detected from the URL. Supported: Instagram, YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram, WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer and Kwai; a wa.me link is refused (add it as a Contact). Always public.',
+  ),
+  legalProfile: legalProfileSchema.describe(
+    'The Church Legal Profile: `legalName` and `cnpj` (mask accepted, check digits validated; stored as 14 digits) and the `isPublic` toggle (visitors see it only when true). Both blank clears the profile; one without the other is refused on the blank one. A CNPJ another Church holds is refused with a generic CNPJ_TAKEN that never names that Church.',
   ),
 });
 export type UpdateChurchSettingsBody = z.output<
@@ -169,6 +181,11 @@ const FIELD_CODE_MESSAGES: Record<ChurchSettingsFieldCode, ErrorMessage> = {
   SOCIAL_LINK_UNSUPPORTED: m.error_church_settings_social_link_unsupported,
   SOCIAL_LINK_USE_CONTACT: m.error_church_settings_social_link_use_contact,
   SOCIAL_LINK_TOO_LONG: m.error_church_settings_social_link_too_long,
+  LEGAL_NAME_REQUIRED: m.error_church_settings_legal_name_required,
+  LEGAL_NAME_TOO_LONG: m.error_church_settings_legal_name_too_long,
+  CNPJ_REQUIRED: m.error_church_settings_cnpj_required,
+  CNPJ_INVALID: m.error_church_settings_cnpj_invalid,
+  CNPJ_TAKEN: m.error_church_settings_cnpj_taken,
   CHURCH_SLUG_LENGTH: m.error_church_settings_slug_length,
   CHURCH_SLUG_FORMAT: m.error_church_settings_slug_format,
   CHURCH_SLUG_RESERVED: m.error_church_settings_slug_reserved,

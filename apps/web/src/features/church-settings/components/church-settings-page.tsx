@@ -61,6 +61,7 @@ import { AccentPicker } from '@/features/church-settings/components/accent-picke
 import { AddressSection } from '@/features/church-settings/components/address-section';
 import { ChurchPreview } from '@/features/church-settings/components/church-preview';
 import { ContactsSection } from '@/features/church-settings/components/contacts-section';
+import { LegalSection } from '@/features/church-settings/components/legal-section';
 import { LogoCard } from '@/features/church-settings/components/logo-card';
 import { SocialSection } from '@/features/church-settings/components/social-section';
 import { groupOrder } from '@/features/church-settings/contact-groups';
@@ -68,7 +69,7 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import type { GetChurchSettings200 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
 
-const SECTIONS = ['info', 'contacts', 'address', 'social'] as const;
+const SECTIONS = ['info', 'contacts', 'address', 'social', 'legal'] as const;
 type SectionKey = (typeof SECTIONS)[number];
 type SectionOpenState = Record<SectionKey, boolean>;
 type FieldErrors = Record<string, string>;
@@ -107,7 +108,13 @@ interface AllSectionsInput {
 }
 
 function allSections({ open }: AllSectionsInput): SectionOpenState {
-  return { info: open, contacts: open, address: open, social: open };
+  return {
+    info: open,
+    contacts: open,
+    address: open,
+    social: open,
+    legal: open,
+  };
 }
 
 interface SectionCardProps {
@@ -222,6 +229,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     socialLinks,
     contacts,
     contactGroups,
+    legalProfile,
   } = saved;
   const savedForm = React.useMemo(
     () =>
@@ -235,6 +243,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
           socialLinks,
           contacts,
           contactGroups,
+          legalProfile,
         },
       }),
     [
@@ -246,6 +255,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
       socialLinks,
       contacts,
       contactGroups,
+      legalProfile,
     ],
   );
   const [form, setForm] = React.useState<ChurchSettingsForm>(savedForm);
@@ -288,6 +298,16 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
         : m.church_settings_social_summary_many({
             count: form.socialLinks.length,
           });
+  const legalFilled = Boolean(
+    form.legalProfile.legalName.trim() || form.legalProfile.cnpj.trim(),
+  );
+  const legalErrors = Object.keys(errors).filter((field) =>
+    field.startsWith('legalProfile'),
+  ).length;
+  const legalSummary = legalFilled
+    ? form.legalProfile.legalName.trim() || m.church_settings_legal_cnpj_label()
+    : m.church_settings_legal_summary_none();
+  const legalPublic = legalFilled && form.legalProfile.isPublic;
   const privateAddresses = form.addresses.filter(
     (address) => !address.isPublic,
   ).length;
@@ -300,8 +320,13 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     form.addresses.length -
     privateAddresses +
     publicContacts +
-    form.socialLinks.length;
-  const privateCount = privateAddresses + form.contacts.length - publicContacts;
+    form.socialLinks.length +
+    (legalPublic ? 1 : 0);
+  const privateCount =
+    privateAddresses +
+    form.contacts.length -
+    publicContacts +
+    (legalFilled && !legalPublic ? 1 : 0);
   const mainAddress = form.addresses.find((address) => address.isMain);
   const addressSummary =
     form.addresses.length === 0
@@ -388,6 +413,11 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             current.social ||
             Object.keys(refused).some((field) =>
               field.startsWith('socialLinks'),
+            ),
+          legal:
+            current.legal ||
+            Object.keys(refused).some((field) =>
+              field.startsWith('legalProfile'),
             ),
         }));
       },
@@ -590,6 +620,20 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                 groups={groups}
                 errors={errors}
                 onChange={(socialLinks) => patch({ socialLinks })}
+              />
+            </SectionCard>
+            <SectionCard
+              id="legal"
+              title={m.church_settings_section_legal()}
+              summary={legalSummary}
+              errors={legalErrors}
+              open={open.legal}
+              onToggle={() => toggle('legal')}
+            >
+              <LegalSection
+                profile={form.legalProfile}
+                errors={errors}
+                onChange={(legalProfile) => patch({ legalProfile })}
               />
             </SectionCard>
             <p className="text-muted-foreground text-sm">

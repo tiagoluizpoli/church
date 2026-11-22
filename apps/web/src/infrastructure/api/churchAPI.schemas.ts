@@ -2594,6 +2594,15 @@ export type GetChurchSettings200SocialLinksItem = {
   group: string | null;
 };
 
+/**
+ * @nullable
+ */
+export type GetChurchSettings200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
 export type GetChurchSettings200ContactsItemKind = typeof GetChurchSettings200ContactsItemKind[keyof typeof GetChurchSettings200ContactsItemKind];
 
 
@@ -2635,6 +2644,8 @@ export type GetChurchSettings200 = {
   accentColor: string | null;
   addresses: GetChurchSettings200AddressesItem[];
   socialLinks: GetChurchSettings200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: GetChurchSettings200LegalProfile;
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -2789,6 +2800,17 @@ export type UpdateChurchSettingsBodySocialLinksItem = {
   group?: string | null;
 };
 
+/**
+ * The Church Legal Profile: `legalName` and `cnpj` (mask accepted, check digits validated; stored as 14 digits) and the `isPublic` toggle (visitors see it only when true). Both blank clears the profile; one without the other is refused on the blank one. A CNPJ another Church holds is refused with a generic CNPJ_TAKEN that never names that Church.
+ */
+export type UpdateChurchSettingsBodyLegalProfile = {
+  /** @nullable */
+  legalName?: string | null;
+  /** @nullable */
+  cnpj?: string | null;
+  isPublic: boolean;
+};
+
 export type UpdateChurchSettingsBody = {
   /** Required. Trimmed, inner spaces collapsed, 2–80 characters. */
   name: string;
@@ -2826,6 +2848,8 @@ export type UpdateChurchSettingsBody = {
      * @maxItems 50
      */
   socialLinks: UpdateChurchSettingsBodySocialLinksItem[];
+  /** The Church Legal Profile: `legalName` and `cnpj` (mask accepted, check digits validated; stored as 14 digits) and the `isPublic` toggle (visitors see it only when true). Both blank clears the profile; one without the other is refused on the blank one. A CNPJ another Church holds is refused with a generic CNPJ_TAKEN that never names that Church. */
+  legalProfile: UpdateChurchSettingsBodyLegalProfile;
 };
 
 export type UpdateChurchSettings200AddressesItemUf = typeof UpdateChurchSettings200AddressesItemUf[keyof typeof UpdateChurchSettings200AddressesItemUf];
@@ -2935,6 +2959,15 @@ export type UpdateChurchSettings200SocialLinksItem = {
   group: string | null;
 };
 
+/**
+ * @nullable
+ */
+export type UpdateChurchSettings200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
 export type UpdateChurchSettings200ContactsItemKind = typeof UpdateChurchSettings200ContactsItemKind[keyof typeof UpdateChurchSettings200ContactsItemKind];
 
 
@@ -2976,6 +3009,8 @@ export type UpdateChurchSettings200 = {
   accentColor: string | null;
   addresses: UpdateChurchSettings200AddressesItem[];
   socialLinks: UpdateChurchSettings200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: UpdateChurchSettings200LegalProfile;
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -3027,6 +3062,11 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   SOCIAL_LINK_UNSUPPORTED: 'SOCIAL_LINK_UNSUPPORTED',
   SOCIAL_LINK_USE_CONTACT: 'SOCIAL_LINK_USE_CONTACT',
   SOCIAL_LINK_TOO_LONG: 'SOCIAL_LINK_TOO_LONG',
+  LEGAL_NAME_REQUIRED: 'LEGAL_NAME_REQUIRED',
+  LEGAL_NAME_TOO_LONG: 'LEGAL_NAME_TOO_LONG',
+  CNPJ_REQUIRED: 'CNPJ_REQUIRED',
+  CNPJ_INVALID: 'CNPJ_INVALID',
+  CNPJ_TAKEN: 'CNPJ_TAKEN',
   CHURCH_SLUG_LENGTH: 'CHURCH_SLUG_LENGTH',
   CHURCH_SLUG_FORMAT: 'CHURCH_SLUG_FORMAT',
   CHURCH_SLUG_RESERVED: 'CHURCH_SLUG_RESERVED',
@@ -3197,6 +3237,15 @@ export type UploadChurchLogo200SocialLinksItem = {
   group: string | null;
 };
 
+/**
+ * @nullable
+ */
+export type UploadChurchLogo200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
 export type UploadChurchLogo200ContactsItemKind = typeof UploadChurchLogo200ContactsItemKind[keyof typeof UploadChurchLogo200ContactsItemKind];
 
 
@@ -3238,6 +3287,8 @@ export type UploadChurchLogo200 = {
   accentColor: string | null;
   addresses: UploadChurchLogo200AddressesItem[];
   socialLinks: UploadChurchLogo200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: UploadChurchLogo200LegalProfile;
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -3384,6 +3435,15 @@ export type RemoveChurchLogo200SocialLinksItem = {
   group: string | null;
 };
 
+/**
+ * @nullable
+ */
+export type RemoveChurchLogo200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
 export type RemoveChurchLogo200ContactsItemKind = typeof RemoveChurchLogo200ContactsItemKind[keyof typeof RemoveChurchLogo200ContactsItemKind];
 
 
@@ -3425,6 +3485,8 @@ export type RemoveChurchLogo200 = {
   accentColor: string | null;
   addresses: RemoveChurchLogo200AddressesItem[];
   socialLinks: RemoveChurchLogo200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: RemoveChurchLogo200LegalProfile;
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -3561,6 +3623,15 @@ export type RestoreChurchLogo200SocialLinksItem = {
   group: string | null;
 };
 
+/**
+ * @nullable
+ */
+export type RestoreChurchLogo200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
 export type RestoreChurchLogo200ContactsItemKind = typeof RestoreChurchLogo200ContactsItemKind[keyof typeof RestoreChurchLogo200ContactsItemKind];
 
 
@@ -3602,6 +3673,8 @@ export type RestoreChurchLogo200 = {
   accentColor: string | null;
   addresses: RestoreChurchLogo200AddressesItem[];
   socialLinks: RestoreChurchLogo200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: RestoreChurchLogo200LegalProfile;
   /** @nullable */
   logoKey: string | null;
   /** @nullable */

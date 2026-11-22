@@ -7,6 +7,10 @@ import {
 } from './church-address';
 import type { ChurchContact } from './church-contact';
 import {
+  type ChurchLegalProfile,
+  LEGAL_PROFILE_FIELD_CODES,
+} from './church-legal-profile';
+import {
   type ChurchSocialLink,
   SOCIAL_LINK_FIELD_CODES,
   type SocialLinkChange,
@@ -21,6 +25,8 @@ export interface ChurchSettings {
   addresses: ChurchAddress[];
   /** In display order; always public. */
   socialLinks: ChurchSocialLink[];
+  /** `null` when the Church has recorded none. */
+  legalProfile: ChurchLegalProfile | null;
   /** Object-storage key of the logo; `null` when the Church has none. */
   logoKey: string | null;
   /** In the admin's order. */
@@ -41,6 +47,7 @@ export interface ChurchSettingsChanges {
   contactGroups?: string[];
   addresses: ChurchAddressChange[];
   socialLinks: SocialLinkChange[];
+  legalProfile: ChurchLegalProfile | null;
 }
 
 /**
@@ -55,6 +62,7 @@ export const CHURCH_SETTINGS_FIELD_CODES = [
   'ACCENT_COLOR_INVALID',
   ...CHURCH_ADDRESS_FIELD_CODES,
   ...SOCIAL_LINK_FIELD_CODES,
+  ...LEGAL_PROFILE_FIELD_CODES,
   'CHURCH_SLUG_LENGTH',
   'CHURCH_SLUG_FORMAT',
   'CHURCH_SLUG_RESERVED',

@@ -17,6 +17,7 @@ const SETTINGS = {
   contactGroups: [],
   addresses: [],
   socialLinks: [],
+  legalProfile: null,
 };
 
 let churchRepository: ChurchRepository;

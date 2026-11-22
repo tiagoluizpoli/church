@@ -481,8 +481,15 @@
     {
       "idx": 68,
       "version": "7",
-      "when": 1795363265053,
-      "tag": "0068_church_contact_group",
+      "when": 1795363212792,
+      "tag": "0068_church_legal_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1795370720752,
+      "tag": "0069_church_contact_group",
       "breakpoints": true
     }
   ]

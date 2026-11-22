@@ -1,5 +1,5 @@
 {
-  "id": "82d5a6b0-7834-4b21-ad29-b95e38546342",
+  "id": "2fd56dde-0404-46a4-94d2-fd99b3e562e4",
   "prevId": "311fbbba-5582-4b4f-ae36-7604f9893ab6",
   "version": "7",
   "dialect": "postgresql",
@@ -1486,12 +1486,6 @@
           "notNull": true,
           "default": false
         },
-        "group_id": {
-          "name": "group_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "position": {
           "name": "position",
           "type": "integer",
@@ -1535,19 +1529,6 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "church_contact_group_id_church_contact_group_id_fk": {
-          "name": "church_contact_group_id_church_contact_group_id_fk",
-          "tableFrom": "church_contact",
-          "tableTo": "church_contact_group",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1556,63 +1537,70 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.church_contact_group": {
-      "name": "church_contact_group",
+    "public.church_legal_profile": {
+      "name": "church_legal_profile",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
         "church_id": {
           "name": "church_id",
           "type": "uuid",
-          "primaryKey": false,
+          "primaryKey": true,
           "notNull": true
         },
-        "name": {
-          "name": "name",
+        "legal_name": {
+          "name": "legal_name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "position": {
-          "name": "position",
-          "type": "integer",
+        "document_type": {
+          "name": "document_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'CNPJ'"
+        },
+        "document_number": {
+          "name": "document_number",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "is_public": {
+          "name": "is_public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {
-        "church_contact_group_church_position_idx": {
-          "name": "church_contact_group_church_position_idx",
+        "church_legal_profile_document_idx": {
+          "name": "church_legal_profile_document_idx",
           "columns": [
             {
-              "expression": "church_id",
+              "expression": "document_type",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "position",
+              "expression": "document_number",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "church_contact_group_church_id_church_id_fk": {
-          "name": "church_contact_group_church_id_church_id_fk",
-          "tableFrom": "church_contact_group",
+        "church_legal_profile_church_id_church_id_fk": {
+          "name": "church_legal_profile_church_id_church_id_fk",
+          "tableFrom": "church_legal_profile",
           "tableTo": "church",
           "columnsFrom": [
             "church_id"
@@ -1627,7 +1615,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "church_legal_profile_cnpj_check": {
+          "name": "church_legal_profile_cnpj_check",
+          "value": "\"church_legal_profile\".\"document_type\" = 'CNPJ' AND \"church_legal_profile\".\"document_number\" ~ '^[0-9]{14}$'"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.church_slug_history": {
@@ -1727,12 +1720,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "group_id": {
-          "name": "group_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "position": {
           "name": "position",
           "type": "integer",
@@ -1775,19 +1762,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "church_social_link_group_id_church_contact_group_id_fk": {
-          "name": "church_social_link_group_id_church_contact_group_id_fk",
-          "tableFrom": "church_social_link",
-          "tableTo": "church_contact_group",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

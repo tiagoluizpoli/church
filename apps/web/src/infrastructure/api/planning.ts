@@ -284,7 +284,7 @@ const changeTemplatePrecedence = (
       );
     }
   /**
- * Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock.
+ * Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock. A loser of a Template Precedence skips only its blocks overlapping the winner’s on days the winner’s Recurrence names; blocks already in the Cycle that would now lose are listed in `leftoverEventTimeBlocks` and never deleted.
  * @summary Apply EventTemplates to a Cycle
  */
 const applyPlanningTemplates = (

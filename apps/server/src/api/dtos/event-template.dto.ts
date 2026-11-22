@@ -176,6 +176,19 @@ export const eventTemplateUsageResponseSchema = z.object({
 export const generatedPlanningCountsResponseSchema = z.object({
   generatedEventCount: z.number(),
   generatedEventTimeBlockCount: z.number(),
+  /** Blocks already in the Cycle that a Template Precedence makes losers; nothing was deleted. */
+  leftoverEventTimeBlocks: z.array(
+    z.object({
+      eventId: z.string(),
+      eventTitle: z.string(),
+      eventTimeBlockId: z.string(),
+      label: z.string().nullable(),
+      startTime: instantSchema,
+      endTime: instantSchema,
+      loserTemplateName: z.string(),
+      winnerTemplateName: z.string(),
+    }),
+  ),
 });
 
 function toEventTemplateResponse(template: EventTemplate) {

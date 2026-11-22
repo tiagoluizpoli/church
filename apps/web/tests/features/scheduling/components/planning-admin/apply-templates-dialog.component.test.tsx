@@ -72,6 +72,7 @@ beforeEach(() => {
   applyPlanningTemplates.mockResolvedValue({
     generatedEventCount: 2,
     generatedEventTimeBlockCount: 3,
+    leftoverEventTimeBlocks: [],
   });
 });
 
@@ -118,6 +119,7 @@ describe('ApplyTemplatesDialog', () => {
     applyPlanningTemplates.mockResolvedValue({
       generatedEventCount: 1,
       generatedEventTimeBlockCount: 1,
+      leftoverEventTimeBlocks: [],
     });
     const { user } = renderDialog();
     await checkboxes();
@@ -134,6 +136,7 @@ describe('ApplyTemplatesDialog', () => {
     applyPlanningTemplates.mockResolvedValue({
       generatedEventCount: 0,
       generatedEventTimeBlockCount: 0,
+      leftoverEventTimeBlocks: [],
     });
     const { user } = renderDialog();
     await checkboxes();
@@ -326,5 +329,36 @@ describe('ApplyTemplatesDialog loading', () => {
     expect(
       screen.queryByRole('status', { name: m.cycle_apply_loading() }),
     ).toBeNull();
+  });
+
+  it('keeps the dialog open with the leftover losing blocks after Apply', async () => {
+    applyPlanningTemplates.mockResolvedValue({
+      generatedEventCount: 0,
+      generatedEventTimeBlockCount: 0,
+      leftoverEventTimeBlocks: [
+        {
+          eventId: 'event-1',
+          eventTitle: 'Sunday',
+          eventTimeBlockId: 'block-1',
+          label: 'Service',
+          startTime: '2026-10-04T22:00:00.000Z',
+          endTime: '2026-10-05T00:00:00.000Z',
+          loserTemplateName: 'Sunday',
+          winnerTemplateName: 'First Sunday',
+        },
+      ],
+    });
+    const { user } = renderDialog();
+    await checkboxes();
+    await user.click(submit());
+
+    const items = await screen.findAllByTestId('apply-leftover-item');
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('Service');
+    expect(items[0]).toHaveTextContent('First Sunday');
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId('apply-leftovers-close'));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

@@ -46,6 +46,7 @@ import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/dr
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { buildChurchMembership } from '@/seeds/builders/church';
@@ -67,6 +68,7 @@ const unitOfWork = new DrizzleUnitOfWork({ db });
 const managerDependencies = {
   cycleRepository: new DrizzleCycleRepository({ db }),
   eventRepository,
+  precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
   templateRepository: new DrizzleEventTemplateRepository({ db }),
   churchRepository,
   unitOfWork,

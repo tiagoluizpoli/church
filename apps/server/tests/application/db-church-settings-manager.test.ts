@@ -15,6 +15,7 @@ const SETTINGS = {
   logoKey: null,
   contacts: [],
   addresses: [],
+  socialLinks: [],
 };
 
 let churchRepository: ChurchRepository;

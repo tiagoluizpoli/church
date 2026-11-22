@@ -6,6 +6,11 @@ import {
   type ChurchAddressChange,
 } from './church-address';
 import type { ChurchContact } from './church-contact';
+import {
+  type ChurchSocialLink,
+  SOCIAL_LINK_FIELD_CODES,
+  type SocialLinkChange,
+} from './social-link';
 
 /** Church Settings as stored; empty optional fields are `null`. */
 export interface ChurchSettings {
@@ -14,6 +19,8 @@ export interface ChurchSettings {
   website: string | null;
   accentColor: string | null;
   addresses: ChurchAddress[];
+  /** In display order; always public. */
+  socialLinks: ChurchSocialLink[];
   /** Object-storage key of the logo; `null` when the Church has none. */
   logoKey: string | null;
   /** In the admin's order. */
@@ -29,6 +36,7 @@ export interface ChurchSettingsChanges {
   /** Omitted, the contacts stay; sent, the whole list replaces them. */
   contacts?: ChurchContact[];
   addresses: ChurchAddressChange[];
+  socialLinks: SocialLinkChange[];
 }
 
 /**
@@ -42,6 +50,7 @@ export const CHURCH_SETTINGS_FIELD_CODES = [
   'CHURCH_WEBSITE_TOO_LONG',
   'ACCENT_COLOR_INVALID',
   ...CHURCH_ADDRESS_FIELD_CODES,
+  ...SOCIAL_LINK_FIELD_CODES,
   'CHURCH_SLUG_LENGTH',
   'CHURCH_SLUG_FORMAT',
   'CHURCH_SLUG_RESERVED',

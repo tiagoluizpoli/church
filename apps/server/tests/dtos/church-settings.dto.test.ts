@@ -45,6 +45,9 @@ describe('Church Settings body', () => {
             cep: '13010-000',
           },
         ],
+        socialLinks: [
+          { url: ' Instagram.com/igreja ', description: ' Perfil ' },
+        ],
       }),
     ).toEqual({
       name: 'Igreja Viva',
@@ -68,6 +71,13 @@ describe('Church Settings body', () => {
           longitude: null,
           pinSource: null,
           placeId: null,
+        },
+      ],
+      socialLinks: [
+        {
+          url: 'https://Instagram.com/igreja',
+          network: 'instagram',
+          description: 'Perfil',
         },
       ],
     });

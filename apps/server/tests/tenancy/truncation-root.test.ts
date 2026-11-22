@@ -9,6 +9,7 @@ import {
   churchAddress,
   churchContact,
   churchSlugHistory,
+  churchSocialLink,
   createChurch,
   cycle,
   event,
@@ -198,6 +199,13 @@ async function seedEveryTenantedTable(): Promise<void> {
     churchId: IDS.church,
     kind: 'email',
     value: 'contato@test.com',
+    position: 0,
+  });
+
+  await testDb.insert(churchSocialLink).values({
+    churchId: IDS.church,
+    url: 'https://instagram.com/truncation',
+    network: 'instagram',
     position: 0,
   });
 

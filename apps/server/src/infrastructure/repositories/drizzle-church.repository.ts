@@ -4,6 +4,7 @@ import {
   churchAddress,
   churchContact,
   churchSlugHistory,
+  churchSocialLink,
   member,
   organization,
   user,
@@ -36,6 +37,10 @@ import type {
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { Church } from '../../domain/entities/church';
 import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
+import type {
+  ChurchSocialLink,
+  SocialLinkChange,
+} from '../../domain/social-link';
 import { mapChurch } from '../mappers/church.mapper';
 import { getClient, isValidUuid } from './helpers';
 import type { AnyDrizzleDb } from './types';
@@ -58,6 +63,12 @@ interface FindSlugAvailabilityInput {
   client: DrizzleClient;
   id: string;
   slug: string;
+}
+
+interface ReplaceSocialLinksInput {
+  client: DrizzleClient;
+  id: string;
+  links: readonly SocialLinkChange[];
 }
 
 type ChangeSlugInput = FindSlugAvailabilityInput;
@@ -181,8 +192,25 @@ export class DrizzleChurchRepository implements ChurchRepository {
     return {
       ...row,
       addresses: await this.listAddresses({ id, tx }),
+      socialLinks: await this.listSocialLinks({ id, tx }),
       contacts,
     };
+  }
+
+  private async listSocialLinks({
+    id,
+    tx,
+  }: ListAddressesInput): Promise<ChurchSocialLink[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        url: churchSocialLink.url,
+        network: churchSocialLink.network,
+        description: churchSocialLink.description,
+      })
+      .from(churchSocialLink)
+      .where(eq(churchSocialLink.churchId, id))
+      .orderBy(asc(churchSocialLink.position), asc(churchSocialLink.id));
+    return rows as ChurchSocialLink[];
   }
 
   private async listAddresses({
@@ -263,6 +291,11 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .set({ website: fields.website, accentColor: fields.accentColor })
       .where(eq(church.id, id));
     if (slug !== undefined) await this.changeSlug({ client, id, slug });
+    await this.replaceSocialLinks({
+      client,
+      id,
+      links: changes.socialLinks,
+    });
     const writes = resolveChurchAddresses({
       stored: await this.listAddresses({ id, tx }),
       incoming: changes.addresses,
@@ -309,6 +342,23 @@ export class DrizzleChurchRepository implements ChurchRepository {
         );
       }
     }
+  }
+
+  /** The whole list replaces the stored one; list order is the position. */
+  private async replaceSocialLinks({
+    client,
+    id,
+    links,
+  }: ReplaceSocialLinksInput): Promise<void> {
+    await client
+      .delete(churchSocialLink)
+      .where(eq(churchSocialLink.churchId, id));
+    if (links.length === 0) return;
+    await client
+      .insert(churchSocialLink)
+      .values(
+        links.map((link, position) => ({ ...link, churchId: id, position })),
+      );
   }
 
   /** Records the slug given up and takes the new one; a slug taken back leaves the history. */

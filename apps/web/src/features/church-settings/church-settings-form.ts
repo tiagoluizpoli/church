@@ -60,6 +60,14 @@ export function toContactBody({ contact }: ToContactBodyInput) {
   };
 }
 
+/** One Social Link being edited; the network is never stored, it is detected from the URL. */
+export interface SocialLinkDraft {
+  key: string;
+  url: string;
+  /** Empty means no description. */
+  description: string;
+}
+
 /** What the screen edits; the server normalises it on save. */
 export interface ChurchSettingsForm {
   name: string;
@@ -72,12 +80,20 @@ export interface ChurchSettingsForm {
   contacts: ContactForm[];
   /** In display order; the server owns the rules on which is main. */
   addresses: AddressDraft[];
+  /** In display order; always public. */
+  socialLinks: SocialLinkDraft[];
 }
 
 interface ToChurchSettingsFormInput {
   settings: Pick<
     GetChurchSettings200,
-    'name' | 'slug' | 'website' | 'accentColor' | 'addresses' | 'contacts'
+    | 'name'
+    | 'slug'
+    | 'website'
+    | 'accentColor'
+    | 'addresses'
+    | 'contacts'
+    | 'socialLinks'
   >;
 }
 
@@ -99,6 +115,11 @@ export function toChurchSettingsForm({
     contacts: settings.contacts.map((contact, index) =>
       toContactForm({ contact, index }),
     ),
+    socialLinks: settings.socialLinks.map(({ url, description }, index) => ({
+      key: `saved-${index}`,
+      url,
+      description: description ?? '',
+    })),
   };
 }
 
@@ -124,12 +145,13 @@ export function toSaveBody({
   form,
   slugChanged,
 }: ToSaveBodyInput): UpdateChurchSettingsBody {
-  const { slug, addresses, contacts, ...rest } = form;
+  const { slug, addresses, contacts, socialLinks, ...rest } = form;
   return {
     ...rest,
     ...(slugChanged ? { slug: slug.trim() } : {}),
     addresses: addresses.map(({ key: _key, ...address }) => address),
     contacts: contacts.map((contact) => toContactBody({ contact })),
+    socialLinks: socialLinks.map(({ key: _key, ...link }) => link),
   };
 }
 

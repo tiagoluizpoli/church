@@ -1,3 +1,4 @@
+import { detectSocialNetwork } from '@church/app-config/social-networks';
 import {
   addChurchMember,
   type ChurchAccessLevel,
@@ -5,6 +6,7 @@ import {
   church,
   churchAddress,
   churchContact,
+  churchSocialLink,
   createChurch,
   invitation,
   user,
@@ -20,7 +22,10 @@ import type { ObjectStorage } from '../../src/domain/contracts/infrastructure/ob
 import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
 import { provisionChurch } from '../../src/scripts/provision-church';
 import { SEED_PLATFORM_OPERATOR_ID } from '../blueprints/credentials';
-import type { ChurchAddressBlueprint } from '../blueprints/directory/types';
+import type {
+  ChurchAddressBlueprint,
+  ChurchSocialLinkBlueprint,
+} from '../blueprints/directory/types';
 import type { SeedWriter } from '../recipe';
 import { deriveSeedId } from './derived-id';
 
@@ -302,4 +307,38 @@ export async function buildChurchMembership({
   id,
 }: BuildChurchMembershipInput): Promise<void> {
   await addChurchMember({ db, churchId, userId, accessLevel, id });
+}
+
+export interface BuildChurchSocialLinksInput {
+  db: SeedWriter;
+  churchId: string;
+  socialLinks: readonly ChurchSocialLinkBlueprint[];
+}
+
+/** Direct-state builder: the Church's Social Links in order, networks detected from the URLs. */
+export async function buildChurchSocialLinks({
+  db,
+  churchId,
+  socialLinks,
+}: BuildChurchSocialLinksInput): Promise<void> {
+  if (socialLinks.length === 0) return;
+  await db.insert(churchSocialLink).values(
+    socialLinks.map((link, position) => {
+      const detection = detectSocialNetwork({ url: link.url });
+      if ('refusal' in detection) {
+        throw new Error(`Seed social link ${link.url}: ${detection.refusal}`);
+      }
+      return {
+        id: deriveSeedId({
+          kind: 'church-social-link',
+          parentIds: [churchId, String(position)],
+        }),
+        churchId,
+        url: link.url,
+        network: detection.network,
+        description: link.description ?? null,
+        position,
+      };
+    }),
+  );
 }

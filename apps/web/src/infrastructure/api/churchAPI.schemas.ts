@@ -2550,6 +2550,33 @@ export type GetChurchSettings200AddressesItem = {
   placeId: string | null;
 };
 
+export type GetChurchSettings200SocialLinksItemNetwork = typeof GetChurchSettings200SocialLinksItemNetwork[keyof typeof GetChurchSettings200SocialLinksItemNetwork];
+
+
+export const GetChurchSettings200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type GetChurchSettings200SocialLinksItem = {
+  url: string;
+  network: GetChurchSettings200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+};
+
 export type GetChurchSettings200ContactsItemKind = typeof GetChurchSettings200ContactsItemKind[keyof typeof GetChurchSettings200ContactsItemKind];
 
 
@@ -2588,6 +2615,7 @@ export type GetChurchSettings200 = {
   /** @nullable */
   accentColor: string | null;
   addresses: GetChurchSettings200AddressesItem[];
+  socialLinks: GetChurchSettings200SocialLinksItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -2731,6 +2759,12 @@ export type UpdateChurchSettingsBodyAddressesItem = {
   placeId?: string | null;
 };
 
+export type UpdateChurchSettingsBodySocialLinksItem = {
+  url: string;
+  /** @nullable */
+  description?: string | null;
+};
+
 export type UpdateChurchSettingsBody = {
   /** Required. Trimmed, inner spaces collapsed, 2–80 characters. */
   name: string;
@@ -2757,6 +2791,11 @@ export type UpdateChurchSettingsBody = {
      * @maxItems 50
      */
   addresses: UpdateChurchSettingsBodyAddressesItem[];
+  /**
+     * Every Social Link in display order; the whole list replaces the stored one. Only `url` and `description` are sent: the network is detected from the URL. Supported: Instagram, YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram, WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer and Kwai; a wa.me link is refused (add it as a Contact). Always public.
+     * @maxItems 50
+     */
+  socialLinks: UpdateChurchSettingsBodySocialLinksItem[];
 };
 
 export type UpdateChurchSettings200AddressesItemUf = typeof UpdateChurchSettings200AddressesItemUf[keyof typeof UpdateChurchSettings200AddressesItemUf];
@@ -2837,6 +2876,33 @@ export type UpdateChurchSettings200AddressesItem = {
   placeId: string | null;
 };
 
+export type UpdateChurchSettings200SocialLinksItemNetwork = typeof UpdateChurchSettings200SocialLinksItemNetwork[keyof typeof UpdateChurchSettings200SocialLinksItemNetwork];
+
+
+export const UpdateChurchSettings200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type UpdateChurchSettings200SocialLinksItem = {
+  url: string;
+  network: UpdateChurchSettings200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+};
+
 export type UpdateChurchSettings200ContactsItemKind = typeof UpdateChurchSettings200ContactsItemKind[keyof typeof UpdateChurchSettings200ContactsItemKind];
 
 
@@ -2875,6 +2941,7 @@ export type UpdateChurchSettings200 = {
   /** @nullable */
   accentColor: string | null;
   addresses: UpdateChurchSettings200AddressesItem[];
+  socialLinks: UpdateChurchSettings200SocialLinksItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -2921,6 +2988,10 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   ADDRESS_PIN_INVALID: 'ADDRESS_PIN_INVALID',
   ADDRESS_MAIN_MULTIPLE: 'ADDRESS_MAIN_MULTIPLE',
   ADDRESS_MAIN_REQUIRED: 'ADDRESS_MAIN_REQUIRED',
+  SOCIAL_LINK_INVALID: 'SOCIAL_LINK_INVALID',
+  SOCIAL_LINK_UNSUPPORTED: 'SOCIAL_LINK_UNSUPPORTED',
+  SOCIAL_LINK_USE_CONTACT: 'SOCIAL_LINK_USE_CONTACT',
+  SOCIAL_LINK_TOO_LONG: 'SOCIAL_LINK_TOO_LONG',
   CHURCH_SLUG_LENGTH: 'CHURCH_SLUG_LENGTH',
   CHURCH_SLUG_FORMAT: 'CHURCH_SLUG_FORMAT',
   CHURCH_SLUG_RESERVED: 'CHURCH_SLUG_RESERVED',
@@ -3061,6 +3132,33 @@ export type UploadChurchLogo200AddressesItem = {
   placeId: string | null;
 };
 
+export type UploadChurchLogo200SocialLinksItemNetwork = typeof UploadChurchLogo200SocialLinksItemNetwork[keyof typeof UploadChurchLogo200SocialLinksItemNetwork];
+
+
+export const UploadChurchLogo200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type UploadChurchLogo200SocialLinksItem = {
+  url: string;
+  network: UploadChurchLogo200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+};
+
 export type UploadChurchLogo200ContactsItemKind = typeof UploadChurchLogo200ContactsItemKind[keyof typeof UploadChurchLogo200ContactsItemKind];
 
 
@@ -3099,6 +3197,7 @@ export type UploadChurchLogo200 = {
   /** @nullable */
   accentColor: string | null;
   addresses: UploadChurchLogo200AddressesItem[];
+  socialLinks: UploadChurchLogo200SocialLinksItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -3215,6 +3314,33 @@ export type RemoveChurchLogo200AddressesItem = {
   placeId: string | null;
 };
 
+export type RemoveChurchLogo200SocialLinksItemNetwork = typeof RemoveChurchLogo200SocialLinksItemNetwork[keyof typeof RemoveChurchLogo200SocialLinksItemNetwork];
+
+
+export const RemoveChurchLogo200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type RemoveChurchLogo200SocialLinksItem = {
+  url: string;
+  network: RemoveChurchLogo200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+};
+
 export type RemoveChurchLogo200ContactsItemKind = typeof RemoveChurchLogo200ContactsItemKind[keyof typeof RemoveChurchLogo200ContactsItemKind];
 
 
@@ -3253,6 +3379,7 @@ export type RemoveChurchLogo200 = {
   /** @nullable */
   accentColor: string | null;
   addresses: RemoveChurchLogo200AddressesItem[];
+  socialLinks: RemoveChurchLogo200SocialLinksItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */
@@ -3359,6 +3486,33 @@ export type RestoreChurchLogo200AddressesItem = {
   placeId: string | null;
 };
 
+export type RestoreChurchLogo200SocialLinksItemNetwork = typeof RestoreChurchLogo200SocialLinksItemNetwork[keyof typeof RestoreChurchLogo200SocialLinksItemNetwork];
+
+
+export const RestoreChurchLogo200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type RestoreChurchLogo200SocialLinksItem = {
+  url: string;
+  network: RestoreChurchLogo200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+};
+
 export type RestoreChurchLogo200ContactsItemKind = typeof RestoreChurchLogo200ContactsItemKind[keyof typeof RestoreChurchLogo200ContactsItemKind];
 
 
@@ -3397,6 +3551,7 @@ export type RestoreChurchLogo200 = {
   /** @nullable */
   accentColor: string | null;
   addresses: RestoreChurchLogo200AddressesItem[];
+  socialLinks: RestoreChurchLogo200SocialLinksItem[];
   /** @nullable */
   logoKey: string | null;
   /** @nullable */

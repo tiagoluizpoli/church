@@ -62,11 +62,12 @@ import { AddressSection } from '@/features/church-settings/components/address-se
 import { ChurchPreview } from '@/features/church-settings/components/church-preview';
 import { ContactsSection } from '@/features/church-settings/components/contacts-section';
 import { LogoCard } from '@/features/church-settings/components/logo-card';
+import { SocialSection } from '@/features/church-settings/components/social-section';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import type { GetChurchSettings200 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
 
-const SECTIONS = ['info', 'contacts', 'address'] as const;
+const SECTIONS = ['info', 'contacts', 'address', 'social'] as const;
 type SectionKey = (typeof SECTIONS)[number];
 type SectionOpenState = Record<SectionKey, boolean>;
 type FieldErrors = Record<string, string>;
@@ -105,7 +106,7 @@ interface AllSectionsInput {
 }
 
 function allSections({ open }: AllSectionsInput): SectionOpenState {
-  return { info: open, contacts: open, address: open };
+  return { info: open, contacts: open, address: open, social: open };
 }
 
 interface SectionCardProps {
@@ -211,13 +212,22 @@ interface ChurchSettingsEditorProps {
 
 function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   // Keyed on the form fields only: a logo change (applied at once) must not reset unsaved edits.
-  const { name, slug, website, accentColor, addresses, contacts } = saved;
+  const { name, slug, website, accentColor, addresses, socialLinks, contacts } =
+    saved;
   const savedForm = React.useMemo(
     () =>
       toChurchSettingsForm({
-        settings: { name, slug, website, accentColor, addresses, contacts },
+        settings: {
+          name,
+          slug,
+          website,
+          accentColor,
+          addresses,
+          socialLinks,
+          contacts,
+        },
       }),
-    [name, slug, website, accentColor, addresses, contacts],
+    [name, slug, website, accentColor, addresses, socialLinks, contacts],
   );
   const [form, setForm] = React.useState<ChurchSettingsForm>(savedForm);
   const [errors, setErrors] = React.useState<FieldErrors>({});
@@ -247,6 +257,17 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   const contactErrors = Object.keys(errors).filter((field) =>
     field.startsWith(CONTACTS_PREFIX),
   ).length;
+  const socialErrors = Object.keys(errors).filter((field) =>
+    field.startsWith('socialLinks'),
+  ).length;
+  const socialSummary =
+    form.socialLinks.length === 0
+      ? m.church_settings_social_summary_none()
+      : form.socialLinks.length === 1
+        ? m.church_settings_social_summary_one()
+        : m.church_settings_social_summary_many({
+            count: form.socialLinks.length,
+          });
   const privateAddresses = form.addresses.filter(
     (address) => !address.isPublic,
   ).length;
@@ -258,7 +279,8 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
       .length +
     form.addresses.length -
     privateAddresses +
-    publicContacts;
+    publicContacts +
+    form.socialLinks.length;
   const privateCount = privateAddresses + form.contacts.length - publicContacts;
   const mainAddress = form.addresses.find((address) => address.isMain);
   const addressSummary =
@@ -342,6 +364,11 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
           address:
             current.address ||
             Object.keys(refused).some((field) => field.startsWith('addresses')),
+          social:
+            current.social ||
+            Object.keys(refused).some((field) =>
+              field.startsWith('socialLinks'),
+            ),
         }));
       },
     });
@@ -527,6 +554,20 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                 addresses={form.addresses}
                 errors={errors}
                 onChange={(addresses) => patch({ addresses })}
+              />
+            </SectionCard>
+            <SectionCard
+              id="social"
+              title={m.church_settings_section_social()}
+              summary={socialSummary}
+              errors={socialErrors}
+              open={open.social}
+              onToggle={() => toggle('social')}
+            >
+              <SocialSection
+                links={form.socialLinks}
+                errors={errors}
+                onChange={(socialLinks) => patch({ socialLinks })}
               />
             </SectionCard>
             <p className="text-muted-foreground text-sm">

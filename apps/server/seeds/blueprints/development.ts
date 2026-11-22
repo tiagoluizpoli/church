@@ -95,6 +95,24 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
         isPublic: false,
       },
     ],
+    socialLinks: [
+      { url: 'https://instagram.com/igrejasemente' },
+      {
+        url: 'https://youtube.com/@igrejasemente',
+        description: 'Cultos ao vivo',
+      },
+      {
+        url: 'https://youtube.com/@pastorhelena',
+        description: 'Canal da pastora',
+      },
+      { url: 'https://facebook.com/igrejasemente' },
+      { url: 'https://t.me/igrejasemente' },
+      {
+        url: 'https://whatsapp.com/channel/0029VaSemente',
+        description: 'Avisos da semana',
+      },
+      { url: 'https://open.spotify.com/show/semente', description: 'Podcast' },
+    ],
     logoSvg: IGREJA_SEMENTE_LOGO_SVG,
   },
   churchAdmin: {

@@ -58,6 +58,7 @@ const UNTOUCHED = {
   website: null,
   accentColor: null,
   addresses: [],
+  socialLinks: [],
   logoKey: null,
   logoUrl: null,
   contacts: [],
@@ -173,7 +174,7 @@ function saveSettings(payload: Record<string, unknown>) {
   return app.inject({
     method: 'PUT',
     url: '/api/v1/church-settings',
-    payload: { addresses: [], ...payload },
+    payload: { addresses: [], socialLinks: [], ...payload },
   });
 }
 
@@ -202,6 +203,7 @@ describe('Church Settings', () => {
       website: 'https://ibesperanca.org.br',
       accentColor: '#1d4ed8',
       addresses: [],
+      socialLinks: [],
       logoKey: null,
       logoUrl: null,
       contacts: [],
@@ -256,6 +258,7 @@ describe('Church Settings', () => {
       website: null,
       accentColor: null,
       addresses: [],
+      socialLinks: [],
       logoKey: null,
       logoUrl: null,
       contacts: [],
@@ -527,7 +530,7 @@ describe('Church Addresses', () => {
     const res = await app.inject({
       method: 'PUT',
       url: '/api/v1/church-settings',
-      payload: BASE,
+      payload: { ...BASE, socialLinks: [] },
     });
 
     expect(res.statusCode).toBe(422);
@@ -771,6 +774,7 @@ describe('Church Slug', () => {
       website: null,
       accentColor: null,
       addresses: [],
+      socialLinks: [],
     };
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
@@ -822,6 +826,132 @@ describe('Church Slug', () => {
     });
 
     expect(res.statusCode).toBe(403);
+  });
+});
+
+function saveSocialLinks(socialLinks: Record<string, unknown>[]) {
+  return saveSettings({ ...BASE, socialLinks });
+}
+
+async function readSocialLinks() {
+  signIn();
+  return (await getSettings()).json().socialLinks as Record<string, unknown>[];
+}
+
+describe('Social Links', () => {
+  it('keeps the links in order, detects each network and allows several per network', async () => {
+    signIn();
+
+    const res = await saveSocialLinks([
+      { url: 'https://youtube.com/@igreja', description: ' Cultos  ao vivo ' },
+      { url: 'instagram.com/igreja' },
+      { url: 'https://youtube.com/@pastor', description: 'Canal do pastor' },
+      { url: 'https://chat.whatsapp.com/AbC123', description: '  ' },
+    ]);
+
+    expect(res.statusCode).toBe(200);
+    const expected = [
+      {
+        url: 'https://youtube.com/@igreja',
+        network: 'youtube',
+        description: 'Cultos ao vivo',
+      },
+      {
+        url: 'https://instagram.com/igreja',
+        network: 'instagram',
+        description: null,
+      },
+      {
+        url: 'https://youtube.com/@pastor',
+        network: 'youtube',
+        description: 'Canal do pastor',
+      },
+      {
+        url: 'https://chat.whatsapp.com/AbC123',
+        network: 'whatsappGroup',
+        description: null,
+      },
+    ];
+    expect(res.json().socialLinks).toEqual(expected);
+    expect(await readSocialLinks()).toEqual(expected);
+  });
+
+  it('replaces the stored list, so reordering and removing stick', async () => {
+    signIn();
+    await saveSocialLinks([
+      { url: 'https://instagram.com/a' },
+      { url: 'https://t.me/b' },
+    ]);
+
+    const res = await saveSocialLinks([{ url: 'https://t.me/b' }]);
+
+    expect(res.json().socialLinks).toEqual([
+      { url: 'https://t.me/b', network: 'telegram', description: null },
+    ]);
+    expect((await saveSocialLinks([])).json().socialLinks).toEqual([]);
+  });
+
+  it('answers each refused row by index and saves nothing', async () => {
+    signIn();
+    await saveSocialLinks([{ url: 'https://instagram.com/keep' }]);
+
+    const res = await saveSocialLinks([
+      { url: 'https://instagram.com/ok' },
+      { url: 'https://example.com/x' },
+      { url: 'https://wa.me/5511999998888' },
+      { url: 'not a link' },
+      { url: 'https://t.me/ok', description: 'x'.repeat(81) },
+    ]);
+
+    expect(res.statusCode).toBe(422);
+    expect(
+      res
+        .json()
+        .fieldErrors.map((e: { field: string; code: string }) => [
+          e.field,
+          e.code,
+        ]),
+    ).toEqual([
+      ['socialLinks.1.url', 'SOCIAL_LINK_UNSUPPORTED'],
+      ['socialLinks.2.url', 'SOCIAL_LINK_USE_CONTACT'],
+      ['socialLinks.3.url', 'SOCIAL_LINK_INVALID'],
+      ['socialLinks.4.description', 'SOCIAL_LINK_TOO_LONG'],
+    ]);
+    expect(res.json().fieldErrors[0].message).toBe(
+      'Rede não suportada, fale com o suporte.',
+    );
+    expect(await readSocialLinks()).toEqual([
+      {
+        url: 'https://instagram.com/keep',
+        network: 'instagram',
+        description: null,
+      },
+    ]);
+  });
+
+  it('names a missing link list instead of clearing the links', async () => {
+    signIn();
+    await saveSocialLinks([{ url: 'https://instagram.com/a' }]);
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/church-settings',
+      payload: { ...BASE, addresses: [] },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().fieldErrors).toEqual([
+      expect.objectContaining({ field: 'socialLinks', code: 'INVALID' }),
+    ]);
+    expect(await readSocialLinks()).toHaveLength(1);
+  });
+
+  it('keeps one Church out of the other', async () => {
+    signIn();
+    await saveSocialLinks([{ url: 'https://instagram.com/a' }]);
+    signIn({ churchId: CHURCH_B });
+
+    expect((await getSettings()).json().socialLinks).toEqual([]);
   });
 });
 

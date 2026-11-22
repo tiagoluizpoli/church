@@ -13,6 +13,8 @@ import { renderWithProviders } from '@/tests/setup/render';
 const getEventTemplate = vi.fn();
 const getEventTemplateUsage = vi.fn();
 const updateEventTemplate = vi.fn();
+const listTemplatePrecedences = vi.fn();
+const changeTemplatePrecedence = vi.fn();
 const deleteEventTemplate = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
@@ -23,6 +25,10 @@ vi.mock('@/utils/api-instances', () => ({
     getEventTemplateUsage: (...args: unknown[]) =>
       getEventTemplateUsage(...args),
     updateEventTemplate: (...args: unknown[]) => updateEventTemplate(...args),
+    listTemplatePrecedences: (...args: unknown[]) =>
+      listTemplatePrecedences(...args),
+    changeTemplatePrecedence: (...args: unknown[]) =>
+      changeTemplatePrecedence(...args),
     deleteEventTemplate: (...args: unknown[]) => deleteEventTemplate(...args),
   },
 }));
@@ -93,6 +99,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   getEventTemplate.mockResolvedValue(template);
   updateEventTemplate.mockResolvedValue(template);
+  listTemplatePrecedences.mockResolvedValue({ precedences: [] });
+  changeTemplatePrecedence.mockResolvedValue({});
   deleteEventTemplate.mockResolvedValue(undefined);
   getEventTemplateUsage.mockResolvedValue({
     templateId: 'template-1',
@@ -400,5 +408,88 @@ describe('TemplateEditPage loading', () => {
         name: m.event_templates_detail_loading(),
       }),
     ).toBeNull();
+  });
+
+  it('lists the precedences and changes one on its own without saving the template', async () => {
+    listTemplatePrecedences.mockResolvedValue({
+      precedences: [
+        {
+          otherTemplateId: 'other-1',
+          otherTemplateName: 'Culto',
+          answer: 'both',
+        },
+        {
+          otherTemplateId: 'other-2',
+          otherTemplateName: 'Jovens',
+          answer: 'otherWins',
+        },
+      ],
+    });
+    const user = await renderLoaded();
+
+    expect(listTemplatePrecedences).toHaveBeenCalledWith('template-1');
+    const rows = await screen.findAllByTestId('template-precedence-row');
+    expect(rows).toHaveLength(2);
+    expect(
+      within(rows[0]).getByRole('radio', { name: 'Manter os dois' }),
+    ).toBeChecked();
+    expect(
+      within(rows[1]).getByRole('radio', { name: 'O outro vence' }),
+    ).toBeChecked();
+
+    await user.click(
+      within(rows[0]).getByRole('radio', { name: 'Este vence' }),
+    );
+
+    await waitFor(() =>
+      expect(changeTemplatePrecedence).toHaveBeenCalledWith(
+        'template-1',
+        'other-1',
+        { answer: 'thisWins' },
+      ),
+    );
+    expect(updateEventTemplate).not.toHaveBeenCalled();
+    expect(toastSuccess).toHaveBeenCalledWith('Precedência atualizada');
+  });
+
+  it('shows an empty state when there are no precedences', async () => {
+    await renderLoaded();
+
+    expect(
+      await screen.findByTestId('template-precedences-empty'),
+    ).toBeInTheDocument();
+  });
+
+  it('asks the unanswered pair on save and resubmits the update with the answer', async () => {
+    updateEventTemplate
+      .mockRejectedValueOnce(
+        new AxiosError('conflict', '409', undefined, undefined, {
+          status: 409,
+          data: {
+            error: 'UNANSWERED_TEMPLATE_COLLISIONS',
+            message: 'x',
+            collisions: [{ templateId: 'other-1', name: 'Culto' }],
+          },
+        } as AxiosResponse),
+      )
+      .mockResolvedValueOnce(template);
+    const user = await renderLoaded();
+
+    await user.click(screen.getByTestId('create-template-button'));
+    const dialog = await screen.findByTestId('template-collision-dialog');
+    await user.click(
+      within(dialog).getByRole('radio', { name: 'Manter os dois' }),
+    );
+    await user.click(
+      within(dialog).getByTestId('confirm-template-collision-button'),
+    );
+
+    await waitFor(() => expect(updateEventTemplate).toHaveBeenCalledTimes(2));
+    expect(updateEventTemplate.mock.calls[1][1].precedences).toEqual([
+      { otherTemplateId: 'other-1', answer: 'both' },
+    ]);
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+    );
   });
 });

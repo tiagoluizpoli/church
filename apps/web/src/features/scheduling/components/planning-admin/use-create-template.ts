@@ -6,12 +6,16 @@ import {
   createEmptyTemplateForm,
   toTemplateRequestBody,
 } from './planning-admin.utils';
+import type { TemplateCollisionDialogProps } from './template-collision-dialog';
 import type { TemplateEditorState } from './template-editor-form';
 import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
+import { useTemplateCollisions } from './use-template-collisions';
 import { toSaveRefusal, useTemplateForm } from './use-template-form';
 import { adminApi } from '@/utils/api-instances';
 
-export type UseCreateTemplateResult = TemplateEditorState;
+export interface UseCreateTemplateResult extends TemplateEditorState {
+  collisionDialog: TemplateCollisionDialogProps;
+}
 
 /**
  * Create-page state: independent of any Cycle. A failed save keeps every
@@ -24,9 +28,13 @@ export function useCreateTemplate(): UseCreateTemplateResult {
     initialForm: createEmptyTemplateForm,
   });
 
+  const collisions = useTemplateCollisions();
+
   const mutation = useMutation({
     mutationFn: () =>
-      adminApi.createEventTemplate(toTemplateRequestBody({ form })),
+      adminApi.createEventTemplate(
+        toTemplateRequestBody({ form, precedences: collisions.precedences }),
+      ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: TEMPLATE_LIST_QUERY_KEY,
@@ -34,7 +42,11 @@ export function useCreateTemplate(): UseCreateTemplateResult {
       toast.success(m.event_templates_created_toast());
       await navigate({ to: '/app/event-templates' });
     },
-    onError: (error) => setRefusal(toSaveRefusal({ error })),
+    onError: (error) => {
+      if (!collisions.handleError(error)) {
+        setRefusal(toSaveRefusal({ error }));
+      }
+    },
   });
 
   return {
@@ -45,6 +57,14 @@ export function useCreateTemplate(): UseCreateTemplateResult {
       if (!mutation.isPending) {
         mutation.mutate();
       }
+    },
+    collisionDialog: {
+      ...collisions.dialog,
+      pending: mutation.isPending,
+      onConfirm: () => {
+        collisions.dialog.onCancel();
+        mutation.mutate();
+      },
     },
   };
 }

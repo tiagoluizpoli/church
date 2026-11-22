@@ -212,16 +212,19 @@ export function toTemplateRequestBlocks({
 
 interface TemplateRequestBodyInput {
   form: TemplateFormState;
+  precedences?: UpdateEventTemplateBody['precedences'];
 }
 
 /** The complete desired state sent by both create and edit. */
 export function toTemplateRequestBody({
   form,
+  precedences,
 }: TemplateRequestBodyInput): UpdateEventTemplateBody {
   return {
     name: form.name.trim(),
     recurrence: form.recurrence,
     blocks: toTemplateRequestBlocks({ blocks: form.blocks }),
+    ...(precedences?.length ? { precedences } : {}),
   };
 }
 

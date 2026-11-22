@@ -53,6 +53,7 @@ import type {
   MinistryParticipationRepository,
   MinistryRepository,
   NotificationRepository,
+  ObjectStorage,
   OutboxRepository,
   PeopleListRepository,
   PlanningEventRepository,
@@ -117,6 +118,8 @@ export interface CompositionRootDependencies {
   verificationCodeInspector: VerificationCodeInspector;
   errorReporter: ErrorReporter;
   tracing: Tracing;
+  /** S3 from the env; HTTP tests inject the in-memory fake. */
+  objectStorage: ObjectStorage;
   // Auth
   scopeRepository: SchedulingScopeRepository;
   authorityActorRepository: AuthorityActorRepository;

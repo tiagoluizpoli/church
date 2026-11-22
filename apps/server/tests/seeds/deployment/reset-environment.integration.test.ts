@@ -17,6 +17,7 @@ import {
   type CapturedMessages,
   resetEnvironment,
   SERVER_APPLICATION_NAME,
+  type StoredObjects,
 } from '@/seeds/deployment/reset-environment';
 import {
   seed,
@@ -42,6 +43,7 @@ let seededUsers: number | undefined;
 let backups: BackupTarget[];
 let failBackup: boolean;
 let mailpitReachable: boolean;
+let storageReachable: boolean;
 
 const capturedMessages: CapturedMessages = {
   assertReachable: async () => {
@@ -50,6 +52,16 @@ const capturedMessages: CapturedMessages = {
   },
   deleteAll: async () => {
     events.push('mailpit-delete');
+  },
+};
+
+const storedObjects: StoredObjects = {
+  assertReachable: async () => {
+    events.push('storage-check');
+    if (!storageReachable) throw new Error('Storage unreachable');
+  },
+  deleteAll: async () => {
+    events.push('storage-delete');
   },
 };
 
@@ -82,6 +94,7 @@ function run({
     },
     backup,
     capturedMessages,
+    storedObjects,
   });
 }
 
@@ -112,6 +125,7 @@ describe('environment reset', () => {
     backups = [];
     failBackup = false;
     mailpitReachable = true;
+    storageReachable = true;
     await truncateAll();
     await seed();
     seededUsers = await countOf(user);
@@ -158,6 +172,21 @@ describe('environment reset', () => {
     expect(await applicationRows()).toBe(0);
     expect(await testDb.select().from(runtimeConfiguration)).toMatchObject([
       DELIVERY_MODE,
+    ]);
+  });
+
+  it("clean on development also empties the environment's storage bucket, after the backup", async () => {
+    await run({
+      argv: ['clean', '--environment', 'development'],
+      runtimeEnvironment: 'development',
+    });
+
+    expect(events).toEqual([
+      'mailpit-check',
+      'storage-check',
+      `backup with ${seededUsers} users`,
+      'mailpit-delete',
+      'storage-delete',
     ]);
   });
 
@@ -275,6 +304,20 @@ describe('environment reset', () => {
       expect(backups).toEqual([]);
       expect(await countOf(session)).toBe(1);
     });
+  });
+
+  it('refuses a development reset before any backup when storage is unreachable', async () => {
+    storageReachable = false;
+
+    await expect(
+      run({
+        argv: ['clean', '--environment', 'development'],
+        runtimeEnvironment: 'development',
+      }),
+    ).rejects.toThrow(/Storage unreachable/);
+
+    expect(backups).toEqual([]);
+    expect(await countOf(session)).toBe(1);
   });
 
   it('leaves everything untouched when the required backup fails', async () => {

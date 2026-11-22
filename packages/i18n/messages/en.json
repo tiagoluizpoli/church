@@ -2174,5 +2174,9 @@
   "church_settings_social_delete": "Delete {name}",
   "church_settings_social_row_errors_one": "1 error in this link.",
   "church_settings_social_row_errors_many": "{count} errors in this link.",
-  "church_settings_preview_social": "Social links"
+  "church_settings_preview_social": "Social links",
+  "church_settings_preview_addresses": "Addresses",
+  "church_settings_preview_directions": "How to get there",
+  "church_settings_preview_copy_address": "Copy address",
+  "church_settings_preview_address_copied": "Address copied"
 }

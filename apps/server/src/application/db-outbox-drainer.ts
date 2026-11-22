@@ -429,7 +429,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           endsAt: fromDate({ date: endsAt }),
         }),
       ),
-      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/schedules' }),
+      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/app/schedules' }),
     };
   }
 

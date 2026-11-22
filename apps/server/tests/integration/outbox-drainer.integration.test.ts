@@ -974,7 +974,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
           churchTimezone: 'America/Sao_Paulo',
           volunteerName: 'Fixture Dual Member AB',
           ministryName,
-          actionUrl: 'https://app.test/schedules',
+          actionUrl: 'https://app.test/app/schedules',
         },
         request: {
           from: expect.stringContaining(`"${fixture.churchB.name}" <`),
@@ -992,7 +992,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
         ),
       );
       expect(email.request.text).toContain(
-        `${m.email_transfer_digest_action({}, ptBR)}: https://app.test/schedules`,
+        `${m.email_transfer_digest_action({}, ptBR)}: https://app.test/app/schedules`,
       );
       expect(email.request.text).toContain(
         m.email_footer_membership({ churchName: fixture.churchB.name }, ptBR),

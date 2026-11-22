@@ -457,7 +457,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         (row) => row.ministryMembershipId === membership?.ministryMembershipId,
       );
       expect(email).toMatchObject({
-        actionUrl: `https://app.test/availability/${check?.id}`,
+        actionUrl: `https://app.test/app/availability/${check?.id}`,
       });
       const delivered = emailSender.delivered.find(
         (row) => row.payload.to === email.to,
@@ -545,7 +545,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect.arrayContaining(
         checks.map(({ id }) =>
           expect.objectContaining({
-            actionUrl: `https://app.test/availability/${id}`,
+            actionUrl: `https://app.test/app/availability/${id}`,
           }),
         ),
       ),
@@ -596,7 +596,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       emailSender.sent.find((email) => email.to === 'late@test.com'),
     ).toMatchObject({
       kind: 'availability.opened',
-      actionUrl: `https://app.test/availability/${check?.id}`,
+      actionUrl: `https://app.test/app/availability/${check?.id}`,
     });
     const inbox = await schedulingTestDb
       .select()
@@ -3075,10 +3075,10 @@ describe('availability delivery facts resolved per recipient', () => {
 
     expect(result.failed).toBe(0);
     expect(emailSender.sent[0]).toMatchObject({
-      actionUrl: 'https://app.test/availability',
+      actionUrl: 'https://app.test/app/availability',
     });
     expect(emailSender.delivered[0]?.request.html).toContain(
-      'https://app.test/availability',
+      'https://app.test/app/availability',
     );
     expect(emailSender.delivered[0]?.request.text).toContain(
       m.notification_availability_span({

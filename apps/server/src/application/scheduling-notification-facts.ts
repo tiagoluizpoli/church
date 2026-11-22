@@ -118,8 +118,8 @@ export class SchedulingNotificationFacts {
         actionUrl: webLink({
           baseUrl: this.webBaseUrl,
           path: data.checkId
-            ? `/availability/${data.checkId}`
-            : '/availability',
+            ? `/app/availability/${data.checkId}`
+            : '/app/availability',
         }),
         shiftCount: shiftTotal?.shiftCount,
         ...deadline,

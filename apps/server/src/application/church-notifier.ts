@@ -365,7 +365,7 @@ function availabilityEmailFacts(data: AvailabilityDeliveryFacts) {
     // Frozen pre-deep-link facts still carry the retired dashboard URL.
     actionUrl: data.checkId
       ? data.actionUrl
-      : new URL('/availability', data.actionUrl).href,
+      : new URL('/app/availability', data.actionUrl).href,
     shiftCount: data.shiftCount,
     answerBy: data.answerBy,
     deadlinePassed: data.deadlinePassed,

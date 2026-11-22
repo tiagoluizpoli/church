@@ -7,6 +7,7 @@ import {
   churchContact,
   churchContactGroup,
   churchLegalProfile,
+  churchSlugHistory,
   churchSocialLink,
   createChurch,
   invitation,
@@ -440,4 +441,22 @@ export async function buildChurchLegalProfile({
     documentNumber: legalProfile.cnpj,
     isPublic: legalProfile.isPublic,
   });
+}
+
+export interface BuildChurchSlugHistoryInput {
+  db: SeedWriter;
+  churchId: string;
+  slugs: readonly string[];
+}
+
+/** Direct-state builder: Church Slugs the Church gave up, kept reserved to it. */
+export async function buildChurchSlugHistory({
+  db,
+  churchId,
+  slugs,
+}: BuildChurchSlugHistoryInput): Promise<void> {
+  if (slugs.length === 0) return;
+  await db
+    .insert(churchSlugHistory)
+    .values(slugs.map((slug) => ({ slug, churchId })));
 }

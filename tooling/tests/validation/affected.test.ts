@@ -679,6 +679,7 @@ describe('classifyChanges', () => {
       'tests/identity/volunteer-transfer-journey.spec.ts',
       'tests/ministries/ministries-directory.spec.ts',
       'tests/people/people-journey.spec.ts',
+      'tests/public-church/public-church-profile.spec.ts',
       'tests/scheduling/a11y-builder.spec.ts',
       'tests/scheduling/a11y-planning-nav.spec.ts',
       'tests/scheduling/builder-event-time-block-focus.spec.ts',

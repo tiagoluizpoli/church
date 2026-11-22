@@ -39,6 +39,7 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
     timezone: 'America/Sao_Paulo',
     website: 'https://igreja-semente.test',
     accentColor: '#0f766e',
+    previousSlugs: ['semente-de-campinas'],
     addresses: [
       {
         label: 'Templo',
@@ -135,7 +136,7 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
     legalProfile: {
       legalName: 'Igreja Semente de Campinas',
       cnpj: '11222333000181',
-      isPublic: false,
+      isPublic: true,
     },
     logoSvg: IGREJA_SEMENTE_LOGO_SVG,
   },

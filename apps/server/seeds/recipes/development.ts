@@ -23,6 +23,7 @@ import {
   buildChurchLegalProfile,
   buildChurchLogo,
   buildChurchSettings,
+  buildChurchSlugHistory,
   buildChurchSocialLinks,
   buildProvisionedChurch,
   redeemChurchInvitation,
@@ -251,6 +252,11 @@ async function loadChurchDirectory({
     churchId: church.id,
     website: blueprint.church.website ?? null,
     accentColor: blueprint.church.accentColor ?? null,
+  });
+  await buildChurchSlugHistory({
+    db,
+    churchId: church.id,
+    slugs: blueprint.church.previousSlugs ?? [],
   });
   const groupIds = await buildChurchContactGroups({
     db,

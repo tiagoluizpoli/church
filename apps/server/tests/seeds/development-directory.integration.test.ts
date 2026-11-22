@@ -7,6 +7,7 @@ import {
   churchContact,
   churchContactGroup,
   churchLegalProfile,
+  churchSlugHistory,
   churchSocialLink,
   cycle,
   event,
@@ -304,7 +305,7 @@ describe('development seed recipe', () => {
     ).toEqual([]);
   });
 
-  it('gives the primary Church a private legal profile and the second none', async () => {
+  it('gives the primary Church a public legal profile and the second none', async () => {
     const rows = await testDb.select().from(churchLegalProfile);
 
     expect(rows).toEqual([
@@ -313,9 +314,20 @@ describe('development seed recipe', () => {
         legalName: 'Igreja Semente de Campinas',
         documentType: 'CNPJ',
         documentNumber: '11222333000181',
-        isPublic: false,
+        isPublic: true,
       },
     ]);
+  });
+
+  it('keeps a slug the primary Church gave up, for the old-slug redirect', async () => {
+    expect(
+      await testDb
+        .select({
+          slug: churchSlugHistory.slug,
+          churchId: churchSlugHistory.churchId,
+        })
+        .from(churchSlugHistory),
+    ).toEqual([{ slug: 'semente-de-campinas', churchId: seeded.church.id }]);
   });
 
   it('gives the primary Church a pinned Main Address, a labelled second and a private one', async () => {

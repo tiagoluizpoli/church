@@ -283,9 +283,10 @@ function ChurchInvitationJoinRoute() {
   const reviewInvitationId = preview.ministries[0]?.invitationId;
 
   // The invited account is already signed in: skip the join form.
+  const sessionEmail = session.data?.user.email;
   if (
     reviewInvitationId === undefined &&
-    session.data?.user.email.toLowerCase() === preview.email.toLowerCase()
+    sessionEmail?.toLowerCase() === preview.email.toLowerCase()
   ) {
     return (
       <Navigate

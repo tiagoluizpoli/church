@@ -12,7 +12,7 @@ import type {
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
 import { EmailSendError } from '../../domain/errors/email-send-error';
-import { prepareEmail } from './email-templates';
+import { type PlatformBranding, prepareEmail } from './email-templates';
 
 export interface SmtpEmailSenderOptions {
   host: string;
@@ -25,6 +25,7 @@ export interface SmtpEmailSenderOptions {
   password?: string;
   from: string;
   appName: string;
+  platform?: PlatformBranding;
 }
 
 const CONNECTION_TIMEOUT_MS = 5000;
@@ -66,6 +67,7 @@ export class SmtpEmailSender implements EmailSender {
   private readonly transport: Transporter;
   private readonly from: string;
   private readonly appName: string;
+  private readonly platform: PlatformBranding | undefined;
 
   constructor({
     host,
@@ -76,6 +78,7 @@ export class SmtpEmailSender implements EmailSender {
     password,
     from,
     appName,
+    platform,
   }: SmtpEmailSenderOptions) {
     this.transport = createTransport({
       host,
@@ -89,6 +92,7 @@ export class SmtpEmailSender implements EmailSender {
     });
     this.from = from;
     this.appName = appName;
+    this.platform = platform;
   }
 
   prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
@@ -97,6 +101,7 @@ export class SmtpEmailSender implements EmailSender {
       locale,
       from: this.from,
       appName: this.appName,
+      platform: this.platform,
     });
   }
 

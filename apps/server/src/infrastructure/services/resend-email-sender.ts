@@ -8,12 +8,13 @@ import type {
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
 import { EmailSendError } from '../../domain/errors/email-send-error';
-import { prepareEmail } from './email-templates';
+import { type PlatformBranding, prepareEmail } from './email-templates';
 
 export interface ResendEmailSenderOptions {
   apiKey: string;
   from: string;
   appName: string;
+  platform?: PlatformBranding;
 }
 
 interface SendViaResendInput {
@@ -44,8 +45,9 @@ export class ResendEmailSender implements EmailSender {
   private readonly client: Resend;
   private readonly from: string;
   private readonly appName: string;
+  private readonly platform: PlatformBranding | undefined;
 
-  constructor({ apiKey, from, appName }: ResendEmailSenderOptions) {
+  constructor({ apiKey, from, appName, platform }: ResendEmailSenderOptions) {
     if (!apiKey) {
       throw new Error(
         'ResendEmailSender requires a non-empty apiKey (RESEND_API_KEY).',
@@ -54,6 +56,7 @@ export class ResendEmailSender implements EmailSender {
     this.client = new Resend(apiKey);
     this.from = from;
     this.appName = appName;
+    this.platform = platform;
   }
 
   prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
@@ -62,6 +65,7 @@ export class ResendEmailSender implements EmailSender {
       locale,
       from: this.from,
       appName: this.appName,
+      platform: this.platform,
     });
   }
 

@@ -42,6 +42,16 @@ describe('appConfigSchema', () => {
     ).toBe(false);
   });
 
+  it('takes an optional platform site URL and refuses a non-URL', () => {
+    const withSite = { ...appConfig, platformSiteUrl: 'https://platform.test' };
+    expect(appConfigSchema.safeParse(appConfig).success).toBe(true);
+    expect(appConfigSchema.safeParse(withSite).success).toBe(true);
+    expect(
+      appConfigSchema.safeParse({ ...appConfig, platformSiteUrl: 'nope' })
+        .success,
+    ).toBe(false);
+  });
+
   it('refuses a zero or negative TTL', () => {
     const zero = { ...appConfig, churchInvitation: { ttlMs: 0 } };
     const negative = { ...appConfig, churchInvitation: { ttlMs: -1 } };

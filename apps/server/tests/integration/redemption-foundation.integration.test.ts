@@ -98,7 +98,7 @@ const unusedIdentityGateway: RedemptionIdentityGateway = {
 function createHarness(): RedemptionHarness {
   const verificationCodeManager = new InvitationVerificationCodeManager({
     repository: verificationCodeRepository,
-    emailSender: new CaptureEmailSender('Church'),
+    emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
     config: appConfig,
@@ -323,8 +323,8 @@ describe('verification code persistence', () => {
 
   it('allows only one concurrent resend claim and dispatch', async () => {
     const invitation = await mintInvitation();
-    const emailSenderA = new CaptureEmailSender('Church');
-    const emailSenderB = new CaptureEmailSender('Church');
+    const emailSenderA = new CaptureEmailSender({ appName: 'Church' });
+    const emailSenderB = new CaptureEmailSender({ appName: 'Church' });
     const now = new Date('2026-01-01T00:00:00.000Z');
     const managerA = new InvitationVerificationCodeManager({
       repository: verificationCodeRepository,
@@ -367,7 +367,7 @@ describe('checkpoint-three redemption persistence', () => {
   it('derives Ministry access and roles from the pending invitation in one transaction', async () => {
     const invitation = await mintInvitation();
     await createOutboxDrainer({
-      emailSender: new CaptureEmailSender('Church'),
+      emailSender: new CaptureEmailSender({ appName: 'Church' }),
     }).drainOnce({ limit: 10 });
     const { redemptionManager } = createHarness();
 

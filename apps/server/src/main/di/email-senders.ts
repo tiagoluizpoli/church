@@ -2,6 +2,7 @@ import type { EmailSender } from '../../domain/contracts/infrastructure/email-se
 import type { RuntimeConfigurationRepository } from '../../domain/contracts/infrastructure/runtime-configuration.repository';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { DeliveryModeEmailSender } from '../../infrastructure/services/delivery-mode-email-sender';
+import type { PlatformBranding } from '../../infrastructure/services/email-templates';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
 import { SmtpEmailSender } from '../../infrastructure/services/smtp-email-sender';
 
@@ -21,6 +22,7 @@ export interface EmailSenderConfig {
   /** Development selection; unset means SMTP. Ignored in test and production. */
   devSender: DevEmailSender | undefined;
   appName: string;
+  platform?: PlatformBranding;
   resend: { apiKey: string | undefined; from: string };
   smtp: {
     host: string;
@@ -49,7 +51,8 @@ type SenderChoice = DevEmailSender | 'delivery-mode';
  * `devSender` (default SMTP). Never falls back.
  */
 export function createEmailSenders(config: EmailSenderConfig): EmailSenders {
-  const { nodeEnv, environment, devSender, smtp, resend, appName } = config;
+  const { nodeEnv, environment, devSender, smtp, resend, appName, platform } =
+    config;
   const choice: SenderChoice =
     nodeEnv === 'test'
       ? 'capture'
@@ -62,7 +65,7 @@ export function createEmailSenders(config: EmailSenderConfig): EmailSenders {
             : (devSender ?? 'smtp');
 
   if (choice === 'capture') {
-    const capture = new CaptureEmailSender(appName);
+    const capture = new CaptureEmailSender({ appName, platform });
     return { serverEmailSender: capture, captureEmailSender: capture };
   }
   if (choice !== 'resend' && Boolean(smtp.user) !== Boolean(smtp.password)) {
@@ -73,8 +76,9 @@ export function createEmailSenders(config: EmailSenderConfig): EmailSenders {
       apiKey: resend.apiKey ?? '',
       from: resend.from,
       appName,
+      platform,
     });
-  const smtpSender = () => new SmtpEmailSender({ ...smtp, appName });
+  const smtpSender = () => new SmtpEmailSender({ ...smtp, appName, platform });
   const serverEmailSender =
     choice === 'resend'
       ? resendSender()

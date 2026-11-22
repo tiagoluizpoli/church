@@ -268,8 +268,19 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const saveSettings = useSaveChurchSettings();
 
-  // A successful save hands back the server's normalised settings; show them.
-  React.useEffect(() => setForm(savedForm), [savedForm]);
+  // A new read replaces the form only when it holds no unsaved edit, or when
+  // it is this screen's own save answering with the normalised settings.
+  const lastSaved = React.useRef(savedForm);
+  const adoptNextRead = React.useRef(false);
+  React.useEffect(() => {
+    const previous = JSON.stringify(lastSaved.current);
+    lastSaved.current = savedForm;
+    const adopt = adoptNextRead.current;
+    adoptNextRead.current = false;
+    setForm((current) =>
+      adopt || JSON.stringify(current) === previous ? savedForm : current,
+    );
+  }, [savedForm]);
 
   const groups = groupOrder({ form });
   const dirty = JSON.stringify(form) !== JSON.stringify(savedForm);
@@ -386,12 +397,14 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
       return;
     }
     setConfirmingSlug(false);
+    adoptNextRead.current = true;
     saveSettings.mutate(toSaveBody({ form, slugChanged }), {
       onSuccess: () => {
         setErrors({});
         toast.success(m.church_settings_saved());
       },
       onError: (error) => {
+        adoptNextRead.current = false;
         const refused = fieldErrorsOf({ error });
         if (!refused) {
           toast.error(m.church_settings_save_failed());

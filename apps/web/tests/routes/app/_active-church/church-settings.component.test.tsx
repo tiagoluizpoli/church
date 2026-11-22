@@ -254,6 +254,41 @@ describe('Church Settings screen', () => {
     await waitFor(() => expect(saveBar()).not.toBeInTheDocument());
   });
 
+  it('keeps unsaved edits when the settings are read again in the background', async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderSettings();
+    await user.type(await nameField(), ' Viva');
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      website: 'https://outra-admin.test',
+    });
+
+    await act(() => queryClient.invalidateQueries());
+
+    expect(await nameField()).toHaveValue('Igreja Semente Viva');
+    expect(saveBar()).toBeInTheDocument();
+  });
+
+  it('takes a background read of the settings while nothing is unsaved', async () => {
+    const { queryClient } = renderSettings();
+    await nameField();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      website: 'https://outra-admin.test',
+    });
+
+    await act(() => queryClient.invalidateQueries());
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', {
+          name: m.church_settings_website_label(),
+        }),
+      ).toHaveValue('https://outra-admin.test'),
+    );
+    expect(saveBar()).not.toBeInTheDocument();
+  });
+
   it('saves on Ctrl+S, and picking "Padrão do app" clears the accent colour', async () => {
     const user = userEvent.setup();
     renderSettings();

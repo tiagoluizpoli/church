@@ -5,6 +5,7 @@ import {
   type ChurchAddress,
   type ChurchAddressChange,
 } from './church-address';
+import type { ChurchContact } from './church-contact';
 import {
   type ChurchSocialLink,
   SOCIAL_LINK_FIELD_CODES,
@@ -22,6 +23,8 @@ export interface ChurchSettings {
   socialLinks: ChurchSocialLink[];
   /** Object-storage key of the logo; `null` when the Church has none. */
   logoKey: string | null;
+  /** In the admin's order. */
+  contacts: ChurchContact[];
 }
 
 export interface ChurchSettingsChanges {
@@ -30,6 +33,8 @@ export interface ChurchSettingsChanges {
   slug?: string;
   website: string | null;
   accentColor: string | null;
+  /** Omitted, the contacts stay; sent, the whole list replaces them. */
+  contacts?: ChurchContact[];
   addresses: ChurchAddressChange[];
   socialLinks: SocialLinkChange[];
 }
@@ -50,6 +55,9 @@ export const CHURCH_SETTINGS_FIELD_CODES = [
   'CHURCH_SLUG_FORMAT',
   'CHURCH_SLUG_RESERVED',
   'CHURCH_SLUG_TAKEN',
+  'CONTACT_PHONE_INVALID',
+  'CONTACT_EMAIL_INVALID',
+  'CONTACT_DESCRIPTION_TOO_LONG',
   'INVALID',
 ] as const;
 export type ChurchSettingsFieldCode =

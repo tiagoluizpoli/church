@@ -61,6 +61,7 @@ const UNTOUCHED = {
   socialLinks: [],
   logoKey: null,
   logoUrl: null,
+  contacts: [],
   publicOrigin: PUBLIC_ORIGIN,
 };
 
@@ -205,6 +206,7 @@ describe('Church Settings', () => {
       socialLinks: [],
       logoKey: null,
       logoUrl: null,
+      contacts: [],
       publicOrigin: PUBLIC_ORIGIN,
     };
     expect(saved.statusCode).toBe(200);
@@ -259,6 +261,7 @@ describe('Church Settings', () => {
       socialLinks: [],
       logoKey: null,
       logoUrl: null,
+      contacts: [],
       publicOrigin: PUBLIC_ORIGIN,
     });
   });
@@ -949,5 +952,97 @@ describe('Social Links', () => {
     signIn({ churchId: CHURCH_B });
 
     expect((await getSettings()).json().socialLinks).toEqual([]);
+  });
+});
+
+describe('Church Contacts', () => {
+  const base = {
+    name: 'Igreja Batista Esperança',
+    website: '',
+    accentColor: null,
+  };
+
+  const phone = {
+    kind: 'phone',
+    phoneType: 'mobile',
+    value: '(11) 98765-4321',
+    description: ' Secretaria ',
+    isWhatsApp: true,
+    isPublic: true,
+  };
+  const email = {
+    kind: 'email',
+    phoneType: null,
+    value: 'Contato@Igreja.org',
+    description: null,
+    isWhatsApp: false,
+    isPublic: false,
+  };
+
+  it('keeps contacts in order, normalised, and private by what was sent', async () => {
+    signIn();
+
+    const saved = await saveSettings({ ...base, contacts: [email, phone] });
+
+    const expected = [
+      { ...email, value: 'contato@igreja.org' },
+      { ...phone, value: '+5511987654321', description: 'Secretaria' },
+    ];
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().contacts).toEqual(expected);
+    expect((await getSettings()).json().contacts).toEqual(expected);
+    await saveSettings({ ...base, contacts: [phone, email] });
+    expect(
+      (await getSettings())
+        .json()
+        .contacts.map((c: { kind: string }) => c.kind),
+    ).toEqual(['phone', 'email']);
+  });
+
+  it('leaves contacts alone when none are sent and clears them with an empty list', async () => {
+    signIn();
+    await saveSettings({ ...base, contacts: [phone] });
+
+    await saveSettings(base);
+    expect((await getSettings()).json().contacts).toHaveLength(1);
+
+    await saveSettings({ ...base, contacts: [] });
+    expect((await getSettings()).json().contacts).toEqual([]);
+  });
+
+  it('answers an invalid row by its index and saves nothing', async () => {
+    signIn();
+    await saveSettings({ ...base, contacts: [email] });
+
+    const res = await saveSettings({
+      ...base,
+      name: 'Novo Nome',
+      contacts: [phone, { ...phone, value: '123' }, { ...email, value: 'x' }],
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().fieldErrors).toEqual([
+      {
+        field: 'contacts.1.value',
+        code: 'CONTACT_PHONE_INVALID',
+        message: 'Informe um telefone brasileiro válido, com DDD.',
+      },
+      {
+        field: 'contacts.2.value',
+        code: 'CONTACT_EMAIL_INVALID',
+        message: 'Informe um e-mail válido.',
+      },
+    ]);
+    const after = (await getSettings()).json();
+    expect(after.name).toBe('Igreja Batista Esperança');
+    expect(after.contacts).toEqual([{ ...email, value: 'contato@igreja.org' }]);
+  });
+
+  it('keeps each Church its own contacts', async () => {
+    signIn();
+    await saveSettings({ ...base, contacts: [phone] });
+
+    signIn({ churchId: CHURCH_B });
+    expect((await getSettings()).json().contacts).toEqual([]);
   });
 });

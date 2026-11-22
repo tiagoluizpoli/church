@@ -5844,6 +5844,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -5855,6 +5888,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -5937,6 +5971,43 @@ paths:
                   description: "#rrggbb, or null for the app default."
                   type: string
                   pattern: ^#[0-9a-fA-F]{6}$
+                contacts:
+                  description: Church Contacts in order; phones validated as allowed-country
+                    numbers and stored as E.164, emails lower-cased. Omitted,
+                    the contacts stay; sent, the list replaces them. A refused
+                    row is reported by index, e.g. contacts.1.value.
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - email
+                          - phone
+                      phoneType:
+                        nullable: true
+                        type: string
+                        enum:
+                          - mobile
+                          - landline
+                      value:
+                        type: string
+                      description:
+                        nullable: true
+                        type: string
+                      isWhatsApp:
+                        type: boolean
+                      isPublic:
+                        type: boolean
+                    required:
+                      - kind
+                      - phoneType
+                      - value
+                      - description
+                      - isWhatsApp
+                      - isPublic
                 addresses:
                   maxItems: 50
                   type: array
@@ -6217,6 +6288,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -6228,6 +6332,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -6318,6 +6423,9 @@ paths:
                             - CHURCH_SLUG_FORMAT
                             - CHURCH_SLUG_RESERVED
                             - CHURCH_SLUG_TAKEN
+                            - CONTACT_PHONE_INVALID
+                            - CONTACT_EMAIL_INVALID
+                            - CONTACT_DESCRIPTION_TOO_LONG
                             - INVALID
                         message:
                           type: string
@@ -6584,6 +6692,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -6595,6 +6736,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -6846,6 +6988,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -6857,6 +7032,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -7076,6 +7252,39 @@ paths:
                   logoUrl:
                     nullable: true
                     type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -7087,6 +7296,7 @@ paths:
                   - socialLinks
                   - logoKey
                   - logoUrl
+                  - contacts
                   - publicOrigin
                 additionalProperties: false
         "401":

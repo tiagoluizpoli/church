@@ -4,12 +4,14 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'bun:test';
 import {
   formatStepTable,
+  I18N_COMPILE_STEP,
   type LaneStep,
   type OutputSink,
   runLanes,
   runStages,
   type WriteTextInput,
 } from '../../validation/run-lanes';
+import { VALIDATE_SETUP_STEPS } from '../../validation/validate';
 
 interface CapturedOutput extends OutputSink {
   stderrLines: string[];
@@ -249,6 +251,58 @@ describe('runStages', () => {
       ['e2e', 'skipped'],
     ]);
     expect(existsSync(markerPath('stage-e2e'))).toBe(false);
+  });
+
+  it('finishes the setup steps before any lane starts', async () => {
+    const results = await runStages({
+      finalSteps: [],
+      lanes: [
+        [
+          scriptStep({
+            code: `if (!require('node:fs').existsSync(${JSON.stringify(markerPath('setup-done'))})) process.exit(1)`,
+            label: 'lane',
+          }),
+        ],
+      ],
+      output: captureOutput(),
+      setupSteps: [markerStep({ label: 'setup', marker: 'setup-done' })],
+    });
+
+    expect(results.map(({ label, status }) => [label, status])).toEqual([
+      ['setup', 'passed'],
+      ['lane', 'passed'],
+    ]);
+  });
+
+  it('skips every lane and final step when a setup step failed', async () => {
+    const results = await runStages({
+      finalSteps: [markerStep({ label: 'e2e', marker: 'setup-fail-e2e' })],
+      lanes: [
+        [markerStep({ label: 'a', marker: 'setup-fail-a' })],
+        [passing({ label: 'b' })],
+      ],
+      output: captureOutput(),
+      setupSteps: [failing({ label: 'setup' })],
+    });
+
+    expect(results.map(({ label, status }) => [label, status])).toEqual([
+      ['setup', 'failed'],
+      ['a', 'skipped'],
+      ['b', 'skipped'],
+      ['e2e', 'skipped'],
+    ]);
+    expect(existsSync(markerPath('setup-fail-a'))).toBe(false);
+  });
+});
+
+describe('gate setup', () => {
+  it('compiles the i18n messages through turbo so no lane reads a stale compile', () => {
+    expect(I18N_COMPILE_STEP).toEqual({
+      args: ['turbo', 'compile', '--filter', '@church/i18n'],
+      command: 'bunx',
+      label: 'i18n:compile',
+    });
+    expect(VALIDATE_SETUP_STEPS).toEqual([I18N_COMPILE_STEP]);
   });
 });
 

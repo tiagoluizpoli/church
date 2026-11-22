@@ -74,6 +74,9 @@ export const E2E_JOURNEY_RECIPES: Record<
       .createInvitationJourneyRecipe,
   [E2E_JOURNEY_RECIPE_NAMES.peopleJourney]: async () =>
     (await import('./recipes/people-journey')).createPeopleJourneyRecipe,
+  [E2E_JOURNEY_RECIPE_NAMES.publicChurchProfile]: async () =>
+    (await import('./recipes/public-church-profile'))
+      .createPublicChurchProfileRecipe,
   [E2E_JOURNEY_RECIPE_NAMES.sharedPersonas]: async () =>
     (await import('./recipes/shared-personas')).createSharedPersonasRecipe,
 };

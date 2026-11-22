@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
  */
 export const ISOLATED_SPECS = [
   'church-settings/church-settings-journey.spec.ts',
+  'public-church/public-church-profile.spec.ts',
   'identity/active-church-switching.spec.ts',
   'identity/cross-tenant-invitation-isolation.spec.ts',
   'identity/first-admin-onboarding.spec.ts',

@@ -16,6 +16,9 @@ export interface EventTemplateTimeBlockInput {
   startTime: string;
   endTime: string;
   order: number;
+  /** Defaults to private. */
+  isPublic?: boolean;
+  place?: string | null;
 }
 
 export interface CreateEventTemplateInput {

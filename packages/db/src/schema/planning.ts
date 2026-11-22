@@ -114,6 +114,9 @@ export const templateTimeBlock = pgTable(
     startTime: time('start_time').notNull(),
     endTime: time('end_time').notNull(),
     order: integer('order').notNull(),
+    // Public Page visibility and a free-text place; copied onto generated EventTimeBlocks.
+    isPublic: boolean('is_public').default(false).notNull(),
+    place: varchar('place', { length: 120 }),
   },
   (table) => [
     check(

@@ -20,13 +20,23 @@ export interface EventTimeBlockProps {
   startTime: Instant;
   endTime: Instant;
   label?: string;
+  isPublic: boolean;
+  place?: string;
   status: EventTimeBlockStatus;
   requirements: ShiftRequirement[];
 }
 
 export interface EventTimeBlockInput {
-  props: Omit<LooseProps<EventTimeBlockProps>, 'status' | 'requirements'> &
-    Partial<Pick<LooseProps<EventTimeBlockProps>, 'status' | 'requirements'>>;
+  props: Omit<
+    LooseProps<EventTimeBlockProps>,
+    'status' | 'requirements' | 'isPublic'
+  > &
+    Partial<
+      Pick<
+        LooseProps<EventTimeBlockProps>,
+        'status' | 'requirements' | 'isPublic'
+      >
+    >;
   id?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -48,6 +58,7 @@ export class EventTimeBlock extends Entity<
     super({
       props: {
         ...props,
+        isPublic: props.isPublic ?? false,
         status: props.status ?? 'active',
         requirements: props.requirements ?? [],
       } as unknown as EventTimeBlockProps,
@@ -79,6 +90,14 @@ export class EventTimeBlock extends Entity<
 
   get label(): string | undefined {
     return this._props.label;
+  }
+
+  get isPublic(): boolean {
+    return this._props.isPublic;
+  }
+
+  get place(): string | undefined {
+    return this._props.place;
   }
 
   get status(): EventTimeBlockStatus {

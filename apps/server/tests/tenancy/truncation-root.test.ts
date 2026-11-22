@@ -8,6 +8,7 @@ import {
   availabilityCheck,
   churchAddress,
   churchSlugHistory,
+  churchSocialLink,
   createChurch,
   cycle,
   event,
@@ -191,6 +192,13 @@ async function seedEveryTenantedTable(): Promise<void> {
     city: 'Campinas',
     uf: 'SP',
     isMain: true,
+    position: 0,
+  });
+
+  await testDb.insert(churchSocialLink).values({
+    churchId: IDS.church,
+    url: 'https://instagram.com/truncation',
+    network: 'instagram',
     position: 0,
   });
 

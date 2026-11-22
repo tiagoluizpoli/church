@@ -1,3 +1,4 @@
+import { SOCIAL_NETWORKS } from '@church/app-config/social-networks';
 import { m } from '@church/i18n/messages';
 import { accentTextColor } from '@/features/church-settings/accent-text-color';
 import {
@@ -5,6 +6,7 @@ import {
   paintableAccent,
 } from '@/features/church-settings/church-settings-form';
 import { LogoImage } from '@/features/church-settings/components/logo-image';
+import { detectedNetwork } from '@/features/church-settings/components/social-section';
 
 interface ChurchPreviewProps {
   form: ChurchSettingsForm;
@@ -60,6 +62,31 @@ export function ChurchPreview({ form, logoUrl, titleId }: ChurchPreviewProps) {
           ) : null}
         </div>
       </div>
+      {form.socialLinks.length > 0 ? (
+        <div className="space-y-1.5 border-t p-4">
+          <p className="font-medium text-muted-foreground text-xs">
+            {m.church_settings_preview_social()}
+          </p>
+          <ul className="space-y-1 text-sm">
+            {form.socialLinks.map((link) => {
+              const network = detectedNetwork({ url: link.url });
+              return (
+                <li key={link.key} className="truncate">
+                  <span className="font-medium">
+                    {network ? SOCIAL_NETWORKS[network].label : link.url}
+                  </span>
+                  {link.description.trim() ? (
+                    <span className="text-muted-foreground">
+                      {' · '}
+                      {link.description.trim()}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
       {logoUrl ? (
         <div className="grid grid-cols-2 gap-3 border-t p-4">
           <LogoTile logoUrl={logoUrl} dark={false} />

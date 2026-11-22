@@ -74,6 +74,11 @@ export interface ChurchAddressBlueprint {
   };
 }
 
+export interface ChurchSocialLinkBlueprint {
+  url: string;
+  description?: string;
+}
+
 export interface ChurchIdentity {
   name: string;
   slug: string;
@@ -82,6 +87,8 @@ export interface ChurchIdentity {
   website?: string;
   accentColor?: string;
   addresses?: readonly ChurchAddressBlueprint[];
+  /** In display order; the network is detected from each URL. */
+  socialLinks?: readonly ChurchSocialLinkBlueprint[];
   /** The logo as SVG source, rasterised and uploaded like a ChurchAdmin's PNG. */
   logoSvg?: string;
 }

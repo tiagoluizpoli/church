@@ -103,3 +103,25 @@ export const churchSlugHistory = pgTable(
   },
   (table) => [index('church_slug_history_church_id_idx').on(table.churchId)],
 );
+
+// A link to the Church's presence on a supported network. Always public. The
+// network is detected from the URL on save; several links may share a network.
+export const churchSocialLink = pgTable(
+  'church_social_link',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    url: text('url').notNull(),
+    network: text('network').notNull(),
+    description: text('description'),
+    position: integer('position').notNull(),
+  },
+  (table) => [
+    index('church_social_link_church_position_idx').on(
+      table.churchId,
+      table.position,
+    ),
+  ],
+);

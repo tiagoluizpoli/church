@@ -1,3 +1,4 @@
+import { SOCIAL_NETWORK_KEYS } from '@church/app-config/social-networks';
 import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { z } from 'zod';
@@ -15,6 +16,7 @@ import {
   churchSlugSchema,
   churchWebsiteSchema,
 } from '../../domain/church-settings';
+import { socialLinksSchema } from '../../domain/social-link';
 import type { ErrorMessage } from '../utils/error-table';
 
 const churchAddressResponseSchema = z.object({
@@ -36,12 +38,20 @@ const churchAddressResponseSchema = z.object({
   placeId: z.string().nullable(),
 });
 
+const socialLinkResponseSchema = z.object({
+  url: z.string(),
+  /** Detected from the URL on save. */
+  network: z.enum(SOCIAL_NETWORK_KEYS),
+  description: z.string().nullable(),
+});
+
 export const churchSettingsResponseSchema = z.object({
   name: z.string(),
   slug: z.string(),
   website: z.string().nullable(),
   accentColor: z.string().nullable(),
   addresses: z.array(churchAddressResponseSchema),
+  socialLinks: z.array(socialLinkResponseSchema),
   /** Object-storage key of the logo (re-applied by *Desfazer*). */
   logoKey: z.string().nullable(),
   /** Anonymous URL of the logo, built from its key. */
@@ -68,6 +78,9 @@ export const updateChurchSettingsBodySchema = z.object({
   ),
   addresses: churchAddressesSchema.describe(
     'Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.',
+  ),
+  socialLinks: socialLinksSchema.describe(
+    'Every Social Link in display order; the whole list replaces the stored one. Only `url` and `description` are sent: the network is detected from the URL. Supported: Instagram, YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram, WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer and Kwai; a wa.me link is refused (add it as a Contact). Always public.',
   ),
 });
 export type UpdateChurchSettingsBody = z.output<
@@ -118,6 +131,10 @@ const FIELD_CODE_MESSAGES: Record<ChurchSettingsFieldCode, ErrorMessage> = {
   ADDRESS_PIN_INVALID: m.error_church_settings_address_pin_invalid,
   ADDRESS_MAIN_MULTIPLE: m.error_church_settings_address_main_multiple,
   ADDRESS_MAIN_REQUIRED: m.error_church_settings_address_main_required,
+  SOCIAL_LINK_INVALID: m.error_church_settings_social_link_invalid,
+  SOCIAL_LINK_UNSUPPORTED: m.error_church_settings_social_link_unsupported,
+  SOCIAL_LINK_USE_CONTACT: m.error_church_settings_social_link_use_contact,
+  SOCIAL_LINK_TOO_LONG: m.error_church_settings_social_link_too_long,
   CHURCH_SLUG_LENGTH: m.error_church_settings_slug_length,
   CHURCH_SLUG_FORMAT: m.error_church_settings_slug_format,
   CHURCH_SLUG_RESERVED: m.error_church_settings_slug_reserved,

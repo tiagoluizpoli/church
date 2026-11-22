@@ -463,6 +463,13 @@
       "when": 1795351526422,
       "tag": "0065_time_block_place_address",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1795358721758,
+      "tag": "0066_church_social_link",
+      "breakpoints": true
     }
   ]
 }

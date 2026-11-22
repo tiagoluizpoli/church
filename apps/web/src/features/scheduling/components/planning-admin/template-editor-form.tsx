@@ -1,9 +1,11 @@
 import { m } from '@church/i18n/messages';
-import { getLocale } from '@church/i18n/runtime';
-import { formatWeekdayOfIndex } from '@church/time';
 import type { ReactNode } from 'react';
 import type { TemplateFormState } from './planning-admin.types';
-import { pickerWeekday, templateBlockErrors } from './planning-admin.utils';
+import { templateBlockErrors } from './planning-admin.utils';
+import {
+  type RecurrenceChangeInput,
+  RecurrenceEditor,
+} from './recurrence-editor';
 import {
   TemplateTimeBlockRow,
   type TemplateTimeBlockRowProps,
@@ -11,20 +13,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 export interface NameChangeInput {
   name: string;
-}
-
-export interface WeekdayChangeInput {
-  weekday: string;
 }
 
 /** Everything the editor renders and reports, independent of which page owns
@@ -39,7 +30,7 @@ export interface TemplateEditorFormProps {
   /** A save refusal that has no field of its own. */
   formError?: string;
   onNameChange: (input: NameChangeInput) => void;
-  onWeekdayChange: (input: WeekdayChangeInput) => void;
+  onRecurrenceChange: (input: RecurrenceChangeInput) => void;
   onBlockChange: TemplateTimeBlockRowProps['onBlockChange'];
   onRemoveBlock: TemplateTimeBlockRowProps['onRemoveBlock'];
   onAddBlock: () => void;
@@ -65,7 +56,7 @@ export function TemplateEditorForm({
   nameError,
   formError,
   onNameChange,
-  onWeekdayChange,
+  onRecurrenceChange,
   onBlockChange,
   onRemoveBlock,
   onAddBlock,
@@ -73,17 +64,6 @@ export function TemplateEditorForm({
   actions,
 }: TemplateEditorFormProps) {
   const blockErrors = templateBlockErrors({ blocks: templateForm.blocks });
-  const selectedWeekday = pickerWeekday({
-    recurrence: templateForm.recurrence,
-  });
-  const selectedWeekdayIndex = Number.parseInt(selectedWeekday, 10);
-  const selectedWeekdayLabel = Number.isNaN(selectedWeekdayIndex)
-    ? null
-    : formatWeekdayOfIndex({
-        index: selectedWeekdayIndex as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-        locale: getLocale(),
-      });
-
   return (
     <div className="space-y-4">
       <div className="space-y-1">
@@ -107,39 +87,10 @@ export function TemplateEditorForm({
           </p>
         ) : null}
       </div>
-      <div className="space-y-1">
-        <Label>{m.event_templates_weekday_label()}</Label>
-        <Select
-          value={selectedWeekday}
-          onValueChange={(weekday) => {
-            if (weekday !== null) {
-              onWeekdayChange({ weekday });
-            }
-          }}
-        >
-          <SelectTrigger
-            id="template-weekday-select"
-            aria-label={m.event_templates_weekday_label()}
-            data-testid="template-weekday-select"
-            className="w-full"
-          >
-            <SelectValue placeholder={m.event_templates_weekday_placeholder()}>
-              {selectedWeekdayLabel}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {([0, 1, 2, 3, 4, 5, 6] as const).map((index) => (
-              <SelectItem
-                key={index}
-                value={String(index)}
-                data-testid={`template-weekday-option-${index}`}
-              >
-                {formatWeekdayOfIndex({ index, locale: getLocale() })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <RecurrenceEditor
+        recurrence={templateForm.recurrence}
+        onChange={onRecurrenceChange}
+      />
 
       <div className="space-y-3">
         {templateForm.blocks.map((block, index) => (

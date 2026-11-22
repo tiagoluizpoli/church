@@ -15,12 +15,10 @@ import {
   canSaveTemplate,
   conflictingCyclesOf,
   cycleIsReadOnly,
-  describeRecurrence,
   describeTemplateTimeBlockSpan,
   eventSpanLabel,
   eventStatusBadgeVariant,
   groupRowsByWeek,
-  pickerWeekday,
   stateBadgeProps,
   suggestCycleName,
   templateBlockErrors,
@@ -518,35 +516,16 @@ describe('toTemplateRequestBlocks', () => {
   });
 });
 
-describe('Recurrence in the single-weekday editor', () => {
+describe('Recurrence in the template request', () => {
   const monthly: TemplateRecurrence = {
     kind: 'monthly',
     entries: [{ kind: 'dayOfMonth', day: 15 }],
   };
-
-  it('picks the weekly weekday and none for a monthly Recurrence', () => {
-    expect(
-      pickerWeekday({ recurrence: { kind: 'weekly', weekdays: [3] } }),
-    ).toBe('3');
-    expect(pickerWeekday({ recurrence: monthly })).toBe('');
-  });
 
   it('sends a loaded monthly Recurrence back unchanged', () => {
     expect(
       toTemplateRequestBody({ form: makeTemplateForm({ recurrence: monthly }) })
         .recurrence,
     ).toEqual(monthly);
-  });
-
-  it('describes weekly weekdays by name and monthly as monthly', () => {
-    expect(
-      describeRecurrence({
-        recurrence: { kind: 'weekly', weekdays: [0, 3] },
-        locale: 'pt-BR',
-      }),
-    ).toBe('Domingo, Quarta-feira');
-    expect(describeRecurrence({ recurrence: monthly, locale: 'pt-BR' })).toBe(
-      'Mensal',
-    );
   });
 });

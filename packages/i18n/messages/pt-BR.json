@@ -2121,5 +2121,9 @@
   "church_settings_social_delete": "Excluir {name}",
   "church_settings_social_row_errors_one": "1 erro neste link.",
   "church_settings_social_row_errors_many": "{count} erros neste link.",
-  "church_settings_preview_social": "Redes sociais"
+  "church_settings_preview_social": "Redes sociais",
+  "church_settings_preview_addresses": "Endereços",
+  "church_settings_preview_directions": "Como chegar",
+  "church_settings_preview_copy_address": "Copiar endereço",
+  "church_settings_preview_address_copied": "Endereço copiado"
 }

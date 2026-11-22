@@ -24,15 +24,35 @@ interface DescribeRecurrenceInput {
 }
 
 // pt-BR weekdays Monday–Friday are feminine ("segunda-feira"), the rest masculine.
-function isFeminine(weekday: Weekday) {
+interface WeekdayInput {
+  weekday: Weekday;
+}
+
+interface LocaleInput {
+  locale: Locale;
+}
+
+interface TextInput extends LocaleInput {
+  text: string;
+}
+
+interface WeekdaysInput extends LocaleInput {
+  weekdays: Weekday[];
+}
+
+interface EntriesInput extends LocaleInput {
+  entries: MonthlyEntry[];
+}
+
+function isFeminine({ weekday }: WeekdayInput) {
   return weekday >= MONDAY && weekday <= FRIDAY;
 }
 
-function upperFirst(text: string, locale: Locale) {
+function upperFirst({ text, locale }: TextInput) {
   return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
 }
 
-function lowerFirst(text: string, locale: Locale) {
+function lowerFirst({ text, locale }: TextInput) {
   return text.charAt(0).toLocaleLowerCase(locale) + text.slice(1);
 }
 
@@ -43,28 +63,31 @@ function sortedUnique<T>(values: T[]) {
 }
 
 // English weekdays are proper nouns; pt-BR ones are lower-case mid-sentence.
-function weekdayName(weekday: Weekday, locale: Locale) {
+function weekdayName({ weekday, locale }: WeekdayInput & LocaleInput) {
   const name = formatWeekdayOfIndex({ index: weekday, locale });
   return locale === 'en' ? name : name.toLocaleLowerCase(locale);
 }
 
-function weeklyPhrase(weekdays: Weekday[], locale: Locale) {
+function weeklyPhrase({ weekdays, locale }: WeekdaysInput) {
   const ordered = sortedUnique(weekdays);
   const [only] = ordered;
   if (ordered.length === 1 && only !== undefined) {
-    const phrase = isFeminine(only)
+    const phrase = isFeminine({ weekday: only })
       ? m.recurrence_weekly_one_f
       : m.recurrence_weekly_one_m;
-    return phrase({ weekday: weekdayName(only, locale) }, { locale });
+    return phrase(
+      { weekday: weekdayName({ weekday: only, locale }) },
+      { locale },
+    );
   }
-  const names = ordered.map((weekday) => weekdayName(weekday, locale));
+  const names = ordered.map((weekday) => weekdayName({ weekday, locale }));
   const list = new Intl.ListFormat(locale, { type: 'conjunction' }).format(
     names,
   );
   return m.recurrence_weekly_many({ weekdays: list }, { locale });
 }
 
-function monthlyPhrases(entries: MonthlyEntry[], locale: Locale) {
+function monthlyPhrases({ entries, locale }: EntriesInput) {
   const ordinalsByWeekday = new Map<Weekday, Ordinal[]>();
   const days: number[] = [];
   let hasLastDay = false;
@@ -81,7 +104,7 @@ function monthlyPhrases(entries: MonthlyEntry[], locale: Locale) {
 
   const nthPhrases = sortedUnique([...ordinalsByWeekday.keys()]).map(
     (weekday) => {
-      const feminine = isFeminine(weekday) ? 1 : 0;
+      const feminine = isFeminine({ weekday }) ? 1 : 0;
       const present = new Set(ordinalsByWeekday.get(weekday));
       const ordinals = ORDINAL_ORDER.filter((ordinal) => present.has(ordinal));
       const labels = ordinals.map((ordinal) =>
@@ -92,7 +115,7 @@ function monthlyPhrases(entries: MonthlyEntry[], locale: Locale) {
           ordinals: new Intl.ListFormat(locale, { type: 'conjunction' }).format(
             labels,
           ),
-          weekday: weekdayName(weekday, locale),
+          weekday: weekdayName({ weekday, locale }),
         },
         { locale },
       );
@@ -114,11 +137,11 @@ export function describeRecurrence({
 }: DescribeRecurrenceInput): string {
   const phrases =
     recurrence.kind === 'weekly'
-      ? [weeklyPhrase(recurrence.weekdays, locale)]
-      : monthlyPhrases(recurrence.entries, locale);
+      ? [weeklyPhrase({ weekdays: recurrence.weekdays, locale })]
+      : monthlyPhrases({ entries: recurrence.entries, locale });
   const [first = '', ...rest] = phrases;
   return [
-    upperFirst(first, locale),
-    ...rest.map((p) => lowerFirst(p, locale)),
+    upperFirst({ text: first, locale }),
+    ...rest.map((p) => lowerFirst({ text: p, locale })),
   ].join('; ');
 }

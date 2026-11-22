@@ -51,6 +51,15 @@ function ordinalLabel(ordinal: Ordinal) {
   }[ordinal];
 }
 
+interface EntryChangeInput {
+  index: number;
+  entry: Entry;
+}
+
+interface EntryRemoveInput {
+  index: number;
+}
+
 export interface RecurrenceChangeInput {
   recurrence: TemplateRecurrence;
 }
@@ -64,8 +73,8 @@ interface EntryRowProps {
   entry: Entry;
   index: number;
   canRemove: boolean;
-  onEntryChange: (input: { index: number; entry: Entry }) => void;
-  onRemove: (input: { index: number }) => void;
+  onEntryChange: (input: EntryChangeInput) => void;
+  onRemove: (input: EntryRemoveInput) => void;
 }
 
 function weekdayLabel(weekday: Weekday) {

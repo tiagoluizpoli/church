@@ -63,6 +63,7 @@ import { ChurchPreview } from '@/features/church-settings/components/church-prev
 import { ContactsSection } from '@/features/church-settings/components/contacts-section';
 import { LogoCard } from '@/features/church-settings/components/logo-card';
 import { SocialSection } from '@/features/church-settings/components/social-section';
+import { groupOrder } from '@/features/church-settings/contact-groups';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import type { GetChurchSettings200 } from '@/infrastructure/api/churchAPI.schemas';
 import { cn } from '@/lib/utils';
@@ -212,8 +213,16 @@ interface ChurchSettingsEditorProps {
 
 function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   // Keyed on the form fields only: a logo change (applied at once) must not reset unsaved edits.
-  const { name, slug, website, accentColor, addresses, socialLinks, contacts } =
-    saved;
+  const {
+    name,
+    slug,
+    website,
+    accentColor,
+    addresses,
+    socialLinks,
+    contacts,
+    contactGroups,
+  } = saved;
   const savedForm = React.useMemo(
     () =>
       toChurchSettingsForm({
@@ -225,9 +234,19 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
           addresses,
           socialLinks,
           contacts,
+          contactGroups,
         },
       }),
-    [name, slug, website, accentColor, addresses, socialLinks, contacts],
+    [
+      name,
+      slug,
+      website,
+      accentColor,
+      addresses,
+      socialLinks,
+      contacts,
+      contactGroups,
+    ],
   );
   const [form, setForm] = React.useState<ChurchSettingsForm>(savedForm);
   const [errors, setErrors] = React.useState<FieldErrors>({});
@@ -242,6 +261,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   // A successful save hands back the server's normalised settings; show them.
   React.useEffect(() => setForm(savedForm), [savedForm]);
 
+  const groups = groupOrder({ form });
   const dirty = JSON.stringify(form) !== JSON.stringify(savedForm);
   const errorCount = Object.keys(errors).length;
   const infoErrors = INFO_FIELDS.filter((field) => errors[field]).length;
@@ -538,6 +558,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             >
               <ContactsSection
                 contacts={form.contacts}
+                groups={groups}
                 errors={errors}
                 onChange={setContacts}
               />
@@ -566,6 +587,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             >
               <SocialSection
                 links={form.socialLinks}
+                groups={groups}
                 errors={errors}
                 onChange={(socialLinks) => patch({ socialLinks })}
               />
@@ -587,6 +609,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             <ChurchPreview
               form={form}
               logoUrl={saved.logoUrl}
+              onChange={patch}
               titleId="church-settings-preview-title"
             />
           </aside>
@@ -601,7 +624,11 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
               <DrawerTitle>{m.church_settings_preview_title()}</DrawerTitle>
             </DrawerHeader>
             <div className="overflow-y-auto p-4 pt-0">
-              <ChurchPreview form={form} logoUrl={saved.logoUrl} />
+              <ChurchPreview
+                form={form}
+                logoUrl={saved.logoUrl}
+                onChange={patch}
+              />
             </div>
           </DrawerContent>
         </Drawer>

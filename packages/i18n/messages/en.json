@@ -2149,5 +2149,12 @@
   "church_settings_social_delete": "Delete {name}",
   "church_settings_social_row_errors_one": "1 error in this link.",
   "church_settings_social_row_errors_many": "{count} errors in this link.",
-  "church_settings_preview_social": "Social links"
+  "church_settings_preview_social": "Social links",
+  "church_settings_group_label": "Person or ministry",
+  "church_settings_group_placeholder": "E.g. Pastor Helena",
+  "church_settings_group_hint": "Optional. Empty shows under “From the church”.",
+  "church_settings_preview_group_church": "From the church",
+  "church_settings_preview_group_rename": "Rename {name}",
+  "church_settings_preview_group_move_up": "Move {name} up",
+  "church_settings_preview_group_move_down": "Move {name} down"
 }

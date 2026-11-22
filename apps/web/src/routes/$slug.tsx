@@ -1,4 +1,4 @@
-import { churchSlugRefusal } from '@church/app-config/church-slug';
+import { churchSlugRefusal } from '@church/domain-rules/church-slug';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import {

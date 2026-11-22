@@ -33,7 +33,7 @@
 	}
 
 	# A Church's public page `/{slug}`: a single slug-shaped root segment that
-	# is not an app route (the reserved Church Slugs, @church/app-config). The
+	# is not an app route (the reserved Church Slugs, @church/domain-rules). The
 	# server answers the SPA's index.html with the Church's meta tags, a real
 	# 301 for an old slug and a 404 for an unknown one; the SPA then renders.
 	@churchPage {

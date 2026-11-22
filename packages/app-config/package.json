@@ -6,14 +6,6 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
-    },
-    "./church-slug": {
-      "types": "./src/church-slug.ts",
-      "default": "./src/church-slug.ts"
-    },
-    "./social-networks": {
-      "types": "./src/social-networks.ts",
-      "default": "./src/social-networks.ts"
     }
   },
   "scripts": {

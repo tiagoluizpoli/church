@@ -3,7 +3,7 @@ import {
   SOCIAL_NETWORK_KEYS,
   SOCIAL_NETWORKS,
   type SocialNetwork,
-} from '@church/app-config/social-networks';
+} from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
 import { ArrowDown, ArrowUp, Link2, Plus, Trash2 } from 'lucide-react';
 import * as React from 'react';

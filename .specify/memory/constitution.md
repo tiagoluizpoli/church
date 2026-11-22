@@ -1,5 +1,9 @@
 <!--
 ## Sync Impact Report
+- Version change: 1.8.0 → 1.9.0
+- Modified principle: Core Rules — Monorepo Boundaries
+- Updated: `@church/domain-rules` is an explicit exception: pure domain rules the server and the web must apply identically (Church Slug rule, Social Link network detection), so `@church/app-config` is plain config data again (2026-11-22, #1003)
+
 - Version change: 1.7.1 → 1.8.0
 - Modified principle: VII. Explicit Parameter Contracts
 - Updated: at most one parameter with no exception for transaction handles, signals or options; interface signatures and function types included; enforced by `bun run validate:named-parameters` in `lint` (ADR 0010, #538, #547)
@@ -78,6 +82,7 @@ of the change. Enforced by `bun run validate:named-parameters`, part of `bun run
 - **Domain Driven**: Business logic must be separated from framework-specific code.
 - **Monorepo Boundaries**: Shared packages (`packages/*`) must only contain generic, non-application-specific code (e.g., `@church/db` for database connection and schema, `@church/env` for env schemas and parsing, `@church/ui` for generic UI primitives). All application-specific server implementation, domain logic, and routes must live inside the server application (`apps/server`, named `@church/server`). Client applications must import server API definitions via orval-generated typed functions from `apps/web/src/infrastructure/api/`.
 - **Shared config package**: `@church/app-config` is the one allowed application-specific package — plain shared config data (policy values and parked switches) read by server and web, defined by a Zod schema parsed once at module load, no logic beyond `withAllParkedOn`.
+- **Shared domain rules package** (2026-11-22, #1003): `@church/domain-rules` is the one other allowed application-specific package — pure, dependency-free domain rules that the server (domain layer included) and the web must apply identically (the Church Slug rule and reserved words, Social Link network detection). It holds no config, I/O or framework code; a rule enters only when both apps need the very same answer.
 - **Workspace Scope**: All package and application names are scoped under the `@church` namespace.
 - **Atomic Commits**: Use conventional commits and keep changes small and focused.
 - **Strict Linting**: Biome must pass before any commit.
@@ -91,4 +96,4 @@ of the change. Enforced by `bun run validate:named-parameters`, part of `bun run
 - Amendments require a version bump and updates to all dependent templates.
 - Compliance is verified during code reviews and via automated CI/CD checks.
 
-**Version**: 1.8.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-10-22
+**Version**: 1.9.0 | **Ratified**: 2026-05-03 | **Last Amended**: 2026-11-22

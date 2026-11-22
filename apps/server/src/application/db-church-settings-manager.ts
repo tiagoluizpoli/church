@@ -1,5 +1,5 @@
-import { churchSlugRefusal } from '@church/app-config/church-slug';
 import { NotFoundError } from '@church/core';
+import { churchSlugRefusal } from '@church/domain-rules/church-slug';
 import type { ChurchAddressUsage } from '../domain/church-address';
 import { isChurchLogoKey } from '../domain/church-logo';
 import type { ChurchSlugAvailability } from '../domain/church-settings';

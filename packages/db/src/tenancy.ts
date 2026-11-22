@@ -1,4 +1,4 @@
-import { BaseChurchSlugSchema } from '@church/app-config/church-slug';
+import { BaseChurchSlugSchema } from '@church/domain-rules/church-slug';
 import type { ExtractTablesWithRelations, SQL } from 'drizzle-orm';
 import { and, eq } from 'drizzle-orm';
 import type {

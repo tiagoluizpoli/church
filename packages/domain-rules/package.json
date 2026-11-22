@@ -1,0 +1,28 @@
+{
+  "name": "@church/domain-rules",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    "./church-slug": {
+      "types": "./src/church-slug.ts",
+      "default": "./src/church-slug.ts"
+    },
+    "./social-networks": {
+      "types": "./src/social-networks.ts",
+      "default": "./src/social-networks.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run",
+    "test": "bun run test:unit"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@church/config": "workspace:*",
+    "typescript": "^5",
+    "vitest": "catalog:"
+  }
+}

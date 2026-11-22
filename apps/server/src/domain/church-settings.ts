@@ -1,4 +1,4 @@
-import { churchSlugRefusal } from '@church/app-config/church-slug';
+import { churchSlugRefusal } from '@church/domain-rules/church-slug';
 import { z } from 'zod';
 import {
   type AddressReplacement,

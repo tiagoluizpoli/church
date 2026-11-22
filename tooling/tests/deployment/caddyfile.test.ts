@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'bun:test';
-import { RESERVED_CHURCH_SLUGS } from '../../../packages/app-config/src/church-slug';
+import { RESERVED_CHURCH_SLUGS } from '../../../packages/domain-rules/src/church-slug';
 import { ROOT } from '../env/ci-workflow';
 
 /**

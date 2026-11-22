@@ -1,4 +1,3 @@
-import { detectSocialNetwork } from '@church/app-config/social-networks';
 import {
   addChurchMember,
   type ChurchAccessLevel,
@@ -13,6 +12,7 @@ import {
   invitation,
   user,
 } from '@church/db';
+import { detectSocialNetwork } from '@church/domain-rules/social-networks';
 import { and, eq } from 'drizzle-orm';
 import sharp from 'sharp';
 import { z } from 'zod';

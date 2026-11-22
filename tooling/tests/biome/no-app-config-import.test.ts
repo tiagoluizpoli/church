@@ -42,6 +42,8 @@ const VIOLATIONS: Record<string, string> = {
   'side-effect': "import '@church/app-config';\n",
   reexport: "export { appConfig } from '@church/app-config';\n",
   'reexport-all': "export * from '@church/app-config';\n",
+  subpath:
+    "import { x as y } from '@church/app-config/anything';\nexport const x = y;\n",
 };
 
 const ALLOWED: Record<string, string> = {
@@ -56,6 +58,8 @@ const ALLOWED: Record<string, string> = {
     "export { type AppConfig } from '@church/app-config';\n",
   lookalike:
     "import { appConfig } from '@church/app-config-x';\nexport const x = appConfig;\n",
+  'subpath-type':
+    "import type { X } from '@church/app-config/anything';\nexport type Y = X;\n",
   'other-package':
     "import { appConfig } from '@church/other';\nexport const x = appConfig;\n",
 };

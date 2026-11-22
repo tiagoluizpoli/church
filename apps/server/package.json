@@ -28,6 +28,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1175.0",
     "@church/app-config": "workspace:*",
+    "@church/domain-rules": "workspace:*",
     "@church/auth": "workspace:*",
     "@church/core": "workspace:*",
     "@church/db": "workspace:*",

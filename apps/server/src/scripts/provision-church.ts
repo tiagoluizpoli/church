@@ -1,5 +1,4 @@
 import { appConfig } from '@church/app-config';
-import { slugFromName } from '@church/app-config/church-slug';
 import { NotFoundError } from '@church/core';
 import {
   type ChurchRecord,
@@ -10,6 +9,7 @@ import {
   type TenancyWriter,
   user,
 } from '@church/db';
+import { slugFromName } from '@church/domain-rules/church-slug';
 import { now } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';

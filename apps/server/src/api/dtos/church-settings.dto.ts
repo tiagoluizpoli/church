@@ -1,4 +1,4 @@
-import { SOCIAL_NETWORK_KEYS } from '@church/app-config/social-networks';
+import { SOCIAL_NETWORK_KEYS } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
 import type { Locale } from '@church/i18n/runtime';
 import { z } from 'zod';

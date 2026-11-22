@@ -1,4 +1,4 @@
-import { SOCIAL_NETWORKS } from '@church/app-config/social-networks';
+import { SOCIAL_NETWORKS } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { toast } from 'sonner';

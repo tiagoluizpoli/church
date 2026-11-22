@@ -2,7 +2,7 @@ import {
   type ChurchSlugRefusal,
   churchSlugRefusal,
   slugFromName,
-} from '@church/app-config/church-slug';
+} from '@church/domain-rules/church-slug';
 import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import {

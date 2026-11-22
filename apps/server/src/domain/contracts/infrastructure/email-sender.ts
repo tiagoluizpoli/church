@@ -20,6 +20,10 @@ export interface ChainedInvitationEmail {
   kind: 'invitation.chained';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   ministryName: string;
   ministryAccessLevel: MinistryAccessLevel;
   roleNames: string[];
@@ -35,6 +39,10 @@ export interface MinistryInvitationEmail {
   kind: 'invitation.ministry';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   recipientFirstName: string;
   inviterName: string;
   ministryName: string;
@@ -61,6 +69,10 @@ export interface VerificationCodeEmail {
   kind: 'invitation.verification-code';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   code: string;
   /** How long the code stays valid, from the same policy that enforces it. */
   codeLifetime: EmailDuration;
@@ -91,6 +103,10 @@ export interface ChurchBootstrapInvitationEmail {
   kind: 'invitation.church-bootstrap';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   expiresAt: Instant;
   /** The Church Timezone `expiresAt` is read in. */
   churchTimezone: string;
@@ -130,6 +146,10 @@ export interface AvailabilityEmail {
   kind: 'availability.opened' | 'availability.reminder';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   recipientFirstName: string;
   ministryName: string;
   cycleName: string;
@@ -154,6 +174,10 @@ export interface SchedulePublishedEmail {
   kind: 'schedule.published';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   recipientFirstName: string;
   ministryName: string;
   cycleName: string;
@@ -187,6 +211,10 @@ export interface CycleReadyToPrepareEmail {
   kind: 'cycle.ready-to-prepare';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   recipientFirstName: string;
   cycleName: string;
   cycleStartDate: CalendarDay;
@@ -201,6 +229,10 @@ export interface EventChangedEmail {
   kind: 'event.changed';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   recipientFirstName: string;
   cycleName: string;
   eventTitle: string;
@@ -216,6 +248,10 @@ export interface EventCancelledEmail {
   kind: 'event.cancelled';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   recipientFirstName: string;
   eventTitle: string;
   /** The cancelled scope's start; its day names the message. */
@@ -230,6 +266,10 @@ export interface SwapRequestEmail {
   kind: 'swap.request';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   recipientFirstName: string;
   ministryName: string;
   churchTimezone: string;
@@ -244,6 +284,10 @@ export interface SwapRequestAnsweredEmail {
   kind: 'swap-request.answered';
   to: string;
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string;
   recipientFirstName: string;
   ministryName: string;
   leaderName: string;

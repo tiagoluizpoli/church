@@ -197,6 +197,20 @@ function isInvitationRedeemable({
   );
 }
 
+interface IsUnexpiredInput {
+  expiresAt: Date;
+  now: Date;
+}
+
+function isUnexpired({ expiresAt, now }: IsUnexpiredInput): boolean {
+  return (
+    compareInstants({
+      left: fromDate({ date: expiresAt }),
+      right: fromDate({ date: now }),
+    }) > 0
+  );
+}
+
 interface EnsureChurchInvitationPendingInput {
   churchId: ChurchId;
   churchInvitationId: string;
@@ -788,12 +802,10 @@ export class DbRedemptionManager implements RedemptionManager {
     }
     if (context.status === 'accepted')
       return { status: 'already-accepted', churchId: context.churchId };
-    const unexpired =
-      compareInstants({
-        left: fromDate({ date: context.expiresAt }),
-        right: fromDate({ date: now }),
-      }) > 0;
-    if (context.status !== 'pending' || !unexpired)
+    if (
+      context.status !== 'pending' ||
+      !isUnexpired({ expiresAt: context.expiresAt, now })
+    )
       return { status: 'unavailable' };
     return { status: 'redeemable', context };
   }
@@ -872,6 +884,12 @@ export class DbRedemptionManager implements RedemptionManager {
           now,
           tx,
         });
+        // Expiry can pass between the pre-lock gate and the lock.
+        if (
+          !bundle.churchExpiresAt ||
+          !isUnexpired({ expiresAt: bundle.churchExpiresAt, now })
+        )
+          return 'unavailable';
         if (reviewTokenFor({ bundle }) !== reviewToken) return 'offer-changed';
         try {
           await this.identityGateway.acceptChurchInvitation({

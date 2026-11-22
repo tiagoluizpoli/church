@@ -364,6 +364,20 @@ describe('DbRedemptionManager signed-in Church-only acceptance', () => {
     expect(identityGateway.setActiveChurch).not.toHaveBeenCalled();
   });
 
+  it('answers INVITATION_UNAVAILABLE when the invitation expires between the review and the lock', async () => {
+    const { manager, invitationRepository, identityGateway } = createHarness();
+    vi.mocked(invitationRepository.findRedemptionBundle).mockResolvedValue({
+      ...CHURCH_ONLY_BUNDLE,
+      churchExpiresAt: BEFORE_EXPIRY,
+    });
+
+    expect(await acceptReviewed(manager)).toEqual({
+      kind: 'terminal-failure',
+      reason: 'INVITATION_UNAVAILABLE',
+    });
+    expect(identityGateway.acceptChurchInvitation).not.toHaveBeenCalled();
+  });
+
   it('answers retryable-failure when the identity gateway fails to set the Active Church', async () => {
     const { manager } = createHarness({
       setActive: () => Promise.reject(new Error('session write failed')),

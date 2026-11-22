@@ -4602,8 +4602,8 @@ paths:
       tags:
         - church-settings
       description: The Church Settings of the Active Church (name, slug, website,
-        accent colour) and the public origin the `…/slug` address is shown
-        under. Empty optional fields are null. ChurchAdmin only.
+        accent colour, addresses) and the public origin the `…/slug` address is
+        shown under. Empty optional fields are null. ChurchAdmin only.
       responses:
         "200":
           description: Default Response
@@ -4622,6 +4622,102 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -4629,6 +4725,7 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - addresses
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -4705,10 +4802,113 @@ paths:
                   description: "#rrggbb, or null for the app default."
                   type: string
                   pattern: ^#[0-9a-fA-F]{6}$
+                addresses:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      label:
+                        nullable: true
+                        type: string
+                      street:
+                        type: string
+                      number:
+                        type: string
+                      complement:
+                        nullable: true
+                        type: string
+                      bairro:
+                        type: string
+                      city:
+                        type: string
+                      uf:
+                        type: string
+                        enum:
+                          - AC
+                          - AL
+                          - AM
+                          - AP
+                          - BA
+                          - CE
+                          - DF
+                          - ES
+                          - GO
+                          - MA
+                          - MG
+                          - MS
+                          - MT
+                          - PA
+                          - PB
+                          - PE
+                          - PI
+                          - PR
+                          - RJ
+                          - RN
+                          - RO
+                          - RR
+                          - RS
+                          - SC
+                          - SE
+                          - SP
+                          - TO
+                      cep:
+                        nullable: true
+                        type: string
+                      country:
+                        default: BR
+                        type: string
+                        enum:
+                          - BR
+                      isPublic:
+                        default: true
+                        type: boolean
+                      isMain:
+                        default: false
+                        type: boolean
+                      latitude:
+                        nullable: true
+                        type: number
+                        minimum: -90
+                        maximum: 90
+                      longitude:
+                        nullable: true
+                        type: number
+                        minimum: -180
+                        maximum: 180
+                      pinSource:
+                        nullable: true
+                        type: string
+                        enum:
+                          - google
+                          - cep
+                          - admin
+                      placeId:
+                        nullable: true
+                        type: string
+                    required:
+                      - street
+                      - number
+                      - bairro
+                      - city
+                      - uf
+                  description: Every Church Address in display order; the whole list replaces the
+                    stored one. `id` keeps a stored address, null or absent adds
+                    one. At most one is the Main Address; the first address a
+                    Church gets becomes main, later the list must name one.
+                    Country is always BR; number is "s/n" without a number; a
+                    `placeId` is dropped when street, number or city change from
+                    the stored pick.
               required:
                 - name
                 - website
                 - accentColor
+                - addresses
       responses:
         "200":
           description: Default Response
@@ -4727,6 +4927,102 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
                   publicOrigin:
                     type: string
                 required:
@@ -4734,6 +5030,7 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - addresses
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -4809,6 +5106,13 @@ paths:
                             - CHURCH_WEBSITE_INVALID
                             - CHURCH_WEBSITE_TOO_LONG
                             - ACCENT_COLOR_INVALID
+                            - ADDRESS_REQUIRED
+                            - ADDRESS_TOO_LONG
+                            - ADDRESS_UF_INVALID
+                            - ADDRESS_CEP_INVALID
+                            - ADDRESS_PIN_INVALID
+                            - ADDRESS_MAIN_MULTIPLE
+                            - ADDRESS_MAIN_REQUIRED
                             - INVALID
                         message:
                           type: string

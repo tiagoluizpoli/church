@@ -9,7 +9,6 @@ import {
   Eye,
   Globe,
   Link2,
-  MapPin,
 } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
@@ -33,6 +32,7 @@ import {
 import {
   type ChurchSettingsForm,
   toChurchSettingsForm,
+  toSaveBody,
 } from '@/features/church-settings/church-settings-form';
 import {
   fieldErrorsOf,
@@ -40,6 +40,7 @@ import {
   useSaveChurchSettings,
 } from '@/features/church-settings/church-settings-queries';
 import { AccentPicker } from '@/features/church-settings/components/accent-picker';
+import { AddressSection } from '@/features/church-settings/components/address-section';
 import { ChurchPreview } from '@/features/church-settings/components/church-preview';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import type { GetChurchSettings200 } from '@/infrastructure/api/churchAPI.schemas';
@@ -192,21 +193,45 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   const errorCount = Object.keys(errors).length;
   const infoErrors = INFO_FIELDS.filter((field) => errors[field]).length;
   const churchAddress = `${saved.publicOrigin}/${saved.slug}`;
-  const publicCount = [form.name, form.website, form.accentColor].filter(
-    Boolean,
+  const addressErrors = Object.keys(errors).filter((field) =>
+    field.startsWith('addresses'),
   ).length;
+  const privateCount = form.addresses.filter(
+    (address) => !address.isPublic,
+  ).length;
+  const publicCount =
+    [form.name, form.website, form.accentColor].filter(Boolean).length +
+    form.addresses.length -
+    privateCount;
+  const mainAddress = form.addresses.find((address) => address.isMain);
+  const addressSummary =
+    form.addresses.length === 0
+      ? m.church_settings_address_summary_none()
+      : form.addresses.length === 1
+        ? m.church_settings_address_summary_one({
+            place: `${mainAddress?.city}/${mainAddress?.uf}`,
+          })
+        : m.church_settings_address_summary_many({
+            count: form.addresses.length,
+            place: `${mainAddress?.city}/${mainAddress?.uf}`,
+          });
 
   const patch = (changes: Partial<ChurchSettingsForm>) => {
     setForm((current) => ({ ...current, ...changes }));
     setErrors((current) =>
       Object.fromEntries(
-        Object.entries(current).filter(([field]) => !(field in changes)),
+        Object.entries(current).filter(
+          ([field]) =>
+            !Object.keys(changes).some(
+              (key) => field === key || field.startsWith(`${key}.`),
+            ),
+        ),
       ),
     );
   };
 
   const save = () => {
-    saveSettings.mutate(form, {
+    saveSettings.mutate(toSaveBody({ form }), {
       onSuccess: () => {
         setErrors({});
         toast.success(m.church_settings_saved());
@@ -221,6 +246,9 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
         setOpen((current) => ({
           ...current,
           info: current.info || INFO_FIELDS.some((field) => field in refused),
+          address:
+            current.address ||
+            Object.keys(refused).some((field) => field.startsWith('addresses')),
         }));
       },
     });
@@ -262,7 +290,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                 testId="church-settings-admin-only-count"
                 testIdOnValue
                 label={m.church_settings_admin_only_chip()}
-                value={0}
+                value={privateCount}
               />
               <Button
                 variant="outline"
@@ -347,15 +375,16 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             <SectionCard
               id="address"
               title={m.church_settings_section_address()}
-              summary={m.church_settings_address_summary()}
-              errors={0}
+              summary={addressSummary}
+              errors={addressErrors}
               open={open.address}
               onToggle={() => toggle('address')}
             >
-              <p className="flex items-center gap-3 rounded-lg border border-dashed p-4 text-muted-foreground text-sm">
-                <MapPin className="size-4 shrink-0" aria-hidden />
-                {m.church_settings_address_slot()}
-              </p>
+              <AddressSection
+                addresses={form.addresses}
+                errors={errors}
+                onChange={(addresses) => patch({ addresses })}
+              />
             </SectionCard>
             <p className="text-muted-foreground text-sm">
               {m.church_settings_programme_prefix()}{' '}

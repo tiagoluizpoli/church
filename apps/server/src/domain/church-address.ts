@@ -166,10 +166,14 @@ export interface ChurchAddressRefusal {
   code: ChurchAddressFieldCode | 'INVALID';
 }
 
+interface ChurchAddressesRefusedInput {
+  refusals: ChurchAddressRefusal[];
+}
+
 /** A save the stored addresses make invalid; the controller answers it as a 422 per field. */
 export class ChurchAddressesRefused extends Error {
   readonly refusals: ChurchAddressRefusal[];
-  constructor({ refusals }: { refusals: ChurchAddressRefusal[] }) {
+  constructor({ refusals }: ChurchAddressesRefusedInput) {
     super('Church addresses refused');
     this.refusals = refusals;
   }

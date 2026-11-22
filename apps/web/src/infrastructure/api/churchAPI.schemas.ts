@@ -2139,6 +2139,84 @@ export type SetMinistryDefaultDirection200 = {
   updatedAt: string;
 };
 
+export type GetChurchSettings200AddressesItemUf = typeof GetChurchSettings200AddressesItemUf[keyof typeof GetChurchSettings200AddressesItemUf];
+
+
+export const GetChurchSettings200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type GetChurchSettings200AddressesItemCountry = typeof GetChurchSettings200AddressesItemCountry[keyof typeof GetChurchSettings200AddressesItemCountry];
+
+
+export const GetChurchSettings200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetChurchSettings200AddressesItemPinSource = typeof GetChurchSettings200AddressesItemPinSource[keyof typeof GetChurchSettings200AddressesItemPinSource] | null;
+
+
+export const GetChurchSettings200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type GetChurchSettings200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: GetChurchSettings200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: GetChurchSettings200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: GetChurchSettings200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
 export type GetChurchSettings200 = {
   name: string;
   slug: string;
@@ -2146,6 +2224,7 @@ export type GetChurchSettings200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  addresses: GetChurchSettings200AddressesItem[];
   publicOrigin: string;
 };
 
@@ -2164,6 +2243,96 @@ export type GetChurchSettings409 = {
   message: string;
 };
 
+export type UpdateChurchSettingsBodyAddressesItemUf = typeof UpdateChurchSettingsBodyAddressesItemUf[keyof typeof UpdateChurchSettingsBodyAddressesItemUf];
+
+
+export const UpdateChurchSettingsBodyAddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type UpdateChurchSettingsBodyAddressesItemCountry = typeof UpdateChurchSettingsBodyAddressesItemCountry[keyof typeof UpdateChurchSettingsBodyAddressesItemCountry];
+
+
+export const UpdateChurchSettingsBodyAddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettingsBodyAddressesItemPinSource = typeof UpdateChurchSettingsBodyAddressesItemPinSource[keyof typeof UpdateChurchSettingsBodyAddressesItemPinSource] | null;
+
+
+export const UpdateChurchSettingsBodyAddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type UpdateChurchSettingsBodyAddressesItem = {
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  id?: string | null;
+  /** @nullable */
+  label?: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement?: string | null;
+  bairro: string;
+  city: string;
+  uf: UpdateChurchSettingsBodyAddressesItemUf;
+  /** @nullable */
+  cep?: string | null;
+  country?: UpdateChurchSettingsBodyAddressesItemCountry;
+  isPublic?: boolean;
+  isMain?: boolean;
+  /**
+     * @minimum -90
+     * @maximum 90
+     * @nullable
+     */
+  latitude?: number | null;
+  /**
+     * @minimum -180
+     * @maximum 180
+     * @nullable
+     */
+  longitude?: number | null;
+  /** @nullable */
+  pinSource?: UpdateChurchSettingsBodyAddressesItemPinSource;
+  /** @nullable */
+  placeId?: string | null;
+};
+
 export type UpdateChurchSettingsBody = {
   /** Required. Trimmed, inner spaces collapsed, 2–80 characters. */
   name: string;
@@ -2178,6 +2347,89 @@ export type UpdateChurchSettingsBody = {
      * @pattern ^#[0-9a-fA-F]{6}$
      */
   accentColor: string | null;
+  /**
+     * Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.
+     * @maxItems 50
+     */
+  addresses: UpdateChurchSettingsBodyAddressesItem[];
+};
+
+export type UpdateChurchSettings200AddressesItemUf = typeof UpdateChurchSettings200AddressesItemUf[keyof typeof UpdateChurchSettings200AddressesItemUf];
+
+
+export const UpdateChurchSettings200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type UpdateChurchSettings200AddressesItemCountry = typeof UpdateChurchSettings200AddressesItemCountry[keyof typeof UpdateChurchSettings200AddressesItemCountry];
+
+
+export const UpdateChurchSettings200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettings200AddressesItemPinSource = typeof UpdateChurchSettings200AddressesItemPinSource[keyof typeof UpdateChurchSettings200AddressesItemPinSource] | null;
+
+
+export const UpdateChurchSettings200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type UpdateChurchSettings200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: UpdateChurchSettings200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: UpdateChurchSettings200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: UpdateChurchSettings200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
 };
 
 export type UpdateChurchSettings200 = {
@@ -2187,6 +2439,7 @@ export type UpdateChurchSettings200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  addresses: UpdateChurchSettings200AddressesItem[];
   publicOrigin: string;
 };
 
@@ -2221,6 +2474,13 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   CHURCH_WEBSITE_INVALID: 'CHURCH_WEBSITE_INVALID',
   CHURCH_WEBSITE_TOO_LONG: 'CHURCH_WEBSITE_TOO_LONG',
   ACCENT_COLOR_INVALID: 'ACCENT_COLOR_INVALID',
+  ADDRESS_REQUIRED: 'ADDRESS_REQUIRED',
+  ADDRESS_TOO_LONG: 'ADDRESS_TOO_LONG',
+  ADDRESS_UF_INVALID: 'ADDRESS_UF_INVALID',
+  ADDRESS_CEP_INVALID: 'ADDRESS_CEP_INVALID',
+  ADDRESS_PIN_INVALID: 'ADDRESS_PIN_INVALID',
+  ADDRESS_MAIN_MULTIPLE: 'ADDRESS_MAIN_MULTIPLE',
+  ADDRESS_MAIN_REQUIRED: 'ADDRESS_MAIN_REQUIRED',
   INVALID: 'INVALID',
 } as const;
 

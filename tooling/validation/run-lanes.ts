@@ -234,7 +234,7 @@ export function hasFailure({ results }: HasFailureInput): boolean {
   return results.some((result) => result.status === 'failed');
 }
 
-const skippedResults = (steps: LaneStep[]): StepResult[] =>
+const skippedResults = ({ steps }: { steps: LaneStep[] }): StepResult[] =>
   steps.map((step) => ({ label: step.label, ms: 0, status: 'skipped' }));
 
 /**
@@ -251,13 +251,13 @@ export async function runStages({
   if (hasFailure({ results: firstResults })) {
     return [
       ...firstResults,
-      ...skippedResults(lanesInput.lanes.flat()),
-      ...skippedResults(finalSteps),
+      ...skippedResults({ steps: lanesInput.lanes.flat() }),
+      ...skippedResults({ steps: finalSteps }),
     ];
   }
   const laneResults = [...firstResults, ...(await runLanes(lanesInput))];
   if (hasFailure({ results: laneResults })) {
-    return [...laneResults, ...skippedResults(finalSteps)];
+    return [...laneResults, ...skippedResults({ steps: finalSteps })];
   }
   const finalResults = await runLanes({ ...lanesInput, lanes: [finalSteps] });
   return [...laneResults, ...finalResults];

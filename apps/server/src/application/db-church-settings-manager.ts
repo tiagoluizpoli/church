@@ -1,8 +1,11 @@
 import { churchSlugRefusal } from '@church/app-config/church-slug';
+import { NotFoundError } from '@church/core';
+import type { ChurchAddressUsage } from '../domain/church-address';
 import { isChurchLogoKey } from '../domain/church-logo';
 import type { ChurchSlugAvailability } from '../domain/church-settings';
 import type {
   ChurchSettingsView,
+  GetChurchAddressUsageInput,
   GetChurchSettingsInput,
   IChurchSettingsManager,
   RestoreChurchLogoInput,
@@ -53,6 +56,19 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
         : null,
       publicOrigin: this.publicOrigin,
     };
+  }
+
+  async getAddressUsage({
+    churchId,
+    addressId,
+  }: GetChurchAddressUsageInput): Promise<ChurchAddressUsage> {
+    const usage = await this.churchRepository.getAddressUsage({
+      id: churchId,
+      addressId,
+    });
+    if (!usage)
+      throw new NotFoundError(`Church Address not found: ${addressId}`);
+    return usage;
   }
 
   async getSlugAvailability({

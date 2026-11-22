@@ -1,4 +1,5 @@
 import type { ChurchId, UserId } from '../../branded-ids';
+import type { ChurchAddressUsage } from '../../church-address';
 import type {
   ChurchSettings,
   ChurchSettingsChanges,
@@ -35,6 +36,10 @@ export interface ChurchRepository {
    * Throws `ChurchAddressesRefused` when the stored addresses make the save invalid.
    */
   saveSettings(input: SaveChurchSettingsInput): Promise<void>;
+  /** What templates and upcoming Public Events still use this address; `null` when it is not an address of this Church. */
+  getAddressUsage(
+    input: GetChurchAddressUsageInput,
+  ): Promise<ChurchAddressUsage | null>;
   /** Whether `slug` is free for this Church; the Church's own current slug counts as free. Never names the holder. */
   slugAvailability(
     input: SlugAvailabilityInput,
@@ -73,6 +78,12 @@ export interface SlugAvailabilityInput {
 export interface SaveChurchLogoKeyInput {
   id: ChurchId;
   logoKey: string | null;
+}
+
+export interface GetChurchAddressUsageInput {
+  id: ChurchId;
+  addressId: string;
+  tx?: TransactionContext;
 }
 
 export interface SaveChurchSettingsInput {

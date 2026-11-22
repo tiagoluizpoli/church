@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import { m } from '@church/i18n/messages';
 import multipart from '@fastify/multipart';
 import { z } from 'zod';
@@ -19,6 +20,8 @@ import type { FastifyController } from '../contracts/fastify-controller';
 import {
   type ChurchSettingsValidationIssue,
   churchAddressRefusalsToFieldErrors,
+  churchAddressUsageParamsSchema,
+  churchAddressUsageResponseSchema,
   churchSettingsFieldError,
   churchSettingsResponseSchema,
   churchSettingsValidationErrorResponseSchema,
@@ -139,6 +142,41 @@ export class ChurchSettingsController implements FastifyController {
           slug: (request.query as SlugAvailabilityQuery).slug,
         });
         return reply.send({ status });
+      },
+    );
+
+    app.get(
+      '/addresses/:addressId/usage',
+      {
+        schema: {
+          tags: ['church-settings'],
+          operationId: 'getChurchAddressUsage',
+          summary: 'Where a Church Address is used',
+          description:
+            'The Event Templates and upcoming Public Events whose time block places the address; shown before deleting it so a replacement can be chosen. ChurchAdmin only.',
+          params: churchAddressUsageParamsSchema,
+          response: {
+            200: churchAddressUsageResponseSchema,
+            401: errorResponseSchema,
+            403: errorResponseSchema,
+            404: errorResponseSchema,
+            409: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const usage = await this.churchSettingsManager.getAddressUsage({
+            churchId: ChurchId.from(request.churchId),
+            addressId: (request.params as { addressId: string }).addressId,
+          });
+          return reply.send(usage);
+        } catch (error) {
+          if (error instanceof NotFoundError) {
+            return refuse({ reply, request, code: 'NOT_FOUND' });
+          }
+          throw error;
+        }
       },
     );
 

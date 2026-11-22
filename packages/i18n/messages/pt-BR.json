@@ -1966,6 +1966,7 @@
   "error_church_settings_address_cep_invalid": "O CEP deve ter 8 dígitos.",
   "error_church_settings_address_pin_invalid": "Latitude, longitude e origem do pino andam juntas.",
   "error_church_settings_address_main_multiple": "Só um endereço pode ser o principal.",
+  "error_church_settings_address_replacement_required": "Este endereço é usado em modelos ou em eventos públicos futuros. Escolha um substituto antes de excluí-lo.",
   "error_church_settings_address_main_required": "Escolha outro endereço como principal antes de excluir o principal.",
   "nav_church_settings": "Configurações da igreja",
   "church_settings_title": "Configurações da igreja",

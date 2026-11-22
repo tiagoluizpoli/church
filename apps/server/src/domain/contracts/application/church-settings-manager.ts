@@ -1,4 +1,5 @@
 import type { ChurchId } from '../../branded-ids';
+import type { ChurchAddressUsage } from '../../church-address';
 import type {
   ChurchSettings,
   ChurchSettingsChanges,
@@ -33,6 +34,11 @@ export interface UpdateChurchSettingsInput {
   changes: ChurchSettingsChanges;
 }
 
+export interface GetChurchAddressUsageInput {
+  churchId: ChurchId;
+  addressId: string;
+}
+
 export interface SlugAvailabilityInput {
   churchId: ChurchId;
   slug: string;
@@ -44,6 +50,10 @@ export interface IChurchSettingsManager {
     input: SlugAvailabilityInput,
   ): Promise<ChurchSlugAvailability>;
   getChurchSettings(input: GetChurchSettingsInput): Promise<ChurchSettingsView>;
+  /** Where an address is used; throws `NotFoundError` for an address that is not this Church's. */
+  getAddressUsage(
+    input: GetChurchAddressUsageInput,
+  ): Promise<ChurchAddressUsage>;
   /** Saves every field in one transaction (last write wins) and reads back the result. */
   updateChurchSettings(
     input: UpdateChurchSettingsInput,

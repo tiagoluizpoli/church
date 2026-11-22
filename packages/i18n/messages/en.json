@@ -1966,6 +1966,7 @@
   "error_church_settings_address_cep_invalid": "The CEP must have 8 digits.",
   "error_church_settings_address_pin_invalid": "Latitude, longitude and pin source go together.",
   "error_church_settings_address_main_multiple": "Only one address can be the main one.",
+  "error_church_settings_address_replacement_required": "This address is used by templates or upcoming public events. Choose a replacement before deleting it.",
   "error_church_settings_address_main_required": "Make another address the main one before deleting the main address.",
   "nav_church_settings": "Church settings",
   "church_settings_title": "Church settings",

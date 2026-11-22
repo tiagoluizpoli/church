@@ -99,7 +99,7 @@ export class DrizzleTemplatePrecedenceRepository
     const db = getClient({ db: this.db, tx: input.tx });
     const updated = await db
       .update(templatePrecedence)
-      .set({ outcome })
+      .set({ outcome, updatedAt: nowAsDate() })
       .where(
         and(
           withChurchIsolation({

@@ -186,6 +186,7 @@
     "packages/db": {
       "name": "@church/db",
       "dependencies": {
+        "@church/app-config": "workspace:*",
         "@church/env": "workspace:*",
         "@church/time": "workspace:*",
         "date-fns": "^4.1.0",

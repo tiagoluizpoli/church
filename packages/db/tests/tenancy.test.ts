@@ -18,6 +18,12 @@ describe('tenancy primitives', () => {
     await clearDatabase();
   });
 
+  it('refuses a reserved Church Slug', async () => {
+    await expect(
+      createChurch({ db: testDb, name: 'Admin Church', slug: 'admin' }),
+    ).rejects.toThrow('is reserved by the platform');
+  });
+
   it('rejects a pinned id when its slug resolves to a different Church', async () => {
     await createChurch({
       db: testDb,

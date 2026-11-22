@@ -305,3 +305,110 @@ describe('Church Settings', () => {
     expect((await getSettings()).json()).toEqual(UNTOUCHED);
   });
 });
+
+function saveSlug({
+  slug,
+  churchId,
+}: {
+  slug: string;
+  churchId?: string;
+}): ReturnType<typeof saveSettings> {
+  signIn({ churchId });
+  return saveSettings({
+    name: churchId === CHURCH_B ? 'Church B' : 'Igreja Batista Esperança',
+    website: '',
+    accentColor: null,
+    slug,
+  });
+}
+
+function availability({ slug, churchId }: { slug: string; churchId?: string }) {
+  signIn({ churchId });
+  return app.inject({
+    method: 'GET',
+    url: `/api/v1/church-settings/slug-availability?slug=${encodeURIComponent(slug)}`,
+  });
+}
+
+function slugRefusal(code: string) {
+  return expect.objectContaining({
+    statusCode: 422,
+    body: expect.stringContaining(`"field":"slug","code":"${code}"`),
+  });
+}
+
+describe('Church Slug', () => {
+  it('changes the slug and reads it back', async () => {
+    const res = await saveSlug({ slug: 'esperanca' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ...UNTOUCHED, slug: 'esperanca' });
+    expect((await getSettings()).json()).toMatchObject({ slug: 'esperanca' });
+  });
+
+  it.each([
+    ['Igreja Nova', 'CHURCH_SLUG_FORMAT'],
+    ['ab', 'CHURCH_SLUG_LENGTH'],
+    ['a'.repeat(64), 'CHURCH_SLUG_LENGTH'],
+    ['admin', 'CHURCH_SLUG_RESERVED'],
+    ['church-b', 'CHURCH_SLUG_TAKEN'],
+  ])('refuses %j with %s and changes nothing', async (slug, code) => {
+    const res = await saveSlug({ slug });
+
+    expect(res).toEqual(slugRefusal(code));
+    expect((await getSettings()).json()).toEqual(UNTOUCHED);
+  });
+
+  it('keeps every slug a Church gave up reserved to it, and lets it take one back', async () => {
+    await saveSlug({ slug: 'esperanca' });
+
+    expect((await availability({ slug: 'ib-esperanca' })).json()).toEqual({
+      status: 'own_history',
+    });
+    const back = await saveSlug({ slug: 'ib-esperanca' });
+    expect(back.statusCode).toBe(200);
+    expect(back.json()).toMatchObject({ slug: 'ib-esperanca' });
+    expect((await availability({ slug: 'esperanca' })).json()).toEqual({
+      status: 'own_history',
+    });
+  });
+
+  it("refuses a slug in another Church's history", async () => {
+    await saveSlug({ slug: 'esperanca' });
+
+    const res = await saveSlug({ slug: 'ib-esperanca', churchId: CHURCH_B });
+
+    expect(res).toEqual(slugRefusal('CHURCH_SLUG_TAKEN'));
+    expect(
+      (await availability({ slug: 'ib-esperanca', churchId: CHURCH_B })).json(),
+    ).toEqual({
+      status: 'taken',
+    });
+  });
+
+  it('answers free, taken, reserved or own history without naming the holder', async () => {
+    expect((await availability({ slug: 'livre-agora' })).json()).toEqual({
+      status: 'free',
+    });
+    expect((await availability({ slug: 'church-b' })).json()).toEqual({
+      status: 'taken',
+    });
+    expect((await availability({ slug: 'login' })).json()).toEqual({
+      status: 'reserved',
+    });
+    expect((await availability({ slug: 'ib-esperanca' })).json()).toEqual({
+      status: 'free',
+    });
+  });
+
+  it('refuses the availability check to a Member', async () => {
+    signIn({ persona: 'member' });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/church-settings/slug-availability?slug=livre-agora',
+    });
+
+    expect(res.statusCode).toBe(403);
+  });
+});

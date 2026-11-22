@@ -1968,5 +1968,15 @@
   "church_settings_section_errors_many": "{count} errors",
   "church_settings_failed_one": "Nothing was saved. Fix the marked field below and save again.",
   "church_settings_failed_many": "Nothing was saved. Fix the {count} marked fields below and save again.",
-  "church_settings_accent_hex_placeholder": "#rrggbb"
+  "church_settings_accent_hex_placeholder": "#rrggbb",
+  "error_church_settings_slug_length": "The link must be 3 to 63 characters long.",
+  "error_church_settings_slug_format": "Use only lower-case letters, digits and hyphens, not starting or ending with a hyphen.",
+  "error_church_settings_slug_reserved": "That link is reserved by the app. Choose another.",
+  "error_church_settings_slug_taken": "That link is not available. Choose another.",
+  "church_settings_slug_generate": "Generate from name",
+  "church_settings_slug_hint": "Your Church's public address. Renaming the Church does not change the link.",
+  "church_settings_slug_confirm_title": "Change the Church link?",
+  "church_settings_slug_confirm_body": "Links already shared and printed material with the old link (/{old}) must be updated. The new link will be /{slug}.",
+  "church_settings_slug_confirm_action": "Change the link",
+  "church_settings_slug_confirm_cancel": "Go back"
 }

@@ -6,6 +6,7 @@ import {
   CHURCH_SETTINGS_FIELD_CODES,
   type ChurchSettingsFieldCode,
   churchNameSchema,
+  churchSlugSchema,
   churchWebsiteSchema,
 } from '../../domain/church-settings';
 import type { ErrorMessage } from '../utils/error-table';
@@ -24,6 +25,11 @@ export const updateChurchSettingsBodySchema = z.object({
   name: churchNameSchema.describe(
     'Required. Trimmed, inner spaces collapsed, 2–80 characters.',
   ),
+  slug: churchSlugSchema
+    .optional()
+    .describe(
+      'Church Slug: 3–63 characters, lower-case letters, digits and single hyphens, not reserved, not taken. Omitted, the slug stays.',
+    ),
   website: churchWebsiteSchema.describe(
     'https:// only; a bare domain gets it prepended; empty or null clears it; at most 2048 characters.',
   ),
@@ -34,6 +40,14 @@ export const updateChurchSettingsBodySchema = z.object({
 export type UpdateChurchSettingsBody = z.output<
   typeof updateChurchSettingsBodySchema
 >;
+
+export const slugAvailabilityQuerySchema = z.object({
+  slug: z.string().trim().max(200),
+});
+
+export const slugAvailabilityResponseSchema = z.object({
+  status: z.enum(['free', 'taken', 'reserved', 'own_history']),
+});
 
 export const churchSettingsFieldErrorSchema = z.object({
   /** The refused request field; a list row is addressed by index, e.g. `contacts.1.value`. */
@@ -57,6 +71,10 @@ const FIELD_CODE_MESSAGES: Record<ChurchSettingsFieldCode, ErrorMessage> = {
   CHURCH_WEBSITE_INVALID: m.error_church_settings_website_invalid,
   CHURCH_WEBSITE_TOO_LONG: m.error_church_settings_website_too_long,
   ACCENT_COLOR_INVALID: m.error_church_settings_accent_color_invalid,
+  CHURCH_SLUG_LENGTH: m.error_church_settings_slug_length,
+  CHURCH_SLUG_FORMAT: m.error_church_settings_slug_format,
+  CHURCH_SLUG_RESERVED: m.error_church_settings_slug_reserved,
+  CHURCH_SLUG_TAKEN: m.error_church_settings_slug_taken,
   INVALID: m.error_church_settings_invalid,
 };
 
@@ -77,6 +95,19 @@ function isFieldCode(
   return CHURCH_SETTINGS_FIELD_CODES.some((code) => code === value);
 }
 
+/** The 422 body for one refused field. */
+export function churchSettingsFieldError({
+  field,
+  code,
+  locale,
+}: {
+  field: string;
+  code: ChurchSettingsFieldCode;
+  locale: Locale;
+}): ChurchSettingsFieldError {
+  return { field, code, message: FIELD_CODE_MESSAGES[code]({}, { locale }) };
+}
+
 /** The first refusal of each field, worded in the request locale, in request order. */
 export function toChurchSettingsFieldErrors({
   issues,
@@ -87,11 +118,7 @@ export function toChurchSettingsFieldErrors({
     const field = issue.instancePath.replace(/^\//, '').replaceAll('/', '.');
     if (errors.has(field)) continue;
     const code = isFieldCode(issue.message) ? issue.message : 'INVALID';
-    errors.set(field, {
-      field,
-      code,
-      message: FIELD_CODE_MESSAGES[code]({}, { locale }),
-    });
+    errors.set(field, churchSettingsFieldError({ field, code, locale }));
   }
   return [...errors.values()];
 }

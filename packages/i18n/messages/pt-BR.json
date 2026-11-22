@@ -1968,5 +1968,15 @@
   "church_settings_section_errors_many": "{count} erros",
   "church_settings_failed_one": "Nada foi salvo. Corrija o campo marcado abaixo e salve de novo.",
   "church_settings_failed_many": "Nada foi salvo. Corrija os {count} campos marcados abaixo e salve de novo.",
-  "church_settings_accent_hex_placeholder": "#rrggbb"
+  "church_settings_accent_hex_placeholder": "#rrggbb",
+  "error_church_settings_slug_length": "O link deve ter entre 3 e 63 caracteres.",
+  "error_church_settings_slug_format": "Use só letras minúsculas, números e hífens, sem começar ou terminar com hífen.",
+  "error_church_settings_slug_reserved": "Esse link é reservado pelo app. Escolha outro.",
+  "error_church_settings_slug_taken": "Esse link não está disponível. Escolha outro.",
+  "church_settings_slug_generate": "Gerar do nome",
+  "church_settings_slug_hint": "O endereço público da sua igreja. Mudar o nome não muda o link.",
+  "church_settings_slug_confirm_title": "Mudar o link da igreja?",
+  "church_settings_slug_confirm_body": "Links já compartilhados e materiais impressos com o link antigo (/{old}) precisam ser atualizados. O novo link será /{slug}.",
+  "church_settings_slug_confirm_action": "Mudar o link",
+  "church_settings_slug_confirm_cancel": "Voltar"
 }

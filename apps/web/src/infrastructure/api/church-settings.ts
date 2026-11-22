@@ -6,6 +6,8 @@
  */
 import type {
   GetChurchSettings200,
+  GetChurchSlugAvailability200,
+  GetChurchSlugAvailabilityParams,
   UpdateChurchSettings200,
   UpdateChurchSettingsBody
 } from './churchAPI.schemas';
@@ -29,7 +31,7 @@ const getChurchSettings = (
       );
     }
   /**
- * Saves the whole set of Church Settings in one transaction, last write wins; the slug never changes here. A refused save changes nothing and answers 422 with one entry per refused field (list rows addressed by index). ChurchAdmin only.
+ * Saves the whole set of Church Settings in one transaction, last write wins; the slug changes only when one is sent (its old value moves to the slug history). A refused save changes nothing and answers 422 with one entry per refused field (list rows addressed by index). ChurchAdmin only.
  * @summary Save the Active Church settings
  */
 const updateChurchSettings = (
@@ -42,6 +44,20 @@ const updateChurchSettings = (
     },
       );
     }
-  return {getChurchSettings,updateChurchSettings}};
+  /**
+ * Whether a Church Slug is free, taken, reserved, or held in the Active Church's own slug history (it may take it back). Never says which Church holds a taken slug. ChurchAdmin only.
+ * @summary Check a Church Slug for the Active Church
+ */
+const getChurchSlugAvailability = (
+    params: GetChurchSlugAvailabilityParams,
+ ) => {
+      return apiClient<GetChurchSlugAvailability200>(
+      {url: `/api/v1/church-settings/slug-availability`, method: 'GET',
+        params
+    },
+      );
+    }
+  return {getChurchSettings,updateChurchSettings,getChurchSlugAvailability}};
 export type GetChurchSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['getChurchSettings']>>>
 export type UpdateChurchSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['updateChurchSettings']>>>
+export type GetChurchSlugAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['getChurchSlugAvailability']>>>

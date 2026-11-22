@@ -1,7 +1,10 @@
+import { churchSlugRefusal } from '@church/app-config/church-slug';
+import type { ChurchSlugAvailability } from '../domain/church-settings';
 import type {
   ChurchSettingsView,
   GetChurchSettingsInput,
   IChurchSettingsManager,
+  SlugAvailabilityInput,
   UpdateChurchSettingsInput,
 } from '../domain/contracts/application/church-settings-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
@@ -34,6 +37,14 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
   }: GetChurchSettingsInput): Promise<ChurchSettingsView> {
     const settings = await this.churchRepository.getSettings({ id: churchId });
     return { ...settings, publicOrigin: this.publicOrigin };
+  }
+
+  async getSlugAvailability({
+    churchId,
+    slug,
+  }: SlugAvailabilityInput): Promise<ChurchSlugAvailability> {
+    if (churchSlugRefusal(slug) === 'RESERVED') return 'reserved';
+    return this.churchRepository.slugAvailability({ id: churchId, slug });
   }
 
   async updateChurchSettings({

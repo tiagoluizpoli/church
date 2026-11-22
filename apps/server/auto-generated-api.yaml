@@ -4682,9 +4682,10 @@ paths:
       tags:
         - church-settings
       description: Saves the whole set of Church Settings in one transaction, last
-        write wins; the slug never changes here. A refused save changes nothing
-        and answers 422 with one entry per refused field (list rows addressed by
-        index). ChurchAdmin only.
+        write wins; the slug changes only when one is sent (its old value moves
+        to the slug history). A refused save changes nothing and answers 422
+        with one entry per refused field (list rows addressed by index).
+        ChurchAdmin only.
       requestBody:
         required: true
         content:
@@ -4694,6 +4695,11 @@ paths:
               properties:
                 name:
                   description: Required. Trimmed, inner spaces collapsed, 2–80 characters.
+                  type: string
+                slug:
+                  description: "Church Slug: 3–63 characters, lower-case letters, digits and
+                    single hyphens, not reserved, not taken. Omitted, the slug
+                    stays."
                   type: string
                 website:
                   description: https:// only; a bare domain gets it prepended; empty or null
@@ -4809,6 +4815,10 @@ paths:
                             - CHURCH_WEBSITE_INVALID
                             - CHURCH_WEBSITE_TOO_LONG
                             - ACCENT_COLOR_INVALID
+                            - CHURCH_SLUG_LENGTH
+                            - CHURCH_SLUG_FORMAT
+                            - CHURCH_SLUG_RESERVED
+                            - CHURCH_SLUG_TAKEN
                             - INVALID
                         message:
                           type: string
@@ -4821,6 +4831,85 @@ paths:
                   - error
                   - message
                   - fieldErrors
+                additionalProperties: false
+  /api/v1/church-settings/slug-availability:
+    get:
+      operationId: getChurchSlugAvailability
+      summary: Check a Church Slug for the Active Church
+      tags:
+        - church-settings
+      description: Whether a Church Slug is free, taken, reserved, or held in the
+        Active Church's own slug history (it may take it back). Never says which
+        Church holds a taken slug. ChurchAdmin only.
+      parameters:
+        - schema:
+            type: string
+            maxLength: 200
+          in: query
+          name: slug
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - free
+                      - taken
+                      - reserved
+                      - own_history
+                required:
+                  - status
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/events/schedule-builder:
     get:

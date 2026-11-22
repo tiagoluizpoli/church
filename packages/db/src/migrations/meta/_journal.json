@@ -414,6 +414,13 @@
       "when": 1795334396122,
       "tag": "0058_church_website_accent_color",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795338517434,
+      "tag": "0059_church_slug_history",
+      "breakpoints": true
     }
   ]
 }

@@ -172,11 +172,17 @@ export async function buildChurchContacts({
   contacts,
 }: BuildChurchContactsInput): Promise<void> {
   if (contacts.length === 0) return;
-  await db
-    .insert(churchContact)
-    .values(
-      contacts.map((contact, position) => ({ ...contact, churchId, position })),
-    );
+  await db.insert(churchContact).values(
+    contacts.map((contact, position) => ({
+      ...contact,
+      id: deriveSeedId({
+        kind: 'church-contact',
+        parentIds: [churchId, String(position)],
+      }),
+      churchId,
+      position,
+    })),
+  );
 }
 
 export interface BuildChurchAddressesInput {

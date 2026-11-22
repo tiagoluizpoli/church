@@ -342,6 +342,17 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix,
     specPaths: PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
   })),
+  // Address actions and directions serve both the Settings preview and the public page.
+  ...[
+    'apps/web/src/shared/components/address-actions.tsx',
+    'apps/web/src/shared/utils/directions.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: [
+      ...CHURCH_SETTINGS_JOURNEY_SPEC_PATHS,
+      ...PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
+    ],
+  })),
   // #900: the server-side list filtering, counts and paging of #899.
   ...[
     'apps/web/src/features/ministries/components/ministry-list-page.tsx',

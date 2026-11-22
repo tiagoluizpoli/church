@@ -2206,6 +2206,7 @@
   "church_settings_preview_directions": "Como chegar",
   "church_settings_preview_copy_address": "Copiar endereço",
   "church_settings_preview_address_copied": "Endereço copiado",
+  "church_settings_address_maps_failed": "A busca e o mapa do Google não carregaram. Use o CEP ou preencha o endereço.",
   "church_settings_address_google_search": "Buscar no Google",
   "church_settings_address_google_search_hint": "Somente Brasil. Ao escolher um resultado, os campos abaixo são preenchidos.",
   "church_settings_address_pin_label": "Pino no mapa",

@@ -210,7 +210,8 @@ function AddressDialog({
       ? { latitude: fields.latitude, longitude: fields.longitude }
       : null;
   // State, not refs: the dialog content mounts after the first effect pass.
-  const [searchEl, setSearchEl] = React.useState<HTMLInputElement | null>(null);
+  const [searchEl, setSearchEl] = React.useState<HTMLDivElement | null>(null);
+  const [mapsFailed, setMapsFailed] = React.useState(false);
   const [mapEl, setMapEl] = React.useState<HTMLDivElement | null>(null);
   const pinMap = React.useRef<PinMap | null>(null);
   const initialPin = React.useRef(pin);
@@ -257,14 +258,18 @@ function AddressDialog({
 
   React.useEffect(() => {
     if (!mapsEnabled || !searchEl || !mapEl) return;
+    const failed = () => setMapsFailed(true);
     const detach = attachPlaceSearch({
-      input: searchEl,
+      container: searchEl,
+      label: m.church_settings_address_google_search(),
       onPick: (place) => picker.current(place),
+      onError: failed,
     });
     const map = mountPinMap({
       element: mapEl,
       pin: initialPin.current,
       onDrag: (moved) => dragged.current(moved),
+      onError: failed,
     });
     pinMap.current = map;
     return () => {
@@ -443,19 +448,16 @@ function AddressDialog({
           </div>
           {mapsEnabled ? (
             <div className="space-y-2 sm:col-span-2">
-              <Label
-                className="font-medium text-sm"
-                htmlFor="address-google-search"
-              >
+              <p className="font-medium text-sm">
                 {m.church_settings_address_google_search()}
-              </Label>
-              <input
-                id="address-google-search"
-                ref={setSearchEl}
-                type="text"
-                autoComplete="off"
-                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
-              />
+              </p>
+              {/* Google's own search field (Places API New) mounts here. */}
+              <div ref={setSearchEl} className="w-full" />
+              {mapsFailed ? (
+                <p role="alert" className="text-destructive text-sm">
+                  {m.church_settings_address_maps_failed()}
+                </p>
+              ) : null}
               <p className="text-muted-foreground text-sm">
                 {m.church_settings_address_google_search_hint()}
               </p>

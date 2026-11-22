@@ -2206,6 +2206,7 @@
   "church_settings_preview_directions": "How to get there",
   "church_settings_preview_copy_address": "Copy address",
   "church_settings_preview_address_copied": "Address copied",
+  "church_settings_address_maps_failed": "Google search and map did not load. Use the CEP or fill in the address.",
   "church_settings_address_google_search": "Search on Google",
   "church_settings_address_google_search_hint": "Brazil only. Picking a result fills the fields below.",
   "church_settings_address_pin_label": "Pin on the map",

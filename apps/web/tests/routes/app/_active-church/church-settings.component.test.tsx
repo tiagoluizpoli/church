@@ -37,12 +37,20 @@ const maps = vi.hoisted(() => ({
   enabled: false,
   onPick: undefined as undefined | ((place: unknown) => void),
   onDrag: undefined as undefined | ((pin: unknown) => void),
+  onSearchError: undefined as undefined | (() => void),
 }));
 
 vi.mock('@/features/church-settings/google-maps', () => ({
   isMapsEnabled: () => maps.enabled,
-  attachPlaceSearch: ({ onPick }: { onPick: (place: unknown) => void }) => {
+  attachPlaceSearch: ({
+    onPick,
+    onError,
+  }: {
+    onPick: (place: unknown) => void;
+    onError: () => void;
+  }) => {
     maps.onPick = onPick;
+    maps.onSearchError = onError;
     return () => undefined;
   },
   mountPinMap: ({ onDrag }: { onDrag: (pin: unknown) => void }) => {
@@ -1076,6 +1084,23 @@ describe('Church Settings addresses', () => {
     });
     afterEach(() => {
       maps.enabled = false;
+    });
+
+    it('says the Google search and map did not load, and keeps CEP and manual entry', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const dialog = await openNewAddress(user);
+
+      act(() => maps.onSearchError?.());
+
+      expect(
+        within(dialog).getByText(m.church_settings_address_maps_failed()),
+      ).toBeInTheDocument();
+      const street = within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_street(),
+      });
+      await user.type(street, 'Rua Manual');
+      expect(street).toHaveValue('Rua Manual');
     });
 
     it('fills the fields from a picked place and proposes a pin from Google', async () => {

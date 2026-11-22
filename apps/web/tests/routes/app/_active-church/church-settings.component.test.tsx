@@ -747,6 +747,45 @@ describe('Church Settings screen', () => {
       });
     });
 
+    it('ignores a late taken answer for a slug no longer typed', async () => {
+      let answer!: (value: { status: string }) => void;
+      getChurchSlugAvailability.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+      );
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+      await user.clear(slug);
+      await user.type(slug, 'church-b');
+      await user.tab();
+      await user.clear(slug);
+      await user.type(slug, 'church-c');
+
+      await act(async () => answer({ status: 'taken' }));
+
+      expect(slug).not.toHaveAccessibleDescription(
+        m.error_church_settings_slug_taken(),
+      );
+    });
+
+    it('leaves the slug unmarked when the availability check fails', async () => {
+      getChurchSlugAvailability.mockRejectedValueOnce(new Error('offline'));
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+      await user.clear(slug);
+      await user.type(slug, 'church-b');
+
+      await user.tab();
+
+      await waitFor(() => expect(getChurchSlugAvailability).toHaveBeenCalled());
+      expect(slug).not.toHaveAccessibleDescription(
+        m.error_church_settings_slug_taken(),
+      );
+    });
+
     it("shows the server's refusal of a slug taken meanwhile", async () => {
       updateChurchSettings.mockRejectedValue(
         refusedSave([

@@ -377,17 +377,22 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     );
   };
 
+  // The slug the field holds now, so a late answer about an older one is dropped.
+  const typedSlug = React.useRef(form.slug);
+  typedSlug.current = form.slug;
   const checkSlug = () => {
     if (!slugChanged || typedSlugError) return;
     const typed = form.slug.trim();
-    checkChurchSlug({ slug: typed }).then(({ status }) => {
-      if (status === 'taken') {
+    checkChurchSlug({ slug: typed })
+      .then(({ status }) => {
+        if (status !== 'taken' || typedSlug.current.trim() !== typed) return;
         setErrors((current) => ({
           ...current,
           slug: m.error_church_settings_slug_taken(),
         }));
-      }
-    });
+      })
+      // A hint only: the save still checks the slug and words a refusal.
+      .catch(() => undefined);
   };
 
   const save = () => {

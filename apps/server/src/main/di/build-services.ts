@@ -1,6 +1,7 @@
 import { env } from '@church/env/server';
 import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
+import { HttpWebShell } from '../../infrastructure/services/http-web-shell';
 import { OtelTracing } from '../../infrastructure/services/otel-tracing';
 import { SentryErrorReporter } from '../../infrastructure/services/sentry-error-reporter';
 import { S3ObjectStorage } from '../../infrastructure/storage/s3-object-storage';
@@ -15,6 +16,7 @@ export type Services = Pick<
   | 'errorReporter'
   | 'tracing'
   | 'objectStorage'
+  | 'webShell'
 > &
   // Absent unless the sender is capture.
   Partial<Pick<CompositionRootDependencies, 'verificationCodeInspector'>>;
@@ -49,7 +51,15 @@ export function buildServices({ overrides }: BuildServicesInput): Services {
       publicUrl: env.STORAGE_PUBLIC_URL,
     });
 
+  const webShell =
+    overrides.webShell ??
+    new HttpWebShell({
+      publicOrigin: env.CORS_ORIGIN,
+      internalUrl: env.WEB_INTERNAL_URL,
+    });
+
   return {
+    webShell,
     redemptionIdentityGateway,
     emailSender,
     verificationCodeInspector,

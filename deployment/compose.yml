@@ -63,7 +63,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 6
-    networks: [default]
+    networks:
+      default:
+        # The server reads index.html here for the /{slug} head
+        # (WEB_INTERNAL_URL); a distinct name, never just `web`, on any
+        # network the server shares.
+        aliases: [church-web]
 
 networks:
   # Reaches the host's shared PostgreSQL instance. Only migrate and server join

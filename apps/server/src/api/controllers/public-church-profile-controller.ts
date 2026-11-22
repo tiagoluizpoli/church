@@ -2,6 +2,7 @@ import type { AppConfig } from '@church/app-config';
 import type { z } from 'zod';
 import type { IPublicChurchProfileManager } from '../../domain/contracts/application/public-church-profile-manager';
 import type { IPublicEventManager } from '../../domain/contracts/application/public-event-manager';
+import type { WebShell } from '../../domain/contracts/infrastructure';
 import { decodePublicEventCursor } from '../../domain/public-event-cursor';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
@@ -15,6 +16,7 @@ import {
   publicEventsResponseSchema,
   publicEventsToResponse,
 } from '../dtos/public-event.dto';
+import { renderChurchPageHead } from '../utils/church-page-head';
 import { isRateLimited } from '../utils/rate-limit';
 import { refuse } from '../utils/refuse';
 
@@ -22,9 +24,27 @@ type PublicChurchProfileParams = z.infer<
   typeof publicChurchProfileParamsSchema
 >;
 
+interface ChurchPageInput {
+  ip: string;
+  slug: string;
+}
+
+interface ChurchPageRedirect {
+  redirectTo: string;
+}
+
+interface ChurchPageShell {
+  status: number;
+  /** Absent: the unfilled SPA shell. */
+  html?: string;
+}
+
+type ChurchPageAnswer = ChurchPageRedirect | ChurchPageShell;
+
 interface PublicChurchProfileControllerDependencies {
   publicChurchProfileManager: IPublicChurchProfileManager;
   publicEventManager: IPublicEventManager;
+  webShell: WebShell;
   config: AppConfig;
 }
 
@@ -34,17 +54,22 @@ export class PublicChurchProfileController implements FastifyController {
 
   private readonly publicChurchProfileManager: IPublicChurchProfileManager;
   private readonly publicEventManager: IPublicEventManager;
+  private readonly webShell: WebShell;
   private readonly rateLimit: AppConfig['publicProfileRateLimit'];
+  private readonly appName: AppConfig['appName'];
 
   constructor({
     publicChurchProfileManager,
     publicEventManager,
+    webShell,
     config,
   }: PublicChurchProfileControllerDependencies) {
     this.publicChurchProfileManager = publicChurchProfileManager;
     this.publicEventManager = publicEventManager;
-    const { publicProfileRateLimit } = config;
+    this.webShell = webShell;
+    const { publicProfileRateLimit, appName } = config;
     this.rateLimit = publicProfileRateLimit;
+    this.appName = appName;
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -88,6 +113,25 @@ export class PublicChurchProfileController implements FastifyController {
       },
     );
 
+    // Caddy sends `/{slug}` here (deployment/Caddyfile): crawlers get real
+    // meta tags and a real 301, then the SPA renders from the public API.
+    app.get(
+      '/:slug/page',
+      { schema: { hide: true, params: publicChurchProfileParamsSchema } },
+      async (request, reply) => {
+        const page = await this.churchPage({
+          ip: request.ip,
+          ...(request.params as PublicChurchProfileParams),
+        });
+        if ('redirectTo' in page) return reply.redirect(page.redirectTo, 301);
+        return reply
+          .code(page.status)
+          .type('text/html; charset=utf-8')
+          .header('Cache-Control', 'no-cache')
+          .send(page.html ?? (await this.webShell.readIndexHtml()));
+      },
+    );
+
     app.get(
       '/:slug/events',
       {
@@ -128,5 +172,29 @@ export class PublicChurchProfileController implements FastifyController {
         return reply.send(publicEventsToResponse(result));
       },
     );
+  }
+
+  /** The `/{slug}` answer: a 301 for an old slug, else a status and the filled head (`html` absent = the unfilled shell). */
+  private async churchPage({
+    ip,
+    slug,
+  }: ChurchPageInput): Promise<ChurchPageAnswer> {
+    const { windowMs, maxRequests } = this.rateLimit;
+    if (
+      isRateLimited({ key: `public-church-page:${ip}`, windowMs, maxRequests })
+    )
+      return { status: 429 };
+    const profile = await this.publicChurchProfileManager.getProfile({ slug });
+    if (!profile) return { status: 404 };
+    if (profile.slug !== slug) return { redirectTo: `/${profile.slug}` };
+    return {
+      status: 200,
+      html: renderChurchPageHead({
+        indexHtml: await this.webShell.readIndexHtml(),
+        appName: this.appName,
+        publicOrigin: this.webShell.publicOrigin,
+        church: profile,
+      }),
+    };
   }
 }

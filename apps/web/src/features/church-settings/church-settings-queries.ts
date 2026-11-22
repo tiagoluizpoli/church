@@ -51,3 +51,7 @@ export function fieldErrorsOf({
     fieldErrors.map(({ field, message }) => [field, message]),
   );
 }
+
+export function checkChurchSlug({ slug }: { slug: string }) {
+  return churchSettingsApi.getChurchSlugAvailability({ slug });
+}

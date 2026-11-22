@@ -14,12 +14,15 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getCallerCapabilities = vi.fn();
 const getChurchSettings = vi.fn();
 const updateChurchSettings = vi.fn();
+const getChurchSlugAvailability = vi.fn();
 const toastSuccess = vi.fn();
 
 vi.mock('@/utils/api-instances', async () => ({
   churchSettingsApi: {
     getChurchSettings: (...args: unknown[]) => getChurchSettings(...args),
     updateChurchSettings: (...args: unknown[]) => updateChurchSettings(...args),
+    getChurchSlugAvailability: (...args: unknown[]) =>
+      getChurchSlugAvailability(...args),
   },
   callerCapabilitiesApi: {
     getCallerCapabilities: (...args: unknown[]) =>
@@ -114,6 +117,7 @@ beforeEach(() => {
     callerCapabilitiesFixture({ isChurchAdmin: true }),
   );
   getChurchSettings.mockResolvedValue(SAVED);
+  getChurchSlugAvailability.mockResolvedValue({ status: 'free' });
   updateChurchSettings.mockImplementation(
     async (body: UpdateChurchSettingsBody) => ({ ...SAVED, ...body }),
   );
@@ -319,5 +323,174 @@ describe('Church Settings screen', () => {
     });
     expect(within(drawer).getByText('Igreja Semente')).toBeInTheDocument();
     expect(within(drawer).getByText('igreja-semente.test')).toBeInTheDocument();
+  });
+
+  describe('Church Slug', () => {
+    function slugField() {
+      return screen.findByRole('textbox', {
+        name: m.church_settings_slug_label(),
+      });
+    }
+
+    it('shows the full address under the slug as it is typed', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+
+      await user.clear(slug);
+      await user.type(slug, 'esperanca');
+
+      expect(
+        screen.getByText('https://app.church.test/esperanca'),
+      ).toBeInTheDocument();
+    });
+
+    it('generates the slug from the name and never changes it when the name is edited', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const name = await nameField();
+      await user.clear(name);
+      await user.type(name, 'Igreja Batista Esperança');
+      expect(await slugField()).toHaveValue('igreja-semente');
+
+      await user.click(
+        screen.getByRole('button', { name: m.church_settings_slug_generate() }),
+      );
+
+      expect(await slugField()).toHaveValue('igreja-batista-esperanca');
+    });
+
+    it('asks for confirmation before a changed slug is saved, and saves it once confirmed', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+      await user.clear(slug);
+      await user.type(slug, 'esperanca');
+
+      await user.click(
+        screen.getByRole('button', { name: m.church_settings_save() }),
+      );
+
+      const dialog = await screen.findByRole('alertdialog');
+      expect(dialog).toHaveTextContent('/igreja-semente');
+      expect(dialog).toHaveTextContent('/esperanca');
+      expect(updateChurchSettings).not.toHaveBeenCalled();
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: m.church_settings_slug_confirm_action(),
+        }),
+      );
+      await waitFor(() =>
+        expect(updateChurchSettings).toHaveBeenCalledWith({
+          name: 'Igreja Semente',
+          website: 'https://igreja-semente.test',
+          accentColor: '#0f766e',
+          slug: 'esperanca',
+        }),
+      );
+    });
+
+    it('saves nothing when the confirmation is declined', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+      await user.clear(slug);
+      await user.type(slug, 'esperanca');
+      await user.click(
+        screen.getByRole('button', { name: m.church_settings_save() }),
+      );
+
+      await user.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', {
+          name: m.church_settings_slug_confirm_cancel(),
+        }),
+      );
+
+      expect(updateChurchSettings).not.toHaveBeenCalled();
+      expect(await slugField()).toHaveValue('esperanca');
+    });
+
+    it('does not ask when only the name changed', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      await user.type(await nameField(), ' Viva');
+
+      await user.click(
+        screen.getByRole('button', { name: m.church_settings_save() }),
+      );
+
+      await waitFor(() => expect(updateChurchSettings).toHaveBeenCalled());
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['Igreja Nova', m.error_church_settings_slug_format()],
+      ['ab', m.error_church_settings_slug_length()],
+      ['admin', m.error_church_settings_slug_reserved()],
+    ])('shows a clear error for %j and does not save', async (typed, message) => {
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+      await user.clear(slug);
+      await user.type(slug, typed);
+
+      expect(slug).toHaveAccessibleDescription(message);
+      await user.click(
+        screen.getByRole('button', { name: m.church_settings_save() }),
+      );
+      expect(updateChurchSettings).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    });
+
+    it('says a slug is taken as soon as the field is left', async () => {
+      getChurchSlugAvailability.mockResolvedValue({ status: 'taken' });
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+      await user.clear(slug);
+      await user.type(slug, 'church-b');
+
+      await user.tab();
+
+      await waitFor(() =>
+        expect(slug).toHaveAccessibleDescription(
+          m.error_church_settings_slug_taken(),
+        ),
+      );
+      expect(getChurchSlugAvailability).toHaveBeenCalledWith({
+        slug: 'church-b',
+      });
+    });
+
+    it("shows the server's refusal of a slug taken meanwhile", async () => {
+      updateChurchSettings.mockRejectedValue(
+        refusedSave([
+          {
+            field: 'slug',
+            code: 'CHURCH_SLUG_TAKEN',
+            message: m.error_church_settings_slug_taken(),
+          },
+        ]),
+      );
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+      await user.clear(slug);
+      await user.type(slug, 'church-b');
+      await user.click(
+        screen.getByRole('button', { name: m.church_settings_save() }),
+      );
+      await user.click(
+        within(await screen.findByRole('alertdialog')).getByRole('button', {
+          name: m.church_settings_slug_confirm_action(),
+        }),
+      );
+
+      await waitFor(() =>
+        expect(slug).toHaveAccessibleDescription(
+          m.error_church_settings_slug_taken(),
+        ),
+      );
+    });
   });
 });

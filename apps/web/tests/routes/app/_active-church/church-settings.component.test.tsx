@@ -22,6 +22,15 @@ const uploadChurchLogo = vi.fn();
 const removeChurchLogo = vi.fn();
 const restoreChurchLogo = vi.fn();
 
+const lookupCep = vi.fn();
+
+vi.mock('@/features/church-settings/cep-client', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/church-settings/cep-client')
+  >()),
+  lookupCep: (...args: unknown[]) => lookupCep(...args),
+}));
+
 vi.mock('@/utils/api-instances', async () => ({
   churchSettingsApi: {
     getChurchSettings: (...args: unknown[]) => getChurchSettings(...args),
@@ -779,6 +788,170 @@ async function fillNewAddress(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Church Settings addresses', () => {
+  async function openNewAddress(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.church_settings_address_add(),
+      }),
+    );
+    return screen.findByRole('dialog');
+  }
+
+  async function searchCep(
+    user: ReturnType<typeof userEvent.setup>,
+    dialog: HTMLElement,
+    typed: string,
+  ) {
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /^CEP/ }),
+      typed,
+    );
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_cep_lookup(),
+      }),
+    );
+  }
+
+  it('fills the same fields from a CEP and saves only what is confirmed', async () => {
+    lookupCep.mockResolvedValue({
+      cep: '13015904',
+      street: 'Rua Barão de Jaguara',
+      bairro: 'Centro',
+      city: 'Campinas',
+      uf: 'SP',
+    });
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '13015-904');
+
+    expect(lookupCep).toHaveBeenCalledWith(
+      expect.objectContaining({ cep: '13015904' }),
+    );
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('textbox', {
+          name: m.church_settings_address_street(),
+        }),
+      ).toHaveValue('Rua Barão de Jaguara'),
+    );
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_bairro(),
+      }),
+    ).toHaveValue('Centro');
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_city(),
+      }),
+    ).toHaveValue('Campinas');
+    expect(
+      within(dialog).getByRole('combobox', {
+        name: m.church_settings_address_uf(),
+      }),
+    ).toHaveTextContent('SP');
+    expect(saveBar()).not.toBeInTheDocument();
+
+    const number = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_number(),
+    });
+    await user.type(number, '100');
+    await user.clear(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_street(),
+      }),
+    );
+    await user.type(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_street(),
+      }),
+      'Rua Corrigida',
+    );
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_confirm_add(),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          addresses: [
+            expect.objectContaining({
+              street: 'Rua Corrigida',
+              number: '100',
+              bairro: 'Centro',
+              city: 'Campinas',
+              uf: 'SP',
+              cep: '13015904',
+            }),
+          ],
+        }),
+      ),
+    );
+  });
+
+  it.each([
+    '1301590',
+    '1301a904',
+  ])('refuses the CEP %j before any lookup', async (typed) => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, typed);
+
+    expect(
+      await within(dialog).findByText(m.church_settings_address_cep_invalid()),
+    ).toBeInTheDocument();
+    expect(lookupCep).not.toHaveBeenCalled();
+  });
+
+  it('says so for an unknown CEP and keeps manual entry usable', async () => {
+    lookupCep.mockResolvedValue(null);
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '99999999');
+
+    expect(
+      await within(dialog).findByText(
+        m.church_settings_address_cep_not_found(),
+      ),
+    ).toBeInTheDocument();
+    const street = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_street(),
+    });
+    await user.type(street, 'Rua Manual');
+    expect(street).toHaveValue('Rua Manual');
+  });
+
+  it('says so when every provider fails and keeps manual entry usable', async () => {
+    const { CepLookupFailed } = await import(
+      '@/features/church-settings/cep-client'
+    );
+    lookupCep.mockRejectedValue(new CepLookupFailed());
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '13015904');
+
+    expect(
+      await within(dialog).findByText(m.church_settings_address_cep_failed()),
+    ).toBeInTheDocument();
+    const street = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_street(),
+    });
+    await user.type(street, 'Rua Manual');
+    expect(street).toHaveValue('Rua Manual');
+  });
+
   it('adds the first address by hand as the Main Address, staged into the save bar', async () => {
     const user = userEvent.setup();
     renderSettings();

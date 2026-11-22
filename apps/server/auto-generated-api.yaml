@@ -5595,8 +5595,8 @@ paths:
       tags:
         - church-settings
       description: The Church Settings of the Active Church (name, slug, website,
-        accent colour) and the public origin the `…/slug` address is shown
-        under. Empty optional fields are null. ChurchAdmin only.
+        accent colour, addresses) and the public origin the `…/slug` address is
+        shown under. Empty optional fields are null. ChurchAdmin only.
       responses:
         "200":
           description: Default Response
@@ -5615,6 +5615,102 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -5628,6 +5724,7 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - addresses
                   - logoKey
                   - logoUrl
                   - publicOrigin
@@ -5712,10 +5809,113 @@ paths:
                   description: "#rrggbb, or null for the app default."
                   type: string
                   pattern: ^#[0-9a-fA-F]{6}$
+                addresses:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      label:
+                        nullable: true
+                        type: string
+                      street:
+                        type: string
+                      number:
+                        type: string
+                      complement:
+                        nullable: true
+                        type: string
+                      bairro:
+                        type: string
+                      city:
+                        type: string
+                      uf:
+                        type: string
+                        enum:
+                          - AC
+                          - AL
+                          - AM
+                          - AP
+                          - BA
+                          - CE
+                          - DF
+                          - ES
+                          - GO
+                          - MA
+                          - MG
+                          - MS
+                          - MT
+                          - PA
+                          - PB
+                          - PE
+                          - PI
+                          - PR
+                          - RJ
+                          - RN
+                          - RO
+                          - RR
+                          - RS
+                          - SC
+                          - SE
+                          - SP
+                          - TO
+                      cep:
+                        nullable: true
+                        type: string
+                      country:
+                        default: BR
+                        type: string
+                        enum:
+                          - BR
+                      isPublic:
+                        default: true
+                        type: boolean
+                      isMain:
+                        default: false
+                        type: boolean
+                      latitude:
+                        nullable: true
+                        type: number
+                        minimum: -90
+                        maximum: 90
+                      longitude:
+                        nullable: true
+                        type: number
+                        minimum: -180
+                        maximum: 180
+                      pinSource:
+                        nullable: true
+                        type: string
+                        enum:
+                          - google
+                          - cep
+                          - admin
+                      placeId:
+                        nullable: true
+                        type: string
+                    required:
+                      - street
+                      - number
+                      - bairro
+                      - city
+                      - uf
+                  description: Every Church Address in display order; the whole list replaces the
+                    stored one. `id` keeps a stored address, null or absent adds
+                    one. At most one is the Main Address; the first address a
+                    Church gets becomes main, later the list must name one.
+                    Country is always BR; number is "s/n" without a number; a
+                    `placeId` is dropped when street, number or city change from
+                    the stored pick.
               required:
                 - name
                 - website
                 - accentColor
+                - addresses
       responses:
         "200":
           description: Default Response
@@ -5734,6 +5934,102 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -5747,6 +6043,7 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - addresses
                   - logoKey
                   - logoUrl
                   - publicOrigin
@@ -5824,6 +6121,13 @@ paths:
                             - CHURCH_WEBSITE_INVALID
                             - CHURCH_WEBSITE_TOO_LONG
                             - ACCENT_COLOR_INVALID
+                            - ADDRESS_REQUIRED
+                            - ADDRESS_TOO_LONG
+                            - ADDRESS_UF_INVALID
+                            - ADDRESS_CEP_INVALID
+                            - ADDRESS_PIN_INVALID
+                            - ADDRESS_MAIN_MULTIPLE
+                            - ADDRESS_MAIN_REQUIRED
                             - CHURCH_SLUG_LENGTH
                             - CHURCH_SLUG_FORMAT
                             - CHURCH_SLUG_RESERVED
@@ -5960,6 +6264,102 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -5973,6 +6373,7 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - addresses
                   - logoKey
                   - logoUrl
                   - publicOrigin
@@ -6092,6 +6493,102 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -6105,6 +6602,7 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - addresses
                   - logoKey
                   - logoUrl
                   - publicOrigin
@@ -6192,6 +6690,102 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
                   logoKey:
                     nullable: true
                     type: string
@@ -6205,6 +6799,7 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - addresses
                   - logoKey
                   - logoUrl
                   - publicOrigin
@@ -13275,6 +13870,12 @@ paths:
                                   type: string
                                   format: date-time
                                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                churchLogoUrl:
+                                  nullable: true
+                                  type: string
+                                churchAccent:
+                                  nullable: true
+                                  type: string
                               required:
                                 - ministryInvitationId
                                 - ministryId
@@ -17587,6 +18188,222 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/public/churches/{slug}:
+    get:
+      operationId: getPublicChurchProfile
+      summary: Get a Public Church Profile
+      tags:
+        - public-church-profile
+      description: "The public identity of the Church a live or old Church Slug names.
+        No session needed. `slug` is always the current one: an old slug answers
+        the current slug so the caller replaces its URL. Unknown slug: 404."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 63
+          in: path
+          name: slug
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slug:
+                    type: string
+                  name:
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                required:
+                  - slug
+                  - name
+                  - logoUrl
+                  - accentColor
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/public/churches/{slug}/events:
+    get:
+      operationId: listPublicChurchEvents
+      summary: List upcoming Public Events of a Church
+      tags:
+        - public-church-profile
+      description: "Upcoming Public Events of the Church a live or old Church Slug
+        names, 20 per page ordered by start then id. No session needed. Only
+        public blocks are served. Unknown slug: 404."
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: cursor
+          required: false
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 63
+          in: path
+          name: slug
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timezone:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                        cancelled:
+                          type: boolean
+                        start:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        blocks:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              label:
+                                nullable: true
+                                type: string
+                              start:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              end:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              place:
+                                nullable: true
+                                type: string
+                              cancelled:
+                                type: boolean
+                              movePath:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    start:
+                                      type: string
+                                      format: date-time
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                    end:
+                                      type: string
+                                      format: date-time
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                  required:
+                                    - start
+                                    - end
+                                  additionalProperties: false
+                            required:
+                              - label
+                              - start
+                              - end
+                              - place
+                              - cancelled
+                              - movePath
+                            additionalProperties: false
+                      required:
+                        - title
+                        - cancelled
+                        - start
+                        - blocks
+                      additionalProperties: false
+                  nextCursor:
+                    type: string
+                required:
+                  - timezone
+                  - items
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard
@@ -17805,6 +18622,12 @@ paths:
                                   type: string
                                   format: date-time
                                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                churchLogoUrl:
+                                  nullable: true
+                                  type: string
+                                churchAccent:
+                                  nullable: true
+                                  type: string
                               required:
                                 - ministryInvitationId
                                 - ministryId

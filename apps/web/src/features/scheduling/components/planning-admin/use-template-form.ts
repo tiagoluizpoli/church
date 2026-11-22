@@ -6,10 +6,10 @@ import {
   canSaveTemplate,
   createEmptyTemplateTimeBlock,
 } from './planning-admin.utils';
+import type { RecurrenceChangeInput } from './recurrence-editor';
 import type {
   NameChangeInput,
   TemplateEditorFields,
-  WeekdayChangeInput,
 } from './template-editor-form';
 import type { TemplateTimeBlockRowProps } from './template-time-block-row';
 import {
@@ -89,16 +89,8 @@ export function useTemplateForm({
         setRefusal({});
         setForm((current) => ({ ...current, name }));
       },
-      onWeekdayChange: ({ weekday }: WeekdayChangeInput) =>
-        setForm((current) => ({
-          ...current,
-          recurrence: {
-            kind: 'weekly',
-            weekdays: [
-              Number.parseInt(weekday, 10) as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-            ],
-          },
-        })),
+      onRecurrenceChange: ({ recurrence }: RecurrenceChangeInput) =>
+        setForm((current) => ({ ...current, recurrence })),
       onBlockChange,
       onRemoveBlock: ({ blockKey }: RemoveBlockInput) =>
         setForm((current) => ({

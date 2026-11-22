@@ -19,6 +19,8 @@ import {
   DbParticipationManager,
   DbPeopleListManager,
   DbPlanningEventManager,
+  DbPublicChurchProfileManager,
+  DbPublicEventManager,
   DbRedemptionManager,
   DbSectorManager,
   DbSetupProgressManager,
@@ -66,6 +68,8 @@ export type Managers = Pick<
   | 'peopleListManager'
   | 'setupProgressManager'
   | 'churchSettingsManager'
+  | 'publicChurchProfileManager'
+  | 'publicEventManager'
   | 'churchAccessManager'
   | 'ministryMembershipManager'
 >;
@@ -98,6 +102,7 @@ export function buildManagers({
     usualSetupRepository,
     shiftRepository,
     churchRepository,
+    publicEventRepository,
     ministryRepository,
     invitationVerificationCodeRepository,
     redemptionRepository,
@@ -439,6 +444,14 @@ export function buildManagers({
       publicOrigin: env.CORS_ORIGIN,
     });
 
+  const publicChurchProfileManager =
+    overrides.publicChurchProfileManager ??
+    new DbPublicChurchProfileManager({ churchRepository, objectStorage });
+
+  const publicEventManager =
+    overrides.publicEventManager ??
+    new DbPublicEventManager({ publicEventRepository, churchRepository });
+
   const churchAccessManager =
     overrides.churchAccessManager ??
     new DbChurchAccessManager({
@@ -482,6 +495,8 @@ export function buildManagers({
     peopleListManager,
     setupProgressManager,
     churchSettingsManager,
+    publicChurchProfileManager,
+    publicEventManager,
     churchAccessManager,
     ministryMembershipManager,
   };

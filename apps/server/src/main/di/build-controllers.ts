@@ -12,6 +12,7 @@ import {
   NotificationController,
   PeopleController,
   PrepareController,
+  PublicChurchProfileController,
   RedemptionController,
   SectorController,
   SwapRequestController,
@@ -55,6 +56,8 @@ export function buildControllers({
     peopleListManager,
     setupProgressManager,
     churchSettingsManager,
+    publicChurchProfileManager,
+    publicEventManager,
     churchAccessManager,
     ministryMembershipManager,
   },
@@ -146,6 +149,11 @@ export function buildControllers({
     new RedemptionController({
       redemptionManager,
       volunteerTransferManager,
+      config,
+    }),
+    new PublicChurchProfileController({
+      publicChurchProfileManager,
+      publicEventManager,
       config,
     }),
     new VolunteerController({ volunteerManager, activeChurchResolver, config }),

@@ -18,6 +18,8 @@ export { DbOutboxDrainer } from './db-outbox-drainer';
 export { DbParticipationManager } from './db-participation-manager';
 export { DbPeopleListManager } from './db-people-list-manager';
 export { DbPlanningEventManager } from './db-planning-event-manager';
+export { DbPublicChurchProfileManager } from './db-public-church-profile-manager';
+export { DbPublicEventManager } from './db-public-event-manager';
 export { DbRedemptionManager } from './db-redemption-manager';
 export { DbSectorManager } from './db-sector-manager';
 export { DbSetupProgressManager } from './db-setup-progress-manager';

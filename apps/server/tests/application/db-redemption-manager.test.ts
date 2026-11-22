@@ -173,6 +173,7 @@ function createHarness({
     saveSettings: vi.fn(),
     slugAvailability: vi.fn(),
     saveLogoKey: vi.fn(),
+    findPublicIdentityBySlug: vi.fn(),
   };
   return {
     acceptedInputs,

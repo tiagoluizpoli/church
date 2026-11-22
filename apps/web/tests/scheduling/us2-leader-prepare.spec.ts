@@ -81,7 +81,7 @@ test('leader prepares one Time block and sees its saved Schedule summary', async
     {
       data: {
         name: 'US2 Sunday Template',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: [
           { label: 'Welcome', startTime: '09:00', endTime: '09:30' },
           { label: 'Message', startTime: '09:30', endTime: '10:30' },

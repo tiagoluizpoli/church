@@ -55,6 +55,7 @@ import {
   resetSchedulingPhase3Db,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -83,6 +84,7 @@ function makeManager() {
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
     }),
     notifications: new ChurchNotifications({
+      churchIdentity: nullChurchIdentity,
       outboxRepository: new DrizzleOutboxRepository({ db }),
     }),
     authorityManager: new DbAuthorityManager({

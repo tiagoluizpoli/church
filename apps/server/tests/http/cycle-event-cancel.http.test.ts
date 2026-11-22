@@ -72,6 +72,7 @@ import {
   seedVolunteer,
   staff,
 } from '@/tests/test-support/cancellation-fixture';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -100,6 +101,7 @@ class FlakyNotifications extends ChurchNotifications {
 }
 
 const notifications = new FlakyNotifications({
+  churchIdentity: nullChurchIdentity,
   outboxRepository: new DrizzleOutboxRepository({ db }),
 });
 

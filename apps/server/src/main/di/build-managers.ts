@@ -162,7 +162,14 @@ export function buildManagers({
       precedenceRepository: templatePrecedenceRepository,
       unitOfWork,
     });
-  const notifications = new ChurchNotifications({ outboxRepository });
+  const churchIdentity = new DbChurchIdentitySnapshotter({
+    churchRepository,
+    objectStorage,
+  });
+  const notifications = new ChurchNotifications({
+    outboxRepository,
+    churchIdentity,
+  });
   const ministryManager =
     overrides.ministryManager ??
     new DbMinistryManager({
@@ -189,10 +196,6 @@ export function buildManagers({
       sectorRepository,
       unitOfWork,
     });
-  const churchIdentity = new DbChurchIdentitySnapshotter({
-    churchRepository,
-    objectStorage,
-  });
   const ministryInvitationManager =
     overrides.ministryInvitationManager ??
     new DbMinistryInvitationManager({

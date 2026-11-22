@@ -671,10 +671,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       tx,
       kind: 'ministry_invitation',
       to: [{ userId, churchId }],
-      data: {
-        ministryInvitationId,
-        ...(await this.churchIdentity.snapshot({ churchId, tx })),
-      },
+      data: { ministryInvitationId },
     });
   }
 

@@ -22,6 +22,7 @@ import {
   fromDate,
   type Instant,
   parseCalendarDay,
+  parseInstant,
   resetClock,
   setTestClock,
 } from '@church/time';
@@ -933,6 +934,8 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
             ministryId: fixture.ministryInB,
             volunteerId: fixture.dualMemberABVolunteerInB,
             transferCorrelationId: CORRELATION_ID,
+            churchLogoUrl: null,
+            churchAccent: null,
           },
         }),
         expect.objectContaining({
@@ -2138,6 +2141,52 @@ describe('Church identity snapshot at queue time (ticket #1030, integration)', (
 
     expect(emailSender.sent[0]).toMatchObject({
       kind: 'invitation.ministry',
+      churchLogoUrl: LOGO_URL,
+      churchAccent: ACCENT,
+    });
+  });
+
+  it('freezes the identity into a Notification when it is queued, whatever the Church changes before the send', async () => {
+    await setIdentity({ logoKey: LOGO_KEY, accentColor: ACCENT });
+    const shift = {
+      eventTitle: 'Vigil',
+      roleName: 'Guitar',
+      sectorName: 'Band',
+      startsAt: parseInstant({ value: '2026-12-24T22:00:00.000Z' }),
+      endsAt: parseInstant({ value: '2026-12-24T23:00:00.000Z' }),
+    };
+    await unitOfWork.run((tx) =>
+      notifications.enqueue({
+        tx,
+        kind: 'event_cancelled',
+        to: [
+          {
+            userId: UserId.from(fixture.adminA),
+            churchId: ChurchId.from(fixture.churchA.id),
+          },
+        ],
+        data: {
+          churchName: 'Church A',
+          cycleId: crypto.randomUUID(),
+          eventId: crypto.randomUUID(),
+          eventTitle: 'Vigil',
+          start: shift.startsAt,
+          churchTimezone: 'UTC',
+          shifts: [shift],
+        },
+      }),
+    );
+    await setIdentity({ logoKey: null, accentColor: null });
+
+    const [queued] = await testDb.select().from(outboxMessage);
+    expect(queued?.payload).toMatchObject({
+      kind: 'event_cancelled',
+      data: { churchLogoUrl: LOGO_URL, churchAccent: ACCENT },
+    });
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
+    await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+    expect(emailSender.sent[0]).toMatchObject({
+      kind: 'event.cancelled',
       churchLogoUrl: LOGO_URL,
       churchAccent: ACCENT,
     });

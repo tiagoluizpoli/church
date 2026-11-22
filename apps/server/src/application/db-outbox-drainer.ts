@@ -515,12 +515,15 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         });
         return 'sent';
       }
-      facts = resolved;
+      // The identity frozen at queue time, never the Church's current one.
+      const { churchLogoUrl, churchAccent } = request.data;
+      facts = { ...resolved, churchLogoUrl, churchAccent };
+      const frozenFacts = facts;
       // Every retry re-renders from these, never from live scheduling objects.
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.recordDeliveryFacts({
           id: message.id,
-          facts: resolved,
+          facts: frozenFacts,
           tx,
         }),
       );

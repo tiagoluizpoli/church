@@ -24,8 +24,11 @@ import {
 import { Switch } from '@/components/ui/switch';
 import {
   type AddressDraft,
+  type AddressReplacement,
   addressSummary,
 } from '@/features/church-settings/church-settings-form';
+import type { GetChurchAddressUsage200 } from '@/infrastructure/api/churchAPI.schemas';
+import { churchSettingsApi } from '@/utils/api-instances';
 
 export const BRAZILIAN_UFS = [
   'AC',
@@ -272,6 +275,103 @@ function AddressDialog({
   );
 }
 
+const NO_PLACE = 'none';
+
+interface DeleteInUseDialogProps {
+  address: AddressDraft;
+  usage: GetChurchAddressUsage200;
+  /** Saved addresses that stay, the possible replacements. */
+  options: AddressDraft[];
+  onCancel: () => void;
+  onConfirm: (replacementId: string | null) => void;
+}
+
+/** Lists where an address is used and proposes a replacement: the Main Address by default, another address, or *Sem local*. */
+function DeleteInUseDialog({
+  address,
+  usage,
+  options,
+  onCancel,
+  onConfirm,
+}: DeleteInUseDialogProps) {
+  const [choice, setChoice] = React.useState<string>(
+    () => options.find((option) => option.isMain)?.id ?? NO_PLACE,
+  );
+  const label = (option: AddressDraft) =>
+    option.label ?? addressSummary({ address: option });
+  const chosenLabel =
+    choice === NO_PLACE
+      ? m.church_settings_address_replacement_none()
+      : label(options.find((option) => option.id === choice) ?? address);
+  return (
+    <Dialog open onOpenChange={(open) => (open ? undefined : onCancel())}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            {m.church_settings_address_in_use_title({
+              name: address.label ?? addressSummary({ address }),
+            })}
+          </DialogTitle>
+          <DialogDescription>
+            {m.church_settings_address_in_use_description()}
+          </DialogDescription>
+        </DialogHeader>
+        <ul className="list-disc space-y-1 pl-5 text-sm">
+          {usage.templates.map((template) => (
+            <li key={template.id}>
+              {m.church_settings_address_in_use_template({
+                name: template.name,
+              })}
+            </li>
+          ))}
+          {usage.events.map((item) => (
+            <li key={item.id}>
+              {m.church_settings_address_in_use_event({ title: item.title })}
+            </li>
+          ))}
+        </ul>
+        <div className="space-y-1.5">
+          <Label className="font-medium text-sm">
+            {m.church_settings_address_replacement_label()}
+          </Label>
+          <Select
+            value={choice}
+            onValueChange={(next) => setChoice(next ?? NO_PLACE)}
+          >
+            <SelectTrigger
+              aria-label={m.church_settings_address_replacement_label()}
+              className="w-full"
+            >
+              <SelectValue>{chosenLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((option) => (
+                <SelectItem key={option.key} value={option.id ?? ''}>
+                  {label(option)}
+                </SelectItem>
+              ))}
+              <SelectItem value={NO_PLACE}>
+                {m.church_settings_address_replacement_none()}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onCancel}>
+            {m.church_settings_address_cancel()}
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => onConfirm(choice === NO_PLACE ? null : choice)}
+          >
+            {m.church_settings_address_in_use_confirm()}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface FieldsToDraftInput {
   fields: DraftFields;
   previous: AddressDraft | null;
@@ -324,18 +424,31 @@ interface MoveInput {
   by: -1 | 1;
 }
 
+interface AddressDeletion {
+  addresses: AddressDraft[];
+  replacements?: AddressReplacement[];
+}
+
 interface AddressSectionProps {
   addresses: AddressDraft[];
   errors: FieldErrors;
+  replacements: AddressReplacement[];
   onChange: (addresses: AddressDraft[]) => void;
+  /** A saved address deleted with its replacement; both stage into the save bar together. */
+  onDelete: (change: AddressDeletion) => void;
 }
 
 /** The Church's addresses: a list staged into the screen's save bar, added and edited in a dialog. */
 export function AddressSection({
   addresses,
   errors,
+  replacements,
   onChange,
+  onDelete,
 }: AddressSectionProps) {
+  const [deleting, setDeleting] = React.useState<
+    { address: AddressDraft; usage: GetChurchAddressUsage200 } | undefined
+  >(undefined);
   const [editingKey, setEditingKey] = React.useState<string | null | undefined>(
     undefined,
   );
@@ -387,6 +500,34 @@ export function AddressSection({
   const remove = (key: string) => {
     const rest = addresses.filter((address) => address.key !== key);
     onChange(rest);
+  };
+
+  // A saved address may be used by templates and upcoming Public Events: ask the server, then confirm a replacement.
+  const requestRemove = async (address: AddressDraft) => {
+    if (!address.id) return remove(address.key);
+    const usage = await churchSettingsApi.getChurchAddressUsage(address.id);
+    if (usage.templates.length === 0 && usage.events.length === 0) {
+      return remove(address.key);
+    }
+    setDeleting({ address, usage });
+  };
+
+  const confirmRemove = (replacementId: string | null) => {
+    if (!deleting) return;
+    const { id, key } = deleting.address;
+    // Earlier deletions that named this address as replacement now follow its replacement.
+    const kept = replacements.map((entry) =>
+      entry.replacementAddressId === id
+        ? { ...entry, replacementAddressId: replacementId }
+        : entry,
+    );
+    onDelete({
+      addresses: addresses.filter((address) => address.key !== key),
+      replacements: id
+        ? [...kept, { addressId: id, replacementAddressId: replacementId }]
+        : kept,
+    });
+    setDeleting(undefined);
   };
 
   return (
@@ -487,7 +628,7 @@ export function AddressSection({
                         : undefined
                     }
                     disabled={mainBlocked}
-                    onClick={() => remove(address.key)}
+                    onClick={() => requestRemove(address)}
                   >
                     <Trash2 aria-hidden />
                   </Button>
@@ -500,6 +641,17 @@ export function AddressSection({
       <Button variant="outline" onClick={() => setEditingKey(null)}>
         <Plus aria-hidden /> {m.church_settings_address_add()}
       </Button>
+      {deleting ? (
+        <DeleteInUseDialog
+          address={deleting.address}
+          usage={deleting.usage}
+          options={addresses.filter(
+            (address) => address.id && address.key !== deleting.address.key,
+          )}
+          onCancel={() => setDeleting(undefined)}
+          onConfirm={confirmRemove}
+        />
+      ) : null}
       {editing === undefined ? null : (
         <AddressDialog
           key={editingKey ?? 'new'}

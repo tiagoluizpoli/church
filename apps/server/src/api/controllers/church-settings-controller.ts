@@ -36,6 +36,10 @@ import {
 } from '../dtos/church-settings.dto';
 import { refuse } from '../utils/refuse';
 
+interface AddressUsageParams {
+  addressId: string;
+}
+
 interface SlugAvailabilityQuery {
   slug: string;
 }
@@ -168,7 +172,7 @@ export class ChurchSettingsController implements FastifyController {
         try {
           const usage = await this.churchSettingsManager.getAddressUsage({
             churchId: ChurchId.from(request.churchId),
-            addressId: (request.params as { addressId: string }).addressId,
+            addressId: (request.params as AddressUsageParams).addressId,
           });
           return reply.send(usage);
         } catch (error) {

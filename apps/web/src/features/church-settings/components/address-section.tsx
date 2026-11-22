@@ -424,14 +424,18 @@ interface MoveInput {
   by: -1 | 1;
 }
 
+interface AddressDeletion {
+  addresses: AddressDraft[];
+  replacements?: AddressReplacement[];
+}
+
 interface AddressSectionProps {
   addresses: AddressDraft[];
   errors: FieldErrors;
   replacements: AddressReplacement[];
-  onChange: (
-    addresses: AddressDraft[],
-    replacements?: AddressReplacement[],
-  ) => void;
+  onChange: (addresses: AddressDraft[]) => void;
+  /** A saved address deleted with its replacement; both stage into the save bar together. */
+  onDelete: (change: AddressDeletion) => void;
 }
 
 /** The Church's addresses: a list staged into the screen's save bar, added and edited in a dialog. */
@@ -440,6 +444,7 @@ export function AddressSection({
   errors,
   replacements,
   onChange,
+  onDelete,
 }: AddressSectionProps) {
   const [deleting, setDeleting] = React.useState<
     { address: AddressDraft; usage: GetChurchAddressUsage200 } | undefined
@@ -516,12 +521,12 @@ export function AddressSection({
         ? { ...entry, replacementAddressId: replacementId }
         : entry,
     );
-    onChange(
-      addresses.filter((address) => address.key !== key),
-      id
+    onDelete({
+      addresses: addresses.filter((address) => address.key !== key),
+      replacements: id
         ? [...kept, { addressId: id, replacementAddressId: replacementId }]
         : kept,
-    );
+    });
     setDeleting(undefined);
   };
 

@@ -2,6 +2,7 @@ import type { ChurchId, UserId } from '../../branded-ids';
 import type {
   ChurchSettings,
   ChurchSettingsChanges,
+  ChurchSlugAvailability,
 } from '../../church-settings';
 import type { Church, ChurchSlug } from '../../entities/church';
 import type { TransactionContext } from './transaction-context';
@@ -28,10 +29,28 @@ export interface ChurchRepository {
   /** The Church's editable identity (Church Settings). */
   getSettings(input: GetChurchByIdInput): Promise<ChurchSettings>;
   /**
-   * Overwrites the Church's editable identity and its addresses; the slug is never touched.
+   * Overwrites the Church's editable identity and its addresses. A changed slug
+   * is written with the old one recorded in the slug history; a slug someone
+   * else holds, live or in their history, throws `ChurchSlugTakenError`.
    * Throws `ChurchAddressesRefused` when the stored addresses make the save invalid.
    */
   saveSettings(input: SaveChurchSettingsInput): Promise<void>;
+  /** Whether `slug` is free for this Church; the Church's own current slug counts as free. Never names the holder. */
+  slugAvailability(
+    input: SlugAvailabilityInput,
+  ): Promise<Exclude<ChurchSlugAvailability, 'reserved'>>;
+  /** Points the Church at a logo key, or at none; objects are never touched. */
+  saveLogoKey(input: SaveChurchLogoKeyInput): Promise<void>;
+}
+
+export interface SlugAvailabilityInput {
+  id: ChurchId;
+  slug: string;
+}
+
+export interface SaveChurchLogoKeyInput {
+  id: ChurchId;
+  logoKey: string | null;
 }
 
 export interface SaveChurchSettingsInput {

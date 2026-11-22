@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import type {
+  GetChurchSettings200,
+  RestoreChurchLogoBody,
   UpdateChurchSettings422,
   UpdateChurchSettingsBody,
+  UploadChurchLogoBody,
 } from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { churchSettingsApi } from '@/utils/api-instances';
@@ -50,4 +53,62 @@ export function fieldErrorsOf({
   return Object.fromEntries(
     fieldErrors.map(({ field, message }) => [field, message]),
   );
+}
+
+interface CheckChurchSlugInput {
+  slug: string;
+}
+
+export function checkChurchSlug({ slug }: CheckChurchSlugInput) {
+  return churchSettingsApi.getChurchSlugAvailability({ slug });
+}
+
+/**
+ * Logo changes apply at once and touch only the logo in the cached read, so
+ * unsaved edits in the form survive an upload.
+ */
+function useApplyLogo() {
+  const churchId = useCallerCapabilitiesScope()?.churchId;
+  const queryClient = useQueryClient();
+  return ({ logoKey, logoUrl }: GetChurchSettings200) => {
+    queryClient.setQueryData<GetChurchSettings200>(
+      churchSettingsQueryKey({ churchId }),
+      (current) => current && { ...current, logoKey, logoUrl },
+    );
+  };
+}
+
+export function useUploadChurchLogo() {
+  return useMutation({
+    mutationFn: (body: UploadChurchLogoBody) =>
+      churchSettingsApi.uploadChurchLogo(body),
+    onSuccess: useApplyLogo(),
+  });
+}
+
+export function useRemoveChurchLogo() {
+  return useMutation({
+    mutationFn: () => churchSettingsApi.removeChurchLogo(),
+    onSuccess: useApplyLogo(),
+  });
+}
+
+export function useRestoreChurchLogo() {
+  return useMutation({
+    mutationFn: (body: RestoreChurchLogoBody) =>
+      churchSettingsApi.restoreChurchLogo(body),
+    onSuccess: useApplyLogo(),
+  });
+}
+
+interface LogoErrorOfInput {
+  error: unknown;
+}
+
+/** The server's worded refusal of a logo (too big, too small, wrong type, ratio), if it gave one. */
+export function logoErrorOf({ error }: LogoErrorOfInput): string | null {
+  if (!isAxiosError<{ message?: string }>(error)) return null;
+  const status = error.response?.status ?? 0;
+  const message = error.response?.data?.message;
+  return status >= 400 && status < 500 && message ? message : null;
 }

@@ -83,6 +83,7 @@ export function buildManagers({
   repositories: {
     eventRepository,
     eventTemplateRepository,
+    templatePrecedenceRepository,
     cycleRepository,
     planningEventRepository,
     volunteerRepository,
@@ -120,6 +121,7 @@ export function buildManagers({
     verificationCodeInspector,
     errorReporter,
     tracing,
+    objectStorage,
   },
   auth: { churchMembershipRepository, authorityManager, activeChurchResolver },
 }: BuildManagersInput): Managers {
@@ -156,6 +158,7 @@ export function buildManagers({
     overrides.eventTemplateManager ??
     new DbEventTemplateManager({
       templateRepository: eventTemplateRepository,
+      precedenceRepository: templatePrecedenceRepository,
       unitOfWork,
     });
   const notifications = new ChurchNotifications({ outboxRepository });
@@ -422,6 +425,7 @@ export function buildManagers({
     new DbChurchSettingsManager({
       churchRepository,
       unitOfWork,
+      objectStorage,
       publicOrigin: env.CORS_ORIGIN,
     });
 

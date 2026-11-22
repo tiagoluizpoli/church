@@ -14,6 +14,7 @@ export type AddressDraft = Required<Omit<AddressBody, 'country' | 'id'>> & {
 /** What the screen edits; the server normalises it on save. */
 export interface ChurchSettingsForm {
   name: string;
+  slug: string;
   /** Empty means no website. */
   website: string;
   /** `null` means "Padrão do app". */
@@ -23,7 +24,10 @@ export interface ChurchSettingsForm {
 }
 
 interface ToChurchSettingsFormInput {
-  settings: GetChurchSettings200;
+  settings: Pick<
+    GetChurchSettings200,
+    'name' | 'slug' | 'website' | 'accentColor' | 'addresses'
+  >;
 }
 
 export function toChurchSettingsForm({
@@ -31,6 +35,7 @@ export function toChurchSettingsForm({
 }: ToChurchSettingsFormInput): ChurchSettingsForm {
   return {
     name: settings.name,
+    slug: settings.slug,
     website: settings.website ?? '',
     accentColor: settings.accentColor,
     addresses: settings.addresses.map(
@@ -56,14 +61,19 @@ export function paintableAccent({ value }: IsHexColorInput): string | null {
 
 interface ToSaveBodyInput {
   form: ChurchSettingsForm;
+  /** Sent only when the slug changed; omitted, the slug stays. */
+  slugChanged: boolean;
 }
 
 /** The PUT body: the draft rows without their React keys. */
 export function toSaveBody({
   form,
+  slugChanged,
 }: ToSaveBodyInput): UpdateChurchSettingsBody {
+  const { slug, ...rest } = form;
   return {
-    ...form,
+    ...rest,
+    ...(slugChanged ? { slug: slug.trim() } : {}),
     addresses: form.addresses.map(({ key: _key, ...address }) => address),
   };
 }

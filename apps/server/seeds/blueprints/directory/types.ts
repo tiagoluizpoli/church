@@ -82,6 +82,8 @@ export interface ChurchIdentity {
   website?: string;
   accentColor?: string;
   addresses?: readonly ChurchAddressBlueprint[];
+  /** The logo as SVG source, rasterised and uploaded like a ChurchAdmin's PNG. */
+  logoSvg?: string;
 }
 
 /** One Church's complete directory: its ChurchAdmin, Ministries and cross-Ministry service. */

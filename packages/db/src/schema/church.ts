@@ -8,6 +8,7 @@ import {
   jsonb,
   pgTable,
   text,
+  timestamp,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -27,6 +28,8 @@ export const church = pgTable('church', {
   settings: jsonb('settings').default({}),
   website: text('website'),
   accentColor: text('accent_color'),
+  // Object-storage key of the logo (never a URL); old keys' objects are kept.
+  logoKey: text('logo_key'),
 });
 
 // Declared on this side only: `organization.ts` is Better Auth's territory and
@@ -82,4 +85,21 @@ export const churchAddress = pgTable(
       sql`(${table.latitude} IS NULL) = (${table.longitude} IS NULL) AND (${table.latitude} IS NULL) = (${table.pinSource} IS NULL) AND ${table.pinSource} IN ('google', 'cep', 'admin')`,
     ),
   ],
+);
+
+// Every Church Slug a Church gave up stays reserved to it forever. `slug` is
+// unique across Churches; a live slug (organization.slug) is kept disjoint
+// from this table by the slug-change write, which is the only writer.
+export const churchSlugHistory = pgTable(
+  'church_slug_history',
+  {
+    slug: text('slug').primaryKey(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index('church_slug_history_church_id_idx').on(table.churchId)],
 );

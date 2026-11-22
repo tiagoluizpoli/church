@@ -1,12 +1,22 @@
 import { NotFoundError } from '@church/core';
-import { church, churchAddress, member, organization, user } from '@church/db';
-import { and, asc, eq, notInArray } from 'drizzle-orm';
+import {
+  church,
+  churchAddress,
+  churchSlugHistory,
+  member,
+  organization,
+  user,
+} from '@church/db';
+import { and, asc, eq, ne, notInArray } from 'drizzle-orm';
 import type { UserId } from '../../domain/branded-ids';
 import {
   type ChurchAddress,
   resolveChurchAddresses,
 } from '../../domain/church-address';
-import type { ChurchSettings } from '../../domain/church-settings';
+import type {
+  ChurchSettings,
+  ChurchSlugAvailability,
+} from '../../domain/church-settings';
 import type {
   ChurchMemberContact,
   ChurchRepository,
@@ -15,13 +25,17 @@ import type {
   GetChurchByIdInput,
   GetChurchBySlugInput,
   ListChurchAdminUserIdsInput,
+  SaveChurchLogoKeyInput,
   SaveChurchSettingsInput,
+  SlugAvailabilityInput,
 } from '../../domain/contracts/infrastructure/church.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { Church } from '../../domain/entities/church';
+import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import { mapChurch } from '../mappers/church.mapper';
 import { getClient, isValidUuid } from './helpers';
 import type { AnyDrizzleDb } from './types';
+import { isUniqueViolation } from './unique-violation';
 
 // Church identity lives on the `organization` row and the rest on the `church`
 // extension row keyed by the same id, so every read joins the two.
@@ -31,6 +45,18 @@ interface ListAddressesInput {
   id: string;
   tx?: TransactionContext;
 }
+
+const ORGANIZATION_SLUG_UNIQUE = 'organization_slug_unique';
+
+type DrizzleClient = ReturnType<typeof getClient>;
+
+interface FindSlugAvailabilityInput {
+  client: DrizzleClient;
+  id: string;
+  slug: string;
+}
+
+type ChangeSlugInput = FindSlugAvailabilityInput;
 
 interface DrizzleChurchRepositoryInput {
   db: AnyDrizzleDb;
@@ -123,6 +149,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
             slug: organization.slug,
             website: church.website,
             accentColor: church.accentColor,
+            logoKey: church.logoKey,
           })
           .from(church)
           .innerJoin(organization, eq(organization.id, church.id))
@@ -161,20 +188,55 @@ export class DrizzleChurchRepository implements ChurchRepository {
     return rows as ChurchAddress[];
   }
 
+  async slugAvailability({
+    id,
+    slug,
+  }: SlugAvailabilityInput): Promise<
+    Exclude<ChurchSlugAvailability, 'reserved'>
+  > {
+    return this.findSlugAvailability({
+      client: getClient({ db: this.db }),
+      id,
+      slug,
+    });
+  }
+
+  private async findSlugAvailability({
+    client,
+    id,
+    slug,
+  }: FindSlugAvailabilityInput): Promise<
+    Exclude<ChurchSlugAvailability, 'reserved'>
+  > {
+    const [live] = await client
+      .select({ id: organization.id })
+      .from(organization)
+      .where(and(eq(organization.slug, slug), ne(organization.id, id)));
+    if (live) return 'taken';
+    const [held] = await client
+      .select({ churchId: churchSlugHistory.churchId })
+      .from(churchSlugHistory)
+      .where(eq(churchSlugHistory.slug, slug));
+    if (!held) return 'free';
+    return held.churchId === id ? 'own_history' : 'taken';
+  }
+
   async saveSettings({
     id,
     changes,
     tx,
   }: SaveChurchSettingsInput): Promise<void> {
     const client = getClient({ db: this.db, tx });
+    const { slug, ...fields } = changes;
     await client
       .update(organization)
-      .set({ name: changes.name })
+      .set({ name: fields.name })
       .where(eq(organization.id, id));
     await client
       .update(church)
-      .set({ website: changes.website, accentColor: changes.accentColor })
+      .set({ website: fields.website, accentColor: fields.accentColor })
       .where(eq(church.id, id));
+    if (slug !== undefined) await this.changeSlug({ client, id, slug });
     const writes = resolveChurchAddresses({
       stored: await this.listAddresses({ id, tx }),
       incoming: changes.addresses,
@@ -209,5 +271,47 @@ export class DrizzleChurchRepository implements ChurchRepository {
         await client.insert(churchAddress).values({ ...values, churchId: id });
       }
     }
+  }
+
+  /** Records the slug given up and takes the new one; a slug taken back leaves the history. */
+  private async changeSlug({
+    client,
+    id,
+    slug,
+  }: ChangeSlugInput): Promise<void> {
+    const [current] = await client
+      .select({ slug: organization.slug })
+      .from(organization)
+      .where(eq(organization.id, id));
+    if (!current || current.slug === slug) return;
+    if ((await this.findSlugAvailability({ client, id, slug })) === 'taken') {
+      throw new ChurchSlugTakenError(slug);
+    }
+    await client
+      .delete(churchSlugHistory)
+      .where(eq(churchSlugHistory.slug, slug));
+    await client
+      .insert(churchSlugHistory)
+      .values({ slug: current.slug, churchId: id })
+      .onConflictDoNothing();
+    try {
+      await client
+        .update(organization)
+        .set({ slug })
+        .where(eq(organization.id, id));
+    } catch (error) {
+      // Another save took the slug between the check above and this write.
+      if (isUniqueViolation({ error, constraint: ORGANIZATION_SLUG_UNIQUE })) {
+        throw new ChurchSlugTakenError(slug);
+      }
+      throw error;
+    }
+  }
+
+  async saveLogoKey({ id, logoKey }: SaveChurchLogoKeyInput): Promise<void> {
+    await getClient({ db: this.db })
+      .update(church)
+      .set({ logoKey })
+      .where(eq(church.id, id));
   }
 }

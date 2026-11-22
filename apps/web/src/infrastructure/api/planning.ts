@@ -11,6 +11,8 @@ import type {
   CancelPlanningEventBody,
   CancelPlanningEventTimeBlock200,
   CancelPlanningEventTimeBlockBody,
+  ChangeTemplatePrecedence200,
+  ChangeTemplatePrecedenceBody,
   CreateCycle201,
   CreateCycleBody,
   CreateEventTemplate201,
@@ -29,6 +31,7 @@ import type {
   ListCycles200,
   ListCyclesParams,
   ListEventTemplates200,
+  ListTemplatePrecedences200,
   MovePlanningEvent200,
   MovePlanningEventBody,
   MovePlanningEventTimeBlock200,
@@ -176,7 +179,7 @@ const reopenPlanningEvent = (
       );
     }
   /**
- * Create a church-owned EventTemplate with its ordered TemplateTimeBlocks on a weekly or monthly Recurrence.
+ * Create a church-owned EventTemplate with its ordered TemplateTimeBlocks on a weekly or monthly Recurrence. When it collides with templates it has no Template Precedence for, nothing is saved and 409 UNANSWERED_TEMPLATE_COLLISIONS names them; resubmit with an answer per pair in `precedences`.
  * @summary Create an EventTemplate
  */
 const createEventTemplate = (
@@ -214,7 +217,7 @@ const getEventTemplate = (
       );
     }
   /**
- * Apply an EventTemplate's complete desired name, Recurrence and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries.
+ * Apply an EventTemplate's complete desired name, Recurrence and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries. Stored Template Precedences are never re-asked; a new colliding pair without one refuses the save with 409 UNANSWERED_TEMPLATE_COLLISIONS until `precedences` answers it.
  * @summary Update an EventTemplate
  */
 const updateEventTemplate = (
@@ -249,6 +252,34 @@ const getEventTemplateUsage = (
  ) => {
       return apiClient<GetEventTemplateUsage200>(
       {url: `/api/v1/admin/event-templates/${templateId}/usage`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * The template's stored Template Precedences, each as this template sees the pair, ordered by the other template's name.
+ * @summary List Template Precedences
+ */
+const listTemplatePrecedences = (
+    templateId: string,
+ ) => {
+      return apiClient<ListTemplatePrecedences200>(
+      {url: `/api/v1/admin/event-templates/${templateId}/precedences`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Change one stored Template Precedence, as the first template sees the pair, without editing either template. A pair with no stored answer is 404.
+ * @summary Change a Template Precedence
+ */
+const changeTemplatePrecedence = (
+    templateId: string,
+    otherTemplateId: string,
+    changeTemplatePrecedenceBody: ChangeTemplatePrecedenceBody,
+ ) => {
+      return apiClient<ChangeTemplatePrecedence200>(
+      {url: `/api/v1/admin/event-templates/${templateId}/precedences/${otherTemplateId}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: changeTemplatePrecedenceBody
     },
       );
     }
@@ -515,7 +546,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycleAnchors,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,previewPlanningEventCancellation,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,previewPlanningEventTimeBlockCancellation,cancelPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycleAnchors,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,listTemplatePrecedences,changeTemplatePrecedence,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,previewPlanningEventCancellation,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,previewPlanningEventTimeBlockCancellation,cancelPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleAnchorsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycleAnchors']>>>
@@ -531,6 +562,8 @@ export type GetEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<t
 export type UpdateEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updateEventTemplate']>>>
 export type DeleteEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deleteEventTemplate']>>>
 export type GetEventTemplateUsageResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getEventTemplateUsage']>>>
+export type ListTemplatePrecedencesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listTemplatePrecedences']>>>
+export type ChangeTemplatePrecedenceResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['changeTemplatePrecedence']>>>
 export type ApplyPlanningTemplatesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['applyPlanningTemplates']>>>
 export type CreatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createPlanningEvent']>>>
 export type UpdatePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEvent']>>>

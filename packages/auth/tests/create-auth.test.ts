@@ -20,6 +20,7 @@ describe('createAuth', () => {
       '/sign-up/email',
       '/organization/update-member-role',
       '/organization/update',
+      '/organization/check-slug',
     ]);
   });
 

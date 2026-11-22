@@ -1,3 +1,4 @@
+import { churchSlugRefusal } from '@church/app-config/church-slug';
 import { z } from 'zod';
 import {
   CHURCH_ADDRESS_FIELD_CODES,
@@ -12,10 +13,14 @@ export interface ChurchSettings {
   website: string | null;
   accentColor: string | null;
   addresses: ChurchAddress[];
+  /** Object-storage key of the logo; `null` when the Church has none. */
+  logoKey: string | null;
 }
 
 export interface ChurchSettingsChanges {
   name: string;
+  /** Omitted, the slug stays; renaming the Church never changes it. */
+  slug?: string;
   website: string | null;
   accentColor: string | null;
   addresses: ChurchAddressChange[];
@@ -32,6 +37,10 @@ export const CHURCH_SETTINGS_FIELD_CODES = [
   'CHURCH_WEBSITE_TOO_LONG',
   'ACCENT_COLOR_INVALID',
   ...CHURCH_ADDRESS_FIELD_CODES,
+  'CHURCH_SLUG_LENGTH',
+  'CHURCH_SLUG_FORMAT',
+  'CHURCH_SLUG_RESERVED',
+  'CHURCH_SLUG_TAKEN',
   'INVALID',
 ] as const;
 export type ChurchSettingsFieldCode =
@@ -52,6 +61,24 @@ export const churchNameSchema = z
       .min(CHURCH_NAME_MIN, 'CHURCH_NAME_LENGTH')
       .max(CHURCH_NAME_MAX, 'CHURCH_NAME_LENGTH'),
   );
+
+/** Format, length and reserved words (shared with the web); uniqueness needs the database. */
+export const churchSlugSchema = z
+  .string()
+  .trim()
+  .superRefine((slug, context) => {
+    const refusal = churchSlugRefusal(slug);
+    if (refusal) {
+      context.addIssue({ code: 'custom', message: `CHURCH_SLUG_${refusal}` });
+    }
+  });
+
+/** What a Church can do with a Church Slug it asks for, as seen from that Church. */
+export type ChurchSlugAvailability =
+  | 'free'
+  | 'taken'
+  | 'reserved'
+  | 'own_history';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 

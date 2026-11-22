@@ -5,6 +5,7 @@ import {
   eventTimeBlock,
   shift,
   shiftRequirement,
+  templatePrecedence,
   templateTimeBlock,
   usualSetup,
 } from '@church/db';
@@ -33,6 +34,7 @@ import {
 import { DuplicateTemplateBlockLabelError } from '@/domain/errors/duplicate-template-block-label';
 import type { Recurrence } from '@/domain/recurrence';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -81,6 +83,9 @@ beforeAll(async () => {
     cycleManager: {} as never,
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository: new DrizzleEventTemplateRepository({
+        db: schedulingTestDb,
+      }),
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({
         db: schedulingTestDb,
       }),
       unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
@@ -254,6 +259,8 @@ describe('POST /event-templates', () => {
           body({
             name: 'Other',
             recurrence: { kind: 'weekly', weekdays: [5] },
+            // Shares Friday without overlapping a Vigil block: no collision to answer.
+            blocks: [{ label: 'Noon', startTime: '12:00', endTime: '13:00' }],
           }),
         )
       ).statusCode,
@@ -337,6 +344,7 @@ describe('POST /event-templates', () => {
       body({
         name: 'Midweek',
         recurrence: { kind: 'weekly', weekdays: [3, 5] },
+        blocks: [{ label: 'Evening', startTime: '19:00', endTime: '20:00' }],
       }),
     );
     const created = await post(body({ name: 'Monthly', recurrence: monthly }));
@@ -476,7 +484,13 @@ describe('TemplateTimeBlock Publico and place', () => {
         blocks: [welcome, { ...sermon, isPublic: true }],
       }),
     );
-    await post(body({ name: 'Private only', blocks: [welcome] }));
+    await post(
+      body({
+        name: 'Private only',
+        recurrence: { kind: 'weekly', weekdays: [1] },
+        blocks: [welcome],
+      }),
+    );
 
     const listed = (await list()).json().templates;
 
@@ -543,7 +557,9 @@ describe('PATCH /event-templates/:templateId name rules', () => {
   it('allows an unchanged name and refuses a name taken in the Church, ignoring case', async () => {
     const seed = await signIn();
     const first = (await post(body({ name: 'First' }))).json();
-    await post(body({ name: 'Second' }));
+    await post(
+      body({ name: 'Second', recurrence: { kind: 'weekly', weekdays: [1] } }),
+    );
 
     const unchanged = await patch({
       templateId: first.id,
@@ -1244,6 +1260,16 @@ describe('GET /event-templates and authorization', () => {
       (await patch({ templateId: ids.template, payload: body() })).statusCode,
     ).toBe(401);
     expect((await del(ids.template)).statusCode).toBe(401);
+    expect((await listPrecedences(ids.template)).statusCode).toBe(401);
+    expect(
+      (
+        await putPrecedence({
+          templateId: ids.template,
+          otherTemplateId: ids.sibling,
+          answer: 'both',
+        })
+      ).statusCode,
+    ).toBe(401);
   });
 
   it.each([
@@ -1262,5 +1288,245 @@ describe('GET /event-templates and authorization', () => {
       (await patch({ templateId: ids.template, payload: body() })).statusCode,
     ).toBe(403);
     expect(await storedTemplateCount()).toBe(0);
+  });
+});
+
+function listPrecedences(templateId: string) {
+  return app.inject({
+    method: 'GET',
+    url: `/api/v1/admin/event-templates/${templateId}/precedences`,
+  });
+}
+
+function putPrecedence(input: {
+  templateId: string;
+  otherTemplateId: string;
+  answer: string;
+}) {
+  return app.inject({
+    method: 'PUT',
+    url: `/api/v1/admin/event-templates/${input.templateId}/precedences/${input.otherTemplateId}`,
+    payload: { answer: input.answer },
+  });
+}
+
+/** 1st Sunday and the 15th: collides with Sunday (09:30) and Wednesday (19:30 on a Wednesday 15th). */
+function santaCeia(overrides: Record<string, unknown> = {}) {
+  return {
+    ...body({
+      name: 'Santa Ceia',
+      recurrence: {
+        kind: 'monthly',
+        entries: [
+          { kind: 'nthWeekday', ordinal: 1, weekday: 0 },
+          { kind: 'dayOfMonth', day: 15 },
+        ],
+      },
+      blocks: [
+        { label: 'Ceia', startTime: '09:30', endTime: '10:30' },
+        { label: 'Noite', startTime: '19:30', endTime: '20:30' },
+      ],
+    }),
+    ...overrides,
+  };
+}
+
+async function createAnsweredSantaCeia() {
+  const res = await post(
+    santaCeia({
+      precedences: [
+        { otherTemplateId: ids.template, answer: 'thisWins' },
+        { otherTemplateId: ids.sibling, answer: 'both' },
+      ],
+    }),
+  );
+  expect(res.statusCode).toBe(201);
+  return res.json() as { id: string };
+}
+
+async function precedenceRows() {
+  return schedulingTestDb.select().from(templatePrecedence);
+}
+
+describe('Template Precedence', () => {
+  it('returns the unanswered colliding pairs by name and saves nothing until every pair is answered, then stores the answers', async () => {
+    const { seed } = await seedEditGraph();
+
+    const unanswered = await post(santaCeia());
+
+    expect(unanswered.statusCode).toBe(409);
+    expect(unanswered.json()).toEqual({
+      error: 'UNANSWERED_TEMPLATE_COLLISIONS',
+      message: expect.any(String),
+      collisions: [
+        { templateId: ids.template, name: 'Sunday' },
+        { templateId: ids.sibling, name: 'Wednesday' },
+      ],
+    });
+    expect(await storedTemplateCount()).toBe(3);
+
+    const partial = await post(
+      santaCeia({
+        precedences: [{ otherTemplateId: ids.template, answer: 'thisWins' }],
+      }),
+    );
+    expect(partial.statusCode).toBe(409);
+    expect(partial.json().collisions).toEqual([
+      { templateId: ids.sibling, name: 'Wednesday' },
+    ]);
+    expect(await storedTemplateCount()).toBe(3);
+    expect(await precedenceRows()).toEqual([]);
+
+    const created = await createAnsweredSantaCeia();
+
+    expect((await listPrecedences(created.id)).json()).toEqual({
+      precedences: [
+        {
+          otherTemplateId: ids.template,
+          otherTemplateName: 'Sunday',
+          answer: 'thisWins',
+        },
+        {
+          otherTemplateId: ids.sibling,
+          otherTemplateName: 'Wednesday',
+          answer: 'both',
+        },
+      ],
+    });
+    expect((await listPrecedences(ids.template)).json()).toEqual({
+      precedences: [
+        {
+          otherTemplateId: created.id,
+          otherTemplateName: 'Santa Ceia',
+          answer: 'otherWins',
+        },
+      ],
+    });
+    const rows = await precedenceRows();
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => row.churchId === seed.churchAId)).toBe(true);
+  });
+
+  it('never re-asks a stored answer and asks an edit only about its new pairs', async () => {
+    await seedEditGraph();
+    const created = await createAnsweredSantaCeia();
+    const youth = await post(
+      body({
+        name: 'Youth',
+        recurrence: { kind: 'weekly', weekdays: [6] },
+        blocks: [{ label: 'Youth', startTime: '18:00', endTime: '19:00' }],
+      }),
+    );
+    expect(youth.statusCode).toBe(201);
+
+    const resaved = await patch({
+      templateId: created.id,
+      payload: santaCeia(),
+    });
+    expect(resaved.statusCode).toBe(200);
+
+    const withYouthOverlap = santaCeia({
+      blocks: [
+        { label: 'Ceia', startTime: '09:30', endTime: '10:30' },
+        { label: 'Jovens', startTime: '18:30', endTime: '20:30' },
+      ],
+    });
+    const edited = await patch({
+      templateId: created.id,
+      payload: withYouthOverlap,
+    });
+    expect(edited.statusCode).toBe(409);
+    expect(edited.json().collisions).toEqual([
+      { templateId: youth.json().id, name: 'Youth' },
+    ]);
+    expect(
+      (await getDetail(created.id))
+        .json()
+        .blocks.map((block: BlockBody) => block.label),
+    ).toEqual(['Ceia', 'Noite']);
+
+    const answered = await patch({
+      templateId: created.id,
+      payload: {
+        ...withYouthOverlap,
+        precedences: [
+          { otherTemplateId: youth.json().id, answer: 'otherWins' },
+        ],
+      },
+    });
+    expect(answered.statusCode).toBe(200);
+    expect(
+      (await listPrecedences(created.id))
+        .json()
+        .precedences.map(
+          (precedence: { otherTemplateName: string; answer: string }) => [
+            precedence.otherTemplateName,
+            precedence.answer,
+          ],
+        ),
+    ).toEqual([
+      ['Sunday', 'thisWins'],
+      ['Wednesday', 'both'],
+      ['Youth', 'otherWins'],
+    ]);
+  });
+
+  it('changes one stored precedence without editing either template, and 404s a pair with no answer or another Church', async () => {
+    await seedEditGraph();
+    const created = await createAnsweredSantaCeia();
+    const before = (await getDetail(ids.template)).json();
+
+    const changed = await putPrecedence({
+      templateId: ids.template,
+      otherTemplateId: created.id,
+      answer: 'thisWins',
+    });
+
+    expect(changed.statusCode).toBe(200);
+    expect(changed.json()).toEqual({
+      otherTemplateId: created.id,
+      otherTemplateName: 'Santa Ceia',
+      answer: 'thisWins',
+    });
+    expect((await listPrecedences(created.id)).json().precedences[0]).toEqual({
+      otherTemplateId: ids.template,
+      otherTemplateName: 'Sunday',
+      answer: 'otherWins',
+    });
+    expect((await getDetail(ids.template)).json()).toEqual(before);
+
+    for (const [templateId, otherTemplateId] of [
+      [ids.template, ids.sibling],
+      [ids.foreign, created.id],
+      [created.id, ids.foreign],
+      [created.id, 'not-a-uuid'],
+    ] as const) {
+      expect(
+        (await putPrecedence({ templateId, otherTemplateId, answer: 'both' }))
+          .statusCode,
+      ).toBe(404);
+    }
+    expect((await listPrecedences(ids.foreign)).statusCode).toBe(404);
+    expect(
+      (
+        await putPrecedence({
+          templateId: ids.template,
+          otherTemplateId: created.id,
+          answer: 'nobody',
+        })
+      ).statusCode,
+    ).toBe(422);
+  });
+
+  it('drops its precedences when a template is deleted', async () => {
+    await seedEditGraph();
+    const created = await createAnsweredSantaCeia();
+
+    expect((await del(created.id)).statusCode).toBe(204);
+
+    expect(await precedenceRows()).toEqual([]);
+    expect((await listPrecedences(ids.template)).json()).toEqual({
+      precedences: [],
+    });
   });
 });

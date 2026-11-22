@@ -65,6 +65,12 @@ const INVITATION_JOURNEY_SPEC_PATHS = [
 // the Church access change it consumes from People A.
 const PEOPLE_JOURNEY_SPEC_PATHS = ['tests/people/people-journey.spec.ts'];
 
+// #1017 (#996): Church Settings, the logo upload through object storage and
+// the settings save, reloaded; a Member is kept off the screen.
+const CHURCH_SETTINGS_JOURNEY_SPEC_PATHS = [
+  'tests/church-settings/church-settings-journey.spec.ts',
+];
+
 // #900: the Ministries page (search, status filter, counts) and a Ministry's
 // Usual setup.
 const MINISTRIES_JOURNEY_SPEC_PATHS = [
@@ -153,6 +159,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/volunteer-transfer-journey.spec.ts',
   ...PEOPLE_JOURNEY_SPEC_PATHS,
   ...MINISTRIES_JOURNEY_SPEC_PATHS,
+  ...CHURCH_SETTINGS_JOURNEY_SPEC_PATHS,
   'tests/scheduling/a11y-builder.spec.ts',
   'tests/scheduling/a11y-planning-nav.spec.ts',
   'tests/scheduling/builder-event-time-block-focus.spec.ts',
@@ -285,6 +292,20 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   ].map((sourcePathPrefix) => ({
     sourcePathPrefix,
     specPaths: PEOPLE_JOURNEY_SPEC_PATHS,
+  })),
+  ...[
+    'apps/web/src/features/church-settings/',
+    'apps/web/src/routes/app/_active-church/church-settings',
+    'apps/server/src/api/controllers/church-settings-controller.ts',
+    'apps/server/src/api/dtos/church-settings.dto.ts',
+    'apps/server/src/application/db-church-settings-manager.ts',
+    'apps/server/src/application/church-logo-pipeline.ts',
+    'apps/server/src/domain/church-settings.ts',
+    'apps/server/src/domain/church-logo.ts',
+    'apps/server/src/infrastructure/storage/',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: CHURCH_SETTINGS_JOURNEY_SPEC_PATHS,
   })),
   // #900: the server-side list filtering, counts and paging of #899.
   ...[

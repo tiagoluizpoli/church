@@ -48,6 +48,7 @@ export type MappedDomainCode =
   | 'ISOLATION_BREACH'
   | 'CROSS_MINISTRY_SCOPE'
   | 'OVERLAPPING_CYCLE'
+  | 'UNANSWERED_TEMPLATE_COLLISIONS'
   | 'ILLEGAL_STATE_TRANSITION'
   | 'DRAFT_STAFFING_RECONCILIATION_REQUIRED'
   | 'EVENT_OUTSIDE_CYCLE'
@@ -89,6 +90,11 @@ export type MappedDomainCode =
   | 'SHIFT_HAS_RESPONSES'
   | 'ASK_BLOCKED_FLAGGED_SHIFTS'
   | 'REMIND_ON_COOLDOWN'
+  | 'LOGO_TOO_LARGE'
+  | 'LOGO_TOO_SMALL'
+  | 'LOGO_BAD_ASPECT_RATIO'
+  | 'LOGO_UNSUPPORTED_TYPE'
+  | 'LOGO_KEY_INVALID'
   | 'VALIDATION_ERROR';
 
 export type ErrorCode = RefusalCode | MappedDomainCode;
@@ -142,6 +148,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   ISOLATION_BREACH: { status: 409, message: m.error_isolation_breach },
   CROSS_MINISTRY_SCOPE: { status: 409, message: m.error_cross_ministry_scope },
   OVERLAPPING_CYCLE: { status: 409, message: m.error_overlapping_cycle },
+  UNANSWERED_TEMPLATE_COLLISIONS: {
+    status: 409,
+    message: m.error_unanswered_template_collisions,
+  },
   ILLEGAL_STATE_TRANSITION: {
     status: 409,
     message: m.error_illegal_state_transition,
@@ -278,6 +288,17 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     status: 409,
     message: m.error_remind_on_cooldown,
   },
+  LOGO_TOO_LARGE: { status: 413, message: m.error_logo_too_large },
+  LOGO_TOO_SMALL: { status: 422, message: m.error_logo_too_small },
+  LOGO_BAD_ASPECT_RATIO: {
+    status: 422,
+    message: m.error_logo_bad_aspect_ratio,
+  },
+  LOGO_UNSUPPORTED_TYPE: {
+    status: 415,
+    message: m.error_logo_unsupported_type,
+  },
+  LOGO_KEY_INVALID: { status: 422, message: m.error_logo_key_invalid },
   VALIDATION_ERROR: { status: 422, message: m.error_validation_error },
 };
 

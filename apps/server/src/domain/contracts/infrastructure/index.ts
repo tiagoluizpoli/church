@@ -33,6 +33,7 @@ export * from './security-log.repository';
 export * from './setup-progress.repository';
 export * from './shift.repository';
 export * from './swap-request.repository';
+export * from './template-precedence.repository';
 export * from './tracing';
 export * from './transaction-context';
 export * from './unavailable-shift.repository';

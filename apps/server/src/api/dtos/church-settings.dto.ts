@@ -12,6 +12,7 @@ import {
   CHURCH_SETTINGS_FIELD_CODES,
   type ChurchSettingsFieldCode,
   churchNameSchema,
+  churchSlugSchema,
   churchWebsiteSchema,
 } from '../../domain/church-settings';
 import type { ErrorMessage } from '../utils/error-table';
@@ -41,6 +42,10 @@ export const churchSettingsResponseSchema = z.object({
   website: z.string().nullable(),
   accentColor: z.string().nullable(),
   addresses: z.array(churchAddressResponseSchema),
+  /** Object-storage key of the logo (re-applied by *Desfazer*). */
+  logoKey: z.string().nullable(),
+  /** Anonymous URL of the logo, built from its key. */
+  logoUrl: z.string().nullable(),
   /** The web origin the public `…/slug` address is shown under. */
   publicOrigin: z.string(),
 });
@@ -50,6 +55,11 @@ export const updateChurchSettingsBodySchema = z.object({
   name: churchNameSchema.describe(
     'Required. Trimmed, inner spaces collapsed, 2–80 characters.',
   ),
+  slug: churchSlugSchema
+    .optional()
+    .describe(
+      'Church Slug: 3–63 characters, lower-case letters, digits and single hyphens, not reserved, not taken. Omitted, the slug stays.',
+    ),
   website: churchWebsiteSchema.describe(
     'https:// only; a bare domain gets it prepended; empty or null clears it; at most 2048 characters.',
   ),
@@ -63,6 +73,21 @@ export const updateChurchSettingsBodySchema = z.object({
 export type UpdateChurchSettingsBody = z.output<
   typeof updateChurchSettingsBodySchema
 >;
+
+export const slugAvailabilityQuerySchema = z.object({
+  slug: z.string().trim().max(200),
+});
+
+export const slugAvailabilityResponseSchema = z.object({
+  status: z.enum(['free', 'taken', 'reserved', 'own_history']),
+});
+/** One logo file, PNG, JPEG or WebP by its bytes, at most 5 MB. */
+export const uploadChurchLogoBodySchema = z.object({ file: z.file() });
+
+export const restoreChurchLogoBodySchema = z.object({
+  key: z.string().describe('A logo key this Church used before.'),
+});
+export type RestoreChurchLogoBody = z.infer<typeof restoreChurchLogoBodySchema>;
 
 export const churchSettingsFieldErrorSchema = z.object({
   /** The refused request field; a list row is addressed by index, e.g. `contacts.1.value`. */
@@ -93,6 +118,10 @@ const FIELD_CODE_MESSAGES: Record<ChurchSettingsFieldCode, ErrorMessage> = {
   ADDRESS_PIN_INVALID: m.error_church_settings_address_pin_invalid,
   ADDRESS_MAIN_MULTIPLE: m.error_church_settings_address_main_multiple,
   ADDRESS_MAIN_REQUIRED: m.error_church_settings_address_main_required,
+  CHURCH_SLUG_LENGTH: m.error_church_settings_slug_length,
+  CHURCH_SLUG_FORMAT: m.error_church_settings_slug_format,
+  CHURCH_SLUG_RESERVED: m.error_church_settings_slug_reserved,
+  CHURCH_SLUG_TAKEN: m.error_church_settings_slug_taken,
   INVALID: m.error_church_settings_invalid,
 };
 
@@ -113,6 +142,21 @@ function isFieldCode(
   return CHURCH_SETTINGS_FIELD_CODES.some((code) => code === value);
 }
 
+/** The 422 body for one refused field. */
+interface ChurchSettingsFieldErrorInput {
+  field: string;
+  code: ChurchSettingsFieldCode;
+  locale: Locale;
+}
+
+export function churchSettingsFieldError({
+  field,
+  code,
+  locale,
+}: ChurchSettingsFieldErrorInput): ChurchSettingsFieldError {
+  return { field, code, message: FIELD_CODE_MESSAGES[code]({}, { locale }) };
+}
+
 /** The first refusal of each field, worded in the request locale, in request order. */
 export function toChurchSettingsFieldErrors({
   issues,
@@ -123,11 +167,7 @@ export function toChurchSettingsFieldErrors({
     const field = issue.instancePath.replace(/^\//, '').replaceAll('/', '.');
     if (errors.has(field)) continue;
     const code = isFieldCode(issue.message) ? issue.message : 'INVALID';
-    errors.set(field, {
-      field,
-      code,
-      message: FIELD_CODE_MESSAGES[code]({}, { locale }),
-    });
+    errors.set(field, churchSettingsFieldError({ field, code, locale }));
   }
   return [...errors.values()];
 }

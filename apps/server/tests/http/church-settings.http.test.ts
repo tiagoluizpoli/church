@@ -12,6 +12,7 @@ import { ChurchSettingsController } from '@/api/controllers/church-settings-cont
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbChurchSettingsManager } from '@/application/db-church-settings-manager';
 import { ChurchId, UserId } from '@/domain/branded-ids';
+import { ChurchSlugTakenError } from '@/domain/errors/church-slug-taken';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
@@ -24,6 +25,7 @@ import {
 } from '@/tests/integration/repositories/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { InMemoryObjectStorage } from '@/tests/test-support/in-memory-object-storage';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -47,6 +49,8 @@ const UNTOUCHED = {
   website: null,
   accentColor: null,
   addresses: [],
+  logoKey: null,
+  logoUrl: null,
   publicOrigin: PUBLIC_ORIGIN,
 };
 
@@ -61,6 +65,7 @@ beforeAll(async () => {
     churchSettingsManager: new DbChurchSettingsManager({
       churchRepository: new DrizzleChurchRepository({ db }),
       unitOfWork: new DrizzleUnitOfWork({ db }),
+      objectStorage: new InMemoryObjectStorage(),
       publicOrigin: PUBLIC_ORIGIN,
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -187,6 +192,8 @@ describe('Church Settings', () => {
       website: 'https://ibesperanca.org.br',
       accentColor: '#1d4ed8',
       addresses: [],
+      logoKey: null,
+      logoUrl: null,
       publicOrigin: PUBLIC_ORIGIN,
     };
     expect(saved.statusCode).toBe(200);
@@ -238,6 +245,8 @@ describe('Church Settings', () => {
       website: null,
       accentColor: null,
       addresses: [],
+      logoKey: null,
+      logoUrl: null,
       publicOrigin: PUBLIC_ORIGIN,
     });
   });
@@ -584,5 +593,162 @@ describe('Church Addresses', () => {
     signIn({ churchId: CHURCH_B });
 
     expect((await getSettings()).json().addresses).toEqual([]);
+  });
+});
+
+function saveSlug({
+  slug,
+  churchId,
+}: {
+  slug: string;
+  churchId?: string;
+}): ReturnType<typeof saveSettings> {
+  signIn({ churchId });
+  return saveSettings({
+    name: churchId === CHURCH_B ? 'Church B' : 'Igreja Batista Esperança',
+    website: '',
+    accentColor: null,
+    slug,
+  });
+}
+
+function availability({ slug, churchId }: { slug: string; churchId?: string }) {
+  signIn({ churchId });
+  return app.inject({
+    method: 'GET',
+    url: `/api/v1/church-settings/slug-availability?slug=${encodeURIComponent(slug)}`,
+  });
+}
+
+function slugRefusal(code: string) {
+  return expect.objectContaining({
+    statusCode: 422,
+    body: expect.stringContaining(`"field":"slug","code":"${code}"`),
+  });
+}
+
+describe('Church Slug', () => {
+  it('changes the slug and reads it back', async () => {
+    const res = await saveSlug({ slug: 'esperanca' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ...UNTOUCHED, slug: 'esperanca' });
+    expect((await getSettings()).json()).toMatchObject({ slug: 'esperanca' });
+  });
+
+  it.each([
+    ['Igreja Nova', 'CHURCH_SLUG_FORMAT'],
+    ['ab', 'CHURCH_SLUG_LENGTH'],
+    ['a'.repeat(64), 'CHURCH_SLUG_LENGTH'],
+    ['admin', 'CHURCH_SLUG_RESERVED'],
+    ['church-b', 'CHURCH_SLUG_TAKEN'],
+  ])('refuses %j with %s and changes nothing', async (slug, code) => {
+    const res = await saveSlug({ slug });
+
+    expect(res).toEqual(slugRefusal(code));
+    expect((await getSettings()).json()).toEqual(UNTOUCHED);
+  });
+
+  it('keeps every slug a Church gave up reserved to it, and lets it take one back', async () => {
+    await saveSlug({ slug: 'esperanca' });
+
+    expect((await availability({ slug: 'ib-esperanca' })).json()).toEqual({
+      status: 'own_history',
+    });
+    const back = await saveSlug({ slug: 'ib-esperanca' });
+    expect(back.statusCode).toBe(200);
+    expect(back.json()).toMatchObject({ slug: 'ib-esperanca' });
+    expect((await availability({ slug: 'esperanca' })).json()).toEqual({
+      status: 'own_history',
+    });
+  });
+
+  it("refuses a slug in another Church's history", async () => {
+    await saveSlug({ slug: 'esperanca' });
+
+    const res = await saveSlug({ slug: 'ib-esperanca', churchId: CHURCH_B });
+
+    expect(res).toEqual(slugRefusal('CHURCH_SLUG_TAKEN'));
+    expect(
+      (await availability({ slug: 'ib-esperanca', churchId: CHURCH_B })).json(),
+    ).toEqual({
+      status: 'taken',
+    });
+  });
+
+  it('answers free, taken, reserved or own history without naming the holder', async () => {
+    expect((await availability({ slug: 'livre-agora' })).json()).toEqual({
+      status: 'free',
+    });
+    expect((await availability({ slug: 'church-b' })).json()).toEqual({
+      status: 'taken',
+    });
+    expect((await availability({ slug: 'login' })).json()).toEqual({
+      status: 'reserved',
+    });
+    expect((await availability({ slug: 'ib-esperanca' })).json()).toEqual({
+      status: 'free',
+    });
+  });
+
+  it('answers slug taken, not a server error, when two saves race for the same slug', async () => {
+    const repository = new DrizzleChurchRepository({ db });
+    const unitOfWork = new DrizzleUnitOfWork({ db });
+    const changes = {
+      slug: 'raced-slug',
+      website: null,
+      accentColor: null,
+      addresses: [],
+    };
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let firstWritten!: () => void;
+    const written = new Promise<void>((resolve) => {
+      firstWritten = resolve;
+    });
+    // The first save has written the slug but not committed, so the second one's availability check still sees it free.
+    const first = unitOfWork.run(async (tx) => {
+      await repository.saveSettings({
+        id: ChurchId.from(CHURCH_A),
+        changes: { ...changes, name: 'Igreja Batista Esperança' },
+        tx,
+      });
+      firstWritten();
+      await held;
+    });
+    await written;
+    const second = unitOfWork
+      .run((tx) =>
+        repository.saveSettings({
+          id: ChurchId.from(CHURCH_B),
+          changes: { ...changes, name: 'Church B' },
+          tx,
+        }),
+      )
+      .then(
+        () => null,
+        (error: unknown) => error,
+      );
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    release();
+    await first;
+
+    expect(await second).toBeInstanceOf(ChurchSlugTakenError);
+    expect((await availability({ slug: 'raced-slug' })).json()).toEqual({
+      status: 'free',
+    });
+  });
+
+  it('refuses the availability check to a Member', async () => {
+    signIn({ persona: 'member' });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/church-settings/slug-availability?slug=livre-agora',
+    });
+
+    expect(res.statusCode).toBe(403);
   });
 });

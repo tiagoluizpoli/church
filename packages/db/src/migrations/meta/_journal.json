@@ -432,8 +432,29 @@
     {
       "idx": 61,
       "version": "7",
-      "when": 1795340716375,
-      "tag": "0061_church_address",
+      "when": 1795342393260,
+      "tag": "0061_church_logo_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795343173692,
+      "tag": "0062_church_slug_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1795345846826,
+      "tag": "0063_template_precedence",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1795346868459,
+      "tag": "0064_church_address",
       "breakpoints": true
     }
   ]

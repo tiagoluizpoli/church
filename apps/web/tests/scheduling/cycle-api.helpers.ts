@@ -59,6 +59,11 @@ interface CreateEventTemplateViaApiParams {
   name: string;
   weekday: number;
   blocks: EventTemplateTimeBlockInput[];
+  /** Template Precedence answers for templates this one collides with. */
+  precedences?: {
+    otherTemplateId: string;
+    answer: 'both' | 'thisWins' | 'otherWins';
+  }[];
 }
 
 interface CreatedEventTemplate {
@@ -70,6 +75,7 @@ export async function createEventTemplateViaApi({
   name,
   weekday,
   blocks,
+  precedences,
 }: CreateEventTemplateViaApiParams): Promise<CreatedEventTemplate> {
   const response = await page.request.post(
     `${SERVER_URL}/api/v1/admin/event-templates`,
@@ -78,6 +84,7 @@ export async function createEventTemplateViaApi({
         name,
         recurrence: { kind: 'weekly', weekdays: [weekday] },
         blocks,
+        precedences,
       },
     },
   );

@@ -147,7 +147,10 @@ export function prepareLayoutEmail({
   from,
   content,
 }: PrepareLayoutEmailInput): PreparedEmail {
-  const { subject, html, text } = renderEmailLayout(content);
+  // PROTOTYPE (#989): lets the email-design prototype capture content per kind.
+  const hook = (globalThis as { __emailLayoutHook?: typeof renderEmailLayout })
+    .__emailLayoutHook;
+  const { subject, html, text } = (hook ?? renderEmailLayout)(content);
   return {
     payload,
     locale,

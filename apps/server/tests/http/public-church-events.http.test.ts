@@ -114,6 +114,7 @@ interface SeedEventInput {
   start: string;
   cycleId?: string;
   isPublic?: boolean;
+  status?: 'draft' | 'scheduled';
 }
 
 async function seedEvent({
@@ -121,6 +122,7 @@ async function seedEvent({
   start,
   cycleId,
   isPublic = true,
+  status = 'scheduled',
 }: SeedEventInput) {
   const end = `${start.slice(0, 11)}23:00`;
   const created = await buildEvent({
@@ -130,7 +132,7 @@ async function seedEvent({
     title,
     start: at(start),
     end: at(end),
-    status: 'scheduled',
+    status,
   });
   const block = await buildEventTimeBlock({
     db,
@@ -201,6 +203,43 @@ describe('GET /public/churches/:slug/events', () => {
     expect(items.map((item: { title: string }) => item.title)).toEqual([
       'Publico',
     ]);
+  });
+
+  it('leaves out an Event reopened to draft inside a Sent Cycle', async () => {
+    await seedEvent({ title: 'Publico', start: '2099-03-01T13:00' });
+    await seedEvent({
+      title: 'Reaberto',
+      start: '2099-03-02T13:00',
+      status: 'draft',
+    });
+
+    const { items } = (await readEvents({ slug: 'ib-esperanca' })).json();
+
+    expect(items.map((item: { title: string }) => item.title)).toEqual([
+      'Publico',
+    ]);
+  });
+
+  it('breaks a tie on start by id, across pages', async () => {
+    const seeded: { id: string; title: string }[] = [];
+    for (let index = 0; index < PAGE_SIZE + 1; index += 1) {
+      const title = `Evento ${index}`;
+      const { event } = await seedEvent({ title, start: '2099-03-01T13:00' });
+      seeded.push({ id: event.id, title });
+    }
+    const byId = seeded
+      .toSorted((a, b) => a.id.localeCompare(b.id))
+      .map(({ title }) => title);
+
+    const first = (await readEvents({ slug: 'ib-esperanca' })).json();
+    const second = (
+      await readEvents({ slug: 'ib-esperanca', cursor: first.nextCursor })
+    ).json();
+
+    const titles = [...first.items, ...second.items].map(
+      (item: { title: string }) => item.title,
+    );
+    expect(titles).toEqual(byId);
   });
 
   it('pages 20 at a time ordered by start then id', async () => {

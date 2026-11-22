@@ -6,6 +6,7 @@ import {
   assignmentProposalApplication,
   availabilityAsk,
   availabilityCheck,
+  churchAddress,
   createChurch,
   cycle,
   event,
@@ -175,6 +176,16 @@ async function seedEveryTenantedTable(): Promise<void> {
   });
 
   await testDb.insert(todo).values({ text: 'Truncation root todo' });
+  await testDb.insert(churchAddress).values({
+    churchId: IDS.church,
+    street: 'Rua das Flores',
+    number: '10',
+    bairro: 'Centro',
+    city: 'Campinas',
+    uf: 'SP',
+    isMain: true,
+    position: 0,
+  });
 
   await testDb.insert(ministry).values({
     id: IDS.ministry,

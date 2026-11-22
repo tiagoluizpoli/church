@@ -83,6 +83,7 @@ export function buildManagers({
   repositories: {
     eventRepository,
     eventTemplateRepository,
+    templatePrecedenceRepository,
     cycleRepository,
     planningEventRepository,
     volunteerRepository,
@@ -156,6 +157,7 @@ export function buildManagers({
     overrides.eventTemplateManager ??
     new DbEventTemplateManager({
       templateRepository: eventTemplateRepository,
+      precedenceRepository: templatePrecedenceRepository,
       unitOfWork,
     });
   const notifications = new ChurchNotifications({ outboxRepository });

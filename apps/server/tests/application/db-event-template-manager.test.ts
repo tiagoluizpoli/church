@@ -31,6 +31,11 @@ describe('DbEventTemplateManager', () => {
   function createManager(repository: EventTemplateRepository) {
     return new DbEventTemplateManager({
       templateRepository: repository,
+      precedenceRepository: {
+        listByTemplate: vi.fn().mockResolvedValue([]),
+        save: vi.fn().mockResolvedValue(undefined),
+        update: vi.fn(),
+      },
       unitOfWork,
     });
   }

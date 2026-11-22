@@ -4,6 +4,7 @@ import { DbEventTemplateManager } from '@/application/db-event-template-manager'
 import { ChurchId } from '@/domain/branded-ids';
 import { DrizzleChurchProgrammeRepository } from '@/infrastructure/repositories/drizzle-church-programme.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import {
   resetSchedulingPhase3Db,
@@ -13,6 +14,9 @@ import {
 
 const templates = new DbEventTemplateManager({
   templateRepository: new DrizzleEventTemplateRepository({
+    db: schedulingTestDb,
+  }),
+  precedenceRepository: new DrizzleTemplatePrecedenceRepository({
     db: schedulingTestDb,
   }),
   unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
@@ -80,7 +84,7 @@ describe('DbChurchProgrammeManager', () => {
       recurrence: { kind: 'weekly', weekdays: [3] },
       blocks: [block('Study', '19:30', true)],
     });
-    await templates.createTemplate({
+    const morning = await templates.createTemplate({
       churchId: churchA,
       name: 'Sunday morning',
       recurrence: { kind: 'weekly', weekdays: [0] },
@@ -91,6 +95,8 @@ describe('DbChurchProgrammeManager', () => {
       name: 'Sunday evening',
       recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [block('Tie A', '18:00', true), block('Prayer', '08:00', true)],
+      // Both Sunday templates run: the overlapping pair is kept, not decided.
+      precedences: [{ otherTemplateId: morning.id, answer: 'both' }],
     });
 
     const result = await programme.getProgramme({ churchId: churchA });

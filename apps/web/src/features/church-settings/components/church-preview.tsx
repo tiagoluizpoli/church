@@ -1,8 +1,3 @@
-import {
-  detectDevice,
-  directionsLink,
-  formatAddress,
-} from '@church/app-config/directions';
 import { SOCIAL_NETWORKS } from '@church/app-config/social-networks';
 import { m } from '@church/i18n/messages';
 import { toast } from 'sonner';
@@ -13,6 +8,11 @@ import {
 } from '@/features/church-settings/church-settings-form';
 import { LogoImage } from '@/features/church-settings/components/logo-image';
 import { detectedNetwork } from '@/features/church-settings/components/social-section';
+import {
+  detectDevice,
+  directionsLink,
+  formatAddress,
+} from '@/features/church-settings/directions';
 
 interface ChurchPreviewProps {
   form: ChurchSettingsForm;

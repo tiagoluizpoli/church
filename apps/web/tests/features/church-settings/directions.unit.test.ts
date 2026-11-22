@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { detectDevice, directionsLink, formatAddress } from '../src/directions';
+import {
+  detectDevice,
+  directionsLink,
+  formatAddress,
+} from '@/features/church-settings/directions';
 
 const address = {
   label: 'Templo',

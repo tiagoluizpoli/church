@@ -1,18 +1,26 @@
 import { appConfig } from '@church/app-config';
-import { church, churchSlugHistory } from '@church/db';
+import { church, churchLegalProfile, churchSlugHistory } from '@church/db';
 import { parseTimeOfDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PublicChurchProfileController } from '@/api/controllers/public-church-profile-controller';
 import { DbPublicChurchProfileManager } from '@/application/db-public-church-profile-manager';
 import { DbPublicEventManager } from '@/application/db-public-event-manager';
+import type { ChurchContact } from '@/domain/church-contact';
 import type { Recurrence } from '@/domain/recurrence';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleChurchProgrammeRepository } from '@/infrastructure/repositories/drizzle-church-programme.repository';
 import { DrizzlePublicEventRepository } from '@/infrastructure/repositories/drizzle-public-event.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
-import { buildChurch, buildChurchLogo } from '@/seeds/builders/church';
+import {
+  buildChurch,
+  buildChurchContactGroups,
+  buildChurchContacts,
+  buildChurchLegalProfile,
+  buildChurchLogo,
+  buildChurchSocialLinks,
+} from '@/seeds/builders/church';
 import { buildEventTemplate } from '@/seeds/builders/planning';
 import {
   testDb as db,
@@ -82,6 +90,19 @@ beforeEach(async () => {
   });
 });
 
+function contact(overrides: Partial<ChurchContact>): ChurchContact {
+  return {
+    kind: 'email',
+    phoneType: null,
+    value: 'x@esperanca.test',
+    description: null,
+    isWhatsApp: false,
+    isPublic: true,
+    group: null,
+    ...overrides,
+  };
+}
+
 function readProfile(slug: string) {
   return app.inject({
     method: 'GET',
@@ -101,6 +122,8 @@ describe('GET /public/churches/:slug', () => {
       logoUrl: null,
       accentColor: null,
       programme: [],
+      contactGroups: [],
+      legalProfile: null,
     });
   });
 
@@ -125,6 +148,147 @@ describe('GET /public/churches/:slug', () => {
       logoUrl: storage.publicUrl({ key: logoKey }),
       accentColor: '#1D4ED8',
       programme: [],
+      contactGroups: [],
+      legalProfile: null,
+    });
+  });
+
+  it('groups public contacts and links "Da igreja" first, then by group in the admin order, never serving private ones', async () => {
+    const groupIds = await buildChurchContactGroups({
+      db,
+      churchId: CHURCH_A,
+      names: ['Pastor João', 'Louvor', 'Vazio'],
+    });
+    await buildChurchContacts({
+      db,
+      churchId: CHURCH_A,
+      groupIds,
+      contacts: [
+        contact({ value: 'louvor@esperanca.test', group: 'Louvor' }),
+        contact({
+          kind: 'phone',
+          phoneType: 'mobile',
+          value: '+5511999990000',
+          isWhatsApp: true,
+          group: 'Pastor João',
+          description: 'Gabinete',
+        }),
+        contact({ value: 'segredo@esperanca.test', isPublic: false }),
+        contact({
+          value: 'privado@esperanca.test',
+          group: 'Vazio',
+          isPublic: false,
+        }),
+        contact({ value: 'contato@esperanca.test' }),
+      ],
+    });
+    await buildChurchSocialLinks({
+      db,
+      churchId: CHURCH_A,
+      groupIds,
+      socialLinks: [
+        { url: 'https://www.instagram.com/louvor', group: 'Louvor' },
+        { url: 'https://www.youtube.com/@esperanca', description: 'Cultos' },
+      ],
+    });
+
+    const response = await readProfile('ib-esperanca');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().contactGroups).toEqual([
+      {
+        name: null,
+        contacts: [
+          {
+            kind: 'email',
+            phoneType: null,
+            value: 'contato@esperanca.test',
+            description: null,
+            isWhatsApp: false,
+          },
+        ],
+        socialLinks: [
+          {
+            url: 'https://www.youtube.com/@esperanca',
+            network: 'youtube',
+            description: 'Cultos',
+          },
+        ],
+      },
+      {
+        name: 'Pastor João',
+        contacts: [
+          {
+            kind: 'phone',
+            phoneType: 'mobile',
+            value: '+5511999990000',
+            description: 'Gabinete',
+            isWhatsApp: true,
+          },
+        ],
+        socialLinks: [],
+      },
+      {
+        name: 'Louvor',
+        contacts: [
+          {
+            kind: 'email',
+            phoneType: null,
+            value: 'louvor@esperanca.test',
+            description: null,
+            isWhatsApp: false,
+          },
+        ],
+        socialLinks: [
+          {
+            url: 'https://www.instagram.com/louvor',
+            network: 'instagram',
+            description: null,
+          },
+        ],
+      },
+    ]);
+    expect(response.body).not.toContain('segredo@');
+    expect(response.body).not.toContain('privado@');
+  });
+
+  it('serves no contact group when every contact is private', async () => {
+    await buildChurchContacts({
+      db,
+      churchId: CHURCH_A,
+      groupIds: new Map(),
+      contacts: [contact({ value: 'segredo@esperanca.test', isPublic: false })],
+    });
+
+    const response = await readProfile('ib-esperanca');
+
+    expect(response.json().contactGroups).toEqual([]);
+  });
+
+  it('serves the legal name and CNPJ only when the legal profile is public', async () => {
+    await buildChurchLegalProfile({
+      db,
+      churchId: CHURCH_A,
+      legalProfile: {
+        legalName: 'Igreja Batista Esperança LTDA',
+        cnpj: '11222333000181',
+        isPublic: false,
+      },
+    });
+
+    const hidden = await readProfile('ib-esperanca');
+    expect(hidden.json().legalProfile).toBeNull();
+    expect(hidden.body).not.toContain('11222333000181');
+
+    await db
+      .update(churchLegalProfile)
+      .set({ isPublic: true })
+      .where(eq(churchLegalProfile.churchId, CHURCH_A));
+
+    const shown = await readProfile('ib-esperanca');
+    expect(shown.json().legalProfile).toEqual({
+      legalName: 'Igreja Batista Esperança LTDA',
+      cnpj: '11222333000181',
     });
   });
 
@@ -142,6 +306,8 @@ describe('GET /public/churches/:slug', () => {
       logoUrl: null,
       accentColor: null,
       programme: [],
+      contactGroups: [],
+      legalProfile: null,
     });
   });
 

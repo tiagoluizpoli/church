@@ -253,45 +253,39 @@ describe('runStages', () => {
     expect(existsSync(markerPath('stage-e2e'))).toBe(false);
   });
 
-  it('finishes the setup steps before any lane starts', async () => {
+  it('skips the lanes and final steps when a first step failed', async () => {
     const results = await runStages({
-      finalSteps: [],
-      lanes: [
-        [
-          scriptStep({
-            code: `if (!require('node:fs').existsSync(${JSON.stringify(markerPath('setup-done'))})) process.exit(1)`,
-            label: 'lane',
-          }),
-        ],
-      ],
+      finalSteps: [passing({ label: 'e2e' })],
+      firstSteps: [failing({ label: 'lint' }), passing({ label: 'typecheck' })],
+      lanes: [[markerStep({ label: 'integration', marker: 'stage-first' })]],
       output: captureOutput(),
-      setupSteps: [markerStep({ label: 'setup', marker: 'setup-done' })],
     });
 
     expect(results.map(({ label, status }) => [label, status])).toEqual([
-      ['setup', 'passed'],
-      ['lane', 'passed'],
-    ]);
-  });
-
-  it('skips every lane and final step when a setup step failed', async () => {
-    const results = await runStages({
-      finalSteps: [markerStep({ label: 'e2e', marker: 'setup-fail-e2e' })],
-      lanes: [
-        [markerStep({ label: 'a', marker: 'setup-fail-a' })],
-        [passing({ label: 'b' })],
-      ],
-      output: captureOutput(),
-      setupSteps: [failing({ label: 'setup' })],
-    });
-
-    expect(results.map(({ label, status }) => [label, status])).toEqual([
-      ['setup', 'failed'],
-      ['a', 'skipped'],
-      ['b', 'skipped'],
+      ['lint', 'failed'],
+      ['typecheck', 'skipped'],
+      ['integration', 'skipped'],
       ['e2e', 'skipped'],
     ]);
-    expect(existsSync(markerPath('setup-fail-a'))).toBe(false);
+    expect(existsSync(markerPath('stage-first'))).toBe(false);
+  });
+
+  it('runs the lanes after the first steps passed', async () => {
+    const results = await runStages({
+      finalSteps: [],
+      firstSteps: [passing({ label: 'lint' })],
+      lanes: [
+        [passing({ label: 'unit' })],
+        [passing({ label: 'integration' })],
+      ],
+      output: captureOutput(),
+    });
+
+    expect(results.map(({ label, status }) => [label, status])).toEqual([
+      ['lint', 'passed'],
+      ['unit', 'passed'],
+      ['integration', 'passed'],
+    ]);
   });
 });
 

@@ -45,6 +45,8 @@ export interface MinistryInvitationEmail {
   churchLogoUrl?: string | null;
   /** `#rrggbb`; absent means the app's default brand colour. */
   churchAccent?: string | null;
+  /** The Main Address's "bairro, city/UF", frozen when queued; absent without an address. */
+  churchLocality?: string;
   recipientFirstName: string;
   inviterName: string;
   ministryName: string;

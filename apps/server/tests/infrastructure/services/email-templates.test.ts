@@ -221,6 +221,25 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       appName,
     });
 
+  it('names the Church with its bairro and city when the payload carries them, and not otherwise', () => {
+    const place = m.email_invitation_church_place(
+      {
+        churchName: memberInvitation.churchName,
+        locality: 'Centro, Campinas/SP',
+      },
+      ptBR,
+    );
+    const withPlace = prepareEmail({
+      payload: { ...memberInvitation, churchLocality: 'Centro, Campinas/SP' },
+      from: 'Church <church@example.com>',
+      locale: 'pt-BR',
+      appName,
+    });
+
+    expect(withPlace.request.text).toContain(place);
+    expect(prepare().request.text).not.toContain('Campinas');
+  });
+
   it("renders T1's inviter-led serve offer in the Church Timezone with See invitation and the raw URL", () => {
     const { locale, request } = prepare();
     const offer = {

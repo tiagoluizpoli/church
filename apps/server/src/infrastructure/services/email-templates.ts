@@ -363,14 +363,18 @@ function memberNotificationContent({
     };
   }
   if (payload.kind === 'invitation.ministry') {
-    return {
-      ...base,
-      ...ministryOfferContent({ offer: payload, locale }),
-      action: {
-        label: m.notification_ministry_invitation_action({}, options),
-        url: payload.redemptionUrl,
+    return withChurchPlace({
+      content: {
+        ...base,
+        ...ministryOfferContent({ offer: payload, locale }),
+        action: {
+          label: m.notification_ministry_invitation_action({}, options),
+          url: payload.redemptionUrl,
+        },
       },
-    };
+      payload,
+      locale,
+    });
   }
   const { cycleName } = payload;
   const title =
@@ -775,10 +779,27 @@ function invitationContent({
   payload,
   locale,
 }: InvitationContentInput): EmailContent {
+  return withChurchPlace({
+    content: invitationBody({ payload, locale }),
+    payload,
+    locale,
+  });
+}
+
+interface WithChurchPlaceInput {
+  content: EmailContent;
+  payload: { churchName: string; churchLocality?: string };
+  locale: EmailLocale;
+}
+
+/** Tells a same-named Church apart, as the select-church screen does. */
+function withChurchPlace({
+  content,
+  payload,
+  locale,
+}: WithChurchPlaceInput): EmailContent {
   const { churchName, churchLocality } = payload;
-  const content = invitationBody({ payload, locale });
   if (!churchLocality) return content;
-  // Tells a same-named Church apart, as the select-church screen does.
   const placeLine = m.email_invitation_church_place(
     { churchName, locality: churchLocality },
     { locale },

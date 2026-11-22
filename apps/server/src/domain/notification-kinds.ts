@@ -20,6 +20,7 @@ const ministryInvitationOfferFactsSchema = z.object({
 const queuedChurchIdentitySchema = z.object({
   churchLogoUrl: z.string().nullable().optional(),
   churchAccent: z.string().nullable().optional(),
+  churchLocality: z.string().optional(),
 });
 
 /** The Church identity every queued Church-scoped request carries, each nullable but never absent. */
@@ -357,9 +358,10 @@ export type NotificationEnqueueDataOf<K extends NotificationRequestKind> =
 export const notificationRequestDataSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   ministry_invitation:
-    notificationEnqueueDataSchemas.ministry_invitation.extend(
-      requiredChurchIdentitySchema.shape,
-    ),
+    notificationEnqueueDataSchemas.ministry_invitation.extend({
+      ...requiredChurchIdentitySchema.shape,
+      churchLocality: z.string().optional(),
+    }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   availability_opened:
     notificationEnqueueDataSchemas.availability_opened.extend(
@@ -435,6 +437,7 @@ export interface MinistryInvitationDeliveryFacts {
   churchName: string;
   churchLogoUrl?: string | null;
   churchAccent?: string | null;
+  churchLocality?: string;
   churchTimezone: string;
   inviterName: string;
   ministryAccessLevel: MinistryAccessLevel;

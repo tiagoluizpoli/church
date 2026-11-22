@@ -307,6 +307,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     ministryInvitationId,
     churchLogoUrl,
     churchAccent,
+    churchLocality,
   }: LoadPendingInvitationFactsInput): Promise<MinistryInvitationDeliveryFacts | null> {
     const invitation = await this.invitationRepository.findById({
       churchId,
@@ -332,6 +333,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       churchName: church.name,
       churchLogoUrl,
       churchAccent,
+      churchLocality,
       churchTimezone: church.timezone,
       inviterName,
       ministryAccessLevel: invitation.ministryAccessLevel,
@@ -357,6 +359,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ministryInvitationId: request.data.ministryInvitationId,
           churchLogoUrl: request.data.churchLogoUrl,
           churchAccent: request.data.churchAccent,
+          churchLocality: request.data.churchLocality,
         });
       case 'availability_opened':
       case 'availability_reminder':
@@ -830,6 +833,7 @@ interface LoadPendingInvitationFactsInput {
   ministryInvitationId: string;
   churchLogoUrl?: string | null;
   churchAccent?: string | null;
+  churchLocality?: string;
 }
 
 interface LoadDeliveryFactsInput {

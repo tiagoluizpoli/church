@@ -557,6 +557,7 @@ export function toTemplateLibraryTableRow({
       locale,
     }),
     blockCount: template.blocks.length,
+    publicBlockCount: template.publicBlockCount,
     description: describeTemplate({ template, locale }),
   };
 }

@@ -147,6 +147,7 @@ function TemplateEditForm({ template }: TemplateEditFormProps) {
       {deleting ? (
         <TemplateDeleteDialog
           templateId={template.id}
+          publicBlockCount={template.publicBlockCount}
           onClose={() => setDeleting(false)}
           onDeleted={() => navigate({ to: '/app/event-templates' })}
         />

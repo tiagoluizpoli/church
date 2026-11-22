@@ -390,6 +390,8 @@
   "event_templates_delete_description": "Excluir remove o modelo e seus blocos. Os eventos existentes e suas escalas continuam como estão.",
   "event_templates_delete_count_one": "A configuração padrão de 1 ministério será removida.",
   "event_templates_delete_count_other": "A configuração padrão de {count} ministérios será removida.",
+  "event_templates_delete_public_count_one": "1 item público será removido da Programação.",
+  "event_templates_delete_public_count_other": "{count} itens públicos serão removidos da Programação.",
   "event_templates_delete_usage_loading": "Verificando quais ministérios usam este modelo…",
   "event_templates_delete_usage_failed": "Não foi possível verificar quais ministérios usam este modelo. Nada foi excluído.",
   "event_templates_delete_failed": "Não foi possível excluir o modelo. Nada foi excluído; tente novamente.",

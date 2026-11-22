@@ -47,6 +47,7 @@ describe('useTemplateBreadcrumb', () => {
       churchId: 'church-1',
       name: 'Culto de domingo',
       weekday: 0,
+      publicBlockCount: 0,
       blocks: [],
       createdAt: '2026-07-01T00:00:00.000Z',
       updatedAt: '2026-07-01T00:00:00.000Z',

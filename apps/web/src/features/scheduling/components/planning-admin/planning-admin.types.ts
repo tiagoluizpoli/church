@@ -49,6 +49,7 @@ export interface TemplateLibraryTableRow {
   name: string;
   weekday: string;
   blockCount: number;
+  publicBlockCount: number;
   description: string;
 }
 

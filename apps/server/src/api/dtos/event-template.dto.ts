@@ -72,6 +72,8 @@ export const eventTemplateResponseSchema = z.object({
   churchId: z.string(),
   name: z.string(),
   weekday: z.number(),
+  /** How many blocks feed the Church Programme; the list badge and delete warning read it. */
+  publicBlockCount: z.number(),
   blocks: z.array(eventTemplateTimeBlockResponseSchema),
   createdAt: instantSchema,
   updatedAt: instantSchema,
@@ -98,6 +100,7 @@ function toEventTemplateResponse(template: EventTemplate) {
     churchId: template.churchId as string,
     name: template.name,
     weekday: template.weekday,
+    publicBlockCount: template.blocks.filter((block) => block.isPublic).length,
     blocks: template.blocks.map((block) => ({
       id: block.id as string,
       churchId: block.churchId as string,

@@ -94,6 +94,8 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
               eventId: 'event-1',
               startTime: '2026-07-05T09:00:00.000Z',
               endTime: '2026-07-05T11:00:00.000Z',
+              isPublic: false,
+              place: null,
               status: 'active',
               requirements: [],
             },

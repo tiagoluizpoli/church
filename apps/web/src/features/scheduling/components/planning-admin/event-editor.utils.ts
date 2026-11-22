@@ -3,6 +3,7 @@ import {
   compareCalendarDays,
   compareInstants,
   type Instant,
+  now,
   parseCalendarDay,
   parseInstant,
   parseTimeOfDay,
@@ -24,6 +25,10 @@ export interface EventEditorBlock {
   label: string;
   start: Instant;
   end: Instant;
+  isPublic: boolean;
+  place: string;
+  /** A persisted block that has started: Público and place no longer change. */
+  locked: boolean;
   /** The initial whole-Event row follows title and bounds until edited. */
   followsEvent: boolean;
 }
@@ -71,7 +76,16 @@ export function createEventForm({
     start,
     end,
     blocks: [
-      { key: nextBlockKey(), label: '', start, end, followsEvent: true },
+      {
+        key: nextBlockKey(),
+        label: '',
+        start,
+        end,
+        isPublic: false,
+        place: '',
+        locked: false,
+        followsEvent: true,
+      },
     ],
   };
 }
@@ -96,6 +110,13 @@ export function editEventForm({
       label: block.label ?? '',
       start: parseInstant({ value: block.startTime }),
       end: parseInstant({ value: block.endTime }),
+      isPublic: block.isPublic,
+      place: block.place ?? '',
+      locked:
+        compareInstants({
+          left: parseInstant({ value: block.startTime }),
+          right: now(),
+        }) <= 0,
       followsEvent: false,
     })),
   };
@@ -116,6 +137,9 @@ export function addEventBlock({ form }: AddBlockInput): EventEditorFormState {
         label: '',
         start: form.start,
         end: form.end,
+        isPublic: false,
+        place: '',
+        locked: false,
         followsEvent: false,
       },
     ],
@@ -149,7 +173,9 @@ export function changeEventField({
 
 export type EventBlockChange =
   | { blockKey: string; field: 'label'; value: string }
-  | { blockKey: string; field: 'start' | 'end'; value: Instant };
+  | { blockKey: string; field: 'start' | 'end'; value: Instant }
+  | { blockKey: string; field: 'isPublic'; value: boolean }
+  | { blockKey: string; field: 'place'; value: string };
 
 interface ChangeBlockInput {
   form: EventEditorFormState;
@@ -289,6 +315,8 @@ export function toCreateEventBody({
       label: block.label.trim(),
       startTime: block.start,
       endTime: block.end,
+      isPublic: block.isPublic,
+      place: block.place.trim(),
     })),
   };
 }

@@ -406,6 +406,9 @@ export type GetCycle200EventsItemEventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: GetCycle200EventsItemEventTimeBlocksItemStatus;
   requirements: GetCycle200EventsItemEventTimeBlocksItemRequirementsItem[];
 };
@@ -809,6 +812,9 @@ export type CreatePlanningEventBodyEventTimeBlocksItem = {
   startTime: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
+  isPublic?: boolean;
+  /** @maxLength 120 */
+  place?: string;
 };
 
 export type CreatePlanningEventBody = {
@@ -877,6 +883,9 @@ export type CreatePlanningEvent201EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: CreatePlanningEvent201EventTimeBlocksItemStatus;
   requirements: CreatePlanningEvent201EventTimeBlocksItemRequirementsItem[];
 };
@@ -928,6 +937,9 @@ export type UpdatePlanningEventBodyEventTimeBlocksItem = {
   startTime: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
+  isPublic?: boolean;
+  /** @maxLength 120 */
+  place?: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id?: string;
 };
@@ -998,6 +1010,9 @@ export type UpdatePlanningEvent200EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: UpdatePlanningEvent200EventTimeBlocksItemStatus;
   requirements: UpdatePlanningEvent200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1051,10 +1066,19 @@ export type DeletePlanningEvent204 = typeof DeletePlanningEvent204[keyof typeof 
 export const DeletePlanningEvent204 = {
 } as const;
 
+export type UpdatePlanningEventDetailsBodyEventTimeBlocksItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id: string;
+  isPublic: boolean;
+  /** @maxLength 120 */
+  place?: string;
+};
+
 export type UpdatePlanningEventDetailsBody = {
   /** @minLength 1 */
   title: string;
   location?: string;
+  eventTimeBlocks?: UpdatePlanningEventDetailsBodyEventTimeBlocksItem[];
 };
 
 export type UpdatePlanningEventDetails200EventStatus = typeof UpdatePlanningEventDetails200EventStatus[keyof typeof UpdatePlanningEventDetails200EventStatus];
@@ -1112,6 +1136,9 @@ export type UpdatePlanningEventDetails200EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: UpdatePlanningEventDetails200EventTimeBlocksItemStatus;
   requirements: UpdatePlanningEventDetails200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1485,6 +1512,9 @@ export type MovePlanningEvent200EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: MovePlanningEvent200EventTimeBlocksItemStatus;
   requirements: MovePlanningEvent200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1586,6 +1616,9 @@ export type CreatePlanningEventTimeBlock201 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: CreatePlanningEventTimeBlock201Status;
   requirements: CreatePlanningEventTimeBlock201RequirementsItem[];
 };
@@ -1769,6 +1802,9 @@ export type MovePlanningEventTimeBlock200EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: MovePlanningEventTimeBlock200EventTimeBlocksItemStatus;
   requirements: MovePlanningEventTimeBlock200EventTimeBlocksItemRequirementsItem[];
 };
@@ -2045,6 +2081,9 @@ export type UpdatePlanningEventTimeBlock200 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: UpdatePlanningEventTimeBlock200Status;
   requirements: UpdatePlanningEventTimeBlock200RequirementsItem[];
 };
@@ -3712,6 +3751,9 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlock 
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockStatus;
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockRequirementsItem[];
 };
@@ -3957,6 +3999,9 @@ export type SaveEventTimeBlockPreparation200EventTimeBlock = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: SaveEventTimeBlockPreparation200EventTimeBlockStatus;
   requirements: SaveEventTimeBlockPreparation200EventTimeBlockRequirementsItem[];
 };
@@ -4461,6 +4506,9 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlock = 
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
   status: GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlockStatus;
   requirements: GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlockRequirementsItem[];
 };

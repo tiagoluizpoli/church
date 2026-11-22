@@ -59,6 +59,8 @@ function makeEventGroup(eventTimeBlockCount: number): CycleEventGroup {
         eventId: 'event-1',
         startTime: '2027-01-03T09:00:00.000Z',
         endTime: '2027-01-03T09:30:00.000Z',
+        isPublic: false,
+        place: null,
         status: 'active',
         requirements: [],
       }),

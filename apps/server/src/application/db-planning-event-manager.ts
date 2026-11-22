@@ -56,6 +56,7 @@ import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import {
   IllegalStateTransitionError,
   LastRemainingEventTimeBlockError,
+  PublicInfoLockedError,
 } from '../domain/errors';
 import {
   CycleEventGenerator,
@@ -444,6 +445,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             label: block.label,
             startTime: block.startTime,
             endTime: block.endTime,
+            isPublic: block.isPublic,
+            place: block.place || undefined,
             tx,
           }),
         );
@@ -545,12 +548,16 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
       const blockIds: EventTimeBlockId[] = [];
       for (const block of input.eventTimeBlocks) {
-        const { id, label, startTime, endTime } = block;
+        const { id, label, startTime, endTime, isPublic, place } = block;
         if (id) {
+          const current = persisted.find((stored) => stored.id === id);
+          const publicFields = current
+            ? changedPublicFields({ block: current, isPublic, place })
+            : {};
           await this.eventTimeBlockRepository.update({
             churchId,
             eventTimeBlockId: id,
-            input: { label, startTime, endTime },
+            input: { label, startTime, endTime, ...publicFields },
             tx,
           });
           blockIds.push(id);
@@ -562,6 +569,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
               label,
               startTime,
               endTime,
+              isPublic,
+              place: place || undefined,
               tx,
             }),
           );
@@ -607,11 +616,42 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         location: input.location ?? null,
         tx,
       });
-      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+      const stored = await this.eventTimeBlockRepository.listByEvent({
         churchId,
         eventId,
         tx,
       });
+      const edits = input.eventTimeBlocks ?? [];
+      const patches = edits.map(({ id, isPublic, place }) => {
+        const block = stored.find((candidate) => candidate.id === id);
+        if (!block) {
+          throw new NotFoundError(`EventTimeBlock not found: ${id}`);
+        }
+        // An omitted place clears it, like the location.
+        const patch = changedPublicFields({
+          block,
+          isPublic,
+          place: place ?? '',
+        });
+        return { id, patch };
+      });
+      // Sequential: concurrent queries on one transaction connection warn in pg.
+      for (const { id, patch } of patches) {
+        if (Object.keys(patch).length === 0) continue;
+        await this.eventTimeBlockRepository.update({
+          churchId,
+          eventTimeBlockId: id,
+          input: patch,
+          tx,
+        });
+      }
+      const eventTimeBlocks = patches.length
+        ? await this.eventTimeBlockRepository.listByEvent({
+            churchId,
+            eventId,
+            tx,
+          })
+        : stored;
       return { event, eventTimeBlocks };
     });
   }
@@ -1352,6 +1392,41 @@ interface ListInOrderInput {
   eventId: EventId;
   blockIds: EventTimeBlockId[];
   tx: TransactionContext;
+}
+
+interface ChangedPublicFieldsInput {
+  block: EventTimeBlock;
+  isPublic?: boolean;
+  /** Empty clears; absent keeps. */
+  place?: string;
+}
+
+interface PublicFieldsPatch {
+  isPublic?: boolean;
+  place?: string | null;
+}
+
+/** The Público/place values that differ from the block; refused once it started. */
+function changedPublicFields({
+  block,
+  isPublic,
+  place,
+}: ChangedPublicFieldsInput): PublicFieldsPatch {
+  const nextPlace = place === undefined ? undefined : place || null;
+  const patch = {
+    ...(isPublic !== undefined && isPublic !== block.isPublic
+      ? { isPublic }
+      : {}),
+    ...(nextPlace !== undefined && nextPlace !== (block.place ?? null)
+      ? { place: nextPlace }
+      : {}),
+  };
+  const changed = Object.keys(patch).length > 0;
+  const started = compareInstants({ left: block.startTime, right: now() }) <= 0;
+  if (changed && started) {
+    throw new PublicInfoLockedError();
+  }
+  return patch;
 }
 
 /** A create or edit request as the shared final-graph validator reads it. */

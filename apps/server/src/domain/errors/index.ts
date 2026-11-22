@@ -36,6 +36,7 @@ export * from './move-window-closed';
 export * from './overlapping-cycle';
 export * from './pending-church-invitation-exists';
 export * from './pending-ministry-invitation-exists';
+export * from './public-info-locked';
 export * from './role-in-use';
 export * from './role-name-in-use';
 export * from './sector-in-use';

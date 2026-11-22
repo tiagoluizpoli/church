@@ -878,6 +878,65 @@ describe('POST /admin/cycles/:cycleId/events on a Sent Cycle', () => {
   });
 });
 
+function publicEvent() {
+  const event = eveningEvent();
+  return {
+    ...event,
+    eventTimeBlocks: [
+      { ...event.eventTimeBlocks[0], isPublic: true, place: ' Salão anexo ' },
+    ],
+  };
+}
+
+describe('Público and place on a created Event', () => {
+  it.each([
+    'draft',
+    'sent',
+  ] as const)('saves Público and a trimmed place in a %s Cycle', async (state) => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: publicEvent(),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().eventTimeBlocks[0]).toMatchObject({
+      isPublic: true,
+      place: 'Salão anexo',
+    });
+  });
+
+  it('defaults a block to private with no place', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: eveningEvent(),
+    });
+
+    expect(response.json().eventTimeBlocks[0]).toMatchObject({
+      isPublic: false,
+      place: null,
+    });
+  });
+
+  it('refuses a Ministry leader sending the fields and writes nothing', async () => {
+    const seed = await signIn({ persona: 'leader' });
+    const target = await seedCycle({ churchId: seed.churchAId });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: publicEvent(),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(await graphCounts()).toEqual(EMPTY_GRAPH);
+  });
+});
+
 describe('Add Event access', () => {
   it('returns 401 signed out', async () => {
     const seed = await seedSchedulingPhase3Base();

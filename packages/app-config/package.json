@@ -11,6 +11,10 @@
       "types": "./src/church-slug.ts",
       "default": "./src/church-slug.ts"
     },
+    "./directions": {
+      "types": "./src/directions.ts",
+      "default": "./src/directions.ts"
+    },
     "./social-networks": {
       "types": "./src/social-networks.ts",
       "default": "./src/social-networks.ts"

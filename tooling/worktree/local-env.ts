@@ -25,6 +25,12 @@ import {
   unquoted,
 } from './shared-values';
 import {
+  LOCAL_STORAGE_CREDENTIAL,
+  LOCAL_STORAGE_ENDPOINT,
+  LOCAL_STORAGE_PORT,
+  worktreeBucketName,
+} from './storage-targets';
+import {
   deriveWorktreeIdentity,
   PRIMARY_WORKTREE_IDENTITY,
 } from './worktree-identity';
@@ -204,6 +210,7 @@ function generatedValues(input: LocalEnvInput): Map<string, string> {
   const host = worktreeHostname({ worktree, domain: devDomain });
   const serverUrl = `http://${host}:${ports.server}`;
   const webUrl = `http://${host}:${ports.web}`;
+  const bucket = worktreeBucketName({ worktree });
 
   return new Map([
     ['CHURCH_WORKTREE', worktree],
@@ -216,6 +223,12 @@ function generatedValues(input: LocalEnvInput): Map<string, string> {
     ['CORS_ORIGIN', webUrl],
     ['BETTER_AUTH_SECRET', betterAuthSecret],
     ['DATABASE_URL', databaseUrlSelector({ worktree })],
+    ['S3_ENDPOINT', LOCAL_STORAGE_ENDPOINT],
+    ['S3_BUCKET', bucket],
+    ['S3_ACCESS_KEY_ID', LOCAL_STORAGE_CREDENTIAL],
+    ['S3_SECRET_ACCESS_KEY', LOCAL_STORAGE_CREDENTIAL],
+    // The dev hostname, so a phone on the tailnet loads public objects too.
+    ['STORAGE_PUBLIC_URL', `http://${host}:${LOCAL_STORAGE_PORT}/${bucket}`],
   ]);
 }
 

@@ -90,12 +90,21 @@ interface DraftFields {
   longitude: number | null;
   pinSource: AddressDraft['pinSource'];
   /** The Google place the fields came from; kept only while street, number and city stay as picked. */
-  picked: {
-    placeId: string;
-    street: string;
-    number: string;
-    city: string;
-  } | null;
+  picked: PickedOrigin | null;
+}
+
+/** What a Google pick filled, to tell whether the admin changed it since. */
+interface PickedOrigin {
+  placeId: string;
+  street: string;
+  number: string;
+  city: string;
+}
+
+/** An address the admin asked to delete, with where it is still used. */
+interface PendingDeletion {
+  address: AddressDraft;
+  usage: GetChurchAddressUsage200;
 }
 
 interface ToFieldsInput {
@@ -723,9 +732,9 @@ export function AddressSection({
   onDelete,
 }: AddressSectionProps) {
   const sizes = useControlSizes();
-  const [deleting, setDeleting] = React.useState<
-    { address: AddressDraft; usage: GetChurchAddressUsage200 } | undefined
-  >(undefined);
+  const [deleting, setDeleting] = React.useState<PendingDeletion | undefined>(
+    undefined,
+  );
   const [editingKey, setEditingKey] = React.useState<string | null | undefined>(
     undefined,
   );

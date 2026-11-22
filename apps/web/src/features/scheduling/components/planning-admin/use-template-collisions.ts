@@ -9,9 +9,15 @@ import type { CreateEventTemplate409 } from '@/infrastructure/api/churchAPI.sche
 
 const UNANSWERED_COLLISIONS_CODE = 'UNANSWERED_TEMPLATE_COLLISIONS';
 
+/** One collision answer, in the shape the save body takes. */
+export interface CollisionAnswer {
+  otherTemplateId: string;
+  answer: PrecedenceAnswer;
+}
+
 export interface UseTemplateCollisionsResult {
   /** Answers collected so far, in the shape the save body takes. */
-  precedences: { otherTemplateId: string; answer: PrecedenceAnswer }[];
+  precedences: CollisionAnswer[];
   /** True when the error was the collision refusal and the dialog now asks. */
   handleError: (error: unknown) => boolean;
   dialog: Omit<TemplateCollisionDialogProps, 'pending' | 'onConfirm'>;

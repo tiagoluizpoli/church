@@ -44,10 +44,14 @@ export interface GooglePlace {
   addressComponents?: PlaceAddressComponent[] | null;
   location?: GoogleLatLng | null;
 }
+interface FetchFieldsRequest {
+  fields: string[];
+}
+interface FetchablePlace extends GooglePlace {
+  fetchFields: (request: FetchFieldsRequest) => Promise<unknown>;
+}
 interface PlacePrediction {
-  toPlace: () => GooglePlace & {
-    fetchFields: (request: { fields: string[] }) => Promise<unknown>;
-  };
+  toPlace: () => FetchablePlace;
 }
 interface PlaceSelectEvent extends Event {
   placePrediction: PlacePrediction;

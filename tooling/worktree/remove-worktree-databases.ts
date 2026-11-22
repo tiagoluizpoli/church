@@ -197,7 +197,13 @@ export function reportRemoval(input: ReportRemovalInput): void {
 
 /** Deletes the worktree's bucket once its databases were dropped (the same
  * identity checks apply); warns, never throws, so removal proceeds. */
-async function removeWorktreeBucket(input: { cwd: string }): Promise<void> {
+interface RemoveWorktreeBucketInput {
+  cwd: string;
+}
+
+async function removeWorktreeBucket(
+  input: RemoveWorktreeBucketInput,
+): Promise<void> {
   const worktree = readGeneratedWorktreeIdentity({ cwd: input.cwd });
   if (worktree === undefined) return;
   const bucket = worktreeBucketName({ worktree });

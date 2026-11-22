@@ -77,6 +77,8 @@ type FieldErrors = Record<string, string>;
 
 const INFO_FIELDS = ['name', 'slug', 'website', 'accentColor'];
 const CONTACTS_PREFIX = 'contacts.';
+/** Below Tailwind's `md` breakpoint: the phone layout with touch targets. */
+const MOBILE_QUERY = '(max-width: 767px)';
 
 const SLUG_REFUSAL_MESSAGES: Record<ChurchSlugRefusal, () => string> = {
   LENGTH: m.error_church_settings_slug_length,
@@ -266,7 +268,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   );
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [confirmingSlug, setConfirmingSlug] = React.useState(false);
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useMediaQuery(MOBILE_QUERY);
   const saveSettings = useSaveChurchSettings();
 
   // A new read replaces the form only when it holds no unsaved edit, or when

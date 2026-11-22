@@ -2,9 +2,28 @@ interface AccentTextColorInput {
   accentColor: string;
 }
 
+// WCAG 2 relative luminance and contrast (sRGB transfer and channel weights).
+const CHANNEL_MAX = 255;
+const SRGB_LINEAR_CUTOFF = 0.03928;
+const SRGB_LINEAR_SLOPE = 12.92;
+const SRGB_OFFSET = 0.055;
+const SRGB_SCALE = 1.055;
+const SRGB_GAMMA = 2.4;
+const RED_WEIGHT = 0.2126;
+const GREEN_WEIGHT = 0.7152;
+const BLUE_WEIGHT = 0.0722;
+const CONTRAST_FLARE = 0.05;
+const WHITE_LUMINANCE = 1;
+/** Where `#rrggbb` holds the red, green and blue pairs. */
+const CHANNEL_OFFSETS = [1, 3, 5];
+const HEX_PAIR = 2;
+const HEX_RADIX = 16;
+
 function channelLuminance(channel: number): number {
-  const value = channel / 255;
-  return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  const value = channel / CHANNEL_MAX;
+  return value <= SRGB_LINEAR_CUTOFF
+    ? value / SRGB_LINEAR_SLOPE
+    : ((value + SRGB_OFFSET) / SRGB_SCALE) ** SRGB_GAMMA;
 }
 
 /**
@@ -14,11 +33,14 @@ function channelLuminance(channel: number): number {
 export function accentTextColor({
   accentColor,
 }: AccentTextColorInput): '#ffffff' | '#111111' {
-  const [red = 0, green = 0, blue = 0] = [1, 3, 5].map((start) =>
-    channelLuminance(Number.parseInt(accentColor.slice(start, start + 2), 16)),
-  );
-  const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-  return 1.05 / (luminance + 0.05) >= (luminance + 0.05) / 0.05
-    ? '#ffffff'
-    : '#111111';
+  const [red = 0, green = 0, blue = 0] = CHANNEL_OFFSETS.map((start) => {
+    const pair = accentColor.slice(start, start + HEX_PAIR);
+    return channelLuminance(Number.parseInt(pair, HEX_RADIX));
+  });
+  const luminance =
+    RED_WEIGHT * red + GREEN_WEIGHT * green + BLUE_WEIGHT * blue;
+  const onWhite =
+    (WHITE_LUMINANCE + CONTRAST_FLARE) / (luminance + CONTRAST_FLARE);
+  const onBlack = (luminance + CONTRAST_FLARE) / CONTRAST_FLARE;
+  return onWhite >= onBlack ? '#ffffff' : '#111111';
 }

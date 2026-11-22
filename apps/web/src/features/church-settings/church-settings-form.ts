@@ -176,12 +176,14 @@ export function formatCnpj({ digits }: FormatCnpjInput): string {
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
-interface IsHexColorInput {
+interface PaintableAccentInput {
   value: string | null;
 }
 
 /** The typed accent when it is a complete `#rrggbb`, safe to paint with; otherwise `null`. */
-export function paintableAccent({ value }: IsHexColorInput): string | null {
+export function paintableAccent({
+  value,
+}: PaintableAccentInput): string | null {
   return value !== null && HEX_COLOR.test(value) ? value : null;
 }
 

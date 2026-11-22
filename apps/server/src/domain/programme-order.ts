@@ -10,11 +10,13 @@ interface PlacementInput {
   recurrence: Recurrence;
 }
 
-/** Where a Recurrence sits in the Programme: weekday group (0) or day-of-month group (1), then the weekday or day. */
-function placement({ recurrence }: PlacementInput): {
+interface Placement {
   group: 0 | 1;
   position: number;
-} {
+}
+
+/** Where a Recurrence sits in the Programme: weekday group (0) or day-of-month group (1), then the weekday or day. */
+function placement({ recurrence }: PlacementInput): Placement {
   if (recurrence.kind === 'weekly') {
     return { group: 0, position: Math.min(...recurrence.weekdays) };
   }

@@ -19,27 +19,27 @@ export function SetupChecklist({ progress }: SetupChecklistProps) {
     {
       done: progress.hasMinistry,
       label: m.home_setup_ministry(),
-      href: '/ministries',
+      href: '/app/ministries',
     },
     {
       done: progress.hasMinistryWithSectorsAndRoles,
       label: m.home_setup_sectors_roles(),
-      href: '/ministries',
+      href: '/app/ministries',
     },
     {
       done: progress.hasInvitedLeader,
       label: m.home_setup_leader(),
-      href: '/invitations',
+      href: '/app/invitations',
     },
     {
       done: progress.hasEventTemplate,
       label: m.home_setup_template(),
-      href: '/event-templates',
+      href: '/app/event-templates',
     },
     {
       done: progress.hasEverSentCycle,
       label: m.home_setup_cycle(),
-      href: '/cycles',
+      href: '/app/cycles',
     },
   ];
 

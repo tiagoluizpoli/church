@@ -209,7 +209,7 @@ describe('NewCycleDialog', () => {
 
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
-        to: '/cycles/$cycleId',
+        to: '/app/cycles/$cycleId',
         params: { cycleId: 'cycle-9' },
       }),
     );

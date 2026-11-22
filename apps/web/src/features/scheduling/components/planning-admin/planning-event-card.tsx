@@ -136,7 +136,7 @@ export function PlanningEventCard({
         >
           {!isReadOnly ? (
             <Link
-              to="/cycles/$cycleId/events/$eventId"
+              to="/app/cycles/$cycleId/events/$eventId"
               params={{ cycleId, eventId: row.eventId }}
               className={buttonVariants({ size: 'touch', variant: 'ghost' })}
               aria-label={m.cycle_review_edit_day({ title: row.title })}

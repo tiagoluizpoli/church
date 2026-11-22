@@ -238,12 +238,12 @@ const PREPARE_ROUTE_FILES = [
   'schedules.tsx',
   'schedules/index.tsx',
   'schedules/$ministryId/$cycleId/_prepare',
-].map((f) => `apps/web/src/routes/_authenticated/_active-church/${f}`);
+].map((f) => `apps/web/src/routes/app/_active-church/${f}`);
 
 export const JOURNEY_MAP: JourneyMapping[] = [
   ...[
-    'apps/web/src/routes/_authenticated/_active-church/availability.tsx',
-    'apps/web/src/routes/_authenticated/_active-church/availability_.$checkId.tsx',
+    'apps/web/src/routes/app/_active-church/availability.tsx',
+    'apps/web/src/routes/app/_active-church/availability_.$checkId.tsx',
     'apps/web/src/features/volunteers/components/availability-list-page.tsx',
     'apps/web/src/features/volunteers/components/availability-detail-page.tsx',
     'apps/web/src/features/volunteers/components/availability-detail/',
@@ -257,8 +257,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: VOLUNTEER_AVAILABILITY_SPEC_PATHS,
   })),
   ...[
-    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare',
-    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
+    'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare',
+    'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
     'apps/web/src/features/scheduling/components/prepare/schedule-ask.tsx',
     'apps/web/src/features/scheduling/components/availability-status-section.tsx',
     'apps/web/src/infrastructure/api/prepare.ts',
@@ -272,7 +272,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   })),
   ...[
     'apps/web/src/features/people/',
-    'apps/web/src/routes/_authenticated/_active-church/people',
+    'apps/web/src/routes/app/_active-church/people',
     'apps/server/src/api/controllers/people-controller.ts',
     'apps/server/src/api/dtos/people-list.dto.ts',
     'apps/server/src/application/db-people-list-manager.ts',
@@ -291,7 +291,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     'apps/web/src/features/ministries/components/ministry-list-page.tsx',
     'apps/web/src/features/ministries/components/usual-setup/usual-setup-list.tsx',
     'apps/web/src/features/ministries/ministry-queries.ts',
-    'apps/web/src/routes/_authenticated/_active-church/ministries/index.tsx',
+    'apps/web/src/routes/app/_active-church/ministries/index.tsx',
     'apps/server/src/api/dtos/ministry.dto.ts',
     'apps/server/src/domain/ministry-list-cursor.ts',
   ].map((sourcePathPrefix) => ({
@@ -399,8 +399,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: INVITATION_JOURNEY_SPEC_PATHS,
   },
   {
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/invitations/',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church/invitations/',
     specPaths: INVITATION_JOURNEY_SPEC_PATHS,
   },
   {
@@ -419,7 +418,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: CHURCH_INVITATION_SPEC_PATHS,
   },
   {
-    sourcePathPrefix: 'apps/web/src/routes/_authenticated/invitations/',
+    sourcePathPrefix: 'apps/web/src/routes/app/invitations/',
     specPaths: REDEMPTION_SPEC_PATHS,
   },
   {
@@ -432,7 +431,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: CHURCH_INVITATION_SPEC_PATHS,
   })),
   {
-    sourcePathPrefix: 'apps/web/src/routes/_authenticated/_active-church.tsx',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church.tsx',
     specPaths: [
       'tests/identity/active-church-switching.spec.ts',
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
@@ -450,7 +449,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // index route file: capability-index.spec.ts is the only spec that
     // navigates to the bare `/scheduling` landing page it renders.
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/scheduling/index.tsx',
+      'apps/web/src/routes/app/_active-church/scheduling/index.tsx',
     specPaths: ['tests/scheduling/capability-index.spec.ts'],
   },
   {
@@ -509,8 +508,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // specs, the only ones that exercise the cycles routes and
     // planning-admin feature components. The generic prefixes above only
     // select smoke/us4, which never touch this dialog-driven flow.
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/_planning-admin',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church/_planning-admin',
     specPaths: [
       'tests/scheduling/event-templates.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
@@ -567,7 +565,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     ],
   })),
   ...[
-    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
+    'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
     'apps/web/src/features/scheduling/hooks/use-preparation-block-breadcrumbs.ts',
     'apps/web/src/features/scheduling/components/headcount-grid/',
     'apps/web/src/features/scheduling/components/shift-split-editor/',
@@ -580,7 +578,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     // J5 reaches this one-Ministry Prepare route from the N2 bell action.
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare',
+      'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare',
     specPaths: CYCLE_HANDOFF_SPEC_PATHS,
   },
   {
@@ -641,7 +639,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // own unit test and is deliberately not re-proven at this layer, but this
   // file still drives the redirect target the spec asserts on.
   {
-    sourcePathPrefix: 'apps/web/src/routes/_authenticated.tsx',
+    sourcePathPrefix: 'apps/web/src/routes/app.tsx',
     specPaths: ['tests/identity/route-protection.spec.ts'],
   },
   // #219 — the breadcrumb component a11y-planning-nav.spec.ts scans and
@@ -677,8 +675,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: ['tests/identity/route-protection.spec.ts'],
   },
   {
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/index.tsx',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church/index.tsx',
     specPaths: ['tests/identity/route-protection.spec.ts'],
   },
   // #214 — Volunteer Transfer (#65): the split screen and its three
@@ -687,8 +684,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // controller's transfer preview/confirm endpoints (which also serve plain
   // redemption, hence both spec sets) and the transfer manager.
   {
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/invitations/ministry/',
+    sourcePathPrefix: 'apps/web/src/routes/app/invitations/ministry/',
     specPaths: VOLUNTEER_TRANSFER_SPEC_PATHS,
   },
   {
@@ -713,8 +709,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // response, proven end to end by these two specs, the only ones that drive
   // the dashboard route's availability/assignments sections.
   {
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/dashboard.tsx',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church/dashboard.tsx',
     specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
   },
   {
@@ -786,7 +781,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/notifications.tsx',
+      'apps/web/src/routes/app/_active-church/notifications.tsx',
     specPaths: NOTIFICATION_BELL_SPEC_PATHS,
   },
   {
@@ -836,7 +831,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // the Playwright layer instead of moving down like #219's other six specs.
   {
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign',
+      'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/assign',
     specPaths: ['tests/scheduling/a11y-builder.spec.ts'],
   },
   {

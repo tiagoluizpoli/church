@@ -29,17 +29,17 @@ import {
   WorkspacePage,
 } from '@/components/workspace-page';
 
-const CYCLES_PATH = '/cycles';
+const CYCLES_PATH = '/app/cycles';
 
 interface PathnameInput {
   pathname: string;
 }
 
 function isTemplatesPath({ pathname }: PathnameInput): boolean {
-  return pathname.includes('/event-templates');
+  return pathname.includes('/app/event-templates');
 }
 
-/** A nested Event page under a Cycle, e.g. `/cycles/:id/events/new`. */
+/** A nested Event page under a Cycle, e.g. `/app/cycles/:id/events/new`. */
 function isEventEditorPath({ pathname }: PathnameInput): boolean {
   return pathname.includes('/events/');
 }
@@ -196,7 +196,7 @@ function CyclesActions({ pathname }: CyclesActionsProps) {
         ) : null}
         {canAddEvent && selectedCycle ? (
           <Link
-            to="/cycles/$cycleId/events/new"
+            to="/app/cycles/$cycleId/events/new"
             params={{ cycleId: selectedCycle.id }}
             data-testid="add-event-link"
             className={buttonVariants()}

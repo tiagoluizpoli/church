@@ -194,7 +194,7 @@ export function assignBuilderPath({
   ministryId,
   cycleId,
 }: AssignBuilderPathInput): string {
-  return `/schedules/${ministryId}/${cycleId}/assign`;
+  return `/app/schedules/${ministryId}/${cycleId}/assign`;
 }
 
 interface JourneyRow {
@@ -230,7 +230,7 @@ export function assignPreparePath({
   ministryId,
   cycleId,
 }: SchedulePathInput): string {
-  return `/schedules/${ministryId}/${cycleId}`;
+  return `/app/schedules/${ministryId}/${cycleId}`;
 }
 
 export interface RequirementCellInput {

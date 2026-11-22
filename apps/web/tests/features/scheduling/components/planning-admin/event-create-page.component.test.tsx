@@ -147,7 +147,7 @@ describe('EventCreatePage', () => {
     expect(saveButton()).toBeDisabled();
     expect(
       screen.getByRole('link', { name: m.event_editor_cancel() }),
-    ).toHaveAttribute('href', '/cycles/cycle-1');
+    ).toHaveAttribute('href', '/app/cycles/cycle-1');
     expect(screen.queryByLabelText(/descri/i)).not.toBeInTheDocument();
   });
 
@@ -302,7 +302,7 @@ describe('EventCreatePage', () => {
 
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
-        to: '/cycles/$cycleId',
+        to: '/app/cycles/$cycleId',
         params: { cycleId: 'cycle-1' },
         search: { eventId: 'event-9' },
       }),

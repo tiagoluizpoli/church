@@ -330,7 +330,7 @@ export const PrepareEventTimeBlockList = memo(
           data-testid={
             isMobile ? undefined : `prepare-event-time-block-row-${id}`
           }
-          to="/schedules/$ministryId/$cycleId/slots/$timeSlotId"
+          to="/app/schedules/$ministryId/$cycleId/slots/$timeSlotId"
           params={{ ministryId, cycleId, timeSlotId: id }}
           search={(previous) => previous}
           aria-current={id === selectedBlockId ? 'page' : undefined}
@@ -355,7 +355,7 @@ export const PrepareEventTimeBlockList = memo(
           data-testid={
             isMobile ? `prepare-event-time-block-row-${id}` : undefined
           }
-          to="/schedules/$ministryId/$cycleId/slots/$timeSlotId"
+          to="/app/schedules/$ministryId/$cycleId/slots/$timeSlotId"
           params={{ ministryId, cycleId, timeSlotId: id }}
           search={(previous) => previous}
           aria-current={selected ? 'page' : undefined}

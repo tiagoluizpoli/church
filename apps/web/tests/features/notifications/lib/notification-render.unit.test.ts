@@ -281,7 +281,7 @@ describe('retained scheduling Notifications', () => {
     expect(rendered.body).toContain('23:30–01:00 · Vigília de Natal');
     expect(rendered.body).toContain('09:00–10:00 · Culto');
     expect(resolveNotificationDestination(item).target).toEqual({
-      to: '/my-schedule',
+      to: '/app/my-schedule',
     });
   });
 
@@ -296,7 +296,7 @@ describe('retained scheduling Notifications', () => {
         data: { ...availability, ...facts },
       };
       expect(resolveNotificationDestination(item)).toEqual({
-        target: { to: '/availability' },
+        target: { to: '/app/availability' },
         isFallback: false,
       });
     }
@@ -312,7 +312,7 @@ describe('retained scheduling Notifications', () => {
       data: { ...availability, checkId: ID },
     };
     expect(resolveNotificationDestination(item)).toEqual({
-      target: { to: '/availability/$checkId', params: { checkId: ID } },
+      target: { to: '/app/availability/$checkId', params: { checkId: ID } },
       isFallback: false,
     });
     expect(renderNotification(item).actionLabel).toBe(
@@ -374,7 +374,7 @@ describe('Cycle ready to prepare Notification (N2)', () => {
       ),
     ).toEqual({
       target: {
-        to: '/schedules/$ministryId/$cycleId',
+        to: '/app/schedules/$ministryId/$cycleId',
         params: { ministryId: MINISTRY_A, cycleId: ID },
       },
       isFallback: false,
@@ -391,7 +391,7 @@ describe('Cycle ready to prepare Notification (N2)', () => {
       ),
     ).toEqual({
       target: {
-        to: '/schedules',
+        to: '/app/schedules',
         search: { cycleId: ID, ministryIds: `${MINISTRY_A},${MINISTRY_B}` },
       },
       isFallback: false,
@@ -450,7 +450,7 @@ describe('Event changed Notification (N10 add)', () => {
       resolveNotificationDestination(added([{ id: MINISTRY_A, name: 'A' }])),
     ).toEqual({
       target: {
-        to: '/schedules/$ministryId/$cycleId',
+        to: '/app/schedules/$ministryId/$cycleId',
         params: { ministryId: MINISTRY_A, cycleId: ID },
       },
       isFallback: false,
@@ -464,7 +464,7 @@ describe('Event changed Notification (N10 add)', () => {
       ),
     ).toEqual({
       target: {
-        to: '/schedules',
+        to: '/app/schedules',
         search: { cycleId: ID, ministryIds: `${MINISTRY_A},${MINISTRY_B}` },
       },
       isFallback: false,
@@ -556,7 +556,7 @@ describe('Event cancelled Notifications (N9 and N10 cancel)', () => {
     expect(kindLabel).toBe(m.notification_kind_event_cancelled());
     expect(actionLabel).toBe('Ver minha escala');
     expect(resolveNotificationDestination(cancelled)).toEqual({
-      target: { to: '/my-schedule' },
+      target: { to: '/app/my-schedule' },
       isFallback: false,
     });
   });
@@ -608,7 +608,7 @@ describe('Event cancelled Notifications (N9 and N10 cancel)', () => {
       'Recepção: Ana cancelou. 0 dos seus voluntários foram avisados.',
     );
     expect(resolveNotificationDestination(changed)).toMatchObject({
-      target: { to: '/schedules' },
+      target: { to: '/app/schedules' },
     });
   });
 });
@@ -690,7 +690,7 @@ describe('Ministry invitation Notification (N1)', () => {
     });
     expect(resolveNotificationDestination(legacy)).toEqual({
       target: {
-        to: '/invitations/ministry/$invitationId',
+        to: '/app/invitations/ministry/$invitationId',
         params: { invitationId: ID },
       },
       isFallback: false,
@@ -748,7 +748,7 @@ describe('Swap request Notification (N7)', () => {
     expect(words.kindLabel).toBe(m.notification_kind_swap_request({}, pt));
     expect(resolveNotificationDestination(swap)).toEqual({
       target: {
-        to: '/schedules/$ministryId/$cycleId/assign',
+        to: '/app/schedules/$ministryId/$cycleId/assign',
         params: { ministryId: ID, cycleId: ID },
         // The same deep link the email carries.
         search: { swapRequest: ID },
@@ -792,7 +792,7 @@ describe('Swap request answered Notification (N8)', () => {
     });
     expect(resolveNotificationDestination(item)).toEqual({
       target: {
-        to: '/my-schedule/$assignmentId',
+        to: '/app/my-schedule/$assignmentId',
         params: { assignmentId: ID },
       },
       isFallback: false,

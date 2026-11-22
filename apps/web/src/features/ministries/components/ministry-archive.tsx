@@ -55,7 +55,7 @@ export function MinistryArchive({ ministryId, name }: MinistryArchiveProps) {
     setPending(true);
     try {
       await adminApi.archiveMinistry(ministryId);
-      await navigate({ to: '/ministries' });
+      await navigate({ to: '/app/ministries' });
       await invalidateMinistryReads({ queryClient });
       // The archive revoked the Ministry's pending offers server-side.
       await queryClient.invalidateQueries({
@@ -98,7 +98,7 @@ export function MinistryArchive({ ministryId, name }: MinistryArchiveProps) {
             {refusal.blockers.map((blocker) => (
               <li key={blocker.cycleId}>
                 <Link
-                  to="/schedules/$ministryId/$cycleId"
+                  to="/app/schedules/$ministryId/$cycleId"
                   params={{
                     ministryId: blocker.ministryId,
                     cycleId: blocker.cycleId,

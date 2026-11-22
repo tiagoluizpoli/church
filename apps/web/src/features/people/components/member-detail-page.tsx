@@ -108,7 +108,10 @@ export function MemberDetailPage({ memberId }: MemberDetailPageProps) {
           <p className="text-muted-foreground">
             {status === 403 ? m.shell_no_access() : m.people_detail_not_found()}
           </p>
-          <Link to="/people" className="text-sm underline underline-offset-2">
+          <Link
+            to="/app/people"
+            className="text-sm underline underline-offset-2"
+          >
             {m.people_detail_back()}
           </Link>
         </div>

@@ -191,7 +191,7 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
         {canSwap ? null : (
           // With no Swap request to offer there is no action bar, so the link sits inline.
           <Link
-            to="/my-schedule/$ministryId/$cycleId"
+            to="/app/my-schedule/$ministryId/$cycleId"
             params={{ ministryId, cycleId }}
             className="radius-control -ml-2 inline-flex min-h-11 items-center px-2 font-medium text-primary text-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
           >
@@ -203,7 +203,7 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
         // Fixed, not sticky: the shell's main grows with its content, so sticky never engages there.
         <div className="fixed inset-x-0 bottom-0 z-10 flex gap-3 border-t bg-background px-(--workspace-pad-x) pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] *:flex-1 md:static md:border-0 md:bg-transparent md:p-0 md:*:flex-none">
           <Link
-            to="/my-schedule/$ministryId/$cycleId"
+            to="/app/my-schedule/$ministryId/$cycleId"
             params={{ ministryId, cycleId }}
             className={buttonVariants({ variant: 'outline', size: 'touch' })}
           >
@@ -252,7 +252,7 @@ export function AssignmentDetailPage({
         <div role="status" className="space-y-3">
           <p>{m.assignment_stale()}</p>
           <Link
-            to="/my-schedule"
+            to="/app/my-schedule"
             className={buttonVariants({ variant: 'outline', size: 'touch' })}
           >
             {m.assignment_stale_back()}

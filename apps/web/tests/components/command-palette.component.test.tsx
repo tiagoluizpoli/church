@@ -64,7 +64,7 @@ describe('CommandPalette (#219, right-sized from search.spec.ts)', () => {
       name: new RegExp(m.shell_search_go_to({ label: m.nav_home() })),
     });
     expect(resultLink).toBeVisible();
-    expect(resultLink).toHaveAttribute('href', '/');
+    expect(resultLink).toHaveAttribute('href', '/app');
     expect(
       screen.queryByRole('link', {
         name: new RegExp(m.shell_search_go_to({ label: m.nav_availability() })),

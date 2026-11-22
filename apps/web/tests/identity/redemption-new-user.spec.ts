@@ -146,7 +146,7 @@ test.describe('DL#100 — a new person redeems a chained invitation', () => {
       expect(redeemOutcome.volunteerId).toEqual(expect.any(String));
     }
 
-    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
+    await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/);
 
     const status = await fetchActiveChurchStatus({ request: page.request });
     expect(status.churchId).toBe(journey.churchA.church.id);

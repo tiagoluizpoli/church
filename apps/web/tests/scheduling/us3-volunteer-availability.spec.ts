@@ -209,7 +209,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
   const journey = loadVolunteerAvailabilityJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.leader });
   await setUpTwoMinistryOverlapCycle({ page, journey });
-  await page.goto('/availability');
+  await page.goto('/app/availability');
 
   const worshipCard = page
     .getByRole('row')
@@ -272,7 +272,7 @@ test('J7: volunteers answer overlapping Ministry checks', async ({
     persona: journey.personas.volunteer,
   });
   const volunteerPage = await volunteerContext.newPage();
-  await volunteerPage.goto('/availability');
+  await volunteerPage.goto('/app/availability');
   const volunteerCard = volunteerPage
     .getByRole('row')
     .filter({

@@ -228,7 +228,7 @@ describe('ApplyTemplatesDialog', () => {
 
     const link = await screen.findByTestId('apply-templates-setup-link');
 
-    expect(link).toHaveAttribute('href', '/event-templates');
+    expect(link).toHaveAttribute('href', '/app/event-templates');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
     expect(submit()).toBeDisabled();

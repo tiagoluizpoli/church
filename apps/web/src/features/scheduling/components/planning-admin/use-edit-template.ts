@@ -74,7 +74,7 @@ export function useEditTemplate({
         ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
       toast.success(m.event_templates_updated_toast());
-      await navigate({ to: '/event-templates' });
+      await navigate({ to: '/app/event-templates' });
     },
     onError: (error) => {
       setConfirmation(null);

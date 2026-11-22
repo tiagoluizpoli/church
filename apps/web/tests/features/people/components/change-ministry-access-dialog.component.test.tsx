@@ -117,7 +117,7 @@ afterEach(() => overwriteGetLocale(() => 'pt-BR'));
 const names = { name: 'Ana Souza', ministry: 'Worship' };
 const open = () =>
   renderRoute({
-    initialPath: '/people/mem-1',
+    initialPath: '/app/people/mem-1',
     churchTimezone: 'America/Sao_Paulo',
   });
 
@@ -346,7 +346,7 @@ describe('Make leader / Make volunteer', () => {
       within(alert).getByRole('link', {
         name: new RegExp(m.people_roles_blocker_link()),
       }),
-    ).toHaveAttribute('href', '/schedules/m-worship/c1/assign');
+    ).toHaveAttribute('href', '/app/schedules/m-worship/c1/assign');
     expect(dialog).toBeVisible();
 
     await submit();

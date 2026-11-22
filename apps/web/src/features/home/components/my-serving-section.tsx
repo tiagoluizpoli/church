@@ -160,7 +160,7 @@ export function NextAssignmentWidget(props: HomeSectionProps) {
             <DateTile day={dayOf({ value: next.startTime, timeZone })} large />
             <div className="min-w-0 space-y-0.5">
               <Link
-                to="/my-schedule/$assignmentId"
+                to="/app/my-schedule/$assignmentId"
                 params={{ assignmentId: next.assignmentId }}
                 className="inline-flex items-center font-semibold text-2xl tracking-tight hover:underline focus-visible:outline-2 focus-visible:outline-ring"
               >
@@ -186,7 +186,7 @@ export function NextAssignmentWidget(props: HomeSectionProps) {
                 : countdown({ start: next.startTime, timeZone })}
             </span>
             <Link
-              to="/my-schedule/$assignmentId"
+              to="/app/my-schedule/$assignmentId"
               params={{ assignmentId: next.assignmentId }}
               className={cn(buttonVariants({ size: 'touch' }), 'ml-auto')}
             >
@@ -205,7 +205,7 @@ export function NextAssignmentWidget(props: HomeSectionProps) {
           }
         >
           <Link
-            to="/my-schedule"
+            to="/app/my-schedule"
             className={buttonVariants({ variant: 'outline', size: 'sm' })}
           >
             {m.nav_my_schedule()}
@@ -279,7 +279,7 @@ export function PendingChecksWidget(props: HomeSectionProps) {
           {pending.map((check) => (
             <li key={check.id}>
               <Link
-                to="/availability/$checkId"
+                to="/app/availability/$checkId"
                 params={{ checkId: check.id }}
                 className="radius-control group flex min-h-14 items-center gap-3 border px-3 py-2.5 transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
               >
@@ -380,7 +380,7 @@ export function UpcomingAssignmentsWidget(props: HomeSectionProps) {
       loading={dashboard.isPending}
       action={
         <Link
-          to="/my-schedule"
+          to="/app/my-schedule"
           className="-my-3 inline-flex min-h-11 items-center underline"
         >
           {m.home_see_all()}
@@ -403,7 +403,7 @@ export function UpcomingAssignmentsWidget(props: HomeSectionProps) {
             return (
               <li key={assignment.assignmentId}>
                 <Link
-                  to="/my-schedule/$assignmentId"
+                  to="/app/my-schedule/$assignmentId"
                   params={{ assignmentId: assignment.assignmentId }}
                   className="radius-control -mx-2 flex min-h-11 items-center gap-4 px-2 py-2 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
                 >

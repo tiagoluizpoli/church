@@ -327,7 +327,10 @@ describe('the public Church Invitation join route', () => {
 
     expect(
       await screen.findByRole('link', { name: m.join_sign_in_to_review() }),
-    ).toHaveAttribute('href', '/invitations/ministry/ministry-invitation-1');
+    ).toHaveAttribute(
+      'href',
+      '/app/invitations/ministry/ministry-invitation-1',
+    );
   });
 
   it('offers a plain Church invitation the signed-in review up front, without revealing whether the email is registered', async () => {
@@ -337,7 +340,7 @@ describe('the public Church Invitation join route', () => {
 
     expect(
       await screen.findByRole('link', { name: m.join_sign_in_to_accept() }),
-    ).toHaveAttribute('href', `${INITIAL_PATH}/review`);
+    ).toHaveAttribute('href', `/app${INITIAL_PATH}/review`);
     expect(
       screen.getByRole('button', { name: m.join_send_code() }),
     ).toBeVisible();
@@ -356,7 +359,7 @@ describe('the public Church Invitation join route', () => {
     });
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`${INITIAL_PATH}/review`);
+      expect(router.state.location.pathname).toBe(`/app${INITIAL_PATH}/review`);
     });
   });
 
@@ -500,7 +503,7 @@ describe('the public Church Invitation join route', () => {
 
     await fillAndJoin({ user });
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
     expect(redeemChurchInvitation).toHaveBeenCalledWith(
       'church-invitation-1',
       expect.objectContaining({ code: '123456', name: 'New Person' }),
@@ -522,7 +525,7 @@ describe('the public Church Invitation join route', () => {
 
     await fillAndJoin({ user });
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
     expect(router.state.location.search).toMatchObject({
       joinedChurch: 'St. Peter',
       invitedMinistry: 'Worship',
@@ -584,7 +587,7 @@ describe('the public Church Invitation join route', () => {
     ).toBeVisible();
     expect(
       within(notice).getByRole('link', { name: m.join_sign_in_to_accept() }),
-    ).toHaveAttribute('href', `${INITIAL_PATH}/review`);
+    ).toHaveAttribute('href', `/app${INITIAL_PATH}/review`);
     expect(
       screen.getByRole('button', { name: m.join_submit() }),
     ).toBeDisabled();
@@ -608,7 +611,10 @@ describe('the public Church Invitation join route', () => {
     ).toBeVisible();
     expect(
       within(notice).getByRole('link', { name: m.join_sign_in_to_review() }),
-    ).toHaveAttribute('href', '/invitations/ministry/ministry-invitation-1');
+    ).toHaveAttribute(
+      'href',
+      '/app/invitations/ministry/ministry-invitation-1',
+    );
   });
 
   it('disables Join when the invitation became unavailable mid-join', async () => {

@@ -6,7 +6,7 @@ import { ActiveChurchTabSyncGuard } from '@/components/active-church-tab-sync-gu
 import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
 import { renderWithProviders } from '@/tests/setup/render';
 
-let mockHref = '/dashboard';
+let mockHref = '/app/dashboard';
 const mockNavigate = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
@@ -24,7 +24,7 @@ describe('ActiveChurchTabSyncGuard', () => {
   });
 
   it('blocks with the new Church named, and Continue dismisses it', async () => {
-    mockHref = '/dashboard';
+    mockHref = '/app/dashboard';
     const user = userEvent.setup();
     renderWithProviders(<ActiveChurchTabSyncGuard />);
 
@@ -48,6 +48,6 @@ describe('ActiveChurchTabSyncGuard', () => {
     expect(
       screen.queryByTestId('active-church-tab-sync-dialog'),
     ).not.toBeInTheDocument();
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/dashboard' });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/app/dashboard' });
   });
 });

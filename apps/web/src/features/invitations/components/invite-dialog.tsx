@@ -166,7 +166,7 @@ export function RolePicker({
       <p className="text-muted-foreground text-sm">
         {m.invitations_invite_no_roles()}{' '}
         <NewTabLink
-          href={`/ministries/${ministryId}/roles`}
+          href={`/app/ministries/${ministryId}/roles`}
           label={m.invitations_invite_add_role()}
         />
       </p>
@@ -487,7 +487,7 @@ export function InviteDialog({
               {m.invitations_invite_no_ministry()}{' '}
               {isChurchAdmin ? (
                 <NewTabLink
-                  href="/ministries"
+                  href="/app/ministries"
                   label={m.invitations_invite_create_ministry()}
                 />
               ) : null}

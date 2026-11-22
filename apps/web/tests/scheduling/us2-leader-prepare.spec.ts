@@ -127,7 +127,7 @@ test('leader prepares one Time block and sees its saved Schedule summary', async
   );
   expect(sendResponse.ok()).toBeTruthy();
 
-  await page.goto('/schedules');
+  await page.goto('/app/schedules');
   await expect(
     page.getByRole('heading', {
       name: m.schedules_title({}, { locale: 'pt-BR' }),

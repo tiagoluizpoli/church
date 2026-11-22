@@ -102,7 +102,7 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
 
   await page.getByTestId('open-assign-link').click();
   await expect(page).toHaveURL(
-    `/schedules/${worshipMinistryId}/${cycleId}/assign`,
+    `/app/schedules/${worshipMinistryId}/${cycleId}/assign`,
   );
 
   await expect(page.getByTestId('cycle-builder')).toBeVisible({
@@ -225,7 +225,7 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
   });
   const volunteerPage = await volunteerContext.newPage();
 
-  await volunteerPage.goto(`/my-schedule/${worshipMinistryId}/${cycleId}`);
+  await volunteerPage.goto(`/app/my-schedule/${worshipMinistryId}/${cycleId}`);
   await expect(volunteerPage.getByText(eventTitle)).toBeVisible();
   await expect(
     volunteerPage.getByText(shortVolunteerName({ name: volunteerName }), {
@@ -283,7 +283,7 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
     { locale: 'pt-BR' },
   );
   for (const recipient of [volunteerPage, otherPage]) {
-    await recipient.goto('/dashboard');
+    await recipient.goto('/app/dashboard');
     await expect
       .poll(
         async () => {
@@ -342,8 +342,8 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
           published[0]?.payload.to === journey.personas.volunteer.email &&
           !!removed?.request.text.includes('Removido:') &&
           !!added?.request.text.includes('Adicionado:') &&
-          removed.request.text.includes('/my-schedule') &&
-          added.request.text.includes('/my-schedule')
+          removed.request.text.includes('/app/my-schedule') &&
+          added.request.text.includes('/app/my-schedule')
         );
       },
       { timeout: 20_000 },

@@ -1,0 +1,17 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { PreparationBlockEditor } from '@/features/scheduling/components/prepare/preparation-block-editor';
+
+export const Route = createFileRoute(
+  '/app/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId',
+)({ component: PreparationBlockRoute });
+
+function PreparationBlockRoute() {
+  const { ministryId, cycleId, timeSlotId } = Route.useParams();
+  return (
+    <PreparationBlockEditor
+      ministryId={ministryId}
+      cycleId={cycleId}
+      eventTimeBlockId={timeSlotId}
+    />
+  );
+}

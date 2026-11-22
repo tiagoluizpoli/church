@@ -115,7 +115,7 @@ const names = { name: 'Ana Souza', ministry: 'Worship' };
 async function openDialog() {
   const user = userEvent.setup();
   renderRoute({
-    initialPath: '/people/mem-1',
+    initialPath: '/app/people/mem-1',
     churchTimezone: 'America/Sao_Paulo',
   });
   await user.click(
@@ -148,7 +148,7 @@ describe('Remove from Ministry', () => {
       ]),
     );
     renderRoute({
-      initialPath: '/people/mem-1',
+      initialPath: '/app/people/mem-1',
       churchTimezone: 'America/Sao_Paulo',
     });
 
@@ -267,7 +267,10 @@ describe('Remove from Ministry', () => {
     const link = within(alert).getByRole('link', {
       name: new RegExp(m.people_roles_blocker_link()),
     });
-    expect(link).toHaveAttribute('href', '/schedules/m-worship/c-11/assign');
+    expect(link).toHaveAttribute(
+      'href',
+      '/app/schedules/m-worship/c-11/assign',
+    );
     expect(link).toHaveAttribute('target', '_blank');
     expect(screen.getByRole('alertdialog')).toBeVisible();
   });

@@ -3,26 +3,26 @@ import { toast } from 'sonner';
 import type { GetNotifications200ItemsItem } from '@/infrastructure/api/churchAPI.schemas';
 
 export type NotificationNavigationTarget =
-  | { to: '/notifications' }
-  | { to: '/my-schedule' }
-  | { to: '/my-schedule/$assignmentId'; params: { assignmentId: string } }
-  | { to: '/availability' }
-  | { to: '/availability/$checkId'; params: { checkId: string } }
+  | { to: '/app/notifications' }
+  | { to: '/app/my-schedule' }
+  | { to: '/app/my-schedule/$assignmentId'; params: { assignmentId: string } }
+  | { to: '/app/availability' }
+  | { to: '/app/availability/$checkId'; params: { checkId: string } }
   | {
-      to: '/invitations/ministry/$invitationId';
+      to: '/app/invitations/ministry/$invitationId';
       params: { invitationId: string };
     }
   | {
-      to: '/schedules/$ministryId/$cycleId';
+      to: '/app/schedules/$ministryId/$cycleId';
       params: { ministryId: string; cycleId: string };
     }
   | {
-      to: '/schedules/$ministryId/$cycleId/assign';
+      to: '/app/schedules/$ministryId/$cycleId/assign';
       params: { ministryId: string; cycleId: string };
       search: { swapRequest: string };
     }
   | {
-      to: '/schedules';
+      to: '/app/schedules';
       search: { cycleId: string; ministryIds: string };
     };
 
@@ -44,7 +44,7 @@ export function resolveNotificationDestination(
     case 'ministry_invitation':
       return {
         target: {
-          to: '/invitations/ministry/$invitationId',
+          to: '/app/invitations/ministry/$invitationId',
           params: { invitationId: item.data.ministryInvitationId },
         },
         isFallback: false,
@@ -55,22 +55,22 @@ export function resolveNotificationDestination(
       return {
         target: checkId
           ? {
-              to: '/availability/$checkId',
+              to: '/app/availability/$checkId',
               params: { checkId },
             }
-          : { to: '/availability' },
+          : { to: '/app/availability' },
         isFallback: false,
       };
     }
     case 'schedule_published':
     case 'schedule_updated':
     case 'event_cancelled':
-      return { target: { to: '/my-schedule' }, isFallback: false };
+      return { target: { to: '/app/my-schedule' }, isFallback: false };
     case 'swap_request': {
       const { ministryId, cycleId, swapRequestId } = item.data;
       return {
         target: {
-          to: '/schedules/$ministryId/$cycleId/assign',
+          to: '/app/schedules/$ministryId/$cycleId/assign',
           params: { ministryId, cycleId },
           // The same deep link the email carries.
           search: { swapRequest: swapRequestId },
@@ -87,11 +87,11 @@ export function resolveNotificationDestination(
         target:
           only && others.length === 0
             ? {
-                to: '/schedules/$ministryId/$cycleId',
+                to: '/app/schedules/$ministryId/$cycleId',
                 params: { ministryId: only.id, cycleId },
               }
             : {
-                to: '/schedules',
+                to: '/app/schedules',
                 search: {
                   cycleId,
                   ministryIds: ministries.map(({ id }) => id).join(','),
@@ -103,13 +103,13 @@ export function resolveNotificationDestination(
     case 'swap_request_answered':
       return {
         target: {
-          to: '/my-schedule/$assignmentId',
+          to: '/app/my-schedule/$assignmentId',
           params: { assignmentId: item.data.assignmentId },
         },
         isFallback: false,
       };
     default:
-      return { target: { to: '/notifications' }, isFallback: true };
+      return { target: { to: '/app/notifications' }, isFallback: true };
   }
 }
 

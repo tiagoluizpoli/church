@@ -63,7 +63,7 @@ function ErrorFallback({ error, fullScreen }: ErrorFallbackProps) {
           {m.shell_error_try_again()}
         </Button>
         <Link
-          to="/"
+          to="/app"
           className={buttonVariants({
             variant: 'outline',
             className: 'min-h-11',
@@ -128,7 +128,7 @@ export function NotFoundScreen() {
       title={m.shell_not_found_title()}
       description={m.shell_not_found_description()}
     >
-      <Link to="/" className={buttonVariants({ className: 'min-h-11' })}>
+      <Link to="/app" className={buttonVariants({ className: 'min-h-11' })}>
         {m.shell_error_go_home()}
       </Link>
     </FallbackPanel>

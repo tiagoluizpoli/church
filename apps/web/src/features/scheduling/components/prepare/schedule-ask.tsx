@@ -82,7 +82,7 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
   const flaggedLinks = flaggedBlocks.map(({ eventTimeBlockId, startsAt }) => (
     <Link
       key={eventTimeBlockId}
-      to="/schedules/$ministryId/$cycleId/slots/$timeSlotId"
+      to="/app/schedules/$ministryId/$cycleId/slots/$timeSlotId"
       params={{ ministryId, cycleId, timeSlotId: eventTimeBlockId }}
       className="underline underline-offset-4"
     >
@@ -220,7 +220,7 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
                     <p>{warning}</p>
                     <div className="flex flex-wrap gap-3">
                       <Link
-                        to="/people"
+                        to="/app/people"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="underline underline-offset-4"
@@ -228,7 +228,7 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
                         {m.nav_people()}
                       </Link>
                       <Link
-                        to="/invitations"
+                        to="/app/invitations"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="underline underline-offset-4"

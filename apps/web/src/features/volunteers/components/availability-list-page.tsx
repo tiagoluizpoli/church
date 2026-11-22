@@ -95,7 +95,7 @@ function CheckAction({ check }: CheckProps) {
   return (
     <div className="flex justify-end max-md:ml-auto md:w-full">
       <Link
-        to="/availability/$checkId"
+        to="/app/availability/$checkId"
         params={{ checkId: check.id }}
         aria-label={
           confirmed

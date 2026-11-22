@@ -43,10 +43,13 @@ interface TemplateLabelProps {
 function TemplateLabel({ block }: TemplateLabelProps) {
   return (
     <span>
-      {block.templateName}{' '}
-      <span className="font-normal text-muted-foreground">
-        · {formatWeekday(block)}
-      </span>
+      {block.templateName}
+      {block.weekday === null ? null : (
+        <span className="font-normal text-muted-foreground">
+          {' '}
+          · {formatWeekday({ weekday: block.weekday })}
+        </span>
+      )}
     </span>
   );
 }

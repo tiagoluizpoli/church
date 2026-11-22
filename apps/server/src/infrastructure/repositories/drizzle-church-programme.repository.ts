@@ -6,6 +6,7 @@ import type {
   ListRegularActivitiesInput,
 } from '../../domain/contracts/infrastructure/church-programme.repository';
 import type { RegularActivity } from '../../domain/entities/regular-activity';
+import type { Recurrence } from '../../domain/recurrence';
 import { withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
@@ -27,7 +28,7 @@ export class DrizzleChurchProgrammeRepository
   }: ListRegularActivitiesInput): Promise<RegularActivity[]> {
     const rows = await this.db
       .select({
-        weekday: eventTemplate.weekday,
+        recurrence: eventTemplate.recurrence,
         startTime: templateTimeBlock.startTime,
         label: templateTimeBlock.label,
         place: templateTimeBlock.place,
@@ -44,14 +45,15 @@ export class DrizzleChurchProgrammeRepository
         ),
       )
       .orderBy(
-        asc(eventTemplate.weekday),
+        // shortcut: weekly by first weekday, monthly after; #1025 orders by the Recurrence sort key.
+        sql`(${eventTemplate.recurrence}->'weekdays'->>0)::int ASC NULLS LAST`,
         asc(templateTimeBlock.startTime),
         asc(sql`lower(${templateTimeBlock.label})`),
         asc(templateTimeBlock.id),
       );
 
     return rows.map((row) => ({
-      recurrence: { kind: 'weekly', weekday: row.weekday },
+      recurrence: row.recurrence as Recurrence,
       startTime: fromTimeColumn({ value: row.startTime }),
       label: row.label,
       place: row.place,

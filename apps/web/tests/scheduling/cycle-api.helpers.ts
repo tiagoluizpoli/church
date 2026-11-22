@@ -73,7 +73,13 @@ export async function createEventTemplateViaApi({
 }: CreateEventTemplateViaApiParams): Promise<CreatedEventTemplate> {
   const response = await page.request.post(
     `${SERVER_URL}/api/v1/admin/event-templates`,
-    { data: { name, weekday, blocks } },
+    {
+      data: {
+        name,
+        recurrence: { kind: 'weekly', weekdays: [weekday] },
+        blocks,
+      },
+    },
   );
   await expectOk({ response, step: `create template ${name}` });
   return (await response.json()) as CreatedEventTemplate;

@@ -90,7 +90,15 @@ export function useTemplateForm({
         setForm((current) => ({ ...current, name }));
       },
       onWeekdayChange: ({ weekday }: WeekdayChangeInput) =>
-        setForm((current) => ({ ...current, weekday })),
+        setForm((current) => ({
+          ...current,
+          recurrence: {
+            kind: 'weekly',
+            weekdays: [
+              Number.parseInt(weekday, 10) as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+            ],
+          },
+        })),
       onBlockChange,
       onRemoveBlock: ({ blockKey }: RemoveBlockInput) =>
         setForm((current) => ({

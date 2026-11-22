@@ -13,6 +13,7 @@ import {
   toInstant,
   weekdayIndex,
 } from '@church/time';
+import { recurrenceNamesDay } from '../../src/domain/recurrence';
 import type {
   ChurchDirectoryBlueprint,
   MinistryBlueprint,
@@ -197,7 +198,9 @@ function planEvents({
     seenByWeekday.set(weekday, week);
 
     for (const template of gatherings.templates) {
-      if (template.weekday !== weekday) continue;
+      if (!recurrenceNamesDay({ recurrence: template.recurrence, day })) {
+        continue;
+      }
       const eventTimeBlocks = template.blocks.map((block) => {
         const seededBlock = seededGatherings.blocks.find(
           (candidate) => candidate.key === block.key,

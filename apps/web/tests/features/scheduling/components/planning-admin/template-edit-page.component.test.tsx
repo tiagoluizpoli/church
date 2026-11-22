@@ -53,7 +53,7 @@ const template = {
   id: 'template-1',
   churchId: 'church-1',
   name: 'Sunday',
-  weekday: 0,
+  recurrence: { kind: 'weekly', weekdays: [0] },
   createdAt: '2026-11-01T00:00:00.000Z',
   updatedAt: '2026-11-01T00:00:00.000Z',
   blocks: [
@@ -167,7 +167,7 @@ describe('TemplateEditPage', () => {
     expect(getEventTemplateUsage).not.toHaveBeenCalled();
     expect(updateEventTemplate).toHaveBeenCalledWith('template-1', {
       name: 'Domingo',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
           id: 'block-welcome',

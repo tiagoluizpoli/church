@@ -278,7 +278,7 @@ async function seedEveryTenantedTable(): Promise<void> {
     id: IDS.eventTemplate,
     churchId: IDS.church,
     name: 'Truncation template',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
   });
 
   await testDb.insert(templateTimeBlock).values({

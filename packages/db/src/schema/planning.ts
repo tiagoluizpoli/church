@@ -79,7 +79,8 @@ export const eventTemplate = pgTable(
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 255 }).notNull(),
-    weekday: integer('weekday').notNull(),
+    // A Recurrence (weekly weekdays or monthly entries); the server's value object validates it.
+    recurrence: jsonb('recurrence').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -89,10 +90,6 @@ export const eventTemplate = pgTable(
       .notNull(),
   },
   (table) => [
-    check(
-      'event_template_weekday_check',
-      sql`${table.weekday} >= 0 AND ${table.weekday} <= 6`,
-    ),
     uniqueIndex('event_template_church_name_idx').on(
       table.churchId,
       sql`lower(${table.name})`,

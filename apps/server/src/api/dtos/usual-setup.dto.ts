@@ -48,7 +48,7 @@ export type UsualSetupEntryBody = z.infer<typeof usualSetupEntryBodySchema>;
 export const usualSetupBlockResponseSchema = z.object({
   templateId: z.string(),
   templateName: z.string(),
-  weekday: z.number().int(),
+  weekday: z.number().int().nullable(),
   sourceTemplateTimeBlockId: z.string(),
   label: z.string(),
   startTime: z.string(),

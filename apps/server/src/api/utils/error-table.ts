@@ -32,7 +32,7 @@ export type MappedDomainCode =
   | 'INVALID_TIME_RANGE'
   | 'INVALID_REQUIRED_COUNT'
   | 'INVALID_SHIFT_SPLIT'
-  | 'INVALID_WEEKDAY'
+  | 'INVALID_RECURRENCE'
   | 'MINISTRY_NOT_FOUND'
   | 'MINISTRY_NAME_IN_USE'
   | 'MINISTRY_IN_USE'
@@ -113,7 +113,7 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     message: m.error_invalid_required_count,
   },
   INVALID_SHIFT_SPLIT: { status: 400, message: m.error_invalid_shift_split },
-  INVALID_WEEKDAY: { status: 400, message: m.error_invalid_weekday },
+  INVALID_RECURRENCE: { status: 400, message: m.error_invalid_recurrence },
   MINISTRY_NOT_FOUND: { status: 404, message: m.error_ministry_not_found },
   MINISTRY_IN_USE: { status: 409, message: m.error_ministry_in_use },
   MINISTRY_NAME_IN_USE: {

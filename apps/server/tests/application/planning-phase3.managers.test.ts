@@ -512,7 +512,12 @@ describe('DbPlanningEventManager', () => {
     });
     const template = new EventTemplate({
       id: templateId,
-      props: { churchId, name: 'Sunday', weekday: 0, blocks: [templateBlock] },
+      props: {
+        churchId,
+        name: 'Sunday',
+        recurrence: { kind: 'weekly', weekdays: [0] },
+        blocks: [templateBlock],
+      },
     });
     vi.mocked(templateRepository.getByIds).mockResolvedValue([template]);
     vi.mocked(eventRepository.createEventTimeBlock).mockResolvedValue(
@@ -557,7 +562,12 @@ describe('DbPlanningEventManager', () => {
     });
     const template = new EventTemplate({
       id: templateId,
-      props: { churchId, name: 'Sunday', weekday: 0, blocks: [templateBlock] },
+      props: {
+        churchId,
+        name: 'Sunday',
+        recurrence: { kind: 'weekly', weekdays: [0] },
+        blocks: [templateBlock],
+      },
     });
     vi.mocked(templateRepository.getByIds).mockResolvedValue([template]);
     const existing = [4, 11, 18, 25].map((day, index) => {

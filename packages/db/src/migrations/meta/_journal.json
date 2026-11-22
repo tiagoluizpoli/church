@@ -407,6 +407,20 @@
       "when": 1795329402653,
       "tag": "0057_time_block_public_place",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795335847065,
+      "tag": "0058_event_template_recurrence",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795335848235,
+      "tag": "0059_event_template_drop_weekday",
+      "breakpoints": true
     }
   ]
 }

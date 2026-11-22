@@ -33,7 +33,7 @@ function template(id: string, name: string, blockCount = 1) {
   return {
     id,
     name,
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: Array.from({ length: blockCount }, (_, order) => ({
       id: `${id}-block-${order}`,
       label: `Block ${order}`,

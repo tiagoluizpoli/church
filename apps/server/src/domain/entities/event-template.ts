@@ -6,13 +6,13 @@ import type {
 } from '../branded-ids';
 import { DuplicateTemplateBlockLabelError } from '../errors/duplicate-template-block-label';
 import { InvalidTimeRangeError } from '../errors/invalid-time-range';
-import { InvalidWeekdayError } from '../errors/invalid-weekday';
+import { assertRecurrence, type Recurrence } from '../recurrence';
 import type { TemplateTimeBlock } from './template-time-block';
 
 export interface EventTemplateProps {
   churchId: ChurchId;
   name: string;
-  weekday: number;
+  recurrence: Recurrence;
   blocks: TemplateTimeBlock[];
 }
 
@@ -63,9 +63,7 @@ export class EventTemplate extends Entity<EventTemplateProps, EventTemplateId> {
   }
 
   constructor({ props, id, createdAt, updatedAt }: EventTemplateInput) {
-    if (props.weekday < 0 || props.weekday > 6) {
-      throw new InvalidWeekdayError();
-    }
+    assertRecurrence({ recurrence: props.recurrence });
     EventTemplate.assertBlocks({ blocks: props.blocks });
 
     super({
@@ -89,8 +87,8 @@ export class EventTemplate extends Entity<EventTemplateProps, EventTemplateId> {
     return this._props.name;
   }
 
-  get weekday(): number {
-    return this._props.weekday;
+  get recurrence(): Recurrence {
+    return this._props.recurrence;
   }
 
   get blocks(): TemplateTimeBlock[] {

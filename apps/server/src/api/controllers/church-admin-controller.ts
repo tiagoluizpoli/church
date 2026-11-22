@@ -431,7 +431,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'createEventTemplate',
           summary: 'Create an EventTemplate',
           description:
-            'Create a church-owned EventTemplate with its ordered TemplateTimeBlocks for a given weekday.',
+            'Create a church-owned EventTemplate with its ordered TemplateTimeBlocks on a weekly or monthly Recurrence.',
           body: createEventTemplateBodySchema,
           response: {
             201: eventTemplateResponseSchema,
@@ -446,7 +446,7 @@ export class ChurchAdminController implements FastifyController {
         const template = await this.eventTemplateManager.createTemplate({
           churchId: ChurchId.from(request.churchId),
           name: body.name,
-          weekday: body.weekday,
+          recurrence: body.recurrence,
           blocks: body.blocks,
         });
         return reply.status(201).send(eventTemplateMapper.toResponse(template));
@@ -524,7 +524,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'updateEventTemplate',
           summary: 'Update an EventTemplate',
           description:
-            "Apply an EventTemplate's complete desired name, weekday and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries.",
+            "Apply an EventTemplate's complete desired name, Recurrence and TemplateTimeBlocks: blocks with a persisted id are updated in place, blocks without one are created and omitted blocks are deleted with their UsualSetup entries.",
           body: updateEventTemplateBodySchema,
           response: {
             200: eventTemplateResponseSchema,
@@ -541,7 +541,7 @@ export class ChurchAdminController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
           templateId: EventTemplateId.from(templateId),
           name: body.name,
-          weekday: body.weekday,
+          recurrence: body.recurrence,
           blocks: body.blocks,
         });
         return reply.send(eventTemplateMapper.toResponse(template));

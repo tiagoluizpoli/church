@@ -1063,6 +1063,8 @@
   "event_editor_block_public": "Público",
   "event_editor_block_place": "Local",
   "event_editor_block_place_placeholder": "Salão principal",
+  "time_block_place_none": "Sem local",
+  "time_block_place_free_text": "Outro local (texto livre)",
   "event_editor_block_add": "Adicionar horário",
   "event_editor_create_submit": "Salvar evento",
   "event_editor_saving": "Salvando…",

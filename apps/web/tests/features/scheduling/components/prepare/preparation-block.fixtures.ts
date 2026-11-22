@@ -62,6 +62,7 @@ export const BLOCK: PreparationBlock = {
     label: 'Night',
     isPublic: false,
     place: null,
+    placeAddressId: null,
     status: 'active',
     requirements: [],
   },

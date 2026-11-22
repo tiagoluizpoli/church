@@ -340,6 +340,7 @@ describe('EventCreatePage', () => {
           endTime: '2026-10-27T15:00:00.000Z',
           isPublic: true,
           place: 'Camp hall',
+          placeAddressId: null,
         },
         {
           label: 'Vigil',
@@ -347,6 +348,7 @@ describe('EventCreatePage', () => {
           endTime: '2026-10-26T05:00:00.000Z',
           isPublic: false,
           place: '',
+          placeAddressId: null,
         },
       ],
     });

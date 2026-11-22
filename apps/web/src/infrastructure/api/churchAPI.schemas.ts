@@ -409,6 +409,8 @@ export type GetCycle200EventsItemEventTimeBlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: GetCycle200EventsItemEventTimeBlocksItemStatus;
   requirements: GetCycle200EventsItemEventTimeBlocksItemRequirementsItem[];
 };
@@ -572,6 +574,11 @@ export type CreateEventTemplateBodyBlocksItem = {
   isPublic?: boolean;
   /** @maxLength 120 */
   place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
 };
 
 export type CreateEventTemplateBodyPrecedencesItemAnswer = typeof CreateEventTemplateBodyPrecedencesItemAnswer[keyof typeof CreateEventTemplateBodyPrecedencesItemAnswer];
@@ -637,6 +644,8 @@ export type CreateEventTemplate201BlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
 };
 
 export type CreateEventTemplate201 = {
@@ -688,6 +697,7 @@ export const CreateEventTemplate422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type CreateEventTemplate422 = {
@@ -734,6 +744,8 @@ export type ListEventTemplates200TemplatesItemBlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
 };
 
 export type ListEventTemplates200TemplatesItem = {
@@ -789,6 +801,8 @@ export type GetEventTemplate200BlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
 };
 
 export type GetEventTemplate200 = {
@@ -840,6 +854,11 @@ export type UpdateEventTemplateBodyBlocksItem = {
   isPublic?: boolean;
   /** @maxLength 120 */
   place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id?: string;
 };
@@ -907,6 +926,8 @@ export type UpdateEventTemplate200BlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
 };
 
 export type UpdateEventTemplate200 = {
@@ -958,6 +979,7 @@ export const UpdateEventTemplate422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type UpdateEventTemplate422 = {
@@ -1051,6 +1073,7 @@ export const ChangeTemplatePrecedence422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type ChangeTemplatePrecedence422 = {
@@ -1081,6 +1104,11 @@ export type CreatePlanningEventBodyEventTimeBlocksItem = {
   isPublic?: boolean;
   /** @maxLength 120 */
   place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
 };
 
 export type CreatePlanningEventBody = {
@@ -1152,6 +1180,8 @@ export type CreatePlanningEvent201EventTimeBlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: CreatePlanningEvent201EventTimeBlocksItemStatus;
   requirements: CreatePlanningEvent201EventTimeBlocksItemRequirementsItem[];
 };
@@ -1186,6 +1216,7 @@ export const CreatePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type CreatePlanningEvent422 = {
@@ -1206,6 +1237,11 @@ export type UpdatePlanningEventBodyEventTimeBlocksItem = {
   isPublic?: boolean;
   /** @maxLength 120 */
   place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id?: string;
 };
@@ -1279,6 +1315,8 @@ export type UpdatePlanningEvent200EventTimeBlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: UpdatePlanningEvent200EventTimeBlocksItemStatus;
   requirements: UpdatePlanningEvent200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1313,6 +1351,7 @@ export const UpdatePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type UpdatePlanningEvent422 = {
@@ -1338,6 +1377,11 @@ export type UpdatePlanningEventDetailsBodyEventTimeBlocksItem = {
   isPublic: boolean;
   /** @maxLength 120 */
   place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
 };
 
 export type UpdatePlanningEventDetailsBody = {
@@ -1405,6 +1449,8 @@ export type UpdatePlanningEventDetails200EventTimeBlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: UpdatePlanningEventDetails200EventTimeBlocksItemStatus;
   requirements: UpdatePlanningEventDetails200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1439,6 +1485,7 @@ export const UpdatePlanningEventDetails422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type UpdatePlanningEventDetails422 = {
@@ -1517,6 +1564,7 @@ export const PreviewPlanningEventCancellation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type PreviewPlanningEventCancellation422 = {
@@ -1599,6 +1647,7 @@ export const CancelPlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type CancelPlanningEvent422 = {
@@ -1708,6 +1757,7 @@ export const PreviewPlanningEventMove422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type PreviewPlanningEventMove422 = {
@@ -1781,6 +1831,8 @@ export type MovePlanningEvent200EventTimeBlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: MovePlanningEvent200EventTimeBlocksItemStatus;
   requirements: MovePlanningEvent200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1838,6 +1890,7 @@ export const MovePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type MovePlanningEvent422 = {
@@ -1885,6 +1938,8 @@ export type CreatePlanningEventTimeBlock201 = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: CreatePlanningEventTimeBlock201Status;
   requirements: CreatePlanningEventTimeBlock201RequirementsItem[];
 };
@@ -1998,6 +2053,7 @@ export const PreviewPlanningEventTimeBlockMove422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type PreviewPlanningEventTimeBlockMove422 = {
@@ -2071,6 +2127,8 @@ export type MovePlanningEventTimeBlock200EventTimeBlocksItem = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: MovePlanningEventTimeBlock200EventTimeBlocksItemStatus;
   requirements: MovePlanningEventTimeBlock200EventTimeBlocksItemRequirementsItem[];
 };
@@ -2133,6 +2191,7 @@ export const MovePlanningEventTimeBlock422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type MovePlanningEventTimeBlock422 = {
@@ -2216,6 +2275,7 @@ export const PreviewPlanningEventTimeBlockCancellation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type PreviewPlanningEventTimeBlockCancellation422 = {
@@ -2303,6 +2363,7 @@ export const CancelPlanningEventTimeBlock422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type CancelPlanningEventTimeBlock422 = {
@@ -2350,6 +2411,8 @@ export type UpdatePlanningEventTimeBlock200 = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: UpdatePlanningEventTimeBlock200Status;
   requirements: UpdatePlanningEventTimeBlock200RequirementsItem[];
 };
@@ -3815,6 +3878,7 @@ export const MintMinistryInvitation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type MintMinistryInvitation422 = {
@@ -4782,6 +4846,8 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlock 
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockStatus;
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockRequirementsItem[];
 };
@@ -5030,6 +5096,8 @@ export type SaveEventTimeBlockPreparation200EventTimeBlock = {
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: SaveEventTimeBlockPreparation200EventTimeBlockStatus;
   requirements: SaveEventTimeBlockPreparation200EventTimeBlockRequirementsItem[];
 };
@@ -5168,6 +5236,7 @@ export const SaveEventTimeBlockPreparation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type SaveEventTimeBlockPreparation422 = {
@@ -5241,6 +5310,7 @@ export const AskScheduleAvailability422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type AskScheduleAvailability422 = {
@@ -5305,6 +5375,7 @@ export const SetAvailabilityDeadline422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type SetAvailabilityDeadline422 = {
@@ -5537,6 +5608,8 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlock = 
   isPublic: boolean;
   /** @nullable */
   place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlockStatus;
   requirements: GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlockRequirementsItem[];
 };

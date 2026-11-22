@@ -70,6 +70,7 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
               endTime: '2026-07-05T11:00:00.000Z',
               isPublic: false,
               place: null,
+              placeAddressId: null,
               status: 'active',
               requirements: [],
             },

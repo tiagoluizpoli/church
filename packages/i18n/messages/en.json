@@ -1063,6 +1063,8 @@
   "event_editor_block_public": "Public",
   "event_editor_block_place": "Place",
   "event_editor_block_place_placeholder": "Main hall",
+  "time_block_place_none": "No place",
+  "time_block_place_free_text": "Other place (free text)",
   "event_editor_block_add": "Add Time block",
   "event_editor_create_submit": "Save Event",
   "event_editor_saving": "Saving…",

@@ -17,6 +17,7 @@ import type {
   MoveProposal,
   MoveScope,
 } from '../../services/event-move';
+import type { LosingEventTimeBlock } from '../../services/template-precedence-application';
 
 export interface GeneratePlanningTemplatesInput {
   churchId: ChurchId;
@@ -27,6 +28,8 @@ export interface GeneratePlanningTemplatesInput {
 export interface GeneratedPlanningCounts {
   generatedEventCount: number;
   generatedEventTimeBlockCount: number;
+  /** Existing blocks a Template Precedence now makes losers; Apply deletes none. */
+  leftoverEventTimeBlocks: LosingEventTimeBlock[];
 }
 
 /** One Time block of a complete Event create. */

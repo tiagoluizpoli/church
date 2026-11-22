@@ -379,6 +379,7 @@ describe('development seed recipe', () => {
     expect(templateRows).toEqual([
       { label: 'Culto 08:00', place: null, address: 'Templo' },
       { label: 'Culto 10:30', place: null, address: 'Templo' },
+      { label: 'Santa Ceia 10:30', place: null, address: 'Templo' },
       { label: 'Culto 18:30', place: null, address: 'Salão anexo' },
     ]);
     expect(copiedWithoutAddress).toEqual([]);
@@ -689,6 +690,16 @@ describe('development seed recipe', () => {
         startTime: '07:00:00',
         endTime: '08:00:00',
       },
+      {
+        churchId: seeded.church.id,
+        template: 'Santa Ceia (1º Domingo)',
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+        },
+        startTime: '10:30:00',
+        endTime: '12:30:00',
+      },
     ]);
   });
 
@@ -753,7 +764,7 @@ describe('development seed recipe', () => {
       'Culto de Domingo 18:30',
       'Culto de Quarta 20:00',
     ];
-    // The day-of-month template is declared for every Ministry, served by none.
+    // The day-of-month and 1st-Sunday templates are declared for every Ministry, served by none.
     const everyBlock = ({ ministryName, headcounts }: ServedBlocksInput) => [
       ...blocks.map((block) => ({
         ministry: ministryName,
@@ -765,6 +776,13 @@ describe('development seed recipe', () => {
       {
         ministry: ministryName,
         block: 'Oração do Dia 15 07:00',
+        serves: false,
+        shiftSplit: oneShift,
+        headcounts: [],
+      },
+      {
+        ministry: ministryName,
+        block: 'Santa Ceia (1º Domingo) 10:30',
         serves: false,
         shiftSplit: oneShift,
         headcounts: [],
@@ -865,6 +883,13 @@ describe('development seed recipe', () => {
       })),
     ).toEqual([
       sunday({ day: '01' }),
+      {
+        title: 'Santa Ceia (1º Domingo)',
+        start: '2026-02-01T13:30:00.000Z',
+        end: '2026-02-01T15:30:00.000Z',
+        status: 'past',
+        fromTemplate: true,
+      },
       wednesday({ day: '04', next: '05' }),
       sunday({ day: '08' }),
       wednesday({ day: '11', next: '12' }),
@@ -894,7 +919,7 @@ describe('development seed recipe', () => {
         fromBlocks: sql<number>`count(${eventTimeBlock.sourceTemplateTimeBlockId})::int`,
       })
       .from(eventTimeBlock);
-    expect(eventTimeBlocks).toEqual({ total: 18, fromBlocks: 17 });
+    expect(eventTimeBlocks).toEqual({ total: 19, fromBlocks: 18 });
   });
 
   it('publishes one MinistryParticipation per serving Ministry and Event, Kids not on Sunday at 08:00', async () => {

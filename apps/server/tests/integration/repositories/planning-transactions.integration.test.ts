@@ -83,6 +83,9 @@ function createManagers() {
     eventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({
+        db: schedulingTestDb,
+      }),
       templateRepository,
       churchRepository,
       unitOfWork,

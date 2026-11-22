@@ -15,6 +15,10 @@ import type {
 import type { Cycle } from '../entities/cycle';
 import type { EventTemplate } from '../entities/event-template';
 import { expandRecurrence } from '../recurrence';
+import {
+  losingBlockIds,
+  type PrecedencePair,
+} from './template-precedence-application';
 
 export interface ExistingGeneratedEventTimeBlockFingerprint {
   eventDate: CalendarDay;
@@ -35,6 +39,8 @@ export interface GenerateCycleEventsInput {
   existingEvents: ExistingGeneratedEvent[];
   existingFingerprints: ExistingGeneratedEventTimeBlockFingerprint[];
   timeZone: string;
+  /** Answers other than "both"; a loser skips its blocks that overlap its winner's. */
+  precedencePairs?: PrecedencePair[];
 }
 
 export interface GeneratedCycleEventTimeBlockPlan {
@@ -85,6 +91,7 @@ export class CycleEventGenerator {
     existingEvents,
     existingFingerprints,
     timeZone,
+    precedencePairs = [],
   }: GenerateCycleEventsInput): GeneratedCycleEventPlan[] {
     const existingFingerprintSet = new Set(
       existingFingerprints.map(
@@ -110,10 +117,17 @@ export class CycleEventGenerator {
       });
 
       for (const eventDate of matchingDates) {
+        const losing = losingBlockIds({
+          day: eventDate,
+          loser: template,
+          pairs: precedencePairs,
+        });
         const eventTimeBlocks = template.blocks
           .filter((block) => {
             const fingerprint = `${eventDate}::${block.id as TemplateTimeBlockId}`;
-            return !existingFingerprintSet.has(fingerprint);
+            return (
+              !existingFingerprintSet.has(fingerprint) && !losing.has(block.id)
+            );
           })
           .map((block) => ({
             sourceTemplateTimeBlockId: block.id as TemplateTimeBlockId,

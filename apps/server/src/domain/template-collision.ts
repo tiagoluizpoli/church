@@ -46,6 +46,21 @@ interface BlocksOverlapInput {
   right: CollisionShape['blocks'];
 }
 
+interface TimeBlocksOverlapInput {
+  left: CollisionShape['blocks'][number];
+  right: CollisionShape['blocks'][number];
+}
+
+/** Two blocks of the same CalendarDay overlap on resolved times; touching blocks do not. */
+export function timeBlocksOverlap({
+  left,
+  right,
+}: TimeBlocksOverlapInput): boolean {
+  const a = resolved(left);
+  const b = resolved(right);
+  return a.start < b.end && b.start < a.end;
+}
+
 /** Some pair overlaps on resolved times; blocks that merely touch do not. */
 function someBlocksOverlap({ left, right }: BlocksOverlapInput): boolean {
   return left

@@ -13,6 +13,7 @@ import type {
 import { Cycle } from '@/domain/entities/cycle';
 import { EventTemplate } from '@/domain/entities/event-template';
 import { TemplateTimeBlock } from '@/domain/entities/template-time-block';
+import type { Recurrence } from '@/domain/recurrence';
 import {
   CycleEventGenerator,
   type ExistingGeneratedEvent,
@@ -404,6 +405,56 @@ describe('CycleEventGenerator', () => {
 
     expect((plans.at(-1) as GeneratedCycleCreateEventPlan).end).toEqual(
       parseInstant({ value: '2026-07-09T02:00:00.000Z' }),
+    );
+  });
+});
+
+describe('CycleEventGenerator with Template Precedence', () => {
+  const winnerId = '44444444-4444-4444-4444-444444444444' as EventTemplateId;
+  const winnerBlockId =
+    '55555555-5555-5555-5555-555555555555' as TemplateTimeBlockId;
+  const winner = {
+    id: winnerId as string,
+    name: 'Wednesday Prayer',
+    recurrence: { kind: 'weekly', weekdays: [3] } as Recurrence,
+    blocks: [
+      { id: winnerBlockId as string, startTime: '10:30', endTime: '11:30' },
+    ],
+  };
+
+  function plansFor(
+    precedencePairs: Parameters<
+      typeof generator.generate
+    >[0]['precedencePairs'],
+  ) {
+    return generator.generate({
+      cycle: createCycle({ endDate: '2026-07-01' }),
+      templates: [createTemplate()],
+      existingEvents: [],
+      existingFingerprints: [],
+      timeZone,
+      precedencePairs,
+    });
+  }
+
+  it('skips only the loser block overlapping the winner; its other block still happens', () => {
+    const [plan] = plansFor([
+      { winner, loser: createTemplate() },
+    ]) as GeneratedCycleCreateEventPlan[];
+    expect(plan?.eventTimeBlocks.map((block) => block.label)).toEqual([
+      'Gathering',
+    ]);
+  });
+
+  it('creates no Event when the loser has no block left', () => {
+    const swallowing = {
+      ...winner,
+      blocks: [
+        { id: winnerBlockId as string, startTime: '09:00', endTime: '11:00' },
+      ],
+    };
+    expect(plansFor([{ winner: swallowing, loser: createTemplate() }])).toEqual(
+      [],
     );
   });
 });

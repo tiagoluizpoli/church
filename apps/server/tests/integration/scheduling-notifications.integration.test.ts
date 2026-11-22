@@ -63,6 +63,7 @@ import {
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
 } from '@/infrastructure/repositories';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { OtelTracing } from '@/infrastructure/services/otel-tracing';
 import { buildChurchMembership } from '@/seeds/builders/church';
@@ -291,6 +292,9 @@ function buildPlanningManager() {
   return new DbPlanningEventManager({
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
     eventRepository: new DrizzlePlanningEventRepository({
+      db: schedulingTestDb,
+    }),
+    precedenceRepository: new DrizzleTemplatePrecedenceRepository({
       db: schedulingTestDb,
     }),
     templateRepository: new DrizzleEventTemplateRepository({

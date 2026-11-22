@@ -1,5 +1,5 @@
 {
-  "id": "b62f3be7-8374-4c84-b652-aa1beadaa018",
+  "id": "d534bb77-0f71-4ca5-8940-4529be5130ef",
   "prevId": "51d1a312-864b-4f17-b92b-38c49bd5b123",
   "version": "7",
   "dialect": "postgresql",
@@ -1227,6 +1227,68 @@
           "tableTo": "organization",
           "columnsFrom": [
             "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.church_slug_history": {
+      "name": "church_slug_history",
+      "schema": "",
+      "columns": {
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "church_slug_history_church_id_idx": {
+          "name": "church_slug_history_church_id_idx",
+          "columns": [
+            {
+              "expression": "church_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "church_slug_history_church_id_organization_id_fk": {
+          "name": "church_slug_history_church_id_organization_id_fk",
+          "tableFrom": "church_slug_history",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "church_id"
           ],
           "columnsTo": [
             "id"
@@ -4275,162 +4337,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.template_precedence": {
-      "name": "template_precedence",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "church_id": {
-          "name": "church_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "template_a_id": {
-          "name": "template_a_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "template_b_id": {
-          "name": "template_b_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "template_precedence_outcome",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "template_precedence_pair_idx": {
-          "name": "template_precedence_pair_idx",
-          "columns": [
-            {
-              "expression": "template_a_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "template_b_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "template_precedence_template_b_idx": {
-          "name": "template_precedence_template_b_idx",
-          "columns": [
-            {
-              "expression": "template_b_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "template_precedence_church_idx": {
-          "name": "template_precedence_church_idx",
-          "columns": [
-            {
-              "expression": "church_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "template_precedence_church_id_church_id_fk": {
-          "name": "template_precedence_church_id_church_id_fk",
-          "tableFrom": "template_precedence",
-          "tableTo": "church",
-          "columnsFrom": [
-            "church_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "template_precedence_template_a_id_event_template_id_fk": {
-          "name": "template_precedence_template_a_id_event_template_id_fk",
-          "tableFrom": "template_precedence",
-          "tableTo": "event_template",
-          "columnsFrom": [
-            "template_a_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "template_precedence_template_b_id_event_template_id_fk": {
-          "name": "template_precedence_template_b_id_event_template_id_fk",
-          "tableFrom": "template_precedence",
-          "tableTo": "event_template",
-          "columnsFrom": [
-            "template_b_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "template_precedence_ordered_pair_check": {
-          "name": "template_precedence_ordered_pair_check",
-          "value": "\"template_precedence\".\"template_a_id\" < \"template_precedence\".\"template_b_id\""
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.template_time_block": {
       "name": "template_time_block",
       "schema": "",
@@ -5820,15 +5726,6 @@
       "values": [
         "leader",
         "member"
-      ]
-    },
-    "public.template_precedence_outcome": {
-      "name": "template_precedence_outcome",
-      "schema": "public",
-      "values": [
-        "both",
-        "a_wins",
-        "b_wins"
       ]
     },
     "public.volunteer_status": {

@@ -1,3 +1,8 @@
+import {
+  type ChurchSlugRefusal,
+  churchSlugRefusal,
+  slugFromName,
+} from '@church/app-config/church-slug';
 import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import {
@@ -10,11 +15,22 @@ import {
   Globe,
   Link2,
   MapPin,
+  Wand2,
 } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { HeaderStatChip } from '@/components/header-stat-chip';
 import { IconInputField } from '@/components/icon-input-field';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,6 +51,7 @@ import {
   toChurchSettingsForm,
 } from '@/features/church-settings/church-settings-form';
 import {
+  checkChurchSlug,
   fieldErrorsOf,
   useChurchSettings,
   useSaveChurchSettings,
@@ -51,7 +68,23 @@ type SectionKey = (typeof SECTIONS)[number];
 type SectionOpenState = Record<SectionKey, boolean>;
 type FieldErrors = Record<string, string>;
 
-const INFO_FIELDS = ['name', 'website', 'accentColor'];
+const INFO_FIELDS = ['name', 'slug', 'website', 'accentColor'];
+
+const SLUG_REFUSAL_MESSAGES: Record<ChurchSlugRefusal, () => string> = {
+  LENGTH: m.error_church_settings_slug_length,
+  FORMAT: m.error_church_settings_slug_format,
+  RESERVED: m.error_church_settings_slug_reserved,
+};
+
+interface SlugErrorInput {
+  slug: string;
+}
+
+/** The immediate, client-side refusal of a typed slug, or undefined while it is acceptable. */
+function slugError({ slug }: SlugErrorInput): string | undefined {
+  const refusal = churchSlugRefusal(slug.trim());
+  return refusal ? SLUG_REFUSAL_MESSAGES[refusal]() : undefined;
+}
 
 interface CountInput {
   count: number;
@@ -174,10 +207,13 @@ interface ChurchSettingsEditorProps {
 
 function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   // Keyed on the form fields only: a logo change (applied at once) must not reset unsaved edits.
-  const { name, website, accentColor } = saved;
+  const { name, slug, website, accentColor } = saved;
   const savedForm = React.useMemo(
-    () => toChurchSettingsForm({ settings: { name, website, accentColor } }),
-    [name, website, accentColor],
+    () =>
+      toChurchSettingsForm({
+        settings: { name, slug, website, accentColor },
+      }),
+    [name, slug, website, accentColor],
   );
   const [form, setForm] = React.useState<ChurchSettingsForm>(savedForm);
   const [errors, setErrors] = React.useState<FieldErrors>({});
@@ -185,6 +221,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     allSections({ open: true }),
   );
   const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [confirmingSlug, setConfirmingSlug] = React.useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
   const saveSettings = useSaveChurchSettings();
 
@@ -194,7 +231,12 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   const dirty = JSON.stringify(form) !== JSON.stringify(savedForm);
   const errorCount = Object.keys(errors).length;
   const infoErrors = INFO_FIELDS.filter((field) => errors[field]).length;
-  const churchAddress = `${saved.publicOrigin}/${saved.slug}`;
+  const slugChanged = form.slug.trim() !== saved.slug;
+  const typedSlugError = slugChanged
+    ? slugError({ slug: form.slug })
+    : undefined;
+  const shownSlugError = errors.slug ?? typedSlugError;
+  const churchAddress = `${saved.publicOrigin}/${form.slug.trim()}`;
   const publicCount = [
     form.name,
     form.website,
@@ -211,8 +253,28 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     );
   };
 
+  const checkSlug = () => {
+    if (!slugChanged || typedSlugError) return;
+    const typed = form.slug.trim();
+    checkChurchSlug({ slug: typed }).then(({ status }) => {
+      if (status === 'taken') {
+        setErrors((current) => ({
+          ...current,
+          slug: m.error_church_settings_slug_taken(),
+        }));
+      }
+    });
+  };
+
   const save = () => {
-    saveSettings.mutate(form, {
+    if (typedSlugError) return;
+    if (slugChanged && !confirmingSlug) {
+      setConfirmingSlug(true);
+      return;
+    }
+    setConfirmingSlug(false);
+    const { slug, ...rest } = form;
+    saveSettings.mutate(slugChanged ? { ...rest, slug: slug.trim() } : rest, {
       onSuccess: () => {
         setErrors({});
         toast.success(m.church_settings_saved());
@@ -340,13 +402,31 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <p className="font-medium text-sm">
-                      {m.church_settings_slug_label()}
-                    </p>
-                    <p className="flex min-w-0 items-center gap-2 text-muted-foreground text-sm">
-                      <Link2 className="size-4 shrink-0" aria-hidden />
-                      <span className="truncate">{churchAddress}</span>
-                    </p>
+                    <IconInputField
+                      icon={Link2}
+                      label={m.church_settings_slug_label()}
+                      hint={m.church_settings_slug_hint()}
+                      value={form.slug}
+                      error={shownSlugError}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      onChange={(event) => patch({ slug: event.target.value })}
+                      onBlur={checkSlug}
+                    />
+                    <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                      <p className="min-w-0 truncate text-muted-foreground text-sm">
+                        {churchAddress}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => patch({ slug: slugFromName(form.name) })}
+                      >
+                        <Wand2 aria-hidden />{' '}
+                        {m.church_settings_slug_generate()}
+                      </Button>
+                    </div>
                   </div>
                   <AccentPicker
                     value={form.accentColor}
@@ -405,6 +485,29 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             </div>
           </DrawerContent>
         </Drawer>
+        <AlertDialog open={confirmingSlug} onOpenChange={setConfirmingSlug}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {m.church_settings_slug_confirm_title()}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {m.church_settings_slug_confirm_body({
+                  old: saved.slug,
+                  slug: form.slug.trim(),
+                })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                {m.church_settings_slug_confirm_cancel()}
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={save}>
+                {m.church_settings_slug_confirm_action()}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {dirty ? (
           <SaveBar
             errorCount={errorCount}

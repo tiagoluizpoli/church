@@ -1,5 +1,6 @@
 import { churchSlugRefusal } from '@church/app-config/church-slug';
 import { z } from 'zod';
+import type { ChurchContact } from './church-contact';
 
 /** Church Settings as stored; empty optional fields are `null`. */
 export interface ChurchSettings {
@@ -9,6 +10,8 @@ export interface ChurchSettings {
   accentColor: string | null;
   /** Object-storage key of the logo; `null` when the Church has none. */
   logoKey: string | null;
+  /** In the admin's order. */
+  contacts: ChurchContact[];
 }
 
 export interface ChurchSettingsChanges {
@@ -17,6 +20,8 @@ export interface ChurchSettingsChanges {
   slug?: string;
   website: string | null;
   accentColor: string | null;
+  /** Omitted, the contacts stay; sent, the whole list replaces them. */
+  contacts?: ChurchContact[];
 }
 
 /**
@@ -33,6 +38,9 @@ export const CHURCH_SETTINGS_FIELD_CODES = [
   'CHURCH_SLUG_FORMAT',
   'CHURCH_SLUG_RESERVED',
   'CHURCH_SLUG_TAKEN',
+  'CONTACT_PHONE_INVALID',
+  'CONTACT_EMAIL_INVALID',
+  'CONTACT_DESCRIPTION_TOO_LONG',
   'INVALID',
 ] as const;
 export type ChurchSettingsFieldCode =

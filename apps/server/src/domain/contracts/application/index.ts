@@ -5,6 +5,7 @@ export * from './authority-manager';
 export * from './availability-check-manager';
 export * from './church-access-manager';
 export * from './church-notifications';
+export * from './church-settings-manager';
 export * from './cycle-manager';
 export * from './event-manager';
 export * from './event-template-manager';

@@ -1,6 +1,6 @@
 {
-  "id": "183fb319-4c00-44c3-8a42-a9b151ffa987",
-  "prevId": "9a8fa462-051f-4046-b580-710ce95a2b18",
+  "id": "7b40adb6-6d20-4177-9f7d-c8369bf07aa2",
+  "prevId": "91323e8e-c24f-48fa-b868-6a2193207eb3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1199,6 +1199,18 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'{}'::jsonb"
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accent_color": {
+          "name": "accent_color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -4192,6 +4204,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "weekday": {
+          "name": "weekday",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "recurrence": {
           "name": "recurrence",
           "type": "jsonb",
@@ -4254,7 +4272,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "event_template_weekday_check": {
+          "name": "event_template_weekday_check",
+          "value": "\"event_template\".\"weekday\" >= 0 AND \"event_template\".\"weekday\" <= 6"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.template_time_block": {

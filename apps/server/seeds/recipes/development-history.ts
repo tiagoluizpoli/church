@@ -1,10 +1,12 @@
-import { scheduleLastTold } from '@church/db';
+import { event, eventTimeBlock, scheduleLastTold } from '@church/db';
 import {
   addCalendarDays,
   addCalendarMonths,
+  addMinutes,
   type CalendarDay,
   compareInstants,
   enumerateCalendarDays,
+  fromDate,
   type Instant,
   parseInstant,
   parseTimeOfDay,
@@ -13,6 +15,7 @@ import {
   toInstant,
   weekdayIndex,
 } from '@church/time';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { recurrenceNamesDay } from '../../src/domain/recurrence';
 import type {
   ChurchDirectoryBlueprint,
@@ -37,6 +40,7 @@ import {
   buildCycle,
   buildEvent,
   buildEventTimeBlock,
+  buildEventTimeBlockMove,
   buildMinistryParticipation,
   buildShift,
   buildShiftRequirement,
@@ -136,6 +140,8 @@ interface PlannedEventTimeBlock {
   gatheringKey: string;
   blockId?: string;
   label: string;
+  isPublic?: boolean;
+  place?: string;
   start: Instant;
   end: Instant;
   servers: PlannedServer[];
@@ -213,6 +219,8 @@ function planEvents({
           gatheringKey: gatheringKeyOf({ block: block.key, week }),
           blockId: seededBlock.id,
           label: block.label,
+          isPublic: block.isPublic,
+          place: block.place,
           start: instantAt({ day, time: block.startTime, timeZone }),
           end: instantAt({ day, time: block.endTime, timeZone }),
           servers: gatherings.servingRules.flatMap((rule) => {
@@ -335,6 +343,8 @@ async function materializeEvent({
       start: eventTimeBlock.start,
       end: eventTimeBlock.end,
       label: eventTimeBlock.label,
+      isPublic: eventTimeBlock.isPublic,
+      place: eventTimeBlock.place,
       sourceTemplateTimeBlockId: eventTimeBlock.blockId,
     });
     eventTimeBlockIdByKey.set(eventTimeBlock.key, eventTimeBlockId);
@@ -1489,6 +1499,7 @@ export async function loadDevelopmentUpcomingCycle({
       })),
     );
   }
+  await markPublicEventChanges({ db, churchId, cycleId: cycle.id });
   await askAvailabilityRound({
     db,
     churchId,
@@ -1537,6 +1548,88 @@ export async function loadDevelopmentUpcomingCycle({
     }),
   });
   return cycle;
+}
+
+interface MarkPublicEventChangesInput {
+  db: SeedWriter;
+  churchId: string;
+  cycleId: string;
+}
+
+/**
+ * The sent Cycle's Public Events as visitors meet them after Send: the first
+ * Sunday's 10:30 block moved twice (as-sent, a day later, then back to its
+ * current time), the second Sunday's 08:00 block cancelled. Written directly, like
+ * the rest of the fixture graph (ADR 0006).
+ */
+async function markPublicEventChanges({
+  db,
+  churchId,
+  cycleId,
+}: MarkPublicEventChangesInput): Promise<void> {
+  const blocks = await db
+    .select({
+      id: eventTimeBlock.id,
+      eventId: eventTimeBlock.eventId,
+      start: eventTimeBlock.startTime,
+      end: eventTimeBlock.endTime,
+      label: eventTimeBlock.label,
+    })
+    .from(eventTimeBlock)
+    .innerJoin(event, eq(eventTimeBlock.eventId, event.id))
+    .where(
+      and(
+        eq(event.cycleId, cycleId),
+        eq(eventTimeBlock.isPublic, true),
+        inArray(eventTimeBlock.label, ['Culto 08:00', 'Culto 10:30']),
+      ),
+    )
+    .orderBy(asc(eventTimeBlock.startTime));
+  const moved = blocks.find((block) => block.label === 'Culto 10:30');
+  // 08:00 has no Kids, so cancelling it leaves the Kids proposal intact.
+  const cancelled = blocks.filter((block) => block.label === 'Culto 08:00')[1];
+  if (!moved || !cancelled) return;
+
+  const currentStart = fromDate({ date: moved.start });
+  const currentEnd = fromDate({ date: moved.end });
+  const shifted = (minutes: number) => ({
+    start: addMinutes({ instant: currentStart, minutes }),
+    end: addMinutes({ instant: currentEnd, minutes }),
+  });
+  const asSent = shifted(-120);
+  const hop = shifted(1440);
+  await buildEventTimeBlockMove({
+    db,
+    churchId,
+    id: deriveSeedId({
+      kind: 'event-time-block-move',
+      parentIds: [moved.id, 'first'],
+    }),
+    movedAt: shifted(-2880).start,
+    eventTimeBlockId: moved.id,
+    previousStart: asSent.start,
+    previousEnd: asSent.end,
+    newStart: hop.start,
+    newEnd: hop.end,
+  });
+  await buildEventTimeBlockMove({
+    db,
+    churchId,
+    id: deriveSeedId({
+      kind: 'event-time-block-move',
+      parentIds: [moved.id, 'second'],
+    }),
+    movedAt: shifted(-1440).start,
+    eventTimeBlockId: moved.id,
+    previousStart: hop.start,
+    previousEnd: hop.end,
+    newStart: currentStart,
+    newEnd: currentEnd,
+  });
+  await db
+    .update(eventTimeBlock)
+    .set({ status: 'cancelled' })
+    .where(eq(eventTimeBlock.id, cancelled.id));
 }
 
 interface LedMinistry {

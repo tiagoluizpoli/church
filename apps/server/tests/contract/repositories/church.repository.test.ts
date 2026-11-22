@@ -54,6 +54,12 @@ class MockChurchRepository implements ChurchRepository {
   async findUserName(): Promise<string | null> {
     return null;
   }
+
+  async getSettings(): Promise<never> {
+    throw new Error('not used by the contract');
+  }
+
+  async saveSettings(): Promise<void> {}
 }
 
 runChurchRepositoryContractTests(

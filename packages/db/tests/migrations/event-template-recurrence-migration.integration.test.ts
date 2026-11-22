@@ -16,8 +16,8 @@ import { getIntegrationDatabaseUrl } from '../../src/integration-database-url';
 const MIGRATIONS = join(import.meta.dirname, '../../src/migrations');
 // The recurrence migration and the weekday drop that completes it.
 const MIGRATION_TAGS = [
-  '0058_event_template_recurrence',
-  '0059_event_template_drop_weekday',
+  '0059_event_template_recurrence',
+  '0060_event_template_drop_weekday',
 ];
 const scratchName = `church_template_recurrence_migration_${process.pid}`;
 

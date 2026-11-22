@@ -1,5 +1,5 @@
 {
-  "id": "9a8fa462-051f-4046-b580-710ce95a2b18",
+  "id": "91323e8e-c24f-48fa-b868-6a2193207eb3",
   "prevId": "0d789cb3-0df6-4c0d-9412-43c1fb184c42",
   "version": "7",
   "dialect": "postgresql",
@@ -1199,6 +1199,18 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'{}'::jsonb"
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accent_color": {
+          "name": "accent_color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -4195,12 +4207,6 @@
         "weekday": {
           "name": "weekday",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recurrence": {
-          "name": "recurrence",
-          "type": "jsonb",
           "primaryKey": false,
           "notNull": true
         },

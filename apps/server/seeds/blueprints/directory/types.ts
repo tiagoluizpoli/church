@@ -60,6 +60,9 @@ export interface ChurchIdentity {
   name: string;
   slug: string;
   timezone: string;
+  /** Church Settings; omitted means the Church leaves it empty. */
+  website?: string;
+  accentColor?: string;
 }
 
 /** One Church's complete directory: its ChurchAdmin, Ministries and cross-Ministry service. */

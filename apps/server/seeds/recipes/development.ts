@@ -16,6 +16,7 @@ import type {
   Person,
 } from '../blueprints/directory/types';
 import {
+  buildChurchSettings,
   buildProvisionedChurch,
   redeemChurchInvitation,
 } from '../builders/church';
@@ -231,6 +232,12 @@ async function loadChurchDirectory({
       kind: 'church-admin-invitation',
       parentIds: [blueprint.church.slug],
     }),
+  });
+  await buildChurchSettings({
+    db,
+    churchId: church.id,
+    website: blueprint.church.website ?? null,
+    accentColor: blueprint.church.accentColor ?? null,
   });
   const context: ChurchDirectoryContext = {
     db,

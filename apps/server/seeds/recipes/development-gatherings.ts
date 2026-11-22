@@ -114,6 +114,8 @@ export async function loadGatherings({
         label: block.label,
         startTime: parseTimeOfDay({ value: block.startTime }),
         endTime: parseTimeOfDay({ value: block.endTime }),
+        isPublic: block.isPublic,
+        place: block.place,
       })),
     });
     blocks.push(

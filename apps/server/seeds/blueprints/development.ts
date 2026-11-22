@@ -29,6 +29,8 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
     name: 'Igreja Semente',
     slug: 'igreja-semente',
     timezone: 'America/Sao_Paulo',
+    website: 'https://igreja-semente.test',
+    accentColor: '#0f766e',
   },
   churchAdmin: {
     name: 'Helena Duarte',

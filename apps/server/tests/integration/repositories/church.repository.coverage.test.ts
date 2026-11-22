@@ -23,4 +23,16 @@ describe('DrizzleChurchRepository (extra coverage)', () => {
       }),
     ).rejects.toThrow(NotFoundError);
   });
+
+  it.each([
+    '99999999-9999-4999-8999-999999999999',
+    'not-a-uuid',
+  ])('getSettings throws NotFoundError for Church %s', async (id) => {
+    await seedSchedulingPhase3Base();
+    const repo = new DrizzleChurchRepository({ db: schedulingTestDb });
+
+    await expect(repo.getSettings({ id: ChurchId.from(id) })).rejects.toThrow(
+      NotFoundError,
+    );
+  });
 });

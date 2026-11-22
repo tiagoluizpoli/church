@@ -1,3 +1,4 @@
+import { BaseChurchSlugSchema } from '@church/app-config/church-slug';
 import type { ExtractTablesWithRelations, SQL } from 'drizzle-orm';
 import { and, eq } from 'drizzle-orm';
 import type {
@@ -53,7 +54,7 @@ export type ChurchAccessLevel = 'member' | 'admin';
 export const ChurchIdSchema = z.guid().brand<'ChurchId'>();
 export type ChurchId = z.infer<typeof ChurchIdSchema>;
 
-export const ChurchSlugSchema = z.string().trim().min(1).brand<'ChurchSlug'>();
+export const ChurchSlugSchema = BaseChurchSlugSchema.brand<'ChurchSlug'>();
 export type ChurchSlug = z.infer<typeof ChurchSlugSchema>;
 
 const ChurchMembershipUserIdSchema = z.string().min(1).brand<'UserId'>();

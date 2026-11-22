@@ -2,19 +2,29 @@ import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { formatRelative, parseInstant } from '@church/time';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { createFileRoute, Link, Navigate } from '@tanstack/react-router';
+import { createFileRoute, Navigate } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { ArrowRight, CircleAlert, ShieldAlert } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import type {
-  AcceptChurchInvitation200,
-  GetChurchInvitationReviewStatus200,
-} from '@/infrastructure/api/churchAPI.schemas';
+import {
+  WorkspaceIntroPanel,
+  WorkspacePage,
+} from '@/components/workspace-page';
+import {
+  Alert,
+  AlreadyAcceptedNotice,
+  CHURCH_ACCESS_LABELS,
+  InvitationFact,
+  THROTTLED_STATUS,
+  ThrottledNotice,
+  UnavailableNotice,
+  WrongLoginNotice,
+} from '@/features/invitations/components/invitation-review-parts';
+import type { AcceptChurchInvitation200 } from '@/infrastructure/api/churchAPI.schemas';
 import { useContinueToChurch } from '@/shared/hooks/use-continue-to-church';
 import { useSignOut } from '@/shared/hooks/use-sign-out';
 import { randomId } from '@/shared/utils/id';
@@ -26,25 +36,11 @@ export const Route = createFileRoute(
   component: ChurchInvitationReviewRoute,
 });
 
-const THROTTLED_STATUS = 429;
+interface AcceptFailureKinds {
+  kind: 'retryable-failure' | 'terminal-failure' | 'identity-mismatch';
+}
 
-type RedeemableStatus = Extract<
-  GetChurchInvitationReviewStatus200,
-  { kind: 'redeemable' }
->;
-
-type AcceptFailure = Extract<
-  AcceptChurchInvitation200,
-  { kind: 'retryable-failure' | 'terminal-failure' | 'identity-mismatch' }
->;
-
-const CHURCH_ACCESS_LABELS: Record<
-  RedeemableStatus['churchAccessLevel'],
-  () => string
-> = {
-  member: m.join_church_access_member,
-  admin: m.join_church_access_admin,
-};
+type AcceptFailure = Extract<AcceptChurchInvitation200, AcceptFailureKinds>;
 
 interface ReturnTargetInput {
   invitationId: string;
@@ -66,9 +62,9 @@ function ChurchInvitationReviewRoute() {
 
   return (
     <AppShell breadcrumbOverrides={breadcrumbOverrides} notificationBell={null}>
-      <div className="mx-auto w-full max-w-xl space-y-5 p-4 md:p-8">
+      <WorkspacePage>
         <ChurchInvitationReviewContent invitationId={invitationId} />
-      </div>
+      </WorkspacePage>
     </AppShell>
   );
 }
@@ -157,14 +153,14 @@ function ChurchInvitationReviewContent({
     return throttled ? (
       <ThrottledNotice onRetry={() => statusQuery.refetch()} />
     ) : (
-      <UnavailableNotice invitationId={invitationId} />
+      <UnavailableNotice returnTo={returnTarget({ invitationId })} />
     );
   }
 
   const status = statusQuery.data;
 
   if (!status || status.kind === 'unavailable') {
-    return <UnavailableNotice invitationId={invitationId} />;
+    return <UnavailableNotice returnTo={returnTarget({ invitationId })} />;
   }
 
   // A pending Ministry half: the Ministry review covers the whole offer.
@@ -180,41 +176,21 @@ function ChurchInvitationReviewContent({
 
   if (status.kind === 'identity-mismatch') {
     return (
-      <div className="space-y-4">
-        <div className="flex size-11 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-          <ShieldAlert className="size-5" />
-        </div>
-        <h1 className="text-balance font-semibold text-2xl tracking-tight">
-          {m.ministry_invitation_wrong_login_title()}
-        </h1>
-        <p className="text-pretty text-muted-foreground text-sm">
-          {m.ministry_invitation_wrong_login_description({
-            maskedEmail: status.maskedEmail,
-          })}
-        </p>
-        <Button onClick={handleLogOut}>{m.ministry_invitation_logout()}</Button>
-      </div>
+      <WrongLoginNotice
+        maskedEmail={status.maskedEmail}
+        onLogOut={handleLogOut}
+      />
     );
   }
 
   if (status.kind === 'already-accepted') {
     return (
-      <div className="space-y-4">
-        <h1 className="text-balance font-semibold text-2xl tracking-tight">
-          {m.ministry_invitation_already_accepted_title()}
-        </h1>
-        <p className="text-pretty text-muted-foreground text-sm">
-          {m.ministry_invitation_already_accepted_description()}
-        </p>
-        <Button
-          className="w-full"
-          disabled={continueMutation.isPending}
-          onClick={() => continueMutation.mutate({ churchId: status.churchId })}
-        >
-          {m.ministry_invitation_continue_home()}
-          {continueMutation.isPending ? <Spinner /> : <ArrowRight />}
-        </Button>
-      </div>
+      <AlreadyAcceptedNotice
+        isPending={continueMutation.isPending}
+        onContinue={() =>
+          continueMutation.mutate({ churchId: status.churchId })
+        }
+      />
     );
   }
 
@@ -229,17 +205,11 @@ function ChurchInvitationReviewContent({
 
   if (acceptFailure?.kind === 'identity-mismatch') {
     return (
-      <div className="space-y-4">
-        <h1 className="text-balance font-semibold text-2xl tracking-tight">
-          {m.ministry_invitation_wrong_login_title()}
-        </h1>
-        <p className="text-pretty text-muted-foreground text-sm">
-          {m.ministry_invitation_wrong_login_description({
-            maskedEmail: acceptFailure.maskedEmail,
-          })}
-        </p>
-        <Button onClick={handleLogOut}>{m.ministry_invitation_logout()}</Button>
-      </div>
+      <WrongLoginNotice
+        maskedEmail={acceptFailure.maskedEmail}
+        onLogOut={handleLogOut}
+        withIcon={false}
+      />
     );
   }
 
@@ -255,16 +225,14 @@ function ChurchInvitationReviewContent({
   });
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-1.5 border-border border-b pb-4">
-        <h1 className="text-balance font-semibold text-2xl tracking-tight">
-          {m.church_invitation_review_title({ churchName: status.churchName })}
-        </h1>
-        <p className="text-pretty text-muted-foreground text-sm">
-          {m.church_invitation_review_intro({ churchName: status.churchName })}
-        </p>
-      </div>
-
+    <WorkspaceIntroPanel
+      title={m.church_invitation_review_title({
+        churchName: status.churchName,
+      })}
+      description={m.church_invitation_review_intro({
+        churchName: status.churchName,
+      })}
+    >
       <div role="status" className="empty:hidden">
         {acceptData?.kind === 'offer-changed' ? (
           <Alert>
@@ -358,82 +326,6 @@ function ChurchInvitationReviewContent({
           {m.ministry_invitation_decline()}
         </Button>
       )}
-    </div>
-  );
-}
-
-interface AlertProps {
-  children: ReactNode;
-}
-
-function Alert({ children }: AlertProps) {
-  return (
-    <div
-      role="alert"
-      className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3"
-    >
-      <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-      <div className="text-sm">{children}</div>
-    </div>
-  );
-}
-
-interface UnavailableNoticeProps {
-  invitationId: string;
-}
-
-function UnavailableNotice({ invitationId }: UnavailableNoticeProps) {
-  return (
-    <div className="space-y-4">
-      <Alert>
-        <p className="font-medium">
-          {m.ministry_invitation_unavailable_title()}
-        </p>
-        <p className="text-muted-foreground">
-          {m.ministry_invitation_unavailable_description()}
-        </p>
-      </Alert>
-      <Link
-        to="/login"
-        search={{ redirect: returnTarget({ invitationId }) }}
-        className="inline-flex min-h-11 items-center font-medium text-primary text-sm underline-offset-4 hover:underline"
-      >
-        {m.ministry_invitation_login()}
-      </Link>
-    </div>
-  );
-}
-
-interface ThrottledNoticeProps {
-  onRetry: () => void;
-}
-
-function ThrottledNotice({ onRetry }: ThrottledNoticeProps) {
-  return (
-    <div className="space-y-4">
-      <Alert>
-        <p className="font-medium">{m.ministry_invitation_throttled_title()}</p>
-        <p className="text-muted-foreground">
-          {m.ministry_invitation_throttled_description()}
-        </p>
-      </Alert>
-      <Button variant="outline" onClick={onRetry}>
-        {m.ministry_invitation_retry()}
-      </Button>
-    </div>
-  );
-}
-
-interface InvitationFactProps {
-  label: string;
-  value: string;
-}
-
-function InvitationFact({ label, value }: InvitationFactProps) {
-  return (
-    <div className="flex justify-between gap-4 text-sm">
-      <dt className="shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-words text-right font-medium">{value}</dd>
-    </div>
+    </WorkspaceIntroPanel>
   );
 }

@@ -17587,6 +17587,83 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/public/churches/{slug}:
+    get:
+      operationId: getPublicChurchProfile
+      summary: Get a Public Church Profile
+      tags:
+        - public-church-profile
+      description: "The public identity of the Church a live or old Church Slug names.
+        No session needed. `slug` is always the current one: an old slug answers
+        the current slug so the caller replaces its URL. Unknown slug: 404."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 63
+          in: path
+          name: slug
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slug:
+                    type: string
+                  name:
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                required:
+                  - slug
+                  - name
+                  - logoUrl
+                  - accentColor
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard

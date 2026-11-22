@@ -54,6 +54,7 @@ describe('composition root', () => {
       'assign',
       'caller-capabilities',
       'prepare',
+      'public/churches',
       'volunteer',
     ];
     for (const prefix of prefixes) {
@@ -64,10 +65,10 @@ describe('composition root', () => {
     }
   });
 
-  it('builds nineteen controllers', () => {
+  it('builds twenty controllers', () => {
     const { controllers } = createCompositionRoot();
-    expect(controllers).toHaveLength(19);
-    expect(new Set(controllers.map((c) => c.constructor)).size).toBe(19);
+    expect(controllers).toHaveLength(20);
+    expect(new Set(controllers.map((c) => c.constructor)).size).toBe(20);
   });
 
   it('reads the debug code back from an overridden capture email sender', async () => {

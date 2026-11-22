@@ -24,6 +24,7 @@ export default defineConfig({
           'swap-requests',
           'setup',
           'church-settings',
+          'public-church-profile',
         ],
       },
     },

@@ -322,6 +322,20 @@ describe('Church Settings screen', () => {
     expect(await nameField()).toBeInTheDocument();
   });
 
+  it('opens the saved public page in a new tab from "Ver página pública"', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await user.type(await nameField(), ' Nova');
+
+    const link = screen.getByRole('link', { name: 'Ver página pública' });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://app.church.test/igreja-semente',
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
   it('opens the preview in a drawer from "Ver prévia"', async () => {
     const user = userEvent.setup();
     renderSettings();

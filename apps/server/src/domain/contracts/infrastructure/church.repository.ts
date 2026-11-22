@@ -40,6 +40,26 @@ export interface ChurchRepository {
   ): Promise<Exclude<ChurchSlugAvailability, 'reserved'>>;
   /** Points the Church at a logo key, or at none; objects are never touched. */
   saveLogoKey(input: SaveChurchLogoKeyInput): Promise<void>;
+  /**
+   * The public identity of the Church whose live slug, or one of whose old
+   * slugs, is `slug`; always carries the current slug. `null` when no Church
+   * ever held it.
+   */
+  findPublicIdentityBySlug(
+    input: FindPublicIdentityBySlugInput,
+  ): Promise<PublicChurchIdentity | null>;
+}
+
+export interface FindPublicIdentityBySlugInput {
+  slug: string;
+}
+
+/** The allow-listed identity fields a visitor may see. */
+export interface PublicChurchIdentity {
+  slug: string;
+  name: string;
+  accentColor: string | null;
+  logoKey: string | null;
 }
 
 export interface SlugAvailabilityInput {

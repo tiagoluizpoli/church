@@ -44,3 +44,4 @@ export * from './usual-setup.repository';
 export * from './verification-code-inspector';
 export * from './volunteer.repository';
 export * from './volunteer-transfer.repository';
+export * from './web-shell';

@@ -78,6 +78,7 @@ import type {
   VerificationCodeInspector,
   VolunteerRepository,
   VolunteerTransferRepository,
+  WebShell,
 } from '../../domain/contracts/infrastructure';
 
 export interface CompositionRootDependencies {
@@ -128,6 +129,8 @@ export interface CompositionRootDependencies {
   tracing: Tracing;
   /** S3 from the env; HTTP tests inject the in-memory fake. */
   objectStorage: ObjectStorage;
+  /** The deployed web's index.html; HTTP tests inject a fake. */
+  webShell: WebShell;
   // Auth
   scopeRepository: SchedulingScopeRepository;
   authorityActorRepository: AuthorityActorRepository;

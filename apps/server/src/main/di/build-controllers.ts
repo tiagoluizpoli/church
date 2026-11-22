@@ -23,11 +23,13 @@ import {
 } from '../../api/controllers';
 import type { Auth } from './build-auth';
 import type { Managers } from './build-managers';
+import type { Services } from './build-services';
 import type { CompositionRootDependencies } from './dependencies';
 
 export interface BuildControllersInput {
   config: CompositionRootDependencies['config'];
   managers: Managers;
+  services: Pick<Services, 'webShell'>;
   auth: Auth;
 }
 
@@ -61,6 +63,7 @@ export function buildControllers({
     churchAccessManager,
     ministryMembershipManager,
   },
+  services: { webShell },
   auth: { authorityGuard, activeChurchResolver },
 }: BuildControllersInput): FastifyController[] {
   return [
@@ -154,6 +157,7 @@ export function buildControllers({
     new PublicChurchProfileController({
       publicChurchProfileManager,
       publicEventManager,
+      webShell,
       config,
     }),
     new VolunteerController({ volunteerManager, activeChurchResolver, config }),

@@ -55,6 +55,10 @@ beforeAll(async () => {
       publicEventRepository: new DrizzlePublicEventRepository({ db }),
       churchRepository,
     }),
+    webShell: {
+      publicOrigin: 'https://igreja.example',
+      readIndexHtml: async () => '<!doctype html>',
+    },
     config: appConfig,
   });
   await app.register(

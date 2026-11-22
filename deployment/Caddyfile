@@ -32,6 +32,19 @@
 		file_server
 	}
 
+	# A Church's public page `/{slug}`: a single slug-shaped root segment that
+	# is not an app route (the reserved Church Slugs, @church/app-config). The
+	# server answers the SPA's index.html with the Church's meta tags, a real
+	# 301 for an old slug and a 404 for an unknown one; the SPA then renders.
+	@churchPage {
+		path_regexp ^/[a-z0-9]+(-[a-z0-9]+)*$
+		not path /app /api /assets /login /logout /signup /forgot-password /reset-password /invitations /church /admin /help /about /privacy /terms /static /www
+	}
+	handle @churchPage {
+		rewrite * /api/v1/public/churches{path}/page
+		reverse_proxy server:3000
+	}
+
 	handle {
 		header Cache-Control "no-cache"
 		try_files {path} {path}/ /index.html

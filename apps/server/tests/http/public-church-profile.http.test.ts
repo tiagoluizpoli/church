@@ -1,5 +1,10 @@
 import { appConfig } from '@church/app-config';
-import { church, churchLegalProfile, churchSlugHistory } from '@church/db';
+import {
+  church,
+  churchLegalProfile,
+  churchSlugHistory,
+  organization,
+} from '@church/db';
 import { parseTimeOfDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -36,6 +41,9 @@ const LOGO_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#1d4ed8"/></svg>';
 const clock = (value: string) => parseTimeOfDay({ value });
 const MAX_REQUESTS = appConfig.publicProfileRateLimit.maxRequests;
+const WEB_ORIGIN = 'https://igreja.example';
+const SPA_SHELL =
+  '<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8" /><title>Church</title><script type="module" src="/assets/index-abc.js"></script></head><body><div id="app"></div></body></html>';
 
 let app: FastifyTypedInstance;
 let storage: InMemoryObjectStorage;
@@ -59,6 +67,10 @@ beforeAll(async () => {
       publicEventRepository: new DrizzlePublicEventRepository({ db }),
       churchRepository: new DrizzleChurchRepository({ db }),
     }),
+    webShell: {
+      publicOrigin: WEB_ORIGIN,
+      readIndexHtml: async () => SPA_SHELL,
+    },
     config: appConfig,
   });
   await app.register(
@@ -567,5 +579,113 @@ describe('GET /public/churches/:slug', () => {
 
       expect(await programmeOf('ib-esperanca')).toEqual([]);
     });
+  });
+});
+
+describe('GET /public/churches/:slug/page', () => {
+  function readPage(slug: string) {
+    return app.inject({
+      method: 'GET',
+      url: `/api/v1/public/churches/${slug}/page`,
+      remoteAddress,
+    });
+  }
+
+  function shellWithHead(head: string[]): string {
+    return SPA_SHELL.replace('<title>Church</title>', () => head.join(''));
+  }
+
+  it('fills the head with the name, Main Address city/UF, canonical and the logo as image', async () => {
+    const logoKey = await buildChurchLogo({
+      db,
+      churchId: CHURCH_A,
+      objectStorage: storage,
+      svg: LOGO_SVG,
+    });
+    await insertChurchAddress({ db, churchId: CHURCH_A, isPublic: false });
+    const logoUrl = storage.publicUrl({ key: logoKey });
+
+    const response = await readPage('ib-esperanca');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toBe('text/html; charset=utf-8');
+    expect(response.headers['cache-control']).toBe('no-cache');
+    expect(response.body).toBe(
+      shellWithHead([
+        '<title>Igreja Batista Esperança | Church</title>',
+        '<meta name="description" content="Igreja Batista Esperança · Campinas/SP" />',
+        '<link rel="canonical" href="https://igreja.example/ib-esperanca" />',
+        '<meta property="og:type" content="website" />',
+        '<meta property="og:url" content="https://igreja.example/ib-esperanca" />',
+        '<meta property="og:title" content="Igreja Batista Esperança | Church" />',
+        '<meta property="og:description" content="Igreja Batista Esperança · Campinas/SP" />',
+        `<meta property="og:image" content="${logoUrl}" />`,
+        '<meta name="twitter:card" content="summary" />',
+        '<meta name="twitter:title" content="Igreja Batista Esperança | Church" />',
+        '<meta name="twitter:description" content="Igreja Batista Esperança · Campinas/SP" />',
+        `<meta name="twitter:image" content="${logoUrl}" />`,
+      ]),
+    );
+  });
+
+  it('describes a Church with no Main Address by its name, with the platform logo, escaping the name', async () => {
+    await db
+      .update(organization)
+      .set({ name: 'Igreja "Luz" & <Paz> $&' })
+      .where(eq(organization.id, CHURCH_A));
+
+    const response = await readPage('ib-esperanca');
+
+    const name = 'Igreja &quot;Luz&quot; &amp; &lt;Paz&gt; $&amp;';
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toBe(
+      shellWithHead([
+        `<title>${name} | Church</title>`,
+        `<meta name="description" content="${name}" />`,
+        '<link rel="canonical" href="https://igreja.example/ib-esperanca" />',
+        '<meta property="og:type" content="website" />',
+        '<meta property="og:url" content="https://igreja.example/ib-esperanca" />',
+        `<meta property="og:title" content="${name} | Church" />`,
+        `<meta property="og:description" content="${name}" />`,
+        '<meta property="og:image" content="https://igreja.example/logo.png" />',
+        '<meta name="twitter:card" content="summary" />',
+        `<meta name="twitter:title" content="${name} | Church" />`,
+        `<meta name="twitter:description" content="${name}" />`,
+        '<meta name="twitter:image" content="https://igreja.example/logo.png" />',
+      ]),
+    );
+  });
+
+  it('answers an old slug with a 301 to the current slug', async () => {
+    await db
+      .insert(churchSlugHistory)
+      .values({ slug: 'esperanca-antiga', churchId: CHURCH_A });
+
+    const response = await readPage('esperanca-antiga');
+
+    expect(response.statusCode).toBe(301);
+    expect(response.headers.location).toBe('/ib-esperanca');
+  });
+
+  it.each([
+    'nao-existe',
+    'login',
+  ])('answers %s with 404 and the unfilled SPA shell', async (slug) => {
+    const response = await readPage(slug);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.headers['content-type']).toBe('text/html; charset=utf-8');
+    expect(response.body).toBe(SPA_SHELL);
+  });
+
+  it('answers 429 with the unfilled SPA shell once a client IP is over the limit', async () => {
+    for (let attempt = 0; attempt < MAX_REQUESTS; attempt += 1) {
+      expect((await readPage('ib-esperanca')).statusCode).toBe(200);
+    }
+
+    const limited = await readPage('ib-esperanca');
+
+    expect(limited.statusCode).toBe(429);
+    expect(limited.body).toBe(SPA_SHELL);
   });
 });

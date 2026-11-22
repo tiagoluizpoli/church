@@ -1401,12 +1401,17 @@ interface ChangedPublicFieldsInput {
   place?: string;
 }
 
+interface PublicFieldsPatch {
+  isPublic?: boolean;
+  place?: string | null;
+}
+
 /** The Público/place values that differ from the block; refused once it started. */
 function changedPublicFields({
   block,
   isPublic,
   place,
-}: ChangedPublicFieldsInput): { isPublic?: boolean; place?: string | null } {
+}: ChangedPublicFieldsInput): PublicFieldsPatch {
   const nextPlace = place === undefined ? undefined : place || null;
   const patch = {
     ...(isPublic !== undefined && isPublic !== block.isPublic

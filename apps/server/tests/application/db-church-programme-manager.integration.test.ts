@@ -1,0 +1,149 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { DbChurchProgrammeManager } from '@/application/db-church-programme-manager';
+import { DbEventTemplateManager } from '@/application/db-event-template-manager';
+import { ChurchId } from '@/domain/branded-ids';
+import { DrizzleChurchProgrammeRepository } from '@/infrastructure/repositories/drizzle-church-programme.repository';
+import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
+import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
+import {
+  resetSchedulingPhase3Db,
+  schedulingTestDb,
+  seedSchedulingPhase3Base,
+} from '@/tests/scheduling-reshape/setup';
+
+const templates = new DbEventTemplateManager({
+  templateRepository: new DrizzleEventTemplateRepository({
+    db: schedulingTestDb,
+  }),
+  unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
+});
+const programme = new DbChurchProgrammeManager({
+  programmeRepository: new DrizzleChurchProgrammeRepository({
+    db: schedulingTestDb,
+  }),
+});
+
+function block(
+  label: string,
+  startTime: string,
+  isPublic: boolean,
+  place?: string,
+) {
+  return { label, startTime, endTime: '23:00', isPublic, place };
+}
+
+describe('DbChurchProgrammeManager', () => {
+  let churchA: ChurchId;
+  let churchB: ChurchId;
+
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+    const seed = await seedSchedulingPhase3Base();
+    churchA = ChurchId.from(seed.churchAId);
+    churchB = ChurchId.from(seed.churchBId);
+  });
+
+  it('returns only public blocks with recurrence, start time, label and place', async () => {
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Sunday',
+      weekday: 0,
+      blocks: [
+        block('Worship', '09:00', true, 'Main hall'),
+        block('Rehearsal', '07:00', false),
+        block('Kids', '09:30', true),
+      ],
+    });
+
+    const result = await programme.getProgramme({ churchId: churchA });
+
+    expect(result).toEqual([
+      {
+        recurrence: { kind: 'weekly', weekday: 0 },
+        startTime: '09:00',
+        label: 'Worship',
+        place: 'Main hall',
+      },
+      {
+        recurrence: { kind: 'weekly', weekday: 0 },
+        startTime: '09:30',
+        label: 'Kids',
+        place: null,
+      },
+    ]);
+  });
+
+  it('orders by Sunday-first weekday then start time, interleaving templates, with a stable tiebreak', async () => {
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Wednesday',
+      weekday: 3,
+      blocks: [block('Study', '19:30', true)],
+    });
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Sunday morning',
+      weekday: 0,
+      blocks: [block('Worship', '09:00', true), block('Tie B', '18:00', true)],
+    });
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Sunday evening',
+      weekday: 0,
+      blocks: [block('Tie A', '18:00', true), block('Prayer', '08:00', true)],
+    });
+
+    const result = await programme.getProgramme({ churchId: churchA });
+
+    expect(result.map((item) => item.label)).toEqual([
+      'Prayer',
+      'Worship',
+      'Tie A',
+      'Tie B',
+      'Study',
+    ]);
+  });
+
+  it('reflects a template edit at once', async () => {
+    const template = await templates.createTemplate({
+      churchId: churchA,
+      name: 'Sunday',
+      weekday: 0,
+      blocks: [block('Worship', '09:00', true)],
+    });
+    const [existing] = template.blocks;
+
+    await templates.updateTemplate({
+      churchId: churchA,
+      templateId: template.id,
+      name: 'Sunday',
+      weekday: 6,
+      blocks: [
+        {
+          id: existing?.id as string,
+          ...block('Vigil', '20:00', true, 'Chapel'),
+        },
+      ],
+    });
+
+    expect(await programme.getProgramme({ churchId: churchA })).toEqual([
+      {
+        recurrence: { kind: 'weekly', weekday: 6 },
+        startTime: '20:00',
+        label: 'Vigil',
+        place: 'Chapel',
+      },
+    ]);
+  });
+
+  it("never shows another Church's templates", async () => {
+    await templates.createTemplate({
+      churchId: churchB,
+      name: 'Other',
+      weekday: 0,
+      blocks: [block('Foreign', '09:00', true)],
+    });
+
+    expect(await programme.getProgramme({ churchId: churchA })).toEqual([]);
+  });
+});

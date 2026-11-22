@@ -1291,6 +1291,8 @@ paths:
                     type: string
                   weekday:
                     type: number
+                  publicBlockCount:
+                    type: number
                   blocks:
                     type: array
                     items:
@@ -1341,6 +1343,7 @@ paths:
                   - churchId
                   - name
                   - weekday
+                  - publicBlockCount
                   - blocks
                   - createdAt
                   - updatedAt
@@ -1411,6 +1414,8 @@ paths:
                           type: string
                         weekday:
                           type: number
+                        publicBlockCount:
+                          type: number
                         blocks:
                           type: array
                           items:
@@ -1461,6 +1466,7 @@ paths:
                         - churchId
                         - name
                         - weekday
+                        - publicBlockCount
                         - blocks
                         - createdAt
                         - updatedAt
@@ -1497,6 +1503,8 @@ paths:
                   name:
                     type: string
                   weekday:
+                    type: number
+                  publicBlockCount:
                     type: number
                   blocks:
                     type: array
@@ -1548,6 +1556,7 @@ paths:
                   - churchId
                   - name
                   - weekday
+                  - publicBlockCount
                   - blocks
                   - createdAt
                   - updatedAt
@@ -1632,6 +1641,8 @@ paths:
                     type: string
                   weekday:
                     type: number
+                  publicBlockCount:
+                    type: number
                   blocks:
                     type: array
                     items:
@@ -1682,6 +1693,7 @@ paths:
                   - churchId
                   - name
                   - weekday
+                  - publicBlockCount
                   - blocks
                   - createdAt
                   - updatedAt

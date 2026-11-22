@@ -37,10 +37,11 @@ function usage(ministryCount: number) {
   return { templateId: 'template-1', ministryCount, blocks: [] };
 }
 
-function renderDialog(queryClient?: QueryClient) {
+function renderDialog(queryClient?: QueryClient, publicBlockCount = 0) {
   renderWithProviders(
     <TemplateDeleteDialog
       templateId="template-1"
+      publicBlockCount={publicBlockCount}
       onClose={onClose}
       onDeleted={onDeleted}
     />,
@@ -59,6 +60,19 @@ beforeEach(() => {
 });
 
 describe('TemplateDeleteDialog', () => {
+  it.each([
+    [0, null],
+    [1, '1 item público será removido da Programação.'],
+    [3, '3 itens públicos serão removidos da Programação.'],
+  ])('states how many public items leave the Programme (%i public blocks)', async (count, line) => {
+    renderDialog(undefined, count);
+    await waitFor(() => expect(confirmButton()).resolves.toBeEnabled());
+
+    const warning = screen.queryByTestId('template-delete-public-count');
+    if (line === null) expect(warning).not.toBeInTheDocument();
+    else expect(warning).toHaveTextContent(line);
+  });
+
   it.each([
     [0, null],
     [1, 'A configuração padrão de 1 ministério será removida.'],

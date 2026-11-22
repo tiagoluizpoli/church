@@ -391,6 +391,28 @@ describe('TemplateTimeBlock Publico and place', () => {
     ).toEqual([false, true]);
   });
 
+  it('says in the list how many public blocks each template has', async () => {
+    await signIn();
+    await post(
+      body({
+        name: 'With public',
+        blocks: [welcome, { ...sermon, isPublic: true }],
+      }),
+    );
+    await post(body({ name: 'Private only', blocks: [welcome] }));
+
+    const listed = (await list()).json().templates;
+
+    expect(
+      Object.fromEntries(
+        listed.map((t: { name: string; publicBlockCount: number }) => [
+          t.name,
+          t.publicBlockCount,
+        ]),
+      ),
+    ).toEqual({ 'With public': 1, 'Private only': 0 });
+  });
+
   it('stores an empty place as no place and refuses a place over 120 characters', async () => {
     await signIn();
 

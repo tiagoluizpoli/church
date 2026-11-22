@@ -115,6 +115,41 @@ describe('TemplateManagerCard table view (US1)', () => {
     ).toBeInTheDocument();
   });
 
+  it('badges only the templates that have public blocks', async () => {
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          weekday: 0,
+          publicBlockCount: 2,
+          blocks: [],
+        },
+        {
+          id: 'template-2',
+          name: 'Kitchen crew',
+          weekday: 1,
+          publicBlockCount: 0,
+          blocks: [],
+        },
+      ],
+    });
+
+    render();
+
+    const table = await screen.findByRole('grid');
+    expect(
+      within(
+        within(table).getByRole('row', { name: /Sunday Service/ }),
+      ).getByText('Público'),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        within(table).getByRole('row', { name: /Kitchen crew/ }),
+      ).queryByText('Público'),
+    ).not.toBeInTheDocument();
+  });
+
   it('moves keyboard focus between the actions in a desktop row', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [

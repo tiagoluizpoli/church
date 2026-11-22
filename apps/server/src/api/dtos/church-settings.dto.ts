@@ -111,20 +111,17 @@ export const updateChurchSettingsBodySchema = z.object({
   contacts: z
     .array(churchContactSchema)
     .max(CONTACTS_MAX)
-    .optional()
     .describe(
-      'Church Contacts in order; phones validated as allowed-country numbers and stored as E.164, emails lower-cased. Omitted, the contacts stay; sent, the list replaces them. A refused row is reported by index, e.g. contacts.1.value.',
+      'Every Church Contact in order; the whole list replaces the stored one. Phones validated as allowed-country numbers and stored as E.164, emails lower-cased. A refused row is reported by index, e.g. contacts.1.value.',
     ),
-  contactGroups: contactGroupOrderSchema
-    .optional()
-    .describe(
-      'Contact Group names in display order, for the `group` of contacts and links. A group is created by naming it on a row, case-insensitively one group; unlisted groups follow in first-use order; a group no row uses is deleted on save. Omitted, the stored order stays.',
-    ),
+  contactGroups: contactGroupOrderSchema.describe(
+    'Contact Group names in display order, for the `group` of contacts and links. A group is created by naming it on a row, case-insensitively one group; unlisted groups follow in first-use order; a group no row uses is deleted on save.',
+  ),
   addresses: churchAddressesSchema.describe(
     'Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.',
   ),
   addressReplacements: addressReplacementsSchema.describe(
-    'What replaces each deleted address that templates or upcoming public events still use: another kept address of the Church, or null for no place. Deleting such an address without an entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the replacement is applied to every reference in the same save.',
+    'What replaces each deleted address that templates or not-yet-started Event time blocks still use: another kept address of the Church, or null for no place. Deleting such an address without an entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the replacement is applied to every reference in the same save.',
   ),
   socialLinks: socialLinksSchema.describe(
     'Every Social Link in display order; the whole list replaces the stored one. Only `url` and `description` are sent: the network is detected from the URL. Supported: Instagram, YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram, WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer and Kwai; a wa.me link is refused (add it as a Contact). Always public.',
@@ -150,7 +147,7 @@ export const churchAddressUsageResponseSchema = z.object({
       z.object({ id: z.string(), title: z.string(), start: z.iso.datetime() }),
     )
     .describe(
-      'Upcoming Public Events (sent, not cancelled, a public block here that has not ended), by start.',
+      'Events with a time block here that has not started, any Cycle or visibility, by start. Started blocks keep their place and are not listed.',
     ),
 });
 
@@ -159,7 +156,11 @@ export const slugAvailabilityQuerySchema = z.object({
 });
 
 export const slugAvailabilityResponseSchema = z.object({
-  status: z.enum(['free', 'taken', 'reserved', 'own_history']),
+  status: z
+    .enum(['free', 'taken', 'reserved', 'invalid', 'own_history'])
+    .describe(
+      'invalid: not 3–63 lower-case letters, digits and single hyphens; reserved: a platform word.',
+    ),
 });
 /** One logo file, PNG, JPEG or WebP by its bytes, at most 5 MB. */
 export const uploadChurchLogoBodySchema = z.object({ file: z.file() });

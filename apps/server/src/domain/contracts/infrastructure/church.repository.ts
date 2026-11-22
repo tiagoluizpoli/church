@@ -49,7 +49,7 @@ export interface ChurchRepository {
   /** Whether `slug` is free for this Church; the Church's own current slug counts as free. Never names the holder. */
   slugAvailability(
     input: SlugAvailabilityInput,
-  ): Promise<Exclude<ChurchSlugAvailability, 'reserved'>>;
+  ): Promise<Exclude<ChurchSlugAvailability, 'reserved' | 'invalid'>>;
   /** Points the Church at a logo key, or at none; objects are never touched. */
   saveLogoKey(input: SaveChurchLogoKeyInput): Promise<void>;
   /**

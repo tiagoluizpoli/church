@@ -75,7 +75,9 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
     churchId,
     slug,
   }: SlugAvailabilityInput): Promise<ChurchSlugAvailability> {
-    if (churchSlugRefusal(slug) === 'RESERVED') return 'reserved';
+    const refusal = churchSlugRefusal(slug);
+    if (refusal === 'RESERVED') return 'reserved';
+    if (refusal) return 'invalid';
     return this.churchRepository.slugAvailability({ id: churchId, slug });
   }
 

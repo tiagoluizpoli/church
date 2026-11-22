@@ -181,6 +181,8 @@ function saveSettings(payload: Record<string, unknown>) {
     payload: {
       addresses: [],
       socialLinks: [],
+      contacts: [],
+      contactGroups: [],
       legalProfile: NO_LEGAL,
       ...payload,
     },
@@ -367,6 +369,8 @@ const ANEXO = {
   uf: 'SP',
 };
 
+const NO_CONTACTS = { contacts: [], contactGroups: [] };
+
 const BASE = {
   name: 'Igreja Batista Esperança',
   website: '',
@@ -536,6 +540,32 @@ describe('Church Addresses', () => {
     expect(await readAddresses()).toEqual([]);
   });
 
+  it.each([
+    'contacts',
+    'contactGroups',
+  ])('names a missing %s list instead of keeping or clearing it', async (list) => {
+    signIn();
+    const { [list as 'contacts']: _left, ...payload } = {
+      ...BASE,
+      addresses: [],
+      socialLinks: [],
+      contacts: [],
+      contactGroups: [],
+      legalProfile: NO_LEGAL,
+    };
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/church-settings',
+      payload,
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().fieldErrors).toEqual([
+      expect.objectContaining({ field: list, code: 'INVALID' }),
+    ]);
+  });
+
   it('names a missing address list instead of clearing the addresses', async () => {
     signIn();
     await saveAddresses([SEDE]);
@@ -543,7 +573,12 @@ describe('Church Addresses', () => {
     const res = await app.inject({
       method: 'PUT',
       url: '/api/v1/church-settings',
-      payload: { ...BASE, socialLinks: [], legalProfile: NO_LEGAL },
+      payload: {
+        ...BASE,
+        ...NO_CONTACTS,
+        socialLinks: [],
+        legalProfile: NO_LEGAL,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -774,6 +809,11 @@ describe('Church Slug', () => {
     expect((await availability({ slug: 'login' })).json()).toEqual({
       status: 'reserved',
     });
+    for (const malformed of ['Igreja Nova', 'ab', 'a--b']) {
+      expect((await availability({ slug: malformed })).json()).toEqual({
+        status: 'invalid',
+      });
+    }
     expect((await availability({ slug: 'ib-esperanca' })).json()).toEqual({
       status: 'free',
     });
@@ -788,6 +828,8 @@ describe('Church Slug', () => {
       accentColor: null,
       addresses: [],
       socialLinks: [],
+      contacts: [],
+      contactGroups: [],
       legalProfile: null,
     };
     let release!: () => void;
@@ -960,7 +1002,12 @@ describe('Social Links', () => {
     const res = await app.inject({
       method: 'PUT',
       url: '/api/v1/church-settings',
-      payload: { ...BASE, addresses: [], legalProfile: NO_LEGAL },
+      payload: {
+        ...BASE,
+        ...NO_CONTACTS,
+        addresses: [],
+        legalProfile: NO_LEGAL,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -1025,11 +1072,9 @@ describe('Church Contacts', () => {
     ).toEqual(['phone', 'email']);
   });
 
-  it('leaves contacts alone when none are sent and clears them with an empty list', async () => {
+  it('clears the contacts with an empty list', async () => {
     signIn();
     await saveSettings({ ...base, contacts: [phone] });
-
-    await saveSettings(base);
     expect((await getSettings()).json().contacts).toHaveLength(1);
 
     await saveSettings({ ...base, contacts: [] });
@@ -1152,7 +1197,7 @@ describe('Church Legal Profile', () => {
     const res = await app.inject({
       method: 'PUT',
       url: '/api/v1/church-settings',
-      payload: { ...BASE, addresses: [], socialLinks: [] },
+      payload: { ...BASE, ...NO_CONTACTS, addresses: [], socialLinks: [] },
     });
 
     expect(res.statusCode).toBe(422);
@@ -1608,7 +1653,7 @@ describe('Contact Groups', () => {
     });
   });
 
-  it('deletes a group with no member on save and keeps groups of contacts left alone', async () => {
+  it('deletes a group with no member on save and keeps the groups still used', async () => {
     signIn();
     await saveSettings({
       ...base,
@@ -1618,7 +1663,11 @@ describe('Contact Groups', () => {
     });
     expect((await read()).groups).toEqual(['Louvor', 'Jovens']);
 
-    await saveSettings({ ...base, socialLinks: [] });
+    await saveSettings({
+      ...base,
+      contacts: [{ ...email, group: 'Louvor' }],
+      socialLinks: [],
+    });
 
     expect(await read()).toEqual({
       groups: ['Louvor'],

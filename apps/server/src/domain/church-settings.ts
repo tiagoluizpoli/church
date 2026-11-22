@@ -42,10 +42,10 @@ export interface ChurchSettingsChanges {
   slug?: string;
   website: string | null;
   accentColor: string | null;
-  /** Omitted, the contacts stay; sent, the whole list replaces them. */
-  contacts?: ChurchContact[];
-  /** The order of the groups; omitted, the stored order stays. Unlisted groups follow, a group with no member is deleted. */
-  contactGroups?: string[];
+  /** The whole list replaces the stored contacts. */
+  contacts: ChurchContact[];
+  /** The order of the groups. Unlisted groups follow, a group with no member is deleted. */
+  contactGroups: string[];
   addresses: ChurchAddressChange[];
   /** Omitted, none: deleting an address that is in use is refused. */
   addressReplacements?: AddressReplacement[];
@@ -111,6 +111,7 @@ export type ChurchSlugAvailability =
   | 'free'
   | 'taken'
   | 'reserved'
+  | 'invalid'
   | 'own_history';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;

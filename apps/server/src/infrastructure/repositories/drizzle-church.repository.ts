@@ -412,7 +412,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     id,
     slug,
   }: SlugAvailabilityInput): Promise<
-    Exclude<ChurchSlugAvailability, 'reserved'>
+    Exclude<ChurchSlugAvailability, 'reserved' | 'invalid'>
   > {
     return this.findSlugAvailability({
       client: getClient({ db: this.db }),
@@ -426,7 +426,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     id,
     slug,
   }: FindSlugAvailabilityInput): Promise<
-    Exclude<ChurchSlugAvailability, 'reserved'>
+    Exclude<ChurchSlugAvailability, 'reserved' | 'invalid'>
   > {
     const [live] = await client
       .select({ id: organization.id })
@@ -460,12 +460,9 @@ export class DrizzleChurchRepository implements ChurchRepository {
     const groupIds = await this.replaceGroups({
       client,
       id,
-      requested: contactGroups ?? (await this.listGroupNames({ id, tx })),
-      // Omitted contacts stay, so their groups must stay too.
+      requested: contactGroups,
       members: [
-        ...(contacts ?? (await this.listContacts({ id, tx }))).map(
-          ({ group }) => group,
-        ),
+        ...contacts.map(({ group }) => group),
         ...changes.socialLinks.map(({ group }) => group),
       ],
     });
@@ -526,21 +523,19 @@ export class DrizzleChurchRepository implements ChurchRepository {
         await client.insert(churchAddress).values({ ...values, churchId: id });
       }
     }
-    if (contacts !== undefined) {
-      await client.delete(churchContact).where(eq(churchContact.churchId, id));
-      if (contacts.length > 0) {
-        await client.insert(churchContact).values(
-          contacts.map((contact, position) => {
-            const { group: _group, ...columns } = contact;
-            return {
-              ...columns,
-              groupId: groupIdOf(contact),
-              churchId: id,
-              position,
-            };
-          }),
-        );
-      }
+    await client.delete(churchContact).where(eq(churchContact.churchId, id));
+    if (contacts.length > 0) {
+      await client.insert(churchContact).values(
+        contacts.map((contact, position) => {
+          const { group: _group, ...columns } = contact;
+          return {
+            ...columns,
+            groupId: groupIdOf(contact),
+            churchId: id,
+            position,
+          };
+        }),
+      );
     }
     await this.deleteUnusedGroups({ client, id });
   }
@@ -609,17 +604,6 @@ export class DrizzleChurchRepository implements ChurchRepository {
               notInArray(churchContactGroup.id, used),
             ),
       );
-  }
-
-  private listContacts({ id, tx }: ListAddressesInput): Promise<GroupedRow[]> {
-    return getClient({ db: this.db, tx })
-      .select({ group: churchContactGroup.name })
-      .from(churchContact)
-      .leftJoin(
-        churchContactGroup,
-        eq(churchContactGroup.id, churchContact.groupId),
-      )
-      .where(eq(churchContact.churchId, id));
   }
 
   async getAddressUsage({

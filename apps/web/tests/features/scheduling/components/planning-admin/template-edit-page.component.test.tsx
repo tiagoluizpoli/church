@@ -138,7 +138,7 @@ describe('TemplateEditPage delete', () => {
     );
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
     );
     expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
     expect(toastSuccess).toHaveBeenCalledWith('Modelo excluído');
@@ -158,7 +158,7 @@ describe('TemplateEditPage', () => {
     await user.click(screen.getByTestId('create-template-button'));
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
     );
     expect(getEventTemplateUsage).not.toHaveBeenCalled();
     expect(updateEventTemplate).toHaveBeenCalledWith('template-1', {
@@ -192,7 +192,7 @@ describe('TemplateEditPage', () => {
     await user.click(screen.getByTestId('create-template-button'));
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
     );
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: USUAL_SETUP_QUERY_KEY,

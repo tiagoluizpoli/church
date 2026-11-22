@@ -85,7 +85,7 @@ it.each([
 ] as const)('mounts Answers for an %s Schedule and respects read-only state', async (stage) => {
   api.getSchedule.mockResolvedValue({ ...SCHEDULE, stage });
   renderRoute({
-    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    initialPath: `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
   expect(await screen.findByTestId('prepare-stat-answers')).toHaveTextContent(
@@ -108,7 +108,7 @@ it('keeps Past Schedule Answers readable without Deadline editing', async () => 
     cycle: { ...SCHEDULE.cycle, state: 'past' },
   });
   renderRoute({
-    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    initialPath: `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
   expect(await screen.findByTestId('prepare-stat-answers')).toHaveTextContent(
@@ -125,7 +125,7 @@ it.each([
 ] as const)('does not read Answers before Ask or when %s', async (stage) => {
   api.getSchedule.mockResolvedValue({ ...SCHEDULE, stage });
   renderRoute({
-    initialPath: `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    initialPath: `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
   await screen.findByTestId('prepare-workspace-stack');

@@ -25,7 +25,7 @@ async function openBellNotification({
   kind,
   title,
 }: OpenNotificationInput): Promise<void> {
-  await page.goto('/dashboard');
+  await page.goto('/app/dashboard');
   await expect
     .poll(
       async () => {
@@ -61,7 +61,7 @@ test('J9 swap request: raise, keep with a reply, raise again, cover through reas
   });
   const volunteerPage = await volunteerContext.newPage();
   const raise = async (note: string) => {
-    await volunteerPage.goto(`/my-schedule/${journey.assignmentId}`);
+    await volunteerPage.goto(`/app/my-schedule/${journey.assignmentId}`);
     await volunteerPage
       .getByRole('button', { name: m.swap_ask({}, locale) })
       .click();
@@ -133,7 +133,7 @@ test('J9 swap request: raise, keep with a reply, raise again, cover through reas
     )
     .click();
   await expect(volunteerPage).toHaveURL(
-    new RegExp(`/my-schedule/${journey.assignmentId}`),
+    new RegExp(`/app/my-schedule/${journey.assignmentId}`),
   );
   await expect(volunteerPage.getByText(m.swap_kept({}, locale))).toBeVisible();
   await expect(

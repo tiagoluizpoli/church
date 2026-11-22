@@ -223,26 +223,26 @@ describe('HomePage', () => {
     renderHomePage();
     expect(
       await screen.findByRole('link', { name: /A preparar 2/ }),
-    ).toHaveAttribute('href', '/schedules?stage=to_prepare');
+    ).toHaveAttribute('href', '/app/schedules?stage=to_prepare');
     expect(screen.getByRole('link', { name: /Consultando 3/ })).toHaveAttribute(
       'href',
-      '/schedules?stage=asking',
+      '/app/schedules?stage=asking',
     );
     expect(
       screen.getByRole('link', { name: /Pessoas sem ministério 3/ }),
-    ).toHaveAttribute('href', '/people?withoutMinistry=true');
+    ).toHaveAttribute('href', '/app/people?withoutMinistry=true');
     expect(
       screen.getByRole('link', { name: /Convites pendentes 4/ }),
-    ).toHaveAttribute('href', '/invitations?status=pending');
+    ).toHaveAttribute('href', '/app/invitations?status=pending');
     expect(
       screen.getByRole('link', { name: /Convites vencidos 2/ }),
-    ).toHaveAttribute('href', '/invitations?status=expired');
+    ).toHaveAttribute('href', '/app/invitations?status=expired');
     expect(
       screen.getByRole('link', { name: /Ministérios para revisar 3/ }),
-    ).toHaveAttribute('href', '/ministries?status=review');
+    ).toHaveAttribute('href', '/app/ministries?status=review');
     expect(
       screen.getByRole('link', { name: /Ministérios sem setores 1/ }),
-    ).toHaveAttribute('href', '/ministries?status=no-sectors');
+    ).toHaveAttribute('href', '/app/ministries?status=no-sectors');
   });
 
   it('collapses zero attention counts while retaining the People group', async () => {

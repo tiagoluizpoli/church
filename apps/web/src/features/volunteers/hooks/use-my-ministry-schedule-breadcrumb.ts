@@ -23,7 +23,7 @@ export function useMyMinistryScheduleBreadcrumb(): Crumb[] {
     queryFn: skipToken,
   });
   // The same params name other routes' Ministry and Cycle crumbs.
-  if (!pathname.startsWith('/my-schedule/') || !ministryId || !cycleId) {
+  if (!pathname.startsWith('/app/my-schedule/') || !ministryId || !cycleId) {
     return [];
   }
   const schedule = query.isError ? undefined : query.data;

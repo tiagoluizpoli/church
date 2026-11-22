@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useLocation, useParams } from '@tanstack/react-router';
 import { adminApi } from '@/utils/api-instances';
 
-const NEW_EVENT_PATH = /^\/cycles\/[^/]+\/events\/new\/?$/;
+const NEW_EVENT_PATH = /^\/app\/cycles\/[^/]+\/events\/new\/?$/;
 
 interface CycleEventBreadcrumbOverride {
   segment: string;

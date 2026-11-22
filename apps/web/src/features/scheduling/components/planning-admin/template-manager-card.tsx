@@ -63,7 +63,7 @@ function TemplateRowActions({
       onKeyDown={moveActionFocus}
     >
       <Link
-        to="/event-templates/$templateId"
+        to="/app/event-templates/$templateId"
         params={{ templateId }}
         aria-label={m.event_templates_edit_label({ name: templateName })}
         data-testid={withTestIds ? 'edit-template-button' : undefined}
@@ -128,7 +128,7 @@ export function TemplateManagerCard() {
                   {m.event_templates_empty()}
                 </p>
                 <Link
-                  to="/event-templates/new"
+                  to="/app/event-templates/new"
                   data-testid="empty-new-template-button"
                   className={buttonVariants({ variant: 'default' })}
                 >

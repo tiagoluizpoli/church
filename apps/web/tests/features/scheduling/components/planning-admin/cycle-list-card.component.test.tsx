@@ -101,7 +101,7 @@ describe('CycleListCard', () => {
     const open = within(row).getByRole('link', {
       name: m.cycles_open_label({ name: 'Agosto' }),
     });
-    expect(open).toHaveAttribute('href', '/cycles/cycle-1');
+    expect(open).toHaveAttribute('href', '/app/cycles/cycle-1');
     expect(open).toHaveTextContent(m.cycles_open());
   });
 

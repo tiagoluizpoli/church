@@ -105,10 +105,13 @@ function renderSection(includeCycles = false) {
       </>
     ),
   });
-  const cycles = createRoute({ getParentRoute: () => root, path: '/cycles' });
+  const cycles = createRoute({
+    getParentRoute: () => root,
+    path: '/app/cycles',
+  });
   const cycleDetail = createRoute({
     getParentRoute: () => root,
-    path: '/cycles/$cycleId',
+    path: '/app/cycles/$cycleId',
   });
   const router = createRouter({
     routeTree: root.addChildren([cycles, cycleDetail]),
@@ -169,11 +172,11 @@ describe('ChurchSection setup checklist', () => {
     renderSection();
 
     const targets = [
-      [m.home_setup_ministry(), '/ministries'],
-      [m.home_setup_sectors_roles(), '/ministries'],
-      [m.home_setup_leader(), '/invitations'],
-      [m.home_setup_template(), '/event-templates'],
-      [m.home_setup_cycle(), '/cycles'],
+      [m.home_setup_ministry(), '/app/ministries'],
+      [m.home_setup_sectors_roles(), '/app/ministries'],
+      [m.home_setup_leader(), '/app/invitations'],
+      [m.home_setup_template(), '/app/event-templates'],
+      [m.home_setup_cycle(), '/app/cycles'],
     ];
     for (const [label, href] of targets) {
       const { link } = await stepFor(label);
@@ -259,7 +262,7 @@ describe('ChurchSection next-Cycle card', () => {
       2,
     );
     expect(checklist()).not.toBeInTheDocument();
-    expect(planCycle()).toHaveAttribute('href', '/cycles');
+    expect(planCycle()).toHaveAttribute('href', '/app/cycles');
   });
 
   it('links the latest draft and says it is still a draft', async () => {
@@ -274,7 +277,7 @@ describe('ChurchSection next-Cycle card', () => {
     ).toBeVisible();
     expect(screen.getByRole('link', { name: 'December' })).toHaveAttribute(
       'href',
-      '/cycles/december',
+      '/app/cycles/december',
     );
   });
 
@@ -285,10 +288,10 @@ describe('ChurchSection next-Cycle card', () => {
 
     expect(
       await screen.findByRole('link', { name: 'November' }),
-    ).toHaveAttribute('href', '/cycles/november');
+    ).toHaveAttribute('href', '/app/cycles/november');
     expect(screen.getByText('01/11/2026')).toBeVisible();
     expect(screen.getByText('30/11/2026')).toBeVisible();
-    expect(planCycle()).toHaveAttribute('href', '/cycles');
+    expect(planCycle()).toHaveAttribute('href', '/app/cycles');
   });
 
   it('shows a draft next Cycle beside the current Sent one', async () => {
@@ -313,10 +316,10 @@ describe('ChurchSection next-Cycle card', () => {
     renderSection(true);
     expect(
       await screen.findByRole('link', { name: 'November' }),
-    ).toHaveAttribute('href', '/cycles/november');
+    ).toHaveAttribute('href', '/app/cycles/november');
     expect(screen.getByRole('link', { name: 'December' })).toHaveAttribute(
       'href',
-      '/cycles/december',
+      '/app/cycles/december',
     );
     expect(
       screen.getByText(m.home_cycle_starts({ date: '01/12/2026' })),
@@ -338,7 +341,7 @@ describe('ChurchSection next-Cycle card', () => {
 
     expect(
       await screen.findByRole('link', { name: 'November' }),
-    ).toHaveAttribute('href', '/cycles/november');
+    ).toHaveAttribute('href', '/app/cycles/november');
   });
 
   it('renders in pt-BR from the catalog', async () => {

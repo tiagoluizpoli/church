@@ -9,7 +9,7 @@ export interface BreadcrumbSegmentOverride {
 
 /**
  * Resolves the breadcrumb label for the ministry-id route segment (e.g.
- * `/schedules/$ministryId/...`), mirroring
+ * `/app/schedules/$ministryId/...`), mirroring
  * `useCycleBreadcrumb`'s pattern for `$cycleId`.
  */
 export function useMinistryBreadcrumb(): BreadcrumbSegmentOverride | null {

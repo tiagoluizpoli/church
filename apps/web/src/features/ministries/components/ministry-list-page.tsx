@@ -75,7 +75,7 @@ function MinistryAction({ needsReview, id, name }: MinistryRow) {
     <div className="flex flex-wrap justify-end gap-2 max-md:ml-auto md:w-full">
       {needsReview ? (
         <Link
-          to="/ministries/$ministryId/usual-setup"
+          to="/app/ministries/$ministryId/usual-setup"
           params={{ ministryId: id }}
           aria-label={m.ministries_review_label({ name })}
           className={buttonVariants({ size: 'xs', className: ACTION_SIZE })}
@@ -84,7 +84,7 @@ function MinistryAction({ needsReview, id, name }: MinistryRow) {
         </Link>
       ) : null}
       <Link
-        to="/ministries/$ministryId"
+        to="/app/ministries/$ministryId"
         params={{ ministryId: id }}
         aria-label={m.ministries_open_label({ name })}
         className={buttonVariants({

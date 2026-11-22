@@ -179,7 +179,7 @@ function renderPage(
   const root = createRootRoute({ component: Outlet });
   const page = createRoute({
     getParentRoute: () => root,
-    path: '/availability/$checkId',
+    path: '/app/availability/$checkId',
     component: () => (
       <CallerCapabilitiesScopeProvider churchId="church" userId={person}>
         <AvailabilityDetailPage checkId={checkId} onAnswered={onAnswered} />
@@ -188,13 +188,13 @@ function renderPage(
   });
   const away = createRoute({
     getParentRoute: () => root,
-    path: '/availability',
+    path: '/app/availability',
     component: () => <p>Away</p>,
   });
-  window.history.replaceState(null, '', `/availability/${checkId}`);
+  window.history.replaceState(null, '', `/app/availability/${checkId}`);
   const history = browser
     ? createBrowserHistory()
-    : createMemoryHistory({ initialEntries: [`/availability/${checkId}`] });
+    : createMemoryHistory({ initialEntries: [`/app/availability/${checkId}`] });
   histories.push(history);
   const router = createRouter({
     routeTree: root.addChildren([page, away]),
@@ -502,10 +502,10 @@ describe('Availability check page', () => {
     window.dispatchEvent(closing);
     expect(closing.defaultPrevented).toBe(true);
     await act(async () => {
-      void router.navigate({ to: '/availability' });
+      void router.navigate({ to: '/app/availability' });
     });
     await stayOnLeave();
-    expect(router.state.location.pathname).toBe('/availability/check-1');
+    expect(router.state.location.pathname).toBe('/app/availability/check-1');
     await userEvent.click(
       screen.getByRole('button', {
         name: m.availability_detail_confirm(),
@@ -564,10 +564,10 @@ describe('Availability check page', () => {
     window.dispatchEvent(closing);
     expect(closing.defaultPrevented).toBe(true);
     await act(async () => {
-      void router.navigate({ to: '/availability' });
+      void router.navigate({ to: '/app/availability' });
     });
     await stayOnLeave();
-    expect(router.state.location.pathname).toBe('/availability/check-1');
+    expect(router.state.location.pathname).toBe('/app/availability/check-1');
     await userEvent.click(
       screen.getByRole('button', {
         name: m.availability_detail_confirm(),
@@ -973,17 +973,17 @@ describe('Availability check page', () => {
     window.dispatchEvent(closing);
     expect(closing.defaultPrevented).toBe(true);
     await act(async () => {
-      void router.navigate({ to: '/availability' });
+      void router.navigate({ to: '/app/availability' });
     });
     await stayOnLeave();
-    expect(router.state.location.pathname).toBe('/availability/check-1');
+    expect(router.state.location.pathname).toBe('/app/availability/check-1');
     await userEvent.click(
       screen.getByRole('button', { name: m.availability_draft_discard() }),
     );
     const discarded = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(discarded);
     expect(discarded.defaultPrevented).toBe(false);
-    await act(() => router.navigate({ to: '/availability' }));
+    await act(() => router.navigate({ to: '/app/availability' }));
     expect(await screen.findByText('Away')).toBeVisible();
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
@@ -994,7 +994,7 @@ describe('Availability check page', () => {
       await screen.findByRole('switch', { name: /culto da manhã/i }),
     );
     await act(async () => {
-      void router.navigate({ to: '/availability' });
+      void router.navigate({ to: '/app/availability' });
     });
     const dialog = await screen.findByRole('alertdialog', {
       name: m.availability_leave_title(),
@@ -1021,7 +1021,7 @@ describe('Availability check page', () => {
       await screen.findByRole('switch', { name: /culto da manhã/i }),
     );
     await act(async () => {
-      void router.navigate({ to: '/availability' });
+      void router.navigate({ to: '/app/availability' });
     });
     const dialog = await screen.findByRole('alertdialog', {
       name: m.availability_leave_title(),
@@ -1057,7 +1057,7 @@ describe('Availability check page', () => {
       const closing = new Event('beforeunload', { cancelable: true });
       window.dispatchEvent(closing);
       expect(closing.defaultPrevented).toBe(false);
-      await router.navigate({ to: '/availability' });
+      await router.navigate({ to: '/app/availability' });
     });
     const { router } = renderPage(onAnswered, 'person', 'check-1', true);
     const toggles = await screen.findAllByRole('switch', {
@@ -1239,7 +1239,7 @@ describe('Availability check page', () => {
       within(sunday).getByRole('link', {
         name: m.availability_detail_published_link(),
       }),
-    ).toHaveAttribute('href', '/my-schedule');
+    ).toHaveAttribute('href', '/app/my-schedule');
     // A mixed day counts only the Shifts still open to answer.
     expect(within(sunday).getByText('2 de 2 disponíveis')).toBeVisible();
     expect(
@@ -1442,7 +1442,7 @@ describe('Availability check page', () => {
     expect(await screen.findByText(m.error_not_found())).toBeVisible();
     expect(
       screen.getByRole('link', { name: m.availability_detail_back() }),
-    ).toHaveAttribute('href', '/availability');
+    ).toHaveAttribute('href', '/app/availability');
     expect(screen.queryByText('Kids · Outubro 2026')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
@@ -1617,7 +1617,7 @@ describe('decision-first layout', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: m.availability_detail_back() }),
-    ).toHaveAttribute('href', '/availability');
+    ).toHaveAttribute('href', '/app/availability');
     await userEvent.click(within(monday).getByRole('switch'));
     // The one Shift's own state says it; no whole-day status on top.
     expect(
@@ -1654,7 +1654,7 @@ describe('decision-first layout', () => {
         'link',
         { name: m.availability_detail_published_link() },
       ),
-    ).toHaveAttribute('href', '/my-schedule');
+    ).toHaveAttribute('href', '/app/my-schedule');
     expect(
       screen.getAllByRole('link', {
         name: m.availability_detail_published_link(),

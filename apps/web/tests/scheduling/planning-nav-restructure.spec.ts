@@ -12,7 +12,7 @@ test('New cycle is a plain dialog over /cycles, and the new Cycle gets its own U
   const { startDate, endDate } = planningMonth({ anchor: journey.anchor });
   const cycleName = `Nav restructure check ${startDate}`;
 
-  await page.goto('/cycles');
+  await page.goto('/app/cycles');
   await expect(page).toHaveURL(/\/cycles\/?$/);
   await expect(
     page.getByRole('form', { name: 'Filtrar ciclos' }),
@@ -40,7 +40,7 @@ test('New cycle is a plain dialog over /cycles, and the new Cycle gets its own U
 
   // Visiting the template library from a selected cycle changes the URL too
   // (previously `activeView` component state only).
-  await page.goto('/event-templates');
+  await page.goto('/app/event-templates');
   await expect(page).toHaveURL(/\/event-templates$/);
   await expect(page.getByText('Modelos salvos')).toBeVisible();
 

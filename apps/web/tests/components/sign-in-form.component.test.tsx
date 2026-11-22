@@ -96,7 +96,7 @@ describe('SignInForm pt-BR copy', () => {
     );
     // Arriving in the app is the confirmation.
     await waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith({ href: '/' }),
+      expect(mockNavigate).toHaveBeenCalledWith({ href: '/app' }),
     );
     expect(mockToastSuccess).not.toHaveBeenCalled();
   });

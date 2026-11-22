@@ -78,7 +78,7 @@ export function useMembershipChange({ memberId }: UseMembershipChangeInput) {
       churchId,
       memberId,
     });
-    if (!detailReadable) await navigate({ to: '/' });
+    if (!detailReadable) await navigate({ to: '/app' });
   };
 
   /** Toasts, closes and refreshes on a stale-card refusal; false for any other code. */

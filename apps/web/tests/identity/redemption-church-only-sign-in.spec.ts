@@ -28,7 +28,7 @@ test.describe('#945 — an existing member accepts a Church-only invitation sign
 
     // Church B's admin invites Bruno Church-only (as Admin: no Ministry) from the Invitations page.
     await signInPersonaPage({ page, persona: journey.churchB.personas.admin });
-    await page.goto('/invitations');
+    await page.goto('/app/invitations');
     await page
       .getByRole('button', { name: m.invitations_invite_open({}, PT) })
       .click();
@@ -91,7 +91,7 @@ test.describe('#945 — an existing member accepts a Church-only invitation sign
       expect(((await acceptResponse.json()) as { kind: string }).kind).toBe(
         'full-success',
       );
-      await expect(brunoPage).toHaveURL(/:\d+\/(\?.*)?$/);
+      await expect(brunoPage).toHaveURL(/:\d+\/app(\?.*)?$/);
       expect(
         await fetchActiveChurchStatus({ request: brunoPage.request }),
       ).toMatchObject({ churchId: churchB.id });

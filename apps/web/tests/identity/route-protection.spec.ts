@@ -18,7 +18,7 @@ import {
 // signs in as the suite's shared, read-only ChurchAdmin (global setup's
 // `shared-personas` recipe) and asserts only the page shell, never
 // scheduling rows.
-const DEEP_LINK_PATH = '/cycles';
+const DEEP_LINK_PATH = '/app/cycles';
 
 test.describe('#66 — route protection and deep-link return', () => {
   test.describe('signed out', () => {
@@ -47,10 +47,12 @@ test.describe('#66 — route protection and deep-link return', () => {
   test.describe('already signed in', () => {
     test.use({ storageState: VOLUNTEER_STORAGE_STATE });
 
-    test('the landing route renders Home', async ({ page }) => {
+    test('the root route sends a signed-in visitor to Home', async ({
+      page,
+    }) => {
       await page.goto('/');
 
-      await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
+      await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/);
     });
 
     test('an authenticated visitor to sign-in is redirected onward', async ({
@@ -58,7 +60,7 @@ test.describe('#66 — route protection and deep-link return', () => {
     }) => {
       await page.goto('/login');
 
-      await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
+      await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/);
     });
   });
 });

@@ -12,7 +12,7 @@ ports.
 | Image | Dockerfile | Contents |
 | --- | --- | --- |
 | server | [server.Dockerfile](server.Dockerfile) | the API (`start:deployment`), the migration command and the operator database command |
-| web | [web.Dockerfile](web.Dockerfile) | the static frontend on nginx, port 8080, which proxies `/api/` to `server:3000` ([nginx.conf](nginx.conf)) |
+| web | [web.Dockerfile](web.Dockerfile) | the static frontend on Caddy, port 8080, which proxies `/api/` to `server:3000` ([Caddyfile](Caddyfile)) |
 
 Build both from the repository root at the commit being deployed:
 
@@ -102,7 +102,7 @@ under Bun.
 | --- | --- | --- |
 | API URL in the browser | explicit `VITE_SERVER_URL` (absolute, per worktree port) | `VITE_SERVER_URL=/`: same origin, relative `/api` |
 | Auth client | `baseURL` = `VITE_SERVER_URL` | no `baseURL`: Better Auth uses the page origin plus `/api/auth` |
-| CORS / auth origin | web origin and server URL from `.env.local` | both `PUBLIC_ORIGIN`; requests arrive same-origin through nginx |
+| CORS / auth origin | web origin and server URL from `.env.local` | both `PUBLIC_ORIGIN`; requests arrive same-origin through Caddy |
 | Cookies | `SameSite=Lax`, not `Secure`, over plain HTTP | `Secure` with `SameSite=None` when `PUBLIC_ORIGIN` is `https://` |
 | Configuration | Varlock schemas plus generated `.env.local` | Varlock schemas plus the process environment; no value files |
 | Database | `church_<worktree>_*` on the shared local instance | `church_<environment>` on the host's shared instance |

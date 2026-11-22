@@ -28,8 +28,8 @@ test.describe('ChurchAdmin direct access to the other scheduling routes', () => 
     const journey = loadCycleAccessJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.admin });
 
-    await page.goto('/schedules');
-    await expect(page).toHaveURL('/schedules');
+    await page.goto('/app/schedules');
+    await expect(page).toHaveURL('/app/schedules');
 
     await page.goto(worshipBuilderPath({ journey }));
     await expect(page.getByTestId('cycle-builder')).toBeVisible();
@@ -43,12 +43,12 @@ test.describe('Volunteer-only denial across all 3 scheduling routes', () => {
     const journey = loadCycleAccessJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.volunteer });
 
-    await page.goto('/cycles');
+    await page.goto('/app/cycles');
     await expect(page).not.toHaveURL(/\/cycles/);
     await expect(page.getByTestId('planning-admin-page')).toHaveCount(0);
 
-    await page.goto('/schedules');
-    await expect(page).toHaveURL('/schedules');
+    await page.goto('/app/schedules');
+    await expect(page).toHaveURL('/app/schedules');
     await expect(page.getByRole('heading', { name: 'Scope' })).toHaveCount(0);
     await expect(
       page.getByRole('heading', { name: 'No ministries yet' }),

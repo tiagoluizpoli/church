@@ -28,8 +28,8 @@ vi.mock('@church/app-config', async (importOriginal) => {
   };
 });
 
-let mockPathname = '/dashboard';
-let mockHref = '/dashboard';
+let mockPathname = '/app/dashboard';
+let mockHref = '/app/dashboard';
 const mockNavigate = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
@@ -216,8 +216,8 @@ const PERSONAS: {
 describe('AppShell flat nav per persona (F7)', () => {
   afterEach(() => {
     vi.clearAllMocks();
-    mockPathname = '/dashboard';
-    mockHref = '/dashboard';
+    mockPathname = '/app/dashboard';
+    mockHref = '/app/dashboard';
   });
 
   it.each(
@@ -272,7 +272,7 @@ describe('AppShell flat nav per persona (F7)', () => {
 
   it('marks the entry active on a nested path, in sidebar and drawer', async () => {
     asPersona({ isChurchAdmin: true });
-    mockPathname = '/cycles/cycle-1/edit';
+    mockPathname = '/app/cycles/cycle-1/edit';
 
     renderShell();
 
@@ -289,7 +289,7 @@ describe('AppShell flat nav per persona (F7)', () => {
 
   it('marks Home active on /', () => {
     asPersona();
-    mockPathname = '/';
+    mockPathname = '/app';
 
     renderShell();
 
@@ -300,14 +300,14 @@ describe('AppShell flat nav per persona (F7)', () => {
 
   it('targets Home at / and never shows a Dashboard entry', () => {
     asPersona();
-    mockPathname = '/';
-    mockHref = '/';
+    mockPathname = '/app';
+    mockHref = '/app';
 
     renderShell();
 
     expect(
       within(screen.getByTestId('sidebar')).getByRole('link', { name: HOME }),
-    ).toHaveAttribute('href', '/');
+    ).toHaveAttribute('href', '/app');
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
   });
 
@@ -352,7 +352,7 @@ describe('AppShell flat nav per persona (F7)', () => {
 
   it('follows the direct Availability URL with the loaded Ministry and Cycle names', async () => {
     asPersona({ hasVolunteerMembership: true });
-    mockPathname = '/availability/check-1';
+    mockPathname = '/app/availability/check-1';
     mockParams = { checkId: 'check-1' };
     mockGetCheck.mockResolvedValue({
       id: 'check-1',
@@ -382,12 +382,12 @@ describe('AppShell flat nav per persona (F7)', () => {
     expect(crumbs.getByText(HOME)).toBeVisible();
     expect(
       crumbs.getByRole('link', { name: m.nav_availability() }),
-    ).toHaveAttribute('href', '/availability');
+    ).toHaveAttribute('href', '/app/availability');
   });
 
   it('shows a caller-supplied breadcrumb override in place of the raw id segment', () => {
     asPersona({ isChurchAdmin: true });
-    mockPathname = '/cycles/cycle-1';
+    mockPathname = '/app/cycles/cycle-1';
 
     renderWithProviders(
       <AppShell
@@ -406,7 +406,7 @@ describe('AppShell flat nav per persona (F7)', () => {
 
   it("reads Home › Cycles › name › New Event on a Cycle's nested New Event page", () => {
     asPersona({ isChurchAdmin: true });
-    mockPathname = '/cycles/cycle-1/events/new';
+    mockPathname = '/app/cycles/cycle-1/events/new';
 
     function NewEventShell() {
       const overrides = [
@@ -434,7 +434,7 @@ describe('AppShell flat nav per persona (F7)', () => {
 
   it("reads Home › Cycles › name › Event name on a Cycle's nested Event page", async () => {
     asPersona({ isChurchAdmin: true });
-    mockPathname = '/cycles/cycle-1/events/event-1';
+    mockPathname = '/app/cycles/cycle-1/events/event-1';
     mockParams = { cycleId: 'cycle-1', eventId: 'event-1' };
     mockGetCycle.mockResolvedValue({
       cycle: { id: 'cycle-1', name: 'October' },
@@ -471,7 +471,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   ])('reads Home › Ministries › name › tab on the Ministry %s tab', (tab, label) => {
     asPersona({ isChurchAdmin: true });
     const ministryId = '33333333-3333-4333-8333-333333333331';
-    mockPathname = `/ministries/${ministryId}/${tab}`;
+    mockPathname = `/app/ministries/${ministryId}/${tab}`;
 
     renderWithProviders(
       <AppShell
@@ -494,7 +494,7 @@ describe('AppShell flat nav per persona (F7)', () => {
     asPersona({ leadsMinistries: true });
     const ministryId = '33333333-3333-4333-8333-333333333331';
     const blockId = '55555555-5555-4555-8555-555555555551';
-    mockPathname = `/ministries/${ministryId}/usual-setup/${blockId}`;
+    mockPathname = `/app/ministries/${ministryId}/usual-setup/${blockId}`;
 
     renderWithProviders(
       <AppShell
@@ -526,7 +526,7 @@ describe('AppShell flat nav per persona (F7)', () => {
     asPersona({ leadsMinistries: true });
     const ministryId = '33333333-3333-4333-8333-333333333331';
     const cycleId = '44444444-4444-4444-8444-444444444441';
-    mockPathname = `/schedules/${ministryId}/${cycleId}/assign`;
+    mockPathname = `/app/schedules/${ministryId}/${cycleId}/assign`;
     renderWithProviders(
       <AppShell
         notificationBell={null}
@@ -551,7 +551,7 @@ describe('AppShell flat nav per persona (F7)', () => {
     ]);
     expect(
       within(breadcrumbs).getByRole('link', { name: 'Kids · Outubro 2026' }),
-    ).toHaveAttribute('href', `/schedules/${ministryId}/${cycleId}`);
+    ).toHaveAttribute('href', `/app/schedules/${ministryId}/${cycleId}`);
     expect(
       within(breadcrumbs).queryByRole('link', { name: 'Kids' }),
     ).not.toBeInTheDocument();
@@ -559,7 +559,7 @@ describe('AppShell flat nav per persona (F7)', () => {
 
   it('hides an opaque id segment from breadcrumbs when no override is supplied', () => {
     asPersona({ isChurchAdmin: true });
-    mockPathname = '/cycles/cycle-1';
+    mockPathname = '/app/cycles/cycle-1';
 
     renderShell();
 
@@ -572,8 +572,8 @@ describe('AppShell flat nav per persona (F7)', () => {
 describe('AppShell desktop sidebar collapse', () => {
   afterEach(() => {
     vi.clearAllMocks();
-    mockPathname = '/dashboard';
-    mockHref = '/dashboard';
+    mockPathname = '/app/dashboard';
+    mockHref = '/app/dashboard';
   });
 
   it('flips the toggle label and collapsed markup on each click, round-tripping back to expanded', async () => {
@@ -623,8 +623,8 @@ describe('AppShell command palette shortcut (#219, right-sized from search.spec.
   afterEach(() => {
     parked.on = true;
     vi.clearAllMocks();
-    mockPathname = '/dashboard';
-    mockHref = '/dashboard';
+    mockPathname = '/app/dashboard';
+    mockHref = '/app/dashboard';
   });
 
   it('opens the command palette on Ctrl+K and closes it on a second press', async () => {
@@ -662,15 +662,15 @@ describe('AppShell command palette shortcut (#219, right-sized from search.spec.
 describe('AppShell Switch Church control', () => {
   afterEach(() => {
     vi.clearAllMocks();
-    mockPathname = '/dashboard';
-    mockHref = '/dashboard';
+    mockPathname = '/app/dashboard';
+    mockHref = '/app/dashboard';
   });
 
   it('navigates to select-church with the full path, query, and hash preserved as the redirect target', async () => {
     asPersona({ isChurchAdmin: true });
     asChurches(CHURCH_A, CHURCH_B);
-    mockPathname = '/cycles';
-    mockHref = '/cycles?view=board#upcoming';
+    mockPathname = '/app/cycles';
+    mockHref = '/app/cycles?view=board#upcoming';
 
     renderShell();
     const user = userEvent.setup();
@@ -681,14 +681,14 @@ describe('AppShell Switch Church control', () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/select-church?redirect=%2Fcycles%3Fview%3Dboard%23upcoming',
+      to: '/app/select-church?redirect=%2Fapp%2Fcycles%3Fview%3Dboard%23upcoming',
     });
   });
 
   it('navigates to select-church from the mobile drawer and closes the drawer', async () => {
     asPersona();
     asChurches(CHURCH_A, CHURCH_B);
-    mockHref = '/dashboard';
+    mockHref = '/app/dashboard';
 
     renderShell();
     const user = userEvent.setup();
@@ -702,14 +702,14 @@ describe('AppShell Switch Church control', () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/select-church?redirect=%2Fdashboard',
+      to: '/app/select-church?redirect=%2Fapp%2Fdashboard',
     });
   });
 
   it('keeps the Switch Church control reachable and functional when the sidebar is collapsed', async () => {
     asPersona();
     asChurches(CHURCH_A, CHURCH_B);
-    mockHref = '/dashboard';
+    mockHref = '/app/dashboard';
 
     renderShell();
     const user = userEvent.setup();
@@ -725,7 +725,7 @@ describe('AppShell Switch Church control', () => {
     await user.click(switchChurchButton);
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/select-church?redirect=%2Fdashboard',
+      to: '/app/select-church?redirect=%2Fapp%2Fdashboard',
     });
   });
 });

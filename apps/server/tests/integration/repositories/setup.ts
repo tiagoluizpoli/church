@@ -1,6 +1,7 @@
 import * as schema from '@church/db';
 import { clearPublicTables } from '@church/db/clear-public-tables';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { INTEGRATION_POOL_LIMITS } from '@church/db/integration-pool-limits';
 import { parseCalendarDay, parseInstant } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
@@ -28,7 +29,11 @@ import {
 
 const DATABASE_URL = getIntegrationDatabaseUrl();
 
-const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
+const pool = new pg.Pool({
+  connectionString: DATABASE_URL,
+  max: 2,
+  ...INTEGRATION_POOL_LIMITS,
+});
 export const testDb = drizzle(pool, { schema });
 
 export const volunteerDashboardSeed = {

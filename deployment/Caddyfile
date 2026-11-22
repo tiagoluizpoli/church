@@ -1,0 +1,40 @@
+{
+	# TLS stays with Traefik; the container speaks plain HTTP on 8080.
+	auto_https off
+	admin off
+	servers {
+		# Traefik's X-Forwarded-Proto/-For are passed through to the API.
+		trusted_proxies static private_ranges
+	}
+}
+
+:8080 {
+	root * /srv
+
+	# API and Better Auth share the page's origin; `server` resolves only on the
+	# Compose project's own network (see deployment/README.md). Host is kept and
+	# X-Forwarded-* are forwarded as received (trusted proxy above).
+	handle /api/* {
+		reverse_proxy server:3000
+	}
+
+	# The frontend's build revision, read by deployment health checks.
+	handle /revision.txt {
+		@hit file
+		header @hit Cache-Control "no-store"
+		file_server
+	}
+
+	handle /assets/* {
+		# Only hits: a missing asset's 404 must not be cached as immutable.
+		@hit file
+		header @hit Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		header Cache-Control "no-cache"
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+}

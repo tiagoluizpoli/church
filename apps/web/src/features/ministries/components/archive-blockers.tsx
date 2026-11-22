@@ -40,7 +40,7 @@ function BlockerItem({ blocker }: BlockerItemProps) {
   if (blocker.kind === 'usual_setup') {
     return (
       <Link
-        to="/ministries/$ministryId/usual-setup"
+        to="/app/ministries/$ministryId/usual-setup"
         params={{ ministryId: blocker.ministryId }}
         target="_blank"
         rel="noopener noreferrer"
@@ -53,7 +53,7 @@ function BlockerItem({ blocker }: BlockerItemProps) {
   }
   return (
     <Link
-      to="/schedules/$ministryId/$cycleId"
+      to="/app/schedules/$ministryId/$cycleId"
       params={{ ministryId: blocker.ministryId, cycleId: blocker.cycleId }}
       target="_blank"
       rel="noopener noreferrer"

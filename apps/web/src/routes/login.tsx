@@ -5,7 +5,7 @@ import SignInForm from '@/components/sign-in-form';
 import { authClient } from '@/lib/auth-client';
 import { validateInternalReturnTarget } from '@/shared/utils/return-target';
 
-const HOME_PATH = '/';
+const HOME_PATH = '/app';
 
 const loginSearchSchema = z.object({
   redirect: z.string().optional(),

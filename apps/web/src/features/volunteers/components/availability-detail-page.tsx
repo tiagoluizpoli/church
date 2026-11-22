@@ -46,7 +46,7 @@ function AvailabilityAnswerView({
     // Room for the fixed mobile bar, which keeps one height from the first render.
     <WorkspacePage className={cn(answer.canEdit && 'pb-36 md:pb-0')}>
       <Link
-        to="/availability"
+        to="/app/availability"
         className="-my-2 inline-flex min-h-11 items-center gap-1 self-start font-medium text-primary text-sm md:hidden"
       >
         <ChevronLeft aria-hidden className="size-4" />
@@ -120,7 +120,7 @@ function AvailabilityDetailContent({
             <p role="status">{m.shell_not_serving()}</p>
           )}
           <Link
-            to="/availability"
+            to="/app/availability"
             className={cn(
               'inline-flex min-h-11 items-center gap-1 md:min-h-8',
               LINK_CLASS,

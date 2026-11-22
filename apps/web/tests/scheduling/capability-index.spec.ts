@@ -51,7 +51,7 @@ test('a Ministry leader sees only their led Ministry workspace', async ({
   await admin.dispose();
   await signInPersonaPage({ page, persona: journey.personas.ministryLeader });
 
-  await page.goto('/schedules');
+  await page.goto('/app/schedules');
 
   await expect(
     page.getByRole('heading', {

@@ -265,6 +265,7 @@ describe('db:reseed:dev command', () => {
     await adminPool.end();
   });
 
+  // Own budget: two full reseeds measured 14.7-29s across concurrent gates; one hit the default 30s.
   it('rebuilds the worktree development database after a redacted preflight, the same way twice', async () => {
     const databaseUrl = databaseUrlFor({ database: SCRATCH_DATABASE });
 
@@ -300,7 +301,7 @@ describe('db:reseed:dev command', () => {
       expect.arrayContaining(['organization', 'user', 'account', 'volunteer']),
     );
     expect(secondGraph).toEqual(firstGraph);
-  });
+  }, 90_000);
 
   it('defaults the anchor to today in the Church Timezone', () => {
     const before = currentChurchDay();

@@ -40,7 +40,7 @@ export function UpcomingAssignmentsAlert({
                 role: blocker.roleName,
               })}{' '}
               <a
-                href={`/schedules/${blocker.ministryId}/${blocker.cycleId}/assign`}
+                href={`/app/schedules/${blocker.ministryId}/${blocker.cycleId}/assign`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-medium underline underline-offset-4"

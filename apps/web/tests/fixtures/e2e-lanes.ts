@@ -35,6 +35,7 @@ export const ISOLATED_SPECS = [
   'scheduling/planning-nav-restructure.spec.ts',
   'scheduling/planning-role-guard-matrix.spec.ts',
   'scheduling/single-create-event-ui.spec.ts',
+  'scheduling/template-precedence.spec.ts',
   'scheduling/us1-admin-plan.spec.ts',
   // Journey recipes (#327, #329): each test loads its own Church, personas
   // and schedule.

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import {
   acquireValidateLock,
   holdValidateLock,
+  VALIDATE_SLOT_TIMEOUT_EXIT_CODE,
   type ValidateLock,
   validateLockPath,
 } from '../../validation/validate-lock';
@@ -168,5 +169,27 @@ describe('holdValidateLock', () => {
       if (previous === undefined) delete process.env.CI;
       else process.env.CI = previous;
     }
+  });
+
+  it('exits with the slot-timeout code, not a check failure, when the wait runs out', async () => {
+    const home = dir;
+    dir = join(home, '.local', 'state', 'church');
+    const holder = await spawnHolder();
+    const script = `
+      const { holdValidateLock } = await import(${JSON.stringify(join(import.meta.dir, '../../validation/validate-lock'))});
+      await holdValidateLock({ tier: 'affected' });
+    `;
+    const { CI: _ci, ...env } = process.env;
+    const gate = Bun.spawnSync(['bun', '-e', script], {
+      env: { ...env, CHURCH_VALIDATE_LOCK_TIMEOUT_MS: '100', HOME: home },
+      stderr: 'pipe',
+      stdout: 'pipe',
+    });
+    holder.kill();
+    dir = home;
+
+    expect(gate.exitCode).toBe(VALIDATE_SLOT_TIMEOUT_EXIT_CODE);
+    expect(gate.stderr.toString()).toContain('Nothing was validated');
+    expect(gate.stderr.toString()).toContain('/wt/holder');
   });
 });

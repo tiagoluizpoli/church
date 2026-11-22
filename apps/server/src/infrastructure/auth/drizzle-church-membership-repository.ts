@@ -1,4 +1,4 @@
-import { church, member, organization } from '@church/db';
+import { church, churchAddress, member, organization } from '@church/db';
 import { nowAsDate } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import type { ChurchAccessLevel } from '../../domain/authority/types';
@@ -58,10 +58,20 @@ export class DrizzleChurchMembershipRepository
         timezone: church.timezone,
         logoKey: church.logoKey,
         accentColor: church.accentColor,
+        mainBairro: churchAddress.bairro,
+        mainCity: churchAddress.city,
+        mainUf: churchAddress.uf,
       })
       .from(member)
       .innerJoin(organization, eq(organization.id, member.organizationId))
       .innerJoin(church, eq(church.id, member.organizationId))
+      .leftJoin(
+        churchAddress,
+        and(
+          eq(churchAddress.churchId, member.organizationId),
+          eq(churchAddress.isMain, true),
+        ),
+      )
       .where(eq(member.userId, input.userId));
 
     return rows.map((row) => ({
@@ -72,6 +82,10 @@ export class DrizzleChurchMembershipRepository
       logoKey: row.logoKey,
       accentColor: row.accentColor,
       lastOpenedAt: row.lastOpenedAt,
+      mainAddress:
+        row.mainBairro === null || row.mainCity === null || row.mainUf === null
+          ? null
+          : { bairro: row.mainBairro, city: row.mainCity, uf: row.mainUf },
     }));
   }
 

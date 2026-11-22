@@ -158,6 +158,21 @@ describe('prepareEmail — T1 ChurchAdmin invitation', () => {
     expect(html.match(/<a /g)).toHaveLength(1);
   });
 
+  it('names the Church with its bairro and city when the payload carries them, and not otherwise', () => {
+    const place = m.email_invitation_church_place(
+      { churchName: 'Grace Church', locality: 'Centro, Campinas/SP' },
+      ptBR,
+    );
+
+    const { text } = prepare({
+      ...bootstrap,
+      churchLocality: 'Centro, Campinas/SP',
+    }).request;
+
+    expect(text).toContain(place);
+    expect(prepare(bootstrap).request.text).not.toContain('Campinas');
+  });
+
   it('lists every retained Ministry offer of an upgraded pair in the same email, escaped', () => {
     const { text, html } = prepare({
       ...bootstrap,
@@ -205,6 +220,25 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       locale: 'pt-BR',
       appName,
     });
+
+  it('names the Church with its bairro and city when the payload carries them, and not otherwise', () => {
+    const place = m.email_invitation_church_place(
+      {
+        churchName: memberInvitation.churchName,
+        locality: 'Centro, Campinas/SP',
+      },
+      ptBR,
+    );
+    const withPlace = prepareEmail({
+      payload: { ...memberInvitation, churchLocality: 'Centro, Campinas/SP' },
+      from: 'Church <church@example.com>',
+      locale: 'pt-BR',
+      appName,
+    });
+
+    expect(withPlace.request.text).toContain(place);
+    expect(prepare().request.text).not.toContain('Campinas');
+  });
 
   it("renders T1's inviter-led serve offer in the Church Timezone with See invitation and the raw URL", () => {
     const { locale, request } = prepare();

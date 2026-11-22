@@ -25,11 +25,7 @@ export interface EmailContent {
   /** One line. */
   heading: string;
   /** One to three paragraphs. */
-  facts:
-    | [string]
-    | [string, string]
-    | [string, string, string]
-    | [string, string, string, string];
+  facts: [string, ...string[]];
   list?: string[];
   action?: EmailAction;
   /** Why the recipient received this email. */

@@ -4,6 +4,7 @@ import type {
   ChurchRepository,
   GetChurchByIdInput,
   GetChurchBySlugInput,
+  PublicContactDetails,
 } from '@/domain/contracts/infrastructure/church.repository';
 import { Church, type ChurchSlug } from '@/domain/entities/church';
 import { runChurchRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/church.contract-spec';
@@ -73,8 +74,21 @@ class MockChurchRepository implements ChurchRepository {
     return { addresses: [], mainAddressArea: null };
   }
 
+  async getAddressUsage(): Promise<null> {
+    return null;
+  }
+
   async findPublicIdentityBySlug(): Promise<null> {
     return null;
+  }
+
+  async getPublicContactDetails(): Promise<PublicContactDetails> {
+    return {
+      contacts: [],
+      socialLinks: [],
+      groupNames: [],
+      legalProfile: null,
+    };
   }
 }
 

@@ -50,6 +50,8 @@ export type ListActiveChurchOptions200ChurchesItem = {
      * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
      */
   lastOpenedAt: string | null;
+  /** @nullable */
+  locality: string | null;
 };
 
 export type ListActiveChurchOptions200 = {
@@ -2590,6 +2592,8 @@ export type GetChurchSettings200SocialLinksItem = {
   network: GetChurchSettings200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -2629,6 +2633,8 @@ export type GetChurchSettings200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type GetChurchSettings200 = {
@@ -2647,6 +2653,7 @@ export type GetChurchSettings200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: GetChurchSettings200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 
@@ -2693,6 +2700,8 @@ export type UpdateChurchSettingsBodyContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group?: string | null;
 };
 
 export type UpdateChurchSettingsBodyAddressesItemUf = typeof UpdateChurchSettingsBodyAddressesItemUf[keyof typeof UpdateChurchSettingsBodyAddressesItemUf];
@@ -2785,10 +2794,22 @@ export type UpdateChurchSettingsBodyAddressesItem = {
   placeId?: string | null;
 };
 
+export type UpdateChurchSettingsBodyAddressReplacementsItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  addressId: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  replacementAddressId: string | null;
+};
+
 export type UpdateChurchSettingsBodySocialLinksItem = {
   url: string;
   /** @nullable */
   description?: string | null;
+  /** @nullable */
+  group?: string | null;
 };
 
 /**
@@ -2824,10 +2845,21 @@ export type UpdateChurchSettingsBody = {
      */
   contacts?: UpdateChurchSettingsBodyContactsItem[];
   /**
+     * Contact Group names in display order, for the `group` of contacts and links. A group is created by naming it on a row, case-insensitively one group; unlisted groups follow in first-use order; a group no row uses is deleted on save. Omitted, the stored order stays.
+     * @maxItems 100
+     * @items.maxLength 120
+     */
+  contactGroups?: string[];
+  /**
      * Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.
      * @maxItems 50
      */
   addresses: UpdateChurchSettingsBodyAddressesItem[];
+  /**
+     * What replaces each deleted address that templates or upcoming public events still use: another kept address of the Church, or null for no place. Deleting such an address without an entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the replacement is applied to every reference in the same save.
+     * @maxItems 50
+     */
+  addressReplacements?: UpdateChurchSettingsBodyAddressReplacementsItem[];
   /**
      * Every Social Link in display order; the whole list replaces the stored one. Only `url` and `description` are sent: the network is detected from the URL. Supported: Instagram, YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram, WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer and Kwai; a wa.me link is refused (add it as a Contact). Always public.
      * @maxItems 50
@@ -2940,6 +2972,8 @@ export type UpdateChurchSettings200SocialLinksItem = {
   network: UpdateChurchSettings200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -2979,6 +3013,8 @@ export type UpdateChurchSettings200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type UpdateChurchSettings200 = {
@@ -2997,6 +3033,7 @@ export type UpdateChurchSettings200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: UpdateChurchSettings200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 
@@ -3038,6 +3075,7 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   ADDRESS_PIN_INVALID: 'ADDRESS_PIN_INVALID',
   ADDRESS_MAIN_MULTIPLE: 'ADDRESS_MAIN_MULTIPLE',
   ADDRESS_MAIN_REQUIRED: 'ADDRESS_MAIN_REQUIRED',
+  ADDRESS_REPLACEMENT_REQUIRED: 'ADDRESS_REPLACEMENT_REQUIRED',
   SOCIAL_LINK_INVALID: 'SOCIAL_LINK_INVALID',
   SOCIAL_LINK_UNSUPPORTED: 'SOCIAL_LINK_UNSUPPORTED',
   SOCIAL_LINK_USE_CONTACT: 'SOCIAL_LINK_USE_CONTACT',
@@ -3054,6 +3092,7 @@ export const UpdateChurchSettings422FieldErrorsItemCode = {
   CONTACT_PHONE_INVALID: 'CONTACT_PHONE_INVALID',
   CONTACT_EMAIL_INVALID: 'CONTACT_EMAIL_INVALID',
   CONTACT_DESCRIPTION_TOO_LONG: 'CONTACT_DESCRIPTION_TOO_LONG',
+  CONTACT_GROUP_TOO_LONG: 'CONTACT_GROUP_TOO_LONG',
   INVALID: 'INVALID',
 } as const;
 
@@ -3101,6 +3140,45 @@ export type GetChurchSlugAvailability403 = {
 };
 
 export type GetChurchSlugAvailability409 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage200TemplatesItem = {
+  id: string;
+  name: string;
+};
+
+export type GetChurchAddressUsage200EventsItem = {
+  id: string;
+  title: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+};
+
+export type GetChurchAddressUsage200 = {
+  /** Event Templates with a time block at this address, by name. */
+  templates: GetChurchAddressUsage200TemplatesItem[];
+  /** Upcoming Public Events (sent, not cancelled, a public block here that has not ended), by start. */
+  events: GetChurchAddressUsage200EventsItem[];
+};
+
+export type GetChurchAddressUsage401 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage403 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage404 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage409 = {
   error: string;
   message: string;
 };
@@ -3212,6 +3290,8 @@ export type UploadChurchLogo200SocialLinksItem = {
   network: UploadChurchLogo200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -3251,6 +3331,8 @@ export type UploadChurchLogo200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type UploadChurchLogo200 = {
@@ -3269,6 +3351,7 @@ export type UploadChurchLogo200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: UploadChurchLogo200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 
@@ -3405,6 +3488,8 @@ export type RemoveChurchLogo200SocialLinksItem = {
   network: RemoveChurchLogo200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -3444,6 +3529,8 @@ export type RemoveChurchLogo200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type RemoveChurchLogo200 = {
@@ -3462,6 +3549,7 @@ export type RemoveChurchLogo200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: RemoveChurchLogo200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 
@@ -3588,6 +3676,8 @@ export type RestoreChurchLogo200SocialLinksItem = {
   network: RestoreChurchLogo200SocialLinksItemNetwork;
   /** @nullable */
   description: string | null;
+  /** @nullable */
+  group: string | null;
 };
 
 /**
@@ -3627,6 +3717,8 @@ export type RestoreChurchLogo200ContactsItem = {
   description: string | null;
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** @nullable */
+  group: string | null;
 };
 
 export type RestoreChurchLogo200 = {
@@ -3645,6 +3737,7 @@ export type RestoreChurchLogo200 = {
   /** @nullable */
   logoUrl: string | null;
   contacts: RestoreChurchLogo200ContactsItem[];
+  contactGroups: string[];
   publicOrigin: string;
 };
 
@@ -6715,6 +6808,7 @@ export type GetNotifications200ItemsItem = {
   churchLogoUrl?: string | null;
   /** @nullable */
   churchAccent?: string | null;
+  churchLocality?: string;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -8415,6 +8509,57 @@ export type ConfirmVolunteerTransfer401 = {
   message: string;
 };
 
+export type GetPublicChurchProfile200ContactGroupsItemContactsItemKind = typeof GetPublicChurchProfile200ContactGroupsItemContactsItemKind[keyof typeof GetPublicChurchProfile200ContactGroupsItemContactsItemKind];
+
+
+export const GetPublicChurchProfile200ContactGroupsItemContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType = typeof GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType[keyof typeof GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType] | null;
+
+
+export const GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type GetPublicChurchProfile200ContactGroupsItemContactsItem = {
+  kind: GetPublicChurchProfile200ContactGroupsItemContactsItemKind;
+  /** @nullable */
+  phoneType: GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+};
+
+export type GetPublicChurchProfile200ContactGroupsItemSocialLinksItem = {
+  url: string;
+  network: string;
+  /** @nullable */
+  description: string | null;
+};
+
+export type GetPublicChurchProfile200ContactGroupsItem = {
+  /** @nullable */
+  name: string | null;
+  contacts: GetPublicChurchProfile200ContactGroupsItemContactsItem[];
+  socialLinks: GetPublicChurchProfile200ContactGroupsItemSocialLinksItem[];
+};
+
+/**
+ * @nullable
+ */
+export type GetPublicChurchProfile200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+} | null;
+
 export type GetPublicChurchProfile200ProgrammeItemRecurrence = {
   kind: 'weekly';
   /** @minItems 1 */
@@ -8438,8 +8583,16 @@ export type GetPublicChurchProfile200ProgrammeItemRecurrence = {
 })[];
 };
 
+export const GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem = {  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+  NUMBER_4: 4,
+  NUMBER_5: 5,
+  last: 'last',
+} as const
 export type GetPublicChurchProfile200ProgrammeItem = {
   recurrence: GetPublicChurchProfile200ProgrammeItemRecurrence;
+  exceptOrdinals: typeof GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem[keyof typeof GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem][];
   startTime: string;
   label: string;
   /** @nullable */
@@ -8483,6 +8636,9 @@ export type GetPublicChurchProfile200 = {
   logoUrl: string | null;
   /** @nullable */
   accentColor: string | null;
+  contactGroups: GetPublicChurchProfile200ContactGroupsItem[];
+  /** @nullable */
+  legalProfile: GetPublicChurchProfile200LegalProfile;
   programme: GetPublicChurchProfile200ProgrammeItem[];
   addresses: GetPublicChurchProfile200AddressesItem[];
   /** @nullable */
@@ -8697,6 +8853,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   churchLogoUrl?: string | null;
   /** @nullable */
   churchAccent?: string | null;
+  churchLocality?: string;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;

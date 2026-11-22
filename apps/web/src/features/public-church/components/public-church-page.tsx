@@ -3,7 +3,9 @@ import { env } from '@church/env/web';
 import { m } from '@church/i18n/messages';
 import { PoweredByFooter } from './powered-by-footer';
 import { PublicAddressesSection } from './public-addresses-section';
+import { PublicContactsSection } from './public-contacts-section';
 import { PublicEventsSection } from './public-events-section';
+import { PublicLegalSection } from './public-legal-section';
 import { PublicProgrammeSection } from './public-programme-section';
 import type { GetPublicChurchProfile200 } from '@/infrastructure/api/churchAPI.schemas';
 
@@ -43,6 +45,8 @@ export function PublicChurchPage({ profile }: PublicChurchPageProps) {
           mapsEmbedKey={env.VITE_MAPS_EMBED_API_KEY}
         />
         <PublicEventsSection slug={profile.slug} />
+        <PublicContactsSection contactGroups={profile.contactGroups} />
+        <PublicLegalSection legalProfile={profile.legalProfile} />
       </main>
       <PoweredByFooter
         appName={appConfig.appName}

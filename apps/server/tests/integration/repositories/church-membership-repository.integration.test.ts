@@ -9,6 +9,7 @@ import { ChurchId, UserId } from '@/domain/branded-ids';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
 
 const DATABASE_URL = getIntegrationDatabaseUrl();
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
@@ -171,6 +172,35 @@ describe('DrizzleChurchMembershipRepository (integration)', () => {
         logoKey: 'public/churches/a/logo/x.png',
         accentColor: '#0f766e',
       }),
+    );
+  });
+
+  it("carries the Main Address's bairro, city and UF, even when private, and null without one", async () => {
+    await insertChurchAddress({
+      db: testDb,
+      churchId: churchAId,
+      isPublic: false,
+    });
+    await insertChurchAddress({
+      db: testDb,
+      churchId: churchAId,
+      isMain: false,
+      position: 1,
+      street: 'Rua B',
+    });
+    const repository = new DrizzleChurchMembershipRepository({ db: testDb });
+
+    const comparisons = await repository.listComparisonsByUserId({
+      userId: dualMemberUserId,
+    });
+
+    expect(comparisons.find((row) => row.churchId === churchAId)).toEqual(
+      expect.objectContaining({
+        mainAddress: { bairro: 'Centro', city: 'Campinas', uf: 'SP' },
+      }),
+    );
+    expect(comparisons.find((row) => row.churchId === churchBId)).toEqual(
+      expect.objectContaining({ mainAddress: null }),
     );
   });
 

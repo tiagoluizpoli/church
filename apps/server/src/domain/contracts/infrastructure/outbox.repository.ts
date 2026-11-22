@@ -63,6 +63,7 @@ export interface OutboxEmailDelivery {
 export interface OutboxChurchIdentity {
   churchLogoUrl?: string | null;
   churchAccent?: string | null;
+  churchLocality?: string;
 }
 
 export interface ChainedInvitationOutboxPayload extends OutboxChurchIdentity {

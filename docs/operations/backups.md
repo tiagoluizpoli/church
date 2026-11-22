@@ -141,6 +141,43 @@ touches a running environment.
    release notes or the issue.
 5. Drop `church_restore_drill`.
 
+### App files (VPS RustFS)
+
+Uploaded files (Church logos) live in the VPS RustFS buckets
+`church-{development,staging,production}`, all on the `rustfs-data` volume of
+the Dokploy compose `Shared/rustfs`. A Dokploy **Volume Backup** on that
+compose, *rustfs-data (app files)*, archives the whole volume:
+
+| Setting | Value |
+| --- | --- |
+| Volume | `compose-calculate-cross-platform-microchip-y7pcp6_rustfs-data` (the compose project prefix is required; a bare `rustfs-data` backs up an empty volume) |
+| Schedule | daily `30 3 * * *`, after the 03:00 database backup |
+| Stop service during backup | yes: RustFS is down for a few seconds; Cloudflare keeps serving cached logos |
+| Keep latest | 7 |
+| Destination | *lunalabs-backups (homelab RustFS)*, file `lunalabs-backups/compose-calculate-cross-platform-microchip-y7pcp6_rustfs/vps-rustfs-data/<volume>-<timestamp>.tar` |
+
+The archive is RustFS's own on-disk format, not plain objects: it includes
+`.rustfs.sys` (users, policies, bucket policies), so a restore brings back the
+per-environment keys and the anonymous read on `public/*`. Restore it only into
+`rustfs/rustfs` of the version that wrote it, started with the same
+`RUSTFS_ACCESS_KEY`/`RUSTFS_SECRET_KEY` from the `Shared/rustfs` env.
+
+Include the app files in the exercise, also in isolation:
+
+1. Upload a probe object with an environment's app key, run the volume backup
+   (**Run manually**) and download the newest `.tar` from `lunalabs-backups`.
+2. Extract it into a new empty Docker volume and start the pinned
+   `rustfs/rustfs` image on it with the root keys and no published port beyond
+   localhost.
+3. With that environment's app key, read the probe back and compare its
+   sha256; confirm the key is denied on another environment's bucket and that
+   the bucket policy still allows anonymous `s3:GetObject` on `public/*` only.
+4. Remove the container, the volume and the probe.
+
+Restoring over the live volume means stopping `Shared/rustfs`, restoring the
+archive (Dokploy volume backup **Restore**), and starting it again. Logos
+uploaded after the archive are lost; their database keys then 404.
+
 The dumps carry no owners or grants (`--no-owner --no-acl`). Restoring over a
 real environment database therefore restores as that environment's role
 (`pg_restore --role=church_<environment>`, or connected as it) so the objects

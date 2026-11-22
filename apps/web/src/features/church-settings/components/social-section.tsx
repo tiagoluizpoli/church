@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { SocialLinkDraft } from '@/features/church-settings/church-settings-form';
+import { GroupField } from '@/features/church-settings/components/group-field';
 
 type FieldErrors = Record<string, string>;
 
@@ -62,19 +63,26 @@ interface MoveInput {
 
 interface SocialSectionProps {
   links: SocialLinkDraft[];
+  /** The existing Contact Groups, suggested on each row. */
+  groups: string[];
   errors: FieldErrors;
   onChange: (links: SocialLinkDraft[]) => void;
 }
 
 /** The Church's Social Links: always public, staged into the screen's save bar. */
-export function SocialSection({ links, errors, onChange }: SocialSectionProps) {
+export function SocialSection({
+  links,
+  groups,
+  errors,
+  onChange,
+}: SocialSectionProps) {
   const counter = React.useRef(0);
 
   const add = (url: string) => {
     counter.current += 1;
     onChange([
       ...links,
-      { key: `new-${counter.current}`, url, description: '' },
+      { key: `new-${counter.current}`, url, description: '', group: '' },
     ]);
   };
 
@@ -171,6 +179,15 @@ export function SocialSection({ links, errors, onChange }: SocialSectionProps) {
                       />
                     </div>
                   </div>
+                  <GroupField
+                    value={link.group}
+                    suggestions={groups}
+                    rowLabel={String(index + 1)}
+                    error={own.group}
+                    onChange={(group) =>
+                      update({ key: link.key, changes: { group } })
+                    }
+                  />
                   <div className="flex flex-wrap items-end gap-2">
                     <div className="min-w-56 flex-1">
                       <IconInputField

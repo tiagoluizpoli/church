@@ -40,6 +40,7 @@ export const churchSelectionOptionResponseSchema = z.object({
   logoUrl: z.string().nullable(),
   accentColor: z.string().nullable(),
   lastOpenedAt: instantSchema.nullable(),
+  locality: z.string().nullable(),
 });
 export type ChurchSelectionOptionResponse = z.infer<
   typeof churchSelectionOptionResponseSchema
@@ -102,6 +103,7 @@ export const activeChurchMapper = {
       lastOpenedAt: option.lastOpenedAt
         ? fromDate({ date: option.lastOpenedAt })
         : null,
+      locality: option.locality,
     };
   },
 

@@ -71,6 +71,12 @@ const CHURCH_SETTINGS_JOURNEY_SPEC_PATHS = [
   'tests/church-settings/church-settings-journey.spec.ts',
 ];
 
+// #1027 (#1002): a monthly template winning over the weekly Sunday one, saved
+// through the collision prompt and applied to a Cycle.
+const TEMPLATE_PRECEDENCE_SPEC_PATHS = [
+  'tests/scheduling/template-precedence.spec.ts',
+];
+
 // #900: the Ministries page (search, status filter, counts) and a Ministry's
 // Usual setup.
 const MINISTRIES_JOURNEY_SPEC_PATHS = [
@@ -175,6 +181,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/smoke.spec.ts',
   'tests/scheduling/us1-admin-plan.spec.ts',
   'tests/scheduling/us2-leader-prepare.spec.ts',
+  ...TEMPLATE_PRECEDENCE_SPEC_PATHS,
   ...LEADER_AVAILABILITY_SPEC_PATHS,
   ...VOLUNTEER_AVAILABILITY_SPEC_PATHS,
   ...SWAP_REQUEST_SPEC_PATHS,
@@ -206,6 +213,7 @@ const CYCLE_EDGE_SPEC_PATHS = [
 // that journey stays out.
 const PLANNING_ADMIN_SPEC_PATHS = [
   'tests/scheduling/event-templates.spec.ts',
+  ...TEMPLATE_PRECEDENCE_SPEC_PATHS,
   'tests/scheduling/cycles-table-view.spec.ts',
   'tests/scheduling/planning-nav-restructure.spec.ts',
   'tests/scheduling/planning-role-guard-matrix.spec.ts',

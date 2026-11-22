@@ -315,6 +315,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
+      'tests/scheduling/template-precedence.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
@@ -335,6 +336,7 @@ describe('classifyChanges', () => {
         'tests/scheduling/planning-nav-restructure.spec.ts',
         'tests/scheduling/planning-role-guard-matrix.spec.ts',
         'tests/scheduling/single-create-event-ui.spec.ts',
+        'tests/scheduling/template-precedence.spec.ts',
         'tests/scheduling/us1-admin-plan.spec.ts',
       ]);
       expect(plan.missingJourneyMappings).toEqual([]);
@@ -693,6 +695,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/qualification.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
       'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/template-precedence.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       'tests/scheduling/us2-leader-prepare.spec.ts',
       'tests/scheduling/us3-volunteer-availability.spec.ts',

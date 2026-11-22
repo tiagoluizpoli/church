@@ -3,27 +3,43 @@ import {
   church,
   churchAddress,
   churchContact,
+  churchContactGroup,
   churchLegalProfile,
   churchSlugHistory,
   churchSocialLink,
+  cycle,
+  event,
+  eventTemplate,
+  eventTimeBlock,
   member,
   organization,
+  templateTimeBlock,
   user,
 } from '@church/db';
-import { and, asc, desc, eq, ne, notInArray, or } from 'drizzle-orm';
+import { fromDate, nowAsDate } from '@church/time';
+import { and, asc, desc, eq, gt, ne, notInArray, or } from 'drizzle-orm';
 import { ChurchId, type UserId } from '../../domain/branded-ids';
 import {
+  type AddressReplacement,
   type ChurchAddress,
+  ChurchAddressesRefused,
+  type ChurchAddressRefusal,
+  type ChurchAddressUsage,
   type MainAddressArea,
   type PublicChurchAddress,
   type PublicChurchAddresses,
   resolveChurchAddresses,
 } from '../../domain/church-address';
+import type { ChurchContact } from '../../domain/church-contact';
 import type { ChurchLegalProfile } from '../../domain/church-legal-profile';
 import type {
   ChurchSettings,
   ChurchSlugAvailability,
 } from '../../domain/church-settings';
+import {
+  contactGroupKey,
+  resolveContactGroups,
+} from '../../domain/contact-group';
 import type {
   ChurchMemberContact,
   ChurchRepository,
@@ -31,11 +47,14 @@ import type {
   FindPublicAddressesInput,
   FindPublicIdentityBySlugInput,
   FindUserNameInput,
+  GetChurchAddressUsageInput,
   GetChurchByIdInput,
   GetChurchBySlugInput,
   GetChurchSettingsInput,
+  GetPublicContactDetailsInput,
   ListChurchAdminUserIdsInput,
   PublicChurchIdentity,
+  PublicContactDetails,
   SaveChurchLogoKeyInput,
   SaveChurchSettingsInput,
   SlugAvailabilityInput,
@@ -57,6 +76,19 @@ import { isUniqueViolation } from './unique-violation';
 // extension row keyed by the same id, so every read joins the two.
 const churchJoinShape = { church, organization };
 
+interface ReplaceDeletedAddressUsageInput {
+  client: AnyDrizzleDb;
+  tx?: TransactionContext;
+  id: ChurchId;
+  stored: readonly ChurchAddress[];
+  kept: readonly string[];
+  replacements: readonly AddressReplacement[];
+}
+
+interface ListContactsInput extends ListAddressesInput {
+  onlyPublic?: boolean;
+}
+
 interface ListAddressesInput {
   id: string;
   tx?: TransactionContext;
@@ -76,7 +108,29 @@ interface FindSlugAvailabilityInput {
 interface ReplaceSocialLinksInput {
   client: DrizzleClient;
   id: string;
-  links: readonly SocialLinkChange[];
+  links: readonly (Omit<SocialLinkChange, 'group'> & {
+    groupId: string | null;
+  })[];
+}
+
+interface GroupedRow {
+  group: string | null;
+}
+
+interface CreatedGroup {
+  id: string;
+}
+
+interface ReplaceGroupsInput {
+  client: DrizzleClient;
+  id: string;
+  requested: readonly string[];
+  members: readonly (string | null)[];
+}
+
+interface DeleteUnusedGroupsInput {
+  client: DrizzleClient;
+  id: string;
 }
 
 interface ReplaceLegalProfileInput {
@@ -191,7 +245,23 @@ export class DrizzleChurchRepository implements ChurchRepository {
           .where(eq(church.id, id))
       : [];
     if (!row) throw new NotFoundError(`Church not found: ${id}`);
-    const contacts = await getClient({ db: this.db, tx })
+    const contacts = await this.listChurchContacts({ id, tx });
+    return {
+      ...row,
+      addresses: await this.listAddresses({ id, tx }),
+      socialLinks: await this.listSocialLinks({ id, tx }),
+      legalProfile: await this.findLegalProfile({ id, tx }),
+      contacts,
+      contactGroups: await this.listGroupNames({ id, tx }),
+    };
+  }
+
+  private async listChurchContacts({
+    id,
+    tx,
+    onlyPublic = false,
+  }: ListContactsInput): Promise<ChurchContact[]> {
+    return getClient({ db: this.db, tx })
       .select({
         kind: churchContact.kind,
         phoneType: churchContact.phoneType,
@@ -199,17 +269,46 @@ export class DrizzleChurchRepository implements ChurchRepository {
         description: churchContact.description,
         isWhatsApp: churchContact.isWhatsApp,
         isPublic: churchContact.isPublic,
+        group: churchContactGroup.name,
       })
       .from(churchContact)
-      .where(eq(churchContact.churchId, id))
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchContact.groupId),
+      )
+      .where(
+        and(
+          eq(churchContact.churchId, id),
+          onlyPublic ? eq(churchContact.isPublic, true) : undefined,
+        ),
+      )
       .orderBy(asc(churchContact.position), asc(churchContact.id));
+  }
+
+  async getPublicContactDetails({
+    churchId,
+  }: GetPublicContactDetailsInput): Promise<PublicContactDetails> {
+    const id = churchId;
+    const legalProfile = await this.findLegalProfile({ id });
     return {
-      ...row,
-      addresses: await this.listAddresses({ id, tx }),
-      socialLinks: await this.listSocialLinks({ id, tx }),
-      legalProfile: await this.findLegalProfile({ id, tx }),
-      contacts,
+      contacts: await this.listChurchContacts({ id, onlyPublic: true }),
+      socialLinks: await this.listSocialLinks({ id }),
+      groupNames: await this.listGroupNames({ id }),
+      // Private legal data never leaves the query's result.
+      legalProfile: legalProfile?.isPublic ? legalProfile : null,
     };
+  }
+
+  private async listGroupNames({
+    id,
+    tx,
+  }: ListAddressesInput): Promise<string[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({ name: churchContactGroup.name })
+      .from(churchContactGroup)
+      .where(eq(churchContactGroup.churchId, id))
+      .orderBy(asc(churchContactGroup.position), asc(churchContactGroup.id));
+    return rows.map(({ name }) => name);
   }
 
   private async findLegalProfile({
@@ -236,8 +335,13 @@ export class DrizzleChurchRepository implements ChurchRepository {
         url: churchSocialLink.url,
         network: churchSocialLink.network,
         description: churchSocialLink.description,
+        group: churchContactGroup.name,
       })
       .from(churchSocialLink)
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchSocialLink.groupId),
+      )
       .where(eq(churchSocialLink.churchId, id))
       .orderBy(asc(churchSocialLink.position), asc(churchSocialLink.id));
     return rows as ChurchSocialLink[];
@@ -311,7 +415,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     tx,
   }: SaveChurchSettingsInput): Promise<void> {
     const client = getClient({ db: this.db, tx });
-    const { slug, contacts, ...fields } = changes;
+    const { slug, contacts, contactGroups, ...fields } = changes;
     await client
       .update(organization)
       .set({ name: fields.name })
@@ -321,10 +425,27 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .set({ website: fields.website, accentColor: fields.accentColor })
       .where(eq(church.id, id));
     if (slug !== undefined) await this.changeSlug({ client, id, slug });
+    const groupIds = await this.replaceGroups({
+      client,
+      id,
+      requested: contactGroups ?? (await this.listGroupNames({ id, tx })),
+      // Omitted contacts stay, so their groups must stay too.
+      members: [
+        ...(contacts ?? (await this.listContacts({ id, tx }))).map(
+          ({ group }) => group,
+        ),
+        ...changes.socialLinks.map(({ group }) => group),
+      ],
+    });
+    const groupIdOf = ({ group }: GroupedRow) =>
+      group ? (groupIds.get(contactGroupKey({ name: group })) ?? null) : null;
     await this.replaceSocialLinks({
       client,
       id,
-      links: changes.socialLinks,
+      links: changes.socialLinks.map((link) => ({
+        ...link,
+        groupId: groupIdOf(link),
+      })),
     });
     await this.replaceLegalProfile({
       client,
@@ -336,6 +457,14 @@ export class DrizzleChurchRepository implements ChurchRepository {
       incoming: changes.addresses,
     });
     const kept = writes.flatMap((write) => (write.id ? [write.id] : []));
+    await this.replaceDeletedAddressUsage({
+      client,
+      tx,
+      id,
+      stored: await this.listAddresses({ id, tx }),
+      kept,
+      replacements: changes.addressReplacements ?? [],
+    });
     await client
       .delete(churchAddress)
       .where(
@@ -369,13 +498,207 @@ export class DrizzleChurchRepository implements ChurchRepository {
       await client.delete(churchContact).where(eq(churchContact.churchId, id));
       if (contacts.length > 0) {
         await client.insert(churchContact).values(
-          contacts.map((contact, position) => ({
-            ...contact,
-            churchId: id,
-            position,
-          })),
+          contacts.map((contact, position) => {
+            const { group: _group, ...columns } = contact;
+            return {
+              ...columns,
+              groupId: groupIdOf(contact),
+              churchId: id,
+              position,
+            };
+          }),
         );
       }
+    }
+    await this.deleteUnusedGroups({ client, id });
+  }
+
+  /** Keeps a stored group (same name, any case) in place, creates the new ones, and returns their ids by name key. */
+  private async replaceGroups({
+    client,
+    id,
+    requested,
+    members,
+  }: ReplaceGroupsInput): Promise<Map<string, string>> {
+    const names = resolveContactGroups({ requested, members });
+    const stored = await client
+      .select({ id: churchContactGroup.id, name: churchContactGroup.name })
+      .from(churchContactGroup)
+      .where(eq(churchContactGroup.churchId, id));
+    const storedByKey = new Map(
+      stored.map((row) => [contactGroupKey({ name: row.name }), row.id]),
+    );
+    const ids = new Map<string, string>();
+    for (const [position, name] of names.entries()) {
+      const key = contactGroupKey({ name });
+      const storedId = storedByKey.get(key);
+      if (storedId) {
+        await client
+          .update(churchContactGroup)
+          .set({ name, position })
+          .where(eq(churchContactGroup.id, storedId));
+        ids.set(key, storedId);
+      } else {
+        const [created] = await client
+          .insert(churchContactGroup)
+          .values({ churchId: id, name, position })
+          .returning({ id: churchContactGroup.id });
+        ids.set(key, (created as CreatedGroup).id);
+      }
+    }
+    return ids;
+  }
+
+  /** A group no contact or link uses any more is deleted. */
+  private async deleteUnusedGroups({
+    client,
+    id,
+  }: DeleteUnusedGroupsInput): Promise<void> {
+    const [contactRows, linkRows] = await Promise.all([
+      client
+        .select({ groupId: churchContact.groupId })
+        .from(churchContact)
+        .where(eq(churchContact.churchId, id)),
+      client
+        .select({ groupId: churchSocialLink.groupId })
+        .from(churchSocialLink)
+        .where(eq(churchSocialLink.churchId, id)),
+    ]);
+    const used = [...contactRows, ...linkRows].flatMap(({ groupId }) =>
+      groupId ? [groupId] : [],
+    );
+    await client
+      .delete(churchContactGroup)
+      .where(
+        used.length === 0
+          ? eq(churchContactGroup.churchId, id)
+          : and(
+              eq(churchContactGroup.churchId, id),
+              notInArray(churchContactGroup.id, used),
+            ),
+      );
+  }
+
+  private listContacts({ id, tx }: ListAddressesInput): Promise<GroupedRow[]> {
+    return getClient({ db: this.db, tx })
+      .select({ group: churchContactGroup.name })
+      .from(churchContact)
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchContact.groupId),
+      )
+      .where(eq(churchContact.churchId, id));
+  }
+
+  async getAddressUsage({
+    id,
+    addressId,
+    tx,
+  }: GetChurchAddressUsageInput): Promise<ChurchAddressUsage | null> {
+    const client = getClient({ db: this.db, tx });
+    const [address] = await client
+      .select({ id: churchAddress.id })
+      .from(churchAddress)
+      .where(
+        and(eq(churchAddress.id, addressId), eq(churchAddress.churchId, id)),
+      );
+    if (!address) return null;
+    const templates = await client
+      .selectDistinct({ id: eventTemplate.id, name: eventTemplate.name })
+      .from(templateTimeBlock)
+      .innerJoin(
+        eventTemplate,
+        eq(eventTemplate.id, templateTimeBlock.templateId),
+      )
+      .where(eq(templateTimeBlock.placeAddressId, addressId))
+      .orderBy(asc(eventTemplate.name), asc(eventTemplate.id));
+    const events = await client
+      .selectDistinct({ id: event.id, title: event.title, start: event.start })
+      .from(eventTimeBlock)
+      .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
+      .innerJoin(cycle, eq(cycle.id, event.cycleId))
+      .where(
+        and(
+          eq(eventTimeBlock.placeAddressId, addressId),
+          eq(eventTimeBlock.isPublic, true),
+          ne(eventTimeBlock.status, 'cancelled'),
+          ne(event.status, 'cancelled'),
+          eq(cycle.hasBeenSent, true),
+          gt(eventTimeBlock.endTime, nowAsDate()),
+        ),
+      )
+      .orderBy(asc(event.start), asc(event.id));
+    return {
+      templates,
+      events: events.map((item) => ({
+        ...item,
+        start: fromDate({ date: item.start }),
+      })),
+    };
+  }
+
+  /**
+   * A deleted address that templates or upcoming Public Events still use needs
+   * a replacement (a kept address, or null); it is applied to every reference.
+   */
+  private async replaceDeletedAddressUsage({
+    client,
+    tx,
+    id,
+    stored,
+    kept,
+    replacements,
+  }: ReplaceDeletedAddressUsageInput): Promise<void> {
+    const refusals: ChurchAddressRefusal[] = [];
+    replacements.forEach(({ addressId, replacementAddressId }, index) => {
+      if (
+        replacementAddressId !== null &&
+        (replacementAddressId === addressId ||
+          !kept.includes(replacementAddressId))
+      ) {
+        refusals.push({
+          field: `addressReplacements.${index}.replacementAddressId`,
+          code: 'INVALID',
+        });
+      }
+    });
+    const deleted = stored.filter((address) => !kept.includes(address.id));
+    for (const { id: addressId } of deleted) {
+      const replacement = replacements.find(
+        (entry) => entry.addressId === addressId,
+      );
+      const usage = await this.getAddressUsage({ id, addressId, tx });
+      const inUse =
+        usage !== null &&
+        (usage.templates.length > 0 || usage.events.length > 0);
+      if (inUse && !replacement) {
+        refusals.push({
+          field: 'addresses',
+          code: 'ADDRESS_REPLACEMENT_REQUIRED',
+        });
+      }
+    }
+    if (refusals.length > 0) throw new ChurchAddressesRefused({ refusals });
+    for (const { addressId, replacementAddressId } of replacements) {
+      if (!deleted.some((address) => address.id === addressId)) continue;
+      await client
+        .update(templateTimeBlock)
+        .set({ placeAddressId: replacementAddressId })
+        .where(
+          and(
+            eq(templateTimeBlock.churchId, id),
+            eq(templateTimeBlock.placeAddressId, addressId),
+          ),
+        );
+      await client
+        .update(eventTimeBlock)
+        .set({ placeAddressId: replacementAddressId })
+        .where(
+          and(
+            eq(eventTimeBlock.churchId, id),
+            eq(eventTimeBlock.placeAddressId, addressId),
+          ),
+        );
     }
   }
 

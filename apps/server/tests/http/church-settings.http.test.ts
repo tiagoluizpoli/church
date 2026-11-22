@@ -62,6 +62,7 @@ const UNTOUCHED = {
   logoKey: null,
   logoUrl: null,
   contacts: [],
+  contactGroups: [],
   legalProfile: null,
   publicOrigin: PUBLIC_ORIGIN,
 };
@@ -215,6 +216,7 @@ describe('Church Settings', () => {
       logoKey: null,
       logoUrl: null,
       contacts: [],
+      contactGroups: [],
       legalProfile: null,
       publicOrigin: PUBLIC_ORIGIN,
     };
@@ -271,6 +273,7 @@ describe('Church Settings', () => {
       logoKey: null,
       logoUrl: null,
       contacts: [],
+      contactGroups: [],
       legalProfile: null,
       publicOrigin: PUBLIC_ORIGIN,
     });
@@ -866,21 +869,25 @@ describe('Social Links', () => {
         url: 'https://youtube.com/@igreja',
         network: 'youtube',
         description: 'Cultos ao vivo',
+        group: null,
       },
       {
         url: 'https://instagram.com/igreja',
         network: 'instagram',
         description: null,
+        group: null,
       },
       {
         url: 'https://youtube.com/@pastor',
         network: 'youtube',
         description: 'Canal do pastor',
+        group: null,
       },
       {
         url: 'https://chat.whatsapp.com/AbC123',
         network: 'whatsappGroup',
         description: null,
+        group: null,
       },
     ];
     expect(res.json().socialLinks).toEqual(expected);
@@ -897,7 +904,12 @@ describe('Social Links', () => {
     const res = await saveSocialLinks([{ url: 'https://t.me/b' }]);
 
     expect(res.json().socialLinks).toEqual([
-      { url: 'https://t.me/b', network: 'telegram', description: null },
+      {
+        url: 'https://t.me/b',
+        network: 'telegram',
+        description: null,
+        group: null,
+      },
     ]);
     expect((await saveSocialLinks([])).json().socialLinks).toEqual([]);
   });
@@ -936,6 +948,7 @@ describe('Social Links', () => {
         url: 'https://instagram.com/keep',
         network: 'instagram',
         description: null,
+        group: null,
       },
     ]);
   });
@@ -980,6 +993,7 @@ describe('Church Contacts', () => {
     description: ' Secretaria ',
     isWhatsApp: true,
     isPublic: true,
+    group: null,
   };
   const email = {
     kind: 'email',
@@ -988,6 +1002,7 @@ describe('Church Contacts', () => {
     description: null,
     isWhatsApp: false,
     isPublic: false,
+    group: null,
   };
 
   it('keeps contacts in order, normalised, and private by what was sent', async () => {
@@ -1182,5 +1197,337 @@ describe('Church Legal Profile', () => {
     signIn({ churchId: CHURCH_B });
 
     expect((await getSettings()).json().legalProfile).toBeNull();
+  });
+});
+
+describe('Deleting a Church Address in use', () => {
+  async function seedUsage() {
+    signIn();
+    const [sede, anexo] = (await saveAddresses([SEDE, ANEXO])).json().addresses;
+    const { template, blocks } = await buildEventTemplate({
+      db,
+      churchId: CHURCH_A,
+      name: 'Domingo',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+      blocks: [
+        {
+          label: 'Culto',
+          startTime: parseTimeOfDay({ value: '19:00' }),
+          endTime: parseTimeOfDay({ value: '21:00' }),
+          placeAddressId: anexo.id,
+        },
+      ],
+    });
+    const sent = await buildCycle({
+      db,
+      churchId: CHURCH_A,
+      name: 'Sent',
+      state: 'sent',
+      startDate: '2099-01-01' as never,
+      endDate: '2099-12-31' as never,
+    });
+    const upcoming = await buildEvent({
+      db,
+      churchId: CHURCH_A,
+      cycleId: sent.id,
+      title: 'Culto de março',
+      start: parseInstant({ value: '2099-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2099-03-02T00:00:00.000Z' }),
+      status: 'scheduled',
+    });
+    const publicBlock = await buildEventTimeBlock({
+      db,
+      churchId: CHURCH_A,
+      eventId: upcoming.id,
+      start: parseInstant({ value: '2099-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2099-03-02T00:00:00.000Z' }),
+      isPublic: true,
+      placeAddressId: anexo.id,
+    });
+    return { sede, anexo, template, blocks, upcoming, publicBlock };
+  }
+
+  function usage(addressId: string) {
+    return app.inject({
+      method: 'GET',
+      url: `/api/v1/church-settings/addresses/${addressId}/usage`,
+    });
+  }
+
+  function deleteAnexo(
+    sede: Record<string, unknown>,
+    addressReplacements?: Record<string, unknown>[],
+  ) {
+    return saveSettings({
+      ...BASE,
+      addresses: [sede],
+      ...(addressReplacements ? { addressReplacements } : {}),
+    });
+  }
+
+  async function blockReferences(
+    templateBlockId: string,
+    eventBlockId: string,
+  ) {
+    const [templateRow] = await db
+      .select({ id: templateTimeBlock.placeAddressId })
+      .from(templateTimeBlock)
+      .where(eq(templateTimeBlock.id, templateBlockId));
+    const [eventRow] = await db
+      .select({ id: eventTimeBlock.placeAddressId })
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, eventBlockId));
+    return [templateRow?.id, eventRow?.id];
+  }
+
+  it('lists the templates and the upcoming Public Events that use an address', async () => {
+    const { sede, anexo, template, upcoming } = await seedUsage();
+    const past = await buildEvent({
+      db,
+      churchId: CHURCH_A,
+      cycleId: upcoming.cycleId,
+      title: 'Culto antigo',
+      start: parseInstant({ value: '2000-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2000-03-02T00:00:00.000Z' }),
+      status: 'scheduled',
+    });
+    await buildEventTimeBlock({
+      db,
+      churchId: CHURCH_A,
+      eventId: past.id,
+      start: parseInstant({ value: '2000-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2000-03-02T00:00:00.000Z' }),
+      isPublic: true,
+      placeAddressId: anexo.id,
+    });
+
+    const res = await usage(anexo.id);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      templates: [{ id: template.id, name: 'Domingo' }],
+      events: [
+        {
+          id: upcoming.id,
+          title: 'Culto de março',
+          start: '2099-03-01T22:00:00.000Z',
+        },
+      ],
+    });
+    expect((await usage(sede.id)).json()).toEqual({
+      templates: [],
+      events: [],
+    });
+  });
+
+  it('answers 404 for an address of another Church', async () => {
+    signIn();
+    const res = await usage('33333333-3333-4333-8333-333333333333');
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('refuses deleting an address in use without a replacement, and changes nothing', async () => {
+    const { sede, anexo, blocks, publicBlock } = await seedUsage();
+
+    const res = await deleteAnexo(sede);
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().fieldErrors).toEqual([
+      expect.objectContaining({
+        field: 'addresses',
+        code: 'ADDRESS_REPLACEMENT_REQUIRED',
+      }),
+    ]);
+    expect(await readAddresses()).toHaveLength(2);
+    expect(await blockReferences(blocks[0]?.id ?? '', publicBlock.id)).toEqual([
+      anexo.id,
+      anexo.id,
+    ]);
+  });
+
+  it('re-points every reference to the replacement address', async () => {
+    const { sede, anexo, blocks, publicBlock } = await seedUsage();
+
+    const res = await deleteAnexo(sede, [
+      { addressId: anexo.id, replacementAddressId: sede.id },
+    ]);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().addresses).toHaveLength(1);
+    expect(await blockReferences(blocks[0]?.id ?? '', publicBlock.id)).toEqual([
+      sede.id,
+      sede.id,
+    ]);
+  });
+
+  it('clears every reference when the replacement is none', async () => {
+    const { sede, anexo, blocks, publicBlock } = await seedUsage();
+
+    const res = await deleteAnexo(sede, [
+      { addressId: anexo.id, replacementAddressId: null },
+    ]);
+
+    expect(res.statusCode).toBe(200);
+    expect(await blockReferences(blocks[0]?.id ?? '', publicBlock.id)).toEqual([
+      null,
+      null,
+    ]);
+  });
+
+  it('refuses a replacement that is not a kept address of this Church', async () => {
+    const { sede, anexo } = await seedUsage();
+
+    const own = await deleteAnexo(sede, [
+      { addressId: anexo.id, replacementAddressId: anexo.id },
+    ]);
+    const foreign = await deleteAnexo(sede, [
+      {
+        addressId: anexo.id,
+        replacementAddressId: '33333333-3333-4333-8333-333333333333',
+      },
+    ]);
+
+    for (const res of [own, foreign]) {
+      expect(res.statusCode).toBe(422);
+      expect(res.json().fieldErrors).toEqual([
+        expect.objectContaining({
+          field: 'addressReplacements.0.replacementAddressId',
+          code: 'INVALID',
+        }),
+      ]);
+    }
+    expect(await readAddresses()).toHaveLength(2);
+  });
+
+  it('deletes an unused address without a replacement, and the Main Address rule still holds', async () => {
+    signIn();
+    const [sede, anexo] = (await saveAddresses([SEDE, ANEXO])).json().addresses;
+
+    const main = await saveAddresses([{ ...anexo, isMain: false }]);
+    expect(main.statusCode).toBe(422);
+    expect(main.json().fieldErrors).toEqual([
+      expect.objectContaining({
+        field: 'addresses',
+        code: 'ADDRESS_MAIN_REQUIRED',
+      }),
+    ]);
+
+    const unused = await deleteAnexo(sede);
+    expect(unused.statusCode).toBe(200);
+    expect(unused.json().addresses).toHaveLength(1);
+  });
+});
+
+describe('Contact Groups', () => {
+  const base = {
+    name: 'Igreja Batista Esperança',
+    website: '',
+    accentColor: null,
+  };
+  const email = {
+    kind: 'email',
+    phoneType: null,
+    value: 'louvor@igreja.org',
+    description: null,
+    isWhatsApp: false,
+    isPublic: true,
+  };
+
+  async function read() {
+    signIn();
+    const body = (await getSettings()).json();
+    return {
+      groups: body.contactGroups as string[],
+      contacts: body.contacts.map((c: { group: string | null }) => c.group),
+      links: body.socialLinks.map((l: { group: string | null }) => l.group),
+    };
+  }
+
+  it('creates groups from the names typed, keeps them in the requested order and leaves the rest ungrouped', async () => {
+    signIn();
+
+    const res = await saveSettings({
+      ...base,
+      contactGroups: ['Louvor', 'Pastora Helena'],
+      contacts: [
+        { ...email, group: ' Pastora   Helena ' },
+        { ...email, group: null },
+      ],
+      socialLinks: [
+        { url: 'https://instagram.com/louvor', group: 'Louvor' },
+        { url: 'https://instagram.com/igreja' },
+      ],
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(await read()).toEqual({
+      groups: ['Louvor', 'Pastora Helena'],
+      contacts: ['Pastora Helena', null],
+      links: ['Louvor', null],
+    });
+  });
+
+  it('treats names differing in case as one group and appends unlisted groups in first-use order', async () => {
+    signIn();
+
+    await saveSettings({
+      ...base,
+      contactGroups: ['Jovens'],
+      contacts: [
+        { ...email, group: 'Louvor' },
+        { ...email, group: 'louvor' },
+        { ...email, group: 'Jovens' },
+      ],
+    });
+
+    expect(await read()).toMatchObject({
+      groups: ['Jovens', 'Louvor'],
+      contacts: ['Louvor', 'Louvor', 'Jovens'],
+    });
+  });
+
+  it('deletes a group with no member on save and keeps groups of contacts left alone', async () => {
+    signIn();
+    await saveSettings({
+      ...base,
+      contactGroups: ['Vazio'],
+      contacts: [{ ...email, group: 'Louvor' }],
+      socialLinks: [{ url: 'https://instagram.com/jovens', group: 'Jovens' }],
+    });
+    expect((await read()).groups).toEqual(['Louvor', 'Jovens']);
+
+    await saveSettings({ ...base, socialLinks: [] });
+
+    expect(await read()).toEqual({
+      groups: ['Louvor'],
+      contacts: ['Louvor'],
+      links: [],
+    });
+  });
+
+  it('refuses a name over 60 characters by row and saves nothing', async () => {
+    signIn();
+
+    const res = await saveSettings({
+      ...base,
+      contacts: [{ ...email, group: 'a'.repeat(61) }],
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().fieldErrors).toEqual([
+      expect.objectContaining({
+        field: 'contacts.0.group',
+        code: 'CONTACT_GROUP_TOO_LONG',
+      }),
+    ]);
+    expect((await read()).groups).toEqual([]);
+  });
+
+  it('keeps one Church out of the other', async () => {
+    signIn();
+    await saveSettings({ ...base, contacts: [{ ...email, group: 'Louvor' }] });
+
+    signIn({ churchId: CHURCH_B });
+    expect((await getSettings()).json().contactGroups).toEqual([]);
   });
 });

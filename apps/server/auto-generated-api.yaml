@@ -126,6 +126,9 @@ paths:
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        locality:
+                          nullable: true
+                          type: string
                       required:
                         - churchId
                         - name
@@ -135,6 +138,7 @@ paths:
                         - logoUrl
                         - accentColor
                         - lastOpenedAt
+                        - locality
                       additionalProperties: false
                 required:
                   - churches
@@ -5874,10 +5878,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -5925,6 +5933,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -5932,7 +5943,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -5946,6 +5962,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -6058,6 +6075,9 @@ paths:
                         type: boolean
                       isPublic:
                         type: boolean
+                      group:
+                        nullable: true
+                        type: string
                     required:
                       - kind
                       - phoneType
@@ -6065,6 +6085,17 @@ paths:
                       - description
                       - isWhatsApp
                       - isPublic
+                contactGroups:
+                  description: Contact Group names in display order, for the `group` of contacts
+                    and links. A group is created by naming it on a row,
+                    case-insensitively one group; unlisted groups follow in
+                    first-use order; a group no row uses is deleted on save.
+                    Omitted, the stored order stays.
+                  maxItems: 100
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 120
                 addresses:
                   maxItems: 50
                   type: array
@@ -6167,6 +6198,29 @@ paths:
                     Country is always BR; number is "s/n" without a number; a
                     `placeId` is dropped when street, number or city change from
                     the stored pick.
+                addressReplacements:
+                  description: "What replaces each deleted address that templates or upcoming
+                    public events still use: another kept address of the Church,
+                    or null for no place. Deleting such an address without an
+                    entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the
+                    replacement is applied to every reference in the same save."
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      addressId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      replacementAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                    required:
+                      - addressId
+                      - replacementAddressId
                 socialLinks:
                   maxItems: 50
                   type: array
@@ -6176,6 +6230,9 @@ paths:
                       url:
                         type: string
                       description:
+                        nullable: true
+                        type: string
+                      group:
                         nullable: true
                         type: string
                     required:
@@ -6354,10 +6411,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -6405,6 +6466,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -6412,7 +6476,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -6426,6 +6495,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -6508,6 +6578,7 @@ paths:
                             - ADDRESS_PIN_INVALID
                             - ADDRESS_MAIN_MULTIPLE
                             - ADDRESS_MAIN_REQUIRED
+                            - ADDRESS_REPLACEMENT_REQUIRED
                             - SOCIAL_LINK_INVALID
                             - SOCIAL_LINK_UNSUPPORTED
                             - SOCIAL_LINK_USE_CONTACT
@@ -6524,6 +6595,7 @@ paths:
                             - CONTACT_PHONE_INVALID
                             - CONTACT_EMAIL_INVALID
                             - CONTACT_DESCRIPTION_TOO_LONG
+                            - CONTACT_GROUP_TOO_LONG
                             - INVALID
                         message:
                           type: string
@@ -6587,6 +6659,129 @@ paths:
                   - message
                 additionalProperties: false
         "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/church-settings/addresses/{addressId}/usage:
+    get:
+      operationId: getChurchAddressUsage
+      summary: Where a Church Address is used
+      tags:
+        - church-settings
+      description: The Event Templates and upcoming Public Events whose time block
+        places the address; shown before deleting it so a replacement can be
+        chosen. ChurchAdmin only.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: addressId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                    description: Event Templates with a time block at this address, by name.
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        start:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      required:
+                        - id
+                        - title
+                        - start
+                      additionalProperties: false
+                    description: Upcoming Public Events (sent, not cancelled, a public block here
+                      that has not ended), by start.
+                required:
+                  - templates
+                  - events
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:
@@ -6779,10 +6974,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -6830,6 +7029,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -6837,7 +7039,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -6851,6 +7058,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -7091,10 +7299,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -7142,6 +7354,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -7149,7 +7364,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -7163,6 +7383,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -7371,10 +7592,14 @@ paths:
                         description:
                           nullable: true
                           type: string
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - url
                         - network
                         - description
+                        - group
                       additionalProperties: false
                   legalProfile:
                     nullable: true
@@ -7422,6 +7647,9 @@ paths:
                           type: boolean
                         isPublic:
                           type: boolean
+                        group:
+                          nullable: true
+                          type: string
                       required:
                         - kind
                         - phoneType
@@ -7429,7 +7657,12 @@ paths:
                         - description
                         - isWhatsApp
                         - isPublic
+                        - group
                       additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
                   publicOrigin:
                     type: string
                 required:
@@ -7443,6 +7676,7 @@ paths:
                   - logoKey
                   - logoUrl
                   - contacts
+                  - contactGroups
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -14533,6 +14767,8 @@ paths:
                                 churchAccent:
                                   nullable: true
                                   type: string
+                                churchLocality:
+                                  type: string
                               required:
                                 - ministryInvitationId
                                 - ministryId
@@ -18880,6 +19116,78 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  contactGroups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          nullable: true
+                          type: string
+                        contacts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - email
+                                  - phone
+                              phoneType:
+                                nullable: true
+                                type: string
+                                enum:
+                                  - mobile
+                                  - landline
+                              value:
+                                type: string
+                              description:
+                                nullable: true
+                                type: string
+                              isWhatsApp:
+                                type: boolean
+                            required:
+                              - kind
+                              - phoneType
+                              - value
+                              - description
+                              - isWhatsApp
+                            additionalProperties: false
+                        socialLinks:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              url:
+                                type: string
+                              network:
+                                type: string
+                              description:
+                                nullable: true
+                                type: string
+                            required:
+                              - url
+                              - network
+                              - description
+                            additionalProperties: false
+                      required:
+                        - name
+                        - contacts
+                        - socialLinks
+                      additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                    required:
+                      - legalName
+                      - cnpj
+                    additionalProperties: false
                   programme:
                     type: array
                     items:
@@ -19015,6 +19323,28 @@ paths:
                                 - kind
                                 - entries
                               additionalProperties: false
+                        exceptOrdinals:
+                          type: array
+                          items:
+                            anyOf:
+                              - type: number
+                                enum:
+                                  - 1
+                              - type: number
+                                enum:
+                                  - 2
+                              - type: number
+                                enum:
+                                  - 3
+                              - type: number
+                                enum:
+                                  - 4
+                              - type: number
+                                enum:
+                                  - 5
+                              - type: string
+                                enum:
+                                  - last
                         startTime:
                           type: string
                         label:
@@ -19024,6 +19354,7 @@ paths:
                           type: string
                       required:
                         - recurrence
+                        - exceptOrdinals
                         - startTime
                         - label
                         - place
@@ -19097,6 +19428,8 @@ paths:
                   - name
                   - logoUrl
                   - accentColor
+                  - contactGroups
+                  - legalProfile
                   - programme
                   - addresses
                   - mainAddressArea
@@ -19499,6 +19832,8 @@ paths:
                                   type: string
                                 churchAccent:
                                   nullable: true
+                                  type: string
+                                churchLocality:
                                   type: string
                               required:
                                 - ministryInvitationId

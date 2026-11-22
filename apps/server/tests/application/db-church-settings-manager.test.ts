@@ -14,6 +14,7 @@ const SETTINGS = {
   accentColor: null,
   logoKey: null,
   contacts: [],
+  contactGroups: [],
   addresses: [],
   socialLinks: [],
   legalProfile: null,
@@ -29,6 +30,8 @@ beforeEach(() => {
     saveLogoKey: vi.fn(),
     findPublicIdentityBySlug: vi.fn(),
     findPublicAddresses: vi.fn(),
+    getPublicContactDetails: vi.fn(),
+    getAddressUsage: vi.fn(),
   } as unknown as ChurchRepository;
   storage = new InMemoryObjectStorage();
   manager = new DbChurchSettingsManager({

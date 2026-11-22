@@ -33,6 +33,8 @@ const PROFILE = {
   programme: [],
   addresses: [],
   mainAddressArea: null,
+  contactGroups: [],
+  legalProfile: null,
 };
 
 function notFound(): AxiosError {

@@ -82,6 +82,7 @@ describe('Church Settings body', () => {
         {
           url: 'https://Instagram.com/igreja',
           network: 'instagram',
+          group: null,
           description: 'Perfil',
         },
       ],

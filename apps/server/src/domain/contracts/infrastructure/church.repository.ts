@@ -1,11 +1,17 @@
 import type { ChurchId, UserId } from '../../branded-ids';
-import type { PublicChurchAddresses } from '../../church-address';
+import type {
+  ChurchAddressUsage,
+  PublicChurchAddresses,
+} from '../../church-address';
+import type { ChurchContact } from '../../church-contact';
+import type { ChurchLegalProfile } from '../../church-legal-profile';
 import type {
   ChurchSettings,
   ChurchSettingsChanges,
   ChurchSlugAvailability,
 } from '../../church-settings';
 import type { Church, ChurchSlug } from '../../entities/church';
+import type { ChurchSocialLink } from '../../social-link';
 import type { TransactionContext } from './transaction-context';
 
 export interface ChurchRepository {
@@ -36,6 +42,10 @@ export interface ChurchRepository {
    * Throws `ChurchAddressesRefused` when the stored addresses make the save invalid.
    */
   saveSettings(input: SaveChurchSettingsInput): Promise<void>;
+  /** What templates and upcoming Public Events still use this address; `null` when it is not an address of this Church. */
+  getAddressUsage(
+    input: GetChurchAddressUsageInput,
+  ): Promise<ChurchAddressUsage | null>;
   /** Whether `slug` is free for this Church; the Church's own current slug counts as free. Never names the holder. */
   slugAvailability(
     input: SlugAvailabilityInput,
@@ -58,6 +68,25 @@ export interface ChurchRepository {
   findPublicAddresses(
     input: FindPublicAddressesInput,
   ): Promise<PublicChurchAddresses>;
+
+  /** The public contact facts of the Church; privacy is enforced in the queries. */
+  getPublicContactDetails(
+    input: GetPublicContactDetailsInput,
+  ): Promise<PublicContactDetails>;
+}
+
+export interface GetPublicContactDetailsInput {
+  churchId: ChurchId;
+}
+
+export interface PublicContactDetails {
+  /** Public Church Contacts only, in the admin's order. */
+  contacts: ChurchContact[];
+  socialLinks: ChurchSocialLink[];
+  /** Contact Group names in the admin's order. */
+  groupNames: string[];
+  /** Only when the Church made it public. */
+  legalProfile: ChurchLegalProfile | null;
 }
 
 export interface FindPublicAddressesInput {
@@ -86,6 +115,12 @@ export interface SlugAvailabilityInput {
 export interface SaveChurchLogoKeyInput {
   id: ChurchId;
   logoKey: string | null;
+}
+
+export interface GetChurchAddressUsageInput {
+  id: ChurchId;
+  addressId: string;
+  tx?: TransactionContext;
 }
 
 export interface SaveChurchSettingsInput {

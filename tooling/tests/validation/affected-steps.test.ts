@@ -74,6 +74,7 @@ describe('buildValidationSteps', () => {
     expect(steps.checkedLabels).toContain('presentation-text');
     expect(steps.checkedLabels).toContain('date-time-seam');
     expect(steps.integrationLane).toEqual([]);
+    expect(steps.unitLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
   });
 
@@ -129,7 +130,7 @@ describe('buildValidationSteps', () => {
   });
 
   it('splits unit tests into remaining workspaces plus one step per targeted workspace', () => {
-    const { checkLane, integrationLane } = buildValidationSteps({
+    const { integrationLane, unitLane } = buildValidationSteps({
       onlyE2e: false,
       plan: makePlan({
         testLayers: ['test:unit'],
@@ -152,7 +153,7 @@ describe('buildValidationSteps', () => {
     });
 
     expect(integrationLane).toEqual([]);
-    expect(checkLane.slice(-2)).toEqual([
+    expect(unitLane).toEqual([
       {
         args: [
           'turbo',
@@ -185,7 +186,7 @@ describe('buildValidationSteps', () => {
   });
 
   it('puts integration tests in the second lane with concurrency above 1', () => {
-    const { checkLane, integrationLane } = buildValidationSteps({
+    const { integrationLane, unitLane } = buildValidationSteps({
       onlyE2e: false,
       plan: makePlan({
         testLayers: ['test:integration'],
@@ -194,7 +195,7 @@ describe('buildValidationSteps', () => {
       skipE2e: false,
     });
 
-    expect(checkLane.filter((step) => step.label === 'test:unit')).toEqual([]);
+    expect(unitLane).toEqual([]);
     expect(integrationLane).toEqual([
       {
         args: [
@@ -253,13 +254,13 @@ describe('buildValidationSteps', () => {
   });
 
   it('adds the tooling test step when toolingTestPaths is non-empty', () => {
-    const { checkLane, checkedLabels } = buildValidationSteps({
+    const { checkedLabels, unitLane } = buildValidationSteps({
       onlyE2e: false,
       plan: makePlan({ toolingTestPaths: ['tooling/validation/affected.ts'] }),
       skipE2e: false,
     });
 
-    expect(checkLane).toContainEqual({
+    expect(unitLane).toContainEqual({
       args: ['test', 'tooling'],
       command: 'bun',
       label: 'test:tooling',
@@ -268,13 +269,13 @@ describe('buildValidationSteps', () => {
   });
 
   it('skips the tooling test step when onlyE2e', () => {
-    const { checkLane } = buildValidationSteps({
+    const { unitLane } = buildValidationSteps({
       onlyE2e: true,
       plan: makePlan({ toolingTestPaths: ['tooling/validation/affected.ts'] }),
       skipE2e: false,
     });
 
-    expect(checkLane).not.toContainEqual({
+    expect(unitLane).not.toContainEqual({
       args: ['test', 'tooling'],
       command: 'bun',
       label: 'test:tooling',
@@ -295,6 +296,7 @@ describe('buildValidationSteps', () => {
 
     expect(steps.checkLane).toEqual([]);
     expect(steps.integrationLane).toEqual([]);
+    expect(steps.unitLane).toEqual([]);
     expect(steps.checkedLabels).toEqual([]);
     expect(steps.e2eSteps).toHaveLength(1);
   });

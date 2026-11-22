@@ -1,6 +1,7 @@
 import { churchSlugRefusal } from '@church/app-config/church-slug';
 import { z } from 'zod';
 import {
+  type AddressReplacement,
   CHURCH_ADDRESS_FIELD_CODES,
   type ChurchAddress,
   type ChurchAddressChange,
@@ -31,6 +32,8 @@ export interface ChurchSettings {
   logoKey: string | null;
   /** In the admin's order. */
   contacts: ChurchContact[];
+  /** Contact Group names in display order; "Da igreja" (ungrouped) is always first and not listed. */
+  contactGroups: string[];
 }
 
 export interface ChurchSettingsChanges {
@@ -41,7 +44,11 @@ export interface ChurchSettingsChanges {
   accentColor: string | null;
   /** Omitted, the contacts stay; sent, the whole list replaces them. */
   contacts?: ChurchContact[];
+  /** The order of the groups; omitted, the stored order stays. Unlisted groups follow, a group with no member is deleted. */
+  contactGroups?: string[];
   addresses: ChurchAddressChange[];
+  /** Omitted, none: deleting an address that is in use is refused. */
+  addressReplacements?: AddressReplacement[];
   socialLinks: SocialLinkChange[];
   legalProfile: ChurchLegalProfile | null;
 }
@@ -66,6 +73,7 @@ export const CHURCH_SETTINGS_FIELD_CODES = [
   'CONTACT_PHONE_INVALID',
   'CONTACT_EMAIL_INVALID',
   'CONTACT_DESCRIPTION_TOO_LONG',
+  'CONTACT_GROUP_TOO_LONG',
   'INVALID',
 ] as const;
 export type ChurchSettingsFieldCode =

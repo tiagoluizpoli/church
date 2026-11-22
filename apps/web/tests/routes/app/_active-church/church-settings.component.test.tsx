@@ -15,11 +15,21 @@ const getCallerCapabilities = vi.fn();
 const getChurchSettings = vi.fn();
 const updateChurchSettings = vi.fn();
 const getChurchSlugAvailability = vi.fn();
+const getChurchAddressUsage = vi.fn();
 const toastSuccess = vi.fn();
 const toastPlain = vi.fn();
 const uploadChurchLogo = vi.fn();
 const removeChurchLogo = vi.fn();
 const restoreChurchLogo = vi.fn();
+
+const lookupCep = vi.fn();
+
+vi.mock('@/features/church-settings/cep-client', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/church-settings/cep-client')
+  >()),
+  lookupCep: (...args: unknown[]) => lookupCep(...args),
+}));
 
 vi.mock('@/utils/api-instances', async () => ({
   churchSettingsApi: {
@@ -27,6 +37,8 @@ vi.mock('@/utils/api-instances', async () => ({
     updateChurchSettings: (...args: unknown[]) => updateChurchSettings(...args),
     getChurchSlugAvailability: (...args: unknown[]) =>
       getChurchSlugAvailability(...args),
+    getChurchAddressUsage: (...args: unknown[]) =>
+      getChurchAddressUsage(...args),
     uploadChurchLogo: (...args: unknown[]) => uploadChurchLogo(...args),
     removeChurchLogo: (...args: unknown[]) => removeChurchLogo(...args),
     restoreChurchLogo: (...args: unknown[]) => restoreChurchLogo(...args),
@@ -74,6 +86,7 @@ const SAVED: GetChurchSettings200 = {
   logoKey: null,
   logoUrl: null,
   contacts: [],
+  contactGroups: [],
   legalProfile: null,
   publicOrigin: 'https://app.church.test',
 };
@@ -214,6 +227,7 @@ describe('Church Settings screen', () => {
         addresses: [],
         socialLinks: [],
         contacts: [],
+        contactGroups: [],
         legalProfile: NO_LEGAL_DRAFT,
       }),
     );
@@ -239,6 +253,7 @@ describe('Church Settings screen', () => {
         addresses: [],
         socialLinks: [],
         contacts: [],
+        contactGroups: [],
         legalProfile: NO_LEGAL_DRAFT,
       }),
     );
@@ -599,6 +614,7 @@ describe('Church Settings screen', () => {
           addresses: [],
           socialLinks: [],
           contacts: [],
+          contactGroups: [],
           legalProfile: NO_LEGAL_DRAFT,
           slug: 'esperanca',
         }),
@@ -772,6 +788,170 @@ async function fillNewAddress(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Church Settings addresses', () => {
+  async function openNewAddress(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.church_settings_address_add(),
+      }),
+    );
+    return screen.findByRole('dialog');
+  }
+
+  async function searchCep(
+    user: ReturnType<typeof userEvent.setup>,
+    dialog: HTMLElement,
+    typed: string,
+  ) {
+    await user.type(
+      within(dialog).getByRole('textbox', { name: /^CEP/ }),
+      typed,
+    );
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_cep_lookup(),
+      }),
+    );
+  }
+
+  it('fills the same fields from a CEP and saves only what is confirmed', async () => {
+    lookupCep.mockResolvedValue({
+      cep: '13015904',
+      street: 'Rua Barão de Jaguara',
+      bairro: 'Centro',
+      city: 'Campinas',
+      uf: 'SP',
+    });
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '13015-904');
+
+    expect(lookupCep).toHaveBeenCalledWith(
+      expect.objectContaining({ cep: '13015904' }),
+    );
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('textbox', {
+          name: m.church_settings_address_street(),
+        }),
+      ).toHaveValue('Rua Barão de Jaguara'),
+    );
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_bairro(),
+      }),
+    ).toHaveValue('Centro');
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_city(),
+      }),
+    ).toHaveValue('Campinas');
+    expect(
+      within(dialog).getByRole('combobox', {
+        name: m.church_settings_address_uf(),
+      }),
+    ).toHaveTextContent('SP');
+    expect(saveBar()).not.toBeInTheDocument();
+
+    const number = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_number(),
+    });
+    await user.type(number, '100');
+    await user.clear(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_street(),
+      }),
+    );
+    await user.type(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_street(),
+      }),
+      'Rua Corrigida',
+    );
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_confirm_add(),
+      }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          addresses: [
+            expect.objectContaining({
+              street: 'Rua Corrigida',
+              number: '100',
+              bairro: 'Centro',
+              city: 'Campinas',
+              uf: 'SP',
+              cep: '13015904',
+            }),
+          ],
+        }),
+      ),
+    );
+  });
+
+  it.each([
+    '1301590',
+    '1301a904',
+  ])('refuses the CEP %j before any lookup', async (typed) => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, typed);
+
+    expect(
+      await within(dialog).findByText(m.church_settings_address_cep_invalid()),
+    ).toBeInTheDocument();
+    expect(lookupCep).not.toHaveBeenCalled();
+  });
+
+  it('says so for an unknown CEP and keeps manual entry usable', async () => {
+    lookupCep.mockResolvedValue(null);
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '99999999');
+
+    expect(
+      await within(dialog).findByText(
+        m.church_settings_address_cep_not_found(),
+      ),
+    ).toBeInTheDocument();
+    const street = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_street(),
+    });
+    await user.type(street, 'Rua Manual');
+    expect(street).toHaveValue('Rua Manual');
+  });
+
+  it('says so when every provider fails and keeps manual entry usable', async () => {
+    const { CepLookupFailed } = await import(
+      '@/features/church-settings/cep-client'
+    );
+    lookupCep.mockRejectedValue(new CepLookupFailed());
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '13015904');
+
+    expect(
+      await within(dialog).findByText(m.church_settings_address_cep_failed()),
+    ).toBeInTheDocument();
+    const street = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_street(),
+    });
+    await user.type(street, 'Rua Manual');
+    expect(street).toHaveValue('Rua Manual');
+  });
+
   it('adds the first address by hand as the Main Address, staged into the save bar', async () => {
     const user = userEvent.setup();
     renderSettings();
@@ -915,6 +1095,7 @@ describe('Church Settings addresses', () => {
   it('blocks deleting the Main Address while others exist, and allows the last one', async () => {
     const user = userEvent.setup();
     withAddresses(SEDE, CASA);
+    getChurchAddressUsage.mockResolvedValue({ templates: [], events: [] });
     renderSettings();
     await nameField();
 
@@ -929,10 +1110,71 @@ describe('Church Settings addresses', () => {
       }),
     );
     expect(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: m.church_settings_address_delete({ name: 'Templo' }),
       }),
     ).toBeEnabled();
+  });
+
+  it('lists where an address in use is used and defaults the replacement to the Main Address', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE, CASA);
+    getChurchAddressUsage.mockResolvedValue({
+      templates: [{ id: 't1', name: 'Domingo' }],
+      events: [
+        {
+          id: 'e1',
+          title: 'Culto de março',
+          start: '2099-03-01T22:00:00.000Z',
+        },
+      ],
+    });
+    updateChurchSettings.mockResolvedValue({ ...SAVED, addresses: [SEDE] });
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_address_delete({ name: 'Casa do Marcos' }),
+      }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(getChurchAddressUsage).toHaveBeenCalledWith('a2');
+    expect(
+      within(dialog).getByText(
+        m.church_settings_address_in_use_template({ name: 'Domingo' }),
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByText(
+        m.church_settings_address_in_use_event({ title: 'Culto de março' }),
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole('combobox', {
+        name: m.church_settings_address_replacement_label(),
+      }),
+    ).toHaveTextContent('Templo');
+
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_in_use_confirm(),
+      }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: m.church_settings_save() }),
+    );
+
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          addressReplacements: [
+            { addressId: 'a2', replacementAddressId: 'a1' },
+          ],
+        }),
+      ),
+    );
   });
 
   it('marks the refused row, counts the errors in the section and reopens it', async () => {
@@ -1040,7 +1282,11 @@ describe('Church Settings social links', () => {
       expect(updateChurchSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           socialLinks: [
-            { url: 'https://instagram.com/semente', description: '' },
+            {
+              url: 'https://instagram.com/semente',
+              description: '',
+              group: null,
+            },
           ],
         }),
       ),
@@ -1096,10 +1342,15 @@ describe('Church Settings social links', () => {
       expect(updateChurchSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           socialLinks: [
-            { url: 'https://youtube.com/@igreja', description: '' },
+            {
+              url: 'https://youtube.com/@igreja',
+              description: '',
+              group: null,
+            },
             {
               url: 'https://youtube.com/@pastor',
               description: 'Canal do pastor',
+              group: null,
             },
           ],
         }),
@@ -1147,7 +1398,11 @@ describe('Church Settings social links', () => {
       expect(updateChurchSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           socialLinks: [
-            { url: 'https://instagram.com/semente', description: '' },
+            {
+              url: 'https://instagram.com/semente',
+              description: '',
+              group: null,
+            },
           ],
         }),
       ),
@@ -1280,6 +1535,7 @@ describe('Church Contacts section', () => {
     description: 'Secretaria',
     isWhatsApp: true,
     isPublic: false,
+    group: null,
   };
   const EMAIL = {
     kind: 'email' as const,
@@ -1288,6 +1544,7 @@ describe('Church Contacts section', () => {
     description: null,
     isWhatsApp: false,
     isPublic: false,
+    group: null,
   };
 
   function rows() {
@@ -1335,6 +1592,7 @@ describe('Church Contacts section', () => {
               description: 'Secretaria',
               isWhatsApp: true,
               isPublic: false,
+              group: null,
             },
           ],
         }),
@@ -1659,5 +1917,143 @@ describe('Church Settings legal profile', () => {
     await user.type(cnpj, '0');
 
     expect(cnpj).not.toHaveAttribute('aria-invalid', 'true');
+  });
+});
+
+describe('Contact Groups', () => {
+  const PUBLIC_PHONE = {
+    kind: 'phone' as const,
+    phoneType: 'mobile' as const,
+    value: '+5511987654321',
+    description: 'Secretaria',
+    isWhatsApp: false,
+    isPublic: true,
+    group: null,
+  };
+  const LOUVOR_EMAIL = {
+    kind: 'email' as const,
+    phoneType: null,
+    value: 'louvor@igreja.org',
+    description: null,
+    isWhatsApp: false,
+    isPublic: true,
+    group: 'Louvor',
+  };
+  const HELENA_LINK = {
+    url: 'https://instagram.com/helena',
+    network: 'instagram' as const,
+    description: null,
+    group: 'Pastora Helena',
+  };
+  const GROUPED = {
+    ...SAVED,
+    contacts: [LOUVOR_EMAIL, PUBLIC_PHONE],
+    socialLinks: [HELENA_LINK],
+    contactGroups: ['Pastora Helena', 'Louvor'],
+  };
+
+  function groupBlocks() {
+    return screen.getAllByTestId('church-preview-group');
+  }
+
+  it('shows each group with its public contacts and links together, "Da igreja" first', async () => {
+    getChurchSettings.mockResolvedValue(GROUPED);
+    renderSettings();
+    await nameField();
+
+    const [church, helena, louvor] = groupBlocks();
+    expect(church).toHaveTextContent(m.church_settings_preview_group_church());
+    expect(church).toHaveTextContent('+5511987654321');
+    expect(helena).toHaveTextContent('Instagram');
+    expect(louvor).toHaveTextContent('louvor@igreja.org');
+    expect(groupBlocks()).toHaveLength(3);
+  });
+
+  it('suggests existing groups, creates one from a typed name and saves the group of each row', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue(GROUPED);
+    renderSettings();
+    await nameField();
+
+    const field = screen.getAllByRole('combobox', {
+      name: new RegExp(`^${m.church_settings_group_label()} 2$`),
+    });
+    expect(
+      document.querySelectorAll(`option[value="Pastora Helena"]`).length,
+    ).toBeGreaterThan(0);
+    await user.type(field[0] as HTMLElement, 'Jovens');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contacts: [
+            expect.objectContaining({ group: 'Louvor' }),
+            expect.objectContaining({ group: 'Jovens' }),
+          ],
+          socialLinks: [expect.objectContaining({ group: 'Pastora Helena' })],
+          contactGroups: ['Pastora Helena', 'Louvor', 'Jovens'],
+        }),
+      ),
+    );
+  });
+
+  it('renames a group from the preview on every member and keeps its place', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue(GROUPED);
+    renderSettings();
+    await nameField();
+
+    const rename = screen.getByRole('textbox', {
+      name: m.church_settings_preview_group_rename({ name: 'Louvor' }),
+    });
+    await user.clear(rename);
+    await user.type(rename, 'Banda{Enter}');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contacts: [
+            expect.objectContaining({ group: 'Banda' }),
+            expect.objectContaining({ group: null }),
+          ],
+          contactGroups: ['Pastora Helena', 'Banda'],
+        }),
+      ),
+    );
+  });
+
+  it('reorders groups from the preview and saves the new order', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue(GROUPED);
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_preview_group_move_down({
+          name: 'Pastora Helena',
+        }),
+      }),
+    );
+
+    const [, first, second] = groupBlocks();
+    expect(first).toHaveTextContent('louvor@igreja.org');
+    expect(second).toHaveTextContent('Instagram');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await waitFor(() =>
+      expect(updateChurchSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contactGroups: ['Louvor', 'Pastora Helena'],
+        }),
+      ),
+    );
   });
 });

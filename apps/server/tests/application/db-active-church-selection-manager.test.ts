@@ -47,6 +47,7 @@ describe('DbActiveChurchSelectionManager', () => {
           logoKey: 'public/churches/chu_a/logo/abc.png',
           accentColor: '#0f766e',
           lastOpenedAt: new Date('2026-07-01T00:00:00.000Z'),
+          mainAddress: { bairro: 'Centro', city: 'Campinas', uf: 'SP' },
         },
         {
           churchId: churchBId,
@@ -56,6 +57,7 @@ describe('DbActiveChurchSelectionManager', () => {
           logoKey: null,
           accentColor: null,
           lastOpenedAt: null,
+          mainAddress: null,
         },
       ]);
       authorityManager.hasSchedulingAccess.mockImplementation(
@@ -75,6 +77,7 @@ describe('DbActiveChurchSelectionManager', () => {
           logoUrl: 'https://files.test/public/churches/chu_a/logo/abc.png',
           accentColor: '#0f766e',
           lastOpenedAt: new Date('2026-07-01T00:00:00.000Z'),
+          locality: 'Centro, Campinas/SP',
         },
         {
           churchId: churchBId,
@@ -85,6 +88,7 @@ describe('DbActiveChurchSelectionManager', () => {
           logoUrl: null,
           accentColor: null,
           lastOpenedAt: null,
+          locality: null,
         },
       ]);
       expect(authorityManager.hasSchedulingAccess).toHaveBeenCalledWith({

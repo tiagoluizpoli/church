@@ -8,6 +8,7 @@ import {
   availabilityCheck,
   churchAddress,
   churchContact,
+  churchContactGroup,
   churchLegalProfile,
   churchSlugHistory,
   churchSocialLink,
@@ -196,10 +197,15 @@ async function seedEveryTenantedTable(): Promise<void> {
     isMain: true,
     position: 0,
   });
+  const [group] = await testDb
+    .insert(churchContactGroup)
+    .values({ churchId: IDS.church, name: 'Louvor', position: 0 })
+    .returning({ id: churchContactGroup.id });
   await testDb.insert(churchContact).values({
     churchId: IDS.church,
     kind: 'email',
     value: 'contato@test.com',
+    groupId: group?.id,
     position: 0,
   });
 

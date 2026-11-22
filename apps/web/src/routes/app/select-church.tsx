@@ -230,6 +230,11 @@ function SelectChurchRoute() {
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold">{church.name}</span>
+                    {church.locality ? (
+                      <span className="block text-muted-foreground text-xs">
+                        {church.locality}
+                      </span>
+                    ) : null}
                     <span className="mt-1 block text-muted-foreground text-sm">
                       {accessLabel({ accessLevel: church.accessLevel })} ·{' '}
                       {formatLastOpened({
@@ -282,6 +287,11 @@ function SelectChurchRoute() {
                         <span className="block font-semibold">
                           {church.name}
                         </span>
+                        {church.locality ? (
+                          <span className="block text-muted-foreground text-xs">
+                            {church.locality}
+                          </span>
+                        ) : null}
                         <span className="block text-muted-foreground text-xs">
                           {church.timezone}
                         </span>

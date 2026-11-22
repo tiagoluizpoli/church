@@ -1,5 +1,6 @@
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import { z } from 'zod';
+import { contactGroupNameSchema } from './contact-group';
 
 /** Countries a phone Church Contact may be in; adding one is config only. */
 export const ALLOWED_PHONE_COUNTRIES = ['BR'] as const;
@@ -20,6 +21,8 @@ export interface ChurchContact {
   /** Phones only. */
   isWhatsApp: boolean;
   isPublic: boolean;
+  /** *Pessoa ou ministério*; `null` is ungrouped ("Da igreja"). */
+  group: string | null;
 }
 
 const [DEFAULT_COUNTRY] = ALLOWED_PHONE_COUNTRIES;
@@ -47,6 +50,7 @@ export const churchContactSchema = z
     description: z.string().nullable(),
     isWhatsApp: z.boolean(),
     isPublic: z.boolean(),
+    group: contactGroupNameSchema,
   })
   .transform((row, context): ChurchContact => {
     const isPhone = row.kind === 'phone';
@@ -78,5 +82,6 @@ export const churchContactSchema = z
       description,
       isWhatsApp: isPhone && row.isWhatsApp,
       isPublic: row.isPublic,
+      group: row.group,
     };
   });

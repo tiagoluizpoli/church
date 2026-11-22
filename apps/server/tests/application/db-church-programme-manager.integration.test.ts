@@ -35,8 +35,9 @@ function block(
   startTime: string,
   isPublic: boolean,
   place?: string,
+  endTime = '23:00',
 ) {
-  return { label, startTime, endTime: '23:00', isPublic, place };
+  return { label, startTime, endTime, isPublic, place };
 }
 
 describe('DbChurchProgrammeManager', () => {
@@ -67,6 +68,7 @@ describe('DbChurchProgrammeManager', () => {
     expect(result).toEqual([
       {
         recurrence: { kind: 'weekly', weekdays: [0] },
+        exceptOrdinals: [],
         startTime: '09:00',
         label: 'Worship',
         place: 'Main hall',
@@ -74,6 +76,7 @@ describe('DbChurchProgrammeManager', () => {
       },
       {
         recurrence: { kind: 'weekly', weekdays: [0] },
+        exceptOrdinals: [],
         startTime: '09:30',
         label: 'Kids',
         place: null,
@@ -140,6 +143,7 @@ describe('DbChurchProgrammeManager', () => {
     expect(await programme.getProgramme({ churchId: churchA })).toEqual([
       {
         recurrence: { kind: 'weekly', weekdays: [6] },
+        exceptOrdinals: [],
         startTime: '20:00',
         label: 'Vigil',
         place: 'Chapel',
@@ -192,5 +196,79 @@ describe('DbChurchProgrammeManager', () => {
     });
 
     expect(await programme.getProgramme({ churchId: churchA })).toEqual([]);
+  });
+
+  it('orders weekday activities first, weekly before monthly, then day-of-month ones, and words the lost nth weekday', async () => {
+    const sunday = await templates.createTemplate({
+      churchId: churchA,
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+      blocks: [block('Weekly service', '09:00', true)],
+    });
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Santa Ceia',
+      recurrence: {
+        kind: 'monthly',
+        entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+      },
+      blocks: [block('Supper', '09:00', true)],
+      precedences: [{ otherTemplateId: sunday.id, answer: 'thisWins' }],
+    });
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Prayer',
+      recurrence: {
+        kind: 'monthly',
+        entries: [{ kind: 'dayOfMonth', day: 15 }],
+      },
+      blocks: [block('Prayer 15', '07:00', true, undefined, '08:00')],
+    });
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Youth',
+      recurrence: {
+        kind: 'monthly',
+        entries: [{ kind: 'nthWeekday', ordinal: 'last', weekday: 6 }],
+      },
+      blocks: [block('Youth', '19:00', true)],
+    });
+
+    const result = await programme.getProgramme({ churchId: churchA });
+
+    expect(
+      result.map(({ label, exceptOrdinals }) => [label, exceptOrdinals]),
+    ).toEqual([
+      ['Weekly service', [1]],
+      ['Supper', []],
+      ['Youth', []],
+      ['Prayer 15', []],
+    ]);
+  });
+
+  it('words no except for a winner on a day of the month', async () => {
+    const sunday = await templates.createTemplate({
+      churchId: churchA,
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+      blocks: [block('Weekly service', '09:00', true)],
+    });
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Fifteenth',
+      recurrence: {
+        kind: 'monthly',
+        entries: [{ kind: 'dayOfMonth', day: 15 }],
+      },
+      blocks: [block('Day 15', '09:00', true, undefined, '10:00')],
+      precedences: [{ otherTemplateId: sunday.id, answer: 'thisWins' }],
+    });
+
+    const result = await programme.getProgramme({ churchId: churchA });
+
+    expect(result.map(({ exceptOrdinals }) => exceptOrdinals)).toEqual([
+      [],
+      [],
+    ]);
   });
 });

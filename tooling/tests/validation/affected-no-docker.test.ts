@@ -33,8 +33,8 @@ describe('the no-docker tier', () => {
 
     expect(steps.integrationLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
-    expect(labelsOf(steps.checkLane)).not.toContain('test:integration');
-    expect(labelsOf(steps.checkLane)).not.toContain('test:e2e');
+    expect(labelsOf(steps.unitLane)).not.toContain('test:integration');
+    expect(labelsOf(steps.unitLane)).not.toContain('test:e2e');
   });
 
   it('plans no full E2E suite when shared E2E infrastructure changes', () => {
@@ -59,34 +59,35 @@ describe('the no-docker tier', () => {
       'presentation-text',
       'date-time-seam',
       'typecheck',
-      'test:unit',
     ]);
-    expect(steps.checkLane.at(-1)).toEqual({
-      args: [
-        'turbo',
-        'test:unit',
-        '--concurrency=2',
-        '--filter',
-        '@church/core',
-        '--filter',
-        'server',
-        '--only',
-        '--',
-      ],
-      command: 'bunx',
-      label: 'test:unit',
-    });
+    expect(steps.unitLane).toEqual([
+      {
+        args: [
+          'turbo',
+          'test:unit',
+          '--concurrency=2',
+          '--filter',
+          '@church/core',
+          '--filter',
+          'server',
+          '--only',
+          '--',
+        ],
+        command: 'bunx',
+        label: 'test:unit',
+      },
+    ]);
   });
 
   it('plans no unit step for a docs-only change', () => {
     const steps = noDockerStepsFor({ changedPaths: ['docs/adr/0004.md'] });
 
-    expect(labelsOf(steps.checkLane)).not.toContain('test:unit');
+    expect(steps.unitLane).toEqual([]);
   });
 });
 
-function unitStepsOf(steps: { checkLane: LaneStep[] }): LaneStep[] {
-  return steps.checkLane.filter(({ label }) => label === 'test:unit');
+function unitStepsOf(steps: { unitLane: LaneStep[] }): LaneStep[] {
+  return steps.unitLane.filter(({ label }) => label === 'test:unit');
 }
 
 function relatedStep(workspaceName: string, paths: string[]): LaneStep {

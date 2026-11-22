@@ -20,6 +20,8 @@ const ORDINAL_MESSAGES = {
 
 interface DescribeRecurrenceInput {
   recurrence: Recurrence;
+  /** Nth weekdays a weekly Recurrence loses to a winning template ("Todo domingo, exceto o 1º"). */
+  exceptOrdinals?: Ordinal[];
   locale: Locale;
 }
 
@@ -133,6 +135,7 @@ function monthlyPhrases({ entries, locale }: EntriesInput) {
 /** A Recurrence in words ("Todo domingo", "1º e 3º domingo do mês"). The same phrase for the same Recurrence, whatever order its entries were typed in. */
 export function describeRecurrence({
   recurrence,
+  exceptOrdinals = [],
   locale,
 }: DescribeRecurrenceInput): string {
   const phrases =
@@ -140,8 +143,35 @@ export function describeRecurrence({
       ? [weeklyPhrase({ weekdays: recurrence.weekdays, locale })]
       : monthlyPhrases({ entries: recurrence.entries, locale });
   const [first = '', ...rest] = phrases;
-  return [
+  const phrase = [
     upperFirst({ text: first, locale }),
     ...rest.map((p) => lowerFirst({ text: p, locale })),
   ].join('; ');
+  if (recurrence.kind !== 'weekly' || exceptOrdinals.length === 0) {
+    return phrase;
+  }
+  const feminine =
+    recurrence.weekdays.length === 1 &&
+    isFeminine({ weekday: recurrence.weekdays[0] as Weekday });
+  const article = feminine
+    ? m.recurrence_except_ordinal_f
+    : m.recurrence_except_ordinal_m;
+  const labels = ORDINAL_ORDER.filter((o) => exceptOrdinals.includes(o)).map(
+    (ordinal) =>
+      article(
+        {
+          ordinal: ORDINAL_MESSAGES[ordinal][feminine ? 1 : 0]({}, { locale }),
+        },
+        { locale },
+      ),
+  );
+  return m.recurrence_except(
+    {
+      phrase,
+      ordinals: new Intl.ListFormat(locale, { type: 'conjunction' }).format(
+        labels,
+      ),
+    },
+    { locale },
+  );
 }

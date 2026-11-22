@@ -103,6 +103,7 @@ export function buildManagers({
     shiftRepository,
     churchRepository,
     publicEventRepository,
+    churchProgrammeRepository,
     ministryRepository,
     invitationVerificationCodeRepository,
     redemptionRepository,
@@ -447,7 +448,11 @@ export function buildManagers({
 
   const publicChurchProfileManager =
     overrides.publicChurchProfileManager ??
-    new DbPublicChurchProfileManager({ churchRepository, objectStorage });
+    new DbPublicChurchProfileManager({
+      churchRepository,
+      objectStorage,
+      programmeRepository: churchProgrammeRepository,
+    });
 
   const publicEventManager =
     overrides.publicEventManager ??

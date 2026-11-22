@@ -8,4 +8,6 @@ export interface RegularActivity {
   startTime: TimeOfDay;
   label: string;
   place: string | null;
+  /** The place is the Main Address, which the page already shows. */
+  atMainAddress: boolean;
 }

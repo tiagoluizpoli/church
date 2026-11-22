@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { recurrenceSchema } from './event-template.dto';
 
 export const publicChurchProfileParamsSchema = z.object({
   slug: z.string().min(1).max(63),
@@ -14,6 +15,14 @@ export const publicChurchProfileResponseSchema = z.strictObject({
   name: z.string(),
   logoUrl: z.string().nullable(),
   accentColor: z.string().nullable(),
+  programme: z.array(
+    z.strictObject({
+      recurrence: recurrenceSchema,
+      startTime: z.string(),
+      label: z.string(),
+      place: z.string().nullable(),
+    }),
+  ),
 });
 
 export const publicChurchProfileErrorResponseSchema = z.object({

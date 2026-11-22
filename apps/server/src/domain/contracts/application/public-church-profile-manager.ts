@@ -1,3 +1,5 @@
+import type { RegularActivity } from '../../entities/regular-activity';
+
 export interface GetPublicChurchProfileInput {
   /** A live or old Church Slug, as the visitor typed it. */
   slug: string;
@@ -10,6 +12,8 @@ export interface PublicChurchProfile {
   accentColor: string | null;
   /** Anonymous URL of the logo; `null` when there is none. */
   logoUrl: string | null;
+  /** The Church Programme; a place is left out when it is the Main Address. */
+  programme: Omit<RegularActivity, 'atMainAddress'>[];
 }
 
 export interface IPublicChurchProfileManager {

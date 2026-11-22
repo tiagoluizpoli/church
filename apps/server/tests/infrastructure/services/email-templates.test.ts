@@ -7,12 +7,16 @@ import type {
   ChurchBootstrapInvitationEmail,
   EmailDuration,
   MinistryInvitationEmail,
+  PasswordResetEmail,
   TransferDigestEmail,
   TransferMinistryDigestEmail,
 } from '@/domain/contracts/infrastructure/email-sender';
 import { escapeHtml } from '@/infrastructure/services/email-layout';
 import { formatShiftLine } from '@/infrastructure/services/email-shift-line';
-import { prepareEmail } from '@/infrastructure/services/email-templates';
+import {
+  type PlatformBranding,
+  prepareEmail,
+} from '@/infrastructure/services/email-templates';
 
 const memberInvitation: MinistryInvitationEmail = {
   kind: 'invitation.ministry',
@@ -230,7 +234,7 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       m.email_footer_membership({ churchName: 'Grace & <Truth>' }, ptBR),
     );
     expect(request.html).toContain(
-      `<a href="${memberInvitation.redemptionUrl}">`,
+      `<a href="${memberInvitation.redemptionUrl}"`,
     );
     expect(request.html.match(/<a /g)).toHaveLength(1);
     expect(request.from).toBe('"Grace & <Truth>" <church@example.com>');
@@ -278,9 +282,11 @@ describe('prepareEmail — member Ministry Invitation (N1)', () => {
       appName,
     }).request;
 
-    expect(text?.startsWith(m.email_greeting_transactional({}, ptBR))).toBe(
-      true,
-    );
+    expect(
+      text?.startsWith(
+        `${appName}\n\n${m.email_greeting_transactional({}, ptBR)}`,
+      ),
+    ).toBe(true);
   });
 });
 
@@ -333,6 +339,7 @@ describe('prepareEmail — Volunteer Transfer digests (N11–12)', () => {
     expect(request.subject).toBe(subject);
     expect(request.text).toBe(
       [
+        appName,
         m.email_greeting_notification({ firstName: 'Léo' }, ptBR),
         subject,
         m.email_transfer_digest_body({}, ptBR),
@@ -343,12 +350,13 @@ describe('prepareEmail — Volunteer Transfer digests (N11–12)', () => {
         `- ${shiftLine}`,
         `${m.email_transfer_digest_action({}, ptBR)}: ${actionUrl}`,
         `--\n${m.email_footer_membership({ churchName }, ptBR)}`,
+        m.email_layout_credit({ appName }, ptBR),
       ].join('\n\n'),
     );
     expect(request.html).toContain(
-      '<li>dom 6 dez · 23:30–00:30 · Culto &lt;Domingo&gt; · Recepção · Porta &quot;principal&quot;</li>',
+      'dom 6 dez · 23:30–00:30 · Culto &lt;Domingo&gt; · Recepção · Porta &quot;principal&quot;</td>',
     );
-    expect(request.html).toContain(`<a href="${actionUrl}">`);
+    expect(request.html).toContain(`<a href="${actionUrl}"`);
     expect(request.html).not.toContain('<b>Hospitality</b>');
     expect(request.html).not.toContain('&amp;amp;');
   });
@@ -597,9 +605,8 @@ describe('prepareEmail — retained scheduling Notifications (N3–N5)', () => {
       expect(html).not.toContain('&amp;amp;');
       expect(text).toContain('Louvor & <Banda>');
       expect(text).toContain('<i>Dezembro</i>');
-      expect(html).toContain(
-        `<a href="${facts.actionUrl}">${m.email_availability_action({}, ptBR)}</a>`,
-      );
+      expect(html).toContain(`<a href="${facts.actionUrl}"`);
+      expect(html).toContain(`>${m.email_availability_action({}, ptBR)}</a>`);
       expect(text).toContain(`: ${facts.actionUrl}`);
       expect(from).toBe('"Igreja & <Graça>" <church@example.com>');
       expect(text).toContain(
@@ -764,11 +771,13 @@ describe('prepareEmail — verification code (T2)', () => {
     );
     expect(request.text).toBe(
       [
+        appName,
         m.email_greeting_transactional({}, ptBR),
         m.email_verification_code_heading({ code: '042137' }, ptBR),
         m.email_verification_code_body({ churchName }, ptBR),
         m.email_verification_code_expires({ duration }, ptBR),
         `--\n${m.email_footer_invitation({ email: 'invitee@example.com', churchName }, ptBR)}`,
+        m.email_layout_credit({ appName }, ptBR),
       ].join('\n\n'),
     );
     expect(request.html).toContain(
@@ -915,6 +924,111 @@ describe('prepareEmail — typed email durations', () => {
   ] as const)('renders %j in %s', (duration, locale, sentence) => {
     expect(resetLifetime({ linkLifetime: duration, locale })).toContain(
       sentence,
+    );
+  });
+});
+
+describe('prepareEmail — platform layout (Faixa)', () => {
+  const ptBR = { locale: 'pt-BR' } as const;
+  const platform = {
+    logoUrl: 'https://app.church.test/logo.png',
+    siteUrl: 'https://platform.test/',
+  };
+  const digest: TransferMinistryDigestEmail = {
+    kind: 'transfer.ministry-digest',
+    to: ['leader@example.com'],
+    churchName: 'Grace',
+    churchTimezone: 'America/Sao_Paulo',
+    recipientFirstName: 'Léo',
+    ministryName: 'Hospitality',
+    volunteerName: 'Ana',
+    actionUrl: 'https://app.church.test/app/schedules',
+    withdrawnAssignments: [
+      {
+        startsAt: '2026-12-07T02:30:00.000Z' as Instant,
+        endsAt: '2026-12-07T03:30:00.000Z' as Instant,
+        eventTitle: 'Culto',
+        roleName: 'Recepção',
+        sectorName: 'Porta',
+      },
+    ],
+  };
+  const reset: PasswordResetEmail = {
+    kind: 'auth.password-reset',
+    to: 'maria@example.com',
+    resetUrl: 'https://app.church.test/reset?token=t',
+    linkLifetime: { minutes: 60 },
+  };
+  const prepareWith = (
+    payload: TransferMinistryDigestEmail | PasswordResetEmail,
+    branding: PlatformBranding = platform,
+  ) =>
+    prepareEmail({
+      payload,
+      from: 'church@example.com',
+      locale: 'pt-BR',
+      appName: 'Igreja App',
+      platform: branding,
+    }).request;
+
+  it('renders the band, heading, Detalhes panel, outlined button with the URL fallback and the preheader', () => {
+    const { html } = prepareWith(digest);
+
+    expect(html).toContain('color-scheme" content="light only"');
+    expect(html).toContain('max-width:600px');
+    expect(html).toContain('border-top:6px solid #18181b');
+    expect(html).toContain(`<img src="${platform.logoUrl}" alt="Igreja App"`);
+    expect(html).toContain(m.email_layout_details({}, ptBR));
+    expect(html).toContain('border:2px solid #18181b');
+    expect(html).toContain('border-radius:999px');
+    expect(html.split(digest.actionUrl)).toHaveLength(3);
+    const preheader = html.match(/display:none[^>]*>([^<]*)</)?.[1];
+    expect(preheader).toBe(escapeHtml(m.email_transfer_digest_body({}, ptBR)));
+  });
+
+  it('shows the name alone without a logo', () => {
+    const { html } = prepareWith(digest, {});
+
+    expect(html).not.toContain('<img');
+    expect(html).toContain('font-size:20px;font-weight:700');
+  });
+
+  it('links the credit when the platform site is set and prints it plain when not', () => {
+    const credit = m.email_layout_credit({ appName: 'Igreja App' }, ptBR);
+    const linked = prepareWith(digest);
+    const plain = prepareWith(digest, { logoUrl: platform.logoUrl });
+
+    expect(linked.html).toContain(`href="${platform.siteUrl}"`);
+    expect(linked.text?.endsWith(`${credit}: ${platform.siteUrl}`)).toBe(true);
+    expect(plain.html).toContain(credit);
+    expect(plain.html).not.toContain('platform.test');
+    expect(plain.text?.endsWith(credit)).toBe(true);
+  });
+
+  it('puts the sender name first, then content, action, footer and credit in the plain text', () => {
+    const text = prepareWith(digest).text ?? '';
+    const order = [
+      'Igreja App',
+      `${m.email_transfer_digest_action({}, ptBR)}: ${digest.actionUrl}`,
+      '--\n',
+      m.email_layout_credit({ appName: 'Igreja App' }, ptBR),
+    ].map((part) => text.indexOf(part));
+
+    expect(order.every((index) => index >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order[0]).toBe(0);
+  });
+
+  it('keeps the platform identity and never shows the credit on password reset', () => {
+    const { html, text } = prepareWith(reset);
+
+    expect(html).toContain(`alt="Igreja App"`);
+    expect(html).not.toContain('platform.test');
+    expect(html).not.toContain(
+      m.email_layout_credit({ appName: 'Igreja App' }, ptBR),
+    );
+    expect(text).not.toContain(
+      m.email_layout_credit({ appName: 'Igreja App' }, ptBR),
     );
   });
 });

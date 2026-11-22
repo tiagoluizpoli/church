@@ -27,6 +27,8 @@ import type {
 } from '../../domain/contracts/infrastructure/email-sender';
 import {
   type EmailContent,
+  type EmailCredit,
+  type EmailIdentity,
   emailSender,
   formatEmailDuration,
   renderEmailLayout,
@@ -39,7 +41,17 @@ export interface PrepareEmailFromInput {
   locale?: EmailLocale;
   /** Display name for app-branded kinds; injected from composition. */
   appName: string;
+  platform?: PlatformBranding;
 }
+
+/** Platform assets the layout needs; both are absolute URLs. */
+export interface PlatformBranding {
+  logoUrl?: string;
+  /** Where the "Enviado com {appName}" credit links; plain text when unset. */
+  siteUrl?: string;
+}
+
+const PLATFORM_ACCENT = '#18181b';
 
 /**
  * The one renderer every EmailSender adapter prepares with, so capture and
@@ -51,19 +63,35 @@ export function prepareEmail({
   from,
   locale = 'en',
   appName,
+  platform = {},
 }: PrepareEmailFromInput): PreparedEmail {
+  const identity: EmailIdentity = {
+    displayName: appName,
+    logoUrl: platform.logoUrl,
+    accent: PLATFORM_ACCENT,
+  };
+  const credit: EmailCredit = { appName, siteUrl: platform.siteUrl };
+  // Password reset is an account email: platform identity, never the credit.
+  const layoutEmail = (
+    input: Omit<PrepareLayoutEmailInput, 'identity' | 'credit'>,
+  ) =>
+    prepareLayoutEmail({
+      ...input,
+      identity,
+      credit: input.payload.kind === 'auth.password-reset' ? undefined : credit,
+    });
   const sender = (displayName: string) =>
     emailSender({ displayName, configuredFrom: from });
   switch (payload.kind) {
     case 'invitation.verification-code':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: verificationCodeContent({ payload, locale }),
       });
     case 'auth.password-reset':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(appName),
@@ -71,7 +99,7 @@ export function prepareEmail({
       });
     case 'invitation.chained':
     case 'invitation.church-bootstrap':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
@@ -83,35 +111,35 @@ export function prepareEmail({
     case 'schedule.published':
     case 'schedule.updated':
     case 'swap.request':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: memberNotificationContent({ payload, locale }),
       });
     case 'cycle.ready-to-prepare':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: cycleReadyToPrepareContent({ payload, locale }),
       });
     case 'event.changed':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: eventChangedContent({ payload, locale }),
       });
     case 'event.cancelled':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: eventCancelledContent({ payload, locale }),
       });
     case 'swap-request.answered':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
@@ -119,7 +147,7 @@ export function prepareEmail({
       });
     case 'transfer.ministry-digest':
     case 'transfer.leaderless-ministry':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
@@ -138,6 +166,8 @@ interface PrepareLayoutEmailInput {
   /** The composed sender (see `emailSender`). */
   from: string;
   content: EmailContent;
+  identity: EmailIdentity;
+  credit?: EmailCredit;
 }
 
 /** A kind on the shared layout: HTML and text from the same content. */
@@ -146,8 +176,15 @@ export function prepareLayoutEmail({
   locale,
   from,
   content,
+  identity,
+  credit,
 }: PrepareLayoutEmailInput): PreparedEmail {
-  const { subject, html, text } = renderEmailLayout(content);
+  const { subject, html, text } = renderEmailLayout({
+    content,
+    locale,
+    identity,
+    credit,
+  });
   return {
     payload,
     locale,

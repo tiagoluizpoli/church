@@ -13,7 +13,7 @@ import type {
   LastVerificationCodeForInput,
   VerificationCodeInspector,
 } from '../../domain/contracts/infrastructure/verification-code-inspector';
-import { prepareEmail } from './email-templates';
+import { type PlatformBranding, prepareEmail } from './email-templates';
 
 const CAPTURE_FROM = 'Church <capture@church.test>';
 
@@ -30,7 +30,10 @@ export class CaptureEmailSender
   readonly delivered: ReplayableEmail[] = [];
   private readonly seenKeys = new Set<string>();
 
-  constructor(private readonly appName: string) {}
+  constructor(
+    private readonly appName: string,
+    private readonly platform?: PlatformBranding,
+  ) {}
 
   prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
     return prepareEmail({
@@ -38,6 +41,7 @@ export class CaptureEmailSender
       locale,
       from: CAPTURE_FROM,
       appName: this.appName,
+      platform: this.platform,
     });
   }
 

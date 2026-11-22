@@ -7,7 +7,8 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
-import type { ChurchInvitationId } from '../domain/branded-ids';
+import type { ChurchId, ChurchInvitationId } from '../domain/branded-ids';
+import type { ChurchIdentitySnapshotter } from '../domain/contracts/application/church-identity-snapshotter';
 import type { InvitationVerificationCodeManager as InvitationVerificationCodeManagerContract } from '../domain/contracts/application/invitation-verification-code-manager';
 import type { EmailSender } from '../domain/contracts/infrastructure/email-sender';
 import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
@@ -18,6 +19,7 @@ import { recipientLocale } from '../domain/services/recipient-locale';
 const MS_PER_MINUTE = 60_000;
 
 export interface IssueVerificationCodeInput {
+  churchId: ChurchId;
   churchInvitationId: ChurchInvitationId;
   recipientEmail: string;
   churchName: string;
@@ -35,6 +37,7 @@ interface VerificationCodeManagerDependencies {
   repository: InvitationVerificationCodeRepository;
   /** Sends directly: a Transactional email with no outbox row to key on. */
   emailSender: Pick<EmailSender, 'send'>;
+  churchIdentity: ChurchIdentitySnapshotter;
   generateCode?: () => string;
   verificationCodeSecret: string;
   config: AppConfig;
@@ -59,6 +62,7 @@ export class InvitationVerificationCodeManager
 {
   private readonly repository: InvitationVerificationCodeRepository;
   private readonly emailSender: Pick<EmailSender, 'send'>;
+  private readonly churchIdentity: ChurchIdentitySnapshotter;
   private readonly generateCode: () => string;
   private readonly verificationCodeSecret: string;
   private readonly codeTtlMs: number;
@@ -70,12 +74,14 @@ export class InvitationVerificationCodeManager
   constructor({
     repository,
     emailSender,
+    churchIdentity,
     generateCode,
     verificationCodeSecret,
     config,
   }: VerificationCodeManagerDependencies) {
     this.repository = repository;
     this.emailSender = emailSender;
+    this.churchIdentity = churchIdentity;
     this.generateCode = generateCode ?? generateVerificationCode;
     this.verificationCodeSecret = verificationCodeSecret;
     const { verificationCode, defaultLocale } = config;
@@ -88,6 +94,7 @@ export class InvitationVerificationCodeManager
   }
 
   async issue({
+    churchId,
     churchInvitationId,
     recipientEmail,
     churchName,
@@ -118,11 +125,13 @@ export class InvitationVerificationCodeManager
       defaultLocale: this.defaultLocale,
     });
     try {
+      const identity = await this.churchIdentity.snapshot({ churchId });
       await this.emailSender.send({
         payload: {
           kind: 'invitation.verification-code',
           to: recipientEmail,
           churchName,
+          ...identity,
           code,
           codeLifetime: { minutes: this.codeLifetimeMinutes },
         },

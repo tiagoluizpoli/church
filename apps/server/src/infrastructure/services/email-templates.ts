@@ -169,7 +169,7 @@ function churchIdentity(
 ): EmailIdentity {
   return {
     displayName: payload.churchName,
-    logoUrl: payload.churchLogoUrl,
+    logoUrl: payload.churchLogoUrl ?? undefined,
     accent: payload.churchAccent ?? PLATFORM_ACCENT,
   };
 }

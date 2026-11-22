@@ -14,6 +14,7 @@ import { InvalidInvitationRoleError } from '@/domain/errors/invalid-invitation-r
 import { InviteeAlreadyMinistryMemberError } from '@/domain/errors/invitee-already-ministry-member';
 import { MinistryInvitationNotFoundError } from '@/domain/errors/ministry-invitation-not-found';
 import { MissingOutboxDeliveryRecordError } from '@/domain/errors/missing-outbox-delivery-record';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 
 const churchId = 'church_1' as ChurchId;
 const ministryId = 'ministry_1' as MinistryId;
@@ -51,6 +52,7 @@ function createManager(
   config: typeof appConfig = appConfig,
 ): DbMinistryInvitationManager {
   return new DbMinistryInvitationManager({
+    churchIdentity: nullChurchIdentity,
     repo: repo as never,
     roleRepository: roleRepository as never,
     ministryRepository: ministryRepository as never,
@@ -192,7 +194,11 @@ describe('DbMinistryInvitationManager.mint — recipient resolution', () => {
       expect.objectContaining({
         kind: 'ministry_invitation',
         to: [{ userId: inviteeUserId, churchId }],
-        data: { ministryInvitationId: 'invitation-1' },
+        data: {
+          ministryInvitationId: 'invitation-1',
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
       }),
     );
     expect(repo.enqueueOutboxMessage).not.toHaveBeenCalled();

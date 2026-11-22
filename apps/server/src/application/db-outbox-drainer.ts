@@ -197,6 +197,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       kind: message.kind,
       to: offer.email,
       churchName: church.name,
+      churchLogoUrl: message.payload.churchLogoUrl,
+      churchAccent: message.payload.churchAccent,
       expiresAt: fromDate({ date: offer.expiresAt }),
       churchTimezone: church.timezone,
       redemptionUrl: webLink({
@@ -268,6 +270,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       kind: message.kind,
       to: email,
       churchName: church.name,
+      churchLogoUrl: message.payload.churchLogoUrl,
+      churchAccent: message.payload.churchAccent,
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
@@ -299,6 +303,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private async loadPendingInvitationFacts({
     churchId,
     ministryInvitationId,
+    churchLogoUrl,
+    churchAccent,
   }: LoadPendingInvitationFactsInput): Promise<MinistryInvitationDeliveryFacts | null> {
     const invitation = await this.invitationRepository.findById({
       churchId,
@@ -322,6 +328,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryId: invitation.ministryId,
       ministryName: ministry.name,
       churchName: church.name,
+      churchLogoUrl,
+      churchAccent,
       churchTimezone: church.timezone,
       inviterName,
       ministryAccessLevel: invitation.ministryAccessLevel,
@@ -345,6 +353,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         return this.loadPendingInvitationFacts({
           churchId,
           ministryInvitationId: request.data.ministryInvitationId,
+          churchLogoUrl: request.data.churchLogoUrl,
+          churchAccent: request.data.churchAccent,
         });
       case 'availability_opened':
       case 'availability_reminder':
@@ -808,6 +818,8 @@ interface ProcessChurchOfferMessageInput {
 interface LoadPendingInvitationFactsInput {
   churchId: ChurchId;
   ministryInvitationId: string;
+  churchLogoUrl?: string | null;
+  churchAccent?: string | null;
 }
 
 interface LoadDeliveryFactsInput {

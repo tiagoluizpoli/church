@@ -31,6 +31,7 @@ import {
 import { ChurchNotifications } from '../../application/church-notifications';
 import { buildChurchNotifier } from '../../application/church-notifier';
 import { ChurchRecipients } from '../../application/church-recipients';
+import { DbChurchIdentitySnapshotter } from '../../application/db-church-identity-snapshotter';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
@@ -186,6 +187,10 @@ export function buildManagers({
       sectorRepository,
       unitOfWork,
     });
+  const churchIdentity = new DbChurchIdentitySnapshotter({
+    churchRepository,
+    objectStorage,
+  });
   const ministryInvitationManager =
     overrides.ministryInvitationManager ??
     new DbMinistryInvitationManager({
@@ -196,6 +201,7 @@ export function buildManagers({
       unitOfWork,
       outboxRepository,
       notifications,
+      churchIdentity,
       config,
     });
   const invitationVerificationCodeManager =
@@ -203,6 +209,7 @@ export function buildManagers({
     new InvitationVerificationCodeManager({
       repository: invitationVerificationCodeRepository,
       emailSender,
+      churchIdentity,
       verificationCodeSecret: env.BETTER_AUTH_SECRET,
       config,
     });

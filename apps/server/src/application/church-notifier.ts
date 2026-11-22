@@ -144,6 +144,8 @@ export function buildChurchNotifier({
         kind: 'invitation.ministry',
         to: address.email,
         churchName: data.churchName,
+        churchLogoUrl: data.churchLogoUrl,
+        churchAccent: data.churchAccent,
         recipientFirstName: address.firstName,
         inviterName: data.inviterName,
         ministryName: data.ministryName,

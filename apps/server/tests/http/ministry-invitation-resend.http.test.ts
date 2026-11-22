@@ -39,6 +39,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -81,6 +82,7 @@ async function buildApp({ config = appConfig, notifications }: BuildAppInput) {
   const harness = createMinistryInvitationTestHarness({ db, config });
   const manager = notifications
     ? new DbMinistryInvitationManager({
+        churchIdentity: nullChurchIdentity,
         repo: harness.ministryInvitationRepository,
         roleRepository: harness.roleRepository,
         ministryRepository: harness.ministryRepository,

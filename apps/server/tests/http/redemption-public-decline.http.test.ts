@@ -31,6 +31,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { provisionChurch } from '@/scripts/provision-church';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -82,6 +83,7 @@ beforeEach(async () => {
     identityGateway: gateway,
     invitationRepository: ministryInvitationRepository,
     invitationVerificationCodeManager: new InvitationVerificationCodeManager({
+      churchIdentity: nullChurchIdentity,
       repository: new DrizzleInvitationVerificationCodeRepository({
         db: testDb,
         config: appConfig,

@@ -204,6 +204,7 @@ describe('DbRedemptionManager', () => {
 
     expect(sent).toBe(true);
     expect(verificationCodeManager.issue).toHaveBeenCalledWith({
+      churchId: CHURCH_ID,
       churchInvitationId: CHURCH_INVITATION_ID,
       recipientEmail: 'invitee@example.test',
       churchName: 'St. Peter',

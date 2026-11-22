@@ -323,7 +323,7 @@ export function LogoControl({
   );
 }
 
-function RowMoves({
+export function RowMoves({
   onUp,
   onDown,
   first,
@@ -396,6 +396,7 @@ export function ContactsEditor({ c }: { c: SettingsController }) {
           label: '',
           isWhatsApp: false,
           isPublic: false,
+          groupId: null,
         },
       ],
     });

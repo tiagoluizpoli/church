@@ -10,6 +10,7 @@ export interface Contact {
   label: string;
   isWhatsApp: boolean;
   isPublic: boolean;
+  groupId: string | null;
 }
 
 export interface LinkGroup {
@@ -59,14 +60,16 @@ export const FILLED: SettingsForm = {
       label: 'Secretaria',
       isWhatsApp: false,
       isPublic: true,
+      groupId: null,
     },
     {
       id: 'c2',
       kind: 'phone',
       value: '+55 11 98765-4321',
-      label: 'Pastor Marcos',
+      label: 'Celular',
       isWhatsApp: true,
-      isPublic: false,
+      isPublic: true,
+      groupId: 'g1',
     },
     {
       id: 'c3',
@@ -75,6 +78,16 @@ export const FILLED: SettingsForm = {
       label: '',
       isWhatsApp: false,
       isPublic: true,
+      groupId: null,
+    },
+    {
+      id: 'c4',
+      kind: 'email',
+      value: 'louvor@ibesperanca.org.br',
+      label: '',
+      isWhatsApp: false,
+      isPublic: false,
+      groupId: 'g2',
     },
   ],
   groups: [

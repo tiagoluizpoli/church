@@ -44,6 +44,7 @@ import {
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { InMemoryObjectStorage } from '@/tests/test-support/in-memory-object-storage';
 
 const ANCHOR = parseCalendarDay({ value: '2026-03-15' });
 /** One per (published Schedule, Volunteer assigned when it was published). */
@@ -214,12 +215,13 @@ async function queryCount({ query }: QueryCountInput): Promise<number> {
  */
 describe('development seed recipe', () => {
   let seeded: DevelopmentRecipeResult;
+  const objectStorage = new InMemoryObjectStorage();
 
   beforeAll(async () => {
     await truncateAll();
     seeded = await runSeedRecipe({
       db: testDb,
-      recipe: createDevelopmentRecipe({ anchor: ANCHOR }),
+      recipe: createDevelopmentRecipe({ anchor: ANCHOR, objectStorage }),
     });
   }, 120_000);
 
@@ -256,6 +258,27 @@ describe('development seed recipe', () => {
           accentColor: '#0f766e',
         },
         { id: seeded.secondChurch.id, website: null, accentColor: null },
+      ]),
+    );
+  });
+
+  it('uploads a logo for the primary Church through the logo pipeline, none for the second', async () => {
+    const churches = await testDb
+      .select({ id: church.id, logoKey: church.logoKey })
+      .from(church);
+
+    const [key] = objectStorage.objects.keys();
+    expect(objectStorage.objects.size).toBe(1);
+    expect(key).toMatch(
+      new RegExp(
+        `^public/churches/${seeded.church.id}/logo/[0-9a-f]{64}\\.png$`,
+      ),
+    );
+    expect(objectStorage.objects.get(key ?? '')?.contentType).toBe('image/png');
+    expect(churches).toEqual(
+      expect.arrayContaining([
+        { id: seeded.church.id, logoKey: key },
+        { id: seeded.secondChurch.id, logoKey: null },
       ]),
     );
   });

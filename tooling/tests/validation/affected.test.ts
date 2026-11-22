@@ -665,6 +665,7 @@ describe('classifyChanges', () => {
       ],
     });
     expect(journeyRecipePlan.e2eSpecPaths).toEqual([
+      'tests/church-settings/church-settings-journey.spec.ts',
       'tests/identity/active-church-switching.spec.ts',
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
       'tests/identity/first-admin-onboarding.spec.ts',

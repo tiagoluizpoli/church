@@ -138,6 +138,7 @@ function createHarness(overrides: HarnessOverrides = {}) {
     findUserName: vi.fn(),
     getSettings: vi.fn(),
     saveSettings: vi.fn(),
+    saveLogoKey: vi.fn(),
   } as ChurchRepository;
 
   const securityLogRepository: SecurityLogRepository = {

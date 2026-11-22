@@ -29,6 +29,13 @@ export interface ChurchRepository {
   getSettings(input: GetChurchByIdInput): Promise<ChurchSettings>;
   /** Overwrites the Church's editable identity; the slug is never touched. */
   saveSettings(input: SaveChurchSettingsInput): Promise<void>;
+  /** Points the Church at a logo key, or at none; objects are never touched. */
+  saveLogoKey(input: SaveChurchLogoKeyInput): Promise<void>;
+}
+
+export interface SaveChurchLogoKeyInput {
+  id: ChurchId;
+  logoKey: string | null;
 }
 
 export interface SaveChurchSettingsInput {

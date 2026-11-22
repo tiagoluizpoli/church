@@ -114,14 +114,35 @@ describe('CI E2E lane', () => {
         );
       });
 
+      it('reaches its RustFS service by name for the stored logo', () => {
+        expect(job?.services?.storage?.image).toBe('rustfs/rustfs:1.0.6');
+        expect(job?.env?.S3_ENDPOINT).toBe('http://storage:9000');
+        expect(job?.env?.STORAGE_PUBLIC_URL).toBe(
+          'http://storage:9000/church-unspecified',
+        );
+        expect(
+          job?.steps?.some(
+            (step) =>
+              step.run ===
+              'bun tooling/worktree/storage-buckets.ts church-unspecified',
+          ),
+        ).toBe(true);
+      });
+
       it('keeps application URLs loopback-only without runtime browser or package installs', () => {
         const urls = Object.values(job?.env ?? {}).filter((value) =>
           /^[a-z]+:\/\//.test(value),
         );
 
         expect(urls.length).toBeGreaterThan(0);
+        // Service containers are reached by name: Postgres and RustFS.
+        const serviceUrls = [
+          job?.env?.DATABASE_URL,
+          job?.env?.S3_ENDPOINT,
+          job?.env?.STORAGE_PUBLIC_URL,
+        ];
         for (const value of urls.filter(
-          (value) => value !== job?.env?.DATABASE_URL,
+          (value) => !serviceUrls.includes(value),
         )) {
           expect(LOOPBACK_HOSTS.has(new URL(value).hostname)).toBe(true);
         }

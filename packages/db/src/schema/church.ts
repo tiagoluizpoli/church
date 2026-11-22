@@ -16,6 +16,8 @@ export const church = pgTable('church', {
   settings: jsonb('settings').default({}),
   website: text('website'),
   accentColor: text('accent_color'),
+  // Object-storage key of the logo (never a URL); old keys' objects are kept.
+  logoKey: text('logo_key'),
 });
 
 // Declared on this side only: `organization.ts` is Better Auth's territory and

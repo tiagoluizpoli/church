@@ -121,6 +121,7 @@ export function buildManagers({
     verificationCodeInspector,
     errorReporter,
     tracing,
+    objectStorage,
   },
   auth: { churchMembershipRepository, authorityManager, activeChurchResolver },
 }: BuildManagersInput): Managers {
@@ -424,6 +425,7 @@ export function buildManagers({
     new DbChurchSettingsManager({
       churchRepository,
       unitOfWork,
+      objectStorage,
       publicOrigin: env.CORS_ORIGIN,
     });
 

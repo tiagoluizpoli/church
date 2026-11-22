@@ -2074,6 +2074,7 @@
   "church_settings_address_move_up": "Move {name} up",
   "church_settings_address_move_down": "Move {name} down",
   "church_settings_address_edit": "Edit {name}",
+  "church_settings_address_usage_failed": "Could not check where this address is used. Try again.",
   "church_settings_address_in_use_title": "Delete {name}?",
   "church_settings_address_in_use_description": "These still use this address. Choose what takes its place; the change is saved with the rest.",
   "church_settings_address_in_use_template": "Template {name}",

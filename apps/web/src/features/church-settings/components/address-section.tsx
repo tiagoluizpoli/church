@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { ArrowDown, ArrowUp, Home, Pencil, Plus, Trash2 } from 'lucide-react';
 import * as React from 'react';
+import { toast } from 'sonner';
 import { IconInputField } from '@/components/icon-input-field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,11 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import {
-  CepLookupFailed,
-  lookupCep,
-  normalizeCep,
-} from '@/features/church-settings/cep-client';
+import { lookupCep, normalizeCep } from '@/features/church-settings/cep-client';
 import {
   type AddressDraft,
   type AddressReplacement,
@@ -190,16 +187,18 @@ function AddressDialog({
           pinSource: 'cep',
         });
       }
-      set({
+      // Merged into the current fields: what was typed during the lookup stays.
+      setFields((current) => ({
+        ...current,
         cep: found.cep || cep,
-        street: found.street || fields.street,
-        bairro: found.bairro || fields.bairro,
-        city: found.city || fields.city,
-        uf: found.uf || fields.uf,
-      });
+        street: found.street || current.street,
+        bairro: found.bairro || current.bairro,
+        city: found.city || current.city,
+        uf: found.uf || current.uf,
+      }));
       setCepStatus('filled');
-    } catch (error) {
-      if (!(error instanceof CepLookupFailed)) throw error;
+    } catch {
+      // Every failure reads the same to the admin: manual entry stays usable.
       setCepStatus('failed');
     }
   };
@@ -775,10 +774,16 @@ export function AddressSection({
     onChange(rest);
   };
 
-  // A saved address may be used by templates and upcoming Public Events: ask the server, then confirm a replacement.
+  // A saved address may be used by templates and Events not yet started: ask the server, then confirm a replacement.
   const requestRemove = async (address: AddressDraft) => {
     if (!address.id) return remove(address.key);
-    const usage = await churchSettingsApi.getChurchAddressUsage(address.id);
+    const usage = await churchSettingsApi
+      .getChurchAddressUsage(address.id)
+      .catch(() => undefined);
+    if (!usage) {
+      toast.error(m.church_settings_address_usage_failed());
+      return;
+    }
     if (usage.templates.length === 0 && usage.events.length === 0) {
       return remove(address.key);
     }

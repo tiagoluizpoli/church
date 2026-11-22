@@ -18,6 +18,7 @@ const getChurchSlugAvailability = vi.fn();
 const getChurchAddressUsage = vi.fn();
 const toastSuccess = vi.fn();
 const toastPlain = vi.fn();
+const toastError = vi.fn();
 const uploadChurchLogo = vi.fn();
 const removeChurchLogo = vi.fn();
 const restoreChurchLogo = vi.fn();
@@ -91,7 +92,7 @@ vi.mock('@/components/ui/sonner', () => ({ Toaster: () => null }));
 vi.mock('sonner', () => ({
   toast: Object.assign((...args: unknown[]) => toastPlain(...args), {
     success: (...args: unknown[]) => toastSuccess(...args),
-    error: vi.fn(),
+    error: (...args: unknown[]) => toastError(...args),
   }),
 }));
 
@@ -1247,6 +1248,53 @@ describe('Church Settings addresses', () => {
     expect(street).toHaveValue('Rua Manual');
   });
 
+  it('keeps what is typed while a CEP is looked up when the CEP lacks that field', async () => {
+    let answer!: (value: unknown) => void;
+    lookupCep.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderSettings();
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '13015904');
+    const street = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_street(),
+    });
+
+    await user.type(street, 'Rua Digitada');
+    await act(async () =>
+      answer({
+        cep: '13015904',
+        street: '',
+        bairro: '',
+        city: 'Campinas',
+        uf: 'SP',
+      }),
+    );
+
+    expect(street).toHaveValue('Rua Digitada');
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_city(),
+      }),
+    ).toHaveValue('Campinas');
+  });
+
+  it('says the lookup failed on any lookup error, not only a provider one', async () => {
+    lookupCep.mockRejectedValue(new Error('aborted'));
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '13015904');
+
+    expect(
+      await within(dialog).findByText(m.church_settings_address_cep_failed()),
+    ).toBeInTheDocument();
+  });
+
   it('adds the first address by hand as the Main Address, staged into the save bar', async () => {
     const user = userEvent.setup();
     renderSettings();
@@ -1409,6 +1457,27 @@ describe('Church Settings addresses', () => {
         name: m.church_settings_address_delete({ name: 'Templo' }),
       }),
     ).toBeEnabled();
+  });
+
+  it('says so, and deletes nothing, when where an address is used cannot be read', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE, CASA);
+    getChurchAddressUsage.mockRejectedValue(new Error('offline'));
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_address_delete({ name: 'Casa do Marcos' }),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        m.church_settings_address_usage_failed(),
+      ),
+    );
+    expect(saveBar()).not.toBeInTheDocument();
   });
 
   it('lists where an address in use is used and defaults the replacement to the Main Address', async () => {

@@ -1,13 +1,14 @@
 import {
   DeleteObjectCommand,
   PutObjectCommand,
-  S3Client,
+  type S3Client,
 } from '@aws-sdk/client-s3';
 import type {
   ObjectKeyInput,
   ObjectStorage,
   PutObjectInput,
 } from '../../domain/contracts/infrastructure/object-storage';
+import { s3Client } from './s3-client';
 
 export interface S3ObjectStorageConfig {
   endpoint: string;
@@ -26,15 +27,7 @@ export class S3ObjectStorage implements ObjectStorage {
   private readonly publicBase: string;
 
   constructor(config: S3ObjectStorageConfig) {
-    this.client = new S3Client({
-      endpoint: config.endpoint,
-      region: config.region,
-      forcePathStyle: true,
-      credentials: {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-      },
-    });
+    this.client = s3Client(config);
     this.bucket = config.bucket;
     this.publicBase = config.publicUrl.replace(/\/+$/, '');
   }

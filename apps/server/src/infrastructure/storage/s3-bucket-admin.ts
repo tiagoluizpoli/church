@@ -2,8 +2,8 @@ import {
   DeleteObjectsCommand,
   HeadBucketCommand,
   ListObjectsV2Command,
-  S3Client,
 } from '@aws-sdk/client-s3';
+import { s3Client } from './s3-client';
 
 /**
  * The environment reset's handle on the configured bucket; the app itself
@@ -26,15 +26,7 @@ export interface S3Bucket {
 }
 
 export function s3Bucket({ bucket, ...config }: S3BucketConfig): S3Bucket {
-  const client = new S3Client({
-    endpoint: config.endpoint,
-    region: config.region,
-    forcePathStyle: true,
-    credentials: {
-      accessKeyId: config.accessKeyId,
-      secretAccessKey: config.secretAccessKey,
-    },
-  });
+  const client = s3Client(config);
   return {
     async assertReachable() {
       await client.send(new HeadBucketCommand({ Bucket: bucket }));
@@ -45,7 +37,7 @@ export function s3Bucket({ bucket, ...config }: S3BucketConfig): S3Bucket {
           new ListObjectsV2Command({ Bucket: bucket }),
         );
         if (Contents.length === 0) return;
-        await client.send(
+        const { Errors = [] } = await client.send(
           new DeleteObjectsCommand({
             Bucket: bucket,
             Delete: {
@@ -54,6 +46,11 @@ export function s3Bucket({ bucket, ...config }: S3BucketConfig): S3Bucket {
             },
           }),
         );
+        // An object that cannot be deleted would be listed again forever.
+        if (Errors.length > 0) {
+          const failed = Errors.map(({ Key, Code }) => `${Key}: ${Code}`);
+          throw new Error(`Could not empty ${bucket}: ${failed.join(', ')}`);
+        }
       }
     },
   };

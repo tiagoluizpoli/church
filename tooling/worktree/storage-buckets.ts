@@ -82,12 +82,17 @@ export async function emptyBucket({
       new ListObjectsV2Command({ Bucket: bucket }),
     );
     if (Contents.length === 0) return;
-    await client.send(
+    const { Errors = [] } = await client.send(
       new DeleteObjectsCommand({
         Bucket: bucket,
         Delete: { Objects: Contents.map(({ Key }) => ({ Key })), Quiet: true },
       }),
     );
+    // An object that cannot be deleted would be listed again forever.
+    if (Errors.length > 0) {
+      const failed = Errors.map(({ Key, Code }) => `${Key}: ${Code}`);
+      throw new Error(`Could not empty ${bucket}: ${failed.join(', ')}`);
+    }
   }
 }
 

@@ -18,6 +18,9 @@ export interface UpdateEventTimeBlockInput {
   startTime?: Date;
   endTime?: Date;
   label?: string;
+  isPublic?: boolean;
+  /** `null` clears the place. */
+  place?: string | null;
 }
 
 export interface GetEventTimeBlockInput {

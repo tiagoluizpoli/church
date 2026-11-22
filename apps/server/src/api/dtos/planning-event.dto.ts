@@ -12,10 +12,15 @@ import {
   eventTimeBlockResponseSchema,
 } from './event-time-block.dto';
 
+/** Short free text; an empty place is stored as none. */
+const placeSchema = z.string().trim().max(120);
+
 const planningEventTimeBlockBodySchema = z.object({
   label: z.string().trim().min(1),
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
+  isPublic: z.boolean().optional(),
+  place: placeSchema.optional(),
 });
 
 /** A complete Draft Event: its fields and every Time block, saved together. */
@@ -49,10 +54,19 @@ export type UpdatePlanningEventBody = z.infer<
   typeof updatePlanningEventBodySchema
 >;
 
-/** A Sent Event's details correction: title and optional location only. */
+/** A Sent Event's details correction: title, optional location and the public fields of blocks. */
 export const updatePlanningEventDetailsBodySchema = z.object({
   title: z.string().trim().min(1),
   location: z.string().optional(),
+  eventTimeBlocks: z
+    .array(
+      z.object({
+        id: z.string().uuid(),
+        isPublic: z.boolean(),
+        place: placeSchema.optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type UpdatePlanningEventDetailsBody = z.infer<

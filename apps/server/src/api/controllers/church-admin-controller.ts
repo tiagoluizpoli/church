@@ -625,6 +625,8 @@ export class ChurchAdminController implements FastifyController {
             label: block.label,
             startTime: dateFromInstantString({ value: block.startTime }),
             endTime: dateFromInstantString({ value: block.endTime }),
+            isPublic: block.isPublic,
+            place: block.place,
           })),
         });
         return reply.status(201).send(eventGraphMapper.toResponse(graph));
@@ -664,6 +666,8 @@ export class ChurchAdminController implements FastifyController {
             label: block.label,
             startTime: dateFromInstantString({ value: block.startTime }),
             endTime: dateFromInstantString({ value: block.endTime }),
+            isPublic: block.isPublic,
+            place: block.place,
           })),
         });
         return reply.send(eventGraphMapper.toResponse(graph));
@@ -696,6 +700,10 @@ export class ChurchAdminController implements FastifyController {
           eventId: EventId.from(eventId),
           title: body.title,
           location: location ? location : undefined,
+          eventTimeBlocks: body.eventTimeBlocks?.map((block) => ({
+            ...block,
+            id: EventTimeBlockId.from(block.id),
+          })),
         };
         const graph =
           await this.planningEventManager.updateEventDetails(details);

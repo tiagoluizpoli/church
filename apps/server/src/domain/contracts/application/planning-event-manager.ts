@@ -34,6 +34,10 @@ export interface PlanningEventTimeBlockDraft {
   label: string;
   startTime: Date;
   endTime: Date;
+  /** Absent keeps a retained block's value; a new block starts private. */
+  isPublic?: boolean;
+  /** Empty clears; absent keeps a retained block's value. */
+  place?: string;
 }
 
 /** A Draft Event with every one of its Time blocks, saved together. */
@@ -83,6 +87,12 @@ export interface UpdatePlanningEventDetailsManagerInput {
   eventId: EventId;
   title: string;
   location?: string;
+  /** Público and place of existing blocks; omitted blocks stay as they are. */
+  eventTimeBlocks?: {
+    id: EventTimeBlockId;
+    isPublic: boolean;
+    place?: string;
+  }[];
 }
 
 export interface DeletePlanningEventManagerInput {

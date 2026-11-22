@@ -774,6 +774,212 @@ describe('PATCH /admin/cycles/:cycleId/events/:eventId', () => {
   });
 });
 
+describe('Público and place on an edited Event', () => {
+  function withPublic({
+    fixture,
+    isPublic,
+    place,
+  }: {
+    fixture: Fixture;
+    isPublic: boolean;
+    place?: string;
+  }) {
+    const graph = currentGraph(fixture);
+    const [welcome, service] = graph.eventTimeBlocks;
+    return {
+      ...graph,
+      eventTimeBlocks: [{ ...welcome, isPublic, place }, service],
+    };
+  }
+
+  async function storedPublic(id: string) {
+    const [row] = await db
+      .select()
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, id));
+    return { isPublic: row?.isPublic, place: row?.place };
+  }
+
+  it('sets, keeps and clears Público and place in a draft Cycle', async () => {
+    const { cycleId, fixture } = await setUp();
+
+    const set = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPublic({ fixture, isPublic: true, place: 'Annex' }),
+    });
+    expect(set.statusCode).toBe(200);
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: true,
+      place: 'Annex',
+    });
+
+    // Fields absent from the request keep the stored values.
+    const kept = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: currentGraph(fixture),
+    });
+    expect(kept.statusCode).toBe(200);
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: true,
+      place: 'Annex',
+    });
+
+    const cleared = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPublic({ fixture, isPublic: false, place: '' }),
+    });
+    expect(cleared.statusCode).toBe(200);
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: false,
+      place: null,
+    });
+  });
+
+  it('refuses changing Público of a block that has started with PUBLIC_INFO_LOCKED', async () => {
+    const { cycleId, fixture } = await setUp();
+    setTestClock({ instant: parseInstant({ value: at('09:30') }) });
+
+    const response = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPublic({ fixture, isPublic: true }),
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('PUBLIC_INFO_LOCKED');
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: false,
+      place: null,
+    });
+  });
+
+  it('refuses a Ministry leader sending the fields', async () => {
+    const seed = await signIn({ persona: 'leader' });
+    const target = await seedCycle({ churchId: seed.churchAId });
+    const fixture = await seedGeneratedEvent({
+      churchId: seed.churchAId,
+      cycleId: target.id,
+    });
+
+    const response = await patchEvent({
+      cycleId: target.id,
+      eventId: fixture.eventId,
+      payload: withPublic({ fixture, isPublic: true }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: false,
+      place: null,
+    });
+  });
+});
+
+describe('Público and place on a Sent Event', () => {
+  async function seedSent() {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    const fixture = await seedGeneratedEvent({
+      churchId: seed.churchAId,
+      cycleId: target.id,
+    });
+    await db
+      .update(event)
+      .set({ status: 'scheduled' })
+      .where(eq(event.id, fixture.eventId));
+    return { cycleId: target.id, fixture };
+  }
+
+  function patchDetails({ cycleId, eventId, payload }: PatchEventInput) {
+    return app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/details`,
+      payload: payload as never,
+    });
+  }
+
+  it('changes Público and place of a block that has not started, leaving the others', async () => {
+    const { cycleId, fixture } = await seedSent();
+
+    const response = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        location: 'Main hall',
+        eventTimeBlocks: [
+          { id: fixture.welcome.id, isPublic: true, place: 'Annex' },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const blocks = response.json().eventTimeBlocks;
+    expect(blocks).toContainEqual(
+      expect.objectContaining({
+        id: fixture.welcome.id,
+        isPublic: true,
+        place: 'Annex',
+      }),
+    );
+    expect(blocks).toContainEqual(
+      expect.objectContaining({
+        id: fixture.service.id,
+        isPublic: false,
+        place: null,
+      }),
+    );
+  });
+
+  it('refuses a change to a started block but accepts it unchanged', async () => {
+    const { cycleId, fixture } = await seedSent();
+    setTestClock({ instant: parseInstant({ value: at('09:30') }) });
+
+    const changed = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [
+          { id: fixture.welcome.id, isPublic: true, place: 'Annex' },
+        ],
+      },
+    });
+    expect(changed.statusCode).toBe(409);
+    expect(changed.json().error).toBe('PUBLIC_INFO_LOCKED');
+
+    const unchanged = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [{ id: fixture.welcome.id, isPublic: false }],
+      },
+    });
+    expect(unchanged.statusCode).toBe(200);
+  });
+
+  it('404s a block of another Event', async () => {
+    const { cycleId, fixture } = await seedSent();
+
+    const response = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [
+          { id: '00000000-0000-4000-8000-000000000000', isPublic: true },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+});
+
 describe('Edit Event access', () => {
   it('returns 401 signed out', async () => {
     const seed = await seedSchedulingPhase3Base();

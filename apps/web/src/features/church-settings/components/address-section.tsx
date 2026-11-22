@@ -23,6 +23,11 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
+  CepLookupFailed,
+  lookupCep,
+  normalizeCep,
+} from '@/features/church-settings/cep-client';
+import {
   type AddressDraft,
   type AddressReplacement,
   addressSummary,
@@ -123,6 +128,39 @@ function AddressDialog({
     fields.city.trim() !== '' &&
     fields.uf !== '';
   const adding = editing === null;
+  const [cepStatus, setCepStatus] = React.useState<
+    'idle' | 'loading' | 'invalid' | 'notFound' | 'failed' | 'filled'
+  >('idle');
+
+  // Fills the same editable fields as manual entry; nothing is saved until the admin confirms.
+  const searchCep = async () => {
+    const cep = normalizeCep(fields.cep);
+    if (!cep) return setCepStatus('invalid');
+    setCepStatus('loading');
+    try {
+      const found = await lookupCep({ cep });
+      if (!found) return setCepStatus('notFound');
+      set({
+        cep: found.cep || cep,
+        street: found.street || fields.street,
+        bairro: found.bairro || fields.bairro,
+        city: found.city || fields.city,
+        uf: found.uf || fields.uf,
+      });
+      setCepStatus('filled');
+    } catch (error) {
+      if (!(error instanceof CepLookupFailed)) throw error;
+      setCepStatus('failed');
+    }
+  };
+  const cepMessage = {
+    idle: null,
+    loading: null,
+    invalid: m.church_settings_address_cep_invalid(),
+    notFound: m.church_settings_address_cep_not_found(),
+    failed: m.church_settings_address_cep_failed(),
+    filled: m.church_settings_address_cep_filled(),
+  }[cepStatus];
 
   return (
     <Dialog open onOpenChange={(open) => (open ? undefined : onCancel())}>
@@ -232,16 +270,44 @@ function AddressDialog({
               <p className="text-destructive text-sm">{errors.uf}</p>
             ) : null}
           </div>
-          <IconInputField
-            icon={Home}
-            label={m.church_settings_address_cep()}
-            hint={m.church_settings_address_optional()}
-            value={fields.cep}
-            error={errors.cep}
-            inputMode="numeric"
-            autoComplete="postal-code"
-            onChange={(event) => set({ cep: event.target.value })}
-          />
+          <div className="space-y-2">
+            <IconInputField
+              icon={Home}
+              label={m.church_settings_address_cep()}
+              hint={m.church_settings_address_optional()}
+              value={fields.cep}
+              error={errors.cep}
+              inputMode="numeric"
+              autoComplete="postal-code"
+              onChange={(event) => {
+                set({ cep: event.target.value });
+                setCepStatus('idle');
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={cepStatus === 'loading'}
+              onClick={searchCep}
+            >
+              {cepStatus === 'loading'
+                ? m.church_settings_address_cep_lookup_loading()
+                : m.church_settings_address_cep_lookup()}
+            </Button>
+            {cepMessage ? (
+              <p
+                className={
+                  cepStatus === 'filled'
+                    ? 'text-muted-foreground text-sm'
+                    : 'text-destructive text-sm'
+                }
+                role={cepStatus === 'filled' ? 'status' : 'alert'}
+              >
+                {cepMessage}
+              </p>
+            ) : null}
+          </div>
           <div className="space-y-2 sm:col-span-2">
             <Label className="flex items-center justify-between gap-3 font-medium text-sm">
               <span>

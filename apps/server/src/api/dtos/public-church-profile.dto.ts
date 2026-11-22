@@ -18,6 +18,16 @@ export const publicChurchProfileResponseSchema = z.strictObject({
   programme: z.array(
     z.strictObject({
       recurrence: recurrenceSchema,
+      exceptOrdinals: z.array(
+        z.union([
+          z.literal(1),
+          z.literal(2),
+          z.literal(3),
+          z.literal(4),
+          z.literal(5),
+          z.literal('last'),
+        ]),
+      ),
       startTime: z.string(),
       label: z.string(),
       place: z.string().nullable(),

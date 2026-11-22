@@ -81,4 +81,37 @@ describe('describeRecurrence in pt-BR', () => {
       }),
     ).toBe('Every Sunday');
   });
+
+  it('words a weekly Recurrence that loses to nth weekdays as "exceto"', () => {
+    const weekly = (weekday: 0 | 3) =>
+      ({ kind: 'weekly', weekdays: [weekday] }) as const;
+    expect(
+      describeRecurrence({
+        recurrence: weekly(0),
+        exceptOrdinals: [1],
+        locale: 'pt-BR',
+      }),
+    ).toBe('Todo domingo, exceto o 1º');
+    expect(
+      describeRecurrence({
+        recurrence: weekly(0),
+        exceptOrdinals: [1, 'last'],
+        locale: 'pt-BR',
+      }),
+    ).toBe('Todo domingo, exceto o 1º e o último');
+    expect(
+      describeRecurrence({
+        recurrence: weekly(3),
+        exceptOrdinals: [2],
+        locale: 'pt-BR',
+      }),
+    ).toBe('Toda quarta-feira, exceto a 2ª');
+    expect(
+      describeRecurrence({
+        recurrence: weekly(0),
+        exceptOrdinals: [],
+        locale: 'pt-BR',
+      }),
+    ).toBe('Todo domingo');
+  });
 });

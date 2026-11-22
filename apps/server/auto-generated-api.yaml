@@ -18910,6 +18910,28 @@ paths:
                                 - kind
                                 - entries
                               additionalProperties: false
+                        exceptOrdinals:
+                          type: array
+                          items:
+                            anyOf:
+                              - type: number
+                                enum:
+                                  - 1
+                              - type: number
+                                enum:
+                                  - 2
+                              - type: number
+                                enum:
+                                  - 3
+                              - type: number
+                                enum:
+                                  - 4
+                              - type: number
+                                enum:
+                                  - 5
+                              - type: string
+                                enum:
+                                  - last
                         startTime:
                           type: string
                         label:
@@ -18919,6 +18941,7 @@ paths:
                           type: string
                       required:
                         - recurrence
+                        - exceptOrdinals
                         - startTime
                         - label
                         - place

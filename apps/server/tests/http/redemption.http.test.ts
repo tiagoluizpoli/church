@@ -248,7 +248,7 @@ async function createHarness({
   const failureLog = new RecordingFailureLog();
   const verificationCodeManager = new InvitationVerificationCodeManager({
     repository: verificationCodeRepository,
-    emailSender: new CaptureEmailSender('Church'),
+    emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
     config: appConfig,

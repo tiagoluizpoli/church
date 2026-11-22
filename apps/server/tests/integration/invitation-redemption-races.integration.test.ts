@@ -86,7 +86,7 @@ const redemptionManager = new DbRedemptionManager({
       db: raceDb,
       config: appConfig,
     }),
-    emailSender: new CaptureEmailSender('Church'),
+    emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
     config: appConfig,

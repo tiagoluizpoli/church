@@ -65,7 +65,7 @@ export function createEmailSenders(config: EmailSenderConfig): EmailSenders {
             : (devSender ?? 'smtp');
 
   if (choice === 'capture') {
-    const capture = new CaptureEmailSender(appName, platform);
+    const capture = new CaptureEmailSender({ appName, platform });
     return { serverEmailSender: capture, captureEmailSender: capture };
   }
   if (choice !== 'resend' && Boolean(smtp.user) !== Boolean(smtp.password)) {

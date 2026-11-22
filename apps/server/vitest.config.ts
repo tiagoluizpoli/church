@@ -11,6 +11,11 @@ const UNIT_ENV = {
   BETTER_AUTH_SECRET: 'unit-test-placeholder-secret-0123456789',
   BETTER_AUTH_URL: 'http://127.0.0.1:9',
   CORS_ORIGIN: 'http://127.0.0.1:9',
+  S3_ENDPOINT: 'http://127.0.0.1:9',
+  S3_BUCKET: 'church-unit-has-no-storage',
+  S3_ACCESS_KEY_ID: 'unit',
+  S3_SECRET_ACCESS_KEY: 'unit',
+  STORAGE_PUBLIC_URL: 'http://127.0.0.1:9/church-unit-has-no-storage',
   // The debug-only routes' controller tests exercise them.
   ENABLE_DEBUG_ENDPOINTS: 'true',
 };

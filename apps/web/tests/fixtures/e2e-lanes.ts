@@ -18,6 +18,7 @@ export const ISOLATED_SPECS = [
   'identity/first-admin-onboarding.spec.ts',
   'identity/invitation-journey.spec.ts',
   'identity/redemption-existing-member.spec.ts',
+  'identity/redemption-church-only-sign-in.spec.ts',
   'identity/redemption-new-user.spec.ts',
   'identity/route-protection.spec.ts',
   'identity/volunteer-transfer-journey.spec.ts',

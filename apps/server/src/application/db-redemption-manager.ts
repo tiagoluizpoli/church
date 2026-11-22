@@ -6,10 +6,13 @@ import {
 } from '../domain/branded-ids';
 import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
 import type {
+  AcceptChurchInvitationInput,
+  AcceptChurchInvitationOutcome,
   AcceptExistingMemberInput,
   AcceptExistingMemberOutcome,
   AcceptPendingMinistryInvitationInput,
   AuthenticatedInvitationStatus,
+  ChurchInvitationReviewStatus,
   ChurchOnlyRedemptionOutcome,
   DeclineChurchInvitationInput,
   DeclineChurchInvitationOutcome,
@@ -17,6 +20,7 @@ import type {
   DeclineInvitationOutcome,
   FullRedemptionSuccess,
   GetAuthenticatedInvitationStatusInput,
+  GetChurchInvitationReviewStatusInput,
   GetDebugInvitationLinkInput,
   GetDebugVerificationCodeInput,
   GetPublicRedemptionPreviewInput,
@@ -29,6 +33,7 @@ import type {
 } from '../domain/contracts/application/redemption-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
+  ChurchInvitationContext,
   MinistryInvitationContext,
   MinistryInvitationRepository,
 } from '../domain/contracts/infrastructure/ministry-invitation.repository';
@@ -154,6 +159,25 @@ type ResolvedInvitationContext =
   | { status: 'already-accepted'; ministryInvitation: MinistryInvitation }
   | { status: 'redeemable'; context: MinistryInvitationContext };
 
+interface ResolveChurchInvitationInput {
+  churchInvitationId: AcceptChurchInvitationInput['churchInvitationId'];
+  userId: AcceptChurchInvitationInput['userId'];
+  now: Date;
+  correlationId?: string;
+}
+
+type ResolvedChurchInvitation =
+  | { status: 'unavailable' }
+  | { status: 'identity-mismatch'; maskedEmail: string }
+  | { status: 'already-accepted'; churchId: ChurchId }
+  | { status: 'redeemable'; context: ChurchInvitationContext };
+
+type ChurchAcceptanceResult =
+  | 'accepted'
+  | 'offer-changed'
+  | 'already-accepted'
+  | 'unavailable';
+
 interface IsInvitationRedeemableInput {
   ministryInvitation: MinistryInvitation;
   now: Date;
@@ -168,6 +192,20 @@ function isInvitationRedeemable({
     ministryInvitation.status === 'pending' &&
     compareInstants({
       left: ministryInvitation.expiresAt,
+      right: fromDate({ date: now }),
+    }) > 0
+  );
+}
+
+interface IsUnexpiredInput {
+  expiresAt: Date;
+  now: Date;
+}
+
+function isUnexpired({ expiresAt, now }: IsUnexpiredInput): boolean {
+  return (
+    compareInstants({
+      left: fromDate({ date: expiresAt }),
       right: fromDate({ date: now }),
     }) > 0
   );
@@ -557,7 +595,8 @@ export class DbRedemptionManager implements RedemptionManager {
       now,
     });
     return {
-      ...bundle,
+      churchAccessLevel: bundle.churchAccessLevel,
+      ministries: bundle.ministries,
       reviewToken: reviewTokenFor({ bundle }),
       kind: 'redeemable',
       invitationKind: ministryInvitation.kind,
@@ -727,6 +766,173 @@ export class DbRedemptionManager implements RedemptionManager {
       return { kind: 'church-only', sourceChurchId: error.sourceChurchId };
     }
     return { kind: 'full-success', volunteerId: volunteerId as VolunteerId };
+  }
+
+  /**
+   * The Church Invitation preamble (ADR 0011 kept rules): identity first,
+   * logged on a mismatch, then the already-accepted retry, then the
+   * pending-and-unexpired gate.
+   */
+  private async resolveChurchInvitation({
+    churchInvitationId,
+    userId,
+    now,
+    correlationId,
+  }: ResolveChurchInvitationInput): Promise<ResolvedChurchInvitation> {
+    const context = await this.invitationRepository.findChurchInvitationContext(
+      { churchInvitationId },
+    );
+    if (!context) return { status: 'unavailable' };
+    const addressed =
+      await this.invitationRepository.isChurchInvitationAddressedToUser({
+        churchInvitationId,
+        userId,
+      });
+    if (!addressed) {
+      await this.securityLogRepository.recordIdentityMismatch({
+        churchId: context.churchId,
+        actorId: userId,
+        correlationId: correlationId ?? crypto.randomUUID(),
+        now,
+      });
+      return {
+        status: 'identity-mismatch',
+        maskedEmail: maskEmail({ email: context.email }),
+      };
+    }
+    if (context.status === 'accepted')
+      return { status: 'already-accepted', churchId: context.churchId };
+    if (
+      context.status !== 'pending' ||
+      !isUnexpired({ expiresAt: context.expiresAt, now })
+    )
+      return { status: 'unavailable' };
+    return { status: 'redeemable', context };
+  }
+
+  async getChurchInvitationReviewStatus({
+    churchInvitationId,
+    userId,
+    now = nowAsDate(),
+  }: GetChurchInvitationReviewStatusInput): Promise<ChurchInvitationReviewStatus> {
+    const resolved = await this.resolveChurchInvitation({
+      churchInvitationId,
+      userId,
+      now,
+    });
+    if (resolved.status === 'unavailable') return { kind: 'unavailable' };
+    if (resolved.status === 'identity-mismatch')
+      return { kind: 'identity-mismatch', maskedEmail: resolved.maskedEmail };
+    if (resolved.status === 'already-accepted')
+      return { kind: 'already-accepted', churchId: resolved.churchId };
+    const { context } = resolved;
+    const bundle = await this.invitationRepository.findRedemptionBundle({
+      churchInvitation: { churchId: context.churchId, churchInvitationId },
+      now,
+    });
+    const [oldestHalf] = bundle.ministries;
+    if (oldestHalf)
+      return {
+        kind: 'paired',
+        ministryInvitationId: oldestHalf.ministryInvitationId,
+      };
+    return {
+      kind: 'redeemable',
+      churchName: context.churchName,
+      email: context.email,
+      churchAccessLevel: context.churchAccessLevel,
+      expiresAt: context.expiresAt,
+      reviewToken: reviewTokenFor({ bundle }),
+    };
+  }
+
+  async acceptChurchInvitation({
+    churchInvitationId,
+    userId,
+    sessionCookie,
+    idempotencyKey,
+    reviewToken,
+    now = nowAsDate(),
+  }: AcceptChurchInvitationInput): Promise<AcceptChurchInvitationOutcome> {
+    const resolved = await this.resolveChurchInvitation({
+      churchInvitationId,
+      userId,
+      now,
+      correlationId: idempotencyKey,
+    });
+    if (resolved.status === 'unavailable')
+      return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
+    if (resolved.status === 'identity-mismatch')
+      return { kind: 'identity-mismatch', maskedEmail: resolved.maskedEmail };
+    if (resolved.status === 'already-accepted')
+      return { kind: 'already-accepted', churchId: resolved.churchId };
+    const { churchId } = resolved.context;
+    let result: ChurchAcceptanceResult;
+    try {
+      result = await this.unitOfWork.run(async (tx) => {
+        // The Church-only bundle has no halves: its row is the only lock. A
+        // racing pair row-locks it too, so it serializes against this.
+        const locked = await this.invitationRepository.lockChurchInvitation({
+          churchId,
+          churchInvitationId,
+          tx,
+        });
+        if (locked?.status === 'accepted') return 'already-accepted';
+        if (locked?.status !== 'pending') return 'unavailable';
+        const bundle = await this.invitationRepository.findRedemptionBundle({
+          churchInvitation: { churchId, churchInvitationId },
+          now,
+          tx,
+        });
+        // Expiry can pass between the pre-lock gate and the lock.
+        if (
+          !bundle.churchExpiresAt ||
+          !isUnexpired({ expiresAt: bundle.churchExpiresAt, now })
+        )
+          return 'unavailable';
+        if (reviewTokenFor({ bundle }) !== reviewToken) return 'offer-changed';
+        try {
+          await this.identityGateway.acceptChurchInvitation({
+            churchInvitationId,
+            sessionCookie,
+            tx,
+          });
+        } catch (cause) {
+          throw new IdentityAcceptFailure({ cause });
+        }
+        await this.redemptionRepository.recordChurchInvitationAcceptance({
+          churchInvitationId,
+          userId,
+          acceptedAt: now,
+          tx,
+        });
+        await this.identityGateway.setActiveChurch({
+          churchId,
+          sessionCookie,
+          tx,
+        });
+        return 'accepted';
+      });
+    } catch (error) {
+      const cause =
+        error instanceof IdentityAcceptFailure ? error.cause : error;
+      this.failureLog.record({
+        reason: 'IDENTITY_FAILED',
+        churchInvitationId,
+        ministryInvitationId: null,
+        correlationId: idempotencyKey,
+        errorName: cause instanceof Error ? cause.name : typeof cause,
+      });
+      return error instanceof IdentityAcceptFailure
+        ? { kind: 'terminal-failure', reason: 'IDENTITY_FAILED' }
+        : { kind: 'retryable-failure', reason: 'IDENTITY_FAILED' };
+    }
+    if (result === 'accepted') return { kind: 'full-success', churchId };
+    if (result === 'already-accepted')
+      return { kind: 'already-accepted', churchId };
+    if (result === 'unavailable')
+      return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
+    return { kind: 'offer-changed' };
   }
 
   async declineInvitation({

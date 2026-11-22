@@ -5,12 +5,15 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
+  AcceptChurchInvitation200,
+  AcceptChurchInvitationBody,
   AcceptMinistryInvitation200,
   AcceptMinistryInvitationBody,
   ConfirmVolunteerTransfer200,
   ConfirmVolunteerTransferBody,
   DeclineChurchInvitation200,
   DeclineMinistryInvitation200,
+  GetChurchInvitationReviewStatus200,
   GetMinistryInvitationStatus200,
   GetVolunteerTransferPreview200,
   PreviewChurchInvitation200,
@@ -73,6 +76,33 @@ const declineChurchInvitation = (
  ) => {
       return apiClient<DeclineChurchInvitation200>(
       {url: `/api/v1/redemption/church/${invitationId}/decline`, method: 'POST'
+    },
+      );
+    }
+  /**
+ * Get an authenticated User's review of a plain Church Invitation addressed to their email, or the Ministry Invitation whose review covers a paired offer.
+ * @summary Get a Church Invitation signed-in review status
+ */
+const getChurchInvitationReviewStatus = (
+    invitationId: string,
+ ) => {
+      return apiClient<GetChurchInvitationReviewStatus200>(
+      {url: `/api/v1/redemption/church/${invitationId}/review`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Accept the reviewed plain Church Invitation as the signed-in User it is addressed to, granting the Church Access Level and making that Church active.
+ * @summary Accept a Church Invitation as a signed-in User
+ */
+const acceptChurchInvitation = (
+    invitationId: string,
+    acceptChurchInvitationBody: AcceptChurchInvitationBody,
+ ) => {
+      return apiClient<AcceptChurchInvitation200>(
+      {url: `/api/v1/redemption/church/${invitationId}/accept`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: acceptChurchInvitationBody
     },
       );
     }
@@ -142,11 +172,13 @@ const confirmVolunteerTransfer = (
     },
       );
     }
-  return {previewChurchInvitation,requestChurchInvitationVerificationCode,redeemChurchInvitation,declineChurchInvitation,getMinistryInvitationStatus,acceptMinistryInvitation,declineMinistryInvitation,getVolunteerTransferPreview,confirmVolunteerTransfer}};
+  return {previewChurchInvitation,requestChurchInvitationVerificationCode,redeemChurchInvitation,declineChurchInvitation,getChurchInvitationReviewStatus,acceptChurchInvitation,getMinistryInvitationStatus,acceptMinistryInvitation,declineMinistryInvitation,getVolunteerTransferPreview,confirmVolunteerTransfer}};
 export type PreviewChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['previewChurchInvitation']>>>
 export type RequestChurchInvitationVerificationCodeResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['requestChurchInvitationVerificationCode']>>>
 export type RedeemChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['redeemChurchInvitation']>>>
 export type DeclineChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['declineChurchInvitation']>>>
+export type GetChurchInvitationReviewStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['getChurchInvitationReviewStatus']>>>
+export type AcceptChurchInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['acceptChurchInvitation']>>>
 export type GetMinistryInvitationStatusResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['getMinistryInvitationStatus']>>>
 export type AcceptMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['acceptMinistryInvitation']>>>
 export type DeclineMinistryInvitationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getRedemption>['declineMinistryInvitation']>>>

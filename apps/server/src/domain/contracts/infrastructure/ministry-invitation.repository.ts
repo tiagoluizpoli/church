@@ -254,10 +254,44 @@ export interface MinistryInvitationContext {
   roleNames: string[];
 }
 
-export interface FindRedemptionBundleInput {
-  /** Any half of the offer: a chained one resolves its whole Church offer. */
-  ministryInvitation: MinistryInvitation;
+/** The Church Invitation entry point of a redemption bundle lookup. */
+export interface ChurchInvitationBundleEntry {
+  churchId: ChurchId;
+  churchInvitationId: string;
+}
+
+export type FindRedemptionBundleInput = (
+  | {
+      /** Any half of the offer: a chained one resolves its whole Church offer. */
+      ministryInvitation: MinistryInvitation;
+    }
+  | {
+      /** The Church Invitation entry point: the Church half plus every pending, unexpired half. */
+      churchInvitation: ChurchInvitationBundleEntry;
+    }
+) & {
   now: Date;
+  tx?: TransactionContext;
+};
+
+export interface FindChurchInvitationContextInput {
+  churchInvitationId: ChurchInvitationId;
+  tx?: TransactionContext;
+}
+
+/** Any-status Church Invitation lookup backing the signed-in Church-only review. */
+export interface ChurchInvitationContext {
+  churchId: ChurchId;
+  churchName: string;
+  email: string;
+  status: ChurchInvitationStatus;
+  churchAccessLevel: ChurchInvitationAccessLevel;
+  expiresAt: Date;
+}
+
+export interface IsChurchInvitationAddressedToUserInput {
+  churchInvitationId: ChurchInvitationId;
+  userId: UserId;
   tx?: TransactionContext;
 }
 
@@ -403,6 +437,16 @@ export interface MinistryInvitationRepository {
   findRedemptionBundle(
     input: FindRedemptionBundleInput,
   ): Promise<RedemptionBundle>;
+
+  /** Any status; `null` only for a missing (or malformed) id. */
+  findChurchInvitationContext(
+    input: FindChurchInvitationContextInput,
+  ): Promise<ChurchInvitationContext | null>;
+
+  /** Whether `userId` holds the Church Invitation's email. */
+  isChurchInvitationAddressedToUser(
+    input: IsChurchInvitationAddressedToUserInput,
+  ): Promise<boolean>;
 
   isInvitationAddressedToUser(
     input: IsInvitationAddressedToUserInput,

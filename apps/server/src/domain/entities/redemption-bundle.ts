@@ -17,11 +17,13 @@ export interface RedemptionBundleMinistry {
 /**
  * Everything one signed-in acceptance grants: a chained offer's pending
  * Church Invitation and every pending, unexpired half; a standalone Ministry
- * offer alone.
+ * offer alone; a plain Church Invitation with no such half alone.
  */
 export interface RedemptionBundle {
   /** The Church Access Level granted; null when the Church Membership already exists. */
   churchAccessLevel: ChurchAccessLevel | null;
+  /** The Church Invitation's expiry while the Church half is in the bundle; else null. */
+  churchExpiresAt: Date | null;
   /** Oldest first. */
   ministries: RedemptionBundleMinistry[];
 }

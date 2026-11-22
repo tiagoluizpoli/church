@@ -14784,6 +14784,257 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/redemption/church/{invitationId}/review:
+    get:
+      operationId: getChurchInvitationReviewStatus
+      summary: Get a Church Invitation signed-in review status
+      tags:
+        - redemption
+      description: Get an authenticated User's review of a plain Church Invitation
+        addressed to their email, or the Ministry Invitation whose review covers
+        a paired offer.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - redeemable
+                      churchName:
+                        type: string
+                      email:
+                        type: string
+                        format: email
+                        pattern: ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+                      churchAccessLevel:
+                        type: string
+                        enum:
+                          - member
+                          - admin
+                      expiresAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      reviewToken:
+                        type: string
+                    required:
+                      - kind
+                      - churchName
+                      - email
+                      - churchAccessLevel
+                      - expiresAt
+                      - reviewToken
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - paired
+                      ministryInvitationId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                    required:
+                      - kind
+                      - ministryInvitationId
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - already-accepted
+                      churchId:
+                        type: string
+                    required:
+                      - kind
+                      - churchId
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - identity-mismatch
+                      maskedEmail:
+                        type: string
+                    required:
+                      - kind
+                      - maskedEmail
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - unavailable
+                    required:
+                      - kind
+                    additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - UNAUTHORIZED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/redemption/church/{invitationId}/accept:
+    post:
+      operationId: acceptChurchInvitation
+      summary: Accept a Church Invitation as a signed-in User
+      tags:
+        - redemption
+      description: Accept the reviewed plain Church Invitation as the signed-in User
+        it is addressed to, granting the Church Access Level and making that
+        Church active.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idempotencyKey:
+                  type: string
+                  format: uuid
+                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                reviewToken:
+                  type: string
+                  minLength: 1
+              required:
+                - idempotencyKey
+                - reviewToken
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: invitationId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - full-success
+                      churchId:
+                        type: string
+                    required:
+                      - kind
+                      - churchId
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - offer-changed
+                    required:
+                      - kind
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - already-accepted
+                      churchId:
+                        type: string
+                    required:
+                      - kind
+                      - churchId
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - identity-mismatch
+                      maskedEmail:
+                        type: string
+                    required:
+                      - kind
+                      - maskedEmail
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - retryable-failure
+                      reason:
+                        type: string
+                        enum:
+                          - IDENTITY_FAILED
+                    required:
+                      - kind
+                      - reason
+                    additionalProperties: false
+                  - type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - terminal-failure
+                      reason:
+                        type: string
+                        enum:
+                          - INVITATION_UNAVAILABLE
+                          - IDENTITY_FAILED
+                    required:
+                      - kind
+                      - reason
+                    additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - UNAUTHORIZED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/redemption/ministry/{invitationId}:
     get:
       operationId: getMinistryInvitationStatus

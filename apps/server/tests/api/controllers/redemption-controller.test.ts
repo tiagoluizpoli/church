@@ -46,6 +46,8 @@ const redemptionManager: RedemptionManager = {
   redeemNewUser: vi.fn(),
   acceptPendingMinistryInvitation: vi.fn(),
   getAuthenticatedInvitationStatus: vi.fn(),
+  getChurchInvitationReviewStatus: vi.fn(),
+  acceptChurchInvitation: vi.fn(),
   acceptExistingMember: vi.fn(),
   declineInvitation: vi.fn(),
   declineChurchInvitation: vi.fn(),

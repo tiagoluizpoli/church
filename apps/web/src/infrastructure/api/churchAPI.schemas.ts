@@ -6545,6 +6545,79 @@ export type DeclineChurchInvitation429 = {
   message: string;
 };
 
+export type GetChurchInvitationReviewStatus200 = {
+  kind: 'redeemable';
+  churchName: string;
+  /** @pattern ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
+  email: string;
+  churchAccessLevel: 'member' | 'admin';
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  expiresAt: string;
+  reviewToken: string;
+} | {
+  kind: 'paired';
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  ministryInvitationId: string;
+} | {
+  kind: 'already-accepted';
+  churchId: string;
+} | {
+  kind: 'identity-mismatch';
+  maskedEmail: string;
+} | {
+  kind: 'unavailable';
+};
+
+export type GetChurchInvitationReviewStatus401Error = typeof GetChurchInvitationReviewStatus401Error[keyof typeof GetChurchInvitationReviewStatus401Error];
+
+
+export const GetChurchInvitationReviewStatus401Error = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+export type GetChurchInvitationReviewStatus401 = {
+  error: GetChurchInvitationReviewStatus401Error;
+  message: string;
+};
+
+export type AcceptChurchInvitationBody = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  idempotencyKey: string;
+  /** @minLength 1 */
+  reviewToken: string;
+};
+
+export type AcceptChurchInvitation200 = {
+  kind: 'full-success';
+  churchId: string;
+} | {
+  kind: 'offer-changed';
+} | {
+  kind: 'already-accepted';
+  churchId: string;
+} | {
+  kind: 'identity-mismatch';
+  maskedEmail: string;
+} | {
+  kind: 'retryable-failure';
+  reason: 'IDENTITY_FAILED';
+} | {
+  kind: 'terminal-failure';
+  reason: 'INVITATION_UNAVAILABLE' | 'IDENTITY_FAILED';
+};
+
+export type AcceptChurchInvitation401Error = typeof AcceptChurchInvitation401Error[keyof typeof AcceptChurchInvitation401Error];
+
+
+export const AcceptChurchInvitation401Error = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+export type AcceptChurchInvitation401 = {
+  error: AcceptChurchInvitation401Error;
+  message: string;
+};
+
 export type GetMinistryInvitationStatus200 = {
   kind: 'redeemable';
   invitationKind: 'ministry-only' | 'chained';

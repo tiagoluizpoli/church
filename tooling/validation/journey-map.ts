@@ -52,6 +52,7 @@ export const DELIBERATE_SMOKE_FALLBACK_PATHS: {
 const REDEMPTION_SPEC_PATHS = [
   'tests/identity/redemption-new-user.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
+  'tests/identity/redemption-church-only-sign-in.spec.ts',
 ];
 
 // The public Church Invitation join also serves the plain first-admin
@@ -79,6 +80,18 @@ const CHURCH_INVITATION_SPEC_PATHS = [
   'tests/identity/first-admin-onboarding.spec.ts',
   ...INVITATION_JOURNEY_SPEC_PATHS,
   ...REDEMPTION_SPEC_PATHS,
+];
+
+const CHURCH_INVITATION_SOURCE_PREFIXES = [
+  'apps/web/src/features/invitations/components/invitation-review-parts.tsx',
+  'apps/server/src/api/dtos/redemption.dto.ts',
+  'apps/server/src/application/db-redemption-manager.ts',
+  'apps/server/src/domain/contracts/application/redemption-manager.ts',
+  'apps/server/src/domain/contracts/infrastructure/ministry-invitation.repository.ts',
+  'apps/server/src/domain/entities/redemption-bundle.ts',
+  'apps/server/src/domain/services/redemption-review-token.ts',
+  'apps/server/src/infrastructure/repositories/drizzle-ministry-invitation.repository.ts',
+  'apps/web/src/routeTree.gen.ts',
 ];
 
 const VOLUNTEER_TRANSFER_SPEC_PATHS = [
@@ -133,6 +146,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/first-admin-onboarding.spec.ts',
   'tests/identity/invitation-journey.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
+  'tests/identity/redemption-church-only-sign-in.spec.ts',
   'tests/identity/redemption-new-user.spec.ts',
   // Signs in as the shared personas global setup loads from a recipe.
   'tests/identity/route-protection.spec.ts',
@@ -412,6 +426,11 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix: 'apps/web/src/infrastructure/api/redemption.ts',
     specPaths: CHURCH_INVITATION_SPEC_PATHS,
   },
+  // #945: signed-in acceptance of a Church Invitation (review, accept, route tree).
+  ...CHURCH_INVITATION_SOURCE_PREFIXES.map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: CHURCH_INVITATION_SPEC_PATHS,
+  })),
   {
     sourcePathPrefix: 'apps/web/src/routes/_authenticated/_active-church.tsx',
     specPaths: [

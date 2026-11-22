@@ -2,15 +2,24 @@ import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { formatRelative, parseInstant } from '@church/time';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
-import { ArrowRight, CircleAlert, ShieldAlert } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Button } from '@/components/ui/button';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Alert,
+  AlreadyAcceptedNotice,
+  CHURCH_ACCESS_LABELS,
+  InvitationFact,
+  THROTTLED_STATUS,
+  ThrottledNotice,
+  UnavailableNotice,
+  WrongLoginNotice,
+} from '@/features/invitations/components/invitation-review-parts';
 import { VolunteerTransferFlow } from '@/features/volunteer-transfer';
 import type {
   AcceptMinistryInvitation200,
@@ -28,8 +37,6 @@ export const Route = createFileRoute(
   component: MinistryInvitationRoute,
 });
 
-const THROTTLED_STATUS = 429;
-
 type RedeemableStatus = Extract<
   GetMinistryInvitationStatus200,
   { kind: 'redeemable' }
@@ -44,14 +51,6 @@ type AcceptFailure = Exclude<
 >;
 
 type ReviewedMinistry = RedeemableStatus['ministries'][number];
-
-const CHURCH_ACCESS_LABELS: Record<
-  NonNullable<RedeemableStatus['churchAccessLevel']>,
-  () => string
-> = {
-  member: m.join_church_access_member,
-  admin: m.join_church_access_admin,
-};
 
 type DeclineFailure = Exclude<
   DeclineMinistryInvitation200,
@@ -207,14 +206,14 @@ function MinistryInvitationContent({
     return throttled ? (
       <ThrottledNotice onRetry={() => statusQuery.refetch()} />
     ) : (
-      <UnavailableNotice invitationId={invitationId} />
+      <UnavailableNotice returnTo={returnTarget({ invitationId })} />
     );
   }
 
   const status = statusQuery.data;
 
   if (!status || status.kind === 'unavailable') {
-    return <UnavailableNotice invitationId={invitationId} />;
+    return <UnavailableNotice returnTo={returnTarget({ invitationId })} />;
   }
 
   if (status.kind === 'identity-mismatch') {
@@ -278,129 +277,6 @@ function MinistryInvitationContent({
       onCancelDecline={() => setConfirmingDecline(false)}
       onConfirmDecline={() => declineMutation.mutate()}
     />
-  );
-}
-
-interface AlertProps {
-  children: ReactNode;
-}
-
-function Alert({ children }: AlertProps) {
-  return (
-    <div
-      role="alert"
-      className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/8 px-4 py-3"
-    >
-      <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
-      <div className="text-sm">{children}</div>
-    </div>
-  );
-}
-
-interface UnavailableNoticeProps {
-  invitationId: string;
-}
-
-function UnavailableNotice({ invitationId }: UnavailableNoticeProps) {
-  return (
-    <div className="space-y-4">
-      <Alert>
-        <p className="font-medium">
-          {m.ministry_invitation_unavailable_title()}
-        </p>
-        <p className="text-muted-foreground">
-          {m.ministry_invitation_unavailable_description()}
-        </p>
-      </Alert>
-      <Link
-        to="/login"
-        search={{ redirect: returnTarget({ invitationId }) }}
-        className="inline-flex min-h-11 items-center font-medium text-primary text-sm underline-offset-4 hover:underline"
-      >
-        {m.ministry_invitation_login()}
-      </Link>
-    </div>
-  );
-}
-
-interface ThrottledNoticeProps {
-  onRetry: () => void;
-}
-
-function ThrottledNotice({ onRetry }: ThrottledNoticeProps) {
-  return (
-    <div className="space-y-4">
-      <Alert>
-        <p className="font-medium">{m.ministry_invitation_throttled_title()}</p>
-        <p className="text-muted-foreground">
-          {m.ministry_invitation_throttled_description()}
-        </p>
-      </Alert>
-      <Button variant="outline" onClick={onRetry}>
-        {m.ministry_invitation_retry()}
-      </Button>
-    </div>
-  );
-}
-
-interface WrongLoginNoticeProps {
-  maskedEmail: string;
-  onLogOut: () => void;
-}
-
-function WrongLoginNotice({ maskedEmail, onLogOut }: WrongLoginNoticeProps) {
-  return (
-    <div className="space-y-4">
-      <div className="flex size-11 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-        <ShieldAlert className="size-5" />
-      </div>
-      <h1 className="text-balance font-semibold text-2xl tracking-tight">
-        {m.ministry_invitation_wrong_login_title()}
-      </h1>
-      <p className="text-pretty text-muted-foreground text-sm">
-        {m.ministry_invitation_wrong_login_description({ maskedEmail })}
-      </p>
-      <Button onClick={onLogOut}>{m.ministry_invitation_logout()}</Button>
-    </div>
-  );
-}
-
-interface AlreadyAcceptedNoticeProps {
-  isPending: boolean;
-  onContinue: () => void;
-}
-
-function AlreadyAcceptedNotice({
-  isPending,
-  onContinue,
-}: AlreadyAcceptedNoticeProps) {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-balance font-semibold text-2xl tracking-tight">
-        {m.ministry_invitation_already_accepted_title()}
-      </h1>
-      <p className="text-pretty text-muted-foreground text-sm">
-        {m.ministry_invitation_already_accepted_description()}
-      </p>
-      <Button className="w-full" disabled={isPending} onClick={onContinue}>
-        {m.ministry_invitation_continue_home()}
-        {isPending ? <Spinner /> : <ArrowRight />}
-      </Button>
-    </div>
-  );
-}
-
-interface InvitationFactProps {
-  label: string;
-  value: string;
-}
-
-function InvitationFact({ label, value }: InvitationFactProps) {
-  return (
-    <div className="flex justify-between gap-4 text-sm">
-      <dt className="shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-words text-right font-medium">{value}</dd>
-    </div>
   );
 }
 

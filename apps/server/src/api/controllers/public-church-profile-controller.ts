@@ -123,7 +123,11 @@ export class PublicChurchProfileController implements FastifyController {
           ip: request.ip,
           ...(request.params as PublicChurchProfileParams),
         });
-        if ('redirectTo' in page) return reply.redirect(page.redirectTo, 301);
+        if ('redirectTo' in page) {
+          // Old printed or shared links keep their tracking parameters.
+          const { search } = new URL(request.url, 'http://church.invalid');
+          return reply.redirect(`${page.redirectTo}${search}`, 301);
+        }
         return reply
           .code(page.status)
           .type('text/html; charset=utf-8')

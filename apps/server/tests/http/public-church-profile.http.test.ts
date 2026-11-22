@@ -583,10 +583,10 @@ describe('GET /public/churches/:slug', () => {
 });
 
 describe('GET /public/churches/:slug/page', () => {
-  function readPage(slug: string) {
+  function readPage(slug: string, query = '') {
     return app.inject({
       method: 'GET',
-      url: `/api/v1/public/churches/${slug}/page`,
+      url: `/api/v1/public/churches/${slug}/page${query}`,
       remoteAddress,
     });
   }
@@ -665,6 +665,22 @@ describe('GET /public/churches/:slug/page', () => {
 
     expect(response.statusCode).toBe(301);
     expect(response.headers.location).toBe('/ib-esperanca');
+  });
+
+  it('keeps the query string of an old printed or shared link on the 301', async () => {
+    await db
+      .insert(churchSlugHistory)
+      .values({ slug: 'esperanca-antiga', churchId: CHURCH_A });
+
+    const response = await readPage(
+      'esperanca-antiga',
+      '?utm_source=folheto&x=1',
+    );
+
+    expect(response.statusCode).toBe(301);
+    expect(response.headers.location).toBe(
+      '/ib-esperanca?utm_source=folheto&x=1',
+    );
   });
 
   it.each([

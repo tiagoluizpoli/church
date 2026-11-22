@@ -106,6 +106,10 @@ interface ReplaceDeletedAddressUsageInput {
   replacements: readonly AddressReplacement[];
 }
 
+interface FindLegalProfileInput extends ListAddressesInput {
+  onlyPublic?: boolean;
+}
+
 interface ListContactsInput extends ListAddressesInput {
   onlyPublic?: boolean;
 }
@@ -309,14 +313,16 @@ export class DrizzleChurchRepository implements ChurchRepository {
     churchId,
   }: GetPublicContactDetailsInput): Promise<PublicContactDetails> {
     const id = churchId;
-    const legalProfile = await this.findLegalProfile({ id });
-    return {
-      contacts: await this.listChurchContacts({ id, onlyPublic: true }),
-      socialLinks: await this.listSocialLinks({ id }),
-      groupNames: await this.listGroupNames({ id }),
-      // Private legal data never leaves the query's result.
-      legalProfile: legalProfile?.isPublic ? legalProfile : null,
-    };
+    const [contacts, socialLinks, groupNames, legalProfile] = await Promise.all(
+      [
+        this.listChurchContacts({ id, onlyPublic: true }),
+        this.listSocialLinks({ id }),
+        this.listGroupNames({ id }),
+        // Private legal data never leaves the database.
+        this.findLegalProfile({ id, onlyPublic: true }),
+      ],
+    );
+    return { contacts, socialLinks, groupNames, legalProfile };
   }
 
   private async listGroupNames({
@@ -334,7 +340,8 @@ export class DrizzleChurchRepository implements ChurchRepository {
   private async findLegalProfile({
     id,
     tx,
-  }: ListAddressesInput): Promise<ChurchLegalProfile | null> {
+    onlyPublic = false,
+  }: FindLegalProfileInput): Promise<ChurchLegalProfile | null> {
     const [row] = await getClient({ db: this.db, tx })
       .select({
         legalName: churchLegalProfile.legalName,
@@ -342,7 +349,12 @@ export class DrizzleChurchRepository implements ChurchRepository {
         isPublic: churchLegalProfile.isPublic,
       })
       .from(churchLegalProfile)
-      .where(eq(churchLegalProfile.churchId, id));
+      .where(
+        and(
+          eq(churchLegalProfile.churchId, id),
+          onlyPublic ? eq(churchLegalProfile.isPublic, true) : undefined,
+        ),
+      );
     return row ?? null;
   }
 
@@ -893,44 +905,55 @@ export class DrizzleChurchRepository implements ChurchRepository {
   async findPublicAddresses({
     churchId,
   }: FindPublicAddressesInput): Promise<PublicChurchAddresses> {
-    // Private addresses are read only to take the Main Address's area; the
-    // street, number and pin of one never reach the result.
-    const rows = await getClient({ db: this.db })
-      .select({
-        label: churchAddress.label,
-        street: churchAddress.street,
-        number: churchAddress.number,
-        complement: churchAddress.complement,
-        bairro: churchAddress.bairro,
-        city: churchAddress.city,
-        uf: churchAddress.uf,
-        cep: churchAddress.cep,
-        latitude: churchAddress.latitude,
-        longitude: churchAddress.longitude,
-        placeId: churchAddress.placeId,
-        isMain: churchAddress.isMain,
-        isPublic: churchAddress.isPublic,
-      })
-      .from(churchAddress)
-      .where(eq(churchAddress.churchId, churchId))
-      .orderBy(
-        desc(churchAddress.isMain),
-        asc(churchAddress.position),
-        asc(churchAddress.id),
-      );
-    const main = rows.find((row) => row.isMain);
+    const client = getClient({ db: this.db });
+    const [addresses, [main]] = await Promise.all([
+      client
+        .select({
+          label: churchAddress.label,
+          street: churchAddress.street,
+          number: churchAddress.number,
+          complement: churchAddress.complement,
+          bairro: churchAddress.bairro,
+          city: churchAddress.city,
+          uf: churchAddress.uf,
+          cep: churchAddress.cep,
+          latitude: churchAddress.latitude,
+          longitude: churchAddress.longitude,
+          placeId: churchAddress.placeId,
+          isMain: churchAddress.isMain,
+        })
+        .from(churchAddress)
+        .where(
+          and(
+            eq(churchAddress.churchId, churchId),
+            eq(churchAddress.isPublic, true),
+          ),
+        )
+        .orderBy(
+          desc(churchAddress.isMain),
+          asc(churchAddress.position),
+          asc(churchAddress.id),
+        ),
+      // Only the area of the Main Address, public or not: a private one's
+      // street, number and pin never leave the database.
+      client
+        .select({
+          bairro: churchAddress.bairro,
+          city: churchAddress.city,
+          uf: churchAddress.uf,
+        })
+        .from(churchAddress)
+        .where(
+          and(
+            eq(churchAddress.churchId, churchId),
+            eq(churchAddress.isMain, true),
+          ),
+        ),
+    ]);
     return {
-      addresses: rows
-        .filter((row) => row.isPublic)
-        .map(
-          ({ isPublic: _isPublic, ...address }) => address,
-        ) as PublicChurchAddress[],
+      addresses: addresses as PublicChurchAddress[],
       mainAddressArea: main
-        ? {
-            bairro: main.bairro,
-            city: main.city,
-            uf: main.uf as MainAddressArea['uf'],
-          }
+        ? { ...main, uf: main.uf as MainAddressArea['uf'] }
         : null,
     };
   }

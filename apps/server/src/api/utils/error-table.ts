@@ -32,7 +32,7 @@ export type MappedDomainCode =
   | 'INVALID_TIME_RANGE'
   | 'INVALID_REQUIRED_COUNT'
   | 'INVALID_SHIFT_SPLIT'
-  | 'INVALID_WEEKDAY'
+  | 'INVALID_RECURRENCE'
   | 'MINISTRY_NOT_FOUND'
   | 'MINISTRY_NAME_IN_USE'
   | 'MINISTRY_IN_USE'
@@ -89,6 +89,11 @@ export type MappedDomainCode =
   | 'SHIFT_HAS_RESPONSES'
   | 'ASK_BLOCKED_FLAGGED_SHIFTS'
   | 'REMIND_ON_COOLDOWN'
+  | 'LOGO_TOO_LARGE'
+  | 'LOGO_TOO_SMALL'
+  | 'LOGO_BAD_ASPECT_RATIO'
+  | 'LOGO_UNSUPPORTED_TYPE'
+  | 'LOGO_KEY_INVALID'
   | 'VALIDATION_ERROR';
 
 export type ErrorCode = RefusalCode | MappedDomainCode;
@@ -114,7 +119,7 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     message: m.error_invalid_required_count,
   },
   INVALID_SHIFT_SPLIT: { status: 400, message: m.error_invalid_shift_split },
-  INVALID_WEEKDAY: { status: 400, message: m.error_invalid_weekday },
+  INVALID_RECURRENCE: { status: 400, message: m.error_invalid_recurrence },
   MINISTRY_NOT_FOUND: { status: 404, message: m.error_ministry_not_found },
   MINISTRY_IN_USE: { status: 409, message: m.error_ministry_in_use },
   MINISTRY_NAME_IN_USE: {
@@ -278,6 +283,17 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     status: 409,
     message: m.error_remind_on_cooldown,
   },
+  LOGO_TOO_LARGE: { status: 413, message: m.error_logo_too_large },
+  LOGO_TOO_SMALL: { status: 422, message: m.error_logo_too_small },
+  LOGO_BAD_ASPECT_RATIO: {
+    status: 422,
+    message: m.error_logo_bad_aspect_ratio,
+  },
+  LOGO_UNSUPPORTED_TYPE: {
+    status: 415,
+    message: m.error_logo_unsupported_type,
+  },
+  LOGO_KEY_INVALID: { status: 422, message: m.error_logo_key_invalid },
   VALIDATION_ERROR: { status: 422, message: m.error_validation_error },
 };
 

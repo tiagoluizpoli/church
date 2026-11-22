@@ -81,6 +81,7 @@ describe('Organization Schema', () => {
     expect(Object.keys(getTableColumns(church)).sort()).toEqual([
       'accentColor',
       'id',
+      'logoKey',
       'settings',
       'timezone',
       'website',

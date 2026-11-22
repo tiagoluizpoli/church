@@ -8,8 +8,13 @@ import type {
   GetChurchSettings200,
   GetChurchSlugAvailability200,
   GetChurchSlugAvailabilityParams,
+  RemoveChurchLogo200,
+  RestoreChurchLogo200,
+  RestoreChurchLogoBody,
   UpdateChurchSettings200,
-  UpdateChurchSettingsBody
+  UpdateChurchSettingsBody,
+  UploadChurchLogo200,
+  UploadChurchLogoBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -57,7 +62,52 @@ const getChurchSlugAvailability = (
     },
       );
     }
-  return {getChurchSettings,updateChurchSettings,getChurchSlugAvailability}};
+  /**
+ * Applies at once, outside the settings save. PNG, JPEG or WebP by content, at most 5 MB, longest side at least 128 px, ratio within 1:4–4:1; stored as one PNG of at most 512 px under a content-hashed key. Earlier logos stay stored. ChurchAdmin only.
+ * @summary Upload the Active Church logo
+ */
+const uploadChurchLogo = (
+    uploadChurchLogoBody: UploadChurchLogoBody,
+ ) => {const formData = new FormData();
+formData.append(`file`, uploadChurchLogoBody.file);
+
+      return apiClient<UploadChurchLogo200>(
+      {url: `/api/v1/church-settings/logo`, method: 'PUT',
+      headers: {'Content-Type': 'multipart/form-data', },
+       data: formData
+    },
+      );
+    }
+  /**
+ * Drops the logo reference at once; the stored image stays, so older emails keep rendering. ChurchAdmin only.
+ * @summary Remove the Active Church logo
+ */
+const removeChurchLogo = (
+
+ ) => {
+      return apiClient<RemoveChurchLogo200>(
+      {url: `/api/v1/church-settings/logo`, method: 'DELETE'
+    },
+      );
+    }
+  /**
+ * Undo for a removal: points the Church back at one of its own earlier logo keys. ChurchAdmin only.
+ * @summary Re-apply an earlier logo of the Active Church
+ */
+const restoreChurchLogo = (
+    restoreChurchLogoBody: RestoreChurchLogoBody,
+ ) => {
+      return apiClient<RestoreChurchLogo200>(
+      {url: `/api/v1/church-settings/logo/restore`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: restoreChurchLogoBody
+    },
+      );
+    }
+  return {getChurchSettings,updateChurchSettings,getChurchSlugAvailability,uploadChurchLogo,removeChurchLogo,restoreChurchLogo}};
 export type GetChurchSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['getChurchSettings']>>>
 export type UpdateChurchSettingsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['updateChurchSettings']>>>
 export type GetChurchSlugAvailabilityResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['getChurchSlugAvailability']>>>
+export type UploadChurchLogoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['uploadChurchLogo']>>>
+export type RemoveChurchLogoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['removeChurchLogo']>>>
+export type RestoreChurchLogoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getChurchSettings>['restoreChurchLogo']>>>

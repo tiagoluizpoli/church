@@ -16,6 +16,10 @@ export const churchSettingsResponseSchema = z.object({
   slug: z.string(),
   website: z.string().nullable(),
   accentColor: z.string().nullable(),
+  /** Object-storage key of the logo (re-applied by *Desfazer*). */
+  logoKey: z.string().nullable(),
+  /** Anonymous URL of the logo, built from its key. */
+  logoUrl: z.string().nullable(),
   /** The web origin the public `…/slug` address is shown under. */
   publicOrigin: z.string(),
 });
@@ -48,6 +52,13 @@ export const slugAvailabilityQuerySchema = z.object({
 export const slugAvailabilityResponseSchema = z.object({
   status: z.enum(['free', 'taken', 'reserved', 'own_history']),
 });
+/** One logo file, PNG, JPEG or WebP by its bytes, at most 5 MB. */
+export const uploadChurchLogoBodySchema = z.object({ file: z.file() });
+
+export const restoreChurchLogoBodySchema = z.object({
+  key: z.string().describe('A logo key this Church used before.'),
+});
+export type RestoreChurchLogoBody = z.infer<typeof restoreChurchLogoBodySchema>;
 
 export const churchSettingsFieldErrorSchema = z.object({
   /** The refused request field; a list row is addressed by index, e.g. `contacts.1.value`. */

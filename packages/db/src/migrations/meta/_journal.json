@@ -418,8 +418,29 @@
     {
       "idx": 59,
       "version": "7",
-      "when": 1795338517434,
-      "tag": "0059_church_slug_history",
+      "when": 1795340192373,
+      "tag": "0059_event_template_recurrence",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1795340193895,
+      "tag": "0060_event_template_drop_weekday",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1795342393260,
+      "tag": "0061_church_logo_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795343173692,
+      "tag": "0062_church_slug_history",
       "breakpoints": true
     }
   ]

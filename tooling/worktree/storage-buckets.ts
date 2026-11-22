@@ -107,9 +107,16 @@ export async function listBuckets(
 }
 
 /** The root Compose RustFS's admin client (path-style, local credentials). */
-export function localStorageClient(): S3Client {
+interface LocalStorageClientInput {
+  /** Defaults to the local RustFS; CI container jobs reach their service by name. */
+  endpoint?: string;
+}
+
+export function localStorageClient({
+  endpoint = LOCAL_STORAGE_ENDPOINT,
+}: LocalStorageClientInput = {}): S3Client {
   return new S3Client({
-    endpoint: LOCAL_STORAGE_ENDPOINT,
+    endpoint,
     region: 'us-east-1',
     forcePathStyle: true,
     credentials: {
@@ -120,10 +127,14 @@ export function localStorageClient(): S3Client {
 }
 
 // CI has no db:bootstrap: `bun tooling/worktree/storage-buckets.ts <bucket>`
-// creates the job's bucket on its RustFS service container.
+// creates the job's bucket on its RustFS service container (at S3_ENDPOINT
+// when set, as in the container-based E2E jobs).
 if (import.meta.main) {
   const [bucket] = process.argv.slice(2);
   if (!bucket) throw new Error('Usage: storage-buckets.ts <bucket>');
-  await ensurePublicReadBucket({ client: localStorageClient(), bucket });
+  await ensurePublicReadBucket({
+    client: localStorageClient({ endpoint: process.env.S3_ENDPOINT }),
+    bucket,
+  });
   console.log(`storage bucket ${bucket}: ready, public/* readable`);
 }

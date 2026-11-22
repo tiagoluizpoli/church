@@ -7,6 +7,8 @@ export interface ChurchSettings {
   slug: string;
   website: string | null;
   accentColor: string | null;
+  /** Object-storage key of the logo; `null` when the Church has none. */
+  logoKey: string | null;
 }
 
 export interface ChurchSettingsChanges {

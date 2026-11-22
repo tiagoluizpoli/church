@@ -1,5 +1,5 @@
 {
-  "id": "47db9081-c1b5-43fe-a15b-cb4da086ab2d",
+  "id": "7b40adb6-6d20-4177-9f7d-c8369bf07aa2",
   "prevId": "91323e8e-c24f-48fa-b868-6a2193207eb3",
   "version": "7",
   "dialect": "postgresql",
@@ -1221,68 +1221,6 @@
           "tableTo": "organization",
           "columnsFrom": [
             "id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.church_slug_history": {
-      "name": "church_slug_history",
-      "schema": "",
-      "columns": {
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "church_id": {
-          "name": "church_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "church_slug_history_church_id_idx": {
-          "name": "church_slug_history_church_id_idx",
-          "columns": [
-            {
-              "expression": "church_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "church_slug_history_church_id_organization_id_fk": {
-          "name": "church_slug_history_church_id_organization_id_fk",
-          "tableFrom": "church_slug_history",
-          "tableTo": "organization",
-          "columnsFrom": [
-            "church_id"
           ],
           "columnsTo": [
             "id"
@@ -4269,6 +4207,12 @@
         "weekday": {
           "name": "weekday",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recurrence": {
+          "name": "recurrence",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": true
         },

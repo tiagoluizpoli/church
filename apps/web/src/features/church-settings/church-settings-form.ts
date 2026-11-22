@@ -11,7 +11,10 @@ export interface ChurchSettingsForm {
 }
 
 interface ToChurchSettingsFormInput {
-  settings: GetChurchSettings200;
+  settings: Pick<
+    GetChurchSettings200,
+    'name' | 'slug' | 'website' | 'accentColor'
+  >;
 }
 
 export function toChurchSettingsForm({

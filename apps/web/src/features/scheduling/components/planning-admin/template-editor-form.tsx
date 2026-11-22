@@ -3,7 +3,7 @@ import { getLocale } from '@church/i18n/runtime';
 import { formatWeekdayOfIndex } from '@church/time';
 import type { ReactNode } from 'react';
 import type { TemplateFormState } from './planning-admin.types';
-import { templateBlockErrors } from './planning-admin.utils';
+import { pickerWeekday, templateBlockErrors } from './planning-admin.utils';
 import {
   TemplateTimeBlockRow,
   type TemplateTimeBlockRowProps,
@@ -73,7 +73,10 @@ export function TemplateEditorForm({
   actions,
 }: TemplateEditorFormProps) {
   const blockErrors = templateBlockErrors({ blocks: templateForm.blocks });
-  const selectedWeekdayIndex = Number.parseInt(templateForm.weekday, 10);
+  const selectedWeekday = pickerWeekday({
+    recurrence: templateForm.recurrence,
+  });
+  const selectedWeekdayIndex = Number.parseInt(selectedWeekday, 10);
   const selectedWeekdayLabel = Number.isNaN(selectedWeekdayIndex)
     ? null
     : formatWeekdayOfIndex({
@@ -107,7 +110,7 @@ export function TemplateEditorForm({
       <div className="space-y-1">
         <Label>{m.event_templates_weekday_label()}</Label>
         <Select
-          value={templateForm.weekday}
+          value={selectedWeekday}
           onValueChange={(weekday) => {
             if (weekday !== null) {
               onWeekdayChange({ weekday });

@@ -63,6 +63,8 @@ class MockChurchRepository implements ChurchRepository {
   async slugAvailability(): Promise<'free'> {
     return 'free';
   }
+
+  async saveLogoKey(): Promise<void> {}
 }
 
 runChurchRepositoryContractTests(

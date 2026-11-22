@@ -8,8 +8,12 @@ import {
   user,
 } from '@church/db';
 import { and, eq } from 'drizzle-orm';
+import sharp from 'sharp';
 import { z } from 'zod';
+import { storeChurchLogo } from '../../src/application/church-logo-pipeline';
 import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../src/domain/authority/types';
+import { ChurchId } from '../../src/domain/branded-ids';
+import type { ObjectStorage } from '../../src/domain/contracts/infrastructure/object-storage';
 import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
 import { provisionChurch } from '../../src/scripts/provision-church';
 import { SEED_PLATFORM_OPERATOR_ID } from '../blueprints/credentials';
@@ -148,6 +152,30 @@ export async function buildChurchSettings({
     .update(church)
     .set({ website, accentColor })
     .where(eq(church.id, churchId));
+}
+
+export interface BuildChurchLogoInput {
+  db: SeedWriter;
+  objectStorage: ObjectStorage;
+  churchId: string;
+  svg: string;
+}
+
+/** Uploads the logo through the app's own pipeline and points the Church at it. */
+export async function buildChurchLogo({
+  db,
+  objectStorage,
+  churchId,
+  svg,
+}: BuildChurchLogoInput): Promise<string> {
+  const bytes = await sharp(Buffer.from(svg)).png().toBuffer();
+  const logoKey = await storeChurchLogo({
+    objectStorage,
+    churchId: ChurchId.from(churchId),
+    bytes,
+  });
+  await db.update(church).set({ logoKey }).where(eq(church.id, churchId));
+  return logoKey;
 }
 
 export interface BuildChurchInput {

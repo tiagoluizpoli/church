@@ -151,7 +151,7 @@ describe('TemplateCreatePage', () => {
     expect(createEventTemplate).toHaveBeenCalledTimes(1);
     expect(createEventTemplate).toHaveBeenCalledWith({
       name: 'Vigil',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
           label: 'Watch',

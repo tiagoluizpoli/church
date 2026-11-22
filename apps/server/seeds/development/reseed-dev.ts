@@ -76,11 +76,23 @@ async function reseedDevelopmentDatabase(): Promise<void> {
   // Loaded only now: `@church/db`'s entry validates the server environment
   // and opens its own pool on import, which must never precede the refusals.
   const { createDevelopmentReseedPhases } = await import('./phases');
+  const { env } = await import('@church/env/server');
+  const { S3ObjectStorage } = await import(
+    '../../src/infrastructure/storage/s3-object-storage'
+  );
+  const objectStorage = new S3ObjectStorage({
+    endpoint: env.S3_ENDPOINT,
+    region: env.S3_REGION,
+    bucket: env.S3_BUCKET,
+    accessKeyId: env.S3_ACCESS_KEY_ID,
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+    publicUrl: env.STORAGE_PUBLIC_URL,
+  });
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
 
   try {
     const seeded = await runReseedPhases({
-      phases: createDevelopmentReseedPhases({ pool, anchor }),
+      phases: createDevelopmentReseedPhases({ pool, anchor, objectStorage }),
       report,
     });
     reportSeededGraph({ seeded });

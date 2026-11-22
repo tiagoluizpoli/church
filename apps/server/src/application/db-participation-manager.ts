@@ -3292,7 +3292,11 @@ function toUsualSetupBlockView({
   return {
     templateId: template.id,
     templateName: template.name,
-    weekday: template.weekday,
+    weekday:
+      template.recurrence.kind === 'weekly' &&
+      template.recurrence.weekdays.length === 1
+        ? (template.recurrence.weekdays[0] ?? null)
+        : null,
     sourceTemplateTimeBlockId: block.id,
     label: block.label,
     startTime: block.startTime,

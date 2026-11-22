@@ -536,6 +536,29 @@ export type SendCycle409 = {
   invalidEvents?: SendCycle409InvalidEventsItem[];
 };
 
+export type CreateEventTemplateBodyRecurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
+};
+
 export type CreateEventTemplateBodyBlocksItem = {
   /**
      * @minLength 1
@@ -557,13 +580,32 @@ export type CreateEventTemplateBody = {
      * @maxLength 255
      */
   name: string;
-  /**
-     * @minimum 0
-     * @maximum 6
-     */
-  weekday: number;
+  recurrence: CreateEventTemplateBodyRecurrence;
   /** @minItems 1 */
   blocks: CreateEventTemplateBodyBlocksItem[];
+};
+
+export type CreateEventTemplate201Recurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
 };
 
 export type CreateEventTemplate201BlocksItem = {
@@ -585,7 +627,7 @@ export type CreateEventTemplate201 = {
   id: string;
   churchId: string;
   name: string;
-  weekday: number;
+  recurrence: CreateEventTemplate201Recurrence;
   publicBlockCount: number;
   blocks: CreateEventTemplate201BlocksItem[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -629,6 +671,29 @@ export type CreateEventTemplate422 = {
   issues?: unknown[];
 };
 
+export type ListEventTemplates200TemplatesItemRecurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
+};
+
 export type ListEventTemplates200TemplatesItemBlocksItem = {
   id: string;
   churchId: string;
@@ -648,7 +713,7 @@ export type ListEventTemplates200TemplatesItem = {
   id: string;
   churchId: string;
   name: string;
-  weekday: number;
+  recurrence: ListEventTemplates200TemplatesItemRecurrence;
   publicBlockCount: number;
   blocks: ListEventTemplates200TemplatesItemBlocksItem[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -659,6 +724,29 @@ export type ListEventTemplates200TemplatesItem = {
 
 export type ListEventTemplates200 = {
   templates: ListEventTemplates200TemplatesItem[];
+};
+
+export type GetEventTemplate200Recurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
 };
 
 export type GetEventTemplate200BlocksItem = {
@@ -680,13 +768,36 @@ export type GetEventTemplate200 = {
   id: string;
   churchId: string;
   name: string;
-  weekday: number;
+  recurrence: GetEventTemplate200Recurrence;
   publicBlockCount: number;
   blocks: GetEventTemplate200BlocksItem[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type UpdateEventTemplateBodyRecurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
 };
 
 export type UpdateEventTemplateBodyBlocksItem = {
@@ -712,13 +823,32 @@ export type UpdateEventTemplateBody = {
      * @maxLength 255
      */
   name: string;
-  /**
-     * @minimum 0
-     * @maximum 6
-     */
-  weekday: number;
+  recurrence: UpdateEventTemplateBodyRecurrence;
   /** @minItems 1 */
   blocks: UpdateEventTemplateBodyBlocksItem[];
+};
+
+export type UpdateEventTemplate200Recurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
 };
 
 export type UpdateEventTemplate200BlocksItem = {
@@ -740,7 +870,7 @@ export type UpdateEventTemplate200 = {
   id: string;
   churchId: string;
   name: string;
-  weekday: number;
+  recurrence: UpdateEventTemplate200Recurrence;
   publicBlockCount: number;
   blocks: UpdateEventTemplate200BlocksItem[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
@@ -2146,6 +2276,10 @@ export type GetChurchSettings200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
   publicOrigin: string;
 };
 
@@ -2189,6 +2323,10 @@ export type UpdateChurchSettings200 = {
   website: string | null;
   /** @nullable */
   accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
   publicOrigin: string;
 };
 
@@ -2274,6 +2412,122 @@ export type GetChurchSlugAvailability403 = {
 };
 
 export type GetChurchSlugAvailability409 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogoBody = {
+  file: Blob;
+};
+
+export type UploadChurchLogo200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  publicOrigin: string;
+};
+
+export type UploadChurchLogo401 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo403 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo409 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo413 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo415 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo422 = {
+  error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  publicOrigin: string;
+};
+
+export type RemoveChurchLogo401 = {
+  error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo403 = {
+  error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo409 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogoBody = {
+  /** A logo key this Church used before. */
+  key: string;
+};
+
+export type RestoreChurchLogo200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  publicOrigin: string;
+};
+
+export type RestoreChurchLogo401 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogo403 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogo409 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogo422 = {
   error: string;
   message: string;
 };
@@ -3356,8 +3610,9 @@ export type ListUsualSetup200BlocksItem = {
   /**
      * @minimum -9007199254740991
      * @maximum 9007199254740991
+     * @nullable
      */
-  weekday: number;
+  weekday: number | null;
   sourceTemplateTimeBlockId: string;
   label: string;
   startTime: string;
@@ -3474,8 +3729,9 @@ export type SaveUsualSetupBlock200 = {
   /**
      * @minimum -9007199254740991
      * @maximum 9007199254740991
+     * @nullable
      */
-  weekday: number;
+  weekday: number | null;
   sourceTemplateTimeBlockId: string;
   label: string;
   startTime: string;

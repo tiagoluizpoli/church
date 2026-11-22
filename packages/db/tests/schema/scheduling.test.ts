@@ -130,7 +130,11 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
 
   const [template] = await testDb
     .insert(eventTemplate)
-    .values({ churchId: seed.churchAId, name: 'Sunday', weekday: 0 })
+    .values({
+      churchId: seed.churchAId,
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+    })
     .returning();
   if (!template) throw new Error('Template seed failed');
   const [block] = await testDb

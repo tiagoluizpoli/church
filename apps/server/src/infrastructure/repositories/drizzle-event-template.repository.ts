@@ -105,7 +105,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       .values({
         churchId: input.churchId,
         name: input.name,
-        weekday: input.weekday,
+        recurrence: input.recurrence,
       })
       .returning();
 
@@ -183,7 +183,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       .update(eventTemplate)
       .set({
         name: input.name,
-        weekday: input.weekday,
+        recurrence: input.recurrence,
         updatedAt: nowAsDate(),
       })
       .where(eq(eventTemplate.id, input.templateId));

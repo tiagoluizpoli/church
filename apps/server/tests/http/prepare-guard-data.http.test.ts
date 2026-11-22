@@ -277,7 +277,7 @@ describe('GET /prepare/cycles/:cycleId/participation guard data', () => {
     const { template } = await createSchedulingPhase3Template({
       churchId: base.seed.churchAId,
       name: 'Sunday Service',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [],
     });
     await seedEvent({

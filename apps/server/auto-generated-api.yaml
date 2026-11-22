@@ -1236,7 +1236,7 @@ paths:
       tags:
         - planning
       description: Create a church-owned EventTemplate with its ordered
-        TemplateTimeBlocks for a given weekday.
+        TemplateTimeBlocks on a weekly or monthly Recurrence.
       requestBody:
         required: true
         content:
@@ -1248,10 +1248,131 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 255
-                weekday:
-                  type: integer
-                  minimum: 0
-                  maximum: 6
+                recurrence:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - weekly
+                        weekdays:
+                          minItems: 1
+                          type: array
+                          items:
+                            anyOf:
+                              - type: number
+                                enum:
+                                  - 0
+                              - type: number
+                                enum:
+                                  - 1
+                              - type: number
+                                enum:
+                                  - 2
+                              - type: number
+                                enum:
+                                  - 3
+                              - type: number
+                                enum:
+                                  - 4
+                              - type: number
+                                enum:
+                                  - 5
+                              - type: number
+                                enum:
+                                  - 6
+                      required:
+                        - kind
+                        - weekdays
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - monthly
+                        entries:
+                          minItems: 1
+                          type: array
+                          items:
+                            oneOf:
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - nthWeekday
+                                  ordinal:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: string
+                                        enum:
+                                          - last
+                                  weekday:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 0
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: number
+                                        enum:
+                                          - 6
+                                required:
+                                  - kind
+                                  - ordinal
+                                  - weekday
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - dayOfMonth
+                                  day:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 31
+                                required:
+                                  - kind
+                                  - day
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - lastDayOfMonth
+                                required:
+                                  - kind
+                      required:
+                        - kind
+                        - entries
                 blocks:
                   minItems: 1
                   type: array
@@ -1280,7 +1401,7 @@ paths:
                     additionalProperties: false
               required:
                 - name
-                - weekday
+                - recurrence
                 - blocks
       responses:
         "201":
@@ -1296,8 +1417,136 @@ paths:
                     type: string
                   name:
                     type: string
-                  weekday:
-                    type: number
+                  recurrence:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - weekly
+                          weekdays:
+                            minItems: 1
+                            type: array
+                            items:
+                              anyOf:
+                                - type: number
+                                  enum:
+                                    - 0
+                                - type: number
+                                  enum:
+                                    - 1
+                                - type: number
+                                  enum:
+                                    - 2
+                                - type: number
+                                  enum:
+                                    - 3
+                                - type: number
+                                  enum:
+                                    - 4
+                                - type: number
+                                  enum:
+                                    - 5
+                                - type: number
+                                  enum:
+                                    - 6
+                        required:
+                          - kind
+                          - weekdays
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - monthly
+                          entries:
+                            minItems: 1
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - nthWeekday
+                                    ordinal:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: string
+                                          enum:
+                                            - last
+                                    weekday:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 0
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: number
+                                          enum:
+                                            - 6
+                                  required:
+                                    - kind
+                                    - ordinal
+                                    - weekday
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - dayOfMonth
+                                    day:
+                                      type: integer
+                                      minimum: 1
+                                      maximum: 31
+                                  required:
+                                    - kind
+                                    - day
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - lastDayOfMonth
+                                  required:
+                                    - kind
+                                  additionalProperties: false
+                        required:
+                          - kind
+                          - entries
+                        additionalProperties: false
                   publicBlockCount:
                     type: number
                   blocks:
@@ -1349,7 +1598,7 @@ paths:
                   - id
                   - churchId
                   - name
-                  - weekday
+                  - recurrence
                   - publicBlockCount
                   - blocks
                   - createdAt
@@ -1419,8 +1668,136 @@ paths:
                           type: string
                         name:
                           type: string
-                        weekday:
-                          type: number
+                        recurrence:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - weekly
+                                weekdays:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 0
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: number
+                                        enum:
+                                          - 6
+                              required:
+                                - kind
+                                - weekdays
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - monthly
+                                entries:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    oneOf:
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - nthWeekday
+                                          ordinal:
+                                            anyOf:
+                                              - type: number
+                                                enum:
+                                                  - 1
+                                              - type: number
+                                                enum:
+                                                  - 2
+                                              - type: number
+                                                enum:
+                                                  - 3
+                                              - type: number
+                                                enum:
+                                                  - 4
+                                              - type: number
+                                                enum:
+                                                  - 5
+                                              - type: string
+                                                enum:
+                                                  - last
+                                          weekday:
+                                            anyOf:
+                                              - type: number
+                                                enum:
+                                                  - 0
+                                              - type: number
+                                                enum:
+                                                  - 1
+                                              - type: number
+                                                enum:
+                                                  - 2
+                                              - type: number
+                                                enum:
+                                                  - 3
+                                              - type: number
+                                                enum:
+                                                  - 4
+                                              - type: number
+                                                enum:
+                                                  - 5
+                                              - type: number
+                                                enum:
+                                                  - 6
+                                        required:
+                                          - kind
+                                          - ordinal
+                                          - weekday
+                                        additionalProperties: false
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - dayOfMonth
+                                          day:
+                                            type: integer
+                                            minimum: 1
+                                            maximum: 31
+                                        required:
+                                          - kind
+                                          - day
+                                        additionalProperties: false
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - lastDayOfMonth
+                                        required:
+                                          - kind
+                                        additionalProperties: false
+                              required:
+                                - kind
+                                - entries
+                              additionalProperties: false
                         publicBlockCount:
                           type: number
                         blocks:
@@ -1472,7 +1849,7 @@ paths:
                         - id
                         - churchId
                         - name
-                        - weekday
+                        - recurrence
                         - publicBlockCount
                         - blocks
                         - createdAt
@@ -1509,8 +1886,136 @@ paths:
                     type: string
                   name:
                     type: string
-                  weekday:
-                    type: number
+                  recurrence:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - weekly
+                          weekdays:
+                            minItems: 1
+                            type: array
+                            items:
+                              anyOf:
+                                - type: number
+                                  enum:
+                                    - 0
+                                - type: number
+                                  enum:
+                                    - 1
+                                - type: number
+                                  enum:
+                                    - 2
+                                - type: number
+                                  enum:
+                                    - 3
+                                - type: number
+                                  enum:
+                                    - 4
+                                - type: number
+                                  enum:
+                                    - 5
+                                - type: number
+                                  enum:
+                                    - 6
+                        required:
+                          - kind
+                          - weekdays
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - monthly
+                          entries:
+                            minItems: 1
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - nthWeekday
+                                    ordinal:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: string
+                                          enum:
+                                            - last
+                                    weekday:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 0
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: number
+                                          enum:
+                                            - 6
+                                  required:
+                                    - kind
+                                    - ordinal
+                                    - weekday
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - dayOfMonth
+                                    day:
+                                      type: integer
+                                      minimum: 1
+                                      maximum: 31
+                                  required:
+                                    - kind
+                                    - day
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - lastDayOfMonth
+                                  required:
+                                    - kind
+                                  additionalProperties: false
+                        required:
+                          - kind
+                          - entries
+                        additionalProperties: false
                   publicBlockCount:
                     type: number
                   blocks:
@@ -1562,7 +2067,7 @@ paths:
                   - id
                   - churchId
                   - name
-                  - weekday
+                  - recurrence
                   - publicBlockCount
                   - blocks
                   - createdAt
@@ -1573,7 +2078,7 @@ paths:
       summary: Update an EventTemplate
       tags:
         - planning
-      description: "Apply an EventTemplate's complete desired name, weekday and
+      description: "Apply an EventTemplate's complete desired name, Recurrence and
         TemplateTimeBlocks: blocks with a persisted id are updated in place,
         blocks without one are created and omitted blocks are deleted with their
         UsualSetup entries."
@@ -1588,10 +2093,131 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 255
-                weekday:
-                  type: integer
-                  minimum: 0
-                  maximum: 6
+                recurrence:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - weekly
+                        weekdays:
+                          minItems: 1
+                          type: array
+                          items:
+                            anyOf:
+                              - type: number
+                                enum:
+                                  - 0
+                              - type: number
+                                enum:
+                                  - 1
+                              - type: number
+                                enum:
+                                  - 2
+                              - type: number
+                                enum:
+                                  - 3
+                              - type: number
+                                enum:
+                                  - 4
+                              - type: number
+                                enum:
+                                  - 5
+                              - type: number
+                                enum:
+                                  - 6
+                      required:
+                        - kind
+                        - weekdays
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - monthly
+                        entries:
+                          minItems: 1
+                          type: array
+                          items:
+                            oneOf:
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - nthWeekday
+                                  ordinal:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: string
+                                        enum:
+                                          - last
+                                  weekday:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 0
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: number
+                                        enum:
+                                          - 6
+                                required:
+                                  - kind
+                                  - ordinal
+                                  - weekday
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - dayOfMonth
+                                  day:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 31
+                                required:
+                                  - kind
+                                  - day
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - lastDayOfMonth
+                                required:
+                                  - kind
+                      required:
+                        - kind
+                        - entries
                 blocks:
                   minItems: 1
                   type: array
@@ -1624,7 +2250,7 @@ paths:
                     additionalProperties: false
               required:
                 - name
-                - weekday
+                - recurrence
                 - blocks
       parameters:
         - schema:
@@ -1646,8 +2272,136 @@ paths:
                     type: string
                   name:
                     type: string
-                  weekday:
-                    type: number
+                  recurrence:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - weekly
+                          weekdays:
+                            minItems: 1
+                            type: array
+                            items:
+                              anyOf:
+                                - type: number
+                                  enum:
+                                    - 0
+                                - type: number
+                                  enum:
+                                    - 1
+                                - type: number
+                                  enum:
+                                    - 2
+                                - type: number
+                                  enum:
+                                    - 3
+                                - type: number
+                                  enum:
+                                    - 4
+                                - type: number
+                                  enum:
+                                    - 5
+                                - type: number
+                                  enum:
+                                    - 6
+                        required:
+                          - kind
+                          - weekdays
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - monthly
+                          entries:
+                            minItems: 1
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - nthWeekday
+                                    ordinal:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: string
+                                          enum:
+                                            - last
+                                    weekday:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 0
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: number
+                                          enum:
+                                            - 6
+                                  required:
+                                    - kind
+                                    - ordinal
+                                    - weekday
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - dayOfMonth
+                                    day:
+                                      type: integer
+                                      minimum: 1
+                                      maximum: 31
+                                  required:
+                                    - kind
+                                    - day
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - lastDayOfMonth
+                                  required:
+                                    - kind
+                                  additionalProperties: false
+                        required:
+                          - kind
+                          - entries
+                        additionalProperties: false
                   publicBlockCount:
                     type: number
                   blocks:
@@ -1699,7 +2453,7 @@ paths:
                   - id
                   - churchId
                   - name
-                  - weekday
+                  - recurrence
                   - publicBlockCount
                   - blocks
                   - createdAt
@@ -4622,6 +5376,12 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
                   publicOrigin:
                     type: string
                 required:
@@ -4629,6 +5389,8 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - logoKey
+                  - logoUrl
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -4733,6 +5495,12 @@ paths:
                   accentColor:
                     nullable: true
                     type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
                   publicOrigin:
                     type: string
                 required:
@@ -4740,6 +5508,8 @@ paths:
                   - slug
                   - website
                   - accentColor
+                  - logoKey
+                  - logoUrl
                   - publicOrigin
                 additionalProperties: false
         "401":
@@ -4897,6 +5667,355 @@ paths:
                   - message
                 additionalProperties: false
         "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/church-settings/logo:
+    put:
+      operationId: uploadChurchLogo
+      summary: Upload the Active Church logo
+      tags:
+        - church-settings
+      description: Applies at once, outside the settings save. PNG, JPEG or WebP by
+        content, at most 5 MB, longest side at least 128 px, ratio within
+        1:4–4:1; stored as one PNG of at most 512 px under a content-hashed key.
+        Earlier logos stay stored. ChurchAdmin only.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+                - file
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - logoKey
+                  - logoUrl
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "413":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "415":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    delete:
+      operationId: removeChurchLogo
+      summary: Remove the Active Church logo
+      tags:
+        - church-settings
+      description: Drops the logo reference at once; the stored image stays, so older
+        emails keep rendering. ChurchAdmin only.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - logoKey
+                  - logoUrl
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/church-settings/logo/restore:
+    put:
+      operationId: restoreChurchLogo
+      summary: Re-apply an earlier logo of the Active Church
+      tags:
+        - church-settings
+      description: "Undo for a removal: points the Church back at one of its own
+        earlier logo keys. ChurchAdmin only."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                  description: A logo key this Church used before.
+              required:
+                - key
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - logoKey
+                  - logoUrl
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
           description: Default Response
           content:
             application/json:
@@ -7475,6 +8594,7 @@ paths:
                         templateName:
                           type: string
                         weekday:
+                          nullable: true
                           type: integer
                           minimum: -9007199254740991
                           maximum: 9007199254740991
@@ -7735,6 +8855,7 @@ paths:
                   templateName:
                     type: string
                   weekday:
+                    nullable: true
                     type: integer
                     minimum: -9007199254740991
                     maximum: 9007199254740991

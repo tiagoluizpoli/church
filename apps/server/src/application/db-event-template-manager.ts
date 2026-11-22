@@ -17,6 +17,7 @@ import {
   EventTemplate,
   type EventTemplateUsage,
 } from '../domain/entities/event-template';
+import { assertRecurrence } from '../domain/recurrence';
 
 interface DbEventTemplateManagerDependencies {
   templateRepository: EventTemplateRepository;
@@ -67,12 +68,13 @@ export class DbEventTemplateManager implements IEventTemplateManager {
   async createTemplate(
     input: CreateEventTemplateManagerInput,
   ): Promise<EventTemplate> {
+    assertRecurrence({ recurrence: input.recurrence });
     const blocks = normalizeBlocks({ blocks: input.blocks });
     return this.unitOfWork.run((tx) =>
       this.templateRepository.create({
         churchId: input.churchId,
         name: input.name,
-        weekday: input.weekday,
+        recurrence: input.recurrence,
         blocks,
         tx,
       }),
@@ -82,13 +84,14 @@ export class DbEventTemplateManager implements IEventTemplateManager {
   async updateTemplate(
     input: UpdateEventTemplateManagerInput,
   ): Promise<EventTemplate> {
+    assertRecurrence({ recurrence: input.recurrence });
     const blocks = normalizeBlocks({ blocks: input.blocks });
     return this.unitOfWork.run((tx) =>
       this.templateRepository.update({
         churchId: input.churchId,
         templateId: input.templateId,
         name: input.name,
-        weekday: input.weekday,
+        recurrence: input.recurrence,
         blocks,
         tx,
       }),

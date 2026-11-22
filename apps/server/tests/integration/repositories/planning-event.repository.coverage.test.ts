@@ -37,7 +37,7 @@ describe('DrizzlePlanningEventRepository (extra coverage)', () => {
     const { template } = await createSchedulingPhase3Template({
       churchId: seed.churchAId,
       name: 'Sunday Service',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [],
     });
     const repo = new DrizzlePlanningEventRepository({ db: schedulingTestDb });

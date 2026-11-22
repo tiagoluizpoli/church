@@ -31,6 +31,7 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import { DuplicateTemplateBlockLabelError } from '@/domain/errors/duplicate-template-block-label';
+import type { Recurrence } from '@/domain/recurrence';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
@@ -177,7 +178,7 @@ interface BlockBody {
 
 interface TemplateBody {
   name: string;
-  weekday: number;
+  recurrence: Recurrence;
   blocks: BlockBody[];
 }
 
@@ -188,7 +189,12 @@ const welcome: BlockBody = {
 };
 
 function body(overrides: Partial<TemplateBody> = {}): TemplateBody {
-  return { name: 'Sunday', weekday: 0, blocks: [welcome], ...overrides };
+  return {
+    name: 'Sunday',
+    recurrence: { kind: 'weekly', weekdays: [0] },
+    blocks: [welcome],
+    ...overrides,
+  };
 }
 
 function post(payload: unknown) {
@@ -222,7 +228,7 @@ describe('POST /event-templates', () => {
     const res = await post(
       body({
         name: '  Vigil ',
-        weekday: 5,
+        recurrence: { kind: 'weekly', weekdays: [5] },
         blocks: [
           { label: 'Late', startTime: '23:30', endTime: '02:00' },
           { label: ' Tie B ', startTime: '09:15', endTime: '11:00' },
@@ -242,9 +248,16 @@ describe('POST /event-templates', () => {
     ).toEqual(['0:Tie B', '1:Tie A', '2:Late']);
     expect(created.blocks[2].endTime).toBe('02:00');
 
-    expect((await post(body({ name: 'Other', weekday: 5 }))).statusCode).toBe(
-      201,
-    );
+    expect(
+      (
+        await post(
+          body({
+            name: 'Other',
+            recurrence: { kind: 'weekly', weekdays: [5] },
+          }),
+        )
+      ).statusCode,
+    ).toBe(201);
     const listed = (await list()).json();
     expect(listed.templates.map((t: { name: string }) => t.name)).toEqual([
       'Other',
@@ -255,8 +268,36 @@ describe('POST /event-templates', () => {
   it.each([
     ['blank name', { name: '   ' }],
     ['name over 255 characters', { name: 'x'.repeat(256) }],
-    ['weekday 7', { weekday: 7 }],
-    ['fractional weekday', { weekday: 1.5 }],
+    ['no recurrence', { recurrence: undefined }],
+    ['weekday 7', { recurrence: { kind: 'weekly', weekdays: [7] } }],
+    ['fractional weekday', { recurrence: { kind: 'weekly', weekdays: [1.5] } }],
+    [
+      'weekly without weekdays',
+      { recurrence: { kind: 'weekly', weekdays: [] } },
+    ],
+    [
+      'monthly without entries',
+      { recurrence: { kind: 'monthly', entries: [] } },
+    ],
+    [
+      '6th weekday',
+      {
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'nthWeekday', ordinal: 6, weekday: 0 }],
+        },
+      },
+    ],
+    [
+      'day of month 32',
+      {
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'dayOfMonth', day: 32 }],
+        },
+      },
+    ],
+    ['unknown recurrence kind', { recurrence: { kind: 'yearly' } }],
     ['no blocks', { blocks: [] }],
     ['blank label', { blocks: [{ ...welcome, label: ' ' }] }],
     [
@@ -278,6 +319,42 @@ describe('POST /event-templates', () => {
     expect(res.statusCode).toBe(422);
     expect(res.json().error).toBe('VALIDATION_ERROR');
     expect(await storedTemplateCount()).toBe(0);
+  });
+
+  it('stores weekly on several weekdays and a mixed monthly Recurrence and lists them', async () => {
+    await signIn();
+    const monthly: Recurrence = {
+      kind: 'monthly',
+      entries: [
+        { kind: 'nthWeekday', ordinal: 1, weekday: 0 },
+        { kind: 'nthWeekday', ordinal: 'last', weekday: 6 },
+        { kind: 'dayOfMonth', day: 15 },
+        { kind: 'lastDayOfMonth' },
+      ],
+    };
+
+    const weekly = await post(
+      body({
+        name: 'Midweek',
+        recurrence: { kind: 'weekly', weekdays: [3, 5] },
+      }),
+    );
+    const created = await post(body({ name: 'Monthly', recurrence: monthly }));
+
+    expect(weekly.statusCode).toBe(201);
+    expect(created.statusCode).toBe(201);
+    expect(created.json().recurrence).toEqual(monthly);
+    expect(
+      (await list())
+        .json()
+        .templates.map((t: { name: string; recurrence: Recurrence }) => [
+          t.name,
+          t.recurrence,
+        ]),
+    ).toEqual([
+      ['Midweek', { kind: 'weekly', weekdays: [3, 5] }],
+      ['Monthly', monthly],
+    ]);
   });
 
   it('refuses equal endpoints with 400 INVALID_TIME_RANGE', async () => {
@@ -318,7 +395,7 @@ describe('POST /event-templates', () => {
       db: schedulingTestDb,
       churchId: seed.churchBId,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [],
     });
     expect((await post(body({ name: 'Sunday' }))).statusCode).toBe(201);
@@ -536,7 +613,7 @@ async function seedEditGraph(): Promise<EditGraph> {
     churchId,
     id: ids.template,
     name: 'Sunday',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       {
         id: ids.welcome,
@@ -563,7 +640,7 @@ async function seedEditGraph(): Promise<EditGraph> {
     churchId,
     id: ids.sibling,
     name: 'Wednesday',
-    weekday: 3,
+    recurrence: { kind: 'weekly', weekdays: [3] },
     blocks: [
       {
         id: ids.siblingBlock,
@@ -578,7 +655,7 @@ async function seedEditGraph(): Promise<EditGraph> {
     churchId: seed.churchBId,
     id: ids.foreign,
     name: 'Foreign',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       {
         id: ids.foreignBlock,
@@ -754,7 +831,7 @@ describe('GET /event-templates/:templateId', () => {
     expect(res.json()).toMatchObject({
       id: ids.template,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         { id: ids.welcome, order: 0, startTime: '09:00', endTime: '10:00' },
         { id: ids.worship, order: 1 },
@@ -804,7 +881,7 @@ describe('GET /event-templates/:templateId/usage', () => {
 });
 
 describe('PATCH /event-templates/:templateId identity', () => {
-  it('keeps retained ids and Usual setup through rename, weekday, retime, reorder and a label swap, adds new ids and removes only omitted blocks and their setup', async () => {
+  it('keeps retained ids and Usual setup through rename, a weekly-to-monthly Recurrence, retime, reorder and a label swap, adds new ids and removes only omitted blocks and their setup', async () => {
     await seedEditGraph();
     const before = await storedState();
 
@@ -812,7 +889,10 @@ describe('PATCH /event-templates/:templateId identity', () => {
       templateId: ids.template,
       payload: {
         name: 'Sunday renamed',
-        weekday: 6,
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+        },
         blocks: [
           // Welcome and Worship swap labels and move after a new early block.
           {
@@ -834,7 +914,13 @@ describe('PATCH /event-templates/:templateId identity', () => {
 
     expect(res.statusCode).toBe(200);
     const saved = res.json();
-    expect(saved).toMatchObject({ name: 'Sunday renamed', weekday: 6 });
+    expect(saved).toMatchObject({
+      name: 'Sunday renamed',
+      recurrence: {
+        kind: 'monthly',
+        entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+      },
+    });
     expect(
       saved.blocks.map(
         (b: { label: string; order: number }) => `${b.order}:${b.label}`,
@@ -1030,7 +1116,7 @@ describe('PATCH /event-templates/:templateId identity', () => {
           churchId: ChurchId.from(graph.seed.churchAId),
           templateId: EventTemplateId.from(ids.template),
           name: 'Sunday',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [desired('Same', 0), desired('SAME', 1)],
           tx,
         }),
@@ -1041,7 +1127,7 @@ describe('PATCH /event-templates/:templateId identity', () => {
         repository.create({
           churchId: ChurchId.from(graph.seed.churchAId),
           name: 'Bypass',
-          weekday: 1,
+          recurrence: { kind: 'weekly', weekdays: [1] },
           blocks: [desired('Same', 0), desired('same', 1)],
           tx,
         }),
@@ -1127,7 +1213,7 @@ describe('GET /event-templates and authorization', () => {
         db: schedulingTestDb,
         churchId: seed.churchAId,
         name,
-        weekday: 1,
+        recurrence: { kind: 'weekly', weekdays: [1] },
         blocks: [],
       });
     }
@@ -1135,7 +1221,7 @@ describe('GET /event-templates and authorization', () => {
       db: schedulingTestDb,
       churchId: seed.churchBId,
       name: 'Foreign',
-      weekday: 1,
+      recurrence: { kind: 'weekly', weekdays: [1] },
       blocks: [],
     });
 

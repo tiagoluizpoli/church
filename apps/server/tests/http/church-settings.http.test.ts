@@ -24,6 +24,7 @@ import {
 } from '@/tests/integration/repositories/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { InMemoryObjectStorage } from '@/tests/test-support/in-memory-object-storage';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -46,6 +47,8 @@ const UNTOUCHED = {
   slug: 'ib-esperanca',
   website: null,
   accentColor: null,
+  logoKey: null,
+  logoUrl: null,
   publicOrigin: PUBLIC_ORIGIN,
 };
 
@@ -60,6 +63,7 @@ beforeAll(async () => {
     churchSettingsManager: new DbChurchSettingsManager({
       churchRepository: new DrizzleChurchRepository({ db }),
       unitOfWork: new DrizzleUnitOfWork({ db }),
+      objectStorage: new InMemoryObjectStorage(),
       publicOrigin: PUBLIC_ORIGIN,
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -185,6 +189,8 @@ describe('Church Settings', () => {
       slug: 'ib-esperanca',
       website: 'https://ibesperanca.org.br',
       accentColor: '#1d4ed8',
+      logoKey: null,
+      logoUrl: null,
       publicOrigin: PUBLIC_ORIGIN,
     };
     expect(saved.statusCode).toBe(200);
@@ -235,6 +241,8 @@ describe('Church Settings', () => {
       slug: 'church-b',
       website: null,
       accentColor: null,
+      logoKey: null,
+      logoUrl: null,
       publicOrigin: PUBLIC_ORIGIN,
     });
   });

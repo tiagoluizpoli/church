@@ -172,6 +172,7 @@ function createHarness({
     getSettings: vi.fn(),
     saveSettings: vi.fn(),
     slugAvailability: vi.fn(),
+    saveLogoKey: vi.fn(),
   };
   return {
     acceptedInputs,

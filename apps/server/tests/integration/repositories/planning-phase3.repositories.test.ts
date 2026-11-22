@@ -189,7 +189,7 @@ describe('Phase 3 planning repositories', () => {
     const created = await repository.create({
       churchId: ChurchId.from(seed.churchAId),
       name: 'Sunday Service',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
           label: 'Message',
@@ -210,7 +210,7 @@ describe('Phase 3 planning repositories', () => {
       churchId: ChurchId.from(seed.churchAId),
       templateId: created.id,
       name: 'Sunday Gathering',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
           label: 'Welcome',

@@ -38,11 +38,18 @@ export interface ChurchRepository {
   slugAvailability(
     input: SlugAvailabilityInput,
   ): Promise<Exclude<ChurchSlugAvailability, 'reserved'>>;
+  /** Points the Church at a logo key, or at none; objects are never touched. */
+  saveLogoKey(input: SaveChurchLogoKeyInput): Promise<void>;
 }
 
 export interface SlugAvailabilityInput {
   id: ChurchId;
   slug: string;
+}
+
+export interface SaveChurchLogoKeyInput {
+  id: ChurchId;
+  logoKey: string | null;
 }
 
 export interface SaveChurchSettingsInput {

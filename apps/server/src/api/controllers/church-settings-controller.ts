@@ -1,8 +1,14 @@
 import { m } from '@church/i18n/messages';
+import multipart from '@fastify/multipart';
 import { z } from 'zod';
 import { ChurchId, UserId } from '../../domain/branded-ids';
+import { LOGO_MAX_BYTES } from '../../domain/church-logo';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IChurchSettingsManager } from '../../domain/contracts/application/church-settings-manager';
+import {
+  LogoTooLargeError,
+  LogoUnsupportedTypeError,
+} from '../../domain/errors/church-logo';
 import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
@@ -13,11 +19,14 @@ import {
   churchSettingsFieldError,
   churchSettingsResponseSchema,
   churchSettingsValidationErrorResponseSchema,
+  type RestoreChurchLogoBody,
+  restoreChurchLogoBodySchema,
   slugAvailabilityQuerySchema,
   slugAvailabilityResponseSchema,
   toChurchSettingsFieldErrors,
   type UpdateChurchSettingsBody,
   updateChurchSettingsBodySchema,
+  uploadChurchLogoBodySchema,
 } from '../dtos/church-settings.dto';
 import { refuse } from '../utils/refuse';
 
@@ -59,6 +68,10 @@ export class ChurchSettingsController implements FastifyController {
     app: FastifyTypedInstance,
     _opts: Record<string, unknown>,
   ): void {
+    app.register(multipart, {
+      limits: { fileSize: LOGO_MAX_BYTES, files: 1 },
+    });
+
     app.addHook(
       'preValidation',
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
@@ -181,6 +194,93 @@ export class ChurchSettingsController implements FastifyController {
             ],
           });
         }
+      },
+    );
+    const logoResponses = {
+      200: churchSettingsResponseSchema,
+      401: errorResponseSchema,
+      403: errorResponseSchema,
+      409: errorResponseSchema,
+    };
+
+    app.put(
+      '/logo',
+      {
+        // The body schema documents the form; the handler reads the multipart stream itself.
+        attachValidation: true,
+        schema: {
+          tags: ['church-settings'],
+          operationId: 'uploadChurchLogo',
+          summary: 'Upload the Active Church logo',
+          description:
+            'Applies at once, outside the settings save. PNG, JPEG or WebP by content, at most 5 MB, longest side at least 128 px, ratio within 1:4–4:1; stored as one PNG of at most 512 px under a content-hashed key. Earlier logos stay stored. ChurchAdmin only.',
+          consumes: ['multipart/form-data'],
+          body: uploadChurchLogoBodySchema,
+          response: {
+            ...logoResponses,
+            413: errorResponseSchema,
+            415: errorResponseSchema,
+            422: errorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const file = await request.file().catch(() => undefined);
+        if (!file) throw new LogoUnsupportedTypeError();
+        const bytes = await file.toBuffer().catch((error: unknown) => {
+          if (error instanceof app.multipartErrors.RequestFileTooLargeError) {
+            throw new LogoTooLargeError();
+          }
+          throw error;
+        });
+        const settings = await this.churchSettingsManager.uploadLogo({
+          churchId: ChurchId.from(request.churchId),
+          bytes,
+        });
+        return reply.send(settings);
+      },
+    );
+
+    app.delete(
+      '/logo',
+      {
+        schema: {
+          tags: ['church-settings'],
+          operationId: 'removeChurchLogo',
+          summary: 'Remove the Active Church logo',
+          description:
+            'Drops the logo reference at once; the stored image stays, so older emails keep rendering. ChurchAdmin only.',
+          response: logoResponses,
+        },
+      },
+      async (request, reply) => {
+        const settings = await this.churchSettingsManager.removeLogo({
+          churchId: ChurchId.from(request.churchId),
+        });
+        return reply.send(settings);
+      },
+    );
+
+    app.put(
+      '/logo/restore',
+      {
+        schema: {
+          tags: ['church-settings'],
+          operationId: 'restoreChurchLogo',
+          summary: 'Re-apply an earlier logo of the Active Church',
+          description:
+            'Undo for a removal: points the Church back at one of its own earlier logo keys. ChurchAdmin only.',
+          body: restoreChurchLogoBodySchema,
+          response: { ...logoResponses, 422: errorResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const { key } = request.body as RestoreChurchLogoBody;
+        const settings = await this.churchSettingsManager.restoreLogo({
+          churchId: ChurchId.from(request.churchId),
+          key,
+        });
+        return reply.send(settings);
       },
     );
   }

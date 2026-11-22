@@ -117,6 +117,12 @@ describe('DbChurchSettingsManager logo', () => {
 
   it('removes and restores only the Church reference', async () => {
     const key = `public/churches/${CHURCH}/logo/${'b'.repeat(64)}.png`;
+    await storage.put({
+      key,
+      body: new Uint8Array([1]),
+      contentType: 'image/png',
+      cacheControl: 'public',
+    });
 
     await manager.removeLogo({ churchId: CHURCH });
     await manager.restoreLogo({ churchId: CHURCH, key });

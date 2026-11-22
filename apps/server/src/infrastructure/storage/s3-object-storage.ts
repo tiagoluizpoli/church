@@ -1,5 +1,7 @@
 import {
   DeleteObjectCommand,
+  HeadObjectCommand,
+  NotFound,
   PutObjectCommand,
   type S3Client,
 } from '@aws-sdk/client-s3';
@@ -48,6 +50,18 @@ export class S3ObjectStorage implements ObjectStorage {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: this.bucket, Key: input.key }),
     );
+  }
+
+  async exists(input: ObjectKeyInput): Promise<boolean> {
+    try {
+      await this.client.send(
+        new HeadObjectCommand({ Bucket: this.bucket, Key: input.key }),
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof NotFound) return false;
+      throw error;
+    }
   }
 
   publicUrl(input: ObjectKeyInput): string {

@@ -115,7 +115,11 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
     churchId,
     key,
   }: RestoreChurchLogoInput): Promise<ChurchSettingsView> {
-    if (!isChurchLogoKey({ churchId, key })) throw new LogoKeyInvalidError();
+    // A key whose object is gone would serve a 404 the edge then caches.
+    const restorable =
+      isChurchLogoKey({ churchId, key }) &&
+      (await this.objectStorage.exists({ key }));
+    if (!restorable) throw new LogoKeyInvalidError();
     await this.churchRepository.saveLogoKey({ id: churchId, logoKey: key });
     return this.getChurchSettings({ churchId });
   }

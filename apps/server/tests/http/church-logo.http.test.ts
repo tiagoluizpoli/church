@@ -304,6 +304,16 @@ describe('Church logo', () => {
     });
   });
 
+  it('refuses to restore a logo key whose object is gone', async () => {
+    signIn();
+    const missing = `public/churches/${CHURCH_A}/logo/${'a'.repeat(64)}.png`;
+
+    const res = await restoreLogo(missing);
+
+    expect(res.statusCode).toBe(422);
+    expect((await getSettings()).json().logoKey).toBeNull();
+  });
+
   it("refuses to restore a key outside the Church's logo folder", async () => {
     signIn();
 

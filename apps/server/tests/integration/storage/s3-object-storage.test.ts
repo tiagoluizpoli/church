@@ -71,6 +71,20 @@ describe('S3 object storage', () => {
     expect((await fetch(storage.publicUrl({ key }))).status).toBe(404);
   });
 
+  it('tells whether an object is stored', async () => {
+    const key = uniqueKey('public');
+    await storage.put({
+      key,
+      body: bytes,
+      contentType: 'image/png',
+      cacheControl,
+    });
+
+    expect(await storage.exists({ key })).toBe(true);
+    await storage.delete({ key });
+    expect(await storage.exists({ key })).toBe(false);
+  });
+
   it('builds the public URL from the configured base and the key', () => {
     const configured = new S3ObjectStorage({
       endpoint: 'http://127.0.0.1:9000',

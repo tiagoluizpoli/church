@@ -41,6 +41,8 @@ export interface PlanningEventTimeBlockDraft {
   isPublic?: boolean;
   /** Empty clears; absent keeps a retained block's value. */
   place?: string;
+  /** A Church Address as the place; sent with `place`, both set the place together. */
+  placeAddressId?: string | null;
 }
 
 /** A Draft Event with every one of its Time blocks, saved together. */
@@ -95,6 +97,7 @@ export interface UpdatePlanningEventDetailsManagerInput {
     id: EventTimeBlockId;
     isPublic: boolean;
     place?: string;
+    placeAddressId?: string | null;
   }[];
 }
 

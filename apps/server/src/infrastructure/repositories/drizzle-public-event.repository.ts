@@ -1,4 +1,10 @@
-import { cycle, event, eventTimeBlock, eventTimeBlockMove } from '@church/db';
+import {
+  churchAddress,
+  cycle,
+  event,
+  eventTimeBlock,
+  eventTimeBlockMove,
+} from '@church/db';
 import { fromDate, toDate } from '@church/time';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type {
@@ -14,6 +20,7 @@ import {
   eventTimeBlockMovePath,
 } from '../../domain/services/event-time-block-move-path';
 import { withChurchIsolation } from './helpers';
+import { resolvedPlace } from './time-block-place';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzlePublicEventRepositoryInput {
@@ -81,10 +88,14 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
         label: eventTimeBlock.label,
         start: eventTimeBlock.startTime,
         end: eventTimeBlock.endTime,
-        place: eventTimeBlock.place,
+        place: resolvedPlace(eventTimeBlock.place),
         status: eventTimeBlock.status,
       })
       .from(eventTimeBlock)
+      .leftJoin(
+        churchAddress,
+        eq(churchAddress.id, eventTimeBlock.placeAddressId),
+      )
       .where(
         and(
           withChurchIsolation({ table: eventTimeBlock, churchId }),

@@ -56,6 +56,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -179,6 +180,7 @@ interface BlockBody {
   id?: string;
   isPublic?: boolean;
   place?: string;
+  placeAddressId?: string | null;
 }
 
 interface TemplateBody {
@@ -535,6 +537,69 @@ describe('TemplateTimeBlock Publico and place', () => {
       isPublic: true,
       place: 'Lobby',
     });
+  });
+
+  it('takes a Church Address of the same Church as the place, and moves between address, free text and nothing on edit', async () => {
+    const seed = await signIn();
+    const addressId = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+    });
+
+    const created = await post(
+      body({ blocks: [{ ...welcome, placeAddressId: addressId }] }),
+    );
+
+    expect(created.statusCode).toBe(201);
+    expect(created.json().blocks[0]).toMatchObject({
+      place: null,
+      placeAddressId: addressId,
+    });
+    const [block] = created.json().blocks;
+    const toText = await patch({
+      templateId: created.json().id,
+      payload: body({ blocks: [{ ...welcome, id: block.id, place: 'Lobby' }] }),
+    });
+    expect(toText.json().blocks[0]).toMatchObject({
+      place: 'Lobby',
+      placeAddressId: null,
+    });
+    const toNothing = await patch({
+      templateId: created.json().id,
+      payload: body({ blocks: [{ ...welcome, id: block.id }] }),
+    });
+    expect(toNothing.json().blocks[0]).toMatchObject({
+      place: null,
+      placeAddressId: null,
+    });
+  });
+
+  it("refuses another Church's address and a place given both ways, writing nothing", async () => {
+    const seed = await signIn();
+    const foreign = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchBId,
+    });
+    const own = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+    });
+
+    const foreignRes = await post(
+      body({ blocks: [{ ...welcome, placeAddressId: foreign }] }),
+    );
+    const both = await post(
+      body({ blocks: [{ ...welcome, place: 'Lobby', placeAddressId: own }] }),
+    );
+
+    expect(foreignRes.statusCode).toBe(422);
+    expect(foreignRes.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason: 'PLACE_ADDRESS_NOT_FOUND',
+    });
+    expect(both.statusCode).toBe(422);
+    expect(both.json().error).toBe('VALIDATION_ERROR');
+    expect(await storedTemplateCount()).toBe(0);
   });
 
   it.each([

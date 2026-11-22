@@ -183,13 +183,19 @@ function EventBlockRow({
         idPrefix={id}
         isPublic={block.isPublic}
         place={block.place}
+        placeAddressId={block.placeAddressId}
         locked={block.locked}
         onIsPublicChange={(value) =>
           onBlockChange({ blockKey: block.key, field: 'isPublic', value })
         }
-        onPlaceChange={(value) =>
-          onBlockChange({ blockKey: block.key, field: 'place', value })
-        }
+        onPlaceChange={({ place, placeAddressId }) => {
+          onBlockChange({ blockKey: block.key, field: 'place', value: place });
+          onBlockChange({
+            blockKey: block.key,
+            field: 'placeAddressId',
+            value: placeAddressId,
+          });
+        }}
       />
     </fieldset>
   );

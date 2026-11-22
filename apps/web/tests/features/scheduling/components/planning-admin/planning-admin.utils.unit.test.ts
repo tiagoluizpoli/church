@@ -63,6 +63,7 @@ function makeEventGroup(eventTimeBlockCount: number): CycleEventGroup {
         endTime: '2027-01-03T09:30:00.000Z',
         isPublic: false,
         place: null,
+        placeAddressId: null,
         status: 'active',
         requirements: [],
       }),
@@ -91,6 +92,7 @@ function makeTemplateTimeBlock(
     endTime: fromTimeColumn({ value: '09:30:00' }),
     isPublic: false,
     place: '',
+    placeAddressId: null,
     ...overrides,
   };
 }
@@ -503,6 +505,7 @@ describe('toTemplateRequestBlocks', () => {
         endTime: '09:30',
         isPublic: true,
         place: 'Hall',
+        placeAddressId: null,
       },
       {
         id: 'stored-id',
@@ -511,6 +514,7 @@ describe('toTemplateRequestBlocks', () => {
         endTime: '09:30',
         isPublic: false,
         place: '',
+        placeAddressId: null,
       },
     ]);
   });

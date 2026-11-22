@@ -1,6 +1,7 @@
 import { appConfig } from '@church/app-config';
-import { churchSlugHistory } from '@church/db';
+import { churchAddress, churchSlugHistory, eventTimeBlock } from '@church/db';
 import { parseInstant } from '@church/time';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PublicChurchProfileController } from '@/api/controllers/public-church-profile-controller';
 import { DbPublicChurchProfileManager } from '@/application/db-public-church-profile-manager';
@@ -20,6 +21,7 @@ import {
   testDb as db,
   truncateAll,
 } from '@/tests/integration/repositories/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import { InMemoryObjectStorage } from '@/tests/test-support/in-memory-object-storage';
@@ -238,6 +240,54 @@ describe('GET /public/churches/:slug/events', () => {
     expect(items[0].blocks[0].movePath).toEqual([
       { start: '2099-03-01T13:00:00.000Z', end: '2099-03-01T23:00:00.000Z' },
       { start: '2099-03-01T14:00:00.000Z', end: '2099-03-01T23:00:00.000Z' },
+    ]);
+  });
+
+  it('shows a Church Address place as it reads now, and only bairro and city of a private one', async () => {
+    const templo = await insertChurchAddress({
+      db,
+      churchId: CHURCH_A,
+      label: null,
+    });
+    const casa = await insertChurchAddress({
+      db,
+      churchId: CHURCH_A,
+      label: null,
+      street: 'Rua da Casa',
+      isPublic: false,
+      isMain: false,
+      position: 1,
+    });
+    const first = await seedEvent({
+      title: 'Culto',
+      start: '2099-03-01T13:00',
+    });
+    const second = await seedEvent({
+      title: 'Célula',
+      start: '2099-03-02T13:00',
+    });
+    await db
+      .update(eventTimeBlock)
+      .set({ place: null, placeAddressId: templo })
+      .where(eq(eventTimeBlock.id, first.block.id));
+    await db
+      .update(eventTimeBlock)
+      .set({ place: null, placeAddressId: casa })
+      .where(eq(eventTimeBlock.id, second.block.id));
+    await db
+      .update(churchAddress)
+      .set({ street: 'Avenida Nova', number: '200' })
+      .where(eq(churchAddress.id, templo));
+
+    const { items } = (await readEvents({ slug: 'ib-esperanca' })).json();
+
+    expect(
+      items.map(
+        (item: { blocks: { place: string }[] }) => item.blocks[0]?.place,
+      ),
+    ).toEqual([
+      'Avenida Nova, 200 · Centro · Campinas/SP',
+      'Centro · Campinas/SP',
     ]);
   });
 

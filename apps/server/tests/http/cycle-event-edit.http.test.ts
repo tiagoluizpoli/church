@@ -68,6 +68,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
@@ -806,6 +807,14 @@ describe('Público and place on an edited Event', () => {
     return { isPublic: row?.isPublic, place: row?.place };
   }
 
+  async function storedPlace(id: string) {
+    const [row] = await db
+      .select()
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, id));
+    return { place: row?.place, placeAddressId: row?.placeAddressId };
+  }
+
   it('sets, keeps and clears Público and place in a draft Cycle', async () => {
     const { cycleId, fixture } = await setUp();
 
@@ -841,6 +850,61 @@ describe('Público and place on an edited Event', () => {
     expect(await storedPublic(fixture.welcome.id)).toEqual({
       isPublic: false,
       place: null,
+    });
+  });
+
+  it("switches the place between a Church Address and free text, refusing another Church's address", async () => {
+    const { seed, cycleId, fixture } = await setUp();
+    const addressId = await insertChurchAddress({
+      db,
+      churchId: seed.churchAId,
+    });
+    const foreign = await insertChurchAddress({
+      db,
+      churchId: seed.churchBId,
+    });
+    const graph = currentGraph(fixture);
+    const [welcome, service] = graph.eventTimeBlocks;
+    const withPlace = (place: object) => ({
+      ...graph,
+      eventTimeBlocks: [{ ...welcome, ...place }, service],
+    });
+
+    const toAddress = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPlace({ placeAddressId: addressId }),
+    });
+    expect(toAddress.statusCode).toBe(200);
+    expect(await storedPlace(fixture.welcome.id)).toEqual({
+      place: null,
+      placeAddressId: addressId,
+    });
+
+    // Absent place fields keep the stored address.
+    await patchEvent({ cycleId, eventId: fixture.eventId, payload: graph });
+    expect(await storedPlace(fixture.welcome.id)).toEqual({
+      place: null,
+      placeAddressId: addressId,
+    });
+
+    const refused = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPlace({ placeAddressId: foreign }),
+    });
+    expect(refused.statusCode).toBe(422);
+    expect(refused.json().reason).toBe('PLACE_ADDRESS_NOT_FOUND');
+
+    const toText = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPlace({ place: 'Annex' }),
+    });
+    expect(toText.statusCode).toBe(200);
+    expect(await storedPlace(fixture.welcome.id)).toEqual({
+      place: 'Annex',
+      placeAddressId: null,
     });
   });
 
@@ -938,6 +1002,51 @@ describe('Público and place on a Sent Event', () => {
         place: null,
       }),
     );
+  });
+
+  it('sets a Church Address as the place of a block that has not started, and refuses it on a started one', async () => {
+    const { cycleId, fixture } = await seedSent();
+    const [row] = await db
+      .select({ churchId: eventTimeBlock.churchId })
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, fixture.welcome.id));
+    const addressId = await insertChurchAddress({
+      db,
+      churchId: row?.churchId ?? '',
+    });
+
+    const set = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [
+          { id: fixture.welcome.id, isPublic: true, placeAddressId: addressId },
+        ],
+      },
+    });
+    expect(set.statusCode).toBe(200);
+    expect(set.json().eventTimeBlocks).toContainEqual(
+      expect.objectContaining({
+        id: fixture.welcome.id,
+        place: null,
+        placeAddressId: addressId,
+      }),
+    );
+
+    setTestClock({ instant: parseInstant({ value: at('09:30') }) });
+    const locked = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [
+          { id: fixture.welcome.id, isPublic: true, place: 'Annex' },
+        ],
+      },
+    });
+    expect(locked.statusCode).toBe(409);
+    expect(locked.json().error).toBe('PUBLIC_INFO_LOCKED');
   });
 
   it('refuses a change to a started block but accepts it unchanged', async () => {

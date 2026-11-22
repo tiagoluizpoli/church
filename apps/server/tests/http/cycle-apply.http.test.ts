@@ -70,6 +70,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
@@ -260,6 +261,7 @@ interface TemplateInput {
     end: string;
     isPublic?: boolean;
     place?: string;
+    placeAddressId?: string;
   }[];
 }
 
@@ -281,6 +283,7 @@ async function seedTemplate({
       endTime: time(block.end),
       isPublic: block.isPublic,
       place: block.place,
+      placeAddressId: block.placeAddressId,
     })),
   });
 }
@@ -314,6 +317,7 @@ async function storedBlocks(cycleId: string) {
       label: eventTimeBlock.label,
       isPublic: eventTimeBlock.isPublic,
       place: eventTimeBlock.place,
+      placeAddressId: eventTimeBlock.placeAddressId,
       source: eventTimeBlock.sourceTemplateTimeBlockId,
       start: eventTimeBlock.startTime,
       end: eventTimeBlock.endTime,
@@ -427,6 +431,39 @@ describe('POST /admin/cycles/:cycleId/apply-templates', () => {
       .from(templateTimeBlock)
       .where(eq(templateTimeBlock.id, service?.id ?? ''));
     expect(stored[0]).toMatchObject({ isPublic: false, place: 'Annex' });
+  });
+
+  it('copies a Church Address place as the reference, not as text', async () => {
+    const seed = await signIn();
+    const addressId = await insertChurchAddress({
+      db,
+      churchId: seed.churchAId,
+    });
+    const sunday = await seedTemplate({
+      churchId: seed.churchAId,
+      blocks: [
+        {
+          label: 'Service',
+          start: '19:00',
+          end: '21:00',
+          isPublic: true,
+          placeAddressId: addressId,
+        },
+      ],
+    });
+    const cycle = await seedCycle({ churchId: seed.churchAId, ...FORTNIGHT });
+
+    await apply(cycle.id, [sunday.template.id]);
+
+    expect(
+      (await storedBlocks(cycle.id)).map(({ place, placeAddressId }) => ({
+        place,
+        placeAddressId,
+      })),
+    ).toEqual([
+      { place: null, placeAddressId: addressId },
+      { place: null, placeAddressId: addressId },
+    ]);
   });
 
   it('generates a mixed monthly template on the calendar-month days it names, each once', async () => {

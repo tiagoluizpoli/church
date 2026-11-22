@@ -1,3 +1,5 @@
+import { churchAddress } from '@church/db';
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbChurchProgrammeManager } from '@/application/db-church-programme-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
@@ -11,6 +13,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
 
 const templates = new DbEventTemplateManager({
   templateRepository: new DrizzleEventTemplateRepository({
@@ -139,6 +142,41 @@ describe('DbChurchProgrammeManager', () => {
         label: 'Vigil',
         place: 'Chapel',
       },
+    ]);
+  });
+
+  it('names a Church Address place by its label, or by its street once edited', async () => {
+    const templo = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: churchA,
+      label: 'Templo',
+    });
+    const anexo = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: churchA,
+      label: null,
+      isMain: false,
+      position: 1,
+    });
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+      blocks: [
+        { ...block('Worship', '09:00', true), placeAddressId: templo },
+        { ...block('Kids', '09:30', true), placeAddressId: anexo },
+      ],
+    });
+    await schedulingTestDb
+      .update(churchAddress)
+      .set({ street: 'Rua Nova', complement: 'Fundos' })
+      .where(eq(churchAddress.id, anexo));
+
+    const result = await programme.getProgramme({ churchId: churchA });
+
+    expect(result.map(({ place }) => place)).toEqual([
+      'Templo',
+      'Rua Nova, 10 – Fundos · Centro · Campinas/SP',
     ]);
   });
 

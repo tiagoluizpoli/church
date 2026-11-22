@@ -205,7 +205,7 @@ describe('DbPublicEventManager', () => {
       start: '2026-12-03T10:00',
       blocks: [
         { label: 'a', isPublic: true, status: 'cancelled' },
-        { label: 'b', isPublic: true },
+        { label: 'b', start: '2026-12-03T11:00', isPublic: true },
       ],
     });
     await publicEvent({
@@ -337,7 +337,7 @@ describe('DbPublicEventManager', () => {
       });
     // Moved: as-sent 12:00 -> 14:00 -> current 12:00 (we then fix current below)
     await move(
-      movedBlock?.id,
+      requireId(movedBlock),
       '2026-12-19T12:00',
       '2026-12-19T13:00',
       '2026-12-19T15:00',
@@ -345,7 +345,7 @@ describe('DbPublicEventManager', () => {
       '2026-12-02T10:00',
     );
     await move(
-      movedBlock?.id,
+      requireId(movedBlock),
       '2026-12-19T15:00',
       '2026-12-19T16:00',
       '2026-12-20T12:00',
@@ -353,7 +353,7 @@ describe('DbPublicEventManager', () => {
       '2026-12-03T10:00',
     );
     await move(
-      backBlock?.id,
+      requireId(backBlock),
       '2026-12-21T12:00',
       '2026-12-21T13:00',
       '2026-12-22T12:00',
@@ -361,7 +361,7 @@ describe('DbPublicEventManager', () => {
       '2026-12-02T10:00',
     );
     await move(
-      backBlock?.id,
+      requireId(backBlock),
       '2026-12-22T12:00',
       '2026-12-22T13:00',
       '2026-12-21T12:00',
@@ -386,3 +386,8 @@ describe('DbPublicEventManager', () => {
     ).toBe(false);
   });
 });
+
+function requireId(block: { id: string } | undefined): string {
+  if (!block) throw new Error('Expected a seeded block');
+  return block.id;
+}

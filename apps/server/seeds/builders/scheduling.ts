@@ -212,6 +212,7 @@ export async function buildEventTimeBlock({
 export interface BuildEventTimeBlockMoveInput {
   db: SeedWriter;
   churchId: string;
+  id?: string;
   eventTimeBlockId: string;
   previousStart: Instant;
   previousEnd: Instant;
@@ -225,6 +226,7 @@ export interface BuildEventTimeBlockMoveInput {
 export async function buildEventTimeBlockMove({
   db,
   churchId,
+  id,
   eventTimeBlockId,
   previousStart,
   previousEnd,
@@ -233,6 +235,7 @@ export async function buildEventTimeBlockMove({
   movedAt,
 }: BuildEventTimeBlockMoveInput): Promise<void> {
   await db.insert(eventTimeBlockMove).values({
+    id,
     churchId,
     eventTimeBlockId,
     previousStart: toDate({ instant: previousStart }),

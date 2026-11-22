@@ -17,6 +17,9 @@ export interface TemplateTimeBlockBlueprint {
   /** TimeOfDay `HH:mm` in the Church Timezone. */
   startTime: string;
   endTime: string;
+  /** Público: a Regular Activity of the Church Programme. Private when absent. */
+  isPublic?: boolean;
+  place?: string;
 }
 
 /** A weekly gathering: applied to a cycle, one Event per matching day. */
@@ -121,18 +124,24 @@ export const IGREJA_SEMENTE_GATHERINGS: GatheringsBlueprint = {
           label: 'Culto 08:00',
           startTime: '08:00',
           endTime: '09:30',
+          isPublic: true,
+          place: 'Templo',
         },
         {
           key: 'sunday-10:30',
           label: 'Culto 10:30',
           startTime: '10:30',
           endTime: '12:30',
+          isPublic: true,
+          place: 'Templo',
         },
         {
           key: 'sunday-18:30',
           label: 'Culto 18:30',
           startTime: '18:30',
           endTime: '20:30',
+          isPublic: true,
+          place: 'Salão anexo',
         },
       ],
     },

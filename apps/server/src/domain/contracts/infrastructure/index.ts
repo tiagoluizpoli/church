@@ -6,6 +6,7 @@ export * from './availability-check.repository';
 export * from './church.repository';
 export * from './church-access.repository';
 export * from './church-membership.repository';
+export * from './church-programme.repository';
 export * from './cycle.repository';
 export * from './email-sender';
 export * from './error-reporter';

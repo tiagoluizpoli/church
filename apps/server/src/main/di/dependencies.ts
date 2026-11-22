@@ -41,6 +41,7 @@ import type {
   AvailabilityCheckRepository,
   ChurchAccessRepository,
   ChurchMembershipRepository,
+  ChurchProgrammeRepository,
   ChurchRepository,
   CycleRepository,
   EmailSender,
@@ -97,6 +98,7 @@ export interface CompositionRootDependencies {
   availabilityCheckRepository: AvailabilityCheckRepository;
   churchRepository: ChurchRepository;
   publicEventRepository: PublicEventRepository;
+  churchProgrammeRepository: ChurchProgrammeRepository;
   ministryRepository: MinistryRepository;
   invitationVerificationCodeRepository: InvitationVerificationCodeRepository;
   ministryInvitationRepository: MinistryInvitationRepository;

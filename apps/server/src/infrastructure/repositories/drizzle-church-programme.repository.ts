@@ -33,6 +33,7 @@ export class DrizzleChurchProgrammeRepository
         startTime: templateTimeBlock.startTime,
         label: templateTimeBlock.label,
         place: resolvedPlace(templateTimeBlock.place),
+        atMainAddress: sql<boolean>`coalesce(${churchAddress.isMain}, false)`,
       })
       .from(templateTimeBlock)
       .innerJoin(
@@ -62,6 +63,7 @@ export class DrizzleChurchProgrammeRepository
       startTime: fromTimeColumn({ value: row.startTime }),
       label: row.label,
       place: row.place,
+      atMainAddress: row.atMainAddress,
     }));
   }
 }

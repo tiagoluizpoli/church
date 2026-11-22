@@ -70,12 +70,14 @@ describe('DbChurchProgrammeManager', () => {
         startTime: '09:00',
         label: 'Worship',
         place: 'Main hall',
+        atMainAddress: false,
       },
       {
         recurrence: { kind: 'weekly', weekdays: [0] },
         startTime: '09:30',
         label: 'Kids',
         place: null,
+        atMainAddress: false,
       },
     ]);
   });
@@ -141,6 +143,7 @@ describe('DbChurchProgrammeManager', () => {
         startTime: '20:00',
         label: 'Vigil',
         place: 'Chapel',
+        atMainAddress: false,
       },
     ]);
   });

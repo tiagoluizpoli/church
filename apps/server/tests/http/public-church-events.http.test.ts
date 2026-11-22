@@ -7,6 +7,7 @@ import { PublicChurchProfileController } from '@/api/controllers/public-church-p
 import { DbPublicChurchProfileManager } from '@/application/db-public-church-profile-manager';
 import { DbPublicEventManager } from '@/application/db-public-event-manager';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
+import { DrizzleChurchProgrammeRepository } from '@/infrastructure/repositories/drizzle-church-programme.repository';
 import { DrizzlePublicEventRepository } from '@/infrastructure/repositories/drizzle-public-event.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -48,6 +49,7 @@ beforeAll(async () => {
     publicChurchProfileManager: new DbPublicChurchProfileManager({
       churchRepository,
       objectStorage: new InMemoryObjectStorage(),
+      programmeRepository: new DrizzleChurchProgrammeRepository({ db }),
     }),
     publicEventManager: new DbPublicEventManager({
       publicEventRepository: new DrizzlePublicEventRepository({ db }),

@@ -4,6 +4,7 @@ export { DrizzleAssignmentProposalApplicationRepository } from './drizzle-assign
 export { DrizzleAvailabilityCheckRepository } from './drizzle-availability-check.repository';
 export { DrizzleChurchRepository } from './drizzle-church.repository';
 export { DrizzleChurchAccessRepository } from './drizzle-church-access.repository';
+export { DrizzleChurchProgrammeRepository } from './drizzle-church-programme.repository';
 export { DrizzleCycleRepository } from './drizzle-cycle.repository';
 export { DrizzleEventRepository } from './drizzle-event.repository';
 export { DrizzleEventTemplateRepository } from './drizzle-event-template.repository';

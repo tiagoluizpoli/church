@@ -8134,6 +8134,37 @@ export type ConfirmVolunteerTransfer401 = {
   message: string;
 };
 
+export type GetPublicChurchProfile200ProgrammeItemRecurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
+};
+
+export type GetPublicChurchProfile200ProgrammeItem = {
+  recurrence: GetPublicChurchProfile200ProgrammeItemRecurrence;
+  startTime: string;
+  label: string;
+  /** @nullable */
+  place: string | null;
+};
+
 export type GetPublicChurchProfile200 = {
   slug: string;
   name: string;
@@ -8141,6 +8172,7 @@ export type GetPublicChurchProfile200 = {
   logoUrl: string | null;
   /** @nullable */
   accentColor: string | null;
+  programme: GetPublicChurchProfile200ProgrammeItem[];
 };
 
 export type GetPublicChurchProfile404Error = typeof GetPublicChurchProfile404Error[keyof typeof GetPublicChurchProfile404Error];

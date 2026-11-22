@@ -171,6 +171,8 @@ interface BlockBody {
   startTime: string;
   endTime: string;
   id?: string;
+  isPublic?: boolean;
+  place?: string;
 }
 
 interface TemplateBody {
@@ -360,6 +362,81 @@ describe('POST /event-templates', () => {
     expect(
       await schedulingTestDb.select().from(templateTimeBlock),
     ).toHaveLength(0);
+  });
+});
+
+describe('TemplateTimeBlock Publico and place', () => {
+  const sermon: BlockBody = {
+    label: 'Sermon',
+    startTime: '10:00',
+    endTime: '11:00',
+  };
+
+  it('defaults to private with no place, and keeps a private block beside a public one', async () => {
+    await signIn();
+
+    const res = await post(
+      body({
+        blocks: [welcome, { ...sermon, isPublic: true, place: '  Main hall ' }],
+      }),
+    );
+
+    expect(res.statusCode).toBe(201);
+    const [first, second] = res.json().blocks;
+    expect(first).toMatchObject({ isPublic: false, place: null });
+    expect(second).toMatchObject({ isPublic: true, place: 'Main hall' });
+    const detail = await getDetail(res.json().id);
+    expect(
+      detail.json().blocks.map(({ isPublic }: BlockBody) => isPublic),
+    ).toEqual([false, true]);
+  });
+
+  it('stores an empty place as no place and refuses a place over 120 characters', async () => {
+    await signIn();
+
+    const empty = await post(body({ blocks: [{ ...welcome, place: '   ' }] }));
+    const long = await post(
+      body({ blocks: [{ ...welcome, place: 'x'.repeat(121) }] }),
+    );
+
+    expect(empty.statusCode).toBe(201);
+    expect(empty.json().blocks[0].place).toBeNull();
+    expect(long.statusCode).toBe(422);
+  });
+
+  it('updates both fields in place on edit', async () => {
+    await signIn();
+    const created = (await post(body())).json();
+    const [block] = created.blocks;
+
+    const res = await patch({
+      templateId: created.id,
+      payload: body({
+        blocks: [{ ...welcome, id: block.id, isPublic: true, place: 'Lobby' }],
+      }),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().blocks[0]).toMatchObject({
+      id: block.id,
+      isPublic: true,
+      place: 'Lobby',
+    });
+  });
+
+  it.each([
+    'member',
+    'leader',
+    'volunteer',
+  ] as const)('refuses %s sending Publico or place with 403 and writes nothing', async (persona) => {
+    await signIn({ persona });
+
+    const res = await post(
+      body({ blocks: [{ ...welcome, isPublic: true, place: 'Lobby' }] }),
+    );
+
+    expect(res.statusCode).toBe(403);
+    expect(await storedTemplateCount()).toBe(0);
   });
 });
 

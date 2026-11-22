@@ -1,5 +1,5 @@
 {
-  "id": "de5f5312-2125-4cbb-8a6e-75a165bf841e",
+  "id": "0d789cb3-0df6-4c0d-9412-43c1fb184c42",
   "prevId": "057c7e02-aabe-4ef1-8f6f-bb70d202ea13",
   "version": "7",
   "dialect": "postgresql",
@@ -1199,18 +1199,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'{}'::jsonb"
-        },
-        "website": {
-          "name": "website",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "accent_color": {
-          "name": "accent_color",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -4320,6 +4308,19 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "is_public": {
+          "name": "is_public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "place": {
+          "name": "place",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -4772,6 +4773,19 @@
         "label": {
           "name": "label",
           "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_public": {
+          "name": "is_public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "place": {
+          "name": "place",
+          "type": "varchar(120)",
           "primaryKey": false,
           "notNull": false
         },

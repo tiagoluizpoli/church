@@ -55,9 +55,30 @@ describe('DbEventTemplateManager', () => {
       name: 'Sunday Service',
       weekday: 0,
       blocks: [
-        { label: 'Tie A', startTime: '09:00', endTime: '10:00', order: 0 },
-        { label: 'Tie B', startTime: '09:00', endTime: '09:30', order: 1 },
-        { label: 'Late', startTime: '11:00', endTime: '12:00', order: 2 },
+        {
+          label: 'Tie A',
+          startTime: '09:00',
+          endTime: '10:00',
+          order: 0,
+          isPublic: false,
+          place: null,
+        },
+        {
+          label: 'Tie B',
+          startTime: '09:00',
+          endTime: '09:30',
+          order: 1,
+          isPublic: false,
+          place: null,
+        },
+        {
+          label: 'Late',
+          startTime: '11:00',
+          endTime: '12:00',
+          order: 2,
+          isPublic: false,
+          place: null,
+        },
       ],
       tx: 'tx',
     });
@@ -106,7 +127,14 @@ describe('DbEventTemplateManager', () => {
       name: 'Vigil',
       weekday: 3,
       blocks: [
-        { label: 'Watch', startTime: '22:00', endTime: '02:00', order: 0 },
+        {
+          label: 'Watch',
+          startTime: '22:00',
+          endTime: '02:00',
+          order: 0,
+          isPublic: false,
+          place: null,
+        },
       ],
       tx: 'tx',
     });

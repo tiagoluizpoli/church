@@ -157,6 +157,8 @@ describe('TemplateCreatePage', () => {
           label: 'Watch',
           startTime: parseTimeOfDay({ value: '22:15' }),
           endTime: parseTimeOfDay({ value: '02:00' }),
+          isPublic: false,
+          place: '',
         },
       ],
     });

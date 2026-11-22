@@ -10,6 +10,8 @@ const positiveInt = z.number().int().positive();
 export const appConfigSchema = z.object({
   /** Product name on app-branded (church-less) email. Placeholder until branding is decided. */
   appName: z.string().trim().min(1),
+  /** Platform site the email credit links to; the credit is plain text while unset. */
+  platformSiteUrl: z.url().optional(),
   /** Parked features: false = UI hidden and server route not registered. */
   parked: z.object({
     assignmentResponse: z.boolean(),

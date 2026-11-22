@@ -112,6 +112,8 @@ export function createEmptyTemplateTimeBlock(): TemplateTimeBlockDraft {
     label: '',
     startTime: null,
     endTime: null,
+    isPublic: false,
+    place: '',
   };
 }
 
@@ -137,6 +139,8 @@ export function createTemplateFormFromTemplate({
         label: block.label,
         startTime: parseTimeOfDay({ value: block.startTime }),
         endTime: parseTimeOfDay({ value: block.endTime }),
+        isPublic: block.isPublic,
+        place: block.place ?? '',
       })),
   };
 }
@@ -203,6 +207,8 @@ export function toTemplateRequestBlocks({
       label: block.label.trim(),
       startTime: block.startTime,
       endTime: block.endTime,
+      isPublic: block.isPublic,
+      place: block.place.trim(),
     };
   });
 }

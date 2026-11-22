@@ -11,6 +11,8 @@ export interface EventTemplateTimeBlockManagerInput {
   label: string;
   startTime: string;
   endTime: string;
+  isPublic?: boolean;
+  place?: string;
 }
 
 export interface CreateEventTemplateManagerInput {

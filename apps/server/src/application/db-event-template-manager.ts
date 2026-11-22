@@ -37,13 +37,15 @@ function normalizeBlocks({
 }: NormalizeBlocksInput): EventTemplateTimeBlockInput[] {
   EventTemplate.assertBlocks({ blocks });
   return blocks
-    .map(({ id, label, startTime, endTime }) => {
+    .map(({ id, label, startTime, endTime, isPublic, place }) => {
       const normalizedId = id?.toLowerCase();
       return {
         ...(normalizedId ? { id: TemplateTimeBlockId.from(normalizedId) } : {}),
         label,
         startTime,
         endTime,
+        isPublic: isPublic ?? false,
+        place: place || null,
       };
     })
     .sort((left, right) => left.startTime.localeCompare(right.startTime))

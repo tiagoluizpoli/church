@@ -543,6 +543,9 @@ export type CreateEventTemplateBodyBlocksItem = {
   startTime: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
+  isPublic?: boolean;
+  /** @maxLength 120 */
+  place?: string;
 };
 
 export type CreateEventTemplateBody = {
@@ -570,6 +573,9 @@ export type CreateEventTemplate201BlocksItem = {
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
   order: number;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
 };
 
 export type CreateEventTemplate201 = {
@@ -629,6 +635,9 @@ export type ListEventTemplates200TemplatesItemBlocksItem = {
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
   order: number;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
 };
 
 export type ListEventTemplates200TemplatesItem = {
@@ -657,6 +666,9 @@ export type GetEventTemplate200BlocksItem = {
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
   order: number;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
 };
 
 export type GetEventTemplate200 = {
@@ -681,6 +693,9 @@ export type UpdateEventTemplateBodyBlocksItem = {
   startTime: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
+  isPublic?: boolean;
+  /** @maxLength 120 */
+  place?: string;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id?: string;
 };
@@ -710,6 +725,9 @@ export type UpdateEventTemplate200BlocksItem = {
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
   order: number;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
 };
 
 export type UpdateEventTemplate200 = {

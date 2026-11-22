@@ -339,7 +339,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
 
   it('freezes the facts at first resolution: a retry writes the inbox row after the Cycle is gone', async () => {
     await askOneMember();
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const inbox = new FlakyInboxRepository({ db: schedulingTestDb });
     inbox.failuresLeft = 100;
     const drainer = buildDrainer(emailSender, inbox);
@@ -365,7 +365,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
 
   it('carries the Church name and a single-word first name to the email', async () => {
     await askOneMember();
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -378,7 +378,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
   it('settles every sink as skipped, not failed, when the Cycle is gone before first resolution', async () => {
     await askOneMember();
     await dropCycle();
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -428,7 +428,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       }),
     );
 
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
     expect(await drainer.drainOnce({ limit: 10 })).toEqual({
       claimed: 2,
@@ -535,7 +535,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       ),
     );
 
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
     expect(emailSender.sent.map((email) => email.kind)).toEqual([
       'availability.reminder',
@@ -590,7 +590,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         data: { cycleId, ministryId: ids.ministryId, checkId: check?.id },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
     expect(
       emailSender.sent.find((email) => email.to === 'late@test.com'),
@@ -1091,7 +1091,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     ).toBe(0);
 
     setTestClock({ instant: '2026-12-26T09:00:00.000Z' as Instant });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
     expect(emailSender.sent).toHaveLength(4);
     expect(
@@ -1645,7 +1645,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       },
     });
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     const result = await buildDrainer(sender).drainOnce({ limit: 10 });
     expect(result).toMatchObject({ sent: 1, failed: 0 });
     expect(sender.sent).toHaveLength(0);
@@ -2070,7 +2070,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
 
     await buildAvailabilityManager().askSchedule(scheduleKey());
 
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
     expect(emailSender.sent.map((email) => email.to)).toEqual(['ana@test.com']);
@@ -2119,7 +2119,7 @@ describe('N8 swap_request_answered through the outbox', () => {
 
   it('renders the pt-BR email and bell row with the reply and the Assignment-page link, freezing the facts', async () => {
     await enqueueAnswered({ reply: 'Fica com a gente <b>domingo</b>' });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2168,7 +2168,7 @@ describe('N8 swap_request_answered through the outbox', () => {
 
   it('omits the reply line when the leader left none', async () => {
     await enqueueAnswered({});
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2286,7 +2286,7 @@ describe('N10 event_changed (add) through the outbox', () => {
 
   it('renders the pt-BR email with an escaped title, Church-Timezone time and an absolute link, and stores the bell row', async () => {
     await enqueueAdded({ eventTitle: 'Vigília <b>especial</b>' });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2366,7 +2366,7 @@ describe('N10 event_changed (add) through the outbox', () => {
         },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2413,7 +2413,7 @@ describe('N10 event_changed (add) through the outbox', () => {
         })
         .where(eq(outboxMessage.id, row.id));
     }
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2466,7 +2466,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
         },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2539,7 +2539,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
         },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2609,7 +2609,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
         })
         .where(eq(outboxMessage.id, row.id));
     }
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2657,7 +2657,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
       userId: ids.adminUserId,
       ministryIds: [ids.ministryId, kids.id],
     });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2730,7 +2730,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
       userId: ids.adminUserId,
       ministryIds: [ids.ministryId],
     });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2759,7 +2759,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
           eq(member.organizationId, ids.churchId),
         ),
       );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2787,7 +2787,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
         .set({ payload: { ...(row.payload as object), facts: oldFacts } })
         .where(eq(outboxMessage.id, row.id));
     }
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2807,7 +2807,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
       userId: ids.adminUserId,
       ministryIds: [ids.ministryId],
     });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const inbox = new FlakyInboxRepository({ db: schedulingTestDb });
     inbox.failuresLeft = 1;
     const drainer = buildDrainer(emailSender, inbox);
@@ -2883,7 +2883,7 @@ describe('availability delivery facts resolved per recipient', () => {
     await seedAsk(null);
     await enqueue('availability_opened', guitarist);
     await enqueue('availability_opened', singer);
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2914,7 +2914,7 @@ describe('availability delivery facts resolved per recipient', () => {
     const userId = await seedRoleHolder('ana', guitar.id);
     await seedAsk('2999-01-10');
     await enqueue('availability_opened', userId);
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
     await drainer.drainOnce({ limit: 10 });
 
@@ -2950,7 +2950,7 @@ describe('availability delivery facts resolved per recipient', () => {
       ...scheduleKey(),
       answerBy: parseCalendarDay({ value: '2026-11-10' }),
     });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
     await drainer.drainOnce({ limit: 10 });
     await manager.setDeadline({
@@ -2996,7 +2996,7 @@ describe('availability delivery facts resolved per recipient', () => {
     await seedNeededShift([guitar.id]);
     const userId = await seedRoleHolder('ana', guitar.id);
     await seedAsk('2026-11-20');
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
 
     // 02:30 UTC on the 21st is still 23:30 on the 20th in America/Sao_Paulo.
@@ -3025,7 +3025,7 @@ describe('availability delivery facts resolved per recipient', () => {
       ).id,
     );
     await enqueue('availability_opened', userId);
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
     await drainer.drainOnce({ limit: 10 });
     await seedAsk(null);
@@ -3069,7 +3069,7 @@ describe('availability delivery facts resolved per recipient', () => {
         .set({ payload: { ...(row.payload as object), facts: oldFacts } })
         .where(eq(outboxMessage.id, row.id));
     }
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -3127,7 +3127,7 @@ describe('N7 swap_request through the outbox', () => {
         },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 

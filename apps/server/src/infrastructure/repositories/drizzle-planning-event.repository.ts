@@ -279,6 +279,8 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         startTime: input.startTime,
         endTime: input.endTime,
         label: input.label ?? null,
+        isPublic: input.isPublic ?? false,
+        place: input.place ?? null,
       })
       .returning();
 

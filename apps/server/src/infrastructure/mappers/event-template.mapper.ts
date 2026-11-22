@@ -29,6 +29,8 @@ export function mapTemplateTimeBlock(
     startTime: fromTimeColumn({ value: row.startTime }),
     endTime: fromTimeColumn({ value: row.endTime }),
     order: row.order,
+    isPublic: row.isPublic,
+    place: row.place ?? undefined,
   };
 
   return new TemplateTimeBlock({

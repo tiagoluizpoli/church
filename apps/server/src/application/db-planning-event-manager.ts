@@ -378,6 +378,8 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             startTime: toDate({ instant: eventTimeBlock.startTime }),
             endTime: toDate({ instant: eventTimeBlock.endTime }),
             label: eventTimeBlock.label,
+            isPublic: eventTimeBlock.isPublic,
+            place: eventTimeBlock.place,
             tx,
           });
           generatedEventTimeBlockCount += 1;

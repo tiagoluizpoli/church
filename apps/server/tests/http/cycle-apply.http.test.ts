@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { event, eventTimeBlock, shift } from '@church/db';
+import { event, eventTimeBlock, shift, templateTimeBlock } from '@church/db';
 import {
   parseCalendarDay,
   parseInstant,
@@ -239,7 +239,13 @@ interface TemplateInput {
   churchId: string;
   name?: string;
   weekday?: number;
-  blocks?: { label: string; start: string; end: string }[];
+  blocks?: {
+    label: string;
+    start: string;
+    end: string;
+    isPublic?: boolean;
+    place?: string;
+  }[];
 }
 
 /** Sunday by default, with one 19:00–21:00 block. */
@@ -258,6 +264,8 @@ async function seedTemplate({
       label: block.label,
       startTime: time(block.start),
       endTime: time(block.end),
+      isPublic: block.isPublic,
+      place: block.place,
     })),
   });
 }
@@ -289,6 +297,8 @@ async function storedBlocks(cycleId: string) {
       id: eventTimeBlock.id,
       eventId: eventTimeBlock.eventId,
       label: eventTimeBlock.label,
+      isPublic: eventTimeBlock.isPublic,
+      place: eventTimeBlock.place,
       source: eventTimeBlock.sourceTemplateTimeBlockId,
       start: eventTimeBlock.startTime,
       end: eventTimeBlock.endTime,
@@ -322,6 +332,78 @@ describe('POST /admin/cycles/:cycleId/apply-templates', () => {
     expect(first.json()).toEqual(TWO_SUNDAYS);
     expect(again.json()).toEqual(NOTHING);
     expect(await storedEvents(cycle.id)).toHaveLength(2);
+  });
+
+  it('copies Publico and place onto each generated block, independently of the template afterwards', async () => {
+    const seed = await signIn();
+    const sunday = await seedTemplate({
+      churchId: seed.churchAId,
+      blocks: [
+        {
+          label: 'Service',
+          start: '19:00',
+          end: '21:00',
+          isPublic: true,
+          place: 'Main hall',
+        },
+        { label: 'Prayer', start: '18:00', end: '18:30' },
+      ],
+    });
+    const cycle = await seedCycle({ churchId: seed.churchAId, ...FORTNIGHT });
+
+    await apply(cycle.id, [sunday.template.id]);
+    const copied = await storedBlocks(cycle.id);
+
+    expect(
+      copied.map(({ label, isPublic, place }) => ({ label, isPublic, place })),
+    ).toEqual([
+      { label: 'Prayer', isPublic: false, place: null },
+      { label: 'Service', isPublic: true, place: 'Main hall' },
+      { label: 'Prayer', isPublic: false, place: null },
+      { label: 'Service', isPublic: true, place: 'Main hall' },
+    ]);
+
+    // Editing the template leaves generated blocks untouched ...
+    const [service, prayer] = [...sunday.blocks].sort((a, b) =>
+      b.label.localeCompare(a.label),
+    );
+    const edit = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/event-templates/${sunday.template.id}`,
+      payload: {
+        name: 'Sunday',
+        weekday: 0,
+        blocks: [
+          {
+            id: service?.id,
+            label: 'Service',
+            startTime: '19:00',
+            endTime: '21:00',
+            isPublic: false,
+            place: 'Annex',
+          },
+          {
+            id: prayer?.id,
+            label: 'Prayer',
+            startTime: '18:00',
+            endTime: '18:30',
+          },
+        ],
+      } as never,
+    });
+    expect(edit.statusCode).toBe(200);
+    expect(await storedBlocks(cycle.id)).toEqual(copied);
+
+    // ... and editing a generated block leaves the template untouched.
+    await db
+      .update(eventTimeBlock)
+      .set({ isPublic: false, place: 'Garden' })
+      .where(eq(eventTimeBlock.id, copied[1]?.id ?? ''));
+    const stored = await db
+      .select()
+      .from(templateTimeBlock)
+      .where(eq(templateTimeBlock.id, service?.id ?? ''));
+    expect(stored[0]).toMatchObject({ isPublic: false, place: 'Annex' });
   });
 
   it('includes both bounds and ignores nonmatching days', async () => {

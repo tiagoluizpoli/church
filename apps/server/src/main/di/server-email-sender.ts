@@ -4,12 +4,19 @@ import { env } from '@church/env/server';
 import { DrizzleRuntimeConfigurationRepository } from '../../infrastructure/repositories/drizzle-runtime-configuration.repository';
 import { createEmailSenders } from './email-senders';
 
+/** The platform logo, served from the web app's public folder. */
+const PLATFORM_LOGO_PATH = '/logo.png';
+
 const senders = createEmailSenders({
   nodeEnv: env.NODE_ENV,
   environment: env.CHURCH_ENVIRONMENT,
   runtimeConfiguration: new DrizzleRuntimeConfigurationRepository({ db }),
   devSender: env.DEV_EMAIL_SENDER,
   appName: appConfig.appName,
+  platform: {
+    logoUrl: new URL(PLATFORM_LOGO_PATH, env.CORS_ORIGIN).href,
+    siteUrl: appConfig.platformSiteUrl,
+  },
   resend: { apiKey: env.RESEND_API_KEY, from: env.RESEND_FROM_EMAIL },
   smtp: {
     host: env.SMTP_HOST,

@@ -5,12 +5,17 @@ import type { EventTemplate } from '../../domain/entities/event-template';
 /** The single trim point for template names and block labels. */
 const requiredTextSchema = z.string().trim().min(1).max(255);
 
+/** Short free text; an empty place is stored as none. */
+const placeSchema = z.string().trim().max(120);
+
 /** Create takes no persisted id or caller-controlled order: the server derives `order`. */
 export const eventTemplateTimeBlockBodySchema = z
   .object({
     label: requiredTextSchema,
     startTime: timeOfDaySchema,
     endTime: timeOfDaySchema,
+    isPublic: z.boolean().optional(),
+    place: placeSchema.optional(),
   })
   .strict();
 
@@ -58,6 +63,8 @@ export const eventTemplateTimeBlockResponseSchema = z.object({
   startTime: timeOfDaySchema,
   endTime: timeOfDaySchema,
   order: z.number(),
+  isPublic: z.boolean(),
+  place: z.string().nullable(),
 });
 
 export const eventTemplateResponseSchema = z.object({
@@ -99,6 +106,8 @@ function toEventTemplateResponse(template: EventTemplate) {
       startTime: block.startTime,
       endTime: block.endTime,
       order: block.order,
+      isPublic: block.isPublic,
+      place: block.place ?? null,
     })),
     createdAt: fromDate({ date: template.createdAt }),
     updatedAt: fromDate({ date: template.updatedAt }),

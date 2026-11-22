@@ -1,4 +1,7 @@
-import { execFileSync } from 'node:child_process';
+import {
+  type ExecFileSyncOptionsWithStringEncoding,
+  execFileSync,
+} from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
@@ -155,10 +158,10 @@ function resolveDefaultBaseRef(): string | undefined {
   return ['develop', 'origin/develop'].find((ref) => isRef({ ref }));
 }
 
-const QUIET_GIT = {
+const QUIET_GIT: ExecFileSyncOptionsWithStringEncoding = {
   encoding: 'utf8',
   stdio: ['ignore', 'pipe', 'ignore'],
-} as const;
+};
 
 function readConfiguredBaseRef(): string | undefined {
   try {

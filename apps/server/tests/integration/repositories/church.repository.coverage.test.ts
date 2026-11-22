@@ -4,7 +4,8 @@ import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ChurchId } from '@/domain/branded-ids';
+import { ChurchId, UserId } from '@/domain/branded-ids';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import {
@@ -12,6 +13,24 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+
+/** Runs `work` in a transaction on a one-connection pool: any read outside the transaction times out. */
+async function inOneConnectionTransaction<T>(
+  work: (repo: DrizzleChurchRepository, tx: TransactionContext) => Promise<T>,
+): Promise<T> {
+  const pool = new pg.Pool({
+    connectionString: getIntegrationDatabaseUrl(),
+    max: 1,
+    connectionTimeoutMillis: 2_000,
+  });
+  const db = drizzle(pool, { schema });
+  const repo = new DrizzleChurchRepository({ db });
+  try {
+    return await new DrizzleUnitOfWork({ db }).run((tx) => work(repo, tx));
+  } finally {
+    await pool.end();
+  }
+}
 
 describe('DrizzleChurchRepository (extra coverage)', () => {
   beforeEach(async () => {
@@ -43,21 +62,21 @@ describe('DrizzleChurchRepository (extra coverage)', () => {
 
   it("reads a Church's settings inside the caller's transaction, never from a second connection", async () => {
     const { churchAId } = await seedSchedulingPhase3Base();
-    // One connection, held by the transaction: any read outside it waits.
-    const pool = new pg.Pool({
-      connectionString: getIntegrationDatabaseUrl(),
-      max: 1,
-      connectionTimeoutMillis: 2_000,
-    });
-    const db = drizzle(pool, { schema });
-    const repo = new DrizzleChurchRepository({ db });
-    try {
-      const settings = await new DrizzleUnitOfWork({ db }).run((tx) =>
-        repo.getSettings({ id: ChurchId.from(churchAId), tx }),
-      );
-      expect(settings.addresses).toEqual([]);
-    } finally {
-      await pool.end();
-    }
+    const settings = await inOneConnectionTransaction((repo, tx) =>
+      repo.getSettings({ id: ChurchId.from(churchAId), tx }),
+    );
+    expect(settings.addresses).toEqual([]);
+  });
+
+  it("reads a Church and a user name inside the caller's transaction, never from a second connection", async () => {
+    const { churchAId, adminUserId } = await seedSchedulingPhase3Base();
+    const [church, name] = await inOneConnectionTransaction((repo, tx) =>
+      Promise.all([
+        repo.getById({ id: ChurchId.from(churchAId), tx }),
+        repo.findUserName({ userId: UserId.from(adminUserId), tx }),
+      ]),
+    );
+    expect(church.id).toBe(churchAId);
+    expect(name).toBe('Scheduling Admin');
   });
 });

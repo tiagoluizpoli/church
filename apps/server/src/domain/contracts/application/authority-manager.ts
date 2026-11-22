@@ -25,6 +25,8 @@ export interface DecideAuthorityInput {
   action: AuthorityAction;
   resource: AuthorityResource | null;
   scope: AuthorityScope;
+  /** Reads inside the caller's transaction, so it never needs a second connection. */
+  tx?: TransactionContext;
 }
 
 export interface CanManageChurchInput {
@@ -50,6 +52,8 @@ export interface CanManageInvitationsInput {
   churchId: ChurchId;
   userId: UserId;
   invitations: InvitationAuthorityTarget[];
+  /** Reads inside the caller's transaction, so it never needs a second connection. */
+  tx?: TransactionContext;
 }
 
 /** One stored Ministry Membership and the operation asked of it. */

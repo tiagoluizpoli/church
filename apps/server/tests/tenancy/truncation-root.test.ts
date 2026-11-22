@@ -11,6 +11,7 @@ import {
   event,
   eventTemplate,
   eventTimeBlock,
+  eventTimeBlockMove,
   identityAudit,
   invitation,
   invitationVerificationCode,
@@ -312,6 +313,15 @@ async function seedEveryTenantedTable(): Promise<void> {
     eventId: IDS.event,
     startTime: new Date('2026-06-07T09:00:00Z'),
     endTime: new Date('2026-06-07T11:00:00Z'),
+  });
+
+  await testDb.insert(eventTimeBlockMove).values({
+    churchId: IDS.church,
+    eventTimeBlockId: IDS.eventTimeBlock,
+    previousStart: new Date('2026-06-07T08:00:00Z'),
+    previousEnd: new Date('2026-06-07T10:00:00Z'),
+    newStart: new Date('2026-06-07T09:00:00Z'),
+    newEnd: new Date('2026-06-07T11:00:00Z'),
   });
 
   await testDb.insert(ministryParticipation).values({

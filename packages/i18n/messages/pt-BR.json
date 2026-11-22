@@ -2095,6 +2095,7 @@
   "error_church_settings_contact_phone_invalid": "Informe um telefone brasileiro válido, com DDD.",
   "error_church_settings_contact_email_invalid": "Informe um e-mail válido.",
   "error_church_settings_contact_description_too_long": "A descrição pode ter no máximo 80 caracteres.",
+  "error_church_settings_contact_group_too_long": "O nome da pessoa ou ministério pode ter no máximo 60 caracteres.",
   "church_settings_slug_generate": "Gerar do nome",
   "church_settings_slug_hint": "O endereço público da sua igreja. Mudar o nome não muda o link.",
   "church_settings_slug_confirm_title": "Mudar o link da igreja?",

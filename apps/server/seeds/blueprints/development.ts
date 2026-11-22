@@ -69,6 +69,7 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
         isPublic: false,
       },
     ],
+    contactGroups: ['Pastora Helena', 'Louvor'],
     contacts: [
       {
         kind: 'phone',
@@ -77,6 +78,7 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
         description: 'Secretaria',
         isWhatsApp: true,
         isPublic: true,
+        group: null,
       },
       {
         kind: 'email',
@@ -85,6 +87,7 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
         description: null,
         isWhatsApp: false,
         isPublic: true,
+        group: null,
       },
       {
         kind: 'phone',
@@ -93,6 +96,16 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
         description: 'Pastor (só admins)',
         isWhatsApp: false,
         isPublic: false,
+        group: 'Pastora Helena',
+      },
+      {
+        kind: 'email',
+        phoneType: null,
+        value: 'louvor@igreja-semente.test',
+        description: 'Escalas do louvor',
+        isWhatsApp: false,
+        isPublic: true,
+        group: 'Louvor',
       },
     ],
     socialLinks: [
@@ -104,12 +117,18 @@ export const IGREJA_SEMENTE: ChurchDirectoryBlueprint = {
       {
         url: 'https://youtube.com/@pastorhelena',
         description: 'Canal da pastora',
+        group: 'Pastora Helena',
       },
       { url: 'https://facebook.com/igrejasemente' },
       { url: 'https://t.me/igrejasemente' },
       {
         url: 'https://whatsapp.com/channel/0029VaSemente',
         description: 'Avisos da semana',
+      },
+      {
+        url: 'https://instagram.com/louvorsemente',
+        description: 'Ensaios e bastidores',
+        group: 'Louvor',
       },
       { url: 'https://open.spotify.com/show/semente', description: 'Podcast' },
     ],

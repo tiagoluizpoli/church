@@ -6,6 +6,7 @@ import {
   church,
   churchAddress,
   churchContact,
+  churchContactGroup,
   churchSocialLink,
   createChurch,
   invitation,
@@ -164,10 +165,38 @@ export async function buildChurchSettings({
     .where(eq(church.id, churchId));
 }
 
+export interface BuildChurchContactGroupsInput {
+  db: SeedWriter;
+  churchId: string;
+  /** Group names in display order; each is created once. */
+  names: readonly string[];
+}
+
+/** Direct-state builder: the Church's Contact Groups; returns their ids by name. */
+export async function buildChurchContactGroups({
+  db,
+  churchId,
+  names,
+}: BuildChurchContactGroupsInput): Promise<Map<string, string>> {
+  const groups = names.map((name, position) => ({
+    id: deriveSeedId({
+      kind: 'church-contact-group',
+      parentIds: [churchId, String(position)],
+    }),
+    churchId,
+    name,
+    position,
+  }));
+  if (groups.length > 0) await db.insert(churchContactGroup).values(groups);
+  return new Map(groups.map(({ name, id }) => [name, id]));
+}
+
 export interface BuildChurchContactsInput {
   db: SeedWriter;
   churchId: string;
   contacts: ChurchContact[];
+  /** Group ids by name, from `buildChurchContactGroups`. */
+  groupIds: ReadonlyMap<string, string>;
 }
 
 /** Direct-state builder: the Church Contacts of a Church, in the given order. */
@@ -175,11 +204,13 @@ export async function buildChurchContacts({
   db,
   churchId,
   contacts,
+  groupIds,
 }: BuildChurchContactsInput): Promise<void> {
   if (contacts.length === 0) return;
   await db.insert(churchContact).values(
-    contacts.map((contact, position) => ({
+    contacts.map(({ group, ...contact }, position) => ({
       ...contact,
+      groupId: group ? (groupIds.get(group) ?? null) : null,
       id: deriveSeedId({
         kind: 'church-contact',
         parentIds: [churchId, String(position)],
@@ -313,6 +344,8 @@ export interface BuildChurchSocialLinksInput {
   db: SeedWriter;
   churchId: string;
   socialLinks: readonly ChurchSocialLinkBlueprint[];
+  /** Group ids by name, from `buildChurchContactGroups`. */
+  groupIds: ReadonlyMap<string, string>;
 }
 
 /** Direct-state builder: the Church's Social Links in order, networks detected from the URLs. */
@@ -320,6 +353,7 @@ export async function buildChurchSocialLinks({
   db,
   churchId,
   socialLinks,
+  groupIds,
 }: BuildChurchSocialLinksInput): Promise<void> {
   if (socialLinks.length === 0) return;
   await db.insert(churchSocialLink).values(
@@ -337,6 +371,7 @@ export async function buildChurchSocialLinks({
         url: link.url,
         network: detection.network,
         description: link.description ?? null,
+        groupId: link.group ? (groupIds.get(link.group) ?? null) : null,
         position,
       };
     }),

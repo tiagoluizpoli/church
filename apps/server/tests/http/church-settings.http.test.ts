@@ -62,6 +62,7 @@ const UNTOUCHED = {
   logoKey: null,
   logoUrl: null,
   contacts: [],
+  contactGroups: [],
   publicOrigin: PUBLIC_ORIGIN,
 };
 
@@ -207,6 +208,7 @@ describe('Church Settings', () => {
       logoKey: null,
       logoUrl: null,
       contacts: [],
+      contactGroups: [],
       publicOrigin: PUBLIC_ORIGIN,
     };
     expect(saved.statusCode).toBe(200);
@@ -262,6 +264,7 @@ describe('Church Settings', () => {
       logoKey: null,
       logoUrl: null,
       contacts: [],
+      contactGroups: [],
       publicOrigin: PUBLIC_ORIGIN,
     });
   });
@@ -855,21 +858,25 @@ describe('Social Links', () => {
         url: 'https://youtube.com/@igreja',
         network: 'youtube',
         description: 'Cultos ao vivo',
+        group: null,
       },
       {
         url: 'https://instagram.com/igreja',
         network: 'instagram',
         description: null,
+        group: null,
       },
       {
         url: 'https://youtube.com/@pastor',
         network: 'youtube',
         description: 'Canal do pastor',
+        group: null,
       },
       {
         url: 'https://chat.whatsapp.com/AbC123',
         network: 'whatsappGroup',
         description: null,
+        group: null,
       },
     ];
     expect(res.json().socialLinks).toEqual(expected);
@@ -886,7 +893,12 @@ describe('Social Links', () => {
     const res = await saveSocialLinks([{ url: 'https://t.me/b' }]);
 
     expect(res.json().socialLinks).toEqual([
-      { url: 'https://t.me/b', network: 'telegram', description: null },
+      {
+        url: 'https://t.me/b',
+        network: 'telegram',
+        description: null,
+        group: null,
+      },
     ]);
     expect((await saveSocialLinks([])).json().socialLinks).toEqual([]);
   });
@@ -925,6 +937,7 @@ describe('Social Links', () => {
         url: 'https://instagram.com/keep',
         network: 'instagram',
         description: null,
+        group: null,
       },
     ]);
   });
@@ -969,6 +982,7 @@ describe('Church Contacts', () => {
     description: ' Secretaria ',
     isWhatsApp: true,
     isPublic: true,
+    group: null,
   };
   const email = {
     kind: 'email',
@@ -977,6 +991,7 @@ describe('Church Contacts', () => {
     description: null,
     isWhatsApp: false,
     isPublic: false,
+    group: null,
   };
 
   it('keeps contacts in order, normalised, and private by what was sent', async () => {
@@ -1044,5 +1059,119 @@ describe('Church Contacts', () => {
 
     signIn({ churchId: CHURCH_B });
     expect((await getSettings()).json().contacts).toEqual([]);
+  });
+});
+
+describe('Contact Groups', () => {
+  const base = {
+    name: 'Igreja Batista Esperança',
+    website: '',
+    accentColor: null,
+  };
+  const email = {
+    kind: 'email',
+    phoneType: null,
+    value: 'louvor@igreja.org',
+    description: null,
+    isWhatsApp: false,
+    isPublic: true,
+  };
+
+  async function read() {
+    signIn();
+    const body = (await getSettings()).json();
+    return {
+      groups: body.contactGroups as string[],
+      contacts: body.contacts.map((c: { group: string | null }) => c.group),
+      links: body.socialLinks.map((l: { group: string | null }) => l.group),
+    };
+  }
+
+  it('creates groups from the names typed, keeps them in the requested order and leaves the rest ungrouped', async () => {
+    signIn();
+
+    const res = await saveSettings({
+      ...base,
+      contactGroups: ['Louvor', 'Pastora Helena'],
+      contacts: [
+        { ...email, group: ' Pastora   Helena ' },
+        { ...email, group: null },
+      ],
+      socialLinks: [
+        { url: 'https://instagram.com/louvor', group: 'Louvor' },
+        { url: 'https://instagram.com/igreja' },
+      ],
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(await read()).toEqual({
+      groups: ['Louvor', 'Pastora Helena'],
+      contacts: ['Pastora Helena', null],
+      links: ['Louvor', null],
+    });
+  });
+
+  it('treats names differing in case as one group and appends unlisted groups in first-use order', async () => {
+    signIn();
+
+    await saveSettings({
+      ...base,
+      contactGroups: ['Jovens'],
+      contacts: [
+        { ...email, group: 'Louvor' },
+        { ...email, group: 'louvor' },
+        { ...email, group: 'Jovens' },
+      ],
+    });
+
+    expect(await read()).toMatchObject({
+      groups: ['Jovens', 'Louvor'],
+      contacts: ['Louvor', 'Louvor', 'Jovens'],
+    });
+  });
+
+  it('deletes a group with no member on save and keeps groups of contacts left alone', async () => {
+    signIn();
+    await saveSettings({
+      ...base,
+      contactGroups: ['Vazio'],
+      contacts: [{ ...email, group: 'Louvor' }],
+      socialLinks: [{ url: 'https://instagram.com/jovens', group: 'Jovens' }],
+    });
+    expect((await read()).groups).toEqual(['Louvor', 'Jovens']);
+
+    await saveSettings({ ...base, socialLinks: [] });
+
+    expect(await read()).toEqual({
+      groups: ['Louvor'],
+      contacts: ['Louvor'],
+      links: [],
+    });
+  });
+
+  it('refuses a name over 60 characters by row and saves nothing', async () => {
+    signIn();
+
+    const res = await saveSettings({
+      ...base,
+      contacts: [{ ...email, group: 'a'.repeat(61) }],
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().fieldErrors).toEqual([
+      expect.objectContaining({
+        field: 'contacts.0.group',
+        code: 'CONTACT_GROUP_TOO_LONG',
+      }),
+    ]);
+    expect((await read()).groups).toEqual([]);
+  });
+
+  it('keeps one Church out of the other', async () => {
+    signIn();
+    await saveSettings({ ...base, contacts: [{ ...email, group: 'Louvor' }] });
+
+    signIn({ churchId: CHURCH_B });
+    expect((await getSettings()).json().contactGroups).toEqual([]);
   });
 });

@@ -22,6 +22,7 @@ import {
   churchSlugSchema,
   churchWebsiteSchema,
 } from '../../domain/church-settings';
+import { contactGroupOrderSchema } from '../../domain/contact-group';
 import { socialLinksSchema } from '../../domain/social-link';
 import type { ErrorMessage } from '../utils/error-table';
 
@@ -32,6 +33,7 @@ const churchContactResponseSchema = z.object({
   description: z.string().nullable(),
   isWhatsApp: z.boolean(),
   isPublic: z.boolean(),
+  group: z.string().nullable(),
 });
 
 const churchAddressResponseSchema = z.object({
@@ -58,6 +60,7 @@ const socialLinkResponseSchema = z.object({
   /** Detected from the URL on save. */
   network: z.enum(SOCIAL_NETWORK_KEYS),
   description: z.string().nullable(),
+  group: z.string().nullable(),
 });
 
 export const churchSettingsResponseSchema = z.object({
@@ -73,6 +76,8 @@ export const churchSettingsResponseSchema = z.object({
   logoUrl: z.string().nullable(),
   /** Church Contacts in the admin's order. */
   contacts: z.array(churchContactResponseSchema),
+  /** Contact Group names in display order; ungrouped rows ("Da igreja") come first and are not listed. */
+  contactGroups: z.array(z.string()),
   /** The web origin the public `…/slug` address is shown under. */
   publicOrigin: z.string(),
 });
@@ -99,6 +104,11 @@ export const updateChurchSettingsBodySchema = z.object({
     .optional()
     .describe(
       'Church Contacts in order; phones validated as allowed-country numbers and stored as E.164, emails lower-cased. Omitted, the contacts stay; sent, the list replaces them. A refused row is reported by index, e.g. contacts.1.value.',
+    ),
+  contactGroups: contactGroupOrderSchema
+    .optional()
+    .describe(
+      'Contact Group names in display order, for the `group` of contacts and links. A group is created by naming it on a row, case-insensitively one group; unlisted groups follow in first-use order; a group no row uses is deleted on save. Omitted, the stored order stays.',
     ),
   addresses: churchAddressesSchema.describe(
     'Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.',
@@ -167,6 +177,7 @@ const FIELD_CODE_MESSAGES: Record<ChurchSettingsFieldCode, ErrorMessage> = {
   CONTACT_EMAIL_INVALID: m.error_church_settings_contact_email_invalid,
   CONTACT_DESCRIPTION_TOO_LONG:
     m.error_church_settings_contact_description_too_long,
+  CONTACT_GROUP_TOO_LONG: m.error_church_settings_contact_group_too_long,
   INVALID: m.error_church_settings_invalid,
 };
 

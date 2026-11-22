@@ -5,6 +5,7 @@ import {
   church,
   churchAddress,
   churchContact,
+  churchContactGroup,
   churchSocialLink,
   cycle,
   event,
@@ -290,6 +291,7 @@ describe('development seed recipe', () => {
       'facebook',
       'telegram',
       'whatsappChannel',
+      'instagram',
       'spotify',
     ]);
     expect(rows[1]?.description).toBe('Cultos ao vivo');
@@ -387,6 +389,56 @@ describe('development seed recipe', () => {
         isPublic: true,
       },
       { churchId: seeded.church.id, value: '+551134567890', isPublic: false },
+      {
+        churchId: seeded.church.id,
+        value: 'louvor@igreja-semente.test',
+        isPublic: true,
+      },
+    ]);
+  });
+
+  it('groups some of the primary Church contacts and links and leaves the rest ungrouped', async () => {
+    const groups = await testDb
+      .select({ name: churchContactGroup.name })
+      .from(churchContactGroup)
+      .where(eq(churchContactGroup.churchId, seeded.church.id))
+      .orderBy(asc(churchContactGroup.position));
+    const contactGroups = await testDb
+      .select({ group: churchContactGroup.name })
+      .from(churchContact)
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchContact.groupId),
+      )
+      .orderBy(churchContact.position);
+    const linkGroups = await testDb
+      .select({ group: churchContactGroup.name })
+      .from(churchSocialLink)
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchSocialLink.groupId),
+      )
+      .orderBy(churchSocialLink.position);
+
+    expect(groups.map(({ name }) => name)).toEqual([
+      'Pastora Helena',
+      'Louvor',
+    ]);
+    expect(contactGroups.map(({ group }) => group)).toEqual([
+      null,
+      null,
+      'Pastora Helena',
+      'Louvor',
+    ]);
+    expect(linkGroups.map(({ group }) => group)).toEqual([
+      null,
+      null,
+      'Pastora Helena',
+      null,
+      null,
+      null,
+      'Louvor',
+      null,
     ]);
   });
 

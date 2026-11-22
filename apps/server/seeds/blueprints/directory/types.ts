@@ -78,6 +78,8 @@ export interface ChurchAddressBlueprint {
 export interface ChurchSocialLinkBlueprint {
   url: string;
   description?: string;
+  /** *Pessoa ou ministério*; omitted is ungrouped ("Da igreja"). */
+  group?: string;
 }
 
 export interface ChurchIdentity {
@@ -89,6 +91,8 @@ export interface ChurchIdentity {
   accentColor?: string;
   /** Church Contacts in order; omitted means none. */
   contacts?: ChurchContact[];
+  /** Contact Group names in display order, for the `group` of contacts and links. */
+  contactGroups?: readonly string[];
   addresses?: readonly ChurchAddressBlueprint[];
   /** In display order; the network is detected from each URL. */
   socialLinks?: readonly ChurchSocialLinkBlueprint[];

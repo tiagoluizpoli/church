@@ -2095,6 +2095,7 @@
   "error_church_settings_contact_phone_invalid": "Enter a valid Brazilian phone number, with area code.",
   "error_church_settings_contact_email_invalid": "Enter a valid email address.",
   "error_church_settings_contact_description_too_long": "The description can be at most 80 characters.",
+  "error_church_settings_contact_group_too_long": "The person or ministry name can be at most 60 characters.",
   "church_settings_slug_generate": "Generate from name",
   "church_settings_slug_hint": "Your Church's public address. Renaming the Church does not change the link.",
   "church_settings_slug_confirm_title": "Change the Church link?",

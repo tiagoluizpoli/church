@@ -3,6 +3,7 @@ import {
   type SocialNetwork,
 } from '@church/app-config/social-networks';
 import { z } from 'zod';
+import { contactGroupNameSchema } from './contact-group';
 
 export const SOCIAL_LINK_FIELD_CODES = [
   'SOCIAL_LINK_INVALID',
@@ -21,6 +22,8 @@ export interface ChurchSocialLink {
   url: string;
   network: SocialNetwork;
   description: string | null;
+  /** *Pessoa ou ministério*; `null` is ungrouped ("Da igreja"). */
+  group: string | null;
 }
 
 /** One link of a save; list order is the display order. */
@@ -63,9 +66,14 @@ const socialLinkChangeSchema = z
           .max(SOCIAL_LINK_DESCRIPTION_MAX, 'SOCIAL_LINK_TOO_LONG')
           .nullable(),
       ),
+    group: contactGroupNameSchema,
   })
   .transform(
-    ({ url, description }): SocialLinkChange => ({ ...url, description }),
+    ({ url, description, group }): SocialLinkChange => ({
+      ...url,
+      description,
+      group,
+    }),
   );
 
 /** The Church's Social Links in display order; always public. */

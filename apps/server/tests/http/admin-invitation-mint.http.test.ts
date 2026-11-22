@@ -295,7 +295,13 @@ describe('POST /invitations/admin — creation and refusals', () => {
       outcome: 'created',
     });
     expect(await churchOfferIntents()).toEqual([
-      { payload: { churchInvitationId: row?.id } },
+      {
+        payload: {
+          churchInvitationId: row?.id,
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
+      },
     ]);
     expect(await db.select().from(ministryInvitation)).toEqual([]);
     expect(await db.select().from(outboxMessage)).toHaveLength(1);
@@ -428,7 +434,13 @@ describe('POST /invitations/admin — upgrading a paired member offer', () => {
     );
     expect(await db.select().from(ministryInvitationRole)).toEqual(rolesBefore);
     expect(await churchOfferIntents()).toEqual([
-      { payload: { churchInvitationId: member?.id } },
+      {
+        payload: {
+          churchInvitationId: member?.id,
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
+      },
     ]);
   });
 

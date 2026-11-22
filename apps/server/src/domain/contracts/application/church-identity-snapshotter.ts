@@ -1,4 +1,5 @@
 import type { ChurchId } from '../../branded-ids';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 
 /** The Church identity an email is stamped with when it is queued. */
 export interface ChurchIdentitySnapshot {
@@ -10,6 +11,8 @@ export interface ChurchIdentitySnapshot {
 
 export interface SnapshotChurchIdentityInput {
   churchId: ChurchId;
+  /** The caller's open transaction; the read joins it. */
+  tx?: TransactionContext;
 }
 
 export interface ChurchIdentitySnapshotter {

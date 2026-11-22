@@ -25,9 +25,11 @@ export class DbChurchIdentitySnapshotter implements ChurchIdentitySnapshotter {
 
   async snapshot({
     churchId,
+    tx,
   }: SnapshotChurchIdentityInput): Promise<ChurchIdentitySnapshot> {
     const { logoKey, accentColor } = await this.churchRepository.getSettings({
       id: churchId,
+      tx,
     });
     return {
       churchLogoUrl: logoKey

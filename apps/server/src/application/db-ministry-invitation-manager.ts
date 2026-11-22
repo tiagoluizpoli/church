@@ -317,7 +317,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         kind: 'invitation.church-bootstrap',
         payload: {
           churchInvitationId,
-          ...(await this.churchIdentity.snapshot({ churchId })),
+          ...(await this.churchIdentity.snapshot({ churchId, tx })),
         },
         correlationId: crypto.randomUUID(),
         scheduledFor: nowAsDate(),
@@ -388,7 +388,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         kind: 'invitation.church-bootstrap',
         payload: {
           churchInvitationId,
-          ...(await this.churchIdentity.snapshot({ churchId })),
+          ...(await this.churchIdentity.snapshot({ churchId, tx })),
         },
         correlationId: crypto.randomUUID(),
         scheduledFor: nowAsDate(),
@@ -521,7 +521,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
           kind: 'invitation.church-bootstrap',
           payload: {
             churchInvitationId,
-            ...(await this.churchIdentity.snapshot({ churchId })),
+            ...(await this.churchIdentity.snapshot({ churchId, tx })),
           },
           correlationId: crypto.randomUUID(),
           scheduledFor: nowAsDate(),
@@ -540,7 +540,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
           kind: 'invitation.chained',
           payload: {
             ministryInvitationId: invitation.id,
-            ...(await this.churchIdentity.snapshot({ churchId })),
+            ...(await this.churchIdentity.snapshot({ churchId, tx })),
           },
           correlationId: crypto.randomUUID(),
           scheduledFor: nowAsDate(),
@@ -673,7 +673,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       to: [{ userId, churchId }],
       data: {
         ministryInvitationId,
-        ...(await this.churchIdentity.snapshot({ churchId })),
+        ...(await this.churchIdentity.snapshot({ churchId, tx })),
       },
     });
   }
@@ -715,7 +715,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       payload: {
         ministryInvitationId: invitation.id,
         churchInvitationId: churchInvitationSummary.id,
-        ...(await this.churchIdentity.snapshot({ churchId })),
+        ...(await this.churchIdentity.snapshot({ churchId, tx })),
       },
       correlationId: crypto.randomUUID(),
       scheduledFor: nowAsDate(),

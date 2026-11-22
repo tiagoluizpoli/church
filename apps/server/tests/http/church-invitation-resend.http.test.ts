@@ -294,7 +294,11 @@ describe('POST /invitations/church/:invitationId/resend', () => {
     expect(await outboxRows()).toEqual([
       {
         kind: 'invitation.church-bootstrap',
-        payload: { churchInvitationId: id },
+        payload: {
+          churchInvitationId: id,
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
       },
     ]);
   });

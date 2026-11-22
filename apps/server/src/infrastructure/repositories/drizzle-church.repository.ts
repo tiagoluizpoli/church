@@ -10,6 +10,7 @@ import type {
   FindUserNameInput,
   GetChurchByIdInput,
   GetChurchBySlugInput,
+  GetChurchSettingsInput,
   ListChurchAdminUserIdsInput,
   SaveChurchLogoKeyInput,
   SaveChurchSettingsInput,
@@ -106,9 +107,12 @@ export class DrizzleChurchRepository implements ChurchRepository {
     return row?.name.trim() || null;
   }
 
-  async getSettings({ id }: GetChurchByIdInput): Promise<ChurchSettings> {
+  async getSettings({
+    id,
+    tx,
+  }: GetChurchSettingsInput): Promise<ChurchSettings> {
     const [row] = isValidUuid(id)
-      ? await getClient({ db: this.db })
+      ? await getClient({ db: this.db, tx })
           .select({
             name: organization.name,
             slug: organization.slug,

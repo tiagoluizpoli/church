@@ -1,3 +1,4 @@
+import { readCleanTree, recordPass } from './gate-pass';
 import {
   formatStepTable,
   hasFailure,
@@ -29,6 +30,7 @@ export const E2E_STEPS: LaneStep[] = [
 ];
 
 if (import.meta.main) {
+  const tree = process.env.CI ? null : readCleanTree({});
   const lock = await holdValidateLock({ tier: 'validate' });
   let results: Awaited<ReturnType<typeof runStages>>;
   try {
@@ -43,4 +45,5 @@ if (import.meta.main) {
   console.log(formatStepTable({ results }));
   console.log(formatLockWait({ waitedMs: lock.waitedMs }));
   if (hasFailure({ results })) process.exitCode = 1;
+  else if (tree) recordPass({ tier: 'validate', tree });
 }

@@ -29,8 +29,8 @@ function stepsFor({
   });
 }
 
-function unitSteps(steps: { checkLane: LaneStep[] }): LaneStep[] {
-  return steps.checkLane.filter(({ label }) => label === 'test:unit');
+function unitSteps(steps: { unitLane: LaneStep[] }): LaneStep[] {
+  return steps.unitLane.filter(({ label }) => label === 'test:unit');
 }
 
 describe('validate:affected unit narrowing', () => {

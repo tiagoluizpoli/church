@@ -2196,5 +2196,15 @@
   "church_settings_preview_addresses": "Endereços",
   "church_settings_preview_directions": "Como chegar",
   "church_settings_preview_copy_address": "Copiar endereço",
-  "church_settings_preview_address_copied": "Endereço copiado"
+  "church_settings_preview_address_copied": "Endereço copiado",
+  "church_settings_address_google_search": "Buscar no Google",
+  "church_settings_address_google_search_hint": "Somente Brasil. Ao escolher um resultado, os campos abaixo são preenchidos.",
+  "church_settings_address_pin_label": "Pino no mapa",
+  "church_settings_address_pin_none": "Sem pino. Busque um endereço, consulte um CEP ou salve sem ele.",
+  "church_settings_address_pin_source_google": "Sugerido pelo resultado do Google. Confirme ou arraste.",
+  "church_settings_address_pin_source_cep": "Sugerido pelo CEP. Confirme ou arraste.",
+  "church_settings_address_pin_source_admin": "Confirmado por você.",
+  "church_settings_address_pin_confirm": "Confirmar pino",
+  "church_settings_address_pin_remove": "Remover pino",
+  "church_settings_address_pin_map": "Mapa com pino arrastável"
 }

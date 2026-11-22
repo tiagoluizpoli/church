@@ -71,6 +71,24 @@ describe('provider normalisation', () => {
     expect(fromBrasilApi({ data: BRASILAPI_BODY })).toEqual(FILLED);
   });
 
+  it('carries the coordinates BrasilAPI knows for the CEP', () => {
+    expect(
+      fromBrasilApi({
+        data: {
+          ...BRASILAPI_BODY,
+          location: {
+            coordinates: { latitude: '-22.9056', longitude: '-47.0608' },
+          },
+        },
+      }),
+    ).toEqual({ ...FILLED, latitude: -22.9056, longitude: -47.0608 });
+    expect(
+      fromBrasilApi({
+        data: { ...BRASILAPI_BODY, location: { coordinates: {} } },
+      }),
+    ).toEqual(FILLED);
+  });
+
   it('leaves the fields a generic CEP lacks empty', () => {
     expect(
       fromViaCep({
@@ -115,7 +133,7 @@ describe('lookupCep', () => {
 
     await expect(lookupCep({ cep: '13015904' })).resolves.toEqual(FILLED);
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      'https://brasilapi.com.br/api/cep/v1/13015904',
+      'https://brasilapi.com.br/api/cep/v2/13015904',
     );
   });
 

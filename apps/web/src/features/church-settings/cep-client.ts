@@ -5,6 +5,9 @@ export interface CepAddress {
   bairro: string;
   city: string;
   uf: string;
+  /** Only when the provider knows where the CEP is (BrasilAPI v2 does for many). */
+  latitude?: number;
+  longitude?: number;
 }
 
 /** Both providers failed (network or server error); the CEP may still exist. */
@@ -37,6 +40,7 @@ interface BrasilApiResponse {
   neighborhood?: string;
   city?: string;
   state?: string;
+  location?: { coordinates?: { latitude?: string; longitude?: string } };
 }
 
 interface ProviderInput {
@@ -76,7 +80,15 @@ interface FromBrasilApiInput {
 }
 
 export function fromBrasilApi({ data }: FromBrasilApiInput) {
+  const latitude = Number(data.location?.coordinates?.latitude);
+  const longitude = Number(data.location?.coordinates?.longitude);
+  const located =
+    data.location?.coordinates?.latitude !== undefined &&
+    data.location.coordinates.longitude !== undefined &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude);
   return {
+    ...(located ? { latitude, longitude } : {}),
     cep: data.cep?.replace(/\D/g, '') ?? '',
     street: data.street ?? '',
     bairro: data.neighborhood ?? '',
@@ -96,7 +108,7 @@ async function viaCep({ cep, signal }: ProviderInput) {
 /** BrasilAPI answers 404 for an unknown CEP, which is a failure here: it only backs ViaCEP up. */
 async function brasilApi({ cep, signal }: ProviderInput) {
   const data = await getJson({
-    url: `https://brasilapi.com.br/api/cep/v1/${cep}`,
+    url: `https://brasilapi.com.br/api/cep/v2/${cep}`,
     signal,
   });
   return fromBrasilApi({ data });

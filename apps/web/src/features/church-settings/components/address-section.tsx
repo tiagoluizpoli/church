@@ -32,6 +32,14 @@ import {
   type AddressReplacement,
   addressSummary,
 } from '@/features/church-settings/church-settings-form';
+import {
+  attachPlaceSearch,
+  isMapsEnabled,
+  type LatLng,
+  mountPinMap,
+  type PickedPlace,
+  type PinMap,
+} from '@/features/church-settings/google-maps';
 import type { GetChurchAddressUsage200 } from '@/infrastructure/api/churchAPI.schemas';
 import { churchSettingsApi } from '@/utils/api-instances';
 
@@ -80,6 +88,16 @@ interface DraftFields {
   uf: string;
   cep: string;
   isPublic: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  pinSource: AddressDraft['pinSource'];
+  /** The Google place the fields came from; kept only while street, number and city stay as picked. */
+  picked: {
+    placeId: string;
+    street: string;
+    number: string;
+    city: string;
+  } | null;
 }
 
 interface ToFieldsInput {
@@ -98,6 +116,17 @@ function toFields({ address }: ToFieldsInput): DraftFields {
     uf: address?.uf ?? '',
     cep: address?.cep ?? '',
     isPublic: address?.isPublic ?? true,
+    latitude: address?.latitude ?? null,
+    longitude: address?.longitude ?? null,
+    pinSource: address?.pinSource ?? null,
+    picked: address?.placeId
+      ? {
+          placeId: address.placeId,
+          street: address.street,
+          number: address.number,
+          city: address.city,
+        }
+      : null,
   };
 }
 
@@ -140,6 +169,17 @@ function AddressDialog({
     try {
       const found = await lookupCep({ cep });
       if (!found) return setCepStatus('notFound');
+      // A CEP's coordinates are only a proposal; they never replace a pin the admin placed.
+      if (
+        found.latitude !== undefined &&
+        found.longitude !== undefined &&
+        fields.pinSource !== 'admin'
+      ) {
+        proposePin(
+          { latitude: found.latitude, longitude: found.longitude },
+          'cep',
+        );
+      }
       set({
         cep: found.cep || cep,
         street: found.street || fields.street,
@@ -153,6 +193,86 @@ function AddressDialog({
       setCepStatus('failed');
     }
   };
+  const mapsEnabled = isMapsEnabled();
+  const pin: LatLng | null =
+    fields.latitude !== null && fields.longitude !== null
+      ? { latitude: fields.latitude, longitude: fields.longitude }
+      : null;
+  // State, not refs: the dialog content mounts after the first effect pass.
+  const [searchEl, setSearchEl] = React.useState<HTMLInputElement | null>(null);
+  const [mapEl, setMapEl] = React.useState<HTMLDivElement | null>(null);
+  const pinMap = React.useRef<PinMap | null>(null);
+  const initialPin = React.useRef(pin);
+
+  const proposePin = (proposed: LatLng, pinSource: 'google' | 'cep') =>
+    set({ ...proposed, pinSource });
+  const setPin = (moved: LatLng | null, pinSource: 'admin' | null) =>
+    set({
+      latitude: moved?.latitude ?? null,
+      longitude: moved?.longitude ?? null,
+      pinSource,
+    });
+  const pick = (place: PickedPlace) => {
+    setFields((current) => ({
+      ...current,
+      street: place.street || current.street,
+      number: place.number || current.number,
+      noNumber: place.number ? false : current.noNumber,
+      bairro: place.bairro || current.bairro,
+      city: place.city || current.city,
+      uf: place.uf || current.uf,
+      cep: place.cep || current.cep,
+      picked: {
+        placeId: place.placeId,
+        street: place.street || current.street,
+        number: place.number || (current.noNumber ? NO_NUMBER : current.number),
+        city: place.city || current.city,
+      },
+      ...(place.latitude !== null && place.longitude !== null
+        ? {
+            latitude: place.latitude,
+            longitude: place.longitude,
+            pinSource: 'google' as const,
+          }
+        : {}),
+    }));
+  };
+  const dragged = React.useRef((moved: LatLng) => setPin(moved, 'admin'));
+  dragged.current = (moved) => setPin(moved, 'admin');
+  const picker = React.useRef(pick);
+  picker.current = pick;
+
+  React.useEffect(() => {
+    if (!mapsEnabled || !searchEl || !mapEl) return;
+    const detach = attachPlaceSearch({
+      input: searchEl,
+      onPick: (place) => picker.current(place),
+    });
+    const map = mountPinMap({
+      element: mapEl,
+      pin: initialPin.current,
+      onDrag: (moved) => dragged.current(moved),
+    });
+    pinMap.current = map;
+    return () => {
+      detach();
+      map.destroy();
+      pinMap.current = null;
+    };
+  }, [mapsEnabled, searchEl, mapEl]);
+
+  const pinLatitude = pin?.latitude ?? null;
+  const pinLongitude = pin?.longitude ?? null;
+  React.useEffect(
+    () =>
+      pinMap.current?.setPin(
+        pinLatitude === null || pinLongitude === null
+          ? null
+          : { latitude: pinLatitude, longitude: pinLongitude },
+      ),
+    [pinLatitude, pinLongitude],
+  );
+
   const cepMessage = {
     idle: null,
     loading: null,
@@ -308,6 +428,66 @@ function AddressDialog({
               </p>
             ) : null}
           </div>
+          {mapsEnabled ? (
+            <div className="space-y-2 sm:col-span-2">
+              <Label
+                className="font-medium text-sm"
+                htmlFor="address-google-search"
+              >
+                {m.church_settings_address_google_search()}
+              </Label>
+              <input
+                id="address-google-search"
+                ref={setSearchEl}
+                type="text"
+                autoComplete="off"
+                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+              />
+              <p className="text-muted-foreground text-sm">
+                {m.church_settings_address_google_search_hint()}
+              </p>
+              <p className="font-medium text-sm">
+                {m.church_settings_address_pin_label()}
+              </p>
+              <div
+                ref={setMapEl}
+                role="application"
+                aria-label={m.church_settings_address_pin_map()}
+                className="h-56 w-full rounded-lg border bg-muted/30"
+              />
+              <p className="text-muted-foreground text-sm" role="status">
+                {fields.pinSource
+                  ? {
+                      google: m.church_settings_address_pin_source_google(),
+                      cep: m.church_settings_address_pin_source_cep(),
+                      admin: m.church_settings_address_pin_source_admin(),
+                    }[fields.pinSource]
+                  : m.church_settings_address_pin_none()}
+              </p>
+              {pin ? (
+                <div className="flex gap-2">
+                  {fields.pinSource === 'admin' ? null : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPin(pin, 'admin')}
+                    >
+                      {m.church_settings_address_pin_confirm()}
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPin(null, null)}
+                  >
+                    {m.church_settings_address_pin_remove()}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="space-y-2 sm:col-span-2">
             <Label className="flex items-center justify-between gap-3 font-medium text-sm">
               <span>
@@ -438,6 +618,21 @@ function DeleteInUseDialog({
   );
 }
 
+interface StillPickedInput {
+  fields: DraftFields;
+}
+
+/** The Google `place_id` only describes the address while street, number and city stay as picked. */
+function stillPicked({ fields }: StillPickedInput): boolean {
+  const { picked } = fields;
+  return (
+    picked !== null &&
+    picked.street === fields.street.trim() &&
+    picked.number === (fields.noNumber ? NO_NUMBER : fields.number.trim()) &&
+    picked.city === fields.city.trim()
+  );
+}
+
 interface FieldsToDraftInput {
   fields: DraftFields;
   previous: AddressDraft | null;
@@ -458,10 +653,10 @@ function toDraft({ fields, previous, key }: FieldsToDraftInput): AddressDraft {
     cep: fields.cep.trim() || null,
     isPublic: fields.isPublic,
     isMain: previous?.isMain ?? false,
-    latitude: previous?.latitude ?? null,
-    longitude: previous?.longitude ?? null,
-    pinSource: previous?.pinSource ?? null,
-    placeId: previous?.placeId ?? null,
+    latitude: fields.latitude,
+    longitude: fields.longitude,
+    pinSource: fields.latitude === null ? null : fields.pinSource,
+    placeId: stillPicked({ fields }) ? (fields.picked?.placeId ?? null) : null,
   };
 }
 

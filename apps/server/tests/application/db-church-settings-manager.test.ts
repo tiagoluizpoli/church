@@ -13,6 +13,7 @@ const SETTINGS = {
   website: null,
   accentColor: null,
   logoKey: null,
+  addresses: [],
 };
 
 let churchRepository: ChurchRepository;

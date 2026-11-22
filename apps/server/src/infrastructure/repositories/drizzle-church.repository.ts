@@ -1,13 +1,18 @@
 import { NotFoundError } from '@church/core';
 import {
   church,
+  churchAddress,
   churchSlugHistory,
   member,
   organization,
   user,
 } from '@church/db';
-import { and, asc, eq, ne, or } from 'drizzle-orm';
+import { and, asc, eq, ne, notInArray, or } from 'drizzle-orm';
 import { ChurchId, type UserId } from '../../domain/branded-ids';
+import {
+  type ChurchAddress,
+  resolveChurchAddresses,
+} from '../../domain/church-address';
 import type {
   ChurchSettings,
   ChurchSlugAvailability,
@@ -27,6 +32,7 @@ import type {
   SaveChurchSettingsInput,
   SlugAvailabilityInput,
 } from '../../domain/contracts/infrastructure/church.repository';
+import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { Church } from '../../domain/entities/church';
 import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import { mapChurch } from '../mappers/church.mapper';
@@ -37,6 +43,11 @@ import { isUniqueViolation } from './unique-violation';
 // Church identity lives on the `organization` row and the rest on the `church`
 // extension row keyed by the same id, so every read joins the two.
 const churchJoinShape = { church, organization };
+
+interface ListAddressesInput {
+  id: string;
+  tx?: TransactionContext;
+}
 
 const ORGANIZATION_SLUG_UNIQUE = 'organization_slug_unique';
 
@@ -151,7 +162,36 @@ export class DrizzleChurchRepository implements ChurchRepository {
           .where(eq(church.id, id))
       : [];
     if (!row) throw new NotFoundError(`Church not found: ${id}`);
-    return row;
+    return { ...row, addresses: await this.listAddresses({ id }) };
+  }
+
+  private async listAddresses({
+    id,
+    tx,
+  }: ListAddressesInput): Promise<ChurchAddress[]> {
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        id: churchAddress.id,
+        label: churchAddress.label,
+        street: churchAddress.street,
+        number: churchAddress.number,
+        complement: churchAddress.complement,
+        bairro: churchAddress.bairro,
+        city: churchAddress.city,
+        uf: churchAddress.uf,
+        cep: churchAddress.cep,
+        country: churchAddress.country,
+        isPublic: churchAddress.isPublic,
+        isMain: churchAddress.isMain,
+        latitude: churchAddress.latitude,
+        longitude: churchAddress.longitude,
+        pinSource: churchAddress.pinSource,
+        placeId: churchAddress.placeId,
+      })
+      .from(churchAddress)
+      .where(eq(churchAddress.churchId, id))
+      .orderBy(asc(churchAddress.position), asc(churchAddress.id));
+    return rows as ChurchAddress[];
   }
 
   async slugAvailability({
@@ -203,6 +243,40 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .set({ website: fields.website, accentColor: fields.accentColor })
       .where(eq(church.id, id));
     if (slug !== undefined) await this.changeSlug({ client, id, slug });
+    const writes = resolveChurchAddresses({
+      stored: await this.listAddresses({ id, tx }),
+      incoming: changes.addresses,
+    });
+    const kept = writes.flatMap((write) => (write.id ? [write.id] : []));
+    await client
+      .delete(churchAddress)
+      .where(
+        kept.length === 0
+          ? eq(churchAddress.churchId, id)
+          : and(
+              eq(churchAddress.churchId, id),
+              notInArray(churchAddress.id, kept),
+            ),
+      );
+    // The Main Address goes last so the one-main index never sees two.
+    for (const write of [...writes].sort(
+      (a, b) => Number(a.isMain) - Number(b.isMain),
+    )) {
+      const { id: addressId, ...values } = write;
+      if (addressId) {
+        await client
+          .update(churchAddress)
+          .set(values)
+          .where(
+            and(
+              eq(churchAddress.id, addressId),
+              eq(churchAddress.churchId, id),
+            ),
+          );
+      } else {
+        await client.insert(churchAddress).values({ ...values, churchId: id });
+      }
+    }
   }
 
   /** Records the slug given up and takes the new one; a slug taken back leaves the history. */

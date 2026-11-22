@@ -29,9 +29,10 @@ export interface ChurchRepository {
   /** The Church's editable identity (Church Settings). */
   getSettings(input: GetChurchSettingsInput): Promise<ChurchSettings>;
   /**
-   * Overwrites the Church's editable identity. A changed slug is written with
-   * the old one recorded in the slug history; a slug someone else holds, live
-   * or in their history, throws `ChurchSlugTakenError`.
+   * Overwrites the Church's editable identity and its addresses. A changed slug
+   * is written with the old one recorded in the slug history; a slug someone
+   * else holds, live or in their history, throws `ChurchSlugTakenError`.
+   * Throws `ChurchAddressesRefused` when the stored addresses make the save invalid.
    */
   saveSettings(input: SaveChurchSettingsInput): Promise<void>;
   /** Whether `slug` is free for this Church; the Church's own current slug counts as free. Never names the holder. */

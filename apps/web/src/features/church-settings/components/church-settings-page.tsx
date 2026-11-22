@@ -15,7 +15,6 @@ import {
   Eye,
   Globe,
   Link2,
-  MapPin,
   Wand2,
 } from 'lucide-react';
 import * as React from 'react';
@@ -50,6 +49,7 @@ import {
 import {
   type ChurchSettingsForm,
   toChurchSettingsForm,
+  toSaveBody,
 } from '@/features/church-settings/church-settings-form';
 import {
   checkChurchSlug,
@@ -58,6 +58,7 @@ import {
   useSaveChurchSettings,
 } from '@/features/church-settings/church-settings-queries';
 import { AccentPicker } from '@/features/church-settings/components/accent-picker';
+import { AddressSection } from '@/features/church-settings/components/address-section';
 import { ChurchPreview } from '@/features/church-settings/components/church-preview';
 import { LogoCard } from '@/features/church-settings/components/logo-card';
 import { useMediaQuery } from '@/hooks/use-media-query';
@@ -208,13 +209,13 @@ interface ChurchSettingsEditorProps {
 
 function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   // Keyed on the form fields only: a logo change (applied at once) must not reset unsaved edits.
-  const { name, slug, website, accentColor } = saved;
+  const { name, slug, website, accentColor, addresses } = saved;
   const savedForm = React.useMemo(
     () =>
       toChurchSettingsForm({
-        settings: { name, slug, website, accentColor },
+        settings: { name, slug, website, accentColor, addresses },
       }),
-    [name, slug, website, accentColor],
+    [name, slug, website, accentColor, addresses],
   );
   const [form, setForm] = React.useState<ChurchSettingsForm>(savedForm);
   const [errors, setErrors] = React.useState<FieldErrors>({});
@@ -238,18 +239,40 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     : undefined;
   const shownSlugError = errors.slug ?? typedSlugError;
   const churchAddress = `${saved.publicOrigin}/${form.slug.trim()}`;
-  const publicCount = [
-    form.name,
-    form.website,
-    form.accentColor,
-    saved.logoUrl,
-  ].filter(Boolean).length;
+  const addressErrors = Object.keys(errors).filter((field) =>
+    field.startsWith('addresses'),
+  ).length;
+  const privateCount = form.addresses.filter(
+    (address) => !address.isPublic,
+  ).length;
+  const publicCount =
+    [form.name, form.website, form.accentColor, saved.logoUrl].filter(Boolean)
+      .length +
+    form.addresses.length -
+    privateCount;
+  const mainAddress = form.addresses.find((address) => address.isMain);
+  const addressSummary =
+    form.addresses.length === 0
+      ? m.church_settings_address_summary_none()
+      : form.addresses.length === 1
+        ? m.church_settings_address_summary_one({
+            place: `${mainAddress?.city}/${mainAddress?.uf}`,
+          })
+        : m.church_settings_address_summary_many({
+            count: form.addresses.length,
+            place: `${mainAddress?.city}/${mainAddress?.uf}`,
+          });
 
   const patch = (changes: Partial<ChurchSettingsForm>) => {
     setForm((current) => ({ ...current, ...changes }));
     setErrors((current) =>
       Object.fromEntries(
-        Object.entries(current).filter(([field]) => !(field in changes)),
+        Object.entries(current).filter(
+          ([field]) =>
+            !Object.keys(changes).some(
+              (key) => field === key || field.startsWith(`${key}.`),
+            ),
+        ),
       ),
     );
   };
@@ -274,8 +297,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
       return;
     }
     setConfirmingSlug(false);
-    const { slug, ...rest } = form;
-    saveSettings.mutate(slugChanged ? { ...rest, slug: slug.trim() } : rest, {
+    saveSettings.mutate(toSaveBody({ form, slugChanged }), {
       onSuccess: () => {
         setErrors({});
         toast.success(m.church_settings_saved());
@@ -290,6 +312,9 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
         setOpen((current) => ({
           ...current,
           info: current.info || INFO_FIELDS.some((field) => field in refused),
+          address:
+            current.address ||
+            Object.keys(refused).some((field) => field.startsWith('addresses')),
         }));
       },
     });
@@ -331,7 +356,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                 testId="church-settings-admin-only-count"
                 testIdOnValue
                 label={m.church_settings_admin_only_chip()}
-                value={0}
+                value={privateCount}
               />
               <a
                 href={`${saved.publicOrigin}/${saved.slug}`}
@@ -450,15 +475,16 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             <SectionCard
               id="address"
               title={m.church_settings_section_address()}
-              summary={m.church_settings_address_summary()}
-              errors={0}
+              summary={addressSummary}
+              errors={addressErrors}
               open={open.address}
               onToggle={() => toggle('address')}
             >
-              <p className="flex items-center gap-3 rounded-lg border border-dashed p-4 text-muted-foreground text-sm">
-                <MapPin className="size-4 shrink-0" aria-hidden />
-                {m.church_settings_address_slot()}
-              </p>
+              <AddressSection
+                addresses={form.addresses}
+                errors={errors}
+                onChange={(addresses) => patch({ addresses })}
+              />
             </SectionCard>
             <p className="text-muted-foreground text-sm">
               {m.church_settings_programme_prefix()}{' '}

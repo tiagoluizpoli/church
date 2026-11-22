@@ -109,7 +109,10 @@ export function ChurchPreview({ form, logoUrl, titleId }: ChurchPreviewProps) {
             <p>{form.legalProfile.legalName.trim()}</p>
           ) : null}
           {form.legalProfile.cnpj.trim() ? (
-            <p>CNPJ {formatCnpj({ digits: form.legalProfile.cnpj.trim() })}</p>
+            <p>
+              {m.church_settings_legal_cnpj_label()}{' '}
+              {formatCnpj({ digits: form.legalProfile.cnpj.trim() })}
+            </p>
           ) : null}
         </div>
       ) : null}

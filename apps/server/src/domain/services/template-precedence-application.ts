@@ -1,4 +1,8 @@
-import { type CalendarDay, enumerateCalendarDays } from '@church/time';
+import {
+  addCalendarDays,
+  type CalendarDay,
+  enumerateCalendarDays,
+} from '@church/time';
 import type { EventId, EventTimeBlockId } from '../branded-ids';
 import { type Recurrence, recurrenceNamesDay } from '../recurrence';
 import { timeBlocksOverlap } from '../template-collision';
@@ -39,21 +43,38 @@ export function losingBlockIds({
   loser,
   pairs,
 }: LosingBlockIdsInput): Set<string> {
-  const winners = pairs
-    .filter(
-      (pair) =>
-        pair.loser.id === loser.id &&
-        recurrenceNamesDay({ recurrence: pair.winner.recurrence, day }),
-    )
-    .flatMap((pair) => pair.winner.blocks);
+  const winners = pairs.filter((pair) => pair.loser.id === loser.id);
   return new Set(
     loser.blocks
       .filter((block) =>
-        winners.some((winnerBlock) =>
-          timeBlocksOverlap({ left: block, right: winnerBlock }),
+        winners.some(({ winner }) =>
+          beatenOnDay({ loserBlock: block, winner, day }),
         ),
       )
       .map((block) => block.id),
+  );
+}
+
+/** Same day, the next day (an overnight loser block) and the day before (an overnight winner block). */
+const NEIGHBOUR_DAY_OFFSETS = [0, 1, -1];
+
+interface BeatenOnDayInput {
+  loserBlock: PrecedenceTemplateBlock;
+  winner: PrecedenceTemplate;
+  day: CalendarDay;
+}
+
+/** A winner block on `day`, or on a neighbour day across midnight, overlaps the loser block of `day`. */
+function beatenOnDay({ loserBlock, winner, day }: BeatenOnDayInput): boolean {
+  return NEIGHBOUR_DAY_OFFSETS.some(
+    (offsetDays) =>
+      recurrenceNamesDay({
+        recurrence: winner.recurrence,
+        day: addCalendarDays({ day, days: offsetDays }),
+      }) &&
+      winner.blocks.some((winnerBlock) =>
+        timeBlocksOverlap({ left: loserBlock, right: winnerBlock, offsetDays }),
+      ),
   );
 }
 
@@ -89,22 +110,16 @@ export function listLosingEventTimeBlocks({
 }: ListLosingEventTimeBlocksInput): LosingEventTimeBlock[] {
   const days = enumerateCalendarDays({ start: cycleStart, end: cycleEnd });
   const found = new Map<string, LosingEventTimeBlock>();
+  const inCycle = new Set(days);
   for (const { winner, loser } of pairs) {
-    const winnerDays = new Set(
-      days.filter((day) =>
-        recurrenceNamesDay({ recurrence: winner.recurrence, day }),
-      ),
-    );
     for (const block of existing) {
       const loserBlock = loser.blocks.find(
         ({ id }) => id === block.sourceTemplateTimeBlockId,
       );
       const loses =
         loserBlock &&
-        winnerDays.has(block.eventDate) &&
-        winner.blocks.some((winnerBlock) =>
-          timeBlocksOverlap({ left: loserBlock, right: winnerBlock }),
-        );
+        inCycle.has(block.eventDate) &&
+        beatenOnDay({ loserBlock, winner, day: block.eventDate });
       if (loses && !found.has(block.eventTimeBlockId)) {
         found.set(block.eventTimeBlockId, {
           ...block,

@@ -21,7 +21,37 @@ function shape(
   };
 }
 
+const saturdays: Recurrence = { kind: 'weekly', weekdays: [6] };
+
 describe('templatesCollide', () => {
+  it('collides when a block crossing midnight overlaps the other template on the next day', () => {
+    const overnight = shape(saturdays, ['22:00', '01:00']);
+    const earlySunday = shape(sundays, ['00:30', '02:00']);
+
+    expect(templatesCollide({ left: overnight, right: earlySunday })).toBe(
+      true,
+    );
+    expect(templatesCollide({ left: earlySunday, right: overnight })).toBe(
+      true,
+    );
+    // The 1st Sunday's Saturday may sit in the previous month.
+    expect(
+      templatesCollide({
+        left: overnight,
+        right: shape(firstSunday, ['00:30', '02:00']),
+      }),
+    ).toBe(true);
+  });
+
+  it("does not collide when the overnight block ends before the next day's block", () => {
+    expect(
+      templatesCollide({
+        left: shape(saturdays, ['22:00', '00:30']),
+        right: shape(sundays, ['00:30', '02:00']),
+      }),
+    ).toBe(false);
+  });
+
   it('collides on a shared day when blocks overlap', () => {
     expect(
       templatesCollide({

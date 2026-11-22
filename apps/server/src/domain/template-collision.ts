@@ -1,4 +1,8 @@
-import { type CalendarDay, enumerateCalendarDays } from '@church/time';
+import {
+  addCalendarDays,
+  type CalendarDay,
+  enumerateCalendarDays,
+} from '@church/time';
 import { type Recurrence, recurrenceNamesDay } from './recurrence';
 
 /** The parts of an EventTemplate collision detection reads. */
@@ -17,16 +21,23 @@ const ALL_MONTH_SHAPES: CalendarDay[] = enumerateCalendarDays({
   end: '2027-12-31' as CalendarDay,
 });
 
+const MINUTES_PER_DAY = 24 * 60;
+
 interface ShareADayInput {
   left: Recurrence;
   right: Recurrence;
+  /** Calendar days `right`'s day falls after `left`'s: 0 the same day, 1 the next. */
+  offsetDays: number;
 }
 
-function canShareADay({ left, right }: ShareADayInput): boolean {
+function canShareADay({ left, right, offsetDays }: ShareADayInput): boolean {
   return ALL_MONTH_SHAPES.some(
     (day) =>
       recurrenceNamesDay({ recurrence: left, day }) &&
-      recurrenceNamesDay({ recurrence: right, day }),
+      recurrenceNamesDay({
+        recurrence: right,
+        day: addCalendarDays({ day, days: offsetDays }),
+      }),
   );
 }
 
@@ -38,7 +49,7 @@ function minutes(time: string): number {
 function resolved(block: CollisionShape['blocks'][number]) {
   const start = minutes(block.startTime);
   const end = minutes(block.endTime);
-  return { start, end: end <= start ? end + 24 * 60 : end };
+  return { start, end: end <= start ? end + MINUTES_PER_DAY : end };
 }
 
 interface BlocksOverlapInput {
@@ -49,25 +60,64 @@ interface BlocksOverlapInput {
 interface TimeBlocksOverlapInput {
   left: CollisionShape['blocks'][number];
   right: CollisionShape['blocks'][number];
+  /** Calendar days `right`'s day falls after `left`'s (default 0, the same day; -1 the day before). */
+  offsetDays?: number;
 }
 
-/** Two blocks of the same CalendarDay overlap on resolved times; touching blocks do not. */
+/** Two blocks overlap on resolved times, `right` on its own day; touching blocks do not. */
 export function timeBlocksOverlap({
   left,
   right,
+  offsetDays = 0,
 }: TimeBlocksOverlapInput): boolean {
   const a = resolved(left);
   const b = resolved(right);
-  return a.start < b.end && b.start < a.end;
+  const shift = offsetDays * MINUTES_PER_DAY;
+  return a.start < b.end + shift && b.start + shift < a.end;
+}
+
+interface ShiftedBlocksOverlapInput extends BlocksOverlapInput {
+  /** Minutes `right`'s day starts after `left`'s. */
+  shift: number;
 }
 
 /** Some pair overlaps on resolved times; blocks that merely touch do not. */
-function someBlocksOverlap({ left, right }: BlocksOverlapInput): boolean {
+function someBlocksOverlap({
+  left,
+  right,
+  shift,
+}: ShiftedBlocksOverlapInput): boolean {
   return left
     .map(resolved)
     .some((a) =>
-      right.map(resolved).some((b) => a.start < b.end && b.start < a.end),
+      right
+        .map(resolved)
+        .some((b) => a.start < b.end + shift && b.start + shift < a.end),
     );
+}
+
+interface CollideOnDaysInput extends TemplatesCollideInput {
+  offsetDays: number;
+}
+
+/** `left` on some day and `right` `offsetDays` later have overlapping blocks. */
+function collideOnDays({
+  left,
+  right,
+  offsetDays,
+}: CollideOnDaysInput): boolean {
+  return (
+    someBlocksOverlap({
+      left: left.blocks,
+      right: right.blocks,
+      shift: offsetDays * MINUTES_PER_DAY,
+    }) &&
+    canShareADay({
+      left: left.recurrence,
+      right: right.recurrence,
+      offsetDays,
+    })
+  );
 }
 
 export interface TemplatesCollideInput {
@@ -75,13 +125,18 @@ export interface TemplatesCollideInput {
   right: CollisionShape;
 }
 
-/** Two templates collide when their Recurrences can name a common CalendarDay and some of their blocks overlap. */
+/**
+ * Two templates collide when some of their blocks overlap on resolved times:
+ * on a CalendarDay both Recurrences name, or, for a block crossing
+ * midnight, with the other template's blocks of the next day.
+ */
 export function templatesCollide({
   left,
   right,
 }: TemplatesCollideInput): boolean {
   return (
-    someBlocksOverlap({ left: left.blocks, right: right.blocks }) &&
-    canShareADay({ left: left.recurrence, right: right.recurrence })
+    collideOnDays({ left, right, offsetDays: 0 }) ||
+    collideOnDays({ left, right, offsetDays: 1 }) ||
+    collideOnDays({ left: right, right: left, offsetDays: 1 })
   );
 }

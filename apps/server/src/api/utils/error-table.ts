@@ -53,6 +53,8 @@ export type MappedDomainCode =
   | 'DRAFT_STAFFING_RECONCILIATION_REQUIRED'
   | 'EVENT_OUTSIDE_CYCLE'
   | 'MOVE_WINDOW_CLOSED'
+  | 'EDIT_WINDOW_CLOSED'
+  | 'STAFFED_EVENT_TIME_BLOCK_DROP'
   | 'PUBLIC_INFO_LOCKED'
   | 'ADMIN_CANCELLATION_WINDOW_CLOSED'
   | 'EMPTY_CYCLE'
@@ -162,6 +164,11 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   },
   EVENT_OUTSIDE_CYCLE: { status: 409, message: m.error_event_outside_cycle },
   MOVE_WINDOW_CLOSED: { status: 409, message: m.error_move_window_closed },
+  EDIT_WINDOW_CLOSED: { status: 409, message: m.error_edit_window_closed },
+  STAFFED_EVENT_TIME_BLOCK_DROP: {
+    status: 409,
+    message: m.error_staffed_event_time_block_drop,
+  },
   PUBLIC_INFO_LOCKED: { status: 409, message: m.error_public_info_locked },
   ADMIN_CANCELLATION_WINDOW_CLOSED: {
     status: 409,

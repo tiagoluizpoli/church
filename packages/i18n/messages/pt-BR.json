@@ -64,6 +64,8 @@
   "error_invalid_cycle_events": "Alguns eventos precisam ser corrigidos antes de enviar este ciclo: abra cada um listado e corrija as datas ou os blocos de horário. Nada foi alterado.",
   "error_event_outside_cycle": "O evento deve começar em um dia dentro do ciclo. Ele pode terminar depois do último dia do ciclo.",
   "error_move_window_closed": "Só é possível alterar o horário antes do início, e apenas para um início no futuro.",
+  "error_edit_window_closed": "Só é possível editar o evento até o seu término.",
+  "error_staffed_event_time_block_drop": "Este horário tem voluntários escalados. Cancele-o em vez de removê-lo na edição.",
   "error_public_info_locked": "Público e local só podem ser alterados antes do início do horário.",
   "error_admin_cancellation_window_closed": "Só é possível cancelar antes do início.",
   "error_last_remaining_event_time_block": "Um evento precisa de pelo menos um horário. Adicione outro horário antes de remover este.",

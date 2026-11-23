@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { useActiveChurchTabSync } from '@/shared/hooks/use-active-church-tab-sync';
-import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
+import { postFromAnotherTab } from '@/tests/setup/active-church-broadcast';
 
 let mockHref = '/app/dashboard';
 const mockNavigate = vi.fn();
@@ -35,7 +35,7 @@ describe('useActiveChurchTabSync', () => {
     const { result } = renderTabSync(queryClient);
 
     act(() => {
-      postActiveChurchSwitched({
+      postFromAnotherTab({
         availableAreas: ['dashboard'],
         churchId: 'church-b',
         churchName: 'Igreja Central',
@@ -59,7 +59,7 @@ describe('useActiveChurchTabSync', () => {
     const { result } = renderTabSync(queryClient);
 
     act(() => {
-      postActiveChurchSwitched({
+      postFromAnotherTab({
         availableAreas: ['dashboard'],
         churchId: 'church-b',
         churchName: 'Igreja Central',

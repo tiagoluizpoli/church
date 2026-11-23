@@ -3,7 +3,7 @@ import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ActiveChurchTabSyncGuard } from '@/components/active-church-tab-sync-guard';
-import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
+import { postFromAnotherTab } from '@/tests/setup/active-church-broadcast';
 import { renderWithProviders } from '@/tests/setup/render';
 
 let mockHref = '/app/dashboard';
@@ -29,7 +29,7 @@ describe('ActiveChurchTabSyncGuard', () => {
     renderWithProviders(<ActiveChurchTabSyncGuard />);
 
     act(() => {
-      postActiveChurchSwitched({
+      postFromAnotherTab({
         availableAreas: ['dashboard'],
         churchId: 'church-b',
         churchName: 'Igreja Central',

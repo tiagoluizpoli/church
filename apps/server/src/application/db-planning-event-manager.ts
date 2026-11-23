@@ -955,11 +955,13 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       eventId: event.id,
       tx,
     });
-    const eventTimeBlocks: EventGraphTimeBlock[] = block.id
-      ? stored.map((candidate) =>
-          candidate.id === block.id ? block : candidate,
-        )
-      : [...stored, block];
+    const replaced: EventGraphTimeBlock[] = stored.map((candidate) =>
+      candidate.id === block.id ? block : candidate,
+    );
+    // A created block (no id) joins after the stored ones.
+    const eventTimeBlocks = replaced.includes(block)
+      ? replaced
+      : [...replaced, block];
     assertEventGraph({
       graph: { start: event.start, end: event.end, eventTimeBlocks },
       cycle,

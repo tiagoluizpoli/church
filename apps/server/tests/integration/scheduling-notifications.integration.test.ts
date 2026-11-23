@@ -1507,6 +1507,197 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     );
   });
 
+  it('an edit of a running Event tells Volunteers through Send updates only: the kept upcoming Assignment as moved, the clash-withdrawn one as removed, and nothing for a started Shift', async () => {
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    interface SeedBookingInput {
+      participation: string;
+      eventTimeBlock: string;
+      volunteerId: string;
+      startTime: string;
+      endTime: string;
+    }
+    const seedBooking = async ({
+      participation,
+      eventTimeBlock,
+      volunteerId,
+      startTime,
+      endTime,
+    }: SeedBookingInput) => {
+      const booked = await seedShift({
+        churchId: ids.churchId,
+        participationId: participation,
+        eventTimeBlockId: eventTimeBlock,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        label: 'Shift',
+      });
+      const requirement = await seedRequirement({
+        churchId: ids.churchId,
+        participationId: participation,
+        shiftId: booked.id,
+        roleId: role.id,
+        peopleNeeded: 1,
+      });
+      return buildAssignment({
+        db: schedulingTestDb,
+        churchId: ids.churchId,
+        participationId: participation,
+        shiftId: booked.id,
+        shiftRequirementId: requirement.id,
+        volunteerId,
+        roleId: role.id,
+        status: 'confirmed',
+      });
+    };
+    const started = await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    const kept = await seedMember({ name: 'Bruno', email: 'bruno@test.com' });
+    const clashing = await seedMember({
+      name: 'Carla',
+      email: 'carla@test.com',
+    });
+    // The Vigil block 02:30–04:00 UTC; Ana's Shift starts before the edit.
+    for (const [volunteerId, startTime, endTime] of [
+      [
+        started.volunteer.id,
+        '2026-12-25T02:30:00.000Z',
+        '2026-12-25T03:15:00.000Z',
+      ],
+      [
+        kept.volunteer.id,
+        '2026-12-25T03:15:00.000Z',
+        '2026-12-25T04:00:00.000Z',
+      ],
+      [
+        clashing.volunteer.id,
+        '2026-12-25T03:15:00.000Z',
+        '2026-12-25T04:00:00.000Z',
+      ],
+    ] as const) {
+      await seedBooking({
+        participation: participationId,
+        eventTimeBlock: eventTimeBlockId,
+        volunteerId,
+        startTime,
+        endTime,
+      });
+    }
+    // Carla also serves the Dawn 04:30–05:30, which the stretched Vigil reaches.
+    const dawn = await createSchedulingPhase3EventGraph({
+      churchId: ids.churchId,
+      cycleId,
+      ministryId: ids.ministryId,
+      title: 'Dawn',
+      start: new Date('2026-12-25T04:30:00.000Z'),
+      end: new Date('2026-12-25T05:30:00.000Z'),
+      status: 'scheduled',
+    });
+    await seedBooking({
+      participation: dawn.participation.id,
+      eventTimeBlock: dawn.eventTimeBlock.id,
+      volunteerId: clashing.volunteer.id,
+      startTime: '2026-12-25T04:30:00.000Z',
+      endTime: '2026-12-25T05:30:00.000Z',
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.ministryId, ids.ministryId));
+    const managers = createSchedulingManagers({ notifications });
+    const publishInput = {
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      ministryId: MinistryId.from(ids.ministryId),
+      userId: UserId.from(ids.adminUserId),
+      confirmBelowFull: true,
+    };
+    await managers.participationManager.publishCycle(publishInput);
+    const rowsBefore = await outboxRows();
+    setTestClock({ instant: '2026-12-25T03:00:00.000Z' as Instant });
+
+    // 02:30–04:00 → 02:30–05:00: each Shift keeps its share of the block.
+    const edited = await buildPlanningManager().confirmEdit({
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      eventId: EventId.from(eventId),
+      start: new Date('2026-12-25T02:30:00.000Z'),
+      end: new Date('2026-12-25T05:00:00.000Z'),
+      eventTimeBlocks: [
+        {
+          id: EventTimeBlockId.from(eventTimeBlockId),
+          label: 'Vigil',
+          startTime: new Date('2026-12-25T02:30:00.000Z'),
+          endTime: new Date('2026-12-25T05:00:00.000Z'),
+        },
+      ],
+      actingUserId: UserId.from(ids.adminUserId),
+    });
+
+    expect(edited.withdrawn.map(({ volunteerId }) => volunteerId)).toEqual([
+      clashing.volunteer.id,
+    ]);
+    const beforeIds = new Set(rowsBefore.map(({ id }) => id));
+    const queuedByEdit = (await outboxRows()).filter(
+      ({ id }) => !beforeIds.has(id),
+    );
+    expect(queuedByEdit.map(({ payload }) => payload)).toEqual([
+      expect.objectContaining({
+        kind: 'event_changed',
+        to: expect.objectContaining({ userId: ids.adminUserId }),
+      }),
+    ]);
+
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    const updates = (await outboxRows())
+      .map((row) => row.payload)
+      .filter(
+        (payload) =>
+          typeof payload === 'object' &&
+          payload !== null &&
+          'kind' in payload &&
+          payload.kind === 'schedule_updated',
+      );
+    expect(updates).toHaveLength(2);
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        to: { userId: kept.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'moved',
+              before: expect.objectContaining({
+                startsAt: '2026-12-25T03:15:00.000Z',
+                endsAt: '2026-12-25T04:00:00.000Z',
+              }),
+              after: expect.objectContaining({
+                startsAt: '2026-12-25T03:45:00.000Z',
+                endsAt: '2026-12-25T05:00:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        to: { userId: clashing.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'removed',
+              assignment: expect.objectContaining({
+                startsAt: '2026-12-25T03:15:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
   it('a published Schedule prepares and assigns an Event added to its Sent Cycle, and Send updates tells the new Volunteer', async () => {
     const role = await seedRole({
       churchId: ids.churchId,

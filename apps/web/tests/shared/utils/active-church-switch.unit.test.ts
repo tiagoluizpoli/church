@@ -5,6 +5,7 @@ import {
   subscribeToActiveChurchSwitch,
 } from '@/shared/utils/active-church-broadcast';
 import {
+  clearActiveChurchScopedCache,
   getActiveChurchDestination,
   switchActiveChurch,
 } from '@/shared/utils/active-church-switch';
@@ -258,5 +259,22 @@ describe('switchActiveChurch', () => {
     } finally {
       unsubscribe();
     }
+  });
+});
+
+describe('clearActiveChurchScopedCache', () => {
+  it('keeps the active-church and mounted redemption queries, removes the rest', async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['active-church'], 1);
+    queryClient.setQueryData(['redemption', 'church-invitation', 'i1'], 2);
+    queryClient.setQueryData(['schedules'], 3);
+
+    await clearActiveChurchScopedCache({ queryClient });
+
+    expect(queryClient.getQueryData(['active-church'])).toBe(1);
+    expect(
+      queryClient.getQueryData(['redemption', 'church-invitation', 'i1']),
+    ).toBe(2);
+    expect(queryClient.getQueryData(['schedules'])).toBeUndefined();
   });
 });

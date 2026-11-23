@@ -396,7 +396,7 @@ interface BookInput {
   volunteerId: string;
   start: string;
   end: string;
-  status: 'draft' | 'pending' | 'confirmed' | 'cancelled' | 'cancelled';
+  status: 'draft' | 'pending' | 'confirmed' | 'cancelled';
 }
 
 function book({ start, end, ...rest }: BookInput) {
@@ -494,7 +494,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
       'draft',
       'pending',
       'confirmed',
-      'cancelled',
+      'declined',
       'touching',
       'selfshift',
     ];
@@ -1031,7 +1031,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
       .from(assignment)
       .where(inArray(assignment.id, Object.values(board.moved) as string[]));
     expect(remaining.map(({ id }) => id).sort()).toEqual(
-      [board.moved.declined, board.moved.touching].sort(),
+      [board.moved.cancelled, board.moved.touching].sort(),
     );
     const [swap] = await db.select().from(swapRequest);
     expect(swap).toMatchObject({

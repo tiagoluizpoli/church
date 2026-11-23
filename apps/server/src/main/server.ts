@@ -8,6 +8,7 @@ import { registerReadiness } from './fastify/readiness';
 import { registerControllers } from './fastify/register-controllers';
 import { createFastify } from './fastify/setup';
 import { OutboxPoller } from './outbox-poller';
+import { createShutdown, logUnhandledRejection } from './shutdown';
 
 async function start(): Promise<void> {
   const reportingDsn = initErrorReporting({
@@ -52,14 +53,25 @@ async function start(): Promise<void> {
     batchSize: env.OUTBOX_DRAIN_BATCH_SIZE,
   });
   outboxPoller.start();
-  app.addHook('onClose', async () => {
-    outboxPoller.stop();
+
+  const shutdown = createShutdown({
+    closeApp: () => app.close(),
+    stopPoller: () => outboxPoller.stop(),
+    closeDatabase: () => db.$client.end(),
+    exit: (code) => process.exit(code),
+    log: (message, error) => console.error(message, error ?? ''),
   });
+  for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+    process.once(signal, () => void shutdown(signal));
+  }
+  process.on('unhandledRejection', (reason) =>
+    logUnhandledRejection(reason, (m, e) => console.error(m, e)),
+  );
 
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
 }
 
 start().catch((err) => {
-  console.error(err);
+  console.error('[server] startup failed:', err);
   process.exit(1);
 });

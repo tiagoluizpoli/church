@@ -1001,6 +1001,52 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
+      '/cycles/:cycleId/events/:eventId/edit',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'editPlanningEvent',
+          summary: 'Edit a sent Event',
+          description:
+            'Apply new bounds and EventTimeBlocks to a scheduled Event of a Sent Cycle, with the body of the edit preview. Recalculates the clashes under the Church lock shared with Assignment creation (never trusting a preview) and withdraws only the active Assignments whose new Shift would strictly overlap another active Assignment of their Volunteer: each is audited, its open SwapRequest closes as covered, and it is deleted. The Event and its kept blocks take the new times, each Shift keeping its share of its block; kept Assignments keep their identity, UnavailableShifts and open SwapRequests. A block without `id` is added with a Shift per Participation; a left-out unstaffed block is cancelled, never deleted. Last-told snapshots are untouched, so Send updates tells Volunteers (never about a started Shift); the leaders of the affected Ministries get the Event changed alert. Returns the edited graph and the actual withdrawals. Refuses as the preview does.',
+          body: editPlanningEventBodySchema,
+          response: {
+            200: eventMoveResponseSchema,
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const body = request.body as EditPlanningEventBody;
+        const result = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.planningEventManager.confirmEdit({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              start: dateFromInstantString({ value: body.start }),
+              end: dateFromInstantString({ value: body.end }),
+              eventTimeBlocks: body.eventTimeBlocks.map(
+                ({ id, label, startTime, endTime }) => ({
+                  id: id === undefined ? undefined : EventTimeBlockId.from(id),
+                  label,
+                  startTime: dateFromInstantString({ value: startTime }),
+                  endTime: dateFromInstantString({ value: endTime }),
+                }),
+              ),
+              actingUserId: UserId.from(request.userId),
+            }),
+        });
+        if (!result) return;
+        return reply.send(eventMoveMapper.toResponse(result));
+      },
+    );
+
+    app.post(
       '/cycles/:cycleId/events/:eventId/event-time-blocks',
       {
         schema: {

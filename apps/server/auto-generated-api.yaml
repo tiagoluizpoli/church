@@ -4772,6 +4772,319 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/edit:
+    post:
+      operationId: editPlanningEvent
+      summary: Edit a sent Event
+      tags:
+        - planning
+      description: "Apply new bounds and EventTimeBlocks to a scheduled Event of a
+        Sent Cycle, with the body of the edit preview. Recalculates the clashes
+        under the Church lock shared with Assignment creation (never trusting a
+        preview) and withdraws only the active Assignments whose new Shift would
+        strictly overlap another active Assignment of their Volunteer: each is
+        audited, its open SwapRequest closes as covered, and it is deleted. The
+        Event and its kept blocks take the new times, each Shift keeping its
+        share of its block; kept Assignments keep their identity,
+        UnavailableShifts and open SwapRequests. A block without `id` is added
+        with a Shift per Participation; a left-out unstaffed block is cancelled,
+        never deleted. Last-told snapshots are untouched, so Send updates tells
+        Volunteers (never about a started Shift); the leaders of the affected
+        Ministries get the Event changed alert. Returns the edited graph and the
+        actual withdrawals. Refuses as the preview does."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                start:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                end:
+                  type: string
+                  format: date-time
+                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                eventTimeBlocks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      label:
+                        type: string
+                        minLength: 1
+                      startTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      endTime:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                    required:
+                      - label
+                      - startTime
+                      - endTime
+              required:
+                - start
+                - end
+                - eventTimeBlocks
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  event:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      churchId:
+                        type: string
+                      cycleId:
+                        type: string
+                      sourceTemplateId:
+                        type: string
+                      title:
+                        type: string
+                      description:
+                        type: string
+                      location:
+                        type: string
+                      start:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      end:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      status:
+                        type: string
+                        enum:
+                          - draft
+                          - scheduled
+                          - cancelled
+                          - past
+                      createdAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      updatedAt:
+                        type: string
+                        format: date-time
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                    required:
+                      - id
+                      - churchId
+                      - cycleId
+                      - title
+                      - start
+                      - end
+                      - status
+                      - createdAt
+                      - updatedAt
+                    additionalProperties: false
+                  eventTimeBlocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        churchId:
+                          type: string
+                        eventId:
+                          type: string
+                        startTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        endTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        label:
+                          type: string
+                        isPublic:
+                          type: boolean
+                        place:
+                          nullable: true
+                          type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - active
+                            - cancelled
+                        requirements:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              eventTimeBlockId:
+                                type: string
+                              roleId:
+                                type: string
+                              sectorId:
+                                type: string
+                              peopleNeeded:
+                                type: number
+                              notes:
+                                type: string
+                            required:
+                              - id
+                              - eventTimeBlockId
+                              - roleId
+                              - sectorId
+                              - peopleNeeded
+                            additionalProperties: false
+                      required:
+                        - id
+                        - churchId
+                        - eventId
+                        - startTime
+                        - endTime
+                        - isPublic
+                        - place
+                        - placeAddressId
+                        - status
+                        - requirements
+                      additionalProperties: false
+                  withdrawn:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        assignmentId:
+                          type: string
+                        eventTimeBlockId:
+                          type: string
+                        shiftId:
+                          type: string
+                        volunteer:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                          additionalProperties: false
+                        ministry:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                            - id
+                            - name
+                          additionalProperties: false
+                        proposedStart:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        proposedEnd:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      required:
+                        - assignmentId
+                        - eventTimeBlockId
+                        - shiftId
+                        - volunteer
+                        - ministry
+                        - proposedStart
+                        - proposedEnd
+                      additionalProperties: false
+                required:
+                  - event
+                  - eventTimeBlocks
+                  - withdrawn
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/events/{eventId}/event-time-blocks:
     post:
       operationId: createPlanningEventTimeBlock

@@ -185,6 +185,12 @@ export interface PreviewPlanningEditManagerInput {
   eventTimeBlocks: PlanningEditTimeBlock[];
 }
 
+export interface ConfirmPlanningEditManagerInput
+  extends PreviewPlanningEditManagerInput {
+  /** The ChurchAdmin who confirms; audits the withdrawals. */
+  actingUserId: UserId;
+}
+
 /** The proposed bounds and the Assignments a clash would withdraw; nothing is written. */
 export interface PlanningEditPreview {
   proposal: EditProposal;
@@ -250,6 +256,14 @@ export interface IPlanningEventManager {
   previewEdit(
     input: PreviewPlanningEditManagerInput,
   ): Promise<PlanningEditPreview>;
+  /**
+   * Recalculates under the Church lock (never trusting a preview), withdraws
+   * only the actual clashes, retimes the Event, its kept blocks and their
+   * Shifts, adds the new blocks and cancels the dropped unstaffed ones.
+   */
+  confirmEdit(
+    input: ConfirmPlanningEditManagerInput,
+  ): Promise<PlanningMoveResult>;
   /** Advisory and write-free: confirm recalculates and never trusts it. */
   previewCancellation(
     input: PreviewPlanningCancellationManagerInput,

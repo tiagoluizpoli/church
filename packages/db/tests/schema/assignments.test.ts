@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { clearDatabase, testDb } from './setup';
 import {
   assignment,
   assignmentAudit,
@@ -14,9 +15,8 @@ import {
   shiftRequirement,
   user,
   volunteer,
-} from '../../src/schema';
-import { createChurch } from '../../src/tenancy';
-import { clearDatabase, testDb } from './setup';
+} from '@/schema';
+import { createChurch } from '@/tenancy';
 
 describe('Assignments and Audit Schema', () => {
   let churchId: string;

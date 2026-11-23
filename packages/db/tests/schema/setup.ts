@@ -1,8 +1,8 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
-import { getIntegrationDatabaseUrl } from '../../src/integration-database-url';
-import * as schema from '../../src/schema';
 import { clearPublicTables } from '@/clear-public-tables';
+import { getIntegrationDatabaseUrl } from '@/integration-database-url';
+import * as schema from '@/schema';
 
 const pool = new pg.Pool({
   connectionString: getIntegrationDatabaseUrl(),

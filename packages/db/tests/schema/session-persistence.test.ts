@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as schema from '../../src/schema';
-import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
+import * as schema from '@/schema';
+import { createChurch } from '@/tenancy';
 
 describe('Auth & Session Persistence (SC-001)', () => {
   beforeEach(async () => {

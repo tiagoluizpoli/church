@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { user } from '../../src/schema';
-import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
+import { user } from '@/schema';
+import { createChurch } from '@/tenancy';
 
 describe('Simple Test', () => {
   beforeEach(async () => {

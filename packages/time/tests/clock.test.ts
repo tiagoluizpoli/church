@@ -8,7 +8,7 @@ import {
   parseInstant,
   resetClock,
   setTestClock,
-} from '../src';
+} from '@/index';
 
 describe('clock', () => {
   afterEach(() => {

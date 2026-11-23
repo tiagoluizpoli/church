@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { churchAddress } from '../../src/schema/church';
-import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
+import { churchAddress } from '@/schema/church';
+import { createChurch } from '@/tenancy';
 
 const ADDRESS = {
   street: 'Rua das Flores',

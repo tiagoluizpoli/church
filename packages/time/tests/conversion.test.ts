@@ -15,7 +15,7 @@ import {
   today,
   toInstant,
   toTimeOfDay,
-} from '../src';
+} from '@/index';
 
 interface NewYorkWallClockInput {
   day: string;

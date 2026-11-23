@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getE2eDatabaseUrl } from '../src/e2e-database-url';
+import { getE2eDatabaseUrl } from '@/e2e-database-url';
 
 const E2E_URL =
   'postgresql://postgres:postgres@localhost:5444/church_develop_e2e';

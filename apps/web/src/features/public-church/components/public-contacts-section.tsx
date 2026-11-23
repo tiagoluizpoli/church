@@ -1,32 +1,10 @@
 import { SOCIAL_NETWORKS } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
-import {
-  Facebook,
-  Instagram,
-  Linkedin,
-  Link as LinkIcon,
-  type LucideIcon,
-  MessageCircle,
-  Music,
-  Twitter,
-  Youtube,
-} from 'lucide-react';
+import { networkIcon } from '@/components/social-network-icons';
 import type { GetPublicChurchProfile200 } from '@/infrastructure/api/churchAPI.schemas';
 
 type ContactGroup = GetPublicChurchProfile200['contactGroups'][number];
 type Contact = ContactGroup['contacts'][number];
-
-const NETWORK_ICONS: Record<string, LucideIcon> = {
-  instagram: Instagram,
-  youtube: Youtube,
-  facebook: Facebook,
-  linkedin: Linkedin,
-  x: Twitter,
-  threads: MessageCircle,
-  telegram: MessageCircle,
-  spotify: Music,
-  deezer: Music,
-};
 
 const BRAZIL_CALLING_CODE = '55';
 const AREA_CODE_DIGITS = 2;
@@ -116,7 +94,7 @@ export function PublicContactsSection({
                 );
               })}
               {socialLinks.map(({ url, network, description }) => {
-                const Icon = NETWORK_ICONS[network] ?? LinkIcon;
+                const Icon = networkIcon({ network });
                 const known =
                   SOCIAL_NETWORKS[network as keyof typeof SOCIAL_NETWORKS];
                 return (

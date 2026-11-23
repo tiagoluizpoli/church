@@ -10,7 +10,8 @@
         "VITE_SERVER_URL",
         "VITE_APP_REVISION",
         "VITE_GOOGLE_MAPS_BROWSER_KEY",
-        "VITE_GOOGLE_MAPS_EMBED_KEY"
+        "VITE_GOOGLE_MAPS_EMBED_KEY",
+        "VITE_GOOGLE_MAPS_MAP_ID"
       ],
       "outputs": ["dist/**"]
     },

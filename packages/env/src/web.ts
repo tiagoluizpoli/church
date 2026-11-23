@@ -18,6 +18,9 @@ export const env = createEnv({
     // public page's map. Unset, the Google search and map are not offered.
     VITE_GOOGLE_MAPS_BROWSER_KEY: z.string().min(1).optional(),
     VITE_GOOGLE_MAPS_EMBED_KEY: z.string().min(1).optional(),
+    // The Map ID the pin map's Advanced Markers need; development falls back
+    // to Google's demo id when unset.
+    VITE_GOOGLE_MAPS_MAP_ID: z.string().min(1).optional(),
     VITE_APP_REVISION: z.string().min(1).default('unversioned'),
   },
   runtimeEnv: (import.meta as unknown as ViteImportMeta).env,

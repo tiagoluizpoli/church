@@ -145,7 +145,7 @@ export function SocialSection({
               return (
                 <li
                   key={link.key}
-                  className="grid @5xl:grid-cols-[minmax(0,0.8fr)_11rem_minmax(0,1.5fr)_minmax(0,1fr)_auto] grid-cols-[minmax(0,1fr)_10rem] items-end gap-x-3 gap-y-2 p-3"
+                  className="grid @5xl:grid-cols-[minmax(0,0.8fr)_11rem_minmax(0,1.5fr)_minmax(0,1fr)_auto] @md:grid-cols-[minmax(0,1fr)_10rem] grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-end gap-x-3 gap-y-2 p-3"
                 >
                   <GroupField
                     value={link.group}

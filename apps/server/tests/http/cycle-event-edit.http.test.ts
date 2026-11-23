@@ -1095,6 +1095,195 @@ describe('Público and place on a Sent Event', () => {
   });
 });
 
+describe('Single EventTimeBlock create and update', () => {
+  interface BlockBody {
+    label?: string;
+    startTime?: string;
+    endTime?: string;
+  }
+
+  interface PostBlockInput {
+    cycleId: string;
+    fixture: Fixture;
+    payload: BlockBody;
+  }
+
+  function postBlock({ cycleId, fixture, payload }: PostBlockInput) {
+    return app.inject({
+      method: 'POST',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${fixture.eventId}/event-time-blocks`,
+      payload: payload as never,
+    });
+  }
+
+  interface PatchBlockInput extends PostBlockInput {
+    blockId: string;
+  }
+
+  function patchBlock({ cycleId, fixture, blockId, payload }: PatchBlockInput) {
+    return app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${fixture.eventId}/event-time-blocks/${blockId}`,
+      payload: payload as never,
+    });
+  }
+
+  // The seeded Event runs 09–12 with Welcome 09–10 and Service 10–12; a
+  // created block joins the final graph after them.
+  it.each([
+    {
+      name: 'outside the Event bounds',
+      payload: { label: 'Late', startTime: '11:00', endTime: '13:00' },
+      reason: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+      field: 'eventTimeBlocks.2',
+    },
+    {
+      name: 'with a blank label',
+      payload: { label: '  ', startTime: '10:00', endTime: '11:00' },
+      reason: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+      field: 'eventTimeBlocks.2.label',
+    },
+    {
+      name: 'without a label',
+      payload: { startTime: '10:00', endTime: '11:00' },
+      reason: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+      field: 'eventTimeBlocks.2.label',
+    },
+    {
+      name: 'with a label another block holds',
+      payload: { label: ' welcome ', startTime: '10:00', endTime: '11:00' },
+      reason: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+      field: 'eventTimeBlocks.2.label',
+    },
+    {
+      name: 'ending before it starts',
+      payload: { label: 'Late', startTime: '11:00', endTime: '10:00' },
+      reason: 'INVALID_EVENT_BOUNDS',
+      field: 'eventTimeBlocks.2.endTime',
+    },
+  ])('refuses creating a block $name with $reason and writes nothing', async ({
+    payload,
+    reason,
+    field,
+  }) => {
+    const { cycleId, fixture } = await setUp();
+    const before = await storedGraph();
+
+    const response = await postBlock({
+      cycleId,
+      fixture,
+      payload: {
+        ...payload,
+        startTime: at(payload.startTime),
+        endTime: at(payload.endTime),
+      },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason,
+      field,
+    });
+    expect(await storedGraph()).toEqual(before);
+  });
+
+  it('creates a contained, uniquely labelled block', async () => {
+    const { cycleId, fixture } = await setUp();
+
+    const response = await postBlock({
+      cycleId,
+      fixture,
+      payload: {
+        label: 'Closing',
+        startTime: at('11:00'),
+        endTime: at('12:00'),
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      eventId: fixture.eventId,
+      label: 'Closing',
+      startTime: at('11:00'),
+      endTime: at('12:00'),
+    });
+  });
+
+  it.each([
+    {
+      name: 'only a start past its stored end',
+      payload: { startTime: '10:30' },
+      reason: 'INVALID_EVENT_BOUNDS',
+      field: 'eventTimeBlocks.0.endTime',
+    },
+    {
+      name: 'an end outside the Event bounds',
+      payload: { endTime: '12:30' },
+      reason: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+      field: 'eventTimeBlocks.0',
+    },
+    {
+      name: 'a blank label',
+      payload: { label: '' },
+      reason: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+      field: 'eventTimeBlocks.0.label',
+    },
+    {
+      name: 'a label another block holds',
+      payload: { label: 'SERVICE' },
+      reason: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+      field: 'eventTimeBlocks.1.label',
+    },
+  ])('refuses an update with $name with $reason and writes nothing', async ({
+    payload,
+    reason,
+    field,
+  }) => {
+    const { cycleId, fixture } = await setUp();
+    const before = await storedGraph();
+    const { startTime, endTime, label } = payload as BlockBody;
+
+    const response = await patchBlock({
+      cycleId,
+      fixture,
+      blockId: fixture.welcome.id,
+      payload: {
+        label,
+        startTime: startTime && at(startTime),
+        endTime: endTime && at(endTime),
+      },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason,
+      field,
+    });
+    expect(await storedGraph()).toEqual(before);
+  });
+
+  it('updates a block that stays contained and uniquely labelled', async () => {
+    const { cycleId, fixture } = await setUp();
+
+    const response = await patchBlock({
+      cycleId,
+      fixture,
+      blockId: fixture.welcome.id,
+      payload: { label: 'Arrival', startTime: at('09:30') },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: fixture.welcome.id,
+      label: 'Arrival',
+      startTime: at('09:30'),
+      endTime: at('10:00'),
+    });
+  });
+});
+
 describe('Edit Event access', () => {
   it('returns 401 signed out', async () => {
     const seed = await seedSchedulingPhase3Base();

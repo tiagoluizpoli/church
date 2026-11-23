@@ -1970,6 +1970,42 @@ export type CreatePlanningEventTimeBlock404 = {
   message: string;
 };
 
+export type CreatePlanningEventTimeBlock422Error = typeof CreatePlanningEventTimeBlock422Error[keyof typeof CreatePlanningEventTimeBlock422Error];
+
+
+export const CreatePlanningEventTimeBlock422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type CreatePlanningEventTimeBlock422Reason = typeof CreatePlanningEventTimeBlock422Reason[keyof typeof CreatePlanningEventTimeBlock422Reason];
+
+
+export const CreatePlanningEventTimeBlock422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type CreatePlanningEventTimeBlock422 = {
+  error: CreatePlanningEventTimeBlock422Error;
+  message: string;
+  reason?: CreatePlanningEventTimeBlock422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
 export type PreviewPlanningEventTimeBlockMoveBody = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   start: string;
@@ -2441,6 +2477,42 @@ export type UpdatePlanningEventTimeBlock200 = {
 export type UpdatePlanningEventTimeBlock404 = {
   error: string;
   message: string;
+};
+
+export type UpdatePlanningEventTimeBlock422Error = typeof UpdatePlanningEventTimeBlock422Error[keyof typeof UpdatePlanningEventTimeBlock422Error];
+
+
+export const UpdatePlanningEventTimeBlock422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type UpdatePlanningEventTimeBlock422Reason = typeof UpdatePlanningEventTimeBlock422Reason[keyof typeof UpdatePlanningEventTimeBlock422Reason];
+
+
+export const UpdatePlanningEventTimeBlock422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type UpdatePlanningEventTimeBlock422 = {
+  error: UpdatePlanningEventTimeBlock422Error;
+  message: string;
+  reason?: UpdatePlanningEventTimeBlock422Reason;
+  field?: string;
+  issues?: unknown[];
 };
 
 /**

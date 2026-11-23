@@ -35,24 +35,17 @@ vi.mock('@/features/church-settings/cep-client', async (importOriginal) => ({
 // The Google widgets never run in tests: the module is faked at its boundary.
 const maps = vi.hoisted(() => ({
   enabled: false,
-  onPick: undefined as undefined | ((place: unknown) => void),
+  suggest: vi.fn(),
+  pick: vi.fn(),
   onDrag: undefined as undefined | ((pin: unknown) => void),
-  onSearchError: undefined as undefined | (() => void),
 }));
 
 vi.mock('@/features/church-settings/google-maps', () => ({
   isMapsEnabled: () => maps.enabled,
-  attachPlaceSearch: ({
-    onPick,
-    onError,
-  }: {
-    onPick: (place: unknown) => void;
-    onError: () => void;
-  }) => {
-    maps.onPick = onPick;
-    maps.onSearchError = onError;
-    return () => undefined;
-  },
+  createPlaceSearch: () => ({
+    suggest: (input: string) => maps.suggest(input),
+    pick: (suggestion: unknown) => maps.pick(suggestion),
+  }),
   mountPinMap: ({ onDrag }: { onDrag: (pin: unknown) => void }) => {
     maps.onDrag = onDrag;
     return { setPin: () => undefined, destroy: () => undefined };
@@ -886,6 +879,11 @@ async function fillNewAddress(user: ReturnType<typeof userEvent.setup>) {
     }),
   );
   const dialog = await screen.findByRole('dialog');
+  await user.click(
+    within(dialog).getByRole('button', {
+      name: m.church_settings_address_search_manual(),
+    }),
+  );
   const field = (label: string) =>
     within(dialog).getByRole('textbox', { name: label });
   await user.type(field(m.church_settings_address_label_label()), 'Anexo');
@@ -916,21 +914,96 @@ describe('Church Settings addresses', () => {
     return screen.findByRole('dialog');
   }
 
+  const searchField = (dialog: HTMLElement) =>
+    within(dialog).getByRole('searchbox', {
+      name: m.church_settings_address_search(),
+    });
+
+  /** The one search field: a CEP is looked up as soon as its 8 digits are typed. */
   async function searchCep(
     user: ReturnType<typeof userEvent.setup>,
     dialog: HTMLElement,
     typed: string,
   ) {
-    await user.type(
-      within(dialog).getByRole('textbox', { name: /^CEP/ }),
-      typed,
-    );
+    await user.type(searchField(dialog), typed);
+  }
+
+  async function enterManually(
+    user: ReturnType<typeof userEvent.setup>,
+    dialog: HTMLElement,
+  ) {
     await user.click(
       within(dialog).getByRole('button', {
-        name: m.church_settings_address_cep_lookup(),
+        name: m.church_settings_address_search_manual(),
       }),
     );
   }
+
+  it('starts with only the search field and reveals empty fields for manual entry', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    const dialog = await openNewAddress(user);
+
+    expect(searchField(dialog)).toHaveFocus();
+    expect(
+      within(dialog).queryByRole('textbox', {
+        name: m.church_settings_address_street(),
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_confirm_add(),
+      }),
+    ).toBeDisabled();
+
+    await enterManually(user, dialog);
+
+    const street = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_street(),
+    });
+    expect(street).toHaveValue('');
+    expect(street).toHaveFocus();
+    expect(
+      within(dialog).queryByRole('searchbox', {
+        name: m.church_settings_address_search(),
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens an existing address for editing with its fields shown, not the search', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE);
+    renderSettings();
+    await user.click(
+      await screen.findByRole('button', {
+        name: m.church_settings_address_edit({ name: 'Templo' }),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog');
+
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_street(),
+      }),
+    ).toHaveValue('Rua das Flores');
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_number(),
+      }),
+    ).toHaveValue('120');
+    expect(
+      within(dialog).queryByRole('searchbox', {
+        name: m.church_settings_address_search(),
+      }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: m.church_settings_address_search_again(),
+      }),
+    );
+    expect(searchField(dialog)).toHaveFocus();
+  });
 
   it('fills the same fields from a CEP and saves only what is confirmed', async () => {
     lookupCep.mockResolvedValue({
@@ -976,6 +1049,7 @@ describe('Church Settings addresses', () => {
     const number = within(dialog).getByRole('textbox', {
       name: m.church_settings_address_number(),
     });
+    expect(number).toHaveFocus();
     await user.type(number, '100');
     await user.clear(
       within(dialog).getByRole('textbox', {
@@ -1013,6 +1087,30 @@ describe('Church Settings addresses', () => {
       ),
     );
   });
+
+  const SUGGESTION = {
+    placeId: 'ChIJ-place',
+    main: 'Avenida Brasil, 500',
+    secondary: 'Jardim Novo, Campinas - SP',
+  };
+
+  /** Text in the search field asks Google; picking a suggestion fills the fields. */
+  async function pickPlace(
+    user: ReturnType<typeof userEvent.setup>,
+    dialog: HTMLElement,
+  ) {
+    maps.suggest.mockResolvedValue([SUGGESTION]);
+    maps.pick.mockResolvedValue(PLACE);
+    await user.type(searchField(dialog), 'Avenida Brasil');
+    await user.click(
+      await within(dialog).findByRole('button', {
+        name: /Avenida Brasil, 500/,
+      }),
+    );
+    await within(dialog).findByRole('textbox', {
+      name: m.church_settings_address_street(),
+    });
+  }
 
   const PLACE = {
     placeId: 'ChIJ-place',
@@ -1055,13 +1153,16 @@ describe('Church Settings addresses', () => {
     renderSettings();
 
     const dialog = await openNewAddress(user);
+    await user.type(searchField(dialog), 'Rua Barão');
     expect(
-      within(dialog).queryByLabelText(
-        m.church_settings_address_google_search(),
+      await within(dialog).findByText(
+        m.church_settings_address_search_cep_only(),
       ),
-    ).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole('application')).not.toBeInTheDocument();
+    ).toBeInTheDocument();
+    expect(maps.suggest).not.toHaveBeenCalled();
+    await user.clear(searchField(dialog));
     await searchCep(user, dialog, '13015904');
+    expect(within(dialog).queryByRole('application')).not.toBeInTheDocument();
     await user.type(
       await within(dialog).findByRole('textbox', {
         name: m.church_settings_address_number(),
@@ -1090,12 +1191,16 @@ describe('Church Settings addresses', () => {
       const user = userEvent.setup();
       renderSettings();
       const dialog = await openNewAddress(user);
+      maps.suggest.mockRejectedValue(new Error('offline'));
 
-      act(() => maps.onSearchError?.());
+      await user.type(searchField(dialog), 'Avenida Brasil');
 
       expect(
-        within(dialog).getByText(m.church_settings_address_maps_failed()),
+        await within(dialog).findByText(
+          m.church_settings_address_maps_failed(),
+        ),
       ).toBeInTheDocument();
+      await enterManually(user, dialog);
       const street = within(dialog).getByRole('textbox', {
         name: m.church_settings_address_street(),
       });
@@ -1107,17 +1212,23 @@ describe('Church Settings addresses', () => {
       const user = userEvent.setup();
       renderSettings();
       const dialog = await openNewAddress(user);
+
+      await pickPlace(user, dialog);
+
+      expect(maps.suggest).toHaveBeenCalledWith('Avenida Brasil');
+      expect(maps.pick).toHaveBeenCalledWith(SUGGESTION);
+      expect(
+        within(dialog).getByRole('textbox', {
+          name: m.church_settings_address_street(),
+        }),
+      ).toHaveValue('Avenida Brasil');
+      // The number came with the place: the complement is next.
+      expect(
+        within(dialog).getByRole('textbox', {
+          name: m.church_settings_address_complement(),
+        }),
+      ).toHaveFocus();
       expect(within(dialog).getByRole('application')).toBeInTheDocument();
-
-      act(() => maps.onPick?.(PLACE));
-
-      await waitFor(() =>
-        expect(
-          within(dialog).getByRole('textbox', {
-            name: m.church_settings_address_street(),
-          }),
-        ).toHaveValue('Avenida Brasil'),
-      );
       expect(
         within(dialog).getByText(m.church_settings_address_pin_source_google()),
       ).toBeInTheDocument();
@@ -1140,7 +1251,7 @@ describe('Church Settings addresses', () => {
       const user = userEvent.setup();
       renderSettings();
       const dialog = await openNewAddress(user);
-      act(() => maps.onPick?.(PLACE));
+      await pickPlace(user, dialog);
       await user.click(
         await within(dialog).findByRole('button', {
           name: m.church_settings_address_pin_confirm(),
@@ -1156,7 +1267,7 @@ describe('Church Settings addresses', () => {
       const user = userEvent.setup();
       renderSettings();
       const dialog = await openNewAddress(user);
-      act(() => maps.onPick?.(PLACE));
+      await pickPlace(user, dialog);
       act(() => maps.onDrag?.({ latitude: -22.95, longitude: -47.1 }));
       const saved = await saveNewAddress(user, dialog);
       expect(saved).toEqual(
@@ -1172,7 +1283,7 @@ describe('Church Settings addresses', () => {
       const user = userEvent.setup();
       renderSettings();
       const dialog = await openNewAddress(user);
-      act(() => maps.onPick?.(PLACE));
+      await pickPlace(user, dialog);
       await user.click(
         await within(dialog).findByRole('button', {
           name: m.church_settings_address_pin_remove(),
@@ -1222,7 +1333,7 @@ describe('Church Settings addresses', () => {
       const user = userEvent.setup();
       renderSettings();
       const dialog = await openNewAddress(user);
-      act(() => maps.onPick?.(PLACE));
+      await pickPlace(user, dialog);
       const city = await within(dialog).findByRole('textbox', {
         name: m.church_settings_address_city(),
       });
@@ -1241,7 +1352,7 @@ describe('Church Settings addresses', () => {
     renderSettings();
 
     const dialog = await openNewAddress(user);
-    await searchCep(user, dialog, typed);
+    await searchCep(user, dialog, `${typed}{Enter}`);
 
     expect(
       await within(dialog).findByText(m.church_settings_address_cep_invalid()),
@@ -1262,6 +1373,7 @@ describe('Church Settings addresses', () => {
         m.church_settings_address_cep_not_found(),
       ),
     ).toBeInTheDocument();
+    await enterManually(user, dialog);
     const street = within(dialog).getByRole('textbox', {
       name: m.church_settings_address_street(),
     });
@@ -1283,6 +1395,7 @@ describe('Church Settings addresses', () => {
     expect(
       await within(dialog).findByText(m.church_settings_address_cep_failed()),
     ).toBeInTheDocument();
+    await enterManually(user, dialog);
     const street = within(dialog).getByRole('textbox', {
       name: m.church_settings_address_street(),
     });
@@ -1301,6 +1414,7 @@ describe('Church Settings addresses', () => {
     renderSettings();
     const dialog = await openNewAddress(user);
     await searchCep(user, dialog, '13015904');
+    await enterManually(user, dialog);
     const street = within(dialog).getByRole('textbox', {
       name: m.church_settings_address_street(),
     });

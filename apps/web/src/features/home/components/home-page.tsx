@@ -133,7 +133,7 @@ function useClearStaleLeadershipScope(capacities: HomeCapacities | null) {
 }
 
 /**
- * Home (`/`): the common entry. Sections mount by additive capacity in the
+ * Home (`/app`): the common entry. Sections mount by additive capacity in the
  * order Church → Ministries I lead → My serving; a plain Church Member sees a
  * neutral welcome only after the capability read succeeded.
  */

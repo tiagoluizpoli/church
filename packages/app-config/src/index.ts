@@ -10,6 +10,8 @@ const positiveInt = z.number().int().positive();
 export const appConfigSchema = z.object({
   /** Product name on app-branded (church-less) email. Placeholder until branding is decided. */
   appName: z.string().trim().min(1),
+  /** Platform site the email credit links to; the credit is plain text while unset. */
+  platformSiteUrl: z.url().optional(),
   /** Parked features: false = UI hidden and server route not registered. */
   parked: z.object({
     assignmentResponse: z.boolean(),
@@ -33,6 +35,11 @@ export const appConfigSchema = z.object({
   }),
   passwordReset: z.object({ ttlMs: positiveInt }),
   redemptionRateLimit: z.object({
+    windowMs: positiveInt,
+    maxRequests: positiveInt,
+  }),
+  /** Sign-in-free Public Church Profile reads, per client IP. */
+  publicProfileRateLimit: z.object({
     windowMs: positiveInt,
     maxRequests: positiveInt,
   }),
@@ -126,6 +133,7 @@ export const appConfig = appConfigSchema.parse({
   },
   passwordReset: { ttlMs: HOUR_MS },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
+  publicProfileRateLimit: { windowMs: MINUTE_MS, maxRequests: 60 },
   errorReportTunnel: {
     path: '/api/error-reports',
     windowMs: MINUTE_MS,

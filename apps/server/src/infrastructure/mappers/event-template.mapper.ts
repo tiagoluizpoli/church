@@ -10,6 +10,7 @@ import type { EventTemplateProps } from '../../domain/entities/event-template';
 import { EventTemplate } from '../../domain/entities/event-template';
 import type { TemplateTimeBlockProps } from '../../domain/entities/template-time-block';
 import { TemplateTimeBlock } from '../../domain/entities/template-time-block';
+import type { Recurrence } from '../../domain/recurrence';
 
 type EventTemplateRow = InferSelectModel<typeof eventTemplate>;
 type TemplateTimeBlockRow = InferSelectModel<typeof templateTimeBlock>;
@@ -29,6 +30,9 @@ export function mapTemplateTimeBlock(
     startTime: fromTimeColumn({ value: row.startTime }),
     endTime: fromTimeColumn({ value: row.endTime }),
     order: row.order,
+    isPublic: row.isPublic,
+    place: row.place ?? undefined,
+    placeAddressId: row.placeAddressId ?? undefined,
   };
 
   return new TemplateTimeBlock({
@@ -44,7 +48,8 @@ export function mapEventTemplate({
   const props: EventTemplateProps = {
     churchId: template.churchId as ChurchId,
     name: template.name,
-    weekday: template.weekday,
+    // The entity validates the stored shape.
+    recurrence: template.recurrence as Recurrence,
     blocks: blocks.map(mapTemplateTimeBlock),
   };
 

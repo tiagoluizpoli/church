@@ -63,6 +63,7 @@ import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-o
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
@@ -86,6 +87,7 @@ import {
   resetSchedulingPhase3Db,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -102,6 +104,7 @@ beforeAll(async () => {
   const unitOfWork = new DrizzleUnitOfWork({ db });
   const ministryRepository = new DrizzleMinistryRepository({ db });
   const notifications = new ChurchNotifications({
+    churchIdentity: nullChurchIdentity,
     outboxRepository: new DrizzleOutboxRepository({ db }),
   });
   managers = createSchedulingManagers({ notifications });
@@ -135,6 +138,7 @@ beforeAll(async () => {
     planningEventManager: new DbPlanningEventManager({
       cycleRepository: new DrizzleCycleRepository({ db }),
       eventRepository: new DrizzlePlanningEventRepository({ db }),
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository: new DrizzleEventTemplateRepository({ db }),
       churchRepository: new DrizzleChurchRepository({ db }),
       unitOfWork,

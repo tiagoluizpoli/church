@@ -94,7 +94,7 @@ export function createPlanningAdminRecipe({
       churchId: graph.church.id,
       id: idOf({ kind: 'template-sunday' }),
       name: 'J5 Worship',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
           id: welcomeBlockId,

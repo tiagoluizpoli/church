@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { activeWorktreeIdentities } from '../../worktree/local-env';
-import { selectStaleDatabases } from '../../worktree/prune-databases';
+import {
+  selectStaleBuckets,
+  selectStaleDatabases,
+} from '../../worktree/prune-databases';
 
 /**
  * Which databases `db:prune` selects, and which worktrees it counts as
@@ -83,6 +86,62 @@ describe('selectStaleDatabases', () => {
         activeIdentities: new Set(),
       }),
     ).toEqual([]);
+  });
+});
+
+describe('selectStaleBuckets', () => {
+  it('selects the buckets of worktrees that are no longer active', () => {
+    expect(
+      selectStaleBuckets({
+        buckets: [
+          'church-develop',
+          'church-feature-a',
+          'church-gone',
+          'church-gone--1a2b3c4d',
+        ],
+        activeIdentities: new Set(['develop', 'feature_a']),
+        staleDatabases: ['church_gone_dev'],
+      }),
+    ).toEqual(['church-gone', 'church-gone--1a2b3c4d']);
+  });
+
+  it('never selects a bucket outside the worktree namespace', () => {
+    expect(
+      selectStaleBuckets({
+        buckets: ['backups', 'other-gone'],
+        activeIdentities: new Set(),
+        staleDatabases: [],
+      }),
+    ).toEqual([]);
+  });
+
+  it('keeps hand-made church- buckets that no worktree identity produced', () => {
+    expect(
+      selectStaleBuckets({
+        buckets: [
+          'church-unspecified',
+          'church-uploads',
+          'church-Shared',
+          'church-a--b',
+          'church-x--1a2b3c4',
+          'church-x--1A2B3C4D',
+          'church-x_y',
+          'church-',
+        ],
+        activeIdentities: new Set(),
+        staleDatabases: ['church_unspecified_dev'],
+      }),
+    ).toEqual([]);
+  });
+
+  it('selects a readable-name bucket only with a stale database of that worktree', () => {
+    expect(
+      selectStaleBuckets({
+        buckets: ['church-feature-b', 'church-uploads'],
+        activeIdentities: new Set(),
+        staleDatabases: ['church_feature_b_int'],
+      }),
+    ).toEqual(['church-feature-b']);
   });
 });
 

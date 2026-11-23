@@ -4,6 +4,7 @@ import {
   AssignController,
   CallerCapabilitiesController,
   ChurchAdminController,
+  ChurchSettingsController,
   EventController,
   InvitationController,
   MinistryController,
@@ -11,6 +12,7 @@ import {
   NotificationController,
   PeopleController,
   PrepareController,
+  PublicChurchProfileController,
   RedemptionController,
   SectorController,
   SwapRequestController,
@@ -21,11 +23,13 @@ import {
 } from '../../api/controllers';
 import type { Auth } from './build-auth';
 import type { Managers } from './build-managers';
+import type { Services } from './build-services';
 import type { CompositionRootDependencies } from './dependencies';
 
 export interface BuildControllersInput {
   config: CompositionRootDependencies['config'];
   managers: Managers;
+  services: Pick<Services, 'webShell'>;
   auth: Auth;
 }
 
@@ -53,9 +57,13 @@ export function buildControllers({
     invitationListManager,
     peopleListManager,
     setupProgressManager,
+    churchSettingsManager,
+    publicChurchProfileManager,
+    publicEventManager,
     churchAccessManager,
     ministryMembershipManager,
   },
+  services: { webShell },
   auth: { authorityGuard, activeChurchResolver },
 }: BuildControllersInput): FastifyController[] {
   return [
@@ -70,6 +78,11 @@ export function buildControllers({
       activeChurchResolver,
       ministryManager,
       setupProgressManager,
+      authorityGuard,
+    }),
+    new ChurchSettingsController({
+      churchSettingsManager,
+      activeChurchResolver,
       authorityGuard,
     }),
     new EventController({ eventManager, activeChurchResolver, authorityGuard }),
@@ -139,6 +152,12 @@ export function buildControllers({
     new RedemptionController({
       redemptionManager,
       volunteerTransferManager,
+      config,
+    }),
+    new PublicChurchProfileController({
+      publicChurchProfileManager,
+      publicEventManager,
+      webShell,
       config,
     }),
     new VolunteerController({ volunteerManager, activeChurchResolver, config }),

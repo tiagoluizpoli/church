@@ -182,6 +182,9 @@ function createPlanningEventHarness() {
   const manager = new DbPlanningEventManager({
     ...dependencies,
     templateRepository,
+    precedenceRepository: {
+      listByTemplate: vi.fn().mockResolvedValue([]),
+    } as never,
     eventTimeBlockRepository,
     // Move confirmation is covered by the HTTP suite on real PostgreSQL.
     assignmentRepository: {} as never,
@@ -512,7 +515,12 @@ describe('DbPlanningEventManager', () => {
     });
     const template = new EventTemplate({
       id: templateId,
-      props: { churchId, name: 'Sunday', weekday: 0, blocks: [templateBlock] },
+      props: {
+        churchId,
+        name: 'Sunday',
+        recurrence: { kind: 'weekly', weekdays: [0] },
+        blocks: [templateBlock],
+      },
     });
     vi.mocked(templateRepository.getByIds).mockResolvedValue([template]);
     vi.mocked(eventRepository.createEventTimeBlock).mockResolvedValue(
@@ -526,6 +534,7 @@ describe('DbPlanningEventManager', () => {
     expect(result).toEqual({
       generatedEventCount: 4,
       generatedEventTimeBlockCount: 4,
+      leftoverEventTimeBlocks: [],
     });
     expect(eventRepository.createEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -557,7 +566,12 @@ describe('DbPlanningEventManager', () => {
     });
     const template = new EventTemplate({
       id: templateId,
-      props: { churchId, name: 'Sunday', weekday: 0, blocks: [templateBlock] },
+      props: {
+        churchId,
+        name: 'Sunday',
+        recurrence: { kind: 'weekly', weekdays: [0] },
+        blocks: [templateBlock],
+      },
     });
     vi.mocked(templateRepository.getByIds).mockResolvedValue([template]);
     const existing = [4, 11, 18, 25].map((day, index) => {
@@ -596,6 +610,7 @@ describe('DbPlanningEventManager', () => {
     await expect(manager.generateFromTemplates(input)).resolves.toEqual({
       generatedEventCount: 0,
       generatedEventTimeBlockCount: 0,
+      leftoverEventTimeBlocks: [],
     });
     expect(eventRepository.createEvent).not.toHaveBeenCalled();
     vi.mocked(eventRepository.listCycleEvents).mockResolvedValue(
@@ -607,6 +622,7 @@ describe('DbPlanningEventManager', () => {
     await expect(manager.generateFromTemplates(input)).resolves.toEqual({
       generatedEventCount: 1,
       generatedEventTimeBlockCount: 1,
+      leftoverEventTimeBlocks: [],
     });
   });
   it('refuses to apply templates to a sent cycle without writing', async () => {

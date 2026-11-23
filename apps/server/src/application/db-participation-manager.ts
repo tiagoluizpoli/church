@@ -1933,7 +1933,7 @@ export class DbParticipationManager implements IParticipationManager {
       });
       if (changed.length === 0) throw new NoUnsentChangesError();
       const [church, ministry, cycle, volunteers] = await Promise.all([
-        this.churchRepository.getById({ id: input.churchId }),
+        this.churchRepository.getById({ id: input.churchId, tx }),
         this.ministryRepository.getById({
           churchId: input.churchId,
           id: input.ministryId,
@@ -2020,7 +2020,7 @@ export class DbParticipationManager implements IParticipationManager {
     tx,
   }: NotifySchedulePublishedInput): Promise<void> {
     const [church, ministry, cycle] = await Promise.all([
-      this.churchRepository.getById({ id: input.churchId }),
+      this.churchRepository.getById({ id: input.churchId, tx }),
       this.ministryRepository.getById({
         churchId: input.churchId,
         id: input.ministryId,
@@ -3292,7 +3292,11 @@ function toUsualSetupBlockView({
   return {
     templateId: template.id,
     templateName: template.name,
-    weekday: template.weekday,
+    weekday:
+      template.recurrence.kind === 'weekly' &&
+      template.recurrence.weekdays.length === 1
+        ? (template.recurrence.weekdays[0] ?? null)
+        : null,
     sourceTemplateTimeBlockId: block.id,
     label: block.label,
     startTime: block.startTime,

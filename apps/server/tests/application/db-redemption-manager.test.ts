@@ -169,6 +169,14 @@ function createHarness({
     findMemberEmail: vi.fn(),
     findMemberContact: vi.fn(),
     findUserName: vi.fn(),
+    getSettings: vi.fn(),
+    saveSettings: vi.fn(),
+    slugAvailability: vi.fn(),
+    saveLogoKey: vi.fn(),
+    findPublicIdentityBySlug: vi.fn(),
+    findPublicAddresses: vi.fn(),
+    getPublicContactDetails: vi.fn(),
+    getAddressUsage: vi.fn(),
   };
   return {
     acceptedInputs,
@@ -201,6 +209,7 @@ describe('DbRedemptionManager', () => {
 
     expect(sent).toBe(true);
     expect(verificationCodeManager.issue).toHaveBeenCalledWith({
+      churchId: CHURCH_ID,
       churchInvitationId: CHURCH_INVITATION_ID,
       recipientEmail: 'invitee@example.test',
       churchName: 'St. Peter',

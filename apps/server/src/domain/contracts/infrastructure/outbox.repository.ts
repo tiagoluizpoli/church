@@ -59,7 +59,14 @@ export interface OutboxEmailDelivery {
   confirmedDestinations: EmailDestination[];
 }
 
-export interface ChainedInvitationOutboxPayload {
+/** The Church identity frozen when the row is queued; absent on older rows. */
+export interface OutboxChurchIdentity {
+  churchLogoUrl?: string | null;
+  churchAccent?: string | null;
+  churchLocality?: string;
+}
+
+export interface ChainedInvitationOutboxPayload extends OutboxChurchIdentity {
   ministryInvitationId: string;
   churchInvitationId: string;
 }
@@ -74,7 +81,7 @@ export interface MinistryInvitationOutboxPayload {
   ministryInvitationId: string;
 }
 
-export interface ChurchBootstrapOutboxPayload {
+export interface ChurchBootstrapOutboxPayload extends OutboxChurchIdentity {
   churchInvitationId: string;
 }
 

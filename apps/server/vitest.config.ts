@@ -11,6 +11,11 @@ const UNIT_ENV = {
   BETTER_AUTH_SECRET: 'unit-test-placeholder-secret-0123456789',
   BETTER_AUTH_URL: 'http://127.0.0.1:9',
   CORS_ORIGIN: 'http://127.0.0.1:9',
+  S3_ENDPOINT: 'http://127.0.0.1:9',
+  S3_BUCKET: 'church-unit-has-no-storage',
+  S3_ACCESS_KEY_ID: 'unit',
+  S3_SECRET_ACCESS_KEY: 'unit',
+  STORAGE_PUBLIC_URL: 'http://127.0.0.1:9/church-unit-has-no-storage',
   // The debug-only routes' controller tests exercise them.
   ENABLE_DEBUG_ENDPOINTS: 'true',
 };
@@ -102,6 +107,9 @@ export default defineConfig({
             'tests/application/db-active-church-resolver.test.ts',
             'tests/application/db-active-church-selection-manager.test.ts',
             'tests/application/db-authority-manager.test.ts',
+            'tests/application/church-notifications.test.ts',
+            'tests/application/db-church-identity-snapshotter.test.ts',
+            'tests/application/db-church-settings-manager.test.ts',
             'tests/application/db-cycle-manager.test.ts',
             'tests/application/db-assignment-manager.teamleader.test.ts',
             'tests/application/db-participation-manager.team-scope.test.ts',
@@ -145,6 +153,8 @@ export default defineConfig({
           ],
           include: [
             'tests/application/event-builder.assign.integration.test.ts',
+            'tests/application/db-church-programme-manager.integration.test.ts',
+            'tests/application/db-public-event-manager.integration.test.ts',
             'tests/behavior/**/*.test.ts',
             'tests/http/**/*.test.ts',
             'tests/integration/**/*.test.ts',

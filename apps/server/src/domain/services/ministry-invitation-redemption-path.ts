@@ -15,5 +15,5 @@ export function redemptionPathFor(
 ): string {
   return invitation.churchInvitationId
     ? `/invitations/church/${invitation.churchInvitationId}`
-    : `/invitations/ministry/${invitation.id}`;
+    : `/app/invitations/ministry/${invitation.id}`;
 }

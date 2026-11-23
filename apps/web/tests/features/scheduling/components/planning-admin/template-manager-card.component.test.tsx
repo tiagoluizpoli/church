@@ -70,7 +70,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [
             {
               id: 'b1',
@@ -105,20 +105,60 @@ describe('TemplateManagerCard table view (US1)', () => {
     ).toBeInTheDocument();
 
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
-    expect(row).toHaveTextContent('Domingo');
+    expect(row).toHaveTextContent('Todo domingo');
     expect(row).toHaveTextContent('2');
     expect(
       within(row).getByRole('link', { name: 'Editar Sunday Service' }),
-    ).toHaveAttribute('href', '/event-templates/template-1');
+    ).toHaveAttribute('href', '/app/event-templates/template-1');
     expect(
       within(row).getByRole('button', { name: 'Excluir Sunday Service' }),
     ).toBeInTheDocument();
   });
 
+  it('badges only the templates that have public blocks', async () => {
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          publicBlockCount: 2,
+          blocks: [],
+        },
+        {
+          id: 'template-2',
+          name: 'Kitchen crew',
+          recurrence: { kind: 'weekly', weekdays: [1] },
+          publicBlockCount: 0,
+          blocks: [],
+        },
+      ],
+    });
+
+    render();
+
+    const table = await screen.findByRole('grid');
+    expect(
+      within(
+        within(table).getByRole('row', { name: /Sunday Service/ }),
+      ).getByText('Público'),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        within(table).getByRole('row', { name: /Kitchen crew/ }),
+      ).queryByText('Público'),
+    ).not.toBeInTheDocument();
+  });
+
   it('moves keyboard focus between the actions in a desktop row', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
       ],
     });
     const user = userEvent.setup();
@@ -146,7 +186,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [],
         },
       ],
@@ -174,7 +214,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [],
         },
       ],
@@ -199,7 +239,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [
             {
               id: 'b1',
@@ -237,7 +277,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [],
         },
       ],
@@ -265,7 +305,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Novo modelo' })).toHaveAttribute(
       'href',
-      '/event-templates/new',
+      '/app/event-templates/new',
     );
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
   });
@@ -274,7 +314,12 @@ describe('TemplateManagerCard table view (US1)', () => {
     listEventTemplates.mockRejectedValueOnce(new Error('boom'));
     listEventTemplates.mockResolvedValueOnce({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
       ],
     });
     const user = userEvent.setup();
@@ -302,7 +347,12 @@ describe('TemplateManagerCard loading', () => {
   it('keeps the rows on screen while a refetch is in flight', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
       ],
     });
     const queryClient = new QueryClient();

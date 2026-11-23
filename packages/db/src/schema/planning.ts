@@ -13,9 +13,9 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { church } from './church';
+import { church, churchAddress } from './church';
 import { ministry } from './core';
-import { cycleStateEnum } from './enums';
+import { cycleStateEnum, templatePrecedenceOutcomeEnum } from './enums';
 
 export interface EqualShiftSplitSpec {
   kind: 'equal';
@@ -79,7 +79,43 @@ export const eventTemplate = pgTable(
       .notNull()
       .references(() => church.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 255 }).notNull(),
-    weekday: integer('weekday').notNull(),
+    // A Recurrence (weekly weekdays or monthly entries); the server's value object validates it.
+    recurrence: jsonb('recurrence').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('event_template_church_name_idx').on(
+      table.churchId,
+      sql`lower(${table.name})`,
+    ),
+  ],
+);
+
+/**
+ * One Template Precedence answer per unordered pair of colliding
+ * EventTemplates, stored with `template_a_id < template_b_id`; deleting either
+ * template drops it.
+ */
+export const templatePrecedence = pgTable(
+  'template_precedence',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    templateAId: uuid('template_a_id')
+      .notNull()
+      .references(() => eventTemplate.id, { onDelete: 'cascade' }),
+    templateBId: uuid('template_b_id')
+      .notNull()
+      .references(() => eventTemplate.id, { onDelete: 'cascade' }),
+    outcome: templatePrecedenceOutcomeEnum('outcome').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -90,13 +126,15 @@ export const eventTemplate = pgTable(
   },
   (table) => [
     check(
-      'event_template_weekday_check',
-      sql`${table.weekday} >= 0 AND ${table.weekday} <= 6`,
+      'template_precedence_ordered_pair_check',
+      sql`${table.templateAId} < ${table.templateBId}`,
     ),
-    uniqueIndex('event_template_church_name_idx').on(
-      table.churchId,
-      sql`lower(${table.name})`,
+    uniqueIndex('template_precedence_pair_idx').on(
+      table.templateAId,
+      table.templateBId,
     ),
+    index('template_precedence_template_b_idx').on(table.templateBId),
+    index('template_precedence_church_idx').on(table.churchId),
   ],
 );
 
@@ -114,8 +152,22 @@ export const templateTimeBlock = pgTable(
     startTime: time('start_time').notNull(),
     endTime: time('end_time').notNull(),
     order: integer('order').notNull(),
+    // Public Page visibility and a free-text place; copied onto generated EventTimeBlocks.
+    isPublic: boolean('is_public').default(false).notNull(),
+    place: varchar('place', { length: 120 }),
+    // A Church Address as the place instead of free text; resolved when read.
+    placeAddressId: uuid('place_address_id').references(
+      () => churchAddress.id,
+      {
+        onDelete: 'set null',
+      },
+    ),
   },
   (table) => [
+    check(
+      'template_time_block_place_check',
+      sql`${table.place} IS NULL OR ${table.placeAddressId} IS NULL`,
+    ),
     check(
       'template_time_block_time_not_empty_check',
       sql`${table.startTime} != ${table.endTime}`,

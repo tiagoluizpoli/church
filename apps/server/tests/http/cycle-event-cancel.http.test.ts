@@ -50,6 +50,7 @@ import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/d
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
@@ -72,6 +73,7 @@ import {
   seedVolunteer,
   staff,
 } from '@/tests/test-support/cancellation-fixture';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -100,6 +102,7 @@ class FlakyNotifications extends ChurchNotifications {
 }
 
 const notifications = new FlakyNotifications({
+  churchIdentity: nullChurchIdentity,
   outboxRepository: new DrizzleOutboxRepository({ db }),
 });
 
@@ -116,6 +119,7 @@ beforeAll(async () => {
     planningEventManager: new DbPlanningEventManager({
       cycleRepository: new DrizzleCycleRepository({ db }),
       eventRepository: new DrizzlePlanningEventRepository({ db }),
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository: new DrizzleEventTemplateRepository({ db }),
       churchRepository,
       unitOfWork: new DrizzleUnitOfWork({ db }),
@@ -405,6 +409,8 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
       eventTitle: 'Sunday',
       start: at('09:00'),
       churchName: 'Scheduling Church A',
+      churchLogoUrl: null,
+      churchAccent: null,
       churchTimezone: 'America/Sao_Paulo',
       shifts: [
         {

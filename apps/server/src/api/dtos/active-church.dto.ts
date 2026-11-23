@@ -37,7 +37,10 @@ export const churchSelectionOptionResponseSchema = z.object({
   timezone: z.string(),
   accessLevel: z.enum(['member', 'admin']),
   availableAreas: z.array(z.enum(['dashboard', 'scheduling'])),
+  logoUrl: z.string().nullable(),
+  accentColor: z.string().nullable(),
   lastOpenedAt: instantSchema.nullable(),
+  locality: z.string().nullable(),
 });
 export type ChurchSelectionOptionResponse = z.infer<
   typeof churchSelectionOptionResponseSchema
@@ -95,9 +98,12 @@ export const activeChurchMapper = {
       timezone: option.timezone,
       accessLevel: option.accessLevel,
       availableAreas: option.availableAreas,
+      logoUrl: option.logoUrl,
+      accentColor: option.accentColor,
       lastOpenedAt: option.lastOpenedAt
         ? fromDate({ date: option.lastOpenedAt })
         : null,
+      locality: option.locality,
     };
   },
 

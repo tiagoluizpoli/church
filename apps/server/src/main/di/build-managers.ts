@@ -5,6 +5,7 @@ import {
   DbAssignmentManager,
   DbAvailabilityCheckManager,
   DbChurchAccessManager,
+  DbChurchSettingsManager,
   DbCycleManager,
   DbEventManager,
   DbEventTemplateManager,
@@ -18,6 +19,8 @@ import {
   DbParticipationManager,
   DbPeopleListManager,
   DbPlanningEventManager,
+  DbPublicChurchProfileManager,
+  DbPublicEventManager,
   DbRedemptionManager,
   DbSectorManager,
   DbSetupProgressManager,
@@ -30,6 +33,7 @@ import {
 import { ChurchNotifications } from '../../application/church-notifications';
 import { buildChurchNotifier } from '../../application/church-notifier';
 import { ChurchRecipients } from '../../application/church-recipients';
+import { DbChurchIdentitySnapshotter } from '../../application/db-church-identity-snapshotter';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
@@ -63,6 +67,9 @@ export type Managers = Pick<
   | 'invitationListManager'
   | 'peopleListManager'
   | 'setupProgressManager'
+  | 'churchSettingsManager'
+  | 'publicChurchProfileManager'
+  | 'publicEventManager'
   | 'churchAccessManager'
   | 'ministryMembershipManager'
 >;
@@ -81,6 +88,7 @@ export function buildManagers({
   repositories: {
     eventRepository,
     eventTemplateRepository,
+    templatePrecedenceRepository,
     cycleRepository,
     planningEventRepository,
     volunteerRepository,
@@ -94,6 +102,8 @@ export function buildManagers({
     usualSetupRepository,
     shiftRepository,
     churchRepository,
+    publicEventRepository,
+    churchProgrammeRepository,
     ministryRepository,
     invitationVerificationCodeRepository,
     redemptionRepository,
@@ -118,6 +128,7 @@ export function buildManagers({
     verificationCodeInspector,
     errorReporter,
     tracing,
+    objectStorage,
   },
   auth: { churchMembershipRepository, authorityManager, activeChurchResolver },
 }: BuildManagersInput): Managers {
@@ -154,9 +165,17 @@ export function buildManagers({
     overrides.eventTemplateManager ??
     new DbEventTemplateManager({
       templateRepository: eventTemplateRepository,
+      precedenceRepository: templatePrecedenceRepository,
       unitOfWork,
     });
-  const notifications = new ChurchNotifications({ outboxRepository });
+  const churchIdentity = new DbChurchIdentitySnapshotter({
+    churchRepository,
+    objectStorage,
+  });
+  const notifications = new ChurchNotifications({
+    outboxRepository,
+    churchIdentity,
+  });
   const ministryManager =
     overrides.ministryManager ??
     new DbMinistryManager({
@@ -193,6 +212,7 @@ export function buildManagers({
       unitOfWork,
       outboxRepository,
       notifications,
+      churchIdentity,
       config,
     });
   const invitationVerificationCodeManager =
@@ -200,6 +220,7 @@ export function buildManagers({
     new InvitationVerificationCodeManager({
       repository: invitationVerificationCodeRepository,
       emailSender,
+      churchIdentity,
       verificationCodeSecret: env.BETTER_AUTH_SECRET,
       config,
     });
@@ -286,6 +307,7 @@ export function buildManagers({
       cycleRepository: cycleRepository,
       eventRepository: planningEventRepository,
       templateRepository: eventTemplateRepository,
+      precedenceRepository: templatePrecedenceRepository,
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository,
@@ -386,6 +408,7 @@ export function buildManagers({
       authorityManager,
       activeChurchResolver,
       churchRepository,
+      objectStorage,
     });
 
   const notificationManager =
@@ -414,6 +437,27 @@ export function buildManagers({
   const setupProgressManager =
     overrides.setupProgressManager ??
     new DbSetupProgressManager({ setupProgressRepository });
+
+  const churchSettingsManager =
+    overrides.churchSettingsManager ??
+    new DbChurchSettingsManager({
+      churchRepository,
+      unitOfWork,
+      objectStorage,
+      publicOrigin: env.CORS_ORIGIN,
+    });
+
+  const publicChurchProfileManager =
+    overrides.publicChurchProfileManager ??
+    new DbPublicChurchProfileManager({
+      churchRepository,
+      objectStorage,
+      programmeRepository: churchProgrammeRepository,
+    });
+
+  const publicEventManager =
+    overrides.publicEventManager ??
+    new DbPublicEventManager({ publicEventRepository, churchRepository });
 
   const churchAccessManager =
     overrides.churchAccessManager ??
@@ -457,6 +501,9 @@ export function buildManagers({
     invitationListManager,
     peopleListManager,
     setupProgressManager,
+    churchSettingsManager,
+    publicChurchProfileManager,
+    publicEventManager,
     churchAccessManager,
     ministryMembershipManager,
   };

@@ -28,6 +28,7 @@ import {
   type StepResult,
 } from './run-lanes';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
+import { VALIDATE_SETUP_STEPS } from './validate';
 import { formatLockWait, holdValidateLock } from './validate-lock';
 
 export { classifyChanges, isScriptsOnlyAddition } from './affected-plan';
@@ -575,9 +576,17 @@ async function runValidation({
   });
   const { checkedLabels, e2eLabel } = steps;
 
-  const results = await runValidationSteps({ steps });
+  // The i18n compile runs before every check: lint, typecheck and tests read
+  // the compiled messages, and a stale compile fails them falsely.
+  const results = await runValidationSteps({
+    steps: {
+      ...steps,
+      checkLane: [...VALIDATE_SETUP_STEPS, ...steps.checkLane],
+    },
+  });
 
-  for (const label of checkedLabels) {
+  const setupLabels = VALIDATE_SETUP_STEPS.map(({ label }) => label);
+  for (const label of [...setupLabels, ...checkedLabels]) {
     const layerResults = results.filter((result) => result.label === label);
     if (layerResults.length === 0) pushSkipped({ label, timings });
     else pushLayerTiming({ label, results: layerResults, timings });

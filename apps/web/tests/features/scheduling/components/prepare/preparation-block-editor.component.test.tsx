@@ -149,7 +149,7 @@ it('saves this block only, omits zero and blank cells, and returns to its refres
   );
   await waitFor(() =>
     expect(router.state.location.pathname).toBe(
-      `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+      `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     ),
   );
   expect(router.state.location.hash).toBe(`event-time-block-${BLOCK_ID}`);
@@ -548,7 +548,7 @@ it('warns before leaving an unsaved form, keeps edits when staying, and cancels 
   );
   await waitFor(() =>
     expect(router.state.location.pathname).toBe(
-      `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+      `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     ),
   );
   expect(api.saveEventTimeBlockPreparation).not.toHaveBeenCalled();
@@ -703,7 +703,10 @@ it('opens missing registry shortcuts in new tabs and refreshes on focus while ke
     [m.usual_setup_set_up_roles(), 'roles'],
   ] as const) {
     const link = screen.getByRole('link', { name: new RegExp(name) });
-    expect(link).toHaveAttribute('href', `/ministries/${MINISTRY_ID}/${tab}`);
+    expect(link).toHaveAttribute(
+      'href',
+      `/app/ministries/${MINISTRY_ID}/${tab}`,
+    );
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveTextContent(m.sectors_opens_new_tab());
   }
@@ -781,7 +784,7 @@ it('keeps the draft visible and disables controls while a save is pending', asyn
     screen.getByRole('button', { name: m.usual_setup_cancel() }),
   ).toBeDisabled();
   await act(async () => {
-    void router.navigate({ to: '/schedules' });
+    void router.navigate({ to: '/app/schedules' });
   });
   await screen.findByRole('alertdialog');
   expect(
@@ -793,7 +796,7 @@ it('keeps the draft visible and disables controls while a save is pending', asyn
   });
   await waitFor(() =>
     expect(router.state.location.pathname).toBe(
-      `/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+      `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     ),
   );
 });

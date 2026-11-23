@@ -109,7 +109,7 @@ beforeEach(() => {
 afterEach(() => overwriteGetLocale(() => 'pt-BR'));
 
 const open = () =>
-  renderRoute({ initialPath: '/people/mem-1', churchTimezone: 'UTC' });
+  renderRoute({ initialPath: '/app/people/mem-1', churchTimezone: 'UTC' });
 
 const accessSection = async () =>
   (
@@ -305,7 +305,7 @@ describe('Church access control', () => {
     expect(
       screen.getByRole('heading', { name: 'Ana Souza', level: 1 }),
     ).toBeVisible();
-    expect(router.state.location.pathname).toBe('/people/mem-1');
+    expect(router.state.location.pathname).toBe('/app/people/mem-1');
     expect(getCallerCapabilities.mock.calls.length).toBeGreaterThan(1);
     expect(
       queryClient.getQueryData(['ministries', 'c', 'list']),
@@ -361,7 +361,7 @@ describe('Church access control', () => {
     );
 
     await waitFor(() =>
-      expect(router.state.location.pathname).toMatch(/^\/(dashboard)?$/),
+      expect(router.state.location.pathname).toMatch(/^\/app(\/dashboard)?$/),
     );
     expect(
       screen.queryByRole('heading', { name: m.people_church_access() }),

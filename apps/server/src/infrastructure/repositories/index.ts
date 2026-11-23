@@ -4,6 +4,7 @@ export { DrizzleAssignmentProposalApplicationRepository } from './drizzle-assign
 export { DrizzleAvailabilityCheckRepository } from './drizzle-availability-check.repository';
 export { DrizzleChurchRepository } from './drizzle-church.repository';
 export { DrizzleChurchAccessRepository } from './drizzle-church-access.repository';
+export { DrizzleChurchProgrammeRepository } from './drizzle-church-programme.repository';
 export { DrizzleCycleRepository } from './drizzle-cycle.repository';
 export { DrizzleEventRepository } from './drizzle-event.repository';
 export { DrizzleEventTemplateRepository } from './drizzle-event-template.repository';
@@ -18,6 +19,7 @@ export { DrizzleNotificationRepository } from './drizzle-notification.repository
 export { DrizzleOutboxRepository } from './drizzle-outbox.repository';
 export { DrizzlePeopleListRepository } from './drizzle-people-list.repository';
 export { DrizzlePlanningEventRepository } from './drizzle-planning-event.repository';
+export { DrizzlePublicEventRepository } from './drizzle-public-event.repository';
 export { DrizzleRedemptionRepository } from './drizzle-redemption.repository';
 export { DrizzleRoleRepository } from './drizzle-role.repository';
 export { DrizzleRuntimeConfigurationRepository } from './drizzle-runtime-configuration.repository';
@@ -26,6 +28,7 @@ export { DrizzleSecurityLogRepository } from './drizzle-security-log.repository'
 export { DrizzleSetupProgressRepository } from './drizzle-setup-progress.repository';
 export { DrizzleShiftRepository } from './drizzle-shift.repository';
 export { DrizzleSwapRequestRepository } from './drizzle-swap-request.repository';
+export { DrizzleTemplatePrecedenceRepository } from './drizzle-template-precedence.repository';
 export { DrizzleTransactionContext } from './drizzle-transaction-context';
 export { DrizzleUnavailableShiftRepository } from './drizzle-unavailable-shift.repository';
 export { DrizzleUnitOfWork } from './drizzle-unit-of-work';

@@ -54,6 +54,7 @@ describe('composition root', () => {
       'assign',
       'caller-capabilities',
       'prepare',
+      'public/churches',
       'volunteer',
     ];
     for (const prefix of prefixes) {
@@ -64,14 +65,14 @@ describe('composition root', () => {
     }
   });
 
-  it('builds eighteen controllers', () => {
+  it('builds twenty controllers', () => {
     const { controllers } = createCompositionRoot();
-    expect(controllers).toHaveLength(18);
-    expect(new Set(controllers.map((c) => c.constructor)).size).toBe(18);
+    expect(controllers).toHaveLength(20);
+    expect(new Set(controllers.map((c) => c.constructor)).size).toBe(20);
   });
 
   it('reads the debug code back from an overridden capture email sender', async () => {
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     await emailSender.send({
       payload: {
         kind: 'invitation.verification-code',
@@ -109,7 +110,7 @@ describe('composition root', () => {
   });
 
   it('reads the captured joining link back from an overridden capture email sender', async () => {
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const redemptionUrl = 'https://app.church.test/invitations/church/abc';
     await emailSender.send({
       payload: {
@@ -141,7 +142,7 @@ describe('composition root', () => {
   });
 
   it('mails password resets through an overridden email sender', async () => {
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     createCompositionRoot({ emailSender });
     await serverAuthOptions.sendResetPassword?.({
       user: { email: 'a@example.test' },

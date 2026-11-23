@@ -31,6 +31,12 @@ describe('DbEventTemplateManager', () => {
   function createManager(repository: EventTemplateRepository) {
     return new DbEventTemplateManager({
       templateRepository: repository,
+      precedenceRepository: {
+        listByTemplate: vi.fn().mockResolvedValue([]),
+        save: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined),
+        update: vi.fn(),
+      },
       unitOfWork,
     });
   }
@@ -41,7 +47,7 @@ describe('DbEventTemplateManager', () => {
     const result = await createManager(repository).createTemplate({
       churchId,
       name: 'Sunday Service',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         { label: 'Late', startTime: '11:00', endTime: '12:00' },
         { label: 'Tie A', startTime: '09:00', endTime: '10:00' },
@@ -53,11 +59,35 @@ describe('DbEventTemplateManager', () => {
     expect(repository.create).toHaveBeenCalledWith({
       churchId,
       name: 'Sunday Service',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
-        { label: 'Tie A', startTime: '09:00', endTime: '10:00', order: 0 },
-        { label: 'Tie B', startTime: '09:00', endTime: '09:30', order: 1 },
-        { label: 'Late', startTime: '11:00', endTime: '12:00', order: 2 },
+        {
+          label: 'Tie A',
+          startTime: '09:00',
+          endTime: '10:00',
+          order: 0,
+          isPublic: false,
+          place: null,
+          placeAddressId: null,
+        },
+        {
+          label: 'Tie B',
+          startTime: '09:00',
+          endTime: '09:30',
+          order: 1,
+          isPublic: false,
+          place: null,
+          placeAddressId: null,
+        },
+        {
+          label: 'Late',
+          startTime: '11:00',
+          endTime: '12:00',
+          order: 2,
+          isPublic: false,
+          place: null,
+          placeAddressId: null,
+        },
       ],
       tx: 'tx',
     });
@@ -71,7 +101,7 @@ describe('DbEventTemplateManager', () => {
       manager.createTemplate({
         churchId,
         name: 'X',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: [{ label: 'A', startTime: '09:00', endTime: '09:00' }],
       }),
     ).rejects.toThrow(InvalidTimeRangeError);
@@ -79,7 +109,7 @@ describe('DbEventTemplateManager', () => {
       manager.createTemplate({
         churchId,
         name: 'X',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: [
           { label: 'Welcome', startTime: '09:00', endTime: '10:00' },
           { label: 'welcome', startTime: '10:00', endTime: '11:00' },
@@ -96,7 +126,7 @@ describe('DbEventTemplateManager', () => {
       churchId,
       templateId,
       name: 'Vigil',
-      weekday: 3,
+      recurrence: { kind: 'weekly', weekdays: [3] },
       blocks: [{ label: 'Watch', startTime: '22:00', endTime: '02:00' }],
     });
 
@@ -104,9 +134,17 @@ describe('DbEventTemplateManager', () => {
       churchId,
       templateId,
       name: 'Vigil',
-      weekday: 3,
+      recurrence: { kind: 'weekly', weekdays: [3] },
       blocks: [
-        { label: 'Watch', startTime: '22:00', endTime: '02:00', order: 0 },
+        {
+          label: 'Watch',
+          startTime: '22:00',
+          endTime: '02:00',
+          order: 0,
+          isPublic: false,
+          place: null,
+          placeAddressId: null,
+        },
       ],
       tx: 'tx',
     });

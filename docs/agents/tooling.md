@@ -28,9 +28,9 @@ and task ordering.
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
 | Generate worktree `.env.local` | `bun run env:local` |
 | Revalidate its ports before launch | `bun run env:local -- --revalidate` |
-| Create + migrate its dev/int/E2E databases | `bun run db:bootstrap` |
+| Create + migrate its dev/int/E2E databases and its `church-<worktree>` storage bucket | `bun run db:bootstrap` |
 | Make a worktree ready (all of the above) | `bun run worktree:bootstrap` |
-| Report databases of removed worktrees | `bun run db:prune` (`-- --apply` drops them) |
+| Report databases and buckets of removed worktrees | `bun run db:prune` (`-- --apply` drops them) |
 | Start / stop this machine's opt-in URL resolver | `bun run dns:start` / `bun run dns:stop` |
 
 Local validation has three tiers, all planned by the same
@@ -323,6 +323,14 @@ Local Compose services are shared dependencies, not per-worktree state. The
 checkout's `docker-compose.yml` (`tooling/worktree/shared-compose.sh`), from
 any worktree, so a branch's copy never starts or reshapes them. A Compose
 change takes effect once it is in the primary checkout.
+
+Object storage is the Compose `storage` service (RustFS, S3 API on port
+9000). `env:local` points the server's `S3_*` and `STORAGE_PUBLIC_URL` at it
+and at the worktree's own `church-<worktree>` bucket, which `db:bootstrap`
+creates with anonymous read on `public/*` only; worktree removal and
+`db:prune -- --apply` delete it. The adapter contract suite
+(`apps/server/tests/integration/storage/`) runs against it; HTTP tests inject
+the in-memory fake (`tests/test-support/in-memory-object-storage.ts`).
 
 - **Approval**: Worktrunk asks once to approve the project hook and again
   whenever its command changes; `--yes` approves non-interactively. Declining

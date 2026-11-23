@@ -8,6 +8,7 @@ import type {
   IAuthorityManager,
   IAvailabilityCheckManager,
   IChurchAccessManager,
+  IChurchSettingsManager,
   ICycleManager,
   IEventManager,
   IEventTemplateManager,
@@ -22,6 +23,8 @@ import type {
   IParticipationManager,
   IPeopleListManager,
   IPlanningEventManager,
+  IPublicChurchProfileManager,
+  IPublicEventManager,
   ISectorManager,
   ISetupProgressManager,
   ISwapRequestListManager,
@@ -38,6 +41,7 @@ import type {
   AvailabilityCheckRepository,
   ChurchAccessRepository,
   ChurchMembershipRepository,
+  ChurchProgrammeRepository,
   ChurchRepository,
   CycleRepository,
   EmailSender,
@@ -52,9 +56,11 @@ import type {
   MinistryParticipationRepository,
   MinistryRepository,
   NotificationRepository,
+  ObjectStorage,
   OutboxRepository,
   PeopleListRepository,
   PlanningEventRepository,
+  PublicEventRepository,
   RedemptionIdentityGateway,
   RedemptionRepository,
   RoleRepository,
@@ -64,6 +70,7 @@ import type {
   SetupProgressRepository,
   ShiftRepository,
   SwapRequestRepository,
+  TemplatePrecedenceRepository,
   Tracing,
   UnavailableShiftRepository,
   UnitOfWork,
@@ -71,6 +78,7 @@ import type {
   VerificationCodeInspector,
   VolunteerRepository,
   VolunteerTransferRepository,
+  WebShell,
 } from '../../domain/contracts/infrastructure';
 
 export interface CompositionRootDependencies {
@@ -79,6 +87,7 @@ export interface CompositionRootDependencies {
   // Repositories
   eventRepository: EventRepository;
   eventTemplateRepository: EventTemplateRepository;
+  templatePrecedenceRepository: TemplatePrecedenceRepository;
   cycleRepository: CycleRepository;
   planningEventRepository: PlanningEventRepository;
   volunteerRepository: VolunteerRepository;
@@ -89,6 +98,8 @@ export interface CompositionRootDependencies {
   unavailableShiftRepository: UnavailableShiftRepository;
   availabilityCheckRepository: AvailabilityCheckRepository;
   churchRepository: ChurchRepository;
+  publicEventRepository: PublicEventRepository;
+  churchProgrammeRepository: ChurchProgrammeRepository;
   ministryRepository: MinistryRepository;
   invitationVerificationCodeRepository: InvitationVerificationCodeRepository;
   ministryInvitationRepository: MinistryInvitationRepository;
@@ -116,6 +127,10 @@ export interface CompositionRootDependencies {
   verificationCodeInspector: VerificationCodeInspector;
   errorReporter: ErrorReporter;
   tracing: Tracing;
+  /** S3 from the env; HTTP tests inject the in-memory fake. */
+  objectStorage: ObjectStorage;
+  /** The deployed web's index.html; HTTP tests inject a fake. */
+  webShell: WebShell;
   // Auth
   scopeRepository: SchedulingScopeRepository;
   authorityActorRepository: AuthorityActorRepository;
@@ -148,5 +163,8 @@ export interface CompositionRootDependencies {
   peopleListManager: IPeopleListManager;
   setupProgressManager: ISetupProgressManager;
   churchAccessManager: IChurchAccessManager;
+  churchSettingsManager: IChurchSettingsManager;
+  publicChurchProfileManager: IPublicChurchProfileManager;
+  publicEventManager: IPublicEventManager;
   ministryMembershipManager: IMinistryMembershipManager;
 }

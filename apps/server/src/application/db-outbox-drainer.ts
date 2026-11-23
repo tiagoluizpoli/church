@@ -197,6 +197,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       kind: message.kind,
       to: offer.email,
       churchName: church.name,
+      churchLogoUrl: message.payload.churchLogoUrl,
+      churchAccent: message.payload.churchAccent,
+      churchLocality: message.payload.churchLocality,
       expiresAt: fromDate({ date: offer.expiresAt }),
       churchTimezone: church.timezone,
       redemptionUrl: webLink({
@@ -268,6 +271,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       kind: message.kind,
       to: email,
       churchName: church.name,
+      churchLogoUrl: message.payload.churchLogoUrl,
+      churchAccent: message.payload.churchAccent,
+      churchLocality: message.payload.churchLocality,
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
@@ -299,6 +305,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private async loadPendingInvitationFacts({
     churchId,
     ministryInvitationId,
+    churchLogoUrl,
+    churchAccent,
+    churchLocality,
   }: LoadPendingInvitationFactsInput): Promise<MinistryInvitationDeliveryFacts | null> {
     const invitation = await this.invitationRepository.findById({
       churchId,
@@ -322,6 +331,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryId: invitation.ministryId,
       ministryName: ministry.name,
       churchName: church.name,
+      churchLogoUrl,
+      churchAccent,
+      churchLocality,
       churchTimezone: church.timezone,
       inviterName,
       ministryAccessLevel: invitation.ministryAccessLevel,
@@ -345,6 +357,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         return this.loadPendingInvitationFacts({
           churchId,
           ministryInvitationId: request.data.ministryInvitationId,
+          churchLogoUrl: request.data.churchLogoUrl,
+          churchAccent: request.data.churchAccent,
+          churchLocality: request.data.churchLocality,
         });
       case 'availability_opened':
       case 'availability_reminder':
@@ -365,7 +380,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ...request.data,
           actionUrl: webLink({
             baseUrl: this.webBaseUrl,
-            path: '/my-schedule',
+            path: '/app/my-schedule',
           }),
         };
       case 'swap_request':
@@ -373,7 +388,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ...request.data,
           actionUrl: webLink({
             baseUrl: this.webBaseUrl,
-            path: `/schedules/${request.data.ministryId}/${request.data.cycleId}/assign?swapRequest=${request.data.swapRequestId}`,
+            path: `/app/schedules/${request.data.ministryId}/${request.data.cycleId}/assign?swapRequest=${request.data.swapRequestId}`,
           }),
         };
       case 'event_changed': {
@@ -381,8 +396,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         const [only, ...others] = ministries;
         const path =
           only && others.length === 0
-            ? `/schedules/${only.id}/${cycleId}`
-            : `/schedules?cycleId=${cycleId}&ministryIds=${ministries.map(({ id }) => id).join(',')}`;
+            ? `/app/schedules/${only.id}/${cycleId}`
+            : `/app/schedules?cycleId=${cycleId}&ministryIds=${ministries.map(({ id }) => id).join(',')}`;
         return {
           ...request.data,
           actionUrl: webLink({ baseUrl: this.webBaseUrl, path }),
@@ -393,7 +408,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ...request.data,
           actionUrl: webLink({
             baseUrl: this.webBaseUrl,
-            path: `/my-schedule/${request.data.assignmentId}`,
+            path: `/app/my-schedule/${request.data.assignmentId}`,
           }),
         };
       case 'transfer_ministry_digest':
@@ -429,7 +444,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           endsAt: fromDate({ date: endsAt }),
         }),
       ),
-      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/schedules' }),
+      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/app/schedules' }),
     };
   }
 
@@ -443,7 +458,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     message,
   }: ProcessNotificationMessageInput): Promise<'sent' | 'failed'> {
     const { to, kind, data } = message.payload;
-    const request = notificationRequestDataSchemas[kind]?.safeParse(data);
+    // Rows queued before the Church identity existed render name-only.
+    const request = notificationRequestDataSchemas[kind]?.safeParse({
+      churchLogoUrl: null,
+      churchAccent: null,
+      ...(data as Partial<typeof data>),
+    });
     if (
       !request?.success &&
       (kind === 'schedule_published' || kind === 'schedule_updated')
@@ -505,12 +525,15 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         });
         return 'sent';
       }
-      facts = resolved;
+      // The identity frozen at queue time, never the Church's current one.
+      const { churchLogoUrl, churchAccent } = request.data;
+      facts = { ...resolved, churchLogoUrl, churchAccent };
+      const frozenFacts = facts;
       // Every retry re-renders from these, never from live scheduling objects.
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.recordDeliveryFacts({
           id: message.id,
-          facts: resolved,
+          facts: frozenFacts,
           tx,
         }),
       );
@@ -808,6 +831,9 @@ interface ProcessChurchOfferMessageInput {
 interface LoadPendingInvitationFactsInput {
   churchId: ChurchId;
   ministryInvitationId: string;
+  churchLogoUrl?: string | null;
+  churchAccent?: string | null;
+  churchLocality?: string;
 }
 
 interface LoadDeliveryFactsInput {

@@ -62,7 +62,7 @@ function readValues(input: WorktreeInput): Record<string, string> {
   return Object.fromEntries(
     readRaw(input)
       .split('\n')
-      .filter((line) => /^[A-Z_]+=/.test(line))
+      .filter((line) => /^[A-Z0-9_]+=/.test(line))
       .map((line) => [
         line.slice(0, line.indexOf('=')),
         line.slice(line.indexOf('=') + 1),
@@ -209,6 +209,18 @@ describe('env:local', () => {
     expect(values.VITE_SERVER_URL).toBe(`http://${FEATURE_A_HOST}:${server}`);
     expect(values.CORS_ORIGIN).toBe(`http://${FEATURE_A_HOST}:${web}`);
     expect(values.BETTER_AUTH_SECRET).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("points object storage at the local RustFS and the worktree's own bucket", () => {
+    const values = generate({ cwd: featureA });
+
+    expect(values.S3_ENDPOINT).toBe('http://127.0.0.1:9000');
+    expect(values.S3_BUCKET).toBe('church-feature-a');
+    expect(values.S3_ACCESS_KEY_ID).toBe('rustfsadmin');
+    expect(values.S3_SECRET_ACCESS_KEY).toBe('rustfsadmin');
+    expect(values.STORAGE_PUBLIC_URL).toBe(
+      `http://${FEATURE_A_HOST}:9000/church-feature-a`,
+    );
   });
 
   it('keeps the E2E ports off the manual URL set', () => {

@@ -115,18 +115,30 @@ paths:
                             enum:
                               - dashboard
                               - scheduling
+                        logoUrl:
+                          nullable: true
+                          type: string
+                        accentColor:
+                          nullable: true
+                          type: string
                         lastOpenedAt:
                           nullable: true
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        locality:
+                          nullable: true
+                          type: string
                       required:
                         - churchId
                         - name
                         - timezone
                         - accessLevel
                         - availableAreas
+                        - logoUrl
+                        - accentColor
                         - lastOpenedAt
+                        - locality
                       additionalProperties: false
                 required:
                   - churches
@@ -851,6 +863,14 @@ paths:
                                 pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                               label:
                                 type: string
+                              isPublic:
+                                type: boolean
+                              place:
+                                nullable: true
+                                type: string
+                              placeAddressId:
+                                nullable: true
+                                type: string
                               status:
                                 type: string
                                 enum:
@@ -886,6 +906,9 @@ paths:
                               - eventId
                               - startTime
                               - endTime
+                              - isPublic
+                              - place
+                              - placeAddressId
                               - status
                               - requirements
                             additionalProperties: false
@@ -1229,7 +1252,10 @@ paths:
       tags:
         - planning
       description: Create a church-owned EventTemplate with its ordered
-        TemplateTimeBlocks for a given weekday.
+        TemplateTimeBlocks on a weekly or monthly Recurrence. When it collides
+        with templates it has no Template Precedence for, nothing is saved and
+        409 UNANSWERED_TEMPLATE_COLLISIONS names them; resubmit with an answer
+        per pair in `precedences`.
       requestBody:
         required: true
         content:
@@ -1241,10 +1267,131 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 255
-                weekday:
-                  type: integer
-                  minimum: 0
-                  maximum: 6
+                recurrence:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - weekly
+                        weekdays:
+                          minItems: 1
+                          type: array
+                          items:
+                            anyOf:
+                              - type: number
+                                enum:
+                                  - 0
+                              - type: number
+                                enum:
+                                  - 1
+                              - type: number
+                                enum:
+                                  - 2
+                              - type: number
+                                enum:
+                                  - 3
+                              - type: number
+                                enum:
+                                  - 4
+                              - type: number
+                                enum:
+                                  - 5
+                              - type: number
+                                enum:
+                                  - 6
+                      required:
+                        - kind
+                        - weekdays
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - monthly
+                        entries:
+                          minItems: 1
+                          type: array
+                          items:
+                            oneOf:
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - nthWeekday
+                                  ordinal:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: string
+                                        enum:
+                                          - last
+                                  weekday:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 0
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: number
+                                        enum:
+                                          - 6
+                                required:
+                                  - kind
+                                  - ordinal
+                                  - weekday
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - dayOfMonth
+                                  day:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 31
+                                required:
+                                  - kind
+                                  - day
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - lastDayOfMonth
+                                required:
+                                  - kind
+                      required:
+                        - kind
+                        - entries
                 blocks:
                   minItems: 1
                   type: array
@@ -1261,14 +1408,42 @@ paths:
                       endTime:
                         type: string
                         pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      isPublic:
+                        type: boolean
+                      place:
+                        type: string
+                        maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                     required:
                       - label
                       - startTime
                       - endTime
                     additionalProperties: false
+                precedences:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      otherTemplateId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      answer:
+                        type: string
+                        enum:
+                          - both
+                          - thisWins
+                          - otherWins
+                    required:
+                      - otherTemplateId
+                      - answer
               required:
                 - name
-                - weekday
+                - recurrence
                 - blocks
       responses:
         "201":
@@ -1284,7 +1459,137 @@ paths:
                     type: string
                   name:
                     type: string
-                  weekday:
+                  recurrence:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - weekly
+                          weekdays:
+                            minItems: 1
+                            type: array
+                            items:
+                              anyOf:
+                                - type: number
+                                  enum:
+                                    - 0
+                                - type: number
+                                  enum:
+                                    - 1
+                                - type: number
+                                  enum:
+                                    - 2
+                                - type: number
+                                  enum:
+                                    - 3
+                                - type: number
+                                  enum:
+                                    - 4
+                                - type: number
+                                  enum:
+                                    - 5
+                                - type: number
+                                  enum:
+                                    - 6
+                        required:
+                          - kind
+                          - weekdays
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - monthly
+                          entries:
+                            minItems: 1
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - nthWeekday
+                                    ordinal:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: string
+                                          enum:
+                                            - last
+                                    weekday:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 0
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: number
+                                          enum:
+                                            - 6
+                                  required:
+                                    - kind
+                                    - ordinal
+                                    - weekday
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - dayOfMonth
+                                    day:
+                                      type: integer
+                                      minimum: 1
+                                      maximum: 31
+                                  required:
+                                    - kind
+                                    - day
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - lastDayOfMonth
+                                  required:
+                                    - kind
+                                  additionalProperties: false
+                        required:
+                          - kind
+                          - entries
+                        additionalProperties: false
+                  publicBlockCount:
                     type: number
                   blocks:
                     type: array
@@ -1307,6 +1612,14 @@ paths:
                           pattern: ^\d{2}:\d{2}(:\d{2})?$
                         order:
                           type: number
+                        isPublic:
+                          type: boolean
+                        place:
+                          nullable: true
+                          type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                       required:
                         - id
                         - churchId
@@ -1315,6 +1628,9 @@ paths:
                         - startTime
                         - endTime
                         - order
+                        - isPublic
+                        - place
+                        - placeAddressId
                       additionalProperties: false
                   createdAt:
                     type: string
@@ -1328,10 +1644,39 @@ paths:
                   - id
                   - churchId
                   - name
-                  - weekday
+                  - recurrence
+                  - publicBlockCount
                   - blocks
                   - createdAt
                   - updatedAt
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  collisions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        templateId:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - templateId
+                        - name
+                      additionalProperties: false
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "422":
           description: Default Response
@@ -1363,6 +1708,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -1397,7 +1743,137 @@ paths:
                           type: string
                         name:
                           type: string
-                        weekday:
+                        recurrence:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - weekly
+                                weekdays:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 0
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: number
+                                        enum:
+                                          - 6
+                              required:
+                                - kind
+                                - weekdays
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - monthly
+                                entries:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    oneOf:
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - nthWeekday
+                                          ordinal:
+                                            anyOf:
+                                              - type: number
+                                                enum:
+                                                  - 1
+                                              - type: number
+                                                enum:
+                                                  - 2
+                                              - type: number
+                                                enum:
+                                                  - 3
+                                              - type: number
+                                                enum:
+                                                  - 4
+                                              - type: number
+                                                enum:
+                                                  - 5
+                                              - type: string
+                                                enum:
+                                                  - last
+                                          weekday:
+                                            anyOf:
+                                              - type: number
+                                                enum:
+                                                  - 0
+                                              - type: number
+                                                enum:
+                                                  - 1
+                                              - type: number
+                                                enum:
+                                                  - 2
+                                              - type: number
+                                                enum:
+                                                  - 3
+                                              - type: number
+                                                enum:
+                                                  - 4
+                                              - type: number
+                                                enum:
+                                                  - 5
+                                              - type: number
+                                                enum:
+                                                  - 6
+                                        required:
+                                          - kind
+                                          - ordinal
+                                          - weekday
+                                        additionalProperties: false
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - dayOfMonth
+                                          day:
+                                            type: integer
+                                            minimum: 1
+                                            maximum: 31
+                                        required:
+                                          - kind
+                                          - day
+                                        additionalProperties: false
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - lastDayOfMonth
+                                        required:
+                                          - kind
+                                        additionalProperties: false
+                              required:
+                                - kind
+                                - entries
+                              additionalProperties: false
+                        publicBlockCount:
                           type: number
                         blocks:
                           type: array
@@ -1420,6 +1896,14 @@ paths:
                                 pattern: ^\d{2}:\d{2}(:\d{2})?$
                               order:
                                 type: number
+                              isPublic:
+                                type: boolean
+                              place:
+                                nullable: true
+                                type: string
+                              placeAddressId:
+                                nullable: true
+                                type: string
                             required:
                               - id
                               - churchId
@@ -1428,6 +1912,9 @@ paths:
                               - startTime
                               - endTime
                               - order
+                              - isPublic
+                              - place
+                              - placeAddressId
                             additionalProperties: false
                         createdAt:
                           type: string
@@ -1441,7 +1928,8 @@ paths:
                         - id
                         - churchId
                         - name
-                        - weekday
+                        - recurrence
+                        - publicBlockCount
                         - blocks
                         - createdAt
                         - updatedAt
@@ -1477,7 +1965,137 @@ paths:
                     type: string
                   name:
                     type: string
-                  weekday:
+                  recurrence:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - weekly
+                          weekdays:
+                            minItems: 1
+                            type: array
+                            items:
+                              anyOf:
+                                - type: number
+                                  enum:
+                                    - 0
+                                - type: number
+                                  enum:
+                                    - 1
+                                - type: number
+                                  enum:
+                                    - 2
+                                - type: number
+                                  enum:
+                                    - 3
+                                - type: number
+                                  enum:
+                                    - 4
+                                - type: number
+                                  enum:
+                                    - 5
+                                - type: number
+                                  enum:
+                                    - 6
+                        required:
+                          - kind
+                          - weekdays
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - monthly
+                          entries:
+                            minItems: 1
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - nthWeekday
+                                    ordinal:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: string
+                                          enum:
+                                            - last
+                                    weekday:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 0
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: number
+                                          enum:
+                                            - 6
+                                  required:
+                                    - kind
+                                    - ordinal
+                                    - weekday
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - dayOfMonth
+                                    day:
+                                      type: integer
+                                      minimum: 1
+                                      maximum: 31
+                                  required:
+                                    - kind
+                                    - day
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - lastDayOfMonth
+                                  required:
+                                    - kind
+                                  additionalProperties: false
+                        required:
+                          - kind
+                          - entries
+                        additionalProperties: false
+                  publicBlockCount:
                     type: number
                   blocks:
                     type: array
@@ -1500,6 +2118,14 @@ paths:
                           pattern: ^\d{2}:\d{2}(:\d{2})?$
                         order:
                           type: number
+                        isPublic:
+                          type: boolean
+                        place:
+                          nullable: true
+                          type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                       required:
                         - id
                         - churchId
@@ -1508,6 +2134,9 @@ paths:
                         - startTime
                         - endTime
                         - order
+                        - isPublic
+                        - place
+                        - placeAddressId
                       additionalProperties: false
                   createdAt:
                     type: string
@@ -1521,7 +2150,8 @@ paths:
                   - id
                   - churchId
                   - name
-                  - weekday
+                  - recurrence
+                  - publicBlockCount
                   - blocks
                   - createdAt
                   - updatedAt
@@ -1531,10 +2161,12 @@ paths:
       summary: Update an EventTemplate
       tags:
         - planning
-      description: "Apply an EventTemplate's complete desired name, weekday and
+      description: "Apply an EventTemplate's complete desired name, Recurrence and
         TemplateTimeBlocks: blocks with a persisted id are updated in place,
         blocks without one are created and omitted blocks are deleted with their
-        UsualSetup entries."
+        UsualSetup entries. Stored Template Precedences are never re-asked; a
+        new colliding pair without one refuses the save with 409
+        UNANSWERED_TEMPLATE_COLLISIONS until `precedences` answers it."
       requestBody:
         required: true
         content:
@@ -1546,10 +2178,131 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 255
-                weekday:
-                  type: integer
-                  minimum: 0
-                  maximum: 6
+                recurrence:
+                  oneOf:
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - weekly
+                        weekdays:
+                          minItems: 1
+                          type: array
+                          items:
+                            anyOf:
+                              - type: number
+                                enum:
+                                  - 0
+                              - type: number
+                                enum:
+                                  - 1
+                              - type: number
+                                enum:
+                                  - 2
+                              - type: number
+                                enum:
+                                  - 3
+                              - type: number
+                                enum:
+                                  - 4
+                              - type: number
+                                enum:
+                                  - 5
+                              - type: number
+                                enum:
+                                  - 6
+                      required:
+                        - kind
+                        - weekdays
+                    - type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - monthly
+                        entries:
+                          minItems: 1
+                          type: array
+                          items:
+                            oneOf:
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - nthWeekday
+                                  ordinal:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: string
+                                        enum:
+                                          - last
+                                  weekday:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 0
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: number
+                                        enum:
+                                          - 6
+                                required:
+                                  - kind
+                                  - ordinal
+                                  - weekday
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - dayOfMonth
+                                  day:
+                                    type: integer
+                                    minimum: 1
+                                    maximum: 31
+                                required:
+                                  - kind
+                                  - day
+                              - type: object
+                                properties:
+                                  kind:
+                                    type: string
+                                    enum:
+                                      - lastDayOfMonth
+                                required:
+                                  - kind
+                      required:
+                        - kind
+                        - entries
                 blocks:
                   minItems: 1
                   type: array
@@ -1566,6 +2319,16 @@ paths:
                       endTime:
                         type: string
                         pattern: ^\d{2}:\d{2}(:\d{2})?$
+                      isPublic:
+                        type: boolean
+                      place:
+                        type: string
+                        maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                       id:
                         type: string
                         format: uuid
@@ -1575,9 +2338,27 @@ paths:
                       - startTime
                       - endTime
                     additionalProperties: false
+                precedences:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      otherTemplateId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      answer:
+                        type: string
+                        enum:
+                          - both
+                          - thisWins
+                          - otherWins
+                    required:
+                      - otherTemplateId
+                      - answer
               required:
                 - name
-                - weekday
+                - recurrence
                 - blocks
       parameters:
         - schema:
@@ -1599,7 +2380,137 @@ paths:
                     type: string
                   name:
                     type: string
-                  weekday:
+                  recurrence:
+                    oneOf:
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - weekly
+                          weekdays:
+                            minItems: 1
+                            type: array
+                            items:
+                              anyOf:
+                                - type: number
+                                  enum:
+                                    - 0
+                                - type: number
+                                  enum:
+                                    - 1
+                                - type: number
+                                  enum:
+                                    - 2
+                                - type: number
+                                  enum:
+                                    - 3
+                                - type: number
+                                  enum:
+                                    - 4
+                                - type: number
+                                  enum:
+                                    - 5
+                                - type: number
+                                  enum:
+                                    - 6
+                        required:
+                          - kind
+                          - weekdays
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          kind:
+                            type: string
+                            enum:
+                              - monthly
+                          entries:
+                            minItems: 1
+                            type: array
+                            items:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - nthWeekday
+                                    ordinal:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: string
+                                          enum:
+                                            - last
+                                    weekday:
+                                      anyOf:
+                                        - type: number
+                                          enum:
+                                            - 0
+                                        - type: number
+                                          enum:
+                                            - 1
+                                        - type: number
+                                          enum:
+                                            - 2
+                                        - type: number
+                                          enum:
+                                            - 3
+                                        - type: number
+                                          enum:
+                                            - 4
+                                        - type: number
+                                          enum:
+                                            - 5
+                                        - type: number
+                                          enum:
+                                            - 6
+                                  required:
+                                    - kind
+                                    - ordinal
+                                    - weekday
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - dayOfMonth
+                                    day:
+                                      type: integer
+                                      minimum: 1
+                                      maximum: 31
+                                  required:
+                                    - kind
+                                    - day
+                                  additionalProperties: false
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - lastDayOfMonth
+                                  required:
+                                    - kind
+                                  additionalProperties: false
+                        required:
+                          - kind
+                          - entries
+                        additionalProperties: false
+                  publicBlockCount:
                     type: number
                   blocks:
                     type: array
@@ -1622,6 +2533,14 @@ paths:
                           pattern: ^\d{2}:\d{2}(:\d{2})?$
                         order:
                           type: number
+                        isPublic:
+                          type: boolean
+                        place:
+                          nullable: true
+                          type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                       required:
                         - id
                         - churchId
@@ -1630,6 +2549,9 @@ paths:
                         - startTime
                         - endTime
                         - order
+                        - isPublic
+                        - place
+                        - placeAddressId
                       additionalProperties: false
                   createdAt:
                     type: string
@@ -1643,10 +2565,39 @@ paths:
                   - id
                   - churchId
                   - name
-                  - weekday
+                  - recurrence
+                  - publicBlockCount
                   - blocks
                   - createdAt
                   - updatedAt
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                  collisions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        templateId:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - templateId
+                        - name
+                      additionalProperties: false
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "422":
           description: Default Response
@@ -1678,6 +2629,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -1746,6 +2698,149 @@ paths:
                   - ministryCount
                   - blocks
                 additionalProperties: false
+  /api/v1/admin/event-templates/{templateId}/precedences:
+    get:
+      operationId: listTemplatePrecedences
+      summary: List Template Precedences
+      tags:
+        - planning
+      description: The template's stored Template Precedences, each as this template
+        sees the pair, ordered by the other template's name.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: templateId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  precedences:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        otherTemplateId:
+                          type: string
+                        otherTemplateName:
+                          type: string
+                        answer:
+                          type: string
+                          enum:
+                            - both
+                            - thisWins
+                            - otherWins
+                      required:
+                        - otherTemplateId
+                        - otherTemplateName
+                        - answer
+                      additionalProperties: false
+                required:
+                  - precedences
+                additionalProperties: false
+  /api/v1/admin/event-templates/{templateId}/precedences/{otherTemplateId}:
+    put:
+      operationId: changeTemplatePrecedence
+      summary: Change a Template Precedence
+      tags:
+        - planning
+      description: Change one stored Template Precedence, as the first template sees
+        the pair, without editing either template. A pair with no stored answer
+        is 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answer:
+                  type: string
+                  enum:
+                    - both
+                    - thisWins
+                    - otherWins
+              required:
+                - answer
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: templateId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: otherTemplateId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  otherTemplateId:
+                    type: string
+                  otherTemplateName:
+                    type: string
+                  answer:
+                    type: string
+                    enum:
+                      - both
+                      - thisWins
+                      - otherWins
+                required:
+                  - otherTemplateId
+                  - otherTemplateName
+                  - answer
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/apply-templates:
     post:
       operationId: applyPlanningTemplates
@@ -1753,7 +2848,11 @@ paths:
       tags:
         - planning
       description: Generate one Event per matching CalendarDay in the Cycle for each
-        selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock.
+        selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock. A
+        loser of a Template Precedence skips only its blocks overlapping the
+        winner’s on days the winner’s Recurrence names; blocks already in the
+        Cycle that would now lose are listed in `leftoverEventTimeBlocks` and
+        never deleted.
       requestBody:
         required: true
         content:
@@ -1786,9 +2885,46 @@ paths:
                     type: number
                   generatedEventTimeBlockCount:
                     type: number
+                  leftoverEventTimeBlocks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        eventId:
+                          type: string
+                        eventTitle:
+                          type: string
+                        eventTimeBlockId:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        startTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        endTime:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        loserTemplateName:
+                          type: string
+                        winnerTemplateName:
+                          type: string
+                      required:
+                        - eventId
+                        - eventTitle
+                        - eventTimeBlockId
+                        - label
+                        - startTime
+                        - endTime
+                        - loserTemplateName
+                        - winnerTemplateName
+                      additionalProperties: false
                 required:
                   - generatedEventCount
                   - generatedEventTimeBlockCount
+                  - leftoverEventTimeBlocks
                 additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/events:
     post:
@@ -1839,6 +2975,16 @@ paths:
                         type: string
                         format: date-time
                         pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      isPublic:
+                        type: boolean
+                      place:
+                        type: string
+                        maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                     required:
                       - label
                       - startTime
@@ -1934,6 +3080,14 @@ paths:
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                         label:
                           type: string
+                        isPublic:
+                          type: boolean
+                        place:
+                          nullable: true
+                          type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -1969,6 +3123,9 @@ paths:
                         - eventId
                         - startTime
                         - endTime
+                        - isPublic
+                        - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -2006,6 +3163,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -2063,6 +3221,16 @@ paths:
                         type: string
                         format: date-time
                         pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      isPublic:
+                        type: boolean
+                      place:
+                        type: string
+                        maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
                       id:
                         type: string
                         format: uuid
@@ -2167,6 +3335,14 @@ paths:
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                         label:
                           type: string
+                        isPublic:
+                          type: boolean
+                        place:
+                          nullable: true
+                          type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -2202,6 +3378,9 @@ paths:
                         - eventId
                         - startTime
                         - endTime
+                        - isPublic
+                        - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -2239,6 +3418,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -2297,6 +3477,28 @@ paths:
                   minLength: 1
                 location:
                   type: string
+                eventTimeBlocks:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      isPublic:
+                        type: boolean
+                      place:
+                        type: string
+                        maxLength: 120
+                      placeAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                    required:
+                      - id
+                      - isPublic
               required:
                 - title
       parameters:
@@ -2390,6 +3592,14 @@ paths:
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                         label:
                           type: string
+                        isPublic:
+                          type: boolean
+                        place:
+                          nullable: true
+                          type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -2425,6 +3635,9 @@ paths:
                         - eventId
                         - startTime
                         - endTime
+                        - isPublic
+                        - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -2462,6 +3675,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -2609,6 +3823,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -2771,6 +3986,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -2998,6 +4214,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -3127,6 +4344,14 @@ paths:
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                         label:
                           type: string
+                        isPublic:
+                          type: boolean
+                        place:
+                          nullable: true
+                          type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -3162,6 +4387,9 @@ paths:
                         - eventId
                         - startTime
                         - endTime
+                        - isPublic
+                        - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -3250,6 +4478,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -3321,6 +4550,14 @@ paths:
                     pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                   label:
                     type: string
+                  isPublic:
+                    type: boolean
+                  place:
+                    nullable: true
+                    type: string
+                  placeAddressId:
+                    nullable: true
+                    type: string
                   status:
                     type: string
                     enum:
@@ -3356,6 +4593,9 @@ paths:
                   - eventId
                   - startTime
                   - endTime
+                  - isPublic
+                  - place
+                  - placeAddressId
                   - status
                   - requirements
                 additionalProperties: false
@@ -3609,6 +4849,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -3739,6 +4980,14 @@ paths:
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                         label:
                           type: string
+                        isPublic:
+                          type: boolean
+                        place:
+                          nullable: true
+                          type: string
+                        placeAddressId:
+                          nullable: true
+                          type: string
                         status:
                           type: string
                           enum:
@@ -3774,6 +5023,9 @@ paths:
                         - eventId
                         - startTime
                         - endTime
+                        - isPublic
+                        - place
+                        - placeAddressId
                         - status
                         - requirements
                       additionalProperties: false
@@ -3877,6 +5129,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -4043,6 +5296,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -4221,6 +5475,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -4294,6 +5549,14 @@ paths:
                     pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                   label:
                     type: string
+                  isPublic:
+                    type: boolean
+                  place:
+                    nullable: true
+                    type: string
+                  placeAddressId:
+                    nullable: true
+                    type: string
                   status:
                     type: string
                     enum:
@@ -4329,6 +5592,9 @@ paths:
                   - eventId
                   - startTime
                   - endTime
+                  - isPublic
+                  - place
+                  - placeAddressId
                   - status
                   - requirements
                 additionalProperties: false
@@ -4461,6 +5727,2023 @@ paths:
                   - defaultDirection
                   - createdAt
                   - updatedAt
+                additionalProperties: false
+  /api/v1/church-settings:
+    get:
+      operationId: getChurchSettings
+      summary: Get the Active Church settings
+      tags:
+        - church-settings
+      description: The Church Settings of the Active Church (name, slug, website,
+        accent colour, addresses) and the public origin the `…/slug` address is
+        shown under. Empty optional fields are null. ChurchAdmin only.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                        - group
+                      additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                        - group
+                      additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - addresses
+                  - socialLinks
+                  - legalProfile
+                  - logoKey
+                  - logoUrl
+                  - contacts
+                  - contactGroups
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    put:
+      operationId: updateChurchSettings
+      summary: Save the Active Church settings
+      tags:
+        - church-settings
+      description: Saves the whole set of Church Settings in one transaction, last
+        write wins; the slug changes only when one is sent (its old value moves
+        to the slug history). A refused save changes nothing and answers 422
+        with one entry per refused field (list rows addressed by index).
+        ChurchAdmin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: Required. Trimmed, inner spaces collapsed, 2–80 characters.
+                  type: string
+                slug:
+                  description: "Church Slug: 3–63 characters, lower-case letters, digits and
+                    single hyphens, not reserved, not taken. Omitted, the slug
+                    stays."
+                  type: string
+                website:
+                  description: https:// only; a bare domain gets it prepended; empty or null
+                    clears it; at most 2048 characters.
+                  nullable: true
+                  type: string
+                accentColor:
+                  nullable: true
+                  description: "#rrggbb, or null for the app default."
+                  type: string
+                  pattern: ^#[0-9a-fA-F]{6}$
+                contacts:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      kind:
+                        type: string
+                        enum:
+                          - email
+                          - phone
+                      phoneType:
+                        nullable: true
+                        type: string
+                        enum:
+                          - mobile
+                          - landline
+                      value:
+                        type: string
+                      description:
+                        nullable: true
+                        type: string
+                      isWhatsApp:
+                        type: boolean
+                      isPublic:
+                        type: boolean
+                      group:
+                        nullable: true
+                        type: string
+                    required:
+                      - kind
+                      - phoneType
+                      - value
+                      - description
+                      - isWhatsApp
+                      - isPublic
+                  description: Every Church Contact in order; the whole list replaces the stored
+                    one. Phones validated as allowed-country numbers and stored
+                    as E.164, emails lower-cased. A refused row is reported by
+                    index, e.g. contacts.1.value.
+                contactGroups:
+                  maxItems: 100
+                  type: array
+                  items:
+                    type: string
+                    maxLength: 120
+                  description: Contact Group names in display order, for the `group` of contacts
+                    and links. A group is created by naming it on a row,
+                    case-insensitively one group; unlisted groups follow in
+                    first-use order; a group no row uses is deleted on save.
+                addresses:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      label:
+                        nullable: true
+                        type: string
+                      street:
+                        type: string
+                      number:
+                        type: string
+                      complement:
+                        nullable: true
+                        type: string
+                      bairro:
+                        type: string
+                      city:
+                        type: string
+                      uf:
+                        type: string
+                        enum:
+                          - AC
+                          - AL
+                          - AM
+                          - AP
+                          - BA
+                          - CE
+                          - DF
+                          - ES
+                          - GO
+                          - MA
+                          - MG
+                          - MS
+                          - MT
+                          - PA
+                          - PB
+                          - PE
+                          - PI
+                          - PR
+                          - RJ
+                          - RN
+                          - RO
+                          - RR
+                          - RS
+                          - SC
+                          - SE
+                          - SP
+                          - TO
+                      cep:
+                        nullable: true
+                        type: string
+                      country:
+                        default: BR
+                        type: string
+                        enum:
+                          - BR
+                      isPublic:
+                        default: true
+                        type: boolean
+                      isMain:
+                        default: false
+                        type: boolean
+                      latitude:
+                        nullable: true
+                        type: number
+                        minimum: -90
+                        maximum: 90
+                      longitude:
+                        nullable: true
+                        type: number
+                        minimum: -180
+                        maximum: 180
+                      pinSource:
+                        nullable: true
+                        type: string
+                        enum:
+                          - google
+                          - cep
+                          - admin
+                      placeId:
+                        nullable: true
+                        type: string
+                    required:
+                      - street
+                      - number
+                      - bairro
+                      - city
+                      - uf
+                  description: Every Church Address in display order; the whole list replaces the
+                    stored one. `id` keeps a stored address, null or absent adds
+                    one. At most one is the Main Address; the first address a
+                    Church gets becomes main, later the list must name one.
+                    Country is always BR; number is "s/n" without a number; a
+                    `placeId` is dropped when street, number or city change from
+                    the stored pick.
+                addressReplacements:
+                  description: "What replaces each deleted address that templates or
+                    not-yet-started Event time blocks still use: another kept
+                    address of the Church, or null for no place. Deleting such
+                    an address without an entry is refused
+                    (ADDRESS_REPLACEMENT_REQUIRED); the replacement is applied
+                    to every reference in the same save."
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      addressId:
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                      replacementAddressId:
+                        nullable: true
+                        type: string
+                        format: uuid
+                        pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                    required:
+                      - addressId
+                      - replacementAddressId
+                socialLinks:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                      description:
+                        nullable: true
+                        type: string
+                      group:
+                        nullable: true
+                        type: string
+                    required:
+                      - url
+                  description: "Every Social Link in display order; the whole list replaces the
+                    stored one. Only `url` and `description` are sent: the
+                    network is detected from the URL. Supported: Instagram,
+                    YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram,
+                    WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer
+                    and Kwai; a wa.me link is refused (add it as a Contact).
+                    Always public."
+                legalProfile:
+                  description: "The Church Legal Profile: `legalName` and `cnpj` (mask accepted,
+                    check digits validated; stored as 14 digits) and the
+                    `isPublic` toggle (visitors see it only when true). Both
+                    blank clears the profile; one without the other is refused
+                    on the blank one. A CNPJ another Church holds is refused
+                    with a generic CNPJ_TAKEN that never names that Church."
+                  type: object
+                  properties:
+                    legalName:
+                      nullable: true
+                      type: string
+                    cnpj:
+                      nullable: true
+                      type: string
+                    isPublic:
+                      type: boolean
+                  required:
+                    - isPublic
+              required:
+                - name
+                - website
+                - accentColor
+                - contacts
+                - contactGroups
+                - addresses
+                - socialLinks
+                - legalProfile
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                        - group
+                      additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                        - group
+                      additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - addresses
+                  - socialLinks
+                  - legalProfile
+                  - logoKey
+                  - logoUrl
+                  - contacts
+                  - contactGroups
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  fieldErrors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        code:
+                          type: string
+                          enum:
+                            - CHURCH_NAME_LENGTH
+                            - CHURCH_WEBSITE_HTTPS_ONLY
+                            - CHURCH_WEBSITE_INVALID
+                            - CHURCH_WEBSITE_TOO_LONG
+                            - ACCENT_COLOR_INVALID
+                            - ADDRESS_REQUIRED
+                            - ADDRESS_TOO_LONG
+                            - ADDRESS_UF_INVALID
+                            - ADDRESS_CEP_INVALID
+                            - ADDRESS_PIN_INVALID
+                            - ADDRESS_MAIN_MULTIPLE
+                            - ADDRESS_MAIN_REQUIRED
+                            - ADDRESS_REPLACEMENT_REQUIRED
+                            - SOCIAL_LINK_INVALID
+                            - SOCIAL_LINK_UNSUPPORTED
+                            - SOCIAL_LINK_USE_CONTACT
+                            - SOCIAL_LINK_TOO_LONG
+                            - LEGAL_NAME_REQUIRED
+                            - LEGAL_NAME_TOO_LONG
+                            - CNPJ_REQUIRED
+                            - CNPJ_INVALID
+                            - CNPJ_TAKEN
+                            - CHURCH_SLUG_LENGTH
+                            - CHURCH_SLUG_FORMAT
+                            - CHURCH_SLUG_RESERVED
+                            - CHURCH_SLUG_TAKEN
+                            - CONTACT_PHONE_INVALID
+                            - CONTACT_EMAIL_INVALID
+                            - CONTACT_DESCRIPTION_TOO_LONG
+                            - CONTACT_GROUP_TOO_LONG
+                            - INVALID
+                        message:
+                          type: string
+                      required:
+                        - field
+                        - code
+                        - message
+                      additionalProperties: false
+                required:
+                  - error
+                  - message
+                  - fieldErrors
+                additionalProperties: false
+  /api/v1/church-settings/slug-availability:
+    get:
+      operationId: getChurchSlugAvailability
+      summary: Check a Church Slug for the Active Church
+      tags:
+        - church-settings
+      description: Whether a Church Slug is free, taken, reserved, or held in the
+        Active Church's own slug history (it may take it back). Never says which
+        Church holds a taken slug. ChurchAdmin only.
+      parameters:
+        - schema:
+            type: string
+            maxLength: 200
+          in: query
+          name: slug
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - free
+                      - taken
+                      - reserved
+                      - invalid
+                      - own_history
+                    description: "invalid: not 3–63 lower-case letters, digits and single hyphens;
+                      reserved: a platform word."
+                required:
+                  - status
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/church-settings/addresses/{addressId}/usage:
+    get:
+      operationId: getChurchAddressUsage
+      summary: Where a Church Address is used
+      tags:
+        - church-settings
+      description: The Event Templates and the Events with a time block not yet
+        started that place the address (started blocks keep their place); shown
+        before deleting it so a replacement can be chosen. ChurchAdmin only.
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+          in: path
+          name: addressId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                    description: Event Templates with a time block at this address, by name.
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        start:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                      required:
+                        - id
+                        - title
+                        - start
+                      additionalProperties: false
+                    description: Events with a time block here that has not started, any Cycle or
+                      visibility, by start. Started blocks keep their place and
+                      are not listed.
+                required:
+                  - templates
+                  - events
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/church-settings/logo:
+    put:
+      operationId: uploadChurchLogo
+      summary: Upload the Active Church logo
+      tags:
+        - church-settings
+      description: Applies at once, outside the settings save. PNG, JPEG or WebP by
+        content, at most 5 MB, longest side at least 128 px, from square to 4:3
+        landscape; stored as one PNG of at most 512 px under a content-hashed
+        key. Earlier logos stay stored. ChurchAdmin only.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+                - file
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                        - group
+                      additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                        - group
+                      additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - addresses
+                  - socialLinks
+                  - legalProfile
+                  - logoKey
+                  - logoUrl
+                  - contacts
+                  - contactGroups
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "413":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "415":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    delete:
+      operationId: removeChurchLogo
+      summary: Remove the Active Church logo
+      tags:
+        - church-settings
+      description: Drops the logo reference at once; the stored image stays, so older
+        emails keep rendering. ChurchAdmin only.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                        - group
+                      additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                        - group
+                      additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - addresses
+                  - socialLinks
+                  - legalProfile
+                  - logoKey
+                  - logoUrl
+                  - contacts
+                  - contactGroups
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/church-settings/logo/restore:
+    put:
+      operationId: restoreChurchLogo
+      summary: Re-apply an earlier logo of the Active Church
+      tags:
+        - church-settings
+      description: "Undo for a removal: points the Church back at one of its own
+        earlier logo keys. ChurchAdmin only."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                  description: A logo key this Church used before.
+              required:
+                - key
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  slug:
+                    type: string
+                  website:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                          enum:
+                            - AC
+                            - AL
+                            - AM
+                            - AP
+                            - BA
+                            - CE
+                            - DF
+                            - ES
+                            - GO
+                            - MA
+                            - MG
+                            - MS
+                            - MT
+                            - PA
+                            - PB
+                            - PE
+                            - PI
+                            - PR
+                            - RJ
+                            - RN
+                            - RO
+                            - RR
+                            - RS
+                            - SC
+                            - SE
+                            - SP
+                            - TO
+                        cep:
+                          nullable: true
+                          type: string
+                        country:
+                          type: string
+                          enum:
+                            - BR
+                        isPublic:
+                          type: boolean
+                        isMain:
+                          type: boolean
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        pinSource:
+                          nullable: true
+                          type: string
+                          enum:
+                            - google
+                            - cep
+                            - admin
+                        placeId:
+                          nullable: true
+                          type: string
+                      required:
+                        - id
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - country
+                        - isPublic
+                        - isMain
+                        - latitude
+                        - longitude
+                        - pinSource
+                        - placeId
+                      additionalProperties: false
+                  socialLinks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                        network:
+                          type: string
+                          enum:
+                            - instagram
+                            - youtube
+                            - facebook
+                            - tiktok
+                            - spotify
+                            - x
+                            - threads
+                            - telegram
+                            - whatsappChannel
+                            - whatsappGroup
+                            - linkedin
+                            - applePodcasts
+                            - deezer
+                            - kwai
+                        description:
+                          nullable: true
+                          type: string
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - url
+                        - network
+                        - description
+                        - group
+                      additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                      isPublic:
+                        type: boolean
+                    required:
+                      - legalName
+                      - cnpj
+                      - isPublic
+                    additionalProperties: false
+                  logoKey:
+                    nullable: true
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - email
+                            - phone
+                        phoneType:
+                          nullable: true
+                          type: string
+                          enum:
+                            - mobile
+                            - landline
+                        value:
+                          type: string
+                        description:
+                          nullable: true
+                          type: string
+                        isWhatsApp:
+                          type: boolean
+                        isPublic:
+                          type: boolean
+                        group:
+                          nullable: true
+                          type: string
+                      required:
+                        - kind
+                        - phoneType
+                        - value
+                        - description
+                        - isWhatsApp
+                        - isPublic
+                        - group
+                      additionalProperties: false
+                  contactGroups:
+                    type: array
+                    items:
+                      type: string
+                  publicOrigin:
+                    type: string
+                required:
+                  - name
+                  - slug
+                  - website
+                  - accentColor
+                  - addresses
+                  - socialLinks
+                  - legalProfile
+                  - logoKey
+                  - logoUrl
+                  - contacts
+                  - contactGroups
+                  - publicOrigin
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "409":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/events/schedule-builder:
     get:
@@ -5839,6 +9122,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   field:
                     type: string
                   issues:
@@ -7026,6 +10310,7 @@ paths:
                         templateName:
                           type: string
                         weekday:
+                          nullable: true
                           type: integer
                           minimum: -9007199254740991
                           maximum: 9007199254740991
@@ -7286,6 +10571,7 @@ paths:
                   templateName:
                     type: string
                   weekday:
+                    nullable: true
                     type: integer
                     minimum: -9007199254740991
                     maximum: 9007199254740991
@@ -8150,6 +11436,14 @@ paths:
                                     pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                                   label:
                                     type: string
+                                  isPublic:
+                                    type: boolean
+                                  place:
+                                    nullable: true
+                                    type: string
+                                  placeAddressId:
+                                    nullable: true
+                                    type: string
                                   status:
                                     type: string
                                     enum:
@@ -8185,6 +11479,9 @@ paths:
                                   - eventId
                                   - startTime
                                   - endTime
+                                  - isPublic
+                                  - place
+                                  - placeAddressId
                                   - status
                                   - requirements
                                 additionalProperties: false
@@ -8725,6 +12022,14 @@ paths:
                         pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                       label:
                         type: string
+                      isPublic:
+                        type: boolean
+                      place:
+                        nullable: true
+                        type: string
+                      placeAddressId:
+                        nullable: true
+                        type: string
                       status:
                         type: string
                         enum:
@@ -8760,6 +12065,9 @@ paths:
                       - eventId
                       - startTime
                       - endTime
+                      - isPublic
+                      - place
+                      - placeAddressId
                       - status
                       - requirements
                     additionalProperties: false
@@ -9062,6 +12370,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   issues:
                     type: array
                     items: {}
@@ -9249,6 +12558,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   issues:
                     type: array
                     items: {}
@@ -9392,6 +12702,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
                       - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
                   issues:
                     type: array
                     items: {}
@@ -9848,6 +13159,14 @@ paths:
                                     pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
                                   label:
                                     type: string
+                                  isPublic:
+                                    type: boolean
+                                  place:
+                                    nullable: true
+                                    type: string
+                                  placeAddressId:
+                                    nullable: true
+                                    type: string
                                   status:
                                     type: string
                                     enum:
@@ -9883,6 +13202,9 @@ paths:
                                   - eventId
                                   - startTime
                                   - endTime
+                                  - isPublic
+                                  - place
+                                  - placeAddressId
                                   - status
                                   - requirements
                                 additionalProperties: false
@@ -11445,6 +14767,14 @@ paths:
                                   type: string
                                   format: date-time
                                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                churchLogoUrl:
+                                  nullable: true
+                                  type: string
+                                churchAccent:
+                                  nullable: true
+                                  type: string
+                                churchLocality:
+                                  type: string
                               required:
                                 - ministryInvitationId
                                 - ministryId
@@ -15757,6 +19087,534 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/public/churches/{slug}:
+    get:
+      operationId: getPublicChurchProfile
+      summary: Get a Public Church Profile
+      tags:
+        - public-church-profile
+      description: "The public identity of the Church a live or old Church Slug names.
+        No session needed. `slug` is always the current one: an old slug answers
+        the current slug so the caller replaces its URL. Unknown slug: 404."
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 63
+          in: path
+          name: slug
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slug:
+                    type: string
+                  name:
+                    type: string
+                  logoUrl:
+                    nullable: true
+                    type: string
+                  accentColor:
+                    nullable: true
+                    type: string
+                  contactGroups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          nullable: true
+                          type: string
+                        contacts:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - email
+                                  - phone
+                              phoneType:
+                                nullable: true
+                                type: string
+                                enum:
+                                  - mobile
+                                  - landline
+                              value:
+                                type: string
+                              description:
+                                nullable: true
+                                type: string
+                              isWhatsApp:
+                                type: boolean
+                            required:
+                              - kind
+                              - phoneType
+                              - value
+                              - description
+                              - isWhatsApp
+                            additionalProperties: false
+                        socialLinks:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              url:
+                                type: string
+                              network:
+                                type: string
+                              description:
+                                nullable: true
+                                type: string
+                            required:
+                              - url
+                              - network
+                              - description
+                            additionalProperties: false
+                      required:
+                        - name
+                        - contacts
+                        - socialLinks
+                      additionalProperties: false
+                  legalProfile:
+                    nullable: true
+                    type: object
+                    properties:
+                      legalName:
+                        type: string
+                      cnpj:
+                        type: string
+                    required:
+                      - legalName
+                      - cnpj
+                    additionalProperties: false
+                  programme:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        recurrence:
+                          oneOf:
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - weekly
+                                weekdays:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    anyOf:
+                                      - type: number
+                                        enum:
+                                          - 0
+                                      - type: number
+                                        enum:
+                                          - 1
+                                      - type: number
+                                        enum:
+                                          - 2
+                                      - type: number
+                                        enum:
+                                          - 3
+                                      - type: number
+                                        enum:
+                                          - 4
+                                      - type: number
+                                        enum:
+                                          - 5
+                                      - type: number
+                                        enum:
+                                          - 6
+                              required:
+                                - kind
+                                - weekdays
+                              additionalProperties: false
+                            - type: object
+                              properties:
+                                kind:
+                                  type: string
+                                  enum:
+                                    - monthly
+                                entries:
+                                  minItems: 1
+                                  type: array
+                                  items:
+                                    oneOf:
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - nthWeekday
+                                          ordinal:
+                                            anyOf:
+                                              - type: number
+                                                enum:
+                                                  - 1
+                                              - type: number
+                                                enum:
+                                                  - 2
+                                              - type: number
+                                                enum:
+                                                  - 3
+                                              - type: number
+                                                enum:
+                                                  - 4
+                                              - type: number
+                                                enum:
+                                                  - 5
+                                              - type: string
+                                                enum:
+                                                  - last
+                                          weekday:
+                                            anyOf:
+                                              - type: number
+                                                enum:
+                                                  - 0
+                                              - type: number
+                                                enum:
+                                                  - 1
+                                              - type: number
+                                                enum:
+                                                  - 2
+                                              - type: number
+                                                enum:
+                                                  - 3
+                                              - type: number
+                                                enum:
+                                                  - 4
+                                              - type: number
+                                                enum:
+                                                  - 5
+                                              - type: number
+                                                enum:
+                                                  - 6
+                                        required:
+                                          - kind
+                                          - ordinal
+                                          - weekday
+                                        additionalProperties: false
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - dayOfMonth
+                                          day:
+                                            type: integer
+                                            minimum: 1
+                                            maximum: 31
+                                        required:
+                                          - kind
+                                          - day
+                                        additionalProperties: false
+                                      - type: object
+                                        properties:
+                                          kind:
+                                            type: string
+                                            enum:
+                                              - lastDayOfMonth
+                                        required:
+                                          - kind
+                                        additionalProperties: false
+                              required:
+                                - kind
+                                - entries
+                              additionalProperties: false
+                        exceptOrdinals:
+                          type: array
+                          items:
+                            anyOf:
+                              - type: number
+                                enum:
+                                  - 1
+                              - type: number
+                                enum:
+                                  - 2
+                              - type: number
+                                enum:
+                                  - 3
+                              - type: number
+                                enum:
+                                  - 4
+                              - type: number
+                                enum:
+                                  - 5
+                              - type: string
+                                enum:
+                                  - last
+                        startTime:
+                          type: string
+                        label:
+                          type: string
+                        place:
+                          nullable: true
+                          type: string
+                      required:
+                        - recurrence
+                        - exceptOrdinals
+                        - startTime
+                        - label
+                        - place
+                      additionalProperties: false
+                  addresses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        label:
+                          nullable: true
+                          type: string
+                        street:
+                          type: string
+                        number:
+                          type: string
+                        complement:
+                          nullable: true
+                          type: string
+                        bairro:
+                          type: string
+                        city:
+                          type: string
+                        uf:
+                          type: string
+                        cep:
+                          nullable: true
+                          type: string
+                        latitude:
+                          nullable: true
+                          type: number
+                        longitude:
+                          nullable: true
+                          type: number
+                        placeId:
+                          nullable: true
+                          type: string
+                        isMain:
+                          type: boolean
+                      required:
+                        - label
+                        - street
+                        - number
+                        - complement
+                        - bairro
+                        - city
+                        - uf
+                        - cep
+                        - latitude
+                        - longitude
+                        - placeId
+                        - isMain
+                      additionalProperties: false
+                  mainAddressArea:
+                    nullable: true
+                    type: object
+                    properties:
+                      bairro:
+                        type: string
+                      city:
+                        type: string
+                      uf:
+                        type: string
+                    required:
+                      - bairro
+                      - city
+                      - uf
+                    additionalProperties: false
+                required:
+                  - slug
+                  - name
+                  - logoUrl
+                  - accentColor
+                  - contactGroups
+                  - legalProfile
+                  - programme
+                  - addresses
+                  - mainAddressArea
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/public/churches/{slug}/events:
+    get:
+      operationId: listPublicChurchEvents
+      summary: List upcoming Public Events of a Church
+      tags:
+        - public-church-profile
+      description: "Upcoming Public Events of the Church a live or old Church Slug
+        names, 20 per page ordered by start then id. No session needed. Only
+        public blocks are served. Unknown slug: 404."
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: cursor
+          required: false
+        - schema:
+            type: string
+            minLength: 1
+            maxLength: 63
+          in: path
+          name: slug
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timezone:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                        cancelled:
+                          type: boolean
+                        start:
+                          type: string
+                          format: date-time
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        blocks:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              label:
+                                nullable: true
+                                type: string
+                              start:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              end:
+                                type: string
+                                format: date-time
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                              place:
+                                nullable: true
+                                type: string
+                              cancelled:
+                                type: boolean
+                              movePath:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    start:
+                                      type: string
+                                      format: date-time
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                    end:
+                                      type: string
+                                      format: date-time
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                  required:
+                                    - start
+                                    - end
+                                  additionalProperties: false
+                            required:
+                              - label
+                              - start
+                              - end
+                              - place
+                              - cancelled
+                              - movePath
+                            additionalProperties: false
+                      required:
+                        - title
+                        - cancelled
+                        - start
+                        - blocks
+                      additionalProperties: false
+                  nextCursor:
+                    type: string
+                required:
+                  - timezone
+                  - items
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - NOT_FOUND
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/dashboard:
     get:
       operationId: getVolunteerDashboard
@@ -15975,6 +19833,14 @@ paths:
                                   type: string
                                   format: date-time
                                   pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                churchLogoUrl:
+                                  nullable: true
+                                  type: string
+                                churchAccent:
+                                  nullable: true
+                                  type: string
+                                churchLocality:
+                                  type: string
                               required:
                                 - ministryInvitationId
                                 - ministryId

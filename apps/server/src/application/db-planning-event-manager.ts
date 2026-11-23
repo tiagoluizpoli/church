@@ -10,6 +10,7 @@ import {
 import type {
   ChurchId,
   EventId,
+  EventTemplateId,
   EventTimeBlockId,
   UserId,
 } from '../domain/branded-ids';
@@ -47,15 +48,18 @@ import type {
   SeededMinistry,
 } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
+import type { TemplatePrecedenceRepository } from '../domain/contracts/infrastructure/template-precedence.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { Church } from '../domain/entities/church';
 import type { Cycle } from '../domain/entities/cycle';
 import type { Event } from '../domain/entities/event';
+import type { EventTemplate } from '../domain/entities/event-template';
 import type { EventTimeBlock } from '../domain/entities/event-time-block';
 import {
   IllegalStateTransitionError,
   LastRemainingEventTimeBlockError,
+  PublicInfoLockedError,
 } from '../domain/errors';
 import {
   CycleEventGenerator,
@@ -78,6 +82,11 @@ import {
   type MoveScopeAssignment,
   proposeMove,
 } from '../domain/services/event-move';
+import {
+  listLosingEventTimeBlocks,
+  type PrecedencePair,
+} from '../domain/services/template-precedence-application';
+import type { TemplatePrecedence } from '../domain/template-precedence';
 import { cancelAssignment } from './cancel-assignment';
 import { removeAssignment } from './remove-assignment';
 
@@ -176,10 +185,17 @@ interface EnqueueEventAddedInput {
   tx: TransactionContext;
 }
 
+interface LoadPrecedencePairsInput {
+  churchId: ChurchId;
+  selected: EventTemplate[];
+  tx: TransactionContext;
+}
+
 interface DbPlanningEventManagerDependencies {
   cycleRepository: CycleRepository;
   eventRepository: PlanningEventRepository;
   templateRepository: EventTemplateRepository;
+  precedenceRepository: TemplatePrecedenceRepository;
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
   eventTimeBlockRepository: EventTimeBlockRepository;
@@ -201,6 +217,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly cycleRepository: CycleRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly templateRepository: EventTemplateRepository;
+  private readonly precedenceRepository: TemplatePrecedenceRepository;
   private readonly churchRepository: ChurchRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
@@ -214,6 +231,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     cycleRepository,
     eventRepository,
     templateRepository,
+    precedenceRepository,
     churchRepository,
     unitOfWork,
     eventTimeBlockRepository,
@@ -226,6 +244,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
     this.templateRepository = templateRepository;
+    this.precedenceRepository = precedenceRepository;
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
@@ -274,7 +293,13 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         cycleId: input.cycleId,
         tx,
       });
+      const precedencePairs = await this.loadPrecedencePairs({
+        churchId: input.churchId,
+        selected: templates,
+        tx,
+      });
       const plans = this.generator.generate({
+        precedencePairs,
         cycle,
         templates,
         existingEvents: existingEvents.map((eventGroup) => ({
@@ -378,17 +403,90 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             startTime: toDate({ instant: eventTimeBlock.startTime }),
             endTime: toDate({ instant: eventTimeBlock.endTime }),
             label: eventTimeBlock.label,
+            isPublic: eventTimeBlock.isPublic,
+            place: eventTimeBlock.place,
+            placeAddressId: eventTimeBlock.placeAddressId,
             tx,
           });
           generatedEventTimeBlockCount += 1;
         }
       }
 
+      const leftoverEventTimeBlocks = listLosingEventTimeBlocks({
+        pairs: precedencePairs,
+        cycleStart: cycle.startDate,
+        cycleEnd: cycle.endDate,
+        existing: existingEvents
+          .filter(({ event }) => event.status !== 'cancelled')
+          .flatMap(({ event, eventTimeBlocks }) =>
+            eventTimeBlocks.map((block) => ({
+              eventId: event.id,
+              eventTitle: event.title,
+              eventDate: today({
+                instant: event.start,
+                timeZone: church.timezone,
+              }),
+              eventTimeBlockId: block.id,
+              label: block.label,
+              startTime: block.startTime,
+              endTime: block.endTime,
+              sourceTemplateTimeBlockId: block.sourceTemplateTimeBlockId,
+            })),
+          ),
+      });
+
       return {
         generatedEventCount,
         generatedEventTimeBlockCount,
+        leftoverEventTimeBlocks,
       };
     });
+  }
+
+  /** Every stored winner/loser pair touching a selected template, with both templates loaded. */
+  private async loadPrecedencePairs({
+    churchId,
+    selected,
+    tx,
+  }: LoadPrecedencePairsInput): Promise<PrecedencePair[]> {
+    const stored = new Map<string, TemplatePrecedence>();
+    for (const template of selected) {
+      const listed = await this.precedenceRepository.listByTemplate({
+        churchId,
+        templateId: template.id as EventTemplateId,
+        tx,
+      });
+      for (const precedence of listed) {
+        stored.set(
+          `${precedence.templateAId}:${precedence.templateBId}`,
+          precedence,
+        );
+      }
+    }
+    const known = new Map<string, EventTemplate>(
+      selected.map((template) => [template.id, template]),
+    );
+    const partnerIds = [...stored.values()]
+      .flatMap(({ templateAId, templateBId }) => [templateAId, templateBId])
+      .filter((id) => !known.has(id));
+    if (partnerIds.length > 0) {
+      const partners = await this.templateRepository.getByIds({
+        churchId,
+        templateIds: [...new Set(partnerIds)],
+        tx,
+      });
+      for (const partner of partners) known.set(partner.id, partner);
+    }
+    return [...stored.values()].flatMap(
+      ({ templateAId, templateBId, outcome }) => {
+        const a = known.get(templateAId);
+        const b = known.get(templateBId);
+        if (!a || !b || outcome === 'both') return [];
+        return outcome === 'a_wins'
+          ? [{ winner: a, loser: b }]
+          : [{ winner: b, loser: a }];
+      },
+    );
   }
 
   async createEvent(
@@ -442,6 +540,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
             label: block.label,
             startTime: block.startTime,
             endTime: block.endTime,
+            isPublic: block.isPublic,
+            place: block.place || undefined,
+            placeAddressId: block.placeAddressId ?? undefined,
             tx,
           }),
         );
@@ -543,12 +644,22 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
       const blockIds: EventTimeBlockId[] = [];
       for (const block of input.eventTimeBlocks) {
-        const { id, label, startTime, endTime } = block;
+        const { id, label, startTime, endTime, isPublic, place } = block;
+        const { placeAddressId } = block;
         if (id) {
+          const current = persisted.find((stored) => stored.id === id);
+          const publicFields = current
+            ? changedPublicFields({
+                block: current,
+                isPublic,
+                place,
+                placeAddressId,
+              })
+            : {};
           await this.eventTimeBlockRepository.update({
             churchId,
             eventTimeBlockId: id,
-            input: { label, startTime, endTime },
+            input: { label, startTime, endTime, ...publicFields },
             tx,
           });
           blockIds.push(id);
@@ -560,6 +671,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
               label,
               startTime,
               endTime,
+              isPublic,
+              place: place || undefined,
+              placeAddressId: placeAddressId ?? undefined,
               tx,
             }),
           );
@@ -605,11 +719,43 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         location: input.location ?? null,
         tx,
       });
-      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+      const stored = await this.eventTimeBlockRepository.listByEvent({
         churchId,
         eventId,
         tx,
       });
+      const edits = input.eventTimeBlocks ?? [];
+      const patches = edits.map(({ id, isPublic, place, placeAddressId }) => {
+        const block = stored.find((candidate) => candidate.id === id);
+        if (!block) {
+          throw new NotFoundError(`EventTimeBlock not found: ${id}`);
+        }
+        // An omitted place clears it, like the location.
+        const patch = changedPublicFields({
+          block,
+          isPublic,
+          place: place ?? '',
+          placeAddressId: placeAddressId ?? null,
+        });
+        return { id, patch };
+      });
+      // Sequential: concurrent queries on one transaction connection warn in pg.
+      for (const { id, patch } of patches) {
+        if (Object.keys(patch).length === 0) continue;
+        await this.eventTimeBlockRepository.update({
+          churchId,
+          eventTimeBlockId: id,
+          input: patch,
+          tx,
+        });
+      }
+      const eventTimeBlocks = patches.length
+        ? await this.eventTimeBlockRepository.listByEvent({
+            churchId,
+            eventId,
+            tx,
+          })
+        : stored;
       return { event, eventTimeBlocks };
     });
   }
@@ -816,6 +962,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const adminName =
       (await this.churchRepository.findUserName({
         userId: actingUserId,
+        tx,
       })) ?? '';
     const recipients = await this.recipients.eventChangedRecipients({
       tx,
@@ -943,8 +1090,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       });
     if (ministries.length === 0) return;
     const adminName =
-      (await this.churchRepository.findUserName({ userId: actingUserId })) ??
-      '';
+      (await this.churchRepository.findUserName({
+        userId: actingUserId,
+        tx,
+      })) ?? '';
     const recipients = await this.recipients.eventChangedRecipients({
       tx,
       churchId,
@@ -1214,8 +1363,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const { ministries } = impact;
     if (ministries.length === 0) return;
     const adminName =
-      (await this.churchRepository.findUserName({ userId: actingUserId })) ??
-      '';
+      (await this.churchRepository.findUserName({
+        userId: actingUserId,
+        tx,
+      })) ?? '';
     const recipients = await this.recipients.eventChangedRecipients({
       tx,
       churchId,
@@ -1350,6 +1501,52 @@ interface ListInOrderInput {
   eventId: EventId;
   blockIds: EventTimeBlockId[];
   tx: TransactionContext;
+}
+
+interface ChangedPublicFieldsInput {
+  block: EventTimeBlock;
+  isPublic?: boolean;
+  /** Empty clears; absent keeps (with `placeAddressId` absent too). */
+  place?: string;
+  /** Null or absent with `place` given means no address. */
+  placeAddressId?: string | null;
+}
+
+interface PublicFieldsPatch {
+  isPublic?: boolean;
+  place?: string | null;
+  placeAddressId?: string | null;
+}
+
+/** The Público/place values that differ from the block; refused once it started. */
+function changedPublicFields({
+  block,
+  isPublic,
+  place,
+  placeAddressId,
+}: ChangedPublicFieldsInput): PublicFieldsPatch {
+  // The place is one value: free text, an address or nothing, set together.
+  const placeGiven = place !== undefined || placeAddressId !== undefined;
+  const nextPlace = place || null;
+  const nextAddressId = placeAddressId ?? null;
+  const placeChanged =
+    placeGiven &&
+    (nextPlace !== (block.place ?? null) ||
+      nextAddressId !== (block.placeAddressId ?? null));
+  const patch = {
+    ...(isPublic !== undefined && isPublic !== block.isPublic
+      ? { isPublic }
+      : {}),
+    ...(placeChanged
+      ? { place: nextPlace, placeAddressId: nextAddressId }
+      : {}),
+  };
+  const changed = Object.keys(patch).length > 0;
+  const started = compareInstants({ left: block.startTime, right: now() }) <= 0;
+  if (changed && started) {
+    throw new PublicInfoLockedError();
+  }
+  return patch;
 }
 
 /** A create or edit request as the shared final-graph validator reads it. */

@@ -37,6 +37,17 @@ interface RunStagesInput extends RunLanesInput {
   firstSteps?: LaneStep[];
 }
 
+/**
+ * The gate's lanes import the compiled messages while @church/i18n's own
+ * typecheck/test:unit recompile them, and a checkout or merge never
+ * recompiles them — so compile once, before the lanes split.
+ */
+export const I18N_COMPILE_STEP: LaneStep = {
+  args: ['turbo', 'compile', '--filter', '@church/i18n'],
+  command: 'bunx',
+  label: 'i18n:compile',
+};
+
 interface RunStepInput {
   cwd: string;
   output: OutputSink;

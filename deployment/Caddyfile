@@ -1,0 +1,59 @@
+{
+	# TLS stays with Traefik; the container speaks plain HTTP on 8080.
+	auto_https off
+	admin off
+	servers {
+		# Traefik's X-Forwarded-Proto/-For are passed through to the API.
+		trusted_proxies static private_ranges
+	}
+}
+
+:8080 {
+	root * /srv
+
+	# API and Better Auth share the page's origin; `server` resolves only on the
+	# Compose project's own network (see deployment/README.md). Host is kept and
+	# X-Forwarded-* are forwarded as received (trusted proxy above).
+	handle /api/* {
+		reverse_proxy server:3000
+	}
+
+	# The frontend's build revision, read by deployment health checks.
+	handle /revision.txt {
+		@hit file
+		header @hit Cache-Control "no-store"
+		file_server
+	}
+
+	handle /assets/* {
+		# Only hits: a missing asset's 404 must not be cached as immutable.
+		@hit file
+		header @hit Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# App routes that lived at the root before the move under /app (#1006,
+	# LEGACY_APP_ROUTE_SLUGS in @church/domain-rules): old links and emails keep
+	# working. `redir` runs before every `handle` below.
+	@legacyApp path /availability /availability/* /cycles /cycles/* /dashboard /dashboard/* /event-templates /event-templates/* /ministries /ministries/* /my-schedule /my-schedule/* /no-access /no-access/* /notifications /notifications/* /people /people/* /schedules /schedules/* /select-church /select-church/* /switch-church-confirm /switch-church-confirm/*
+	redir @legacyApp /app{uri} 301
+
+	# A Church's public page `/{slug}`: a single slug-shaped root segment that
+	# is not an app route (the reserved Church Slugs, @church/domain-rules). The
+	# server answers the SPA's index.html with the Church's meta tags, a real
+	# 301 for an old slug and a 404 for an unknown one; the SPA then renders.
+	@churchPage {
+		path_regexp ^/[a-z0-9]+(-[a-z0-9]+)*$
+		not path /app /api /assets /login /logout /signup /forgot-password /reset-password /invitations /church /admin /help /about /privacy /terms /static /www /availability /cycles /dashboard /event-templates /ministries /my-schedule /no-access /notifications /people /schedules /select-church /switch-church-confirm
+	}
+	handle @churchPage {
+		rewrite * /api/v1/public/churches{path}/page
+		reverse_proxy server:3000
+	}
+
+	handle {
+		header Cache-Control "no-cache"
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+}

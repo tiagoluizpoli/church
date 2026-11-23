@@ -111,7 +111,7 @@ describe('operator commands', () => {
     await run({ argv: ['setup-identity', '--environment', 'staging'] });
     await expect(
       run({ argv: ['provision-church', '--environment', 'staging'] }),
-    ).rejects.toThrow(/--name, --slug, --admin-email/);
+    ).rejects.toThrow(/--name, --admin-email/);
     expect(await countRows()).toEqual({ users: 1, churches: 0 });
   });
 });

@@ -29,7 +29,10 @@ Load for backend, API, database, security, tenancy, or infrastructure work.
 - Domain functions never read config. Their DI-built caller destructures the
   values and passes them as named params (for example `policy`).
 - Only the composition root (`main/di/`), container-less scripts
-  and seeds import `@church/app-config` directly.
+  and seeds import `@church/app-config` (or any subpath) directly.
+- Rules the server and web must answer identically (Church Slug, Social Link
+  detection) live in `@church/domain-rules`; any layer, the domain included,
+  may import it (constitution, Shared domain rules package).
 - Select backend and test specialist skills when their descriptions fit the
   identified work.
 

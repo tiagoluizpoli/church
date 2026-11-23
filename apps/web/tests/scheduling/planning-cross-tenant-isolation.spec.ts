@@ -6,7 +6,7 @@ import { loadCycleTenantsJourney } from '@/tests/fixtures/journeys/cycle-tenants
 
 // P9/T064 (test-master, catastrophic-failure coverage): a ChurchAdmin from
 // Church A must never see Church B's cycle data through the
-// `/cycles/$cycleId` dynamic segment (T059), even when
+// `/app/cycles/$cycleId` dynamic segment (T059), even when
 // visiting it directly by URL with a known-valid foreign id.
 const SERVER_URL = requiredE2eUrl({ variable: 'VITE_SERVER_URL' });
 
@@ -22,7 +22,7 @@ test.describe('DL4-X1 cross-tenant isolation on the $cycleId route', () => {
     );
     expect(detailResponse.status()).toBe(404);
 
-    await page.goto(`/cycles/${churchB.cycle.id}`);
+    await page.goto(`/app/cycles/${churchB.cycle.id}`);
 
     // No churchB cycle name, dates, or events ever render for this tenant —
     // the route falls back to its "no cycle" state instead of leaking data.

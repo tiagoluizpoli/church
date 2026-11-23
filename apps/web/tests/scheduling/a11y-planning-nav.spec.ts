@@ -13,7 +13,7 @@ test('cycle breadcrumb has no critical or serious WCAG violations', async ({
 }, testInfo) => {
   const journey = loadCycleAccessJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.admin });
-  await page.goto(`/cycles/${journey.cycle.id}`);
+  await page.goto(`/app/cycles/${journey.cycle.id}`);
   await expect(page.getByTestId('breadcrumbs')).toBeVisible();
   await page.waitForLoadState('networkidle');
 
@@ -35,7 +35,7 @@ test('breadcrumb marks the exact-match page as current, not every ancestor link'
   await signInPersonaPage({ page, persona: journey.personas.admin });
   // On /cycles exactly, that crumb *is* the current
   // page (BreadcrumbPage swap, isLast: true).
-  await page.goto('/cycles');
+  await page.goto('/app/cycles');
   const nav = page.getByRole('navigation', {
     name: m.shell_breadcrumb({}, { locale: 'pt-BR' }),
   });
@@ -58,7 +58,7 @@ test('breadcrumb never marks an ancestor link as the current page (regression: T
   // "Cycles") as aria-current="page" — never zero, never the
   // single correct one. `activeOptions={{ exact: true }}` closes that gap:
   // an ancestor breadcrumb link should never claim to be the current page.
-  await page.goto(`/cycles/${journey.cycle.id}`);
+  await page.goto(`/app/cycles/${journey.cycle.id}`);
   const nav = page.getByRole('navigation', {
     name: m.shell_breadcrumb({}, { locale: 'pt-BR' }),
   });

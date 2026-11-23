@@ -73,7 +73,7 @@ export function ChurchAccessControl({
       churchId,
       memberId,
     });
-    if (!detailReadable) await navigate({ to: '/' });
+    if (!detailReadable) await navigate({ to: '/app' });
   };
 
   const confirm = async () => {

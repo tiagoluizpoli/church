@@ -79,9 +79,12 @@ describe('Organization Schema', () => {
 
   it('keeps the Church extension to its exact domain columns', () => {
     expect(Object.keys(getTableColumns(church)).sort()).toEqual([
+      'accentColor',
       'id',
+      'logoKey',
       'settings',
       'timezone',
+      'website',
     ]);
   });
 

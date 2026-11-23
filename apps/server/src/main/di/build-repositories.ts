@@ -4,6 +4,7 @@ import {
   DrizzleAssignmentRepository,
   DrizzleAvailabilityCheckRepository,
   DrizzleChurchAccessRepository,
+  DrizzleChurchProgrammeRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
   DrizzleEventRepository,
@@ -19,6 +20,7 @@ import {
   DrizzleOutboxRepository,
   DrizzlePeopleListRepository,
   DrizzlePlanningEventRepository,
+  DrizzlePublicEventRepository,
   DrizzleRedemptionRepository,
   DrizzleRoleRepository,
   DrizzleSectorRepository,
@@ -26,6 +28,7 @@ import {
   DrizzleSetupProgressRepository,
   DrizzleShiftRepository,
   DrizzleSwapRequestRepository,
+  DrizzleTemplatePrecedenceRepository,
   DrizzleUnavailableShiftRepository,
   DrizzleUnitOfWork,
   DrizzleUsualSetupRepository,
@@ -38,6 +41,7 @@ export type Repositories = Pick<
   CompositionRootDependencies,
   | 'eventRepository'
   | 'eventTemplateRepository'
+  | 'templatePrecedenceRepository'
   | 'cycleRepository'
   | 'planningEventRepository'
   | 'volunteerRepository'
@@ -51,6 +55,8 @@ export type Repositories = Pick<
   | 'usualSetupRepository'
   | 'shiftRepository'
   | 'churchRepository'
+  | 'publicEventRepository'
+  | 'churchProgrammeRepository'
   | 'ministryRepository'
   | 'invitationVerificationCodeRepository'
   | 'redemptionRepository'
@@ -86,6 +92,9 @@ export function buildRepositories({
   const eventTemplateRepository =
     overrides.eventTemplateRepository ??
     new DrizzleEventTemplateRepository({ db: database });
+  const templatePrecedenceRepository =
+    overrides.templatePrecedenceRepository ??
+    new DrizzleTemplatePrecedenceRepository({ db: database });
   const cycleRepository =
     overrides.cycleRepository ?? new DrizzleCycleRepository({ db: database });
   const planningEventRepository =
@@ -122,6 +131,13 @@ export function buildRepositories({
     overrides.shiftRepository ?? new DrizzleShiftRepository({ db: database });
   const churchRepository =
     overrides.churchRepository ?? new DrizzleChurchRepository({ db: database });
+  const churchProgrammeRepository =
+    overrides.churchProgrammeRepository ??
+    new DrizzleChurchProgrammeRepository({ db: database });
+
+  const publicEventRepository =
+    overrides.publicEventRepository ??
+    new DrizzlePublicEventRepository({ db: database });
   const ministryRepository =
     overrides.ministryRepository ??
     new DrizzleMinistryRepository({ db: database });
@@ -174,6 +190,7 @@ export function buildRepositories({
   return {
     eventRepository,
     eventTemplateRepository,
+    templatePrecedenceRepository,
     cycleRepository,
     planningEventRepository,
     volunteerRepository,
@@ -187,6 +204,8 @@ export function buildRepositories({
     usualSetupRepository,
     shiftRepository,
     churchRepository,
+    publicEventRepository,
+    churchProgrammeRepository,
     ministryRepository,
     invitationVerificationCodeRepository,
     redemptionRepository,

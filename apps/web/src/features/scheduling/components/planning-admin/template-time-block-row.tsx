@@ -2,10 +2,13 @@ import { m } from '@church/i18n/messages';
 import type { TimeOfDay } from '@church/time';
 import type { TemplateTimeBlockDraft } from './planning-admin.types';
 import { describeTemplateTimeBlockSpan } from './planning-admin.utils';
+import { TimeBlockPlacePicker } from './time-block-place-picker';
 import { TimeOfDayField } from '@/components/time-of-day-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
 interface LabelChangeInput {
   blockKey: string;
@@ -19,7 +22,30 @@ interface TimeChangeInput {
   value: TimeOfDay;
 }
 
-type BlockChangeInput = LabelChangeInput | TimeChangeInput;
+interface PlaceChangeInput {
+  blockKey: string;
+  field: 'place';
+  value: string;
+}
+
+interface PlaceAddressChangeInput {
+  blockKey: string;
+  field: 'placeAddressId';
+  value: string | null;
+}
+
+interface PublicChangeInput {
+  blockKey: string;
+  field: 'isPublic';
+  value: boolean;
+}
+
+type BlockChangeInput =
+  | LabelChangeInput
+  | TimeChangeInput
+  | PlaceChangeInput
+  | PlaceAddressChangeInput
+  | PublicChangeInput;
 
 interface RemoveBlockInput {
   blockKey: string;
@@ -46,6 +72,8 @@ export function TemplateTimeBlockRow({
   onBlockChange,
   onRemoveBlock,
 }: TemplateTimeBlockRowProps) {
+  // Publico and place are a ChurchAdmin decision (ADR 0009); leaders edit the rest.
+  const { isChurchAdmin } = useCallerCapabilities();
   return (
     <div
       className="surface-subtle workspace-panel space-y-2"
@@ -131,6 +159,51 @@ export function TemplateTimeBlockRow({
           />
         </div>
       </div>
+      {isChurchAdmin ? (
+        <div
+          className="grid gap-3 sm:grid-cols-2"
+          data-testid="template-time-block-public-fields"
+        >
+          <div className="flex items-center gap-2">
+            <Switch
+              id={`${block.key}-public`}
+              aria-labelledby={`${block.key}-public-label`}
+              data-testid="template-time-block-public-switch"
+              checked={block.isPublic}
+              onCheckedChange={(checked) =>
+                onBlockChange({
+                  blockKey: block.key,
+                  field: 'isPublic',
+                  value: checked,
+                })
+              }
+            />
+            <Label id={`${block.key}-public-label`}>
+              {m.event_templates_block_public()}
+            </Label>
+          </div>
+          <TimeBlockPlacePicker
+            id={`${block.key}-place`}
+            testIdPrefix="template-time-block"
+            label={m.event_templates_block_place()}
+            placeholder={m.event_templates_block_place_placeholder()}
+            place={block.place}
+            placeAddressId={block.placeAddressId}
+            onChange={({ place, placeAddressId }) => {
+              onBlockChange({
+                blockKey: block.key,
+                field: 'place',
+                value: place,
+              });
+              onBlockChange({
+                blockKey: block.key,
+                field: 'placeAddressId',
+                value: placeAddressId,
+              });
+            }}
+          />
+        </div>
+      ) : null}
       {timeError ? (
         <p
           className="text-destructive text-xs"

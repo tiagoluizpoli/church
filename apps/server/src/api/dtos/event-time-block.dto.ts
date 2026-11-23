@@ -34,6 +34,10 @@ export const eventTimeBlockResponseSchema = z.object({
   startTime: instantSchema,
   endTime: instantSchema,
   label: z.string().optional(),
+  isPublic: z.boolean(),
+  /** Free text; null when the place is a Church Address or nothing. */
+  place: z.string().nullable(),
+  placeAddressId: z.string().nullable(),
   status: z.enum(['active', 'cancelled']),
   requirements: z.array(shiftRequirementResponseSchema),
 });
@@ -60,6 +64,9 @@ function eventTimeBlockToResponse(s: EventTimeBlock): EventTimeBlockResponse {
     startTime: s.startTime,
     endTime: s.endTime,
     label: s.label,
+    isPublic: s.isPublic,
+    place: s.place ?? null,
+    placeAddressId: s.placeAddressId ?? null,
     status: s.status,
     requirements: s.requirements.map(requirementToResponse),
   };

@@ -250,7 +250,7 @@ describe('Ministry Invitation minting routes', () => {
       kind: 'ministry-only',
       status: 'pending',
       expiresAt: '2030-02-01T00:00:00.000Z',
-      redemptionPath: '/invitations/ministry/ministry-invitation-1',
+      redemptionPath: '/app/invitations/ministry/ministry-invitation-1',
       deliveryStatus: 'pending',
     });
     expect(ministryInvitationManager.getDeliveryStatus).toHaveBeenCalledWith({

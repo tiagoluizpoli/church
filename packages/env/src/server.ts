@@ -27,6 +27,21 @@ export const env = createEnv({
     SMTP_FROM_EMAIL: z.string().default('Church <noreply@church.test>'),
     /** Deployed development/staging Mailpit API, used only by the environment reset. */
     MAILPIT_API_URL: z.url().optional(),
+    /** S3-compatible object storage (RustFS): moving host is configuration only. */
+    S3_ENDPOINT: z.url({ protocol: /^https?$/ }),
+    S3_REGION: z.string().min(1).default('us-east-1'),
+    S3_BUCKET: z.string().regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/),
+    S3_ACCESS_KEY_ID: z.string().min(1),
+    S3_SECRET_ACCESS_KEY: z.string().min(1),
+    /** Anonymous base of the bucket's `public/` objects, e.g.
+     * `https://storage.lunalabs.com.br/church-production`. */
+    STORAGE_PUBLIC_URL: z.url({ protocol: /^https?$/ }),
+    /** Where the server reads the web's built `index.html` for the Public
+     * Church Profile head; the web's alias on the deployed Compose network. */
+    WEB_INTERNAL_URL: z.url().default('http://church-web:8080'),
+    /** Reverse proxies in front of the server whose X-Forwarded-For hop is
+     * trusted for `request.ip` (Dokploy's proxy → Caddy deployed: 2). */
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
     OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).default(5000),
     OUTBOX_DRAIN_BATCH_SIZE: z.coerce.number().int().min(1).default(10),
     NODE_ENV: z

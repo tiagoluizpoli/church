@@ -6,8 +6,10 @@ import { useState } from 'react';
 import type { PlanningTemplateSummary } from './planning-admin.types';
 import { RetryAlert } from './retry-alert';
 import { TemplateBlockRemovalDialog } from './template-block-removal-dialog';
+import { TemplateCollisionDialog } from './template-collision-dialog';
 import { TemplateDeleteDialog } from './template-delete-dialog';
 import { TemplateEditorForm } from './template-editor-form';
+import { TemplatePrecedenceList } from './template-precedence-list';
 import { templateDetailQueryKey } from './template-query-keys';
 import { useEditTemplate } from './use-edit-template';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -37,7 +39,7 @@ function EditActions({ disabled, onDelete }: EditActionsProps) {
   return (
     <>
       <Link
-        to="/event-templates"
+        to="/app/event-templates"
         data-testid="cancel-template-button"
         className={buttonVariants({ variant: 'outline' })}
       >
@@ -84,7 +86,7 @@ export function TemplateEditPage({ templateId }: TemplateEditPageProps) {
               <p className="text-muted-foreground text-sm">
                 {m.event_templates_not_found()}
               </p>
-              <Link to="/event-templates" className={buttonVariants()}>
+              <Link to="/app/event-templates" className={buttonVariants()}>
                 {m.event_templates_back_to_list()}
               </Link>
             </div>
@@ -119,6 +121,7 @@ function TemplateEditForm({ template }: TemplateEditFormProps) {
     confirmation,
     onConfirmRemoval,
     onCancelRemoval,
+    collisionDialog,
     ...editor
   } = useEditTemplate({ template });
   const navigate = useNavigate();
@@ -147,10 +150,13 @@ function TemplateEditForm({ template }: TemplateEditFormProps) {
       {deleting ? (
         <TemplateDeleteDialog
           templateId={template.id}
+          publicBlockCount={template.publicBlockCount}
           onClose={() => setDeleting(false)}
-          onDeleted={() => navigate({ to: '/event-templates' })}
+          onDeleted={() => navigate({ to: '/app/event-templates' })}
         />
       ) : null}
+      <TemplateCollisionDialog {...collisionDialog} />
+      <TemplatePrecedenceList templateId={template.id} />
       <TemplateBlockRemovalDialog
         blocks={confirmation ?? []}
         open={confirmation !== null}

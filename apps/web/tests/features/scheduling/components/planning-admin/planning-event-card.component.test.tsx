@@ -27,7 +27,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, params, 'aria-label': label }: MockLinkProps) => (
     <a
       aria-label={label}
-      href={`/cycles/${params?.cycleId}/events/${params?.eventId}`}
+      href={`/app/cycles/${params?.cycleId}/events/${params?.eventId}`}
     >
       {children}
     </a>
@@ -115,7 +115,7 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     expect(
       screen.getByRole('link', { name: 'Editar dia Sunday Service' }),
-    ).toHaveAttribute('href', '/cycles/cycle-1/events/event-1');
+    ).toHaveAttribute('href', '/app/cycles/cycle-1/events/event-1');
     expect(
       screen.queryByRole('button', { name: /^Adicionar horário/ }),
     ).not.toBeInTheDocument();

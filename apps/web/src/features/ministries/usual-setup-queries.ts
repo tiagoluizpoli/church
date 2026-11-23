@@ -35,7 +35,7 @@ interface UseUsualSetupBlockBreadcrumbInput {
   churchId: string;
 }
 
-/** Labels `/ministries/$ministryId/usual-setup/$blockId` with its template and block. */
+/** Labels `/app/ministries/$ministryId/usual-setup/$blockId` with its template and block. */
 export function useUsualSetupBlockBreadcrumb({
   churchId,
 }: UseUsualSetupBlockBreadcrumbInput): BreadcrumbSegmentOverride | null {

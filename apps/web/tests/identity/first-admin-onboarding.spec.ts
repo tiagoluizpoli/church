@@ -86,7 +86,7 @@ test.describe('J0→J1 — the first ChurchAdmin joins a provisioned Church', ()
       volunteerId: null,
     });
 
-    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/);
+    await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/);
     const status = await fetchActiveChurchStatus({ request: page.request });
     expect(status.churchId).toBe(journey.church.id);
     const { churches } = await fetchJson<ChurchOptionsResponse>({

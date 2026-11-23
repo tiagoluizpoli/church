@@ -4,6 +4,7 @@ import {
   availabilityCheck,
   event,
   eventTimeBlock,
+  eventTimeBlockMove,
   ministry,
   ministryMembership,
   ministryParticipation,
@@ -76,7 +77,12 @@ import type {
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  assertPlaceAddresses,
+  getClient,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
@@ -269,6 +275,11 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     input: CreatePlanningEventTimeBlockInput,
   ): Promise<EventTimeBlockId> {
     const db = getClient({ db: this.db, tx: input.tx });
+    await assertPlaceAddresses({
+      db,
+      churchId: input.churchId,
+      addressIds: [input.placeAddressId],
+    });
     const [eventTimeBlockRow] = await db
       .insert(eventTimeBlock)
       .values({
@@ -278,6 +289,9 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         startTime: input.startTime,
         endTime: input.endTime,
         label: input.label ?? null,
+        isPublic: input.isPublic ?? false,
+        place: input.place ?? null,
+        placeAddressId: input.placeAddressId ?? null,
       })
       .returning();
 
@@ -551,6 +565,29 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     if (eventTimeBlockIds.length === 0) return;
     const client = getClient({ db: this.db, tx });
     const delta = sql`(${deltaMs} * interval '1 millisecond')`;
+    // Same transaction as the update below, so the record cannot drift.
+    await client.insert(eventTimeBlockMove).select(
+      client
+        .select({
+          id: sql<string>`gen_random_uuid()`.as('id'),
+          churchId: eventTimeBlock.churchId,
+          eventTimeBlockId: eventTimeBlock.id,
+          previousStart: eventTimeBlock.startTime,
+          previousEnd: eventTimeBlock.endTime,
+          newStart: sql<Date>`${eventTimeBlock.startTime} + ${delta}`.as(
+            'new_start',
+          ),
+          newEnd: sql<Date>`${eventTimeBlock.endTime} + ${delta}`.as('new_end'),
+          movedAt: sql<Date>`now()`.as('moved_at'),
+        })
+        .from(eventTimeBlock)
+        .where(
+          and(
+            withChurchIsolation({ table: eventTimeBlock, churchId }),
+            inArray(eventTimeBlock.id, eventTimeBlockIds),
+          ),
+        ),
+    );
     await client
       .update(eventTimeBlock)
       .set({

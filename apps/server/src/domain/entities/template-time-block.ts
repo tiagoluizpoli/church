@@ -14,6 +14,12 @@ export interface TemplateTimeBlockProps {
   startTime: TimeOfDay;
   endTime: TimeOfDay;
   order: number;
+  /** Defaults to private. */
+  isPublic?: boolean;
+  /** Trimmed free text; absent when empty. */
+  place?: string;
+  /** A Church Address as the place; exclusive with `place`. */
+  placeAddressId?: string;
 }
 
 export interface TemplateTimeBlockInput {
@@ -64,5 +70,17 @@ export class TemplateTimeBlock extends Entity<
 
   get order(): number {
     return this._props.order;
+  }
+
+  get isPublic(): boolean {
+    return this._props.isPublic ?? false;
+  }
+
+  get place(): string | undefined {
+    return this._props.place;
+  }
+
+  get placeAddressId(): string | undefined {
+    return this._props.placeAddressId;
   }
 }

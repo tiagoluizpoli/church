@@ -85,7 +85,7 @@ function CycleCell({ cycle }: ListSchedules200SchedulesItem) {
 function OpenAction(row: ListSchedules200SchedulesItem) {
   return (
     <Link
-      to="/schedules/$ministryId/$cycleId"
+      to="/app/schedules/$ministryId/$cycleId"
       params={{ ministryId: row.ministry.id, cycleId: row.cycle.id }}
       aria-label={m.schedules_open_label({ name: titleOf(row) })}
       className={buttonVariants({

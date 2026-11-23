@@ -31,6 +31,7 @@ import {
   publishedShiftIds,
   remindAvailableAt,
   shiftResponses,
+  templateCollisions,
   upcomingAssignments,
   validationField,
   validationReason,
@@ -103,7 +104,15 @@ interface LoggingOptionsInput {
 function loggingOptions({ logStream, isTest, isProd }: LoggingOptionsInput) {
   const loggerOptions = { level: env.LOG_LEVEL, serializers: logSerializers };
   if (logStream) return { loggerInstance: pino(loggerOptions, logStream) };
-  if (isTest) return { logger: false };
+  // Errors only, unredacted with their cause chain (test data is synthetic),
+  // so a test's unexpected 500 names its cause instead of a bare requestId.
+  if (isTest) {
+    const testOptions = {
+      level: 'error',
+      serializers: { ...logSerializers, err: pino.stdSerializers.errWithCause },
+    };
+    return { loggerInstance: pino(testOptions, process.stderr) };
+  }
   if (isProd) return { logger: loggerOptions };
   // Bun doesn't support pino worker-thread transports — use a synchronous
   // pino-pretty stream in dev instead of the transport API.
@@ -123,7 +132,11 @@ export async function createFastify({
   const isProd = env.NODE_ENV === 'production';
 
   const logging = loggingOptions({ logStream, isTest, isProd });
-  const app = createFastifyInstance({ genReqId: requestId, ...logging });
+  const app = createFastifyInstance({
+    genReqId: requestId,
+    trustProxy: env.TRUST_PROXY_HOPS,
+    ...logging,
+  });
 
   // First, so its onRequest hook runs right after genReqId (see request-id.ts).
   await app.register(fastifyOtel.plugin());
@@ -251,6 +264,7 @@ export async function createFastify({
       const cycles = conflictingCycles(error);
       const outside = outsideEvents(error);
       const invalid = invalidEvents(error);
+      const collisions = templateCollisions(error);
       const floors = headcountFloors(error);
       const responses = shiftResponses(error);
       const flagged = flaggedBlocks(error);
@@ -267,6 +281,7 @@ export async function createFastify({
         ...(cycles && { conflictingCycles: cycles }),
         ...(outside && { outsideEvents: outside }),
         ...(invalid && { invalidEvents: invalid }),
+        ...(collisions && { collisions }),
         ...(floors && { headcountFloors: floors }),
         ...(responses && { shiftResponses: responses }),
         ...(flagged && { flaggedBlocks: flagged }),

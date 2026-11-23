@@ -215,14 +215,14 @@ async function seed(): Promise<Fixture> {
     db,
     churchId: CHURCH_A,
     name: 'Vigil',
-    weekday: 6,
+    recurrence: { kind: 'weekly', weekdays: [6] },
     blocks: [{ label: 'Night', startTime: NINE, endTime: TEN }],
   });
   const sunday = await buildEventTemplate({
     db,
     churchId: CHURCH_A,
     name: 'Sunday',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       { label: 'Service', startTime: TEN, endTime: NOON, order: 1 },
       { label: 'Welcome', startTime: NINE, endTime: TEN, order: 0 },
@@ -232,7 +232,7 @@ async function seed(): Promise<Fixture> {
     db,
     churchId: CHURCH_B,
     name: 'Far Sunday',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [{ label: 'Morning', startTime: NINE, endTime: TEN }],
   });
   const blockId = (label: string) => {
@@ -679,7 +679,7 @@ describe('PUT /ministries/:ministryId/usual-setup/:sourceTemplateTimeBlockId', (
         db: schedulingTestDb,
         churchId: CHURCH_A,
         name: 'Night',
-        weekday: 5,
+        recurrence: { kind: 'weekly', weekdays: [5] },
         blocks: [
           {
             label: 'Watch',

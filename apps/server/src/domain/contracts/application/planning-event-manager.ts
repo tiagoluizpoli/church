@@ -17,6 +17,7 @@ import type {
   MoveProposal,
   MoveScope,
 } from '../../services/event-move';
+import type { LosingEventTimeBlock } from '../../services/template-precedence-application';
 
 export interface GeneratePlanningTemplatesInput {
   churchId: ChurchId;
@@ -27,6 +28,8 @@ export interface GeneratePlanningTemplatesInput {
 export interface GeneratedPlanningCounts {
   generatedEventCount: number;
   generatedEventTimeBlockCount: number;
+  /** Existing blocks a Template Precedence now makes losers; Apply deletes none. */
+  leftoverEventTimeBlocks: LosingEventTimeBlock[];
 }
 
 /** One Time block of a complete Event create. */
@@ -34,6 +37,12 @@ export interface PlanningEventTimeBlockDraft {
   label: string;
   startTime: Date;
   endTime: Date;
+  /** Absent keeps a retained block's value; a new block starts private. */
+  isPublic?: boolean;
+  /** Empty clears; absent keeps a retained block's value. */
+  place?: string;
+  /** A Church Address as the place; sent with `place`, both set the place together. */
+  placeAddressId?: string | null;
 }
 
 /** A Draft Event with every one of its Time blocks, saved together. */
@@ -83,6 +92,13 @@ export interface UpdatePlanningEventDetailsManagerInput {
   eventId: EventId;
   title: string;
   location?: string;
+  /** Público and place of existing blocks; omitted blocks stay as they are. */
+  eventTimeBlocks?: {
+    id: EventTimeBlockId;
+    isPublic: boolean;
+    place?: string;
+    placeAddressId?: string | null;
+  }[];
 }
 
 export interface DeletePlanningEventManagerInput {

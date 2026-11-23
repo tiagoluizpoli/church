@@ -6,11 +6,18 @@ import {
   assignmentProposalApplication,
   availabilityAsk,
   availabilityCheck,
+  churchAddress,
+  churchContact,
+  churchContactGroup,
+  churchLegalProfile,
+  churchSlugHistory,
+  churchSocialLink,
   createChurch,
   cycle,
   event,
   eventTemplate,
   eventTimeBlock,
+  eventTimeBlockMove,
   identityAudit,
   invitation,
   invitationVerificationCode,
@@ -34,6 +41,7 @@ import {
   shiftRequirement,
   swapRequest,
   team,
+  templatePrecedence,
   templateTimeBlock,
   todo,
   unavailableShift,
@@ -71,6 +79,8 @@ const IDS = {
   cycle: 'aaaaaaa1-0000-4000-8000-000000000007',
   eventTemplate: 'aaaaaaa1-0000-4000-8000-000000000008',
   templateTimeBlock: 'aaaaaaa1-0000-4000-8000-000000000009',
+  /** Sorts after `eventTemplate`: a precedence pair is stored as (A < B). */
+  otherEventTemplate: 'aaaaaaa1-0000-4000-8000-0000000000f8',
   event: 'aaaaaaa1-0000-4000-8000-00000000000a',
   eventTimeBlock: 'aaaaaaa1-0000-4000-8000-00000000000b',
   participation: 'aaaaaaa1-0000-4000-8000-00000000000c',
@@ -124,6 +134,9 @@ async function seedEveryTenantedTable(): Promise<void> {
     name: 'Truncation Root Church',
     slug: 'truncation-root-church',
   });
+  await testDb
+    .insert(churchSlugHistory)
+    .values({ slug: 'truncation-root-former', churchId: IDS.church });
 
   await testDb.insert(user).values({
     id: IDS.user,
@@ -174,6 +187,40 @@ async function seedEveryTenantedTable(): Promise<void> {
   });
 
   await testDb.insert(todo).values({ text: 'Truncation root todo' });
+  await testDb.insert(churchAddress).values({
+    churchId: IDS.church,
+    street: 'Rua das Flores',
+    number: '10',
+    bairro: 'Centro',
+    city: 'Campinas',
+    uf: 'SP',
+    isMain: true,
+    position: 0,
+  });
+  const [group] = await testDb
+    .insert(churchContactGroup)
+    .values({ churchId: IDS.church, name: 'Louvor', position: 0 })
+    .returning({ id: churchContactGroup.id });
+  await testDb.insert(churchContact).values({
+    churchId: IDS.church,
+    kind: 'email',
+    value: 'contato@test.com',
+    groupId: group?.id,
+    position: 0,
+  });
+
+  await testDb.insert(churchLegalProfile).values({
+    churchId: IDS.church,
+    legalName: 'Truncation Ltda',
+    documentNumber: '11222333000181',
+  });
+
+  await testDb.insert(churchSocialLink).values({
+    churchId: IDS.church,
+    url: 'https://instagram.com/truncation',
+    network: 'instagram',
+    position: 0,
+  });
 
   await testDb.insert(ministry).values({
     id: IDS.ministry,
@@ -277,7 +324,24 @@ async function seedEveryTenantedTable(): Promise<void> {
     id: IDS.eventTemplate,
     churchId: IDS.church,
     name: 'Truncation template',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
+  });
+
+  await testDb.insert(eventTemplate).values({
+    id: IDS.otherEventTemplate,
+    churchId: IDS.church,
+    name: 'Truncation monthly template',
+    recurrence: {
+      kind: 'monthly',
+      entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+    },
+  });
+
+  await testDb.insert(templatePrecedence).values({
+    churchId: IDS.church,
+    templateAId: IDS.eventTemplate,
+    templateBId: IDS.otherEventTemplate,
+    outcome: 'b_wins',
   });
 
   await testDb.insert(templateTimeBlock).values({
@@ -312,6 +376,15 @@ async function seedEveryTenantedTable(): Promise<void> {
     eventId: IDS.event,
     startTime: new Date('2026-06-07T09:00:00Z'),
     endTime: new Date('2026-06-07T11:00:00Z'),
+  });
+
+  await testDb.insert(eventTimeBlockMove).values({
+    churchId: IDS.church,
+    eventTimeBlockId: IDS.eventTimeBlock,
+    previousStart: new Date('2026-06-07T08:00:00Z'),
+    previousEnd: new Date('2026-06-07T10:00:00Z'),
+    newStart: new Date('2026-06-07T09:00:00Z'),
+    newEnd: new Date('2026-06-07T11:00:00Z'),
   });
 
   await testDb.insert(ministryParticipation).values({

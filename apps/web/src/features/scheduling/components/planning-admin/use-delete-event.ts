@@ -25,7 +25,7 @@ export function useDeleteEvent({ cycleId, eventId }: UseDeleteEventInput) {
         queryClient.invalidateQueries({ queryKey: ['cycles'] }),
       ]);
       toast.success(m.event_editor_deleted_toast());
-      await navigate({ to: '/cycles/$cycleId', params: { cycleId } });
+      await navigate({ to: '/app/cycles/$cycleId', params: { cycleId } });
     },
     onError: async (error) => {
       if (toEventSaveRefusal({ error }).stateConflict) {

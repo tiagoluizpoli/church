@@ -24,7 +24,7 @@ function buildPayload(
 
 describe('CaptureEmailSender', () => {
   it('records a sent payload instead of dispatching mail', async () => {
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     const payload = buildPayload();
 
     const result = await sender.send({ payload, locale: 'en' });
@@ -34,7 +34,7 @@ describe('CaptureEmailSender', () => {
   });
 
   it('accumulates every send in order', async () => {
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     const first = buildPayload({ to: 'first@example.com' });
     const second = buildPayload({ to: 'second@example.com' });
 
@@ -45,7 +45,7 @@ describe('CaptureEmailSender', () => {
   });
 
   it('deduplicates a repeated idempotency key, like the provider', async () => {
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     const email = sender.prepare({ payload: buildPayload() });
 
     await sender.deliver({ email, idempotencyKey: 'outbox-message/row-1' });
@@ -56,7 +56,7 @@ describe('CaptureEmailSender', () => {
   });
 
   it('returns the most recently captured verification code for the recipient', async () => {
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     await sender.send({
       payload: {
         kind: 'invitation.verification-code',
@@ -84,7 +84,7 @@ describe('CaptureEmailSender', () => {
   });
 
   it('captures the exact prepared verification email: Church sender on the capture mailbox, HTML and text', async () => {
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     await sender.send({
       payload: {
         kind: 'invitation.verification-code',
@@ -111,7 +111,7 @@ describe('CaptureEmailSender', () => {
   });
 
   it('captures the app-branded password reset on the capture mailbox', async () => {
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     await sender.send({
       payload: {
         kind: 'auth.password-reset',
@@ -134,7 +134,7 @@ describe('CaptureEmailSender', () => {
   });
 
   it('returns undefined when no verification code was captured for the recipient', async () => {
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     await sender.send({
       payload: buildPayload({ to: 'other@example.com' }),
       locale: 'en',
@@ -146,7 +146,7 @@ describe('CaptureEmailSender', () => {
   });
 
   it('returns the joining link of the latest invitation email captured for the recipient', async () => {
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     const older = 'https://app.church.test/invitations/church/old';
     const latest = 'https://app.church.test/invitations/church/new';
     await sender.send({

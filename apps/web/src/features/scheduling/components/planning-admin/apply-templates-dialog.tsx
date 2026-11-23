@@ -19,6 +19,9 @@ import { Label } from '@/components/ui/label';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import type { ApplyPlanningTemplates201LeftoverEventTimeBlocksItem } from '@/infrastructure/api/churchAPI.schemas';
+import { useTimezone } from '@/shared/hooks/use-timezone';
+import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
@@ -29,6 +32,8 @@ interface ApplyTemplatesDialogProps {
   cycleId: string;
   selectedCycleName: string;
 }
+
+type Leftover = ApplyPlanningTemplates201LeftoverEventTimeBlocksItem;
 
 /** Template id → checked. `null` until the first list of the entry arrives. */
 type Selection = Record<string, boolean> | null;
@@ -59,6 +64,8 @@ export function ApplyTemplatesDialog({
   selectedCycleName,
 }: ApplyTemplatesDialogProps) {
   const queryClient = useQueryClient();
+  const { churchTimezone } = useTimezone();
+  const [leftovers, setLeftovers] = useState<Leftover[]>([]);
   const templatesQuery = useQuery({
     queryKey: TEMPLATE_LIST_QUERY_KEY,
     queryFn: () => adminApi.listEventTemplates(),
@@ -74,6 +81,7 @@ export function ApplyTemplatesDialog({
   useEffect(() => {
     if (!open) {
       setSelection(null);
+      setLeftovers([]);
       return;
     }
     // A cached list may predate the entry fetch; wait for the fresh one.
@@ -125,7 +133,12 @@ export function ApplyTemplatesDialog({
               }),
             }),
       );
-      onOpenChange(false);
+      // Apply deletes nothing, so the admin sees what to clean up before closing.
+      if (counts.leftoverEventTimeBlocks.length > 0) {
+        setLeftovers(counts.leftoverEventTimeBlocks);
+      } else {
+        onOpenChange(false);
+      }
     },
   });
 
@@ -151,7 +164,37 @@ export function ApplyTemplatesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {templatesQuery.isError && selection === null ? (
+        {leftovers.length > 0 ? (
+          <div className="space-y-2" data-testid="apply-leftovers">
+            <h3 className="font-medium text-sm">
+              {m.cycle_apply_leftover_title()}
+            </h3>
+            <p className="text-muted-foreground text-sm">
+              {m.cycle_apply_leftover_description()}
+            </p>
+            <ul className="max-h-[16rem] space-y-2 overflow-y-auto text-sm">
+              {leftovers.map((leftover) => (
+                <li
+                  key={leftover.eventTimeBlockId}
+                  className="surface-subtle workspace-panel"
+                  data-testid="apply-leftover-item"
+                >
+                  {m.cycle_apply_leftover_item({
+                    block: leftover.label ?? '',
+                    event: leftover.eventTitle,
+                    when: formatInstantRangeOf({
+                      start: leftover.startTime,
+                      end: leftover.endTime,
+                      timeZone: churchTimezone,
+                    }),
+                    loser: leftover.loserTemplateName,
+                    winner: leftover.winnerTemplateName,
+                  })}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : templatesQuery.isError && selection === null ? (
           <div className="space-y-2">
             <p className="text-destructive text-sm" role="alert">
               {m.cycle_apply_load_failed()}
@@ -180,7 +223,7 @@ export function ApplyTemplatesDialog({
             {m.cycle_apply_empty()}{' '}
             {/* A new tab keeps this Cycle; focus refetches the list. */}
             <a
-              href="/event-templates"
+              href="/app/event-templates"
               target="_blank"
               rel="noopener noreferrer"
               className="underline"
@@ -229,18 +272,28 @@ export function ApplyTemplatesDialog({
           </div>
         )}
 
-        <DialogFooter showCloseButton={true}>
-          <Button
-            type="button"
-            data-testid="apply-templates-button"
-            disabled={checkedIds.length === 0 || applyMutation.isPending}
-            onClick={() => applyMutation.mutate(checkedIds)}
-          >
-            {applyMutation.isPending ? <Spinner /> : null}
-            {applyMutation.isPending
-              ? m.cycle_apply_submitting()
-              : m.cycle_apply_submit()}
-          </Button>
+        <DialogFooter showCloseButton={leftovers.length === 0}>
+          {leftovers.length > 0 ? (
+            <Button
+              type="button"
+              data-testid="apply-leftovers-close"
+              onClick={() => onOpenChange(false)}
+            >
+              {m.cycle_apply_leftover_close()}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              data-testid="apply-templates-button"
+              disabled={checkedIds.length === 0 || applyMutation.isPending}
+              onClick={() => applyMutation.mutate(checkedIds)}
+            >
+              {applyMutation.isPending ? <Spinner /> : null}
+              {applyMutation.isPending
+                ? m.cycle_apply_submitting()
+                : m.cycle_apply_submit()}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

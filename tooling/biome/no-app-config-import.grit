@@ -10,12 +10,12 @@ or {
   JsExport()
 } as $hit where {
   $hit <: contains JsModuleSource() as $src,
-  $src <: r"[\"']@church/app-config[\"']",
+  $src <: r"[\"']@church/app-config[\"'/].*",
   // Legal: `import type {...}` or a clause whose specifiers are all inline
   // `type` specifiers. shortcut: matched on the statement text, not the AST
   // (Biome's Grit exposes no "absent type token" test); revisit if it misfires.
-  not $hit <: r"(?s)(import|export)\s+type\s.*",
-  not $hit <: r"(?s)(import|export)\s*\{(\s*type\s+\w+(\s+as\s+\w+)?\s*,?)+\s*\}.*",
+  not $hit <: r"(?s)(?:import|export)\s+type\s.*",
+  not $hit <: r"(?s)(?:import|export)\s*\{(?:\s*type\s+\w+(?:\s+as\s+\w+)?\s*,?)+\s*\}.*",
   $filename <: r".*apps/server/src/.*",
   not $filename <: r".*apps/server/src/(main/di|scripts)/.*",
   not $filename <: r".*/tests/.*",

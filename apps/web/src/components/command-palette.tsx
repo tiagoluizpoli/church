@@ -21,13 +21,13 @@ interface CommandItem {
 }
 
 const BASE_COMMANDS: CommandItem[] = [
-  { label: () => m.nav_home(), to: '/', icon: Home },
-  { label: () => m.nav_availability(), to: '/availability', icon: Clock },
+  { label: () => m.nav_home(), to: '/app', icon: Home },
+  { label: () => m.nav_availability(), to: '/app/availability', icon: Clock },
 ];
 
 const SCHEDULING_COMMAND: CommandItem = {
   label: () => m.nav_group_scheduling(),
-  to: '/schedules',
+  to: '/app/schedules',
   icon: CalendarClock,
 };
 

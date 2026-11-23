@@ -189,7 +189,7 @@ export function CoverageWidget(props: InsightsProps) {
                 return (
                   <li key={ministry.ministryId}>
                     <Link
-                      to="/schedules/$ministryId/$cycleId"
+                      to="/app/schedules/$ministryId/$cycleId"
                       params={{
                         ministryId: ministry.ministryId,
                         cycleId: focus.cycleId,

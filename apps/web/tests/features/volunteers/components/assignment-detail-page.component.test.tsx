@@ -112,7 +112,7 @@ describe('AssignmentDetailPage', () => {
     expect(screen.queryByText('Ministry', { selector: 'dt' })).toBeNull();
     expect(screen.getByRole('link', { name: 'My schedule' })).toHaveAttribute(
       'href',
-      '/my-schedule',
+      '/app/my-schedule',
     );
   });
 
@@ -120,7 +120,7 @@ describe('AssignmentDetailPage', () => {
     api.getAssignmentDetail.mockResolvedValue(DETAIL);
     renderPage();
     const link = await screen.findByRole('link', { name: 'Full schedule' });
-    expect(link).toHaveAttribute('href', '/my-schedule/kids/cycle-1');
+    expect(link).toHaveAttribute('href', '/app/my-schedule/kids/cycle-1');
   });
 
   it('opens the swap sheet with hint, prompt, limit and the stays-line, then sends', async () => {
@@ -393,7 +393,7 @@ describe('AssignmentDetailPage', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Back to my schedule' }),
-    ).toHaveAttribute('href', '/my-schedule');
+    ).toHaveAttribute('href', '/app/my-schedule');
   });
 
   it('renders in pt-BR', async () => {

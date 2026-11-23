@@ -393,6 +393,118 @@
       "when": 1794937969619,
       "tag": "0055_home_lookup_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1795325341683,
+      "tag": "0056_event_time_block_move",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1795329402653,
+      "tag": "0057_time_block_public_place",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795334396122,
+      "tag": "0058_church_website_accent_color",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795340192373,
+      "tag": "0059_event_template_recurrence",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1795340193895,
+      "tag": "0060_event_template_drop_weekday",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1795342393260,
+      "tag": "0061_church_logo_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1795343173692,
+      "tag": "0062_church_slug_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1795345846826,
+      "tag": "0063_template_precedence",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1795346868459,
+      "tag": "0064_church_address",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1795351526422,
+      "tag": "0065_time_block_place_address",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1795358721758,
+      "tag": "0066_church_social_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1795361348195,
+      "tag": "0067_church_contact",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795363212792,
+      "tag": "0068_church_legal_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1795370720752,
+      "tag": "0069_church_contact_group",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1795386303727,
+      "tag": "0070_church_slug_claim",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1795387854534,
+      "tag": "0071_church_contact_group_unique_name",
+      "breakpoints": true
     }
   ]
 }

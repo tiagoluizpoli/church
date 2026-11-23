@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
  * config load, so a new spec is classified deliberately.
  */
 export const ISOLATED_SPECS = [
+  'church-settings/church-settings-journey.spec.ts',
+  'public-church/public-church-profile.spec.ts',
   'identity/active-church-switching.spec.ts',
   'identity/cross-tenant-invitation-isolation.spec.ts',
   'identity/first-admin-onboarding.spec.ts',
@@ -34,6 +36,7 @@ export const ISOLATED_SPECS = [
   'scheduling/planning-nav-restructure.spec.ts',
   'scheduling/planning-role-guard-matrix.spec.ts',
   'scheduling/single-create-event-ui.spec.ts',
+  'scheduling/template-precedence.spec.ts',
   'scheduling/us1-admin-plan.spec.ts',
   // Journey recipes (#327, #329): each test loads its own Church, personas
   // and schedule.

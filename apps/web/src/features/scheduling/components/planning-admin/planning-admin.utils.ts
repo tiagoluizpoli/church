@@ -3,7 +3,6 @@ import {
   addCalendarDays,
   compareInstants,
   formatMonthYear,
-  formatWeekdayOfIndex,
   instantSpan,
   type Locale,
   now,
@@ -36,6 +35,7 @@ import type {
 } from '@/infrastructure/api/churchAPI.schemas';
 import { dayOf, formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
+import { describeRecurrence } from '@/shared/utils/recurrence-phrase';
 import { describeSpan } from '@/shared/utils/span-description';
 
 let templateTemplateTimeBlockDraftCounter = 0;
@@ -112,13 +112,16 @@ export function createEmptyTemplateTimeBlock(): TemplateTimeBlockDraft {
     label: '',
     startTime: null,
     endTime: null,
+    isPublic: false,
+    place: '',
+    placeAddressId: null,
   };
 }
 
 export function createEmptyTemplateForm(): TemplateFormState {
   return {
     name: '',
-    weekday: '0',
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [createEmptyTemplateTimeBlock()],
   };
 }
@@ -128,7 +131,7 @@ export function createTemplateFormFromTemplate({
 }: TemplateFormFromTemplateInput): TemplateFormState {
   return {
     name: template.name,
-    weekday: String(template.weekday),
+    recurrence: template.recurrence,
     blocks: [...template.blocks]
       .sort((leftBlock, rightBlock) => leftBlock.order - rightBlock.order)
       .map((block) => ({
@@ -137,6 +140,9 @@ export function createTemplateFormFromTemplate({
         label: block.label,
         startTime: parseTimeOfDay({ value: block.startTime }),
         endTime: parseTimeOfDay({ value: block.endTime }),
+        isPublic: block.isPublic,
+        place: block.place ?? '',
+        placeAddressId: block.placeAddressId,
       })),
   };
 }
@@ -159,10 +165,7 @@ export function describeTemplate({
   template,
   locale,
 }: DescribeTemplateInput): string {
-  const day = formatWeekdayOfIndex({
-    index: template.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-    locale,
-  });
+  const day = describeRecurrence({ recurrence: template.recurrence, locale });
   const count = template.blocks.length;
   const blockCount = pluralMessage({
     count,
@@ -203,22 +206,28 @@ export function toTemplateRequestBlocks({
       label: block.label.trim(),
       startTime: block.startTime,
       endTime: block.endTime,
+      isPublic: block.isPublic,
+      place: block.place.trim(),
+      placeAddressId: block.placeAddressId,
     };
   });
 }
 
 interface TemplateRequestBodyInput {
   form: TemplateFormState;
+  precedences?: UpdateEventTemplateBody['precedences'];
 }
 
 /** The complete desired state sent by both create and edit. */
 export function toTemplateRequestBody({
   form,
+  precedences,
 }: TemplateRequestBodyInput): UpdateEventTemplateBody {
   return {
     name: form.name.trim(),
-    weekday: Number.parseInt(form.weekday, 10),
+    recurrence: form.recurrence,
     blocks: toTemplateRequestBlocks({ blocks: form.blocks }),
+    ...(precedences?.length ? { precedences } : {}),
   };
 }
 
@@ -546,11 +555,9 @@ export function toTemplateLibraryTableRow({
   return {
     id: template.id,
     name: template.name,
-    weekday: formatWeekdayOfIndex({
-      index: template.weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-      locale,
-    }),
+    weekday: describeRecurrence({ recurrence: template.recurrence, locale }),
     blockCount: template.blocks.length,
+    publicBlockCount: template.publicBlockCount,
     description: describeTemplate({ template, locale }),
   };
 }

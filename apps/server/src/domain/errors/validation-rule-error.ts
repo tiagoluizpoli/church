@@ -16,6 +16,7 @@ export const VALIDATION_REASONS = [
   'DUPLICATE_EVENT_TIME_BLOCK_ID',
   'ASK_NO_ELIGIBLE_VOLUNTEERS',
   'CANCEL_CONFIRMATION',
+  'PLACE_ADDRESS_NOT_FOUND',
 ] as const;
 export type ValidationReason = (typeof VALIDATION_REASONS)[number];
 

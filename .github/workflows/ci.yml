@@ -45,6 +45,21 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
+      # Object storage for the adapter contract suite (#1014); the bucket is
+      # created by the "Create the storage bucket" step.
+      storage:
+        image: rustfs/rustfs:1.0.6
+        env:
+          RUSTFS_ACCESS_KEY: rustfsadmin
+          RUSTFS_SECRET_KEY: rustfsadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     env:
       DATABASE_URL: &integration-database-url postgresql://postgres:postgres@localhost:5432/church_unspecified_int
       # ADR-0005: getIntegrationDatabaseUrl resolves through
@@ -52,6 +67,12 @@ jobs:
       # no CHURCH_WORKTREE, so the worktree resolves to the reserved
       # "unspecified" fallback; this database name matches that.
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      # Object storage (#1014): the job's RustFS service.
+      S3_ENDPOINT: http://localhost:9000
+      S3_BUCKET: church-unspecified
+      S3_ACCESS_KEY_ID: rustfsadmin
+      S3_SECRET_ACCESS_KEY: rustfsadmin
+      STORAGE_PUBLIC_URL: http://localhost:9000/church-unspecified
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
       NODE_ENV: test
@@ -73,6 +94,9 @@ jobs:
         name: Shared CI setup
         timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
+
+      - name: Create the storage bucket
+        run: bun tooling/worktree/storage-buckets.ts church-unspecified
 
       - name: Generated API client matches the server
         run: bun run validate:api-generated
@@ -137,6 +161,19 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
+      # Object storage (#1017): the Church Settings journey uploads a logo
+      # and the browser loads it back, both at `storage:9000`.
+      storage:
+        image: rustfs/rustfs:1.0.6
+        env:
+          RUSTFS_ACCESS_KEY: rustfsadmin
+          RUSTFS_SECRET_KEY: rustfsadmin
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     defaults:
       run:
         shell: bash
@@ -155,6 +192,13 @@ jobs:
       # here is a fallback the run silently overrides, and nothing depends
       # on home-network DNS.
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      # Object storage (#1017): the job's RustFS service, by service name
+      # because this job runs in a container.
+      S3_ENDPOINT: http://storage:9000
+      S3_BUCKET: church-unspecified
+      S3_ACCESS_KEY_ID: rustfsadmin
+      S3_SECRET_ACCESS_KEY: rustfsadmin
+      STORAGE_PUBLIC_URL: http://storage:9000/church-unspecified
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
       VITE_SERVER_URL: http://localhost:4100
@@ -213,6 +257,11 @@ jobs:
         if: steps.plan.outputs.needs_e2e == 'true'
         timeout-minutes: 1
         run: bun run db:migrate
+
+      - name: Create the storage bucket
+        if: steps.plan.outputs.needs_e2e == 'true'
+        timeout-minutes: 1
+        run: bun tooling/worktree/storage-buckets.ts church-unspecified
 
       - name: Browser journeys (affected or critical smoke set)
         # An intentional no-op when the plan selected no journey (e.g. a
@@ -308,6 +357,19 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
+      # Object storage (#1017): the Church Settings journey uploads a logo
+      # and the browser loads it back, both at `storage:9000`.
+      storage:
+        image: rustfs/rustfs:1.0.6
+        env:
+          RUSTFS_ACCESS_KEY: rustfsadmin
+          RUSTFS_SECRET_KEY: rustfsadmin
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     defaults:
       run:
         shell: bash
@@ -321,6 +383,13 @@ jobs:
       # CHURCH_WORKTREE, so the worktree resolves to the reserved
       # "unspecified" fallback — this database name matches that.
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      # Object storage (#1017): the job's RustFS service, by service name
+      # because this job runs in a container.
+      S3_ENDPOINT: http://storage:9000
+      S3_BUCKET: church-unspecified
+      S3_ACCESS_KEY_ID: rustfsadmin
+      S3_SECRET_ACCESS_KEY: rustfsadmin
+      STORAGE_PUBLIC_URL: http://storage:9000/church-unspecified
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
       VITE_SERVER_URL: http://localhost:4100
@@ -364,6 +433,9 @@ jobs:
 
       - name: Unit tests
         run: bun run test:unit
+
+      - name: Create the storage bucket
+        run: bun tooling/worktree/storage-buckets.ts church-unspecified
 
       - name: Full E2E
         run: bun run test:e2e
@@ -419,11 +491,32 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
+      # Object storage for the adapter contract suite (#1014); the bucket is
+      # created by the "Create the storage bucket" step.
+      storage:
+        image: rustfs/rustfs:1.0.6
+        env:
+          RUSTFS_ACCESS_KEY: rustfsadmin
+          RUSTFS_SECRET_KEY: rustfsadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/church_unspecified_int
       # ADR-0005: CI sets no CHURCH_WORKTREE, so the integration target is
       # the reserved "unspecified" worktree's church_unspecified_int.
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      # Object storage (#1014): the job's RustFS service.
+      S3_ENDPOINT: http://localhost:9000
+      S3_BUCKET: church-unspecified
+      S3_ACCESS_KEY_ID: rustfsadmin
+      S3_SECRET_ACCESS_KEY: rustfsadmin
+      STORAGE_PUBLIC_URL: http://localhost:9000/church-unspecified
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
       NODE_ENV: test
@@ -440,6 +533,9 @@ jobs:
         name: Shared CI setup
         timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
+
+      - name: Create the storage bucket
+        run: bun tooling/worktree/storage-buckets.ts church-unspecified
 
       - name: Integration tests
         run: bun run test:integration
@@ -483,10 +579,31 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
+      # Object storage for the adapter contract suite (#1014); the bucket is
+      # created by the "Create the storage bucket" step.
+      storage:
+        image: rustfs/rustfs:1.0.6
+        env:
+          RUSTFS_ACCESS_KEY: rustfsadmin
+          RUSTFS_SECRET_KEY: rustfsadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     env:
       DATABASE_URL: *integration-database-url
       # The integration target develop-fast declares (ADR-0005).
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      # Object storage (#1014): the job's RustFS service.
+      S3_ENDPOINT: http://localhost:9000
+      S3_BUCKET: church-unspecified
+      S3_ACCESS_KEY_ID: rustfsadmin
+      S3_SECRET_ACCESS_KEY: rustfsadmin
+      STORAGE_PUBLIC_URL: http://localhost:9000/church-unspecified
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
       NODE_ENV: test
@@ -503,6 +620,9 @@ jobs:
         name: Shared CI setup
         timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
+
+      - name: Create the storage bucket
+        run: bun tooling/worktree/storage-buckets.ts church-unspecified
 
       - name: Generated API client matches the server
         run: bun run validate:api-generated
@@ -563,6 +683,19 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
+      # Object storage (#1017): the Church Settings journey uploads a logo
+      # and the browser loads it back, both at `storage:9000`.
+      storage:
+        image: rustfs/rustfs:1.0.6
+        env:
+          RUSTFS_ACCESS_KEY: rustfsadmin
+          RUSTFS_SECRET_KEY: rustfsadmin
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     defaults:
       run:
         shell: bash
@@ -581,6 +714,13 @@ jobs:
       # here is a fallback the run silently overrides, and nothing depends
       # on home-network DNS.
       BETTER_AUTH_SECRET: ci-test-secret-key-minimum-32-characters-long
+      # Object storage (#1017): the job's RustFS service, by service name
+      # because this job runs in a container.
+      S3_ENDPOINT: http://storage:9000
+      S3_BUCKET: church-unspecified
+      S3_ACCESS_KEY_ID: rustfsadmin
+      S3_SECRET_ACCESS_KEY: rustfsadmin
+      STORAGE_PUBLIC_URL: http://storage:9000/church-unspecified
       BETTER_AUTH_URL: http://localhost:4100
       CORS_ORIGIN: http://localhost:4101
       VITE_SERVER_URL: http://localhost:4100
@@ -605,6 +745,9 @@ jobs:
         name: Shared CI setup
         timeout-minutes: 5
         uses: ./.github/actions/setup-church-ci
+
+      - name: Create the storage bucket
+        run: bun tooling/worktree/storage-buckets.ts church-unspecified
 
       - name: Run E2E tests
         run: bun run test:e2e

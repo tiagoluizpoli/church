@@ -6,8 +6,8 @@ import {
   type TemplateTimeBlockProps,
 } from '@/domain/entities/template-time-block';
 import { DuplicateTemplateBlockLabelError } from '@/domain/errors/duplicate-template-block-label';
+import { InvalidRecurrenceError } from '@/domain/errors/invalid-recurrence';
 import { InvalidTimeRangeError } from '@/domain/errors/invalid-time-range';
-import { InvalidWeekdayError } from '@/domain/errors/invalid-weekday';
 
 interface CreateTemplateTimeBlockInput {
   props?: Partial<TemplateTimeBlockProps>;
@@ -33,12 +33,12 @@ function createTemplateTimeBlock({
 }
 
 describe('EventTemplate and TemplateTimeBlock', () => {
-  it('keeps blocks ordered for a valid weekday template', () => {
+  it('keeps blocks ordered for a valid weekly template', () => {
     const template = new EventTemplate({
       props: {
         churchId: '11111111-1111-1111-1111-111111111111',
         name: 'Sunday Service',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: [
           createTemplateTimeBlock(),
           createTemplateTimeBlock({
@@ -57,7 +57,7 @@ describe('EventTemplate and TemplateTimeBlock', () => {
 
     expect(template.churchId).toBe('11111111-1111-1111-1111-111111111111');
     expect(template.name).toBe('Sunday Service');
-    expect(template.weekday).toBe(0);
+    expect(template.recurrence).toEqual({ kind: 'weekly', weekdays: [0] });
     expect(template.blocks.map((block) => block.order)).toEqual([1, 2]);
   });
 
@@ -96,7 +96,7 @@ describe('EventTemplate and TemplateTimeBlock', () => {
       props: {
         churchId: '11111111-1111-1111-1111-111111111111',
         name: 'Wednesday Prayer',
-        weekday: 3,
+        recurrence: { kind: 'weekly', weekdays: [3] },
         blocks: [block],
       },
     });
@@ -105,18 +105,18 @@ describe('EventTemplate and TemplateTimeBlock', () => {
     expect(template.blocks[0]?.id).toBe('33333333-3333-3333-3333-333333333332');
   });
 
-  it('rejects weekdays outside the 0..6 range', () => {
+  it('rejects an invalid Recurrence', () => {
     expect(
       () =>
         new EventTemplate({
           props: {
             churchId: '11111111-1111-1111-1111-111111111111',
             name: 'Broken',
-            weekday: 7,
+            recurrence: { kind: 'weekly', weekdays: [] },
             blocks: [],
           },
         }),
-    ).toThrow(InvalidWeekdayError);
+    ).toThrow(InvalidRecurrenceError);
 
     expect(
       () =>
@@ -124,11 +124,14 @@ describe('EventTemplate and TemplateTimeBlock', () => {
           props: {
             churchId: '11111111-1111-1111-1111-111111111111',
             name: 'Broken',
-            weekday: -1,
+            recurrence: {
+              kind: 'monthly',
+              entries: [{ kind: 'dayOfMonth', day: 32 }],
+            },
             blocks: [],
           },
         }),
-    ).toThrow(InvalidWeekdayError);
+    ).toThrow(InvalidRecurrenceError);
   });
 
   it('rejects two blocks sharing a label, ignoring case', () => {
@@ -138,7 +141,7 @@ describe('EventTemplate and TemplateTimeBlock', () => {
           props: {
             churchId: '11111111-1111-1111-1111-111111111111',
             name: 'Broken',
-            weekday: 0,
+            recurrence: { kind: 'weekly', weekdays: [0] },
             blocks: [
               createTemplateTimeBlock({ props: { order: 0 } }),
               createTemplateTimeBlock({

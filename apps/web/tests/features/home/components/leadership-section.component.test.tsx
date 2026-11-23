@@ -114,7 +114,7 @@ function givenSchedules(schedules: ListSchedules200SchedulesItem[]) {
 }
 
 function renderHomePage() {
-  return renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+  return renderRoute({ initialPath: '/app', churchTimezone: 'UTC' });
 }
 
 function givenCapabilities(
@@ -161,7 +161,7 @@ describe('LeadershipSection', () => {
     ).toBeVisible();
     expect(
       screen.getByRole('link', { name: /Prep · October/ }),
-    ).toHaveAttribute('href', '/schedules/m-Prep/c-Prep');
+    ).toHaveAttribute('href', '/app/schedules/m-Prep/c-Prep');
   });
 
   it('shows every Ministry for a ChurchAdmin without a leader scope', async () => {
@@ -184,7 +184,7 @@ describe('LeadershipSection', () => {
     });
     expect(
       screen.getByRole('link', { name: m.home_see_all() }),
-    ).toHaveAttribute('href', '/schedules?attention=true');
+    ).toHaveAttribute('href', '/app/schedules?attention=true');
   });
 
   it('opens the Schedules page filtered to those needing attention when more need the leader', async () => {
@@ -199,7 +199,7 @@ describe('LeadershipSection', () => {
     );
 
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe('/schedules'),
+      expect(router.state.location.pathname).toBe('/app/schedules'),
     );
     await waitFor(() =>
       expect(adminApiMock.listSchedules).toHaveBeenLastCalledWith({

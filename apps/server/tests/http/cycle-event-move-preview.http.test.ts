@@ -3,6 +3,7 @@ import {
   assignmentAudit,
   event,
   eventTimeBlock,
+  eventTimeBlockMove,
   outboxMessage,
   scheduleLastTold,
   shift,
@@ -56,6 +57,7 @@ import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-o
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -85,6 +87,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -138,12 +141,14 @@ beforeAll(async () => {
       }),
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository,
       churchRepository,
       unitOfWork,
@@ -156,11 +161,13 @@ beforeAll(async () => {
         volunteerRepository: new DrizzleVolunteerRepository({ db }),
       }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       unitOfWork,
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -1180,6 +1187,73 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
     expect(outside.statusCode).toBe(409);
     expect(outside.json()).toMatchObject({ error: 'EVENT_OUTSIDE_CYCLE' });
     expect(await writeSnapshot()).toEqual(before);
+  });
+
+  it('records every moved block after Send, chaining each move from the previous one', async () => {
+    const seed = await signIn();
+    const cycle = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    const {
+      event: sunday,
+      welcome,
+      service,
+    } = await seedScheduledEvent({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+    });
+    const day = (time: string) => local({ day: '2026-10-20', time });
+
+    await confirm({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: day('14:00'),
+    });
+    await confirm({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: day('15:00'),
+    });
+
+    const rows = await db
+      .select()
+      .from(eventTimeBlockMove)
+      .orderBy(eventTimeBlockMove.movedAt, eventTimeBlockMove.previousStart);
+    const bounds = (blockId: string) =>
+      rows
+        .filter((row) => row.eventTimeBlockId === blockId)
+        .map((row) => [
+          row.previousStart.toISOString(),
+          row.previousEnd.toISOString(),
+          row.newStart.toISOString(),
+          row.newEnd.toISOString(),
+        ]);
+    expect(rows).toHaveLength(4);
+    expect(bounds(welcome.id)).toEqual([
+      [at('09:00'), at('10:00'), day('14:00'), day('15:00')],
+      [day('14:00'), day('15:00'), day('15:00'), day('16:00')],
+    ]);
+    expect(bounds(service.id)).toEqual([
+      [at('10:00'), at('12:00'), day('15:00'), day('17:00')],
+      [day('15:00'), day('17:00'), day('16:00'), day('18:00')],
+    ]);
+    expect(rows.every((row) => row.churchId === seed.churchAId)).toBe(true);
+  });
+
+  it('records nothing when the move is refused', async () => {
+    const seed = await signIn();
+    const cycle = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    const { event: sunday } = await seedScheduledEvent({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+    });
+
+    const response = await confirm({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: local({ day: '2026-10-26', time: '00:30' }),
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(await db.select().from(eventTimeBlockMove)).toEqual([]);
   });
 
   it('answers 403 to a non-admin', async () => {

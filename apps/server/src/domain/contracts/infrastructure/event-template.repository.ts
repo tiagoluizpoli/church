@@ -7,6 +7,7 @@ import type {
   EventTemplate,
   EventTemplateUsage,
 } from '../../entities/event-template';
+import type { Recurrence } from '../../recurrence';
 import type { TransactionContext } from './transaction-context';
 
 export interface EventTemplateTimeBlockInput {
@@ -16,12 +17,17 @@ export interface EventTemplateTimeBlockInput {
   startTime: string;
   endTime: string;
   order: number;
+  /** Defaults to private. */
+  isPublic?: boolean;
+  place?: string | null;
+  /** A Church Address of the same Church; exclusive with `place`. */
+  placeAddressId?: string | null;
 }
 
 export interface CreateEventTemplateInput {
   churchId: ChurchId;
   name: string;
-  weekday: number;
+  recurrence: Recurrence;
   blocks: EventTemplateTimeBlockInput[];
   tx?: TransactionContext;
 }
@@ -30,7 +36,7 @@ export interface UpdateEventTemplateInput {
   churchId: ChurchId;
   templateId: EventTemplateId;
   name: string;
-  weekday: number;
+  recurrence: Recurrence;
   blocks: EventTemplateTimeBlockInput[];
   tx?: TransactionContext;
 }

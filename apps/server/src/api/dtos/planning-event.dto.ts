@@ -11,11 +11,14 @@ import {
   eventTimeBlockMapper,
   eventTimeBlockResponseSchema,
 } from './event-time-block.dto';
+import { timeBlockPlaceFields, withOnePlace } from './time-block-place.dto';
 
-const planningEventTimeBlockBodySchema = z.object({
+const planningEventTimeBlockFieldsSchema = z.object({
   label: z.string().trim().min(1),
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
+  isPublic: z.boolean().optional(),
+  ...timeBlockPlaceFields,
 });
 
 /** A complete Draft Event: its fields and every Time block, saved together. */
@@ -24,7 +27,7 @@ export const createPlanningEventBodySchema = z.object({
   location: z.string().optional(),
   start: z.string().datetime(),
   end: z.string().datetime(),
-  eventTimeBlocks: z.array(planningEventTimeBlockBodySchema),
+  eventTimeBlocks: z.array(withOnePlace(planningEventTimeBlockFieldsSchema)),
 });
 
 export type CreatePlanningEventBody = z.infer<
@@ -39,9 +42,11 @@ export const updatePlanningEventBodySchema = createPlanningEventBodySchema
   .omit({ eventTimeBlocks: true })
   .extend({
     eventTimeBlocks: z.array(
-      planningEventTimeBlockBodySchema.extend({
-        id: z.string().uuid().optional(),
-      }),
+      withOnePlace(
+        planningEventTimeBlockFieldsSchema.extend({
+          id: z.string().uuid().optional(),
+        }),
+      ),
     ),
   });
 
@@ -49,10 +54,21 @@ export type UpdatePlanningEventBody = z.infer<
   typeof updatePlanningEventBodySchema
 >;
 
-/** A Sent Event's details correction: title and optional location only. */
+/** A Sent Event's details correction: title, optional location and the public fields of blocks. */
 export const updatePlanningEventDetailsBodySchema = z.object({
   title: z.string().trim().min(1),
   location: z.string().optional(),
+  eventTimeBlocks: z
+    .array(
+      withOnePlace(
+        z.object({
+          id: z.string().uuid(),
+          isPublic: z.boolean(),
+          ...timeBlockPlaceFields,
+        }),
+      ),
+    )
+    .optional(),
 });
 
 export type UpdatePlanningEventDetailsBody = z.infer<

@@ -76,7 +76,7 @@ describe('the sign-in route (login)', () => {
     });
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/');
+      expect(router.state.location.pathname).toBe('/app');
     });
   });
 
@@ -84,12 +84,12 @@ describe('the sign-in route (login)', () => {
     getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
 
     const { router } = renderRoute({
-      initialPath: '/login?redirect=%2Fno-access',
+      initialPath: '/login?redirect=%2Fapp%2Fno-access',
       churchTimezone: 'UTC',
     });
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/no-access');
+      expect(router.state.location.pathname).toBe('/app/no-access');
     });
     expect(await screen.findByText(m.no_access_title())).toBeVisible();
   });
@@ -110,7 +110,7 @@ describe('the sign-in route (login)', () => {
     });
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/');
+      expect(router.state.location.pathname).toBe('/app');
     });
   });
 });

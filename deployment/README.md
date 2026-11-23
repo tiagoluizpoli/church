@@ -12,7 +12,7 @@ ports.
 | Image | Dockerfile | Contents |
 | --- | --- | --- |
 | server | [server.Dockerfile](server.Dockerfile) | the API (`start:deployment`), the migration command and the operator database command |
-| web | [web.Dockerfile](web.Dockerfile) | the static frontend on nginx, port 8080, which proxies `/api/` to `server:3000` ([nginx.conf](nginx.conf)) |
+| web | [web.Dockerfile](web.Dockerfile) | the static frontend on Caddy, port 8080, which proxies `/api/` to `server:3000` ([Caddyfile](Caddyfile)) |
 
 Build both from the repository root at the commit being deployed:
 
@@ -28,7 +28,7 @@ The deployment workflows build and push them for you; see
 [docs/operations/deployments.md](../docs/operations/deployments.md) for the
 develop pipeline, its checks and the deployment runbook.
 
-`APP_REVISION` is the only build argument, and the build fails without it.
+`APP_REVISION` is the only required build argument, and the build fails without it. The web image also takes three optional Google Maps build arguments per environment: `GOOGLE_MAPS_BROWSER_KEY` (referrer-restricted; the address search and pin map in Church Settings), `GOOGLE_MAPS_MAP_ID` (the Map ID the pin map's Advanced Markers need; set it whenever the browser key is set) and `GOOGLE_MAPS_EMBED_KEY` (Maps Embed API only; the Public Church Profile map). Without them those are hidden: CEP lookup and manual entry still work, and the public page shows its addresses and directions links without a map.
 The web build takes the error tracker settings as optional build secrets
 (`tooling/deployment/.env.schema`): it uploads the web source maps under the
 revision and deletes them before the served stage, so no `.map` is ever
@@ -60,6 +60,12 @@ contract in `packages/env/src/server.ts`.
 | `PUBLIC_ORIGIN` | yes | the environment's public origin, e.g. `https://staging.example.org`; it becomes `BETTER_AUTH_URL` and `CORS_ORIGIN` |
 | `RESEND_API_KEY` | yes, secret | Resend key for outgoing email |
 | `RESEND_FROM_EMAIL` | yes | sender, e.g. `Church <noreply@example.org>` |
+| `S3_ENDPOINT` | yes | the VPS RustFS S3 endpoint (#976); copied with the next four from Dokploy `Shared/rustfs` `CHURCH_<ENV>_S3_*`, never the homelab backup RustFS |
+| `S3_REGION` | no | default `us-east-1` |
+| `S3_BUCKET` | yes | `church-<environment>` |
+| `S3_ACCESS_KEY_ID` | yes, secret | key scoped to the environment's bucket |
+| `S3_SECRET_ACCESS_KEY` | yes, secret | its secret |
+| `STORAGE_PUBLIC_URL` | yes | anonymous base of the bucket's `public/` objects, e.g. `https://storage.lunalabs.com.br/church-production`; the database stores keys, never URLs |
 | `LOG_LEVEL` | no | `fatal`, `error`, `warn`, `info` (default), `debug` or `trace` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | OTLP/HTTP base URL of the tracing backend, e.g. `http://<tempo>:4318`; unset, no traces are exported |
 | `TRACE_SAMPLE_RATE` | no | share of new traces kept, `0` to `1` (default `1`); an incoming `traceparent`'s decision wins |
@@ -96,7 +102,7 @@ under Bun.
 | --- | --- | --- |
 | API URL in the browser | explicit `VITE_SERVER_URL` (absolute, per worktree port) | `VITE_SERVER_URL=/`: same origin, relative `/api` |
 | Auth client | `baseURL` = `VITE_SERVER_URL` | no `baseURL`: Better Auth uses the page origin plus `/api/auth` |
-| CORS / auth origin | web origin and server URL from `.env.local` | both `PUBLIC_ORIGIN`; requests arrive same-origin through nginx |
+| CORS / auth origin | web origin and server URL from `.env.local` | both `PUBLIC_ORIGIN`; requests arrive same-origin through Caddy |
 | Cookies | `SameSite=Lax`, not `Secure`, over plain HTTP | `Secure` with `SameSite=None` when `PUBLIC_ORIGIN` is `https://` |
 | Configuration | Varlock schemas plus generated `.env.local` | Varlock schemas plus the process environment; no value files |
 | Database | `church_<worktree>_*` on the shared local instance | `church_<environment>` on the host's shared instance |
@@ -108,6 +114,15 @@ under Bun.
   migrate` once, and exits. `server` starts only
   after it succeeds, so a failed migration stops the deployment.
 - `server` is not routed publicly. Its healthcheck calls `/api/health`.
+- `web` routes a slug-shaped single root segment that is not an app route
+  (`/{slug}`, see [Caddyfile](Caddyfile)) to the server, which reads
+  `index.html` back from `web` through its `church-web` alias
+  (`WEB_INTERNAL_URL`, default `http://church-web:8080`) and answers it with
+  the Church's meta tags, a 301 for an old slug or a 404.
+- `server` trusts two proxy hops in `X-Forwarded-For` (`TRUST_PROXY_HOPS: 2`:
+  Dokploy's Traefik, then the web's Caddy), so `request.ip`, which keys the
+  public and redemption rate limits, is the visitor and not a proxy. Change it
+  only when the proxy chain changes; a higher number lets visitors spoof it.
 - `web` is the only public service. Its healthcheck reads `/revision.txt`, and
   it starts once `server` is healthy.
 - `migrate` and `server` join `DATABASE_NETWORK` to reach PostgreSQL. `web`

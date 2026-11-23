@@ -2,17 +2,35 @@ import {
   addChurchMember,
   type ChurchAccessLevel,
   type ChurchRecord,
+  church,
+  churchAddress,
+  churchContact,
+  churchContactGroup,
+  churchLegalProfile,
+  churchSlugHistory,
+  churchSocialLink,
   createChurch,
   invitation,
   user,
 } from '@church/db';
+import { detectSocialNetwork } from '@church/domain-rules/social-networks';
 import { and, eq } from 'drizzle-orm';
+import sharp from 'sharp';
 import { z } from 'zod';
+import { storeChurchLogo } from '../../src/application/church-logo-pipeline';
 import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../src/domain/authority/types';
+import { ChurchId } from '../../src/domain/branded-ids';
+import type { ChurchContact } from '../../src/domain/church-contact';
+import type { ObjectStorage } from '../../src/domain/contracts/infrastructure/object-storage';
 import { ensurePlatformOperator } from '../../src/scripts/ensure-platform-operator';
 import { provisionChurch } from '../../src/scripts/provision-church';
 import { SEED_PLATFORM_OPERATOR_ID } from '../blueprints/credentials';
+import type {
+  ChurchAddressBlueprint,
+  ChurchSocialLinkBlueprint,
+} from '../blueprints/directory/types';
 import type { SeedWriter } from '../recipe';
+import { deriveSeedId } from './derived-id';
 
 const ChurchAccessLevelSchema = z.enum(CHURCH_ACCESS_LEVEL_OPTIONS);
 
@@ -20,7 +38,8 @@ export interface BuildProvisionedChurchInput {
   db: SeedWriter;
   id: string;
   name: string;
-  slug: string;
+  /** Omitted, derived from the name through the Church Slug schema. */
+  slug?: string;
   timezone: string;
   adminEmail: string;
   adminInvitationId: string;
@@ -128,6 +147,199 @@ export async function redeemChurchInvitation({
   });
 }
 
+export interface BuildChurchSettingsInput {
+  db: SeedWriter;
+  churchId: string;
+  website: string | null;
+  accentColor: string | null;
+}
+
+/** Direct-state builder: the Church Settings fields the Church extension row holds. */
+export async function buildChurchSettings({
+  db,
+  churchId,
+  website,
+  accentColor,
+}: BuildChurchSettingsInput): Promise<void> {
+  await db
+    .update(church)
+    .set({ website, accentColor })
+    .where(eq(church.id, churchId));
+}
+
+export interface BuildChurchContactGroupsInput {
+  db: SeedWriter;
+  churchId: string;
+  /** Group names in display order; each is created once. */
+  names: readonly string[];
+}
+
+/** Direct-state builder: the Church's Contact Groups; returns their ids by name. */
+export async function buildChurchContactGroups({
+  db,
+  churchId,
+  names,
+}: BuildChurchContactGroupsInput): Promise<Map<string, string>> {
+  const groups = names.map((name, position) => ({
+    id: deriveSeedId({
+      kind: 'church-contact-group',
+      parentIds: [churchId, String(position)],
+    }),
+    churchId,
+    name,
+    position,
+  }));
+  if (groups.length > 0) await db.insert(churchContactGroup).values(groups);
+  return new Map(groups.map(({ name, id }) => [name, id]));
+}
+
+export interface BuildChurchContactsInput {
+  db: SeedWriter;
+  churchId: string;
+  contacts: ChurchContact[];
+  /** Group ids by name, from `buildChurchContactGroups`. */
+  groupIds: ReadonlyMap<string, string>;
+}
+
+/** Direct-state builder: the Church Contacts of a Church, in the given order. */
+export async function buildChurchContacts({
+  db,
+  churchId,
+  contacts,
+  groupIds,
+}: BuildChurchContactsInput): Promise<void> {
+  if (contacts.length === 0) return;
+  await db.insert(churchContact).values(
+    contacts.map(({ group, ...contact }, position) => ({
+      ...contact,
+      groupId: group ? (groupIds.get(group) ?? null) : null,
+      id: deriveSeedId({
+        kind: 'church-contact',
+        parentIds: [churchId, String(position)],
+      }),
+      churchId,
+      position,
+    })),
+  );
+}
+
+export interface BuildChurchAddressesInput {
+  db: SeedWriter;
+  churchId: string;
+  addresses: readonly ChurchAddressBlueprint[];
+}
+
+export interface ChurchAddressSeedIdInput {
+  churchId: string;
+  position: number;
+}
+
+/** The derived id of the Church's address at `position` in its blueprint. */
+export function churchAddressSeedId({
+  churchId,
+  position,
+}: ChurchAddressSeedIdInput): string {
+  return deriveSeedId({
+    kind: 'church-address',
+    parentIds: [churchId, String(position)],
+  });
+}
+
+interface ChurchAddressRowInput {
+  churchId: string;
+  address: ChurchAddressBlueprint;
+  position: number;
+  isMain: boolean;
+}
+
+function churchAddressRow({
+  churchId,
+  address,
+  position,
+  isMain,
+}: ChurchAddressRowInput) {
+  return {
+    id: churchAddressSeedId({ churchId, position }),
+    churchId,
+    label: address.label ?? null,
+    street: address.street,
+    number: address.number,
+    complement: address.complement ?? null,
+    bairro: address.bairro,
+    city: address.city,
+    uf: address.uf,
+    cep: address.cep?.replace('-', '') ?? null,
+    isPublic: address.isPublic ?? true,
+    isMain,
+    position,
+    latitude: address.pin?.latitude ?? null,
+    longitude: address.pin?.longitude ?? null,
+    pinSource: address.pin?.source ?? null,
+  };
+}
+
+/** Direct-state builder: the Church's addresses in order, the first one main. */
+export async function buildChurchAddresses({
+  db,
+  churchId,
+  addresses,
+}: BuildChurchAddressesInput): Promise<void> {
+  if (addresses.length === 0) return;
+  await db.insert(churchAddress).values(
+    addresses.map((address, position) =>
+      churchAddressRow({
+        churchId,
+        address,
+        position,
+        isMain: position === 0,
+      }),
+    ),
+  );
+}
+
+export interface BuildChurchAddressInput {
+  db: SeedWriter;
+  churchId: string;
+  address: ChurchAddressBlueprint;
+  position: number;
+  /** One address per Church is main (the database holds it). */
+  isMain: boolean;
+}
+
+/** Direct-state builder: one Church Address at `position`; returns its id. */
+export async function buildChurchAddress({
+  db,
+  ...input
+}: BuildChurchAddressInput): Promise<string> {
+  const row = churchAddressRow(input);
+  await db.insert(churchAddress).values(row);
+  return row.id;
+}
+
+export interface BuildChurchLogoInput {
+  db: SeedWriter;
+  objectStorage: ObjectStorage;
+  churchId: string;
+  svg: string;
+}
+
+/** Uploads the logo through the app's own pipeline and points the Church at it. */
+export async function buildChurchLogo({
+  db,
+  objectStorage,
+  churchId,
+  svg,
+}: BuildChurchLogoInput): Promise<string> {
+  const bytes = await sharp(Buffer.from(svg)).png().toBuffer();
+  const logoKey = await storeChurchLogo({
+    objectStorage,
+    churchId: ChurchId.from(churchId),
+    bytes,
+  });
+  await db.update(church).set({ logoKey }).where(eq(church.id, churchId));
+  return logoKey;
+}
+
 export interface BuildChurchInput {
   db: SeedWriter;
   id: string;
@@ -170,4 +382,81 @@ export async function buildChurchMembership({
   id,
 }: BuildChurchMembershipInput): Promise<void> {
   await addChurchMember({ db, churchId, userId, accessLevel, id });
+}
+
+export interface BuildChurchSocialLinksInput {
+  db: SeedWriter;
+  churchId: string;
+  socialLinks: readonly ChurchSocialLinkBlueprint[];
+  /** Group ids by name, from `buildChurchContactGroups`. */
+  groupIds: ReadonlyMap<string, string>;
+}
+
+/** Direct-state builder: the Church's Social Links in order, networks detected from the URLs. */
+export async function buildChurchSocialLinks({
+  db,
+  churchId,
+  socialLinks,
+  groupIds,
+}: BuildChurchSocialLinksInput): Promise<void> {
+  if (socialLinks.length === 0) return;
+  await db.insert(churchSocialLink).values(
+    socialLinks.map((link, position) => {
+      const detection = detectSocialNetwork({ url: link.url });
+      if ('refusal' in detection) {
+        throw new Error(`Seed social link ${link.url}: ${detection.refusal}`);
+      }
+      return {
+        id: deriveSeedId({
+          kind: 'church-social-link',
+          parentIds: [churchId, String(position)],
+        }),
+        churchId,
+        url: link.url,
+        network: detection.network,
+        description: link.description ?? null,
+        groupId: link.group ? (groupIds.get(link.group) ?? null) : null,
+        position,
+      };
+    }),
+  );
+}
+
+export interface BuildChurchLegalProfileInput {
+  db: SeedWriter;
+  churchId: string;
+  legalProfile?: { legalName: string; cnpj: string; isPublic: boolean };
+}
+
+/** Direct-state builder: the Church Legal Profile, when the blueprint has one. */
+export async function buildChurchLegalProfile({
+  db,
+  churchId,
+  legalProfile,
+}: BuildChurchLegalProfileInput): Promise<void> {
+  if (!legalProfile) return;
+  await db.insert(churchLegalProfile).values({
+    churchId,
+    legalName: legalProfile.legalName,
+    documentNumber: legalProfile.cnpj,
+    isPublic: legalProfile.isPublic,
+  });
+}
+
+export interface BuildChurchSlugHistoryInput {
+  db: SeedWriter;
+  churchId: string;
+  slugs: readonly string[];
+}
+
+/** Direct-state builder: Church Slugs the Church gave up, kept reserved to it. */
+export async function buildChurchSlugHistory({
+  db,
+  churchId,
+  slugs,
+}: BuildChurchSlugHistoryInput): Promise<void> {
+  if (slugs.length === 0) return;
+  await db
+    .insert(churchSlugHistory)
+    .values(slugs.map((slug) => ({ slug, churchId })));
 }

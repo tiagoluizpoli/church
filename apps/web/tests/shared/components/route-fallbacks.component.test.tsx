@@ -71,7 +71,7 @@ vi.mock('@/components/app-shell', () => ({
   AppShell: ({ children }: ChildrenProps) => (
     <>
       <nav>
-        <Link to="/my-schedule">Shell nav link</Link>
+        <Link to="/app/my-schedule">Shell nav link</Link>
       </nav>
       <main>{children}</main>
     </>
@@ -102,7 +102,10 @@ describe('route crash fallback', () => {
 
   it('renders a crashed page as the in-shell fallback and keeps shell navigation usable', async () => {
     page.homeCrash = new Error('boom');
-    const { router } = renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+    const { router } = renderRoute({
+      initialPath: '/app',
+      churchTimezone: 'UTC',
+    });
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(m.shell_error_title());
@@ -116,13 +119,13 @@ describe('route crash fallback', () => {
     expect(
       await screen.findByRole('status', { name: m.shell_route_loading() }),
     ).toBeVisible();
-    expect(router.state.location.pathname).toBe('/my-schedule');
+    expect(router.state.location.pathname).toBe('/app/my-schedule');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('recovers from a transient crash on Try again, reloading the route data', async () => {
     page.homeCrash = new Error('transient');
-    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+    renderRoute({ initialPath: '/app', churchTimezone: 'UTC' });
     await screen.findByRole('alert');
     const statusCalls =
       activeChurchApiMock.getActiveChurchStatus.mock.calls.length;
@@ -147,7 +150,7 @@ describe('route crash fallback', () => {
     );
     page.myScheduleCrash = new Error('boom');
     const { router } = renderRoute({
-      initialPath: '/my-schedule',
+      initialPath: '/app/my-schedule',
       churchTimezone: 'UTC',
     });
 
@@ -158,14 +161,14 @@ describe('route crash fallback', () => {
     expect(
       await screen.findByRole('heading', { name: 'Home content' }),
     ).toBeVisible();
-    expect(router.state.location.pathname).toBe('/');
+    expect(router.state.location.pathname).toBe('/app');
   });
 
   it('takes over the screen when the shell itself cannot resolve, with the same actions', async () => {
     activeChurchApiMock.getActiveChurchStatus.mockRejectedValue(
       new Error('status failed'),
     );
-    renderRoute({ initialPath: '/' });
+    renderRoute({ initialPath: '/app' });
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(m.shell_error_title());
@@ -175,7 +178,7 @@ describe('route crash fallback', () => {
     ).toHaveFocus();
     expect(
       screen.getByRole('link', { name: m.shell_error_go_home() }),
-    ).toHaveAttribute('href', '/');
+    ).toHaveAttribute('href', '/app');
 
     activeChurchApiMock.getActiveChurchStatus.mockResolvedValue(
       resolvedActiveChurchStatus(),
@@ -191,19 +194,20 @@ describe('route crash fallback', () => {
   });
 
   it('shows the not-found screen with a way home for an unknown URL', async () => {
-    renderRoute({ initialPath: '/no-such-page', churchTimezone: 'UTC' });
+    // A single root segment is a Church Slug (`/$slug`); deeper paths reach the router default.
+    renderRoute({ initialPath: '/no/such-page', churchTimezone: 'UTC' });
 
     expect(
       await screen.findByRole('heading', { name: m.shell_not_found_title() }),
     ).toHaveFocus();
     expect(
       screen.getByRole('link', { name: m.shell_error_go_home() }),
-    ).toHaveAttribute('href', '/');
+    ).toHaveAttribute('href', '/app');
   });
 
   it('shows error details collapsed in development builds', async () => {
     page.homeCrash = new Error('dev-only message');
-    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+    renderRoute({ initialPath: '/app', churchTimezone: 'UTC' });
 
     const summary = await screen.findByText(m.shell_error_details());
     expect(summary.closest('details')).not.toHaveAttribute('open');
@@ -213,7 +217,7 @@ describe('route crash fallback', () => {
   it('never shows error details in production builds', async () => {
     vi.stubEnv('DEV', false);
     page.homeCrash = new Error('secret message');
-    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+    renderRoute({ initialPath: '/app', churchTimezone: 'UTC' });
 
     await screen.findByRole('alert');
     expect(screen.queryByText(m.shell_error_details())).not.toBeInTheDocument();
@@ -234,13 +238,13 @@ describe('chunk-load failure after a deploy', () => {
   });
 
   it('reloads the tab exactly once, then shows the fallback on a repeat', async () => {
-    const first = renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+    const first = renderRoute({ initialPath: '/app', churchTimezone: 'UTC' });
     await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     first.unmount();
 
     // The reloaded tab hits the same missing chunk within the guard window.
-    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+    renderRoute({ initialPath: '/app', churchTimezone: 'UTC' });
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       m.shell_error_title(),
@@ -250,7 +254,7 @@ describe('chunk-load failure after a deploy', () => {
 
   it('shows the fallback without reloading for an ordinary crash', async () => {
     page.homeCrash = new Error('boom');
-    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+    renderRoute({ initialPath: '/app', churchTimezone: 'UTC' });
 
     await screen.findByRole('alert');
     expect(reload).not.toHaveBeenCalled();
@@ -273,7 +277,7 @@ describe('crash reporting', () => {
     const tunnel = serveTunnel({ reporting: 'on' });
     await initErrorReporting();
     page.homeCrash = new TypeError('boom');
-    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+    renderRoute({ initialPath: '/app', churchTimezone: 'UTC' });
 
     const alert = await screen.findByRole('alert');
     await expect.poll(() => tunnel.items.length).toBe(1);
@@ -300,7 +304,7 @@ describe('crash reporting', () => {
     serveTunnel({ reporting: 'off' });
     await initErrorReporting();
     page.homeCrash = new Error('boom');
-    renderRoute({ initialPath: '/', churchTimezone: 'UTC' });
+    renderRoute({ initialPath: '/app', churchTimezone: 'UTC' });
 
     const alert = await screen.findByRole('alert');
     expect(alert).not.toHaveTextContent(

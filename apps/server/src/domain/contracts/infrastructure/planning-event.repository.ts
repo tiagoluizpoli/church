@@ -72,6 +72,9 @@ export interface CreatePlanningEventTimeBlockInput {
   startTime: Date;
   endTime: Date;
   label?: string;
+  isPublic?: boolean;
+  place?: string;
+  placeAddressId?: string;
   tx?: TransactionContext;
 }
 

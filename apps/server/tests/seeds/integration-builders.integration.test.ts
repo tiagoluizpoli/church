@@ -661,7 +661,7 @@ describe('integration composition of the shared seed builders', () => {
       db: testDb,
       churchId: CHURCH_ID,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
           label: 'Early',
@@ -678,7 +678,10 @@ describe('integration composition of the shared seed builders', () => {
       ],
     });
 
-    expect(built.template).toMatchObject({ name: 'Sunday', weekday: 0 });
+    expect(built.template).toMatchObject({
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+    });
     expect(built.blocks.map((block) => block.label)).toEqual(['Early', 'Late']);
   });
 

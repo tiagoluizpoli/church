@@ -29,7 +29,7 @@ export function CreateMinistryDialog() {
     toast.success(m.ministry_created_toast());
     setOpen(false);
     await navigate({
-      to: '/ministries/$ministryId/sectors',
+      to: '/app/ministries/$ministryId/sectors',
       params: { ministryId: ministry.id },
     });
   };

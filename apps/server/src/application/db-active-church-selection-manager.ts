@@ -1,4 +1,5 @@
 import type { ChurchId } from '../domain/branded-ids';
+import { formatChurchLocality } from '../domain/church-locality';
 import type {
   ActiveChurchResolution,
   IActiveChurchResolver,
@@ -17,14 +18,18 @@ import type {
   ChurchMembershipComparison,
   ChurchMembershipRepository,
 } from '../domain/contracts/infrastructure/church-membership.repository';
+import type { ObjectStorage } from '../domain/contracts/infrastructure/object-storage';
+import { churchLogoUrl } from './church-logo-url';
 
 interface ToSelectionOptionInput {
   comparison: ChurchMembershipComparison;
+  objectStorage: Pick<ObjectStorage, 'publicUrl'>;
   availableAreas: ApplicationArea[];
 }
 
 function toSelectionOption({
   comparison,
+  objectStorage,
   availableAreas,
 }: ToSelectionOptionInput): ChurchSelectionOption {
   return {
@@ -33,7 +38,10 @@ function toSelectionOption({
     timezone: comparison.timezone,
     accessLevel: comparison.accessLevel,
     availableAreas,
+    logoUrl: churchLogoUrl({ objectStorage, logoKey: comparison.logoKey }),
+    accentColor: comparison.accentColor,
     lastOpenedAt: comparison.lastOpenedAt,
+    locality: formatChurchLocality(comparison.mainAddress),
   };
 }
 
@@ -47,6 +55,7 @@ interface DbActiveChurchSelectionManagerDependencies {
   authorityManager: IAuthorityManager;
   activeChurchResolver: IActiveChurchResolver;
   churchRepository: ChurchRepository;
+  objectStorage: Pick<ObjectStorage, 'publicUrl'>;
 }
 
 export class DbActiveChurchSelectionManager
@@ -56,17 +65,20 @@ export class DbActiveChurchSelectionManager
   private readonly authorityManager: IAuthorityManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly churchRepository: ChurchRepository;
+  private readonly objectStorage: Pick<ObjectStorage, 'publicUrl'>;
 
   constructor({
     membershipRepository,
     authorityManager,
     activeChurchResolver,
     churchRepository,
+    objectStorage,
   }: DbActiveChurchSelectionManagerDependencies) {
     this.membershipRepository = membershipRepository;
     this.authorityManager = authorityManager;
     this.activeChurchResolver = activeChurchResolver;
     this.churchRepository = churchRepository;
+    this.objectStorage = objectStorage;
   }
 
   async listSelectableChurches(
@@ -82,7 +94,11 @@ export class DbActiveChurchSelectionManager
           userId: input.userId,
           churchId: comparison.churchId,
         });
-        return toSelectionOption({ comparison, availableAreas });
+        return toSelectionOption({
+          comparison,
+          objectStorage: this.objectStorage,
+          availableAreas,
+        });
       }),
     );
   }

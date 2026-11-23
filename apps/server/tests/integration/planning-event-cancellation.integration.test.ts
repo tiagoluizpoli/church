@@ -46,6 +46,7 @@ import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/dr
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { buildChurchMembership } from '@/seeds/builders/church';
@@ -58,6 +59,7 @@ import {
   CHURCH_OCTOBER_1_NOON,
   seedSentSunday,
 } from '@/tests/test-support/cancellation-fixture';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 
 const db = schedulingTestDb;
 const eventRepository = new DrizzlePlanningEventRepository({ db });
@@ -66,6 +68,7 @@ const unitOfWork = new DrizzleUnitOfWork({ db });
 const managerDependencies = {
   cycleRepository: new DrizzleCycleRepository({ db }),
   eventRepository,
+  precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
   templateRepository: new DrizzleEventTemplateRepository({ db }),
   churchRepository,
   unitOfWork,
@@ -78,6 +81,7 @@ const managerDependencies = {
     volunteerRepository: new DrizzleVolunteerRepository({ db }),
   }),
   notifications: new ChurchNotifications({
+    churchIdentity: nullChurchIdentity,
     outboxRepository: new DrizzleOutboxRepository({ db }),
   }),
 };
@@ -472,6 +476,7 @@ function swapRequestManager(swapRequestRepo: DrizzleSwapRequestRepository) {
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
     }),
     notifications: new ChurchNotifications({
+      churchIdentity: nullChurchIdentity,
       outboxRepository: new DrizzleOutboxRepository({ db }),
     }),
     authorityManager: new DbAuthorityManager({

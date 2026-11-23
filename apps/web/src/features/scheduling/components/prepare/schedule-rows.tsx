@@ -79,7 +79,7 @@ export function ScheduleRows({
       {schedules.map((row) => (
         <li key={`${row.ministry.id}:${row.cycle.id}`}>
           <Link
-            to="/schedules/$ministryId/$cycleId"
+            to="/app/schedules/$ministryId/$cycleId"
             params={{ ministryId: row.ministry.id, cycleId: row.cycle.id }}
             className="flex min-h-11 flex-wrap items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
           >

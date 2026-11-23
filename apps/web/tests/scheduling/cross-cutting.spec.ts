@@ -88,7 +88,7 @@ test.describe('DL4-X1 church isolation', () => {
     expect(sendResponse.status()).toBe(404);
 
     // Same check from the UI: the cycle list never renders churchA's cycle.
-    await page.goto('/cycles');
+    await page.goto('/app/cycles');
     await expect(
       page.getByRole('link', { name: `Abrir ${churchB.cycle.name}` }),
     ).toBeVisible({ timeout: 15_000 });
@@ -149,7 +149,7 @@ test.describe('DL4-X2 network failure on send', () => {
 
     await page.route('**/cycles/*/send', (route) => route.abort('failed'));
 
-    await page.goto('/cycles');
+    await page.goto('/app/cycles');
     await page.getByRole('link', { name: `Abrir ${month.cycleName}` }).click();
     await expect(page.getByTestId('selected-cycle-name')).toHaveText(
       month.cycleName,

@@ -38,6 +38,7 @@ import {
   buildMinistryMembership,
   buildVolunteer,
 } from '@/seeds/builders/volunteer';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
@@ -97,8 +98,9 @@ const unusedIdentityGateway: RedemptionIdentityGateway = {
 
 function createHarness(): RedemptionHarness {
   const verificationCodeManager = new InvitationVerificationCodeManager({
+    churchIdentity: nullChurchIdentity,
     repository: verificationCodeRepository,
-    emailSender: new CaptureEmailSender('Church'),
+    emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
     config: appConfig,
@@ -224,6 +226,7 @@ describe('verification code persistence', () => {
     const { verificationCodeManager } = createHarness();
     const now = new Date('2026-01-01T00:00:00.000Z');
     await verificationCodeManager.issue({
+      churchId: ChurchId.from(fixture.churchA.id),
       churchInvitationId: pairedChurchInvitationId({ invitation }),
       recipientEmail: 'new-redemption-user@fixture.test',
       churchName: fixture.churchA.name,
@@ -257,6 +260,7 @@ describe('verification code persistence', () => {
     const now = new Date('2026-01-01T00:00:00.000Z');
     const idempotencyKey = '11111111-1111-4111-8111-111111111111';
     await verificationCodeManager.issue({
+      churchId: ChurchId.from(fixture.churchA.id),
       churchInvitationId: pairedChurchInvitationId({ invitation }),
       recipientEmail: 'new-redemption-user@fixture.test',
       churchName: fixture.churchA.name,
@@ -292,6 +296,7 @@ describe('verification code persistence', () => {
     const { verificationCodeManager } = createHarness();
     const now = new Date('2026-01-01T00:00:00.000Z');
     await verificationCodeManager.issue({
+      churchId: ChurchId.from(fixture.churchA.id),
       churchInvitationId: pairedChurchInvitationId({ invitation }),
       recipientEmail: 'new-redemption-user@fixture.test',
       churchName: fixture.churchA.name,
@@ -323,10 +328,11 @@ describe('verification code persistence', () => {
 
   it('allows only one concurrent resend claim and dispatch', async () => {
     const invitation = await mintInvitation();
-    const emailSenderA = new CaptureEmailSender('Church');
-    const emailSenderB = new CaptureEmailSender('Church');
+    const emailSenderA = new CaptureEmailSender({ appName: 'Church' });
+    const emailSenderB = new CaptureEmailSender({ appName: 'Church' });
     const now = new Date('2026-01-01T00:00:00.000Z');
     const managerA = new InvitationVerificationCodeManager({
+      churchIdentity: nullChurchIdentity,
       repository: verificationCodeRepository,
       emailSender: emailSenderA,
       generateCode: () => '123456',
@@ -334,6 +340,7 @@ describe('verification code persistence', () => {
       config: appConfig,
     });
     const managerB = new InvitationVerificationCodeManager({
+      churchIdentity: nullChurchIdentity,
       repository: verificationCodeRepository,
       emailSender: emailSenderB,
       generateCode: () => '123456',
@@ -343,12 +350,14 @@ describe('verification code persistence', () => {
 
     const outcomes = await Promise.allSettled([
       managerA.issue({
+        churchId: ChurchId.from(fixture.churchA.id),
         churchInvitationId: pairedChurchInvitationId({ invitation }),
         recipientEmail: 'new-redemption-user@fixture.test',
         churchName: fixture.churchA.name,
         now,
       }),
       managerB.issue({
+        churchId: ChurchId.from(fixture.churchA.id),
         churchInvitationId: pairedChurchInvitationId({ invitation }),
         recipientEmail: 'new-redemption-user@fixture.test',
         churchName: fixture.churchA.name,
@@ -367,7 +376,7 @@ describe('checkpoint-three redemption persistence', () => {
   it('derives Ministry access and roles from the pending invitation in one transaction', async () => {
     const invitation = await mintInvitation();
     await createOutboxDrainer({
-      emailSender: new CaptureEmailSender('Church'),
+      emailSender: new CaptureEmailSender({ appName: 'Church' }),
     }).drainOnce({ limit: 10 });
     const { redemptionManager } = createHarness();
 

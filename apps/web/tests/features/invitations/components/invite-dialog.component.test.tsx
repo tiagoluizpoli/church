@@ -96,7 +96,7 @@ function refusal(status: number, data: Record<string, unknown>) {
 async function openInvite() {
   const user = userEvent.setup();
   const { queryClient } = renderRoute({
-    initialPath: '/invitations',
+    initialPath: '/app/invitations',
     churchTimezone: 'UTC',
   });
   await user.click(
@@ -261,7 +261,7 @@ describe('Invite dialog', () => {
     const rolesLink = within(dialog).getByRole('link', {
       name: new RegExp(m.invitations_invite_add_role()),
     });
-    expect(rolesLink).toHaveAttribute('href', '/ministries/m-kids/roles');
+    expect(rolesLink).toHaveAttribute('href', '/app/ministries/m-kids/roles');
     expect(rolesLink).toHaveAttribute('target', '_blank');
 
     await user.click(
@@ -303,7 +303,7 @@ describe('Invite dialog', () => {
     const link = within(dialog).getByRole('link', {
       name: new RegExp(m.invitations_invite_create_ministry()),
     });
-    expect(link).toHaveAttribute('href', '/ministries');
+    expect(link).toHaveAttribute('href', '/app/ministries');
     expect(link).toHaveAttribute('target', '_blank');
 
     const callsBefore = listMinistries.mock.calls.length;

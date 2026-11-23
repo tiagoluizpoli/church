@@ -47,6 +47,7 @@ import { BetterAuthRedemptionIdentityGateway } from '@/infrastructure/services/b
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { auth, createServerAuth } from '@/main/di/server-auth';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
@@ -82,11 +83,12 @@ const redemptionManager = new DbRedemptionManager({
   }),
   invitationRepository: ministryInvitationRepository,
   invitationVerificationCodeManager: new InvitationVerificationCodeManager({
+    churchIdentity: nullChurchIdentity,
     repository: new DrizzleInvitationVerificationCodeRepository({
       db: raceDb,
       config: appConfig,
     }),
-    emailSender: new CaptureEmailSender('Church'),
+    emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
     config: appConfig,

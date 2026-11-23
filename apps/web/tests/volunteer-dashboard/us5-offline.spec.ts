@@ -7,7 +7,7 @@ test('US5: volunteer keeps the loaded My schedule readable and sees the offline 
 }, testInfo) => {
   const journey = loadVolunteerDashboardJourney({ testInfo });
   await signInPersonaPage({ page, persona: journey.personas.volunteer });
-  await page.goto('/my-schedule');
+  await page.goto('/app/my-schedule');
 
   await expect(
     page.getByRole('heading', { level: 1, name: 'Minha escala' }),

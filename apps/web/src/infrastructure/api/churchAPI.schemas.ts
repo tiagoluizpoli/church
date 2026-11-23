@@ -41,11 +41,17 @@ export type ListActiveChurchOptions200ChurchesItem = {
   timezone: string;
   accessLevel: ListActiveChurchOptions200ChurchesItemAccessLevel;
   availableAreas: ListActiveChurchOptions200ChurchesItemAvailableAreasItem[];
+  /** @nullable */
+  logoUrl: string | null;
+  /** @nullable */
+  accentColor: string | null;
   /**
      * @nullable
      * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
      */
   lastOpenedAt: string | null;
+  /** @nullable */
+  locality: string | null;
 };
 
 export type ListActiveChurchOptions200 = {
@@ -406,6 +412,11 @@ export type GetCycle200EventsItemEventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: GetCycle200EventsItemEventTimeBlocksItemStatus;
   requirements: GetCycle200EventsItemEventTimeBlocksItemRequirementsItem[];
 };
@@ -533,6 +544,29 @@ export type SendCycle409 = {
   invalidEvents?: SendCycle409InvalidEventsItem[];
 };
 
+export type CreateEventTemplateBodyRecurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
+};
+
 export type CreateEventTemplateBodyBlocksItem = {
   /**
      * @minLength 1
@@ -543,6 +577,29 @@ export type CreateEventTemplateBodyBlocksItem = {
   startTime: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
+  isPublic?: boolean;
+  /** @maxLength 120 */
+  place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
+};
+
+export type CreateEventTemplateBodyPrecedencesItemAnswer = typeof CreateEventTemplateBodyPrecedencesItemAnswer[keyof typeof CreateEventTemplateBodyPrecedencesItemAnswer];
+
+
+export const CreateEventTemplateBodyPrecedencesItemAnswer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type CreateEventTemplateBodyPrecedencesItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  otherTemplateId: string;
+  answer: CreateEventTemplateBodyPrecedencesItemAnswer;
 };
 
 export type CreateEventTemplateBody = {
@@ -551,13 +608,33 @@ export type CreateEventTemplateBody = {
      * @maxLength 255
      */
   name: string;
-  /**
-     * @minimum 0
-     * @maximum 6
-     */
-  weekday: number;
+  recurrence: CreateEventTemplateBodyRecurrence;
   /** @minItems 1 */
   blocks: CreateEventTemplateBodyBlocksItem[];
+  precedences?: CreateEventTemplateBodyPrecedencesItem[];
+};
+
+export type CreateEventTemplate201Recurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
 };
 
 export type CreateEventTemplate201BlocksItem = {
@@ -570,18 +647,35 @@ export type CreateEventTemplate201BlocksItem = {
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
   order: number;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
 };
 
 export type CreateEventTemplate201 = {
   id: string;
   churchId: string;
   name: string;
-  weekday: number;
+  recurrence: CreateEventTemplate201Recurrence;
+  publicBlockCount: number;
   blocks: CreateEventTemplate201BlocksItem[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type CreateEventTemplate409CollisionsItem = {
+  templateId: string;
+  name: string;
+};
+
+export type CreateEventTemplate409 = {
+  error: string;
+  message: string;
+  collisions?: CreateEventTemplate409CollisionsItem[];
 };
 
 export type CreateEventTemplate422Error = typeof CreateEventTemplate422Error[keyof typeof CreateEventTemplate422Error];
@@ -609,6 +703,7 @@ export const CreateEventTemplate422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type CreateEventTemplate422 = {
@@ -617,6 +712,29 @@ export type CreateEventTemplate422 = {
   reason?: CreateEventTemplate422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type ListEventTemplates200TemplatesItemRecurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
 };
 
 export type ListEventTemplates200TemplatesItemBlocksItem = {
@@ -629,13 +747,19 @@ export type ListEventTemplates200TemplatesItemBlocksItem = {
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
   order: number;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
 };
 
 export type ListEventTemplates200TemplatesItem = {
   id: string;
   churchId: string;
   name: string;
-  weekday: number;
+  recurrence: ListEventTemplates200TemplatesItemRecurrence;
+  publicBlockCount: number;
   blocks: ListEventTemplates200TemplatesItemBlocksItem[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -645,6 +769,29 @@ export type ListEventTemplates200TemplatesItem = {
 
 export type ListEventTemplates200 = {
   templates: ListEventTemplates200TemplatesItem[];
+};
+
+export type GetEventTemplate200Recurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
 };
 
 export type GetEventTemplate200BlocksItem = {
@@ -657,18 +804,47 @@ export type GetEventTemplate200BlocksItem = {
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
   order: number;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
 };
 
 export type GetEventTemplate200 = {
   id: string;
   churchId: string;
   name: string;
-  weekday: number;
+  recurrence: GetEventTemplate200Recurrence;
+  publicBlockCount: number;
   blocks: GetEventTemplate200BlocksItem[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type UpdateEventTemplateBodyRecurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
 };
 
 export type UpdateEventTemplateBodyBlocksItem = {
@@ -681,8 +857,31 @@ export type UpdateEventTemplateBodyBlocksItem = {
   startTime: string;
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
+  isPublic?: boolean;
+  /** @maxLength 120 */
+  place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id?: string;
+};
+
+export type UpdateEventTemplateBodyPrecedencesItemAnswer = typeof UpdateEventTemplateBodyPrecedencesItemAnswer[keyof typeof UpdateEventTemplateBodyPrecedencesItemAnswer];
+
+
+export const UpdateEventTemplateBodyPrecedencesItemAnswer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type UpdateEventTemplateBodyPrecedencesItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  otherTemplateId: string;
+  answer: UpdateEventTemplateBodyPrecedencesItemAnswer;
 };
 
 export type UpdateEventTemplateBody = {
@@ -691,13 +890,33 @@ export type UpdateEventTemplateBody = {
      * @maxLength 255
      */
   name: string;
-  /**
-     * @minimum 0
-     * @maximum 6
-     */
-  weekday: number;
+  recurrence: UpdateEventTemplateBodyRecurrence;
   /** @minItems 1 */
   blocks: UpdateEventTemplateBodyBlocksItem[];
+  precedences?: UpdateEventTemplateBodyPrecedencesItem[];
+};
+
+export type UpdateEventTemplate200Recurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
 };
 
 export type UpdateEventTemplate200BlocksItem = {
@@ -710,18 +929,35 @@ export type UpdateEventTemplate200BlocksItem = {
   /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
   endTime: string;
   order: number;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
 };
 
 export type UpdateEventTemplate200 = {
   id: string;
   churchId: string;
   name: string;
-  weekday: number;
+  recurrence: UpdateEventTemplate200Recurrence;
+  publicBlockCount: number;
   blocks: UpdateEventTemplate200BlocksItem[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type UpdateEventTemplate409CollisionsItem = {
+  templateId: string;
+  name: string;
+};
+
+export type UpdateEventTemplate409 = {
+  error: string;
+  message: string;
+  collisions?: UpdateEventTemplate409CollisionsItem[];
 };
 
 export type UpdateEventTemplate422Error = typeof UpdateEventTemplate422Error[keyof typeof UpdateEventTemplate422Error];
@@ -749,6 +985,7 @@ export const UpdateEventTemplate422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type UpdateEventTemplate422 = {
@@ -770,14 +1007,112 @@ export type GetEventTemplateUsage200 = {
   blocks: GetEventTemplateUsage200BlocksItem[];
 };
 
+export type ListTemplatePrecedences200PrecedencesItemAnswer = typeof ListTemplatePrecedences200PrecedencesItemAnswer[keyof typeof ListTemplatePrecedences200PrecedencesItemAnswer];
+
+
+export const ListTemplatePrecedences200PrecedencesItemAnswer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type ListTemplatePrecedences200PrecedencesItem = {
+  otherTemplateId: string;
+  otherTemplateName: string;
+  answer: ListTemplatePrecedences200PrecedencesItemAnswer;
+};
+
+export type ListTemplatePrecedences200 = {
+  precedences: ListTemplatePrecedences200PrecedencesItem[];
+};
+
+export type ChangeTemplatePrecedenceBodyAnswer = typeof ChangeTemplatePrecedenceBodyAnswer[keyof typeof ChangeTemplatePrecedenceBodyAnswer];
+
+
+export const ChangeTemplatePrecedenceBodyAnswer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type ChangeTemplatePrecedenceBody = {
+  answer: ChangeTemplatePrecedenceBodyAnswer;
+};
+
+export type ChangeTemplatePrecedence200Answer = typeof ChangeTemplatePrecedence200Answer[keyof typeof ChangeTemplatePrecedence200Answer];
+
+
+export const ChangeTemplatePrecedence200Answer = {
+  both: 'both',
+  thisWins: 'thisWins',
+  otherWins: 'otherWins',
+} as const;
+
+export type ChangeTemplatePrecedence200 = {
+  otherTemplateId: string;
+  otherTemplateName: string;
+  answer: ChangeTemplatePrecedence200Answer;
+};
+
+export type ChangeTemplatePrecedence422Error = typeof ChangeTemplatePrecedence422Error[keyof typeof ChangeTemplatePrecedence422Error];
+
+
+export const ChangeTemplatePrecedence422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type ChangeTemplatePrecedence422Reason = typeof ChangeTemplatePrecedence422Reason[keyof typeof ChangeTemplatePrecedence422Reason];
+
+
+export const ChangeTemplatePrecedence422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type ChangeTemplatePrecedence422 = {
+  error: ChangeTemplatePrecedence422Error;
+  message: string;
+  reason?: ChangeTemplatePrecedence422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
 export type ApplyPlanningTemplatesBody = {
   /** @minItems 1 */
   templateIds: string[];
 };
 
+export type ApplyPlanningTemplates201LeftoverEventTimeBlocksItem = {
+  eventId: string;
+  eventTitle: string;
+  eventTimeBlockId: string;
+  /** @nullable */
+  label: string | null;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  loserTemplateName: string;
+  winnerTemplateName: string;
+};
+
 export type ApplyPlanningTemplates201 = {
   generatedEventCount: number;
   generatedEventTimeBlockCount: number;
+  leftoverEventTimeBlocks: ApplyPlanningTemplates201LeftoverEventTimeBlocksItem[];
 };
 
 export type CreatePlanningEventBodyEventTimeBlocksItem = {
@@ -787,6 +1122,14 @@ export type CreatePlanningEventBodyEventTimeBlocksItem = {
   startTime: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
+  isPublic?: boolean;
+  /** @maxLength 120 */
+  place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
 };
 
 export type CreatePlanningEventBody = {
@@ -855,6 +1198,11 @@ export type CreatePlanningEvent201EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: CreatePlanningEvent201EventTimeBlocksItemStatus;
   requirements: CreatePlanningEvent201EventTimeBlocksItemRequirementsItem[];
 };
@@ -889,6 +1237,7 @@ export const CreatePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type CreatePlanningEvent422 = {
@@ -906,6 +1255,14 @@ export type UpdatePlanningEventBodyEventTimeBlocksItem = {
   startTime: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
+  isPublic?: boolean;
+  /** @maxLength 120 */
+  place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   id?: string;
 };
@@ -976,6 +1333,11 @@ export type UpdatePlanningEvent200EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: UpdatePlanningEvent200EventTimeBlocksItemStatus;
   requirements: UpdatePlanningEvent200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1010,6 +1372,7 @@ export const UpdatePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type UpdatePlanningEvent422 = {
@@ -1029,10 +1392,24 @@ export type DeletePlanningEvent204 = typeof DeletePlanningEvent204[keyof typeof 
 export const DeletePlanningEvent204 = {
 } as const;
 
+export type UpdatePlanningEventDetailsBodyEventTimeBlocksItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id: string;
+  isPublic: boolean;
+  /** @maxLength 120 */
+  place?: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  placeAddressId?: string | null;
+};
+
 export type UpdatePlanningEventDetailsBody = {
   /** @minLength 1 */
   title: string;
   location?: string;
+  eventTimeBlocks?: UpdatePlanningEventDetailsBodyEventTimeBlocksItem[];
 };
 
 export type UpdatePlanningEventDetails200EventStatus = typeof UpdatePlanningEventDetails200EventStatus[keyof typeof UpdatePlanningEventDetails200EventStatus];
@@ -1090,6 +1467,11 @@ export type UpdatePlanningEventDetails200EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: UpdatePlanningEventDetails200EventTimeBlocksItemStatus;
   requirements: UpdatePlanningEventDetails200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1124,6 +1506,7 @@ export const UpdatePlanningEventDetails422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type UpdatePlanningEventDetails422 = {
@@ -1202,6 +1585,7 @@ export const PreviewPlanningEventCancellation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type PreviewPlanningEventCancellation422 = {
@@ -1284,6 +1668,7 @@ export const CancelPlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type CancelPlanningEvent422 = {
@@ -1393,6 +1778,7 @@ export const PreviewPlanningEventMove422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type PreviewPlanningEventMove422 = {
@@ -1463,6 +1849,11 @@ export type MovePlanningEvent200EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: MovePlanningEvent200EventTimeBlocksItemStatus;
   requirements: MovePlanningEvent200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1520,6 +1911,7 @@ export const MovePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type MovePlanningEvent422 = {
@@ -1564,6 +1956,11 @@ export type CreatePlanningEventTimeBlock201 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: CreatePlanningEventTimeBlock201Status;
   requirements: CreatePlanningEventTimeBlock201RequirementsItem[];
 };
@@ -1677,6 +2074,7 @@ export const PreviewPlanningEventTimeBlockMove422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type PreviewPlanningEventTimeBlockMove422 = {
@@ -1747,6 +2145,11 @@ export type MovePlanningEventTimeBlock200EventTimeBlocksItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: MovePlanningEventTimeBlock200EventTimeBlocksItemStatus;
   requirements: MovePlanningEventTimeBlock200EventTimeBlocksItemRequirementsItem[];
 };
@@ -1809,6 +2212,7 @@ export const MovePlanningEventTimeBlock422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type MovePlanningEventTimeBlock422 = {
@@ -1892,6 +2296,7 @@ export const PreviewPlanningEventTimeBlockCancellation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type PreviewPlanningEventTimeBlockCancellation422 = {
@@ -1979,6 +2384,7 @@ export const CancelPlanningEventTimeBlock422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type CancelPlanningEventTimeBlock422 = {
@@ -2023,6 +2429,11 @@ export type UpdatePlanningEventTimeBlock200 = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: UpdatePlanningEventTimeBlock200Status;
   requirements: UpdatePlanningEventTimeBlock200RequirementsItem[];
 };
@@ -2076,6 +2487,1283 @@ export type SetMinistryDefaultDirection200 = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type GetChurchSettings200AddressesItemUf = typeof GetChurchSettings200AddressesItemUf[keyof typeof GetChurchSettings200AddressesItemUf];
+
+
+export const GetChurchSettings200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type GetChurchSettings200AddressesItemCountry = typeof GetChurchSettings200AddressesItemCountry[keyof typeof GetChurchSettings200AddressesItemCountry];
+
+
+export const GetChurchSettings200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetChurchSettings200AddressesItemPinSource = typeof GetChurchSettings200AddressesItemPinSource[keyof typeof GetChurchSettings200AddressesItemPinSource] | null;
+
+
+export const GetChurchSettings200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type GetChurchSettings200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: GetChurchSettings200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: GetChurchSettings200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: GetChurchSettings200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
+export type GetChurchSettings200SocialLinksItemNetwork = typeof GetChurchSettings200SocialLinksItemNetwork[keyof typeof GetChurchSettings200SocialLinksItemNetwork];
+
+
+export const GetChurchSettings200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type GetChurchSettings200SocialLinksItem = {
+  url: string;
+  network: GetChurchSettings200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  group: string | null;
+};
+
+/**
+ * @nullable
+ */
+export type GetChurchSettings200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
+export type GetChurchSettings200ContactsItemKind = typeof GetChurchSettings200ContactsItemKind[keyof typeof GetChurchSettings200ContactsItemKind];
+
+
+export const GetChurchSettings200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetChurchSettings200ContactsItemPhoneType = typeof GetChurchSettings200ContactsItemPhoneType[keyof typeof GetChurchSettings200ContactsItemPhoneType] | null;
+
+
+export const GetChurchSettings200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type GetChurchSettings200ContactsItem = {
+  kind: GetChurchSettings200ContactsItemKind;
+  /** @nullable */
+  phoneType: GetChurchSettings200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+  /** @nullable */
+  group: string | null;
+};
+
+export type GetChurchSettings200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  addresses: GetChurchSettings200AddressesItem[];
+  socialLinks: GetChurchSettings200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: GetChurchSettings200LegalProfile;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  contacts: GetChurchSettings200ContactsItem[];
+  contactGroups: string[];
+  publicOrigin: string;
+};
+
+export type GetChurchSettings401 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSettings403 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSettings409 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateChurchSettingsBodyContactsItemKind = typeof UpdateChurchSettingsBodyContactsItemKind[keyof typeof UpdateChurchSettingsBodyContactsItemKind];
+
+
+export const UpdateChurchSettingsBodyContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettingsBodyContactsItemPhoneType = typeof UpdateChurchSettingsBodyContactsItemPhoneType[keyof typeof UpdateChurchSettingsBodyContactsItemPhoneType] | null;
+
+
+export const UpdateChurchSettingsBodyContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type UpdateChurchSettingsBodyContactsItem = {
+  kind: UpdateChurchSettingsBodyContactsItemKind;
+  /** @nullable */
+  phoneType: UpdateChurchSettingsBodyContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+  /** @nullable */
+  group?: string | null;
+};
+
+export type UpdateChurchSettingsBodyAddressesItemUf = typeof UpdateChurchSettingsBodyAddressesItemUf[keyof typeof UpdateChurchSettingsBodyAddressesItemUf];
+
+
+export const UpdateChurchSettingsBodyAddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type UpdateChurchSettingsBodyAddressesItemCountry = typeof UpdateChurchSettingsBodyAddressesItemCountry[keyof typeof UpdateChurchSettingsBodyAddressesItemCountry];
+
+
+export const UpdateChurchSettingsBodyAddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettingsBodyAddressesItemPinSource = typeof UpdateChurchSettingsBodyAddressesItemPinSource[keyof typeof UpdateChurchSettingsBodyAddressesItemPinSource] | null;
+
+
+export const UpdateChurchSettingsBodyAddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type UpdateChurchSettingsBodyAddressesItem = {
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  id?: string | null;
+  /** @nullable */
+  label?: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement?: string | null;
+  bairro: string;
+  city: string;
+  uf: UpdateChurchSettingsBodyAddressesItemUf;
+  /** @nullable */
+  cep?: string | null;
+  country?: UpdateChurchSettingsBodyAddressesItemCountry;
+  isPublic?: boolean;
+  isMain?: boolean;
+  /**
+     * @minimum -90
+     * @maximum 90
+     * @nullable
+     */
+  latitude?: number | null;
+  /**
+     * @minimum -180
+     * @maximum 180
+     * @nullable
+     */
+  longitude?: number | null;
+  /** @nullable */
+  pinSource?: UpdateChurchSettingsBodyAddressesItemPinSource;
+  /** @nullable */
+  placeId?: string | null;
+};
+
+export type UpdateChurchSettingsBodyAddressReplacementsItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  addressId: string;
+  /**
+     * @nullable
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     */
+  replacementAddressId: string | null;
+};
+
+export type UpdateChurchSettingsBodySocialLinksItem = {
+  url: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  group?: string | null;
+};
+
+/**
+ * The Church Legal Profile: `legalName` and `cnpj` (mask accepted, check digits validated; stored as 14 digits) and the `isPublic` toggle (visitors see it only when true). Both blank clears the profile; one without the other is refused on the blank one. A CNPJ another Church holds is refused with a generic CNPJ_TAKEN that never names that Church.
+ */
+export type UpdateChurchSettingsBodyLegalProfile = {
+  /** @nullable */
+  legalName?: string | null;
+  /** @nullable */
+  cnpj?: string | null;
+  isPublic: boolean;
+};
+
+export type UpdateChurchSettingsBody = {
+  /** Required. Trimmed, inner spaces collapsed, 2–80 characters. */
+  name: string;
+  /** Church Slug: 3–63 characters, lower-case letters, digits and single hyphens, not reserved, not taken. Omitted, the slug stays. */
+  slug?: string;
+  /**
+     * https:// only; a bare domain gets it prepended; empty or null clears it; at most 2048 characters.
+     * @nullable
+     */
+  website: string | null;
+  /**
+     * #rrggbb, or null for the app default.
+     * @nullable
+     * @pattern ^#[0-9a-fA-F]{6}$
+     */
+  accentColor: string | null;
+  /**
+     * Every Church Contact in order; the whole list replaces the stored one. Phones validated as allowed-country numbers and stored as E.164, emails lower-cased. A refused row is reported by index, e.g. contacts.1.value.
+     * @maxItems 50
+     */
+  contacts: UpdateChurchSettingsBodyContactsItem[];
+  /**
+     * Contact Group names in display order, for the `group` of contacts and links. A group is created by naming it on a row, case-insensitively one group; unlisted groups follow in first-use order; a group no row uses is deleted on save.
+     * @maxItems 100
+     * @items.maxLength 120
+     */
+  contactGroups: string[];
+  /**
+     * Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.
+     * @maxItems 50
+     */
+  addresses: UpdateChurchSettingsBodyAddressesItem[];
+  /**
+     * What replaces each deleted address that templates or not-yet-started Event time blocks still use: another kept address of the Church, or null for no place. Deleting such an address without an entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the replacement is applied to every reference in the same save.
+     * @maxItems 50
+     */
+  addressReplacements?: UpdateChurchSettingsBodyAddressReplacementsItem[];
+  /**
+     * Every Social Link in display order; the whole list replaces the stored one. Only `url` and `description` are sent: the network is detected from the URL. Supported: Instagram, YouTube, Facebook, TikTok, Spotify, X, Threads, Telegram, WhatsApp channel and group, LinkedIn, Apple Podcasts, Deezer and Kwai; a wa.me link is refused (add it as a Contact). Always public.
+     * @maxItems 50
+     */
+  socialLinks: UpdateChurchSettingsBodySocialLinksItem[];
+  /** The Church Legal Profile: `legalName` and `cnpj` (mask accepted, check digits validated; stored as 14 digits) and the `isPublic` toggle (visitors see it only when true). Both blank clears the profile; one without the other is refused on the blank one. A CNPJ another Church holds is refused with a generic CNPJ_TAKEN that never names that Church. */
+  legalProfile: UpdateChurchSettingsBodyLegalProfile;
+};
+
+export type UpdateChurchSettings200AddressesItemUf = typeof UpdateChurchSettings200AddressesItemUf[keyof typeof UpdateChurchSettings200AddressesItemUf];
+
+
+export const UpdateChurchSettings200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type UpdateChurchSettings200AddressesItemCountry = typeof UpdateChurchSettings200AddressesItemCountry[keyof typeof UpdateChurchSettings200AddressesItemCountry];
+
+
+export const UpdateChurchSettings200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettings200AddressesItemPinSource = typeof UpdateChurchSettings200AddressesItemPinSource[keyof typeof UpdateChurchSettings200AddressesItemPinSource] | null;
+
+
+export const UpdateChurchSettings200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type UpdateChurchSettings200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: UpdateChurchSettings200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: UpdateChurchSettings200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: UpdateChurchSettings200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
+export type UpdateChurchSettings200SocialLinksItemNetwork = typeof UpdateChurchSettings200SocialLinksItemNetwork[keyof typeof UpdateChurchSettings200SocialLinksItemNetwork];
+
+
+export const UpdateChurchSettings200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type UpdateChurchSettings200SocialLinksItem = {
+  url: string;
+  network: UpdateChurchSettings200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  group: string | null;
+};
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettings200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
+export type UpdateChurchSettings200ContactsItemKind = typeof UpdateChurchSettings200ContactsItemKind[keyof typeof UpdateChurchSettings200ContactsItemKind];
+
+
+export const UpdateChurchSettings200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateChurchSettings200ContactsItemPhoneType = typeof UpdateChurchSettings200ContactsItemPhoneType[keyof typeof UpdateChurchSettings200ContactsItemPhoneType] | null;
+
+
+export const UpdateChurchSettings200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type UpdateChurchSettings200ContactsItem = {
+  kind: UpdateChurchSettings200ContactsItemKind;
+  /** @nullable */
+  phoneType: UpdateChurchSettings200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+  /** @nullable */
+  group: string | null;
+};
+
+export type UpdateChurchSettings200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  addresses: UpdateChurchSettings200AddressesItem[];
+  socialLinks: UpdateChurchSettings200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: UpdateChurchSettings200LegalProfile;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  contacts: UpdateChurchSettings200ContactsItem[];
+  contactGroups: string[];
+  publicOrigin: string;
+};
+
+export type UpdateChurchSettings401 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateChurchSettings403 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateChurchSettings409 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateChurchSettings422Error = typeof UpdateChurchSettings422Error[keyof typeof UpdateChurchSettings422Error];
+
+
+export const UpdateChurchSettings422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type UpdateChurchSettings422FieldErrorsItemCode = typeof UpdateChurchSettings422FieldErrorsItemCode[keyof typeof UpdateChurchSettings422FieldErrorsItemCode];
+
+
+export const UpdateChurchSettings422FieldErrorsItemCode = {
+  CHURCH_NAME_LENGTH: 'CHURCH_NAME_LENGTH',
+  CHURCH_WEBSITE_HTTPS_ONLY: 'CHURCH_WEBSITE_HTTPS_ONLY',
+  CHURCH_WEBSITE_INVALID: 'CHURCH_WEBSITE_INVALID',
+  CHURCH_WEBSITE_TOO_LONG: 'CHURCH_WEBSITE_TOO_LONG',
+  ACCENT_COLOR_INVALID: 'ACCENT_COLOR_INVALID',
+  ADDRESS_REQUIRED: 'ADDRESS_REQUIRED',
+  ADDRESS_TOO_LONG: 'ADDRESS_TOO_LONG',
+  ADDRESS_UF_INVALID: 'ADDRESS_UF_INVALID',
+  ADDRESS_CEP_INVALID: 'ADDRESS_CEP_INVALID',
+  ADDRESS_PIN_INVALID: 'ADDRESS_PIN_INVALID',
+  ADDRESS_MAIN_MULTIPLE: 'ADDRESS_MAIN_MULTIPLE',
+  ADDRESS_MAIN_REQUIRED: 'ADDRESS_MAIN_REQUIRED',
+  ADDRESS_REPLACEMENT_REQUIRED: 'ADDRESS_REPLACEMENT_REQUIRED',
+  SOCIAL_LINK_INVALID: 'SOCIAL_LINK_INVALID',
+  SOCIAL_LINK_UNSUPPORTED: 'SOCIAL_LINK_UNSUPPORTED',
+  SOCIAL_LINK_USE_CONTACT: 'SOCIAL_LINK_USE_CONTACT',
+  SOCIAL_LINK_TOO_LONG: 'SOCIAL_LINK_TOO_LONG',
+  LEGAL_NAME_REQUIRED: 'LEGAL_NAME_REQUIRED',
+  LEGAL_NAME_TOO_LONG: 'LEGAL_NAME_TOO_LONG',
+  CNPJ_REQUIRED: 'CNPJ_REQUIRED',
+  CNPJ_INVALID: 'CNPJ_INVALID',
+  CNPJ_TAKEN: 'CNPJ_TAKEN',
+  CHURCH_SLUG_LENGTH: 'CHURCH_SLUG_LENGTH',
+  CHURCH_SLUG_FORMAT: 'CHURCH_SLUG_FORMAT',
+  CHURCH_SLUG_RESERVED: 'CHURCH_SLUG_RESERVED',
+  CHURCH_SLUG_TAKEN: 'CHURCH_SLUG_TAKEN',
+  CONTACT_PHONE_INVALID: 'CONTACT_PHONE_INVALID',
+  CONTACT_EMAIL_INVALID: 'CONTACT_EMAIL_INVALID',
+  CONTACT_DESCRIPTION_TOO_LONG: 'CONTACT_DESCRIPTION_TOO_LONG',
+  CONTACT_GROUP_TOO_LONG: 'CONTACT_GROUP_TOO_LONG',
+  INVALID: 'INVALID',
+} as const;
+
+export type UpdateChurchSettings422FieldErrorsItem = {
+  field: string;
+  code: UpdateChurchSettings422FieldErrorsItemCode;
+  message: string;
+};
+
+export type UpdateChurchSettings422 = {
+  error: UpdateChurchSettings422Error;
+  message: string;
+  fieldErrors: UpdateChurchSettings422FieldErrorsItem[];
+};
+
+export type GetChurchSlugAvailabilityParams = {
+/**
+ * @maxLength 200
+ */
+slug: string;
+};
+
+/**
+ * invalid: not 3–63 lower-case letters, digits and single hyphens; reserved: a platform word.
+ */
+export type GetChurchSlugAvailability200Status = typeof GetChurchSlugAvailability200Status[keyof typeof GetChurchSlugAvailability200Status];
+
+
+export const GetChurchSlugAvailability200Status = {
+  free: 'free',
+  taken: 'taken',
+  reserved: 'reserved',
+  invalid: 'invalid',
+  own_history: 'own_history',
+} as const;
+
+export type GetChurchSlugAvailability200 = {
+  /** invalid: not 3–63 lower-case letters, digits and single hyphens; reserved: a platform word. */
+  status: GetChurchSlugAvailability200Status;
+};
+
+export type GetChurchSlugAvailability401 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSlugAvailability403 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchSlugAvailability409 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage200TemplatesItem = {
+  id: string;
+  name: string;
+};
+
+export type GetChurchAddressUsage200EventsItem = {
+  id: string;
+  title: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+};
+
+export type GetChurchAddressUsage200 = {
+  /** Event Templates with a time block at this address, by name. */
+  templates: GetChurchAddressUsage200TemplatesItem[];
+  /** Events with a time block here that has not started, any Cycle or visibility, by start. Started blocks keep their place and are not listed. */
+  events: GetChurchAddressUsage200EventsItem[];
+};
+
+export type GetChurchAddressUsage401 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage403 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage404 = {
+  error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage409 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogoBody = {
+  file: Blob;
+};
+
+export type UploadChurchLogo200AddressesItemUf = typeof UploadChurchLogo200AddressesItemUf[keyof typeof UploadChurchLogo200AddressesItemUf];
+
+
+export const UploadChurchLogo200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type UploadChurchLogo200AddressesItemCountry = typeof UploadChurchLogo200AddressesItemCountry[keyof typeof UploadChurchLogo200AddressesItemCountry];
+
+
+export const UploadChurchLogo200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UploadChurchLogo200AddressesItemPinSource = typeof UploadChurchLogo200AddressesItemPinSource[keyof typeof UploadChurchLogo200AddressesItemPinSource] | null;
+
+
+export const UploadChurchLogo200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type UploadChurchLogo200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: UploadChurchLogo200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: UploadChurchLogo200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: UploadChurchLogo200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
+export type UploadChurchLogo200SocialLinksItemNetwork = typeof UploadChurchLogo200SocialLinksItemNetwork[keyof typeof UploadChurchLogo200SocialLinksItemNetwork];
+
+
+export const UploadChurchLogo200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type UploadChurchLogo200SocialLinksItem = {
+  url: string;
+  network: UploadChurchLogo200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  group: string | null;
+};
+
+/**
+ * @nullable
+ */
+export type UploadChurchLogo200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
+export type UploadChurchLogo200ContactsItemKind = typeof UploadChurchLogo200ContactsItemKind[keyof typeof UploadChurchLogo200ContactsItemKind];
+
+
+export const UploadChurchLogo200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UploadChurchLogo200ContactsItemPhoneType = typeof UploadChurchLogo200ContactsItemPhoneType[keyof typeof UploadChurchLogo200ContactsItemPhoneType] | null;
+
+
+export const UploadChurchLogo200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type UploadChurchLogo200ContactsItem = {
+  kind: UploadChurchLogo200ContactsItemKind;
+  /** @nullable */
+  phoneType: UploadChurchLogo200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+  /** @nullable */
+  group: string | null;
+};
+
+export type UploadChurchLogo200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  addresses: UploadChurchLogo200AddressesItem[];
+  socialLinks: UploadChurchLogo200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: UploadChurchLogo200LegalProfile;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  contacts: UploadChurchLogo200ContactsItem[];
+  contactGroups: string[];
+  publicOrigin: string;
+};
+
+export type UploadChurchLogo401 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo403 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo409 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo413 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo415 = {
+  error: string;
+  message: string;
+};
+
+export type UploadChurchLogo422 = {
+  error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo200AddressesItemUf = typeof RemoveChurchLogo200AddressesItemUf[keyof typeof RemoveChurchLogo200AddressesItemUf];
+
+
+export const RemoveChurchLogo200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type RemoveChurchLogo200AddressesItemCountry = typeof RemoveChurchLogo200AddressesItemCountry[keyof typeof RemoveChurchLogo200AddressesItemCountry];
+
+
+export const RemoveChurchLogo200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type RemoveChurchLogo200AddressesItemPinSource = typeof RemoveChurchLogo200AddressesItemPinSource[keyof typeof RemoveChurchLogo200AddressesItemPinSource] | null;
+
+
+export const RemoveChurchLogo200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type RemoveChurchLogo200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: RemoveChurchLogo200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: RemoveChurchLogo200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: RemoveChurchLogo200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
+export type RemoveChurchLogo200SocialLinksItemNetwork = typeof RemoveChurchLogo200SocialLinksItemNetwork[keyof typeof RemoveChurchLogo200SocialLinksItemNetwork];
+
+
+export const RemoveChurchLogo200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type RemoveChurchLogo200SocialLinksItem = {
+  url: string;
+  network: RemoveChurchLogo200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  group: string | null;
+};
+
+/**
+ * @nullable
+ */
+export type RemoveChurchLogo200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
+export type RemoveChurchLogo200ContactsItemKind = typeof RemoveChurchLogo200ContactsItemKind[keyof typeof RemoveChurchLogo200ContactsItemKind];
+
+
+export const RemoveChurchLogo200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type RemoveChurchLogo200ContactsItemPhoneType = typeof RemoveChurchLogo200ContactsItemPhoneType[keyof typeof RemoveChurchLogo200ContactsItemPhoneType] | null;
+
+
+export const RemoveChurchLogo200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type RemoveChurchLogo200ContactsItem = {
+  kind: RemoveChurchLogo200ContactsItemKind;
+  /** @nullable */
+  phoneType: RemoveChurchLogo200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+  /** @nullable */
+  group: string | null;
+};
+
+export type RemoveChurchLogo200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  addresses: RemoveChurchLogo200AddressesItem[];
+  socialLinks: RemoveChurchLogo200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: RemoveChurchLogo200LegalProfile;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  contacts: RemoveChurchLogo200ContactsItem[];
+  contactGroups: string[];
+  publicOrigin: string;
+};
+
+export type RemoveChurchLogo401 = {
+  error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo403 = {
+  error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo409 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogoBody = {
+  /** A logo key this Church used before. */
+  key: string;
+};
+
+export type RestoreChurchLogo200AddressesItemUf = typeof RestoreChurchLogo200AddressesItemUf[keyof typeof RestoreChurchLogo200AddressesItemUf];
+
+
+export const RestoreChurchLogo200AddressesItemUf = {
+  AC: 'AC',
+  AL: 'AL',
+  AM: 'AM',
+  AP: 'AP',
+  BA: 'BA',
+  CE: 'CE',
+  DF: 'DF',
+  ES: 'ES',
+  GO: 'GO',
+  MA: 'MA',
+  MG: 'MG',
+  MS: 'MS',
+  MT: 'MT',
+  PA: 'PA',
+  PB: 'PB',
+  PE: 'PE',
+  PI: 'PI',
+  PR: 'PR',
+  RJ: 'RJ',
+  RN: 'RN',
+  RO: 'RO',
+  RR: 'RR',
+  RS: 'RS',
+  SC: 'SC',
+  SE: 'SE',
+  SP: 'SP',
+  TO: 'TO',
+} as const;
+
+export type RestoreChurchLogo200AddressesItemCountry = typeof RestoreChurchLogo200AddressesItemCountry[keyof typeof RestoreChurchLogo200AddressesItemCountry];
+
+
+export const RestoreChurchLogo200AddressesItemCountry = {
+  BR: 'BR',
+} as const;
+
+/**
+ * @nullable
+ */
+export type RestoreChurchLogo200AddressesItemPinSource = typeof RestoreChurchLogo200AddressesItemPinSource[keyof typeof RestoreChurchLogo200AddressesItemPinSource] | null;
+
+
+export const RestoreChurchLogo200AddressesItemPinSource = {
+  google: 'google',
+  cep: 'cep',
+  admin: 'admin',
+} as const;
+
+export type RestoreChurchLogo200AddressesItem = {
+  id: string;
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: RestoreChurchLogo200AddressesItemUf;
+  /** @nullable */
+  cep: string | null;
+  country: RestoreChurchLogo200AddressesItemCountry;
+  isPublic: boolean;
+  isMain: boolean;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  pinSource: RestoreChurchLogo200AddressesItemPinSource;
+  /** @nullable */
+  placeId: string | null;
+};
+
+export type RestoreChurchLogo200SocialLinksItemNetwork = typeof RestoreChurchLogo200SocialLinksItemNetwork[keyof typeof RestoreChurchLogo200SocialLinksItemNetwork];
+
+
+export const RestoreChurchLogo200SocialLinksItemNetwork = {
+  instagram: 'instagram',
+  youtube: 'youtube',
+  facebook: 'facebook',
+  tiktok: 'tiktok',
+  spotify: 'spotify',
+  x: 'x',
+  threads: 'threads',
+  telegram: 'telegram',
+  whatsappChannel: 'whatsappChannel',
+  whatsappGroup: 'whatsappGroup',
+  linkedin: 'linkedin',
+  applePodcasts: 'applePodcasts',
+  deezer: 'deezer',
+  kwai: 'kwai',
+} as const;
+
+export type RestoreChurchLogo200SocialLinksItem = {
+  url: string;
+  network: RestoreChurchLogo200SocialLinksItemNetwork;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  group: string | null;
+};
+
+/**
+ * @nullable
+ */
+export type RestoreChurchLogo200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+  isPublic: boolean;
+} | null;
+
+export type RestoreChurchLogo200ContactsItemKind = typeof RestoreChurchLogo200ContactsItemKind[keyof typeof RestoreChurchLogo200ContactsItemKind];
+
+
+export const RestoreChurchLogo200ContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type RestoreChurchLogo200ContactsItemPhoneType = typeof RestoreChurchLogo200ContactsItemPhoneType[keyof typeof RestoreChurchLogo200ContactsItemPhoneType] | null;
+
+
+export const RestoreChurchLogo200ContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type RestoreChurchLogo200ContactsItem = {
+  kind: RestoreChurchLogo200ContactsItemKind;
+  /** @nullable */
+  phoneType: RestoreChurchLogo200ContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+  isPublic: boolean;
+  /** @nullable */
+  group: string | null;
+};
+
+export type RestoreChurchLogo200 = {
+  name: string;
+  slug: string;
+  /** @nullable */
+  website: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  addresses: RestoreChurchLogo200AddressesItem[];
+  socialLinks: RestoreChurchLogo200SocialLinksItem[];
+  /** @nullable */
+  legalProfile: RestoreChurchLogo200LegalProfile;
+  /** @nullable */
+  logoKey: string | null;
+  /** @nullable */
+  logoUrl: string | null;
+  contacts: RestoreChurchLogo200ContactsItem[];
+  contactGroups: string[];
+  publicOrigin: string;
+};
+
+export type RestoreChurchLogo401 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogo403 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogo409 = {
+  error: string;
+  message: string;
+};
+
+export type RestoreChurchLogo422 = {
+  error: string;
+  message: string;
 };
 
 export type GetScheduleBuilderDataParams = {
@@ -2728,6 +4416,7 @@ export const MintMinistryInvitation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type MintMinistryInvitation422 = {
@@ -3156,8 +4845,9 @@ export type ListUsualSetup200BlocksItem = {
   /**
      * @minimum -9007199254740991
      * @maximum 9007199254740991
+     * @nullable
      */
-  weekday: number;
+  weekday: number | null;
   sourceTemplateTimeBlockId: string;
   label: string;
   startTime: string;
@@ -3274,8 +4964,9 @@ export type SaveUsualSetupBlock200 = {
   /**
      * @minimum -9007199254740991
      * @maximum 9007199254740991
+     * @nullable
      */
-  weekday: number;
+  weekday: number | null;
   sourceTemplateTimeBlockId: string;
   label: string;
   startTime: string;
@@ -3690,6 +5381,11 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlock 
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockStatus;
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlockRequirementsItem[];
 };
@@ -3935,6 +5631,11 @@ export type SaveEventTimeBlockPreparation200EventTimeBlock = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: SaveEventTimeBlockPreparation200EventTimeBlockStatus;
   requirements: SaveEventTimeBlockPreparation200EventTimeBlockRequirementsItem[];
 };
@@ -4073,6 +5774,7 @@ export const SaveEventTimeBlockPreparation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type SaveEventTimeBlockPreparation422 = {
@@ -4146,6 +5848,7 @@ export const AskScheduleAvailability422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type AskScheduleAvailability422 = {
@@ -4210,6 +5913,7 @@ export const SetAvailabilityDeadline422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
 
 export type SetAvailabilityDeadline422 = {
@@ -4439,6 +6143,11 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlock = 
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endTime: string;
   label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
   status: GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlockStatus;
   requirements: GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlockRequirementsItem[];
 };
@@ -5100,6 +6809,11 @@ export type GetNotifications200ItemsItem = {
   roleNames?: string[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   expiresAt?: string;
+  /** @nullable */
+  churchLogoUrl?: string | null;
+  /** @nullable */
+  churchAccent?: string | null;
+  churchLocality?: string;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -6800,6 +8514,232 @@ export type ConfirmVolunteerTransfer401 = {
   message: string;
 };
 
+export type GetPublicChurchProfile200ContactGroupsItemContactsItemKind = typeof GetPublicChurchProfile200ContactGroupsItemContactsItemKind[keyof typeof GetPublicChurchProfile200ContactGroupsItemContactsItemKind];
+
+
+export const GetPublicChurchProfile200ContactGroupsItemContactsItemKind = {
+  email: 'email',
+  phone: 'phone',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType = typeof GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType[keyof typeof GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType] | null;
+
+
+export const GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType = {
+  mobile: 'mobile',
+  landline: 'landline',
+} as const;
+
+export type GetPublicChurchProfile200ContactGroupsItemContactsItem = {
+  kind: GetPublicChurchProfile200ContactGroupsItemContactsItemKind;
+  /** @nullable */
+  phoneType: GetPublicChurchProfile200ContactGroupsItemContactsItemPhoneType;
+  value: string;
+  /** @nullable */
+  description: string | null;
+  isWhatsApp: boolean;
+};
+
+export type GetPublicChurchProfile200ContactGroupsItemSocialLinksItem = {
+  url: string;
+  network: string;
+  /** @nullable */
+  description: string | null;
+};
+
+export type GetPublicChurchProfile200ContactGroupsItem = {
+  /** @nullable */
+  name: string | null;
+  contacts: GetPublicChurchProfile200ContactGroupsItemContactsItem[];
+  socialLinks: GetPublicChurchProfile200ContactGroupsItemSocialLinksItem[];
+};
+
+/**
+ * @nullable
+ */
+export type GetPublicChurchProfile200LegalProfile = {
+  legalName: string;
+  cnpj: string;
+} | null;
+
+export type GetPublicChurchProfile200ProgrammeItemRecurrence = {
+  kind: 'weekly';
+  /** @minItems 1 */
+  weekdays: (0 | 1 | 2 | 3 | 4 | 5 | 6)[];
+} | {
+  kind: 'monthly';
+  /** @minItems 1 */
+  entries: ({
+  kind: 'nthWeekday';
+  ordinal: 1 | 2 | 3 | 4 | 5 | 'last';
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+} | {
+  kind: 'dayOfMonth';
+  /**
+     * @minimum 1
+     * @maximum 31
+     */
+  day: number;
+} | {
+  kind: 'lastDayOfMonth';
+})[];
+};
+
+export const GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem = {  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+  NUMBER_4: 4,
+  NUMBER_5: 5,
+  last: 'last',
+} as const
+export type GetPublicChurchProfile200ProgrammeItem = {
+  recurrence: GetPublicChurchProfile200ProgrammeItemRecurrence;
+  exceptOrdinals: typeof GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem[keyof typeof GetPublicChurchProfile200ProgrammeItemExceptOrdinalsItem][];
+  startTime: string;
+  label: string;
+  /** @nullable */
+  place: string | null;
+};
+
+export type GetPublicChurchProfile200AddressesItem = {
+  /** @nullable */
+  label: string | null;
+  street: string;
+  number: string;
+  /** @nullable */
+  complement: string | null;
+  bairro: string;
+  city: string;
+  uf: string;
+  /** @nullable */
+  cep: string | null;
+  /** @nullable */
+  latitude: number | null;
+  /** @nullable */
+  longitude: number | null;
+  /** @nullable */
+  placeId: string | null;
+  isMain: boolean;
+};
+
+/**
+ * @nullable
+ */
+export type GetPublicChurchProfile200MainAddressArea = {
+  bairro: string;
+  city: string;
+  uf: string;
+} | null;
+
+export type GetPublicChurchProfile200 = {
+  slug: string;
+  name: string;
+  /** @nullable */
+  logoUrl: string | null;
+  /** @nullable */
+  accentColor: string | null;
+  contactGroups: GetPublicChurchProfile200ContactGroupsItem[];
+  /** @nullable */
+  legalProfile: GetPublicChurchProfile200LegalProfile;
+  programme: GetPublicChurchProfile200ProgrammeItem[];
+  addresses: GetPublicChurchProfile200AddressesItem[];
+  /** @nullable */
+  mainAddressArea: GetPublicChurchProfile200MainAddressArea;
+};
+
+export type GetPublicChurchProfile404Error = typeof GetPublicChurchProfile404Error[keyof typeof GetPublicChurchProfile404Error];
+
+
+export const GetPublicChurchProfile404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type GetPublicChurchProfile404 = {
+  error: GetPublicChurchProfile404Error;
+  message: string;
+};
+
+export type GetPublicChurchProfile429Error = typeof GetPublicChurchProfile429Error[keyof typeof GetPublicChurchProfile429Error];
+
+
+export const GetPublicChurchProfile429Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type GetPublicChurchProfile429 = {
+  error: GetPublicChurchProfile429Error;
+  message: string;
+};
+
+export type ListPublicChurchEventsParams = {
+cursor?: string;
+};
+
+export type ListPublicChurchEvents200ItemsItemBlocksItemMovePathItem = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type ListPublicChurchEvents200ItemsItemBlocksItem = {
+  /** @nullable */
+  label: string | null;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  /** @nullable */
+  place: string | null;
+  cancelled: boolean;
+  movePath: ListPublicChurchEvents200ItemsItemBlocksItemMovePathItem[];
+};
+
+export type ListPublicChurchEvents200ItemsItem = {
+  title: string;
+  cancelled: boolean;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  blocks: ListPublicChurchEvents200ItemsItemBlocksItem[];
+};
+
+export type ListPublicChurchEvents200 = {
+  timezone: string;
+  items: ListPublicChurchEvents200ItemsItem[];
+  nextCursor?: string;
+};
+
+export type ListPublicChurchEvents404Error = typeof ListPublicChurchEvents404Error[keyof typeof ListPublicChurchEvents404Error];
+
+
+export const ListPublicChurchEvents404Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type ListPublicChurchEvents404 = {
+  error: ListPublicChurchEvents404Error;
+  message: string;
+};
+
+export type ListPublicChurchEvents429Error = typeof ListPublicChurchEvents429Error[keyof typeof ListPublicChurchEvents429Error];
+
+
+export const ListPublicChurchEvents429Error = {
+  NOT_FOUND: 'NOT_FOUND',
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type ListPublicChurchEvents429 = {
+  error: ListPublicChurchEvents429Error;
+  message: string;
+};
+
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState];
 
 
@@ -6914,6 +8854,11 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   roleNames?: string[];
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   expiresAt?: string;
+  /** @nullable */
+  churchLogoUrl?: string | null;
+  /** @nullable */
+  churchAccent?: string | null;
+  churchLocality?: string;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;

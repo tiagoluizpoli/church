@@ -1,12 +1,21 @@
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  DeleteBucketCommand,
+  GetBucketPolicyCommand,
+  HeadBucketCommand,
+} from '@aws-sdk/client-s3';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { scratchDatabaseName } from '@church/db/scratch-database-name';
+import { env } from '@church/env/server';
 import { fromDate, today } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { s3Bucket } from '@/infrastructure/storage/s3-bucket-admin';
+import { s3Client } from '@/infrastructure/storage/s3-client';
 import { SEED_PERSONA_PASSWORD } from '@/seeds/blueprints/credentials';
 import { DEVELOPMENT_CHURCH_TIMEZONE } from '@/seeds/blueprints/development';
 
@@ -79,6 +88,7 @@ interface RunReseedInput {
   args?: string[];
   nodeEnv?: string;
   worktree?: string;
+  bucket?: string;
 }
 
 interface RunReseedResult {
@@ -91,6 +101,7 @@ function runReseed({
   args = [],
   nodeEnv = 'development',
   worktree = SCRATCH_WORKTREE,
+  bucket,
 }: RunReseedInput): RunReseedResult {
   const result = spawnSync('bun', [RESEED_COMMAND, ...args], {
     cwd: SERVER_ROOT,
@@ -101,6 +112,7 @@ function runReseed({
       CHURCH_WORKTREE: worktree,
       DATABASE_URL: databaseUrl,
       NODE_ENV: nodeEnv,
+      ...(bucket ? { S3_BUCKET: bucket } : {}),
     },
   });
 
@@ -265,6 +277,7 @@ describe('db:reseed:dev command', () => {
     await adminPool.end();
   });
 
+  // Own budget: two full reseeds measured 14.7-29s across concurrent gates; one hit the default 30s.
   it('rebuilds the worktree development database after a redacted preflight, the same way twice', async () => {
     const databaseUrl = databaseUrlFor({ database: SCRATCH_DATABASE });
 
@@ -300,7 +313,42 @@ describe('db:reseed:dev command', () => {
       expect.arrayContaining(['organization', 'user', 'account', 'volunteer']),
     );
     expect(secondGraph).toEqual(firstGraph);
-  });
+  }, 90_000);
+
+  it('creates a missing worktree bucket, readable at public/*, before loading', async () => {
+    const bucket = `church-reseed-${randomUUID()}`;
+    const storage = {
+      endpoint: env.S3_ENDPOINT,
+      region: env.S3_REGION,
+      accessKeyId: env.S3_ACCESS_KEY_ID,
+      secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+    };
+    const client = s3Client(storage);
+    try {
+      const result = runReseed({
+        databaseUrl: databaseUrlFor({ database: SCRATCH_DATABASE }),
+        args: ['--anchor=2026-03-15'],
+        bucket,
+      });
+
+      expect(result.status, result.output).toBe(0);
+      expect(result.output.indexOf(`bucket ${bucket}: ready`)).toBeLessThan(
+        result.output.indexOf('[3/5] load: ok'),
+      );
+      await client.send(new HeadBucketCommand({ Bucket: bucket }));
+      const { Policy } = await client.send(
+        new GetBucketPolicyCommand({ Bucket: bucket }),
+      );
+      expect(Policy).toContain(`arn:aws:s3:::${bucket}/public/*`);
+    } finally {
+      await s3Bucket({ ...storage, bucket })
+        .deleteAll()
+        .catch(() => {});
+      await client
+        .send(new DeleteBucketCommand({ Bucket: bucket }))
+        .catch(() => {});
+    }
+  }, 60_000);
 
   it('defaults the anchor to today in the Church Timezone', () => {
     const before = currentChurchDay();

@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
+import { TemplateCollisionDialog } from './template-collision-dialog';
 import { TemplateEditorForm } from './template-editor-form';
 import { useCreateTemplate } from './use-create-template';
 import { buttonVariants } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/card';
 
 export function TemplateCreatePage() {
-  const editor = useCreateTemplate();
+  const { collisionDialog, ...editor } = useCreateTemplate();
 
   return (
     <Card className="surface-panel" data-testid="template-create-page">
@@ -27,7 +28,7 @@ export function TemplateCreatePage() {
           {...editor}
           actions={
             <Link
-              to="/event-templates"
+              to="/app/event-templates"
               data-testid="cancel-template-button"
               className={buttonVariants({ variant: 'outline' })}
             >
@@ -35,6 +36,7 @@ export function TemplateCreatePage() {
             </Link>
           }
         />
+        <TemplateCollisionDialog {...collisionDialog} />
       </CardContent>
     </Card>
   );

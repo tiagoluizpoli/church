@@ -25,7 +25,7 @@ interface OpenPersonInput {
 
 /** Finds a member through the directory search and opens their detail. */
 async function openPerson({ page, name }: OpenPersonInput): Promise<void> {
-  await page.goto('/people');
+  await page.goto('/app/people');
   await page.getByLabel(m.people_filter_search({}, PT)).fill(name);
   await page.getByLabel(m.people_filter_search({}, PT)).press('Enter');
   await page

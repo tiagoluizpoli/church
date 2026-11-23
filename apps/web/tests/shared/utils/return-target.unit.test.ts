@@ -3,11 +3,13 @@ import { validateInternalReturnTarget } from '@/shared/utils/return-target';
 
 describe('validateInternalReturnTarget', () => {
   it('accepts a same-origin absolute path', () => {
-    expect(validateInternalReturnTarget({ target: '/cycles' })).toBe('/cycles');
+    expect(validateInternalReturnTarget({ target: '/app/cycles' })).toBe(
+      '/app/cycles',
+    );
   });
 
   it('preserves path, query and hash exactly', () => {
-    const target = '/dashboard?section=availability&eventId=abc#panel';
+    const target = '/app/dashboard?section=availability&eventId=abc#panel';
     expect(validateInternalReturnTarget({ target })).toBe(target);
   });
 

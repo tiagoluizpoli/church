@@ -319,7 +319,7 @@ export function CycleBuilderCell({
           </span>{' '}
           <a
             className="underline underline-offset-2"
-            href="/people"
+            href="/app/people"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -328,7 +328,7 @@ export function CycleBuilderCell({
           {' · '}
           <a
             className="underline underline-offset-2"
-            href="/invitations"
+            href="/app/invitations"
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -31,11 +31,11 @@ test('US2: bell shows unread count, opens dropdown, deep-links, and views full h
   const viewAllLink = page.getByRole('link', {
     name: m.notification_view_all({}, { locale: 'pt-BR' }),
   });
-  await expect(viewAllLink).toHaveAttribute('href', '/notifications');
+  await expect(viewAllLink).toHaveAttribute('href', '/app/notifications');
 
   // Selecting opens the detail and marks it read; only Open navigates.
   await page.getByText(title, { exact: true }).click();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/app$/);
   const sheet = page.getByRole('dialog');
   await expect(sheet.getByText(title, { exact: true })).toBeVisible();
   await expect(bellTrigger.locator('[data-slot="badge"]')).toHaveCount(0);
@@ -46,7 +46,7 @@ test('US2: bell shows unread count, opens dropdown, deep-links, and views full h
     .click();
   await expect(page).toHaveURL(/\/invitations\/ministry\//);
 
-  await page.goto('/notifications');
+  await page.goto('/app/notifications');
   await expect(
     page.getByRole('button', {
       name: m.notification_mark_all_read({}, { locale: 'pt-BR' }),

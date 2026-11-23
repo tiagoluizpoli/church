@@ -28,7 +28,7 @@ The deployment workflows build and push them for you; see
 [docs/operations/deployments.md](../docs/operations/deployments.md) for the
 develop pipeline, its checks and the deployment runbook.
 
-`APP_REVISION` is the only required build argument, and the build fails without it. The web image also takes two optional Google Maps build arguments per environment: `GOOGLE_MAPS_BROWSER_KEY` (referrer-restricted; the address search and pin map in Church Settings) and `GOOGLE_MAPS_EMBED_KEY` (Maps Embed API only; the Public Church Profile map). Without them those are hidden: CEP lookup and manual entry still work, and the public page shows its addresses and directions links without a map.
+`APP_REVISION` is the only required build argument, and the build fails without it. The web image also takes three optional Google Maps build arguments per environment: `GOOGLE_MAPS_BROWSER_KEY` (referrer-restricted; the address search and pin map in Church Settings), `GOOGLE_MAPS_MAP_ID` (the Map ID the pin map's Advanced Markers need; set it whenever the browser key is set) and `GOOGLE_MAPS_EMBED_KEY` (Maps Embed API only; the Public Church Profile map). Without them those are hidden: CEP lookup and manual entry still work, and the public page shows its addresses and directions links without a map.
 The web build takes the error tracker settings as optional build secrets
 (`tooling/deployment/.env.schema`): it uploads the web source maps under the
 revision and deletes them before the served stage, so no `.map` is ever

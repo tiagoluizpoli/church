@@ -90,8 +90,10 @@ interface WindowWithGoogle {
 }
 
 const READY_CALLBACK = '__churchMapsReady';
-/** shortcut: Google's shared demo Map ID enables Advanced Markers without map styling; set a real Map ID per environment when the map gets styled. */
-const MAP_ID = 'DEMO_MAP_ID';
+/** Advanced Markers need a Map ID; only development falls back to Google's shared demo one. */
+const MAP_ID =
+  env.VITE_GOOGLE_MAPS_MAP_ID ??
+  (import.meta.env.DEV ? 'DEMO_MAP_ID' : undefined);
 
 let loading: Promise<GoogleMapsApi> | undefined;
 

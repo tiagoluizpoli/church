@@ -18731,6 +18731,23 @@ paths:
                       - kind
                       - reason
                     additionalProperties: false
+        "429":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - RATE_LIMITED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/redemption/church/{invitationId}/decline:
     post:
       operationId: declineChurchInvitation

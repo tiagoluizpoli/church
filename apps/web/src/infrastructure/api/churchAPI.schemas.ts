@@ -8595,6 +8595,18 @@ export type RedeemChurchInvitation200 = {
   reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'EMAIL_ALREADY_REGISTERED';
 };
 
+export type RedeemChurchInvitation429Error = typeof RedeemChurchInvitation429Error[keyof typeof RedeemChurchInvitation429Error];
+
+
+export const RedeemChurchInvitation429Error = {
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type RedeemChurchInvitation429 = {
+  error: RedeemChurchInvitation429Error;
+  message: string;
+};
+
 export type DeclineChurchInvitation200Kind = typeof DeclineChurchInvitation200Kind[keyof typeof DeclineChurchInvitation200Kind];
 
 

@@ -14,7 +14,7 @@ describe('ChurchLogoTile', () => {
 
     const logo = screen.getByRole('img', { name: 'Igreja Semente' });
     expect(logo).toHaveAttribute('src', 'https://files.test/logo.png');
-    expect(logo).toHaveClass('object-contain', 'h-8', 'w-auto');
+    expect(logo).toHaveClass('object-contain', 'size-full');
   });
 
   it('falls back to the platform logo on the same tile when the Church has none', () => {
@@ -25,7 +25,7 @@ describe('ChurchLogoTile', () => {
     // Named by the Church even on the fallback: the collapsed sidebar shows no name beside it.
     const logo = screen.getByRole('img', { name: 'Igreja Semente' });
     expect(logo).toHaveAttribute('src', '/logo.png');
-    expect(logo).toHaveClass('object-contain', 'h-7');
+    expect(logo).toHaveClass('object-contain');
     expect(logo?.closest('[data-testid="church-logo-tile"]')).not.toBeNull();
   });
 
@@ -39,17 +39,28 @@ describe('ChurchLogoTile', () => {
     );
   });
 
-  it('fits a wide logo inside the collapsed sidebar instead of cropping it', () => {
+  it('is always a 4:3 box, so a logo of any shape is letterboxed inside it', () => {
     render(
       <ChurchLogoTile
         name="Igreja Semente"
-        logoUrl="https://files.test/wide.png"
-        size="collapsed"
+        logoUrl="https://files.test/strip-4x1.png"
+        size="desktop"
       />,
     );
 
+    const tile = screen.getByTestId('church-logo-tile');
+    expect(tile).toHaveClass('aspect-[4/3]', 'h-10');
     const logo = screen.getByRole('img', { name: 'Igreja Semente' });
-    expect(logo).toHaveClass('object-contain', 'h-8', 'max-w-9');
-    expect(logo).not.toHaveClass('max-w-32');
+    expect(logo).toHaveClass('size-full', 'object-contain');
+    expect(logo.className).not.toMatch(/max-w|w-auto/);
+  });
+
+  it('keeps the 4:3 shape in the collapsed sidebar, just smaller', () => {
+    render(<ChurchLogoTile name="Igreja" logoUrl={null} size="collapsed" />);
+
+    expect(screen.getByTestId('church-logo-tile')).toHaveClass(
+      'aspect-[4/3]',
+      'h-9',
+    );
   });
 });

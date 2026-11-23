@@ -6,16 +6,17 @@ export const PLATFORM_LOGO_SRC = '/logo.png';
 interface ChurchLogoTileProps {
   name: string;
   logoUrl: string | null;
-  /** `collapsed`: the 64 px sidebar, so a wide logo narrows instead of being cut off. */
+  /** `collapsed`: the 64 px sidebar, so the 4:3 box stays inside it. */
   size: 'desktop' | 'mobile' | 'collapsed';
   className?: string;
 }
 
 /**
  * A Church's logo on a near-white tile with a hairline border, in light and
- * dark mode alike, so dark, transparent or loud logos stay legible. The logo
- * is contained at a fixed height — never cropped, stretched or recoloured —
- * and a Church without one shows the platform logo on the same tile.
+ * dark mode alike, so dark, transparent or loud logos stay legible. The tile is
+ * always a 4:3 box (uploads are 1:1 to 4:3); the logo is contained inside it —
+ * never cropped, stretched or recoloured — so a legacy logo outside that range
+ * is letterboxed, never a strip. A Church without one shows the platform logo.
  */
 export function ChurchLogoTile({
   name,
@@ -27,7 +28,8 @@ export function ChurchLogoTile({
     <span
       data-testid="church-logo-tile"
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-md border border-black/10 bg-white p-1',
+        'inline-flex aspect-[4/3] shrink-0 items-center justify-center rounded-md border border-black/10 bg-white p-1',
+        size === 'desktop' ? 'h-10' : 'h-9',
         className,
       )}
     >
@@ -35,11 +37,7 @@ export function ChurchLogoTile({
         src={logoUrl ?? PLATFORM_LOGO_SRC}
         // The Church's name even on the platform fallback: the collapsed sidebar shows no name beside it.
         alt={name}
-        className={cn(
-          'w-auto object-contain',
-          size === 'collapsed' ? 'max-w-9' : 'max-w-32',
-          size === 'mobile' ? 'h-7' : 'h-8',
-        )}
+        className="size-full object-contain"
       />
     </span>
   );

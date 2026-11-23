@@ -20,21 +20,26 @@ export interface OutboxPollerOptions {
 export class OutboxPoller {
   private timer: ReturnType<typeof setInterval> | undefined;
   private isDraining = false;
+  private inFlight: Promise<void> | undefined;
 
   constructor(private readonly options: OutboxPollerOptions) {}
 
   start(): void {
     this.timer = setInterval(() => {
       // One span per tick, so the drain's SQL nests under it in the trace.
-      void tracer.startActiveSpan('outbox.tick', (span) =>
-        this.tick().finally(() => span.end()),
-      );
+      void tracer.startActiveSpan('outbox.tick', (span) => {
+        const run = this.tick().finally(() => span.end());
+        this.inFlight = run;
+        return run;
+      });
     }, this.options.intervalMs);
   }
 
-  stop(): void {
+  /** Stops scheduling and resolves once a tick already in flight has finished. */
+  async stop(): Promise<void> {
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
+    await this.inFlight;
   }
 
   private async tick(): Promise<void> {

@@ -37,10 +37,14 @@ export function createShutdown(steps: ShutdownSteps) {
 }
 
 /** A stray rejection is logged, not fatal: the server keeps serving. */
-export function logUnhandledRejection(options: {
+export interface UnhandledRejectionOptions {
   reason: unknown;
   log: ShutdownSteps['log'];
-}): void {
+}
+
+export function logUnhandledRejection(
+  options: UnhandledRejectionOptions,
+): void {
   options.log({
     message: '[server] unhandled rejection',
     error: options.reason,

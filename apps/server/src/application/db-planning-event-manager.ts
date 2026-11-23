@@ -137,6 +137,8 @@ interface EnqueueEventMovedInput {
 interface EnsureCycleWritableInput {
   cycle: Cycle;
   churchTimeZone: string;
+  /** The write's open transaction, so its rollback undoes the Past flip. */
+  tx: TransactionContext;
 }
 
 /**
@@ -290,6 +292,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const cycle = await this.ensureCycleWritable({
         cycle: stored,
         churchTimeZone: church.timezone,
+        tx,
       });
       // Apply is Draft-only: a Sent Cycle's staffing is decided at Send.
       if (cycle.state !== 'draft') {
@@ -522,6 +525,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
+        tx,
       });
       const isDraft = cycle.state === 'draft';
       if (!isDraft && cycle.state !== 'sent') {
@@ -607,6 +611,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
+        tx,
       });
       const currentEvent = await this.getCycleEvent({ input, tx });
       // Draft-only: a reopened Event of a Sent Cycle is no back door.
@@ -721,6 +726,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
+        tx,
       });
       await this.getCycleEvent({ input, tx });
       // Draft Cycles keep the complete-graph edit; this is the Sent alternative.
@@ -921,6 +927,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const cycle = await this.ensureCycleWritable({
       cycle: await this.cycleRepository.getById({ ...input, tx }),
       churchTimeZone: church.timezone,
+      tx,
     });
     const event = await this.getCycleEvent({ input, tx });
 
@@ -1016,6 +1023,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const cycle = await this.ensureCycleWritable({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
+        tx,
       });
       const currentEvent = await this.getCycleEvent({ input, tx });
 
@@ -1248,6 +1256,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const cycle = await this.ensureCycleWritable({
       cycle: stored,
       churchTimeZone: church.timezone,
+      tx,
     });
     const event = await this.getCycleEvent({ input, tx });
     // Only a scheduled Event of a Sent Cycle moves; Draft has its own editor.
@@ -1507,6 +1516,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const cycle = await this.ensureCycleWritable({
       cycle: stored,
       churchTimeZone: church.timezone,
+      tx,
     });
     const event = await this.getCycleEvent({ input, tx });
     // Only a scheduled Event of a Sent Cycle cancels; Draft deletes instead.
@@ -1559,6 +1569,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private async ensureCycleWritable({
     cycle,
     churchTimeZone,
+    tx,
   }: EnsureCycleWritableInput): Promise<Cycle> {
     if (cycle.state === 'past') {
       throw new IllegalStateTransitionError({
@@ -1575,6 +1586,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         churchId: cycle.churchId,
         cycleId: cycle.id,
         state: 'past',
+        tx,
       });
       throw new IllegalStateTransitionError({ from: 'past', to: 'mutate' });
     }

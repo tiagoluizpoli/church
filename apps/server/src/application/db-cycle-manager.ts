@@ -103,6 +103,8 @@ const PERIOD_STATES: Record<CyclePeriod, CycleState[]> = {
 interface EnsureResolvedCycleInput {
   cycle: Cycle;
   churchTimeZone: string;
+  /** A write's open transaction, so its rollback undoes the Past flip. */
+  tx?: TransactionContext;
 }
 
 interface LoadSendableCycleInput {
@@ -426,6 +428,7 @@ export class DbCycleManager implements ICycleManager {
       const cycle = await this.ensureResolvedCycle({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
+        tx,
       });
 
       if (cycle.state !== 'draft') {
@@ -486,6 +489,7 @@ export class DbCycleManager implements ICycleManager {
       const cycle = await this.ensureResolvedCycle({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
+        tx,
       });
 
       if (cycle.state !== 'draft') {
@@ -511,6 +515,7 @@ export class DbCycleManager implements ICycleManager {
       const cycle = await this.ensureResolvedCycle({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
+        tx,
       });
       const event = await this.eventRepository.getEvent({
         churchId: input.churchId,
@@ -545,6 +550,7 @@ export class DbCycleManager implements ICycleManager {
     const cycle = await this.ensureResolvedCycle({
       cycle: await this.cycleRepository.getById({ churchId, cycleId, tx }),
       churchTimeZone: timeZone,
+      tx,
     });
     if (cycle.state !== 'draft') {
       throw new IllegalStateTransitionError({ from: cycle.state, to: 'sent' });
@@ -617,6 +623,7 @@ export class DbCycleManager implements ICycleManager {
   private async ensureResolvedCycle({
     cycle,
     churchTimeZone,
+    tx,
   }: EnsureResolvedCycleInput): Promise<Cycle> {
     if (cycle.state === 'past') {
       return cycle;
@@ -633,6 +640,7 @@ export class DbCycleManager implements ICycleManager {
       churchId: cycle.churchId,
       cycleId: cycle.id,
       state: 'past',
+      tx,
     });
   }
 }

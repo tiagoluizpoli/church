@@ -1,4 +1,5 @@
 import {
+  cycle,
   event,
   eventTimeBlock,
   eventTimeBlockMove,
@@ -1281,6 +1282,32 @@ describe('Single EventTimeBlock create and update', () => {
       startTime: at('09:30'),
       endTime: at('10:00'),
     });
+  });
+
+  it('rolls the Past flip back with the refused write once the Cycle has ended', async () => {
+    const { cycleId, fixture } = await setUp();
+    // Noon of 2026-10-26 in São Paulo, the day after the Cycle's last day.
+    setTestClock({
+      instant: parseInstant({ value: '2026-10-26T15:00:00.000Z' }),
+    });
+
+    const response = await postBlock({
+      cycleId,
+      fixture,
+      payload: {
+        label: 'Closing',
+        startTime: at('11:00'),
+        endTime: at('12:00'),
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    const [stored] = await db
+      .select({ state: cycle.state })
+      .from(cycle)
+      .where(eq(cycle.id, cycleId));
+    expect(stored).toEqual({ state: 'draft' });
   });
 });
 

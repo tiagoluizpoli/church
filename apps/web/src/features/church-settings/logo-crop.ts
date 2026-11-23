@@ -33,7 +33,13 @@ interface CropInput extends ImageInput {
   crop: Crop;
 }
 
-const clamp = (value: number, min: number, max: number) =>
+interface ClampInput {
+  value: number;
+  min: number;
+  max: number;
+}
+
+const clamp = ({ value, min, max }: ClampInput) =>
   Math.min(max, Math.max(min, value));
 
 /** The source rectangle a crop takes from the image, always inside it. */
@@ -42,8 +48,16 @@ export function cropRect({ image, crop }: CropInput): Rect {
   const width = fitWidth / crop.zoom;
   const height = width / crop.aspect;
   return {
-    x: clamp(crop.centerX - width / 2, 0, image.width - width),
-    y: clamp(crop.centerY - height / 2, 0, image.height - height),
+    x: clamp({
+      value: crop.centerX - width / 2,
+      min: 0,
+      max: image.width - width,
+    }),
+    y: clamp({
+      value: crop.centerY - height / 2,
+      min: 0,
+      max: image.height - height,
+    }),
     width,
     height,
   };
@@ -51,10 +65,22 @@ export function cropRect({ image, crop }: CropInput): Rect {
 
 /** Brings shape and zoom into range and the centre back inside the image. */
 export function settleCrop({ image, crop }: CropInput): Crop {
-  const aspect = clamp(crop.aspect, MIN_ASPECT, MAX_ASPECT);
+  const aspect = clamp({
+    value: crop.aspect,
+    min: MIN_ASPECT,
+    max: MAX_ASPECT,
+  });
   const fitWidth = Math.min(image.width, image.height * aspect);
-  const maxZoom = clamp(fitWidth / MIN_CROP_WIDTH, 1, MAX_ZOOM);
-  const settled = { ...crop, aspect, zoom: clamp(crop.zoom, 1, maxZoom) };
+  const maxZoom = clamp({
+    value: fitWidth / MIN_CROP_WIDTH,
+    min: 1,
+    max: MAX_ZOOM,
+  });
+  const settled = {
+    ...crop,
+    aspect,
+    zoom: clamp({ value: crop.zoom, min: 1, max: maxZoom }),
+  };
   const rect = cropRect({ image, crop: settled });
   return {
     ...settled,

@@ -62,6 +62,11 @@ export function LogoCropDialog({
   );
 }
 
+interface Offset {
+  dx: number;
+  dy: number;
+}
+
 interface CropEditorProps {
   file: File;
   onConfirm: (file: File) => void;
@@ -89,7 +94,7 @@ function CropEditor({ file, onConfirm, onCancel }: CropEditorProps) {
       setCrop(settleCrop({ image, crop: { ...crop, ...changes } }));
   };
   /** Moves the image by source pixels (the crop moves the other way). */
-  const moveImage = (dx: number, dy: number) => {
+  const moveImage = ({ dx, dy }: Offset) => {
     if (crop)
       update({ centerX: crop.centerX - dx, centerY: crop.centerY - dy });
   };
@@ -100,14 +105,14 @@ function CropEditor({ file, onConfirm, onCancel }: CropEditorProps) {
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (!rect) return;
     const step = rect.width * PAN_STEP;
-    const moves: Record<string, [number, number]> = {
-      ArrowLeft: [-step, 0],
-      ArrowRight: [step, 0],
-      ArrowUp: [0, -step],
-      ArrowDown: [0, step],
+    const moves: Record<string, Offset> = {
+      ArrowLeft: { dx: -step, dy: 0 },
+      ArrowRight: { dx: step, dy: 0 },
+      ArrowUp: { dx: 0, dy: -step },
+      ArrowDown: { dx: 0, dy: step },
     };
     const move = moves[event.key];
-    if (move) moveImage(...move);
+    if (move) moveImage(move);
     else if (event.key === '+' || event.key === '=') zoomBy(ZOOM_STEP);
     else if (event.key === '-' || event.key === '_') zoomBy(1 / ZOOM_STEP);
     else return;
@@ -118,10 +123,10 @@ function CropEditor({ file, onConfirm, onCancel }: CropEditorProps) {
     const width = event.currentTarget.clientWidth;
     if (!drag.current || !rect || !width) return;
     const scale = rect.width / width;
-    moveImage(
-      (event.clientX - drag.current.x) * scale,
-      (event.clientY - drag.current.y) * scale,
-    );
+    moveImage({
+      dx: (event.clientX - drag.current.x) * scale,
+      dy: (event.clientY - drag.current.y) * scale,
+    });
     drag.current = { x: event.clientX, y: event.clientY };
   };
 

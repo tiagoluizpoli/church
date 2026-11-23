@@ -42,6 +42,8 @@ const ROUTES = [
   ['POST', '/api/v1/admin/cycles/not-a-uuid/events/not-a-uuid/reopen'],
   ['GET', '/api/v1/admin/event-templates/not-a-uuid'],
   ['PUT', '/api/v1/admin/event-templates/not-a-uuid/precedences/not-a-uuid'],
+  ['POST', '/api/v1/admin/cycles/not-a-uuid/events/not-a-uuid/edit/preview'],
+  ['POST', '/api/v1/admin/cycles/not-a-uuid/events/not-a-uuid/edit'],
   ['PATCH', '/api/v1/admin/ministries/not-a-uuid/default-direction'],
   ['GET', '/api/v1/assign/cycles/not-a-uuid/builder'],
   ['GET', '/api/v1/assign/shifts/not-a-uuid/eligible-volunteers'],

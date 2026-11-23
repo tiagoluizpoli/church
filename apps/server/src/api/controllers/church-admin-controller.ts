@@ -997,6 +997,7 @@ export class ChurchAdminController implements FastifyController {
       '/cycles/:cycleId/events/:eventId/edit/preview',
       {
         schema: {
+          params: cycleEventParamsSchema,
           tags: ['planning'],
           operationId: 'previewPlanningEventEdit',
           summary: 'Preview editing a sent Event',
@@ -1011,7 +1012,9 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const { cycleId, eventId } = request.params as z.infer<
+          typeof cycleEventParamsSchema
+        >;
         const body = request.body as EditPlanningEventBody;
         const preview = await this.withNestedNotFound({
           request,
@@ -1042,6 +1045,7 @@ export class ChurchAdminController implements FastifyController {
       '/cycles/:cycleId/events/:eventId/edit',
       {
         schema: {
+          params: cycleEventParamsSchema,
           tags: ['planning'],
           operationId: 'editPlanningEvent',
           summary: 'Edit a sent Event',
@@ -1056,7 +1060,9 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const { cycleId, eventId } = request.params as z.infer<
+          typeof cycleEventParamsSchema
+        >;
         const body = request.body as EditPlanningEventBody;
         const result = await this.withNestedNotFound({
           request,

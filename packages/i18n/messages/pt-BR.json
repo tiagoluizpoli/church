@@ -2094,7 +2094,7 @@
   "church_settings_address_row_errors_many": "{count} erros neste endereço",
   "error_logo_too_large": "A imagem passa de 5 MB. Envie um arquivo menor.",
   "error_logo_too_small": "A imagem é pequena demais: o lado maior precisa ter pelo menos 128 px.",
-  "error_logo_bad_aspect_ratio": "A imagem é larga ou alta demais: a proporção precisa ficar entre 1:4 e 4:1.",
+  "error_logo_bad_aspect_ratio": "A imagem precisa ser quadrada ou um pouco mais larga que alta: a proporção vai de 1:1 a 4:3.",
   "error_logo_unsupported_type": "Formato não aceito. Envie uma imagem PNG, JPEG ou WebP.",
   "error_logo_key_invalid": "Este logo não pertence à sua igreja.",
   "church_settings_logo_upload": "Enviar logo",

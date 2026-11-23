@@ -547,7 +547,7 @@ describe('Church Settings screen', () => {
       [
         422,
         'LOGO_BAD_ASPECT_RATIO',
-        'A imagem é larga ou alta demais: a proporção precisa ficar entre 1:4 e 4:1.',
+        'A imagem precisa ser quadrada ou um pouco mais larga que alta: a proporção vai de 1:1 a 4:3.',
       ],
       [
         415,

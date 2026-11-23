@@ -73,7 +73,7 @@ describe('DbChurchSettingsManager logo', () => {
   it('stores the normalised logo and points the Church at it', async () => {
     await manager.uploadLogo({
       churchId: CHURCH,
-      bytes: await png({ width: 1024, height: 256 }),
+      bytes: await png({ width: 1024, height: 768 }),
     });
 
     const [key] = storage.objects.keys();
@@ -89,6 +89,11 @@ describe('DbChurchSettingsManager logo', () => {
   it.each([
     ['too small', { width: 100, height: 100 }, 'LOGO_TOO_SMALL'],
     ['too wide', { width: 600, height: 100 }, 'LOGO_BAD_ASPECT_RATIO'],
+    [
+      'taller than square',
+      { width: 200, height: 300 },
+      'LOGO_BAD_ASPECT_RATIO',
+    ],
   ])('refuses a logo %s', async (_label, size, code) => {
     await expect(
       manager.uploadLogo({ churchId: CHURCH, bytes: await png(size) }),

@@ -17,7 +17,7 @@ export class LogoTooSmallError extends DomainError {
 export class LogoBadAspectRatioError extends DomainError {
   readonly code = 'LOGO_BAD_ASPECT_RATIO' as const;
   constructor() {
-    super("The logo's ratio is outside 1:4–4:1");
+    super("The logo's ratio is outside 1:1–4:3");
   }
 }
 

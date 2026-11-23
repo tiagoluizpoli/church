@@ -27,7 +27,8 @@ async function normaliseLogo({ bytes }: NormaliseLogoInput): Promise<Buffer> {
   let width: number;
   let height: number;
   try {
-    ({ width, height } = await sharp(bytes).metadata());
+    // As shown: a rotated phone photo's stored sides are swapped.
+    ({ width, height } = (await sharp(bytes).metadata()).autoOrient);
   } catch (error) {
     if (String(error).includes('pixel limit')) throw new LogoTooLargeError();
     throw new LogoUnsupportedTypeError();

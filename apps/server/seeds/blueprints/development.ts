@@ -18,8 +18,8 @@ import {
 } from './gatherings';
 import { type HistoryBlueprint, IGREJA_SEMENTE_HISTORY } from './history';
 
-/** A wordless seed-and-sprout mark, wider than tall, for the seeded logo. */
-const IGREJA_SEMENTE_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" viewBox="0 0 640 320">
+/** A wordless seed-and-sprout mark, 4:3 like the widest logo allowed. */
+const IGREJA_SEMENTE_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="120 0 400 300">
   <ellipse cx="320" cy="230" rx="150" ry="60" fill="#0f766e"/>
   <path d="M320 200 C320 140 320 110 320 80" stroke="#115e59" stroke-width="16" fill="none" stroke-linecap="round"/>
   <path d="M320 120 C260 120 220 90 210 40 C270 40 310 70 320 120 Z" fill="#14b8a6"/>

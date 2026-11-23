@@ -420,7 +420,7 @@ const movePlanningEvent = (
       );
     }
   /**
- * Create a church-level EventTimeBlock within an Event.
+ * Create a church-level EventTimeBlock within an Event. The resulting Event graph must pass the final-graph rules (every block within the Event bounds, labels non-empty and unique, start before end), refused with VALIDATION_ERROR before any write.
  * @summary Create a EventTimeBlock on an Event
  */
 const createPlanningEventTimeBlock = (
@@ -501,7 +501,7 @@ const cancelPlanningEventTimeBlock = (
       );
     }
   /**
- * Update a EventTimeBlock's bounds or label.
+ * Update a EventTimeBlock's bounds or label; an omitted field keeps its stored value. The resulting Event graph must pass the final-graph rules (every block within the Event bounds, labels non-empty and unique, start before end), refused with VALIDATION_ERROR before any write.
  * @summary Update a EventTimeBlock
  */
 const updatePlanningEventTimeBlock = (

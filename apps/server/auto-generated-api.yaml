@@ -4494,7 +4494,10 @@ paths:
       summary: Create a EventTimeBlock on an Event
       tags:
         - planning
-      description: Create a church-level EventTimeBlock within an Event.
+      description: Create a church-level EventTimeBlock within an Event. The resulting
+        Event graph must pass the final-graph rules (every block within the
+        Event bounds, labels non-empty and unique, start before end), refused
+        with VALIDATION_ERROR before any write.
       requestBody:
         required: true
         content:
@@ -4610,6 +4613,46 @@ paths:
                     type: string
                   message:
                     type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
                 required:
                   - error
                   - message
@@ -5491,7 +5534,10 @@ paths:
       summary: Update a EventTimeBlock
       tags:
         - planning
-      description: Update a EventTimeBlock's bounds or label.
+      description: Update a EventTimeBlock's bounds or label; an omitted field keeps
+        its stored value. The resulting Event graph must pass the final-graph
+        rules (every block within the Event bounds, labels non-empty and unique,
+        start before end), refused with VALIDATION_ERROR before any write.
       requestBody:
         required: true
         content:
@@ -5609,6 +5655,46 @@ paths:
                     type: string
                   message:
                     type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
                 required:
                   - error
                   - message

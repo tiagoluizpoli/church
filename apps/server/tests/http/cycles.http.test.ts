@@ -1722,7 +1722,7 @@ describe('PATCH /admin/cycles/:cycleId', () => {
     });
   });
 
-  it('refuses a Draft whose last day has elapsed, resolving it as Past', async () => {
+  it('refuses a Draft whose last day has elapsed, rolling its Past flip back with the refused write', async () => {
     const seed = await signIn();
     const elapsed = await seedCycle({
       churchId: seed.churchAId,
@@ -1746,7 +1746,7 @@ describe('PATCH /admin/cycles/:cycleId', () => {
       name: 'September',
       startDate: '2026-09-01',
       endDate: '2026-09-30',
-      state: 'past',
+      state: 'draft',
     });
   });
 

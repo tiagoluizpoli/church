@@ -958,11 +958,13 @@ export class ChurchAdminController implements FastifyController {
           tags: ['planning'],
           operationId: 'createPlanningEventTimeBlock',
           summary: 'Create a EventTimeBlock on an Event',
-          description: 'Create a church-level EventTimeBlock within an Event.',
+          description:
+            'Create a church-level EventTimeBlock within an Event. The resulting Event graph must pass the final-graph rules (every block within the Event bounds, labels non-empty and unique, start before end), refused with VALIDATION_ERROR before any write.',
           body: createEventTimeBlockBodySchema,
           response: {
             201: eventTimeBlockResponseSchema,
             404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
           },
         },
       },
@@ -1163,11 +1165,13 @@ export class ChurchAdminController implements FastifyController {
           tags: ['planning'],
           operationId: 'updatePlanningEventTimeBlock',
           summary: 'Update a EventTimeBlock',
-          description: "Update a EventTimeBlock's bounds or label.",
+          description:
+            "Update a EventTimeBlock's bounds or label; an omitted field keeps its stored value. The resulting Event graph must pass the final-graph rules (every block within the Event bounds, labels non-empty and unique, start before end), refused with VALIDATION_ERROR before any write.",
           body: updateEventTimeBlockBodySchema,
           response: {
             200: eventTimeBlockResponseSchema,
             404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
           },
         },
       },

@@ -76,6 +76,7 @@ export type MappedDomainCode =
   | 'MINISTRY_MEMBERSHIP_INACTIVE'
   | 'UPCOMING_ASSIGNMENTS'
   | 'HEADCOUNT_BELOW_ASSIGNED'
+  | 'SHIFT_REQUIREMENT_FULL'
   | 'SCHEDULE_HAS_NO_ASSIGNMENTS'
   | 'SCHEDULE_ALREADY_PUBLISHED'
   | 'ASSIGNMENT_PROPOSAL_CHANGED'
@@ -238,6 +239,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   HEADCOUNT_BELOW_ASSIGNED: {
     status: 409,
     message: m.error_headcount_below_assigned,
+  },
+  SHIFT_REQUIREMENT_FULL: {
+    status: 409,
+    message: m.error_shift_requirement_full,
   },
   SCHEDULE_HAS_NO_ASSIGNMENTS: {
     status: 409,

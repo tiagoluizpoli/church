@@ -18,6 +18,7 @@ import type { IChurchNotifications } from '../domain/contracts/application/churc
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
   ConfirmPlanningCancellationManagerInput,
+  ConfirmPlanningEditManagerInput,
   ConfirmPlanningMoveManagerInput,
   CreatePlanningEventManagerInput,
   CreatePlanningEventTimeBlockManagerInput,
@@ -75,7 +76,11 @@ import {
   resolveCancellationScope,
   summarizeCancellationImpact,
 } from '../domain/services/event-cancellation';
-import { findEditClashes, proposeEdit } from '../domain/services/event-edit';
+import {
+  findEditClashes,
+  proposeEdit,
+  proposeShiftBounds,
+} from '../domain/services/event-edit';
 import {
   assertEventGraph,
   type EventGraph,
@@ -83,6 +88,7 @@ import {
 } from '../domain/services/event-graph';
 import {
   findMoveClashes,
+  type InstantBounds,
   type MoveScopeAssignment,
   proposeMove,
 } from '../domain/services/event-move';
@@ -93,6 +99,15 @@ import {
 import type { TemplatePrecedence } from '../domain/template-precedence';
 import { cancelAssignment } from './cancel-assignment';
 import { removeAssignment } from './remove-assignment';
+
+interface BoundsPair {
+  left: InstantBounds;
+  right: InstantBounds;
+}
+
+const sameBounds = ({ left, right }: BoundsPair) =>
+  compareInstants({ left: left.start, right: right.start }) === 0 &&
+  compareInstants({ left: left.end, right: right.end }) === 0;
 
 interface ComputeMoveInput {
   input: PlanningMoveManagerInput;
@@ -111,6 +126,13 @@ interface ComputeEditInput {
   input: PreviewPlanningEditManagerInput;
   church: Church;
   tx: TransactionContext;
+}
+
+interface ComputedEdit extends PlanningEditPreview {
+  cycle: Cycle;
+  event: Event;
+  eventTimeBlocks: EventTimeBlock[];
+  scopeAssignments: MoveScopeAssignment[];
 }
 
 interface ComputeCancellationInput {
@@ -138,8 +160,14 @@ interface EnqueueEventCancelledInput {
 interface EnqueueEventMovedInput {
   actingUserId: UserId;
   church: Church;
-  computed: ComputedMove;
-  movedBlockIds: EventTimeBlockId[];
+  cycle: Cycle;
+  event: Event;
+  /** The scope's active Assignments before any withdrawal. */
+  scopeAssignments: MoveScopeAssignment[];
+  /** The changed blocks: their Ministries are told. */
+  eventTimeBlockIds: EventTimeBlockId[];
+  previous: InstantBounds;
+  proposed: InstantBounds;
   tx: TransactionContext;
 }
 
@@ -1162,11 +1190,25 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         eventId,
         tx,
       });
+      const [movedBlock] = proposal.eventTimeBlocks.filter(
+        ({ moved }) => moved,
+      );
+      const { previous, proposed } =
+        proposal.scope.kind === 'event' || !movedBlock
+          ? {
+              previous: proposal.previousEvent,
+              proposed: proposal.proposedEvent,
+            }
+          : movedBlock;
       await this.enqueueEventMoved({
         actingUserId,
         church,
-        computed,
-        movedBlockIds,
+        cycle: computed.cycle,
+        event: computed.event,
+        scopeAssignments: computed.scopeAssignments,
+        eventTimeBlockIds: movedBlockIds,
+        previous,
+        proposed,
         tx,
       });
       return { graph: { event, eventTimeBlocks }, withdrawn: clashes };
@@ -1181,8 +1223,12 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private async enqueueEventMoved({
     actingUserId,
     church,
-    computed: { cycle, event, proposal, scopeAssignments },
-    movedBlockIds,
+    cycle,
+    event,
+    scopeAssignments,
+    eventTimeBlockIds,
+    previous,
+    proposed,
     tx,
   }: EnqueueEventMovedInput): Promise<void> {
     const churchId = church.id;
@@ -1191,7 +1237,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         churchId,
         cycleId: cycle.id,
         eventId: event.id,
-        eventTimeBlockIds: movedBlockIds,
+        eventTimeBlockIds,
         tx,
       });
     if (ministries.length === 0) return;
@@ -1206,11 +1252,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       ministryIds: ministries.map(({ id }) => id),
       actingUserId,
     });
-    const [movedBlock] = proposal.eventTimeBlocks.filter(({ moved }) => moved);
-    const { previous, proposed } =
-      proposal.scope.kind === 'event' || !movedBlock
-        ? { previous: proposal.previousEvent, proposed: proposal.proposedEvent }
-        : movedBlock;
     const volunteersOf = (ministryIds: string[]) =>
       new Set(
         scopeAssignments
@@ -1353,7 +1394,162 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     const church = await this.churchRepository.getById({ id: input.churchId });
 
     // No Church lock and no write: the preview is advisory.
-    return this.unitOfWork.run((tx) => this.computeEdit({ input, church, tx }));
+    const { proposal, clashes } = await this.unitOfWork.run((tx) =>
+      this.computeEdit({ input, church, tx }),
+    );
+    return { proposal, clashes };
+  }
+
+  async confirmEdit(
+    input: ConfirmPlanningEditManagerInput,
+  ): Promise<PlanningMoveResult> {
+    const church = await this.churchRepository.getById({ id: input.churchId });
+    const { churchId, eventId, actingUserId } = input;
+
+    return this.unitOfWork.run(async (tx) => {
+      // Move's lock order, so the recalculation sees every committed Assignment.
+      await this.cycleRepository.acquireChurchLock({ churchId, tx });
+      await this.eventRepository.lockParticipations({ churchId, eventId, tx });
+      const computed = await this.computeEdit({ input, church, tx });
+      const { proposal, clashes, eventTimeBlocks } = computed;
+
+      // Kept Assignments stay on their Shifts, so their identity,
+      // UnavailableShifts and open SwapRequests stay with them.
+      for (const { assignmentId } of clashes) {
+        await removeAssignment({
+          churchId,
+          assignmentId,
+          actorId: actingUserId,
+          tx,
+          assignmentRepository: this.assignmentRepository,
+          auditRepository: this.auditRepository,
+          swapRequestRepository: this.swapRequestRepository,
+        });
+      }
+      const { previousEvent, proposedEvent } = proposal;
+      const event = await this.eventRepository.updateEvent({
+        churchId,
+        eventId,
+        start: toDate({ instant: proposedEvent.start }),
+        end: toDate({ instant: proposedEvent.end }),
+        tx,
+      });
+
+      // Kept blocks whose label or bounds change; their Shifts follow them.
+      const storedById = new Map(
+        eventTimeBlocks.map((block) => [block.id, block]),
+      );
+      const kept = proposal.eventTimeBlocks.flatMap(
+        ({ eventTimeBlockId, label, previous, proposed }) => {
+          const stored = eventTimeBlockId && storedById.get(eventTimeBlockId);
+          if (!stored || !previous || !proposed || label === undefined)
+            return [];
+          const unchanged =
+            stored.label === label &&
+            sameBounds({ left: previous, right: proposed });
+          return unchanged
+            ? []
+            : [{ eventTimeBlockId: stored.id, label, previous, proposed }];
+        },
+      );
+      const shifts = await this.eventRepository.listEventShifts({
+        churchId,
+        eventTimeBlockIds: kept.map(({ eventTimeBlockId }) => eventTimeBlockId),
+        tx,
+      });
+      const keptById = new Map(
+        kept.map((block) => [block.eventTimeBlockId, block]),
+      );
+      await this.eventRepository.retimeEventTimeBlocks({
+        churchId,
+        eventTimeBlocks: kept.map(({ eventTimeBlockId, label, proposed }) => ({
+          eventTimeBlockId,
+          label,
+          ...proposed,
+        })),
+        shifts: shifts.flatMap(({ shiftId, eventTimeBlockId, start, end }) => {
+          const block = keptById.get(eventTimeBlockId);
+          if (!block) return [];
+          return [
+            {
+              shiftId,
+              ...proposeShiftBounds({
+                previousBlock: block.previous,
+                proposedBlock: block.proposed,
+                shift: { start, end },
+              }),
+            },
+          ];
+        }),
+        tx,
+      });
+
+      const changedBlockIds = kept.map(
+        ({ eventTimeBlockId }) => eventTimeBlockId,
+      );
+      for (const block of proposal.eventTimeBlocks) {
+        if (block.change === 'added' && block.proposed) {
+          // Like a block added before the Send: one Shift per Participation.
+          const added = await this.eventTimeBlockRepository.create({
+            churchId,
+            input: {
+              eventId,
+              startTime: toDate({ instant: block.proposed.start }),
+              endTime: toDate({ instant: block.proposed.end }),
+              label: block.label,
+            },
+            tx,
+          });
+          changedBlockIds.push(added.id);
+        }
+      }
+      // After the Send nothing is deleted: a dropped (unstaffed) block is cancelled.
+      const droppedIds = proposal.eventTimeBlocks.flatMap(
+        ({ change, eventTimeBlockId }) =>
+          change === 'dropped' && eventTimeBlockId ? [eventTimeBlockId] : [],
+      );
+      await this.eventRepository.deleteScopeUnavailableShifts({
+        churchId,
+        eventTimeBlockIds: droppedIds,
+        tx,
+      });
+      for (const eventTimeBlockId of droppedIds) {
+        await this.eventRepository.cancelEventTimeBlock({
+          churchId,
+          eventTimeBlockId,
+          tx,
+        });
+        changedBlockIds.push(eventTimeBlockId);
+      }
+
+      // New Event bounds concern every Ministry of the Event; otherwise only
+      // the changed blocks' Ministries are told (none: no alert).
+      const activeIds = eventTimeBlocks.flatMap(({ id, status }) =>
+        status === 'active' ? [id] : [],
+      );
+      await this.enqueueEventMoved({
+        actingUserId,
+        church,
+        cycle: computed.cycle,
+        event: computed.event,
+        scopeAssignments: computed.scopeAssignments,
+        eventTimeBlockIds: sameBounds({
+          left: previousEvent,
+          right: proposedEvent,
+        })
+          ? changedBlockIds
+          : [...activeIds, ...changedBlockIds],
+        previous: previousEvent,
+        proposed: proposedEvent,
+        tx,
+      });
+      const graph = await this.eventTimeBlockRepository.listByEvent({
+        churchId,
+        eventId,
+        tx,
+      });
+      return { graph: { event, eventTimeBlocks: graph }, withdrawn: clashes };
+    });
   }
 
   /**
@@ -1365,7 +1561,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     input,
     church,
     tx,
-  }: ComputeEditInput): Promise<PlanningEditPreview> {
+  }: ComputeEditInput): Promise<ComputedEdit> {
     const { churchId, eventId } = input;
     const cycle = await this.ensureCycleWritable({
       cycle: await this.cycleRepository.getById({ ...input, tx }),
@@ -1427,6 +1623,10 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       tx,
     });
     return {
+      cycle,
+      event,
+      eventTimeBlocks,
+      scopeAssignments,
       proposal,
       clashes: findEditClashes({ proposal, scopeAssignments, candidates }),
     };

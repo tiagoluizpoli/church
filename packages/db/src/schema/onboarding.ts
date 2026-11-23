@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -184,56 +185,66 @@ export const ministryInvitationRole = pgTable(
  * rendered once, before the first email attempt, and that prepared copy is
  * what every retry resends.
  */
-export const outboxMessage = pgTable('outbox_message', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  churchId: uuid('church_id')
-    .notNull()
-    .references(() => church.id, { onDelete: 'cascade' }),
-  kind: outboxMessageKindEnum('kind').notNull(),
-  payload: jsonb('payload').notNull(),
-  status: outboxMessageStatusEnum('status').default('pending').notNull(),
-  attempts: integer('attempts').default(0).notNull(),
-  scheduledFor: timestamp('scheduled_for', {
-    withTimezone: true,
-    mode: 'date',
-  }).notNull(),
-  lastError: text('last_error'),
-  providerMessageId: text('provider_message_id'),
-  correlationId: text('correlation_id').notNull(),
-  sentAt: timestamp('sent_at', { withTimezone: true, mode: 'date' }),
-  /** The operator's `email_delivery_mode` value as it was when the row was
-   * written; null on rows written before it existed or while it was unset. */
-  emailDeliveryMode: jsonb('email_delivery_mode'),
-  /** Destinations ('mailpit' | 'resend') that confirmed this email; a retry
-   * skips them. */
-  emailConfirmedDestinations: jsonb('email_confirmed_destinations')
-    .$type<string[]>()
-    .default([])
-    .notNull(),
-  /** The exact prepared email, persisted before its first external attempt
-   * and replayed unchanged on retry. Private server data. */
-  emailRequest: jsonb('email_request'),
-  emailIdempotencyKey: text('email_idempotency_key'),
-  emailFirstAttemptAt: timestamp('email_first_attempt_at', {
-    withTimezone: true,
-    mode: 'date',
-  }),
-  /** Confirmed provider receipt: a replay skips an already-delivered email. */
-  emailDeliveredAt: timestamp('email_delivered_at', {
-    withTimezone: true,
-    mode: 'date',
-  }),
-  /** Settled per-sink outcomes of a `notification` row (sink name →
-   * delivered | skipped | failed); a whole-row retry skips settled sinks. */
-  channelOutcomes: jsonb('channel_outcomes'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+export const outboxMessage = pgTable(
+  'outbox_message',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    churchId: uuid('church_id')
+      .notNull()
+      .references(() => church.id, { onDelete: 'cascade' }),
+    kind: outboxMessageKindEnum('kind').notNull(),
+    payload: jsonb('payload').notNull(),
+    status: outboxMessageStatusEnum('status').default('pending').notNull(),
+    attempts: integer('attempts').default(0).notNull(),
+    scheduledFor: timestamp('scheduled_for', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+    lastError: text('last_error'),
+    providerMessageId: text('provider_message_id'),
+    correlationId: text('correlation_id').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true, mode: 'date' }),
+    /** The operator's `email_delivery_mode` value as it was when the row was
+     * written; null on rows written before it existed or while it was unset. */
+    emailDeliveryMode: jsonb('email_delivery_mode'),
+    /** Destinations ('mailpit' | 'resend') that confirmed this email; a retry
+     * skips them. */
+    emailConfirmedDestinations: jsonb('email_confirmed_destinations')
+      .$type<string[]>()
+      .default([])
+      .notNull(),
+    /** The exact prepared email, persisted before its first external attempt
+     * and replayed unchanged on retry. Private server data. */
+    emailRequest: jsonb('email_request'),
+    emailIdempotencyKey: text('email_idempotency_key'),
+    emailFirstAttemptAt: timestamp('email_first_attempt_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    /** Confirmed provider receipt: a replay skips an already-delivered email. */
+    emailDeliveredAt: timestamp('email_delivered_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    /** Settled per-sink outcomes of a `notification` row (sink name →
+     * delivered | skipped | failed); a whole-row retry skips settled sinks. */
+    channelOutcomes: jsonb('channel_outcomes'),
+    /** When the drainer last claimed the row; a stale `processing` row is reclaimed. */
+    claimedAt: timestamp('claimed_at', { withTimezone: true, mode: 'date' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('outbox_message_pending_due_idx')
+      .on(table.scheduledFor)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+);
 
 /**
  * The audit boundary from spec §7.6, modeled on `assignment_audit`'s shape

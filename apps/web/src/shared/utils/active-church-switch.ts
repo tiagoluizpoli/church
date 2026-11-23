@@ -1,5 +1,6 @@
 import type { Query, QueryClient } from '@tanstack/react-query';
 import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
+import { ACTIVE_CHURCH_STATUS_QUERY_KEY } from '@/shared/utils/entry-gate-cache';
 
 export type ActiveChurchArea = 'dashboard' | 'scheduling';
 
@@ -77,7 +78,11 @@ const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
 ];
 
 export function isChurchScopedQuery(query: Query): boolean {
-  return query.queryKey[0] !== 'active-church';
+  // The gate status describes the Active Church, so a switch drops it too.
+  const [scope, name] = query.queryKey;
+  return (
+    scope !== 'active-church' || name === ACTIVE_CHURCH_STATUS_QUERY_KEY[1]
+  );
 }
 
 export async function clearActiveChurchScopedCache({

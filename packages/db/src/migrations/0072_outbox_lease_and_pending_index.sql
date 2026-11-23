@@ -1,0 +1,2 @@
+ALTER TABLE "outbox_message" ADD COLUMN "claimed_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "outbox_message_pending_due_idx" ON "outbox_message" USING btree ("scheduled_for") WHERE "outbox_message"."status" = 'pending';

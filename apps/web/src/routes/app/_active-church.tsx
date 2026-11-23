@@ -23,6 +23,10 @@ import {
   resolveCrossChurchDeepLink,
   stripCrossChurchLinkParam,
 } from '@/shared/utils/cross-church-link';
+import {
+  getCachedActiveChurchStatus,
+  invalidateActiveChurchStatus,
+} from '@/shared/utils/entry-gate-cache';
 import { activeChurchApi } from '@/utils/api-instances';
 
 interface ResolvedStatusDiscriminant {
@@ -69,7 +73,9 @@ export const Route = createFileRoute('/app/_active-church')({
     // server-side on every load and covers every branch — an already-set
     // Church that no longer checks out, several Memberships with none active,
     // and no Membership at all — rather than only the first of those.
-    const status = await activeChurchApi.getActiveChurchStatus();
+    const status = await getCachedActiveChurchStatus({
+      queryClient: context.queryClient,
+    });
     const { membershipRemovedFrom } = status;
     // Every redirect below carries it, so the destination can explain a
     // just-removed Church Membership.
@@ -102,6 +108,7 @@ export const Route = createFileRoute('/app/_active-church')({
         const selected = await activeChurchApi.selectActiveChurch({
           churchId: decision.churchId,
         });
+        invalidateActiveChurchStatus({ queryClient: context.queryClient });
         if (selected.status === 'resolved') {
           return requireChurchTimezone({ status: selected });
         }

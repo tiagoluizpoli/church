@@ -20,6 +20,7 @@ import type {
   ListCycles200Counts,
   ListCycles200Next,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { ENTRY_GATE_STALE_TIME_MS } from '@/shared/utils/entry-gate-cache';
 import { adminApi } from '@/utils/api-instances';
 
 export interface SelectCycleInput {
@@ -61,6 +62,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   const cyclesQuery = useQuery({
     queryKey: ['cycles'],
     queryFn: () => adminApi.listCycles(),
+    staleTime: ENTRY_GATE_STALE_TIME_MS,
   });
   const templatesQuery = useQuery({
     queryKey: TEMPLATE_LIST_QUERY_KEY,

@@ -279,6 +279,15 @@ function ChurchInvitationJoinRoute() {
   const preview = previewQuery.data;
   if (!preview) return null;
 
+  const outcome = redeemMutation.data;
+  if (outcome?.kind === 'full-success' || outcome?.kind === 'church-only') {
+    return (
+      <RedemptionShell>
+        <p className="text-muted-foreground text-sm">{m.join_welcome()}</p>
+      </RedemptionShell>
+    );
+  }
+
   // A paired offer is reviewed signed in through any of its Ministry halves.
   const reviewInvitationId = preview.ministries[0]?.invitationId;
 
@@ -319,15 +328,6 @@ function ChurchInvitationJoinRoute() {
     return (
       <RedemptionShell>
         <UnavailableNotice />
-      </RedemptionShell>
-    );
-  }
-
-  const outcome = redeemMutation.data;
-  if (outcome?.kind === 'full-success' || outcome?.kind === 'church-only') {
-    return (
-      <RedemptionShell>
-        <p className="text-muted-foreground text-sm">{m.join_welcome()}</p>
       </RedemptionShell>
     );
   }

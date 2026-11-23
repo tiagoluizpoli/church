@@ -44,15 +44,21 @@ export class DrizzleOutboxRepository implements OutboxRepository {
   async claimPending(
     input: ClaimPendingOutboxMessagesInput,
   ): Promise<OutboxMessage[]> {
-    const { limit, now, tx } = input;
+    const { limit, now, staleBefore, tx } = input;
     const client = getClient({ db: this.db, tx });
     const claimable = await client
       .select({ id: outboxMessage.id })
       .from(outboxMessage)
       .where(
-        and(
-          eq(outboxMessage.status, 'pending'),
-          lte(outboxMessage.scheduledFor, now),
+        or(
+          and(
+            eq(outboxMessage.status, 'pending'),
+            lte(outboxMessage.scheduledFor, now),
+          ),
+          and(
+            eq(outboxMessage.status, 'processing'),
+            lte(outboxMessage.claimedAt, staleBefore),
+          ),
         ),
       )
       .orderBy(
@@ -67,7 +73,12 @@ export class DrizzleOutboxRepository implements OutboxRepository {
     const claimedIds = claimable.map((row) => row.id);
     const rows = await client
       .update(outboxMessage)
-      .set({ status: 'processing' })
+      .set({
+        status: 'processing',
+        claimedAt: now,
+        // A reclaimed row counts the lost attempt, so a poison row ends.
+        attempts: sql`CASE WHEN ${outboxMessage.status} = 'processing' THEN ${outboxMessage.attempts} + 1 ELSE ${outboxMessage.attempts} END`,
+      })
       .where(inArray(outboxMessage.id, claimedIds))
       .returning();
     // RETURNING comes back in storage order; the drainer delivers in claim order.

@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { getDevelopmentDatabaseUrl } from '@church/db/development-database-url';
 import { addCalendarDays, type CalendarDay, now } from '@church/time';
 import pg from 'pg';
@@ -14,6 +16,10 @@ import {
 
 const COMMAND = 'db:reseed:dev';
 const BLUEPRINT_LOCATION = 'apps/server/seeds/blueprints/directory/';
+// db:bootstrap's bucket code, run as its CLI: the server project cannot import tooling/.
+const ENSURE_BUCKET_SCRIPT = fileURLToPath(
+  new URL('../../../../tooling/worktree/storage-buckets.ts', import.meta.url),
+);
 
 function report({ message }: ReseedReportInput): void {
   console.log(`${COMMAND} ${message}`);
@@ -88,6 +94,17 @@ async function reseedDevelopmentDatabase(): Promise<void> {
     secretAccessKey: env.S3_SECRET_ACCESS_KEY,
     publicUrl: env.STORAGE_PUBLIC_URL,
   });
+  // A checkout bootstrapped before #1014 has no bucket; the load uploads the seeded logo.
+  const bucket = spawnSync('bun', [ENSURE_BUCKET_SCRIPT, env.S3_BUCKET], {
+    encoding: 'utf8',
+    env: { ...process.env, S3_ENDPOINT: env.S3_ENDPOINT },
+  });
+  if (bucket.status !== 0) {
+    throw new Error(
+      `could not ensure bucket ${env.S3_BUCKET}: ${bucket.stderr || bucket.stdout}`,
+    );
+  }
+  report({ message: `bucket ${env.S3_BUCKET}: ready, public/* readable` });
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
 
   try {

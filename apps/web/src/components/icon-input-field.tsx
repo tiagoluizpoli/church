@@ -33,6 +33,8 @@ export function IconInput({
 type IconInputFieldProps = Omit<IconInputProps, 'id'> & {
   label: string;
   hint?: string;
+  /** Keeps the hint for assistive tech only, for a row repeated down a list; a refusal still shows. */
+  hideHint?: boolean;
   /** The field's refusal; marks the input invalid and describes it. */
   error?: string;
 };
@@ -41,13 +43,14 @@ type IconInputFieldProps = Omit<IconInputProps, 'id'> & {
 export function IconInputField({
   label,
   hint,
+  hideHint,
   error,
   ...inputProps
 }: IconInputFieldProps) {
   const id = React.useId();
   const describedBy = error || hint ? `${id}-description` : undefined;
   return (
-    <div className="space-y-1.5">
+    <div className="flex flex-col gap-1.5">
       <Label htmlFor={id} className="font-medium text-sm">
         {label}
       </Label>
@@ -63,6 +66,7 @@ export function IconInputField({
           className={cn(
             'text-sm',
             error ? 'text-destructive' : 'text-muted-foreground',
+            hideHint && !error && 'sr-only',
           )}
         >
           {error ?? hint}

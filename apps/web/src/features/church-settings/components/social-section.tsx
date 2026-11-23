@@ -5,9 +5,10 @@ import {
   type SocialNetwork,
 } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
-import { ArrowDown, ArrowUp, Link2, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Link2, Plus, Trash2, Type } from 'lucide-react';
 import * as React from 'react';
 import { IconInputField } from '@/components/icon-input-field';
+import { networkIcon } from '@/components/social-network-icons';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -40,6 +41,24 @@ export function detectedNetwork({
 }: DetectedNetworkInput): SocialNetwork | null {
   const detection = detectSocialNetwork({ url });
   return 'network' in detection ? detection.network : null;
+}
+
+interface SwitchNetworkInput {
+  url: string;
+  to: SocialNetwork;
+}
+
+/** The link once a network is picked on its row: an empty or untouched link takes the network's address start, a handle typed after the current start moves to the new one, and anything else stays as typed. */
+export function switchNetwork({ url, to }: SwitchNetworkInput): string {
+  const typed = url.trim();
+  const starts = SOCIAL_NETWORK_KEYS.map((key) => SOCIAL_NETWORKS[key].prefix);
+  if (typed === '' || starts.some((start) => start === typed)) {
+    return SOCIAL_NETWORKS[to].prefix;
+  }
+  const from = detectedNetwork({ url });
+  const start = from ? SOCIAL_NETWORKS[from].prefix : null;
+  if (from === to || !start || !url.startsWith(start)) return url;
+  return SOCIAL_NETWORKS[to].prefix + url.slice(start.length);
 }
 
 interface RowErrorsInput {
@@ -103,7 +122,8 @@ export function SocialSection({
   return (
     <div className="space-y-3">
       <p className="text-muted-foreground text-sm">
-        {m.church_settings_social_public_note()}
+        {m.church_settings_social_public_note()}{' '}
+        {links.length ? m.church_settings_group_note() : null}
       </p>
       {links.length === 0 ? (
         <div className="space-y-3 rounded-lg border border-dashed p-4">
@@ -114,7 +134,8 @@ export function SocialSection({
         </div>
       ) : (
         <>
-          <ul className="divide-y rounded-lg border">
+          {/* One line per link once the list is wide enough; narrower, the link takes its own full-width line. */}
+          <ul className="@container divide-y rounded-lg border">
             {links.map((link, index) => {
               const network = detectedNetwork({ url: link.url });
               const name = network
@@ -122,65 +143,10 @@ export function SocialSection({
                 : m.church_settings_social_untitled({ position: index + 1 });
               const own = rowErrors({ errors, index });
               return (
-                <li key={link.key} className="space-y-2 p-3">
-                  <div className="flex flex-wrap items-start gap-2">
-                    <div className="w-44 space-y-1.5">
-                      <Label className="font-medium text-sm">
-                        {m.church_settings_social_network()}
-                      </Label>
-                      <Select
-                        value={network ?? ''}
-                        onValueChange={(next) =>
-                          update({
-                            key: link.key,
-                            changes: {
-                              url: SOCIAL_NETWORKS[next as SocialNetwork]
-                                .prefix,
-                            },
-                          })
-                        }
-                      >
-                        <SelectTrigger
-                          aria-label={`${m.church_settings_social_network()} ${index + 1}`}
-                          className="w-full"
-                        >
-                          <SelectValue
-                            placeholder={m.church_settings_social_network_unknown()}
-                          >
-                            {network
-                              ? SOCIAL_NETWORKS[network].label
-                              : undefined}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SOCIAL_NETWORK_KEYS.map((key) => (
-                            <SelectItem key={key} value={key}>
-                              {SOCIAL_NETWORKS[key].label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="min-w-56 flex-1">
-                      <IconInputField
-                        icon={Link2}
-                        label={m.church_settings_social_url()}
-                        aria-label={`${m.church_settings_social_url()} ${index + 1}`}
-                        inputMode="url"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        value={link.url}
-                        error={own.url}
-                        onChange={(event) =>
-                          update({
-                            key: link.key,
-                            changes: { url: event.target.value },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
+                <li
+                  key={link.key}
+                  className="grid @5xl:grid-cols-[minmax(0,0.8fr)_11rem_minmax(0,1.5fr)_minmax(0,1fr)_auto] grid-cols-[minmax(0,1fr)_10rem] items-end gap-x-3 gap-y-2 p-3"
+                >
                   <GroupField
                     value={link.group}
                     suggestions={groups}
@@ -190,13 +156,70 @@ export function SocialSection({
                       update({ key: link.key, changes: { group } })
                     }
                   />
-                  <div className="flex flex-wrap items-end gap-2">
-                    <div className="min-w-56 flex-1">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="font-medium text-sm">
+                      {m.church_settings_social_network()}
+                    </Label>
+                    <Select
+                      value={network ?? ''}
+                      onValueChange={(next) => {
+                        if (!isSocialNetwork(next)) return;
+                        const url = switchNetwork({ url: link.url, to: next });
+                        if (url !== link.url)
+                          update({ key: link.key, changes: { url } });
+                      }}
+                    >
+                      <SelectTrigger
+                        aria-label={`${m.church_settings_social_network()} ${index + 1}`}
+                        className="w-full"
+                      >
+                        <SelectValue
+                          placeholder={m.church_settings_social_network_unknown()}
+                        >
+                          {network ? (
+                            <NetworkLabel network={network} />
+                          ) : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SOCIAL_NETWORK_KEYS.map((key) => (
+                          <SelectItem key={key} value={key}>
+                            <NetworkLabel network={key} />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="@5xl:col-span-1 col-span-2">
+                    <IconInputField
+                      icon={Link2}
+                      label={m.church_settings_social_url()}
+                      aria-label={`${m.church_settings_social_url()} ${index + 1}`}
+                      inputMode="url"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      value={link.url}
+                      title={link.url || undefined}
+                      className="truncate"
+                      error={own.url}
+                      onChange={(event) =>
+                        update({
+                          key: link.key,
+                          changes: { url: event.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="col-span-2 flex @5xl:contents flex-wrap items-end gap-x-3 gap-y-2">
+                    <div className="min-w-48 flex-1">
                       <IconInputField
-                        icon={Link2}
+                        icon={Type}
                         label={m.church_settings_social_description()}
                         aria-label={`${m.church_settings_social_description()} ${index + 1}`}
+                        placeholder={m.church_settings_social_description_placeholder()}
                         hint={m.church_settings_social_description_hint()}
+                        hideHint
                         value={link.description}
                         error={own.description}
                         onChange={(event) =>
@@ -207,7 +230,7 @@ export function SocialSection({
                         }
                       />
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center">
                       <Button
                         variant="ghost"
                         size={sizes.icon}
@@ -273,7 +296,7 @@ function AddMenu({ onAdd }: AddMenuProps) {
             key={key}
             onClick={() => onAdd(SOCIAL_NETWORKS[key].prefix)}
           >
-            {SOCIAL_NETWORKS[key].label}
+            <NetworkLabel network={key} />
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
@@ -282,5 +305,24 @@ function AddMenu({ onAdd }: AddMenuProps) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function isSocialNetwork(value: unknown): value is SocialNetwork {
+  return SOCIAL_NETWORK_KEYS.some((key) => key === value);
+}
+
+interface NetworkLabelProps {
+  network: SocialNetwork;
+}
+
+/** A network's icon and name, as the menu, the options and the picked value show it. */
+function NetworkLabel({ network }: NetworkLabelProps) {
+  const Icon = networkIcon({ network });
+  return (
+    <>
+      <Icon aria-hidden className="size-4" />
+      {SOCIAL_NETWORKS[network].label}
+    </>
   );
 }

@@ -13,7 +13,7 @@ interface GroupFieldProps {
   onChange: (group: string) => void;
 }
 
-/** *Pessoa ou ministério*: free text with the Church's groups suggested. */
+/** *Pessoa ou ministério*: free text with the Church's groups suggested; its hint shows once above the rows, not on each. */
 export function GroupField({
   value,
   suggestions,
@@ -30,6 +30,7 @@ export function GroupField({
         aria-label={`${m.church_settings_group_label()} ${rowLabel}`}
         placeholder={m.church_settings_group_placeholder()}
         hint={m.church_settings_group_hint()}
+        hideHint
         list={listId}
         autoComplete="off"
         value={value}

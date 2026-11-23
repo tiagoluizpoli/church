@@ -9,6 +9,7 @@ import {
   useRestoreChurchLogo,
   useUploadChurchLogo,
 } from '@/features/church-settings/church-settings-queries';
+import { LogoCropDialog } from '@/features/church-settings/components/logo-crop-dialog';
 import { LogoImage } from '@/features/church-settings/components/logo-image';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -23,6 +24,8 @@ interface LogoCardProps {
 export function LogoCard({ logoUrl, logoKey }: LogoCardProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [error, setError] = React.useState<string | null>(null);
+  /** The picked image, being framed before upload. */
+  const [picked, setPicked] = React.useState<File | null>(null);
   const errorId = React.useId();
   const upload = useUploadChurchLogo();
   const remove = useRemoveChurchLogo();
@@ -44,6 +47,11 @@ export function LogoCard({ logoUrl, logoKey }: LogoCardProps) {
       return;
     }
     setError(null);
+    setPicked(file);
+  };
+
+  const onFramed = (file: File) => {
+    setPicked(null);
     upload.mutate(
       { file },
       {
@@ -118,6 +126,11 @@ export function LogoCard({ logoUrl, logoKey }: LogoCardProps) {
           {error}
         </p>
       ) : null}
+      <LogoCropDialog
+        file={picked}
+        onConfirm={onFramed}
+        onCancel={() => setPicked(null)}
+      />
       <input
         ref={inputRef}
         type="file"

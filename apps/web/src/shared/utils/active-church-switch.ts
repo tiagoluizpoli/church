@@ -1,5 +1,6 @@
 import type { Query, QueryClient } from '@tanstack/react-query';
 import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
+import { ACTIVE_CHURCH_STATUS_QUERY_KEY } from '@/shared/utils/entry-gate-cache';
 
 export type ActiveChurchArea = 'dashboard' | 'scheduling';
 
@@ -79,8 +80,11 @@ const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
 export function isChurchScopedQuery(query: Query): boolean {
   // Redemption queries belong to the mounted invitation page, which shows
   // their own errors; removing them makes it refetch an accepted invitation.
+  // The gate status describes the Active Church, so a switch drops it too.
+  const [scope, name] = query.queryKey;
+  if (scope === 'redemption') return false;
   return (
-    query.queryKey[0] !== 'active-church' && query.queryKey[0] !== 'redemption'
+    scope !== 'active-church' || name === ACTIVE_CHURCH_STATUS_QUERY_KEY[1]
   );
 }
 

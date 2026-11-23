@@ -50,11 +50,25 @@ interface FetchFieldsRequest {
 interface FetchablePlace extends GooglePlace {
   fetchFields: (request: FetchFieldsRequest) => Promise<unknown>;
 }
+interface FormattableText {
+  text: string;
+}
 interface PlacePrediction {
+  placeId: string;
+  text: FormattableText;
+  mainText: FormattableText | null;
+  secondaryText: FormattableText | null;
   toPlace: () => FetchablePlace;
 }
-interface PlaceSelectEvent extends Event {
-  placePrediction: PlacePrediction;
+interface AutocompleteSuggestionResult {
+  placePrediction: PlacePrediction | null;
+}
+interface FetchSuggestionsRequest {
+  input: string;
+  sessionToken: object;
+  includedRegionCodes: string[];
+  language: string;
+  region: string;
 }
 interface MapInstance {
   setCenter: (position: LatLngLiteral) => void;
@@ -71,7 +85,12 @@ interface GoogleMapsApi {
   };
 }
 interface PlacesLibrary {
-  PlaceAutocompleteElement: new (options: object) => HTMLElement;
+  AutocompleteSuggestion: {
+    fetchAutocompleteSuggestions: (
+      request: FetchSuggestionsRequest,
+    ) => Promise<{ suggestions: AutocompleteSuggestionResult[] }>;
+  };
+  AutocompleteSessionToken: new () => object;
 }
 interface MapsLibrary {
   // named-parameters-ignore: Google Maps JavaScript API signature, not ours
@@ -90,8 +109,10 @@ interface WindowWithGoogle {
 }
 
 const READY_CALLBACK = '__churchMapsReady';
-/** shortcut: Google's shared demo Map ID enables Advanced Markers without map styling; set a real Map ID per environment when the map gets styled. */
-const MAP_ID = 'DEMO_MAP_ID';
+/** Advanced Markers need a Map ID; only development falls back to Google's shared demo one. */
+const MAP_ID =
+  env.VITE_GOOGLE_MAPS_MAP_ID ??
+  (import.meta.env.DEV ? 'DEMO_MAP_ID' : undefined);
 
 let loading: Promise<GoogleMapsApi> | undefined;
 
@@ -159,48 +180,60 @@ export function toPickedPlace(place: GooglePlace): PickedPlace | null {
 // Essentials fields only: no display name, ratings, photos or hours.
 const PLACE_FIELDS = ['id', 'addressComponents', 'location'];
 
-interface AttachPlaceSearchInput {
-  /** Where Google's search field is mounted. */
-  container: HTMLElement;
-  /** The accessible name of the search field. */
-  label: string;
-  onPick: (place: PickedPlace) => void;
-  /** The widget could not load or answer; the dialog says so and CEP and manual entry stay. */
-  onError: () => void;
+/** One Google suggestion for what the admin typed. */
+export interface PlaceSuggestion {
+  placeId: string;
+  /** The street or place, the line the admin recognises. */
+  main: string;
+  /** Bairro, city and state, shown muted. */
+  secondary: string;
 }
 
-/** Google's place search (Places API New), restricted to Brazil; returns the cleanup. */
-export function attachPlaceSearch({
-  container,
-  label,
-  onPick,
-  onError,
-}: AttachPlaceSearchInput): () => void {
-  let active = true;
-  let element: HTMLElement | undefined;
-  importLibrary<PlacesLibrary>({ name: 'places' })
-    .then(({ PlaceAutocompleteElement }) => {
-      if (!active) return;
-      element = new PlaceAutocompleteElement({ includedRegionCodes: ['br'] });
-      element.setAttribute('aria-label', label);
-      element.addEventListener('gmp-select', (event) => {
-        const place = (event as PlaceSelectEvent).placePrediction.toPlace();
-        place
-          .fetchFields({ fields: PLACE_FIELDS })
-          .then(() => {
-            const picked = toPickedPlace(place);
-            if (picked && active) onPick(picked);
-          })
-          .catch(onError);
+export interface PlaceSearch {
+  /** Brazil-only suggestions for the typed text (Places API New); rejects when Google cannot answer. */
+  suggest: (input: string) => Promise<PlaceSuggestion[]>;
+  /** The address fields of a suggestion from the latest `suggest`; ends the billing session. */
+  pick: (suggestion: PlaceSuggestion) => Promise<PickedPlace | null>;
+}
+
+/** Google's place search behind the dialog's own search field; one session token per search-and-pick. */
+export function createPlaceSearch(): PlaceSearch {
+  let token: object | undefined;
+  let predictions = new Map<string, PlacePrediction>();
+  return {
+    suggest: async (input) => {
+      const { AutocompleteSuggestion, AutocompleteSessionToken } =
+        await importLibrary<PlacesLibrary>({ name: 'places' });
+      token ??= new AutocompleteSessionToken();
+      const { suggestions } =
+        await AutocompleteSuggestion.fetchAutocompleteSuggestions({
+          input,
+          sessionToken: token,
+          includedRegionCodes: ['br'],
+          language: 'pt-BR',
+          region: 'br',
+        });
+      predictions = new Map();
+      return suggestions.flatMap(({ placePrediction: prediction }) => {
+        if (!prediction) return [];
+        predictions.set(prediction.placeId, prediction);
+        return [
+          {
+            placeId: prediction.placeId,
+            main: prediction.mainText?.text ?? prediction.text.text,
+            secondary: prediction.secondaryText?.text ?? '',
+          },
+        ];
       });
-      container.append(element);
-    })
-    .catch(() => {
-      if (active) onError();
-    });
-  return () => {
-    active = false;
-    element?.remove();
+    },
+    pick: async ({ placeId }) => {
+      const prediction = predictions.get(placeId);
+      if (!prediction) return null;
+      const place = prediction.toPlace();
+      await place.fetchFields({ fields: PLACE_FIELDS });
+      token = undefined;
+      return toPickedPlace(place);
+    },
   };
 }
 

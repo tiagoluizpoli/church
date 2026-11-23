@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 type IconInputProps = React.ComponentProps<typeof Input> & {
-  icon: LucideIcon;
+  /** Only where it tells the field apart; a plain field takes none. */
+  icon?: LucideIcon;
   wrapperClassName?: string;
 };
 
@@ -18,12 +19,14 @@ export function IconInput({
 }: IconInputProps) {
   return (
     <div className={cn('relative min-w-0', wrapperClassName)}>
-      <Icon
-        className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-        aria-hidden
-      />
+      {Icon ? (
+        <Icon
+          className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+      ) : null}
       <Input
-        className={cn('pl-8 focus-visible:ring-2', className)}
+        className={cn(Icon && 'pl-8', 'focus-visible:ring-2', className)}
         {...props}
       />
     </div>

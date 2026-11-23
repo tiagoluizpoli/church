@@ -1,0 +1,1 @@
+ALTER TABLE "invitation_verification_code" ADD COLUMN "redemption_outcome" jsonb;

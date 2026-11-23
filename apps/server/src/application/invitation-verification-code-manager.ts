@@ -12,7 +12,10 @@ import type { ChurchIdentitySnapshotter } from '../domain/contracts/application/
 import type { InvitationVerificationCodeManager as InvitationVerificationCodeManagerContract } from '../domain/contracts/application/invitation-verification-code-manager';
 import type { EmailSender } from '../domain/contracts/infrastructure/email-sender';
 import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
-import { validateVerificationCode } from '../domain/entities/invitation-verification-code';
+import {
+  type VerificationCodeState,
+  validateVerificationCode,
+} from '../domain/entities/invitation-verification-code';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 import { recipientLocale } from '../domain/services/recipient-locale';
 
@@ -161,18 +164,8 @@ export class InvitationVerificationCodeManager
       code,
       secret: this.verificationCodeSecret,
     });
-    if (
-      state.consumedAt &&
-      idempotencyKey &&
-      state.redemptionIdempotencyKey === idempotencyKey &&
-      compareInstants({ left: state.expiresAt, right: nowInstant }) > 0 &&
-      verifyVerificationCodeHash({
-        codeHash: state.codeHash,
-        candidateHash,
-      })
-    ) {
+    if (isSameKeyReplay({ state, idempotencyKey, candidateHash, nowInstant }))
       return;
-    }
     const candidateMatches = verifyVerificationCodeHash({
       codeHash: state.codeHash,
       candidateHash,
@@ -207,6 +200,15 @@ export class InvitationVerificationCodeManager
     if (!current) {
       throw new VerificationCodeError({ code: 'VERIFICATION_CODE_NOT_FOUND' });
     }
+    if (
+      isSameKeyReplay({
+        state: current,
+        idempotencyKey,
+        candidateHash,
+        nowInstant,
+      })
+    )
+      return;
     const currentCandidateMatches = verifyVerificationCodeHash({
       codeHash: current.codeHash,
       candidateHash,
@@ -221,6 +223,32 @@ export class InvitationVerificationCodeManager
       code: toErrorCode({ status: currentOutcome.status }),
     });
   }
+}
+
+interface SameKeyReplayInput {
+  state: VerificationCodeState;
+  idempotencyKey: string | undefined;
+  candidateHash: string;
+  nowInstant: ReturnType<typeof fromDate>;
+}
+
+/** The code was already consumed by this very request key: a retry or a concurrent twin. */
+function isSameKeyReplay({
+  state,
+  idempotencyKey,
+  candidateHash,
+  nowInstant,
+}: SameKeyReplayInput): boolean {
+  return Boolean(
+    state.consumedAt &&
+      idempotencyKey &&
+      state.redemptionIdempotencyKey === idempotencyKey &&
+      compareInstants({ left: state.expiresAt, right: nowInstant }) > 0 &&
+      verifyVerificationCodeHash({
+        codeHash: state.codeHash,
+        candidateHash,
+      }),
+  );
 }
 
 function generateVerificationCode(): string {

@@ -113,7 +113,7 @@ export const ministryInvitation = pgTable(
 /**
  * One replaceable verification-code lifecycle per pending Church Invitation,
  * plain or paired: a new person proves the addressed mailbox before joining.
- * Only the SHA-256 digest persists. A resend replaces the digest, expiry and
+ * Only the SHA-256 digest persists. A resend replaces the digest and expiry but keeps the
  * attempt count, deliberately invalidating every previously issued code.
  */
 export const invitationVerificationCode = pgTable(
@@ -132,6 +132,8 @@ export const invitationVerificationCode = pgTable(
     failedAttempts: integer('failed_attempts').default(0).notNull(),
     consumedAt: timestamp('consumed_at', { withTimezone: true, mode: 'date' }),
     redemptionIdempotencyKey: text('redemption_idempotency_key'),
+    /** The committed redeem result (sans session), replayed to a same-key retry. */
+    redemptionOutcome: jsonb('redemption_outcome').$type<unknown>(),
     lastSentAt: timestamp('last_sent_at', {
       withTimezone: true,
       mode: 'date',

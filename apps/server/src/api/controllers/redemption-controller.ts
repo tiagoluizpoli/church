@@ -191,10 +191,13 @@ export class RedemptionController implements FastifyController {
           body: redeemNewUserBodySchema,
           response: {
             200: redemptionOutcomeResponseSchema,
+            429: rateLimitedResponseSchema,
           },
         },
       },
       async (request, reply) => {
+        if (this.isRateLimitedRequest({ key: request.ip }))
+          return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params as RedemptionParams;
         const body = request.body as RedeemNewUserBody;
         const outcome = await this.redemptionManager.redeemNewUser({

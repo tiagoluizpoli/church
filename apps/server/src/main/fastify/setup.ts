@@ -167,7 +167,9 @@ export async function createFastify({
     const { origin, 'sec-fetch-site': fetchSite } = request.headers;
     const allowed = origin !== undefined && allowedOrigins.includes(origin);
     if (allowed || (origin === undefined && fetchSite !== 'cross-site')) return;
-    return reply.code(403).send({ message: 'Cross-origin request refused' });
+    return reply.code(403).send({
+      message: m.error_forbidden({}, { locale: request.locale }),
+    });
   });
 
   app.setValidatorCompiler(validatorCompiler);

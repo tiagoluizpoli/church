@@ -77,7 +77,11 @@ const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
 ];
 
 export function isChurchScopedQuery(query: Query): boolean {
-  return query.queryKey[0] !== 'active-church';
+  // Redemption queries belong to the mounted invitation page, which shows
+  // their own errors; removing them makes it refetch an accepted invitation.
+  return (
+    query.queryKey[0] !== 'active-church' && query.queryKey[0] !== 'redemption'
+  );
 }
 
 export async function clearActiveChurchScopedCache({

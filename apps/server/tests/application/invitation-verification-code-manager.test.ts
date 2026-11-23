@@ -55,11 +55,15 @@ function createHarness({
         codeHash,
         expiresAt: fromDate({ date: expiresAt }),
         lastSentAt: sentAtInstant,
-        failedAttempts: 0,
+        failedAttempts: state?.failedAttempts ?? 0,
         consumedAt: null,
         redemptionIdempotencyKey: null,
       };
       return true;
+    },
+    async recordRedemptionOutcome() {},
+    async findRedemptionOutcome() {
+      return null;
     },
     async releaseDeliveryClaim({ codeHash, sentAt }) {
       if (
@@ -240,7 +244,7 @@ describe('InvitationVerificationCodeManager', () => {
     ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
   });
 
-  it('replaces the code and resets its attempt budget only after the sixty-second cooldown', async () => {
+  it('replaces the code but keeps its spent attempts, only after the sixty-second cooldown', async () => {
     const harness = createHarness();
     const invitationId = ChurchInvitationId.from(
       '00000000-0000-4000-8000-000000000003',
@@ -269,6 +273,13 @@ describe('InvitationVerificationCodeManager', () => {
     ).rejects.toMatchObject({
       code: 'VERIFICATION_CODE_RESEND_COOLDOWN_ACTIVE',
     });
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '000000',
+        now,
+      }),
+    ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_INVALID' });
     await harness.manager.issue({
       churchId,
       churchInvitationId: invitationId,
@@ -276,8 +287,46 @@ describe('InvitationVerificationCodeManager', () => {
       churchName: 'Church',
       now: whenCooldownEnds,
     });
-    expect(harness.state?.failedAttempts).toBe(0);
+    expect(harness.state?.failedAttempts).toBe(1);
     expect(harness.sent).toHaveLength(2);
+  });
+
+  it('accepts the same-key twin whose consume lost the race', async () => {
+    const harness = createHarness();
+    const invitationId = ChurchInvitationId.from(
+      '00000000-0000-4000-8000-000000000004',
+    );
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    await harness.manager.issue({
+      churchId,
+      churchInvitationId: invitationId,
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Church',
+      now,
+    });
+    const key = '00000000-0000-4000-8000-0000000000aa';
+    await harness.manager.verify({
+      churchInvitationId: invitationId,
+      code: '123456',
+      idempotencyKey: key,
+      now,
+    });
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '123456',
+        idempotencyKey: key,
+        now,
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '123456',
+        idempotencyKey: '00000000-0000-4000-8000-0000000000bb',
+        now,
+      }),
+    ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
   });
 
   it('sends the code with the policy lifetime in the address recipient locale', async () => {

@@ -505,6 +505,20 @@
       "when": 1795387854534,
       "tag": "0071_church_contact_group_unique_name",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1795457285082,
+      "tag": "0072_outbox_lease_and_pending_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795471247001,
+      "tag": "0073_verification_code_redemption_outcome",
+      "breakpoints": true
     }
   ]
 }

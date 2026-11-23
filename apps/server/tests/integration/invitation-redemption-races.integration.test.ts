@@ -75,6 +75,11 @@ const redemptionRepository = new DrizzleRedemptionRepository({
 });
 const harness = createMinistryInvitationTestHarness({ db: raceDb });
 const { manager: invitationManager, ministryInvitationRepository } = harness;
+const verificationCodeRepository =
+  new DrizzleInvitationVerificationCodeRepository({
+    db: raceDb,
+    config: appConfig,
+  });
 const redemptionManager = new DbRedemptionManager({
   churchRepository: harness.churchRepository,
   identityGateway: new BetterAuthRedemptionIdentityGateway({
@@ -84,10 +89,7 @@ const redemptionManager = new DbRedemptionManager({
   invitationRepository: ministryInvitationRepository,
   invitationVerificationCodeManager: new InvitationVerificationCodeManager({
     churchIdentity: nullChurchIdentity,
-    repository: new DrizzleInvitationVerificationCodeRepository({
-      db: raceDb,
-      config: appConfig,
-    }),
+    repository: verificationCodeRepository,
     emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
@@ -96,6 +98,7 @@ const redemptionManager = new DbRedemptionManager({
   redemptionRepository,
   securityLogRepository: new DrizzleSecurityLogRepository({ db: raceDb }),
   unitOfWork: new DrizzleUnitOfWork({ db: raceDb }),
+  verificationCodeRepository,
   failureLog: { record: () => {} },
 });
 

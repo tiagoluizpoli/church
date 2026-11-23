@@ -493,6 +493,33 @@ describe('DbOutboxDrainer — invitation email retry safety (issue #619, integra
     });
   });
 
+  it('reclaims a row stranded in processing past the lease and replays it under the same key', async () => {
+    await mintFor({ email: memberEmail() });
+    const emailSender = new FlakyEmailSender({ appName: 'Church' });
+    const drainer = buildDrainer({ emailSender });
+    await drainer.drainOnce({ limit: 10 });
+    // Crash between send and record: the provider has the email, the row
+    // still says processing with no receipt.
+    await testDb.update(outboxMessage).set({
+      status: 'processing',
+      attempts: 0,
+      sentAt: null,
+      emailConfirmedDestinations: [],
+      channelOutcomes: {},
+      emailDeliveredAt: null,
+      claimedAt: new Date(firstAttempt),
+    });
+
+    expect((await drainer.drainOnce({ limit: 10 })).claimed).toBe(0);
+    advanceClockFromFirstAttempt({ ms: appConfig.outbox.processingLeaseMs });
+    const result = await drainer.drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.attemptedKeys).toHaveLength(2);
+    expect(new Set(emailSender.attemptedKeys).size).toBe(1);
+    expect(await onlyRow()).toMatchObject({ status: 'sent', attempts: 1 });
+  });
+
   it('keeps delivering the other claimed rows when one delivery fails', async () => {
     await mintFor({ email: memberEmail() });
     await mintFor({ email: 'outsider@example.com' });

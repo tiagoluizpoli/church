@@ -19,7 +19,7 @@ import {
   user,
   volunteer,
 } from '@church/db';
-import { fromDate, nowAsDate } from '@church/time';
+import { compareInstants, fromDate, nowAsDate, toDate } from '@church/time';
 import {
   and,
   asc,
@@ -48,9 +48,11 @@ import type {
   CreatePlanningEventTimeBlockInput,
   DeletePlanningEventInput,
   DeleteScopeUnavailableShiftsInput,
+  EventShiftBounds,
   GetPlanningEventInput,
   ListCancellationScopeAssignmentsInput,
   ListCycleEventsInput,
+  ListEventShiftsInput,
   ListMoveClashCandidatesInput,
   ListMoveScopeAssignmentsInput,
   ListScopeParticipatingMinistriesInput,
@@ -58,6 +60,7 @@ import type {
   MoveEventTimeBlocksInput,
   PlanningEventRepository,
   RemoveLastToldAssignmentsInput,
+  RetimeEventTimeBlocksInput,
   ScopeParticipatingMinistry,
   SeededMinistry,
   SeedPlanningParticipationsInput,
@@ -612,6 +615,100 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
           inArray(shift.eventTimeBlockId, eventTimeBlockIds),
         ),
       );
+  }
+
+  async listEventShifts({
+    churchId,
+    eventTimeBlockIds,
+    tx,
+  }: ListEventShiftsInput): Promise<EventShiftBounds[]> {
+    if (eventTimeBlockIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        shiftId: shift.id,
+        eventTimeBlockId: shift.eventTimeBlockId,
+        start: shift.startTime,
+        end: shift.endTime,
+      })
+      .from(shift)
+      .where(
+        and(
+          withChurchIsolation({ table: shift, churchId }),
+          inArray(shift.eventTimeBlockId, eventTimeBlockIds),
+        ),
+      )
+      .orderBy(asc(shift.startTime), asc(shift.id));
+    return rows.map((row) => ({
+      shiftId: ShiftId.from(row.shiftId),
+      eventTimeBlockId: EventTimeBlockId.from(row.eventTimeBlockId),
+      start: fromDate({ date: row.start }),
+      end: fromDate({ date: row.end }),
+    }));
+  }
+
+  async retimeEventTimeBlocks({
+    churchId,
+    eventTimeBlocks,
+    shifts,
+    tx,
+  }: RetimeEventTimeBlocksInput): Promise<void> {
+    const client = getClient({ db: this.db, tx });
+    for (const { eventTimeBlockId, label, start, end } of eventTimeBlocks) {
+      const isolated = and(
+        withChurchIsolation({ table: eventTimeBlock, churchId }),
+        eq(eventTimeBlock.id, eventTimeBlockId),
+      );
+      const [stored] = await client
+        .select({
+          start: eventTimeBlock.startTime,
+          end: eventTimeBlock.endTime,
+        })
+        .from(eventTimeBlock)
+        .where(isolated);
+      if (!stored)
+        throw new NotFoundError(
+          `EventTimeBlock not found: ${eventTimeBlockId}`,
+        );
+      const startTime = toDate({ instant: start });
+      const endTime = toDate({ instant: end });
+      if (
+        compareInstants({
+          left: fromDate({ date: stored.start }),
+          right: start,
+        }) !== 0 ||
+        compareInstants({
+          left: fromDate({ date: stored.end }),
+          right: end,
+        }) !== 0
+      ) {
+        await client.insert(eventTimeBlockMove).values({
+          churchId,
+          eventTimeBlockId,
+          previousStart: stored.start,
+          previousEnd: stored.end,
+          newStart: startTime,
+          newEnd: endTime,
+        });
+      }
+      await client
+        .update(eventTimeBlock)
+        .set({ label, startTime, endTime })
+        .where(isolated);
+    }
+    for (const { shiftId, start, end } of shifts) {
+      await client
+        .update(shift)
+        .set({
+          startTime: toDate({ instant: start }),
+          endTime: toDate({ instant: end }),
+        })
+        .where(
+          and(
+            withChurchIsolation({ table: shift, churchId }),
+            eq(shift.id, shiftId),
+          ),
+        );
+    }
   }
 
   async listCancellationScopeAssignments({

@@ -6,6 +6,7 @@ import type {
   EventTemplateId,
   EventTimeBlockId,
   MinistryId,
+  ShiftId,
   TemplateTimeBlockId,
   VolunteerId,
 } from '../../branded-ids';
@@ -16,6 +17,7 @@ import type {
 } from '../../entities/event';
 import type { CancellationScopeAssignment } from '../../services/event-cancellation';
 import type {
+  InstantBounds,
   MoveClashCandidate,
   MoveScopeAssignment,
 } from '../../services/event-move';
@@ -140,6 +142,34 @@ export interface MoveEventTimeBlocksInput {
   tx: TransactionContext;
 }
 
+export interface ListEventShiftsInput {
+  churchId: ChurchId;
+  eventTimeBlockIds: EventTimeBlockId[];
+  tx: TransactionContext;
+}
+
+export interface EventShiftBounds extends InstantBounds {
+  shiftId: ShiftId;
+  eventTimeBlockId: EventTimeBlockId;
+}
+
+export interface RetimedEventTimeBlock extends InstantBounds {
+  eventTimeBlockId: EventTimeBlockId;
+  label: string;
+}
+
+export interface RetimedShift extends InstantBounds {
+  shiftId: ShiftId;
+}
+
+export interface RetimeEventTimeBlocksInput {
+  churchId: ChurchId;
+  eventTimeBlocks: RetimedEventTimeBlock[];
+  /** The new bounds of the blocks' Shifts, computed by the caller. */
+  shifts: RetimedShift[];
+  tx: TransactionContext;
+}
+
 export interface ListCancellationScopeAssignmentsInput {
   churchId: ChurchId;
   eventId: EventId;
@@ -214,6 +244,13 @@ export interface PlanningEventRepository {
   ): Promise<ScopeParticipatingMinistry[]>;
   /** Shifts the blocks and all of their Shifts by one delta. */
   moveEventTimeBlocks(input: MoveEventTimeBlocksInput): Promise<void>;
+  /** The Shifts of the blocks, every one of them. */
+  listEventShifts(input: ListEventShiftsInput): Promise<EventShiftBounds[]>;
+  /**
+   * Sets each block's label and bounds and each Shift's bounds, recording a
+   * move of every block whose bounds change, as `moveEventTimeBlocks` does.
+   */
+  retimeEventTimeBlocks(input: RetimeEventTimeBlocksInput): Promise<void>;
   /**
    * The active Assignments (draft, pending, confirmed) on the cancellation
    * scope, flagged published (pending/confirmed in a published Schedule) and

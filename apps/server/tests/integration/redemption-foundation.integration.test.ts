@@ -94,6 +94,9 @@ const unusedIdentityGateway: RedemptionIdentityGateway = {
   async verifyPassword() {
     throw new Error('Identity gateway is not used by checkpoint-three tests.');
   },
+  async signIn() {
+    throw new Error('Identity gateway is not used by checkpoint-three tests.');
+  },
 };
 
 function createHarness(): RedemptionHarness {
@@ -115,6 +118,7 @@ function createHarness(): RedemptionHarness {
       redemptionRepository,
       securityLogRepository,
       unitOfWork,
+      verificationCodeRepository,
       failureLog: { record: () => {} },
     }),
   };

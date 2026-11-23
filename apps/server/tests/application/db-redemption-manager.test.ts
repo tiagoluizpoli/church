@@ -13,6 +13,7 @@ import type {
   PublicRedemptionPreview,
 } from '@/domain/contracts/application/redemption-manager';
 import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { InvitationVerificationCodeRepository } from '@/domain/contracts/infrastructure/invitation-verification-code.repository';
 import type { MinistryInvitationRepository } from '@/domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RedemptionRepository } from '@/domain/contracts/infrastructure/redemption.repository';
 import type { RedemptionIdentityGateway } from '@/domain/contracts/infrastructure/redemption-identity-gateway';
@@ -57,6 +58,7 @@ interface RedemptionManagerHarness {
     | 'findRedemptionBundle'
   >;
   manager: DbRedemptionManager;
+  verificationCodeRepository: InvitationVerificationCodeRepository;
   recordChurchOnlyPartialAcceptance: ReturnType<typeof vi.fn>;
   verificationCodeManager: InvitationVerificationCodeManager;
 }
@@ -129,7 +131,12 @@ function createHarness({
     setActiveChurch: vi.fn().mockImplementation(setActive),
     isEmailRegistered: vi.fn().mockResolvedValue(false),
     verifyPassword: vi.fn().mockResolvedValue(true),
+    signIn: vi.fn().mockResolvedValue('better-auth.session_token=fresh'),
   };
+  const verificationCodeRepository = {
+    recordRedemptionOutcome: vi.fn().mockResolvedValue(undefined),
+    findRedemptionOutcome: vi.fn().mockResolvedValue(null),
+  } as unknown as InvitationVerificationCodeRepository;
   const acceptedInputs: AcceptPendingMinistryInvitationInput[] = [];
   const recordChurchOnlyPartialAcceptance = vi
     .fn()
@@ -183,6 +190,7 @@ function createHarness({
     churchRepository,
     identityGateway,
     invitationRepository,
+    verificationCodeRepository,
     manager: new DbRedemptionManager({
       churchRepository,
       identityGateway,
@@ -192,6 +200,7 @@ function createHarness({
       redemptionRepository,
       securityLogRepository,
       unitOfWork,
+      verificationCodeRepository,
       failureLog: { record: vi.fn() },
     }),
     recordChurchOnlyPartialAcceptance,
@@ -284,6 +293,82 @@ describe('DbRedemptionManager', () => {
     expect(acceptedInputs).toEqual([
       expect.objectContaining({ correlationId: IDEMPOTENCY_KEY }),
     ]);
+  });
+
+  it('replays the committed outcome with a fresh session to a same-key retry', async () => {
+    const { identityGateway, manager, verificationCodeRepository } =
+      createHarness({ previews: [null] });
+    vi.mocked(
+      verificationCodeRepository.findRedemptionOutcome,
+    ).mockResolvedValue({
+      email: 'invitee@example.test',
+      outcome: { kind: 'full-success', volunteerId: VOLUNTEER_ID },
+    });
+
+    const outcome = await manager.redeemNewUser({
+      churchInvitationId: CHURCH_INVITATION_ID,
+      name: 'New Volunteer',
+      password: 'correct-horse-battery-staple',
+      code: '123456',
+      idempotencyKey: IDEMPOTENCY_KEY,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'full-success',
+      volunteerId: VOLUNTEER_ID,
+      sessionCookie: 'better-auth.session_token=fresh',
+    });
+    expect(identityGateway.createAccount).not.toHaveBeenCalled();
+  });
+
+  it('gives a concurrent same-key loser the winner outcome instead of failing', async () => {
+    const { manager, verificationCodeRepository, invitationRepository } =
+      createHarness();
+    vi.mocked(invitationRepository.lockChurchInvitation).mockResolvedValue({
+      status: 'accepted',
+      resendCount: 0,
+    } as never);
+    vi.mocked(
+      verificationCodeRepository.findRedemptionOutcome,
+    ).mockResolvedValue({
+      email: 'invitee@example.test',
+      outcome: { kind: 'full-success', volunteerId: null },
+    });
+
+    const outcome = await manager.redeemNewUser({
+      churchInvitationId: CHURCH_INVITATION_ID,
+      name: 'New Volunteer',
+      password: 'correct-horse-battery-staple',
+      code: '123456',
+      idempotencyKey: IDEMPOTENCY_KEY,
+    });
+
+    expect(outcome).toMatchObject({ kind: 'full-success', volunteerId: null });
+  });
+
+  it('refuses the replay when the password does not open the account', async () => {
+    const { identityGateway, manager, verificationCodeRepository } =
+      createHarness({ previews: [null] });
+    vi.mocked(
+      verificationCodeRepository.findRedemptionOutcome,
+    ).mockResolvedValue({
+      email: 'invitee@example.test',
+      outcome: { kind: 'full-success', volunteerId: null },
+    });
+    vi.mocked(identityGateway.signIn).mockResolvedValue(null);
+
+    const outcome = await manager.redeemNewUser({
+      churchInvitationId: CHURCH_INVITATION_ID,
+      name: 'New Volunteer',
+      password: 'wrong-password-123',
+      code: '123456',
+      idempotencyKey: IDEMPOTENCY_KEY,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'terminal-failure',
+      reason: 'VERIFICATION_FAILED',
+    });
   });
 
   it('reports a retryable Ministry failure when the grant step throws', async () => {

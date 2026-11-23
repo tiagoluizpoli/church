@@ -53,6 +53,8 @@ export const appConfigSchema = z.object({
   outbox: z.object({
     maxAttempts: positiveInt,
     backoffCapMinutes: positiveInt,
+    /** A row left `processing` this long is considered stranded and retried. */
+    processingLeaseMs: positiveInt,
     /**
      * How long the email provider remembers an idempotency key (Resend: 24
      * hours). An email attempt at or past this age since its first attempt
@@ -138,6 +140,7 @@ export const appConfig = appConfigSchema.parse({
   outbox: {
     maxAttempts: 5,
     backoffCapMinutes: 60,
+    processingLeaseMs: 10 * MINUTE_MS,
     emailIdempotencyRetentionMs: DAY_MS,
   },
   swapRequest: { noteMaxLength: 500 },

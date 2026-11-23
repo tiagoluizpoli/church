@@ -90,6 +90,7 @@ beforeEach(async () => {
     redemptionRepository,
     securityLogRepository,
     unitOfWork,
+    verificationCodeRepository,
     failureLog: { record: () => {} },
   });
   const volunteerTransferManager = new DbVolunteerTransferManager({

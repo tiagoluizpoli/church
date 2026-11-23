@@ -511,6 +511,27 @@ describe('the public Church Invitation join route', () => {
     expect(getSession).toHaveBeenCalled();
   });
 
+  it('continues to Home, not the review redirect, once the invitee is signed in after a redeem', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'full-success',
+      volunteerId: null,
+    });
+    getSession.mockImplementation(async () => {
+      useSession.mockReturnValue({
+        isPending: false,
+        data: { user: { email: 'First-Admin@example.test' } },
+      });
+      return { data: { user: { id: 'u1' } } };
+    });
+    const { user, router } = await openStepTwo();
+
+    await fillAndJoin({ user });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+    expect(router.history.location.pathname).not.toContain('/review');
+  });
+
   it('continues a Church-only join to Home carrying the Church and Ministry names', async () => {
     previewChurchInvitation.mockResolvedValue(PAIRED_PREVIEW);
     redeemChurchInvitation.mockResolvedValue({

@@ -509,8 +509,15 @@
     {
       "idx": 72,
       "version": "7",
-      "when": 1795467936314,
-      "tag": "0072_drop-declined-assignment-status",
+      "when": 1795457285082,
+      "tag": "0072_outbox_lease_and_pending_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795471247001,
+      "tag": "0073_verification_code_redemption_outcome",
       "breakpoints": true
     }
   ]

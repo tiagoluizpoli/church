@@ -52,6 +52,8 @@ export type MappedDomainCode =
   | 'DRAFT_STAFFING_RECONCILIATION_REQUIRED'
   | 'EVENT_OUTSIDE_CYCLE'
   | 'MOVE_WINDOW_CLOSED'
+  | 'EDIT_WINDOW_CLOSED'
+  | 'STAFFED_EVENT_TIME_BLOCK_DROP'
   | 'PUBLIC_INFO_LOCKED'
   | 'ADMIN_CANCELLATION_WINDOW_CLOSED'
   | 'EMPTY_CYCLE'
@@ -73,6 +75,7 @@ export type MappedDomainCode =
   | 'MINISTRY_MEMBERSHIP_INACTIVE'
   | 'UPCOMING_ASSIGNMENTS'
   | 'HEADCOUNT_BELOW_ASSIGNED'
+  | 'SHIFT_REQUIREMENT_FULL'
   | 'SCHEDULE_HAS_NO_ASSIGNMENTS'
   | 'SCHEDULE_ALREADY_PUBLISHED'
   | 'ASSIGNMENT_PROPOSAL_CHANGED'
@@ -160,6 +163,11 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   },
   EVENT_OUTSIDE_CYCLE: { status: 409, message: m.error_event_outside_cycle },
   MOVE_WINDOW_CLOSED: { status: 409, message: m.error_move_window_closed },
+  EDIT_WINDOW_CLOSED: { status: 409, message: m.error_edit_window_closed },
+  STAFFED_EVENT_TIME_BLOCK_DROP: {
+    status: 409,
+    message: m.error_staffed_event_time_block_drop,
+  },
   PUBLIC_INFO_LOCKED: { status: 409, message: m.error_public_info_locked },
   ADMIN_CANCELLATION_WINDOW_CLOSED: {
     status: 409,
@@ -229,6 +237,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   HEADCOUNT_BELOW_ASSIGNED: {
     status: 409,
     message: m.error_headcount_below_assigned,
+  },
+  SHIFT_REQUIREMENT_FULL: {
+    status: 409,
+    message: m.error_shift_requirement_full,
   },
   SCHEDULE_HAS_NO_ASSIGNMENTS: {
     status: 409,

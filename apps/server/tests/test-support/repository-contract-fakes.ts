@@ -281,6 +281,9 @@ export function createPlanningEventRepositoryFake() {
       vi.fn<PlanningEventRepository['listScopeParticipatingMinistries']>(),
     moveEventTimeBlocks:
       vi.fn<PlanningEventRepository['moveEventTimeBlocks']>(),
+    listEventShifts: vi.fn<PlanningEventRepository['listEventShifts']>(),
+    retimeEventTimeBlocks:
+      vi.fn<PlanningEventRepository['retimeEventTimeBlocks']>(),
     listCancellationScopeAssignments:
       vi.fn<PlanningEventRepository['listCancellationScopeAssignments']>(),
     cancelEventTimeBlock:

@@ -84,6 +84,7 @@
   "error_ministry_role_required": "A Volunteer in this Ministry must keep at least one Role.",
   "error_headcount_below_assigned": "People needed can't go below the Volunteers already assigned.",
   "error_headcount_below_assigned_count": "Already assigned: {count}. People needed can't go below that number.",
+  "error_shift_requirement_full": "This Shift already has all the people it needs. Raise people needed first, then assign.",
   "error_ask_blocked_flagged_shifts": "Some Shifts have no Role needed yet. Fix them before asking for availability.",
   "error_remind_on_cooldown": "This Schedule was reminded recently. You can remind again once the wait is over.",
   "error_validation_ask_no_eligible_volunteers": "No Volunteer holds a Role these Shifts need, so there is nobody to ask.",

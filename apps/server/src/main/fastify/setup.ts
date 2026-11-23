@@ -1,3 +1,4 @@
+import { allowedOrigins, DESKTOP_ORIGIN } from '@church/auth/allowed-origins';
 import { DomainError } from '@church/core';
 import { env } from '@church/env/server';
 import { m } from '@church/i18n/messages';
@@ -69,8 +70,9 @@ interface CreateFastifyInput {
 
 const logSerializers = { req: serializeRequest, err: serializeError };
 
-/** The Electrobun desktop app serves the web bundle from this origin. */
-export const DESKTOP_ORIGIN = 'views://mainview';
+export { DESKTOP_ORIGIN };
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /** Unexpected 500s only; expected outcomes and 503s are never reported. */
 function reportUnexpected({
@@ -144,7 +146,7 @@ export async function createFastify({
   registerE2eTargetHeader({ app, enabled: debugEndpointsEnabled() });
 
   await app.register(fastifyCors, {
-    origin: [env.CORS_ORIGIN, DESKTOP_ORIGIN],
+    origin: [...allowedOrigins],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -155,6 +157,17 @@ export async function createFastify({
     exposedHeaders: ['x-request-id'],
     credentials: true,
     maxAge: 86400,
+  });
+
+  // Non-browser clients send neither header and pass. A browser sends Origin
+  // on every non-GET; an allowed one may be cross-site (CORS), any other
+  // Origin, or a cross-site request without one, is refused.
+  app.addHook('onRequest', async (request, reply) => {
+    if (SAFE_METHODS.has(request.method)) return;
+    const { origin, 'sec-fetch-site': fetchSite } = request.headers;
+    const allowed = origin !== undefined && allowedOrigins.includes(origin);
+    if (allowed || (origin === undefined && fetchSite !== 'cross-site')) return;
+    return reply.code(403).send({ message: 'Cross-origin request refused' });
   });
 
   app.setValidatorCompiler(validatorCompiler);

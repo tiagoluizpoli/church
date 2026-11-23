@@ -4,6 +4,7 @@ import { env } from '@church/env/server';
 import { type BetterAuthOptions, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins/organization';
+import { allowedOrigins } from './allowed-origins';
 import { assertConfiguredRole } from './organization/assert-configured-role';
 import {
   organizationCreatorRole,
@@ -48,7 +49,7 @@ export function createAuth({
 
       schema: schema,
     }),
-    trustedOrigins: [env.CORS_ORIGIN],
+    trustedOrigins: [...allowedOrigins],
     emailAndPassword: {
       enabled: true,
       resetPasswordTokenExpiresIn,

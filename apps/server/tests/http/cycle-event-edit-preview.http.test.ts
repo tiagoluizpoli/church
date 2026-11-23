@@ -400,7 +400,7 @@ interface BookInput {
   volunteerId: string;
   start: string;
   end: string;
-  status: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
+  status: 'draft' | 'pending' | 'confirmed' | 'cancelled';
 }
 
 function book({ start, end, ...rest }: BookInput) {

@@ -12,6 +12,7 @@ import type {
   CancellationImpact,
   CancellationScope,
 } from '../../services/event-cancellation';
+import type { EditProposal } from '../../services/event-edit';
 import type {
   MoveClash,
   MoveProposal,
@@ -166,6 +167,30 @@ export interface PlanningMoveResult {
   withdrawn: MoveClash[];
 }
 
+/** One block of an edit; `id` keeps that active block, none adds one. */
+export interface PlanningEditTimeBlock {
+  id?: EventTimeBlockId;
+  label: string;
+  startTime: Date;
+  endTime: Date;
+}
+
+/** The complete proposed bounds and blocks of a scheduled Event of a Sent Cycle. */
+export interface PreviewPlanningEditManagerInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  eventId: EventId;
+  start: Date;
+  end: Date;
+  eventTimeBlocks: PlanningEditTimeBlock[];
+}
+
+/** The proposed bounds and the Assignments a clash would withdraw; nothing is written. */
+export interface PlanningEditPreview {
+  proposal: EditProposal;
+  clashes: MoveClash[];
+}
+
 /** A cancellation request for one scope: the whole Event or one EventTimeBlock. */
 export interface PlanningCancellationManagerInput {
   churchId: ChurchId;
@@ -218,6 +243,13 @@ export interface IPlanningEventManager {
   confirmMove(
     input: ConfirmPlanningMoveManagerInput,
   ): Promise<PlanningMoveResult>;
+  /**
+   * Advisory and write-free: allowed until the Event ends, the proposal
+   * passes the final-graph rules and no staffed block is dropped.
+   */
+  previewEdit(
+    input: PreviewPlanningEditManagerInput,
+  ): Promise<PlanningEditPreview>;
   /** Advisory and write-free: confirm recalculates and never trusts it. */
   previewCancellation(
     input: PreviewPlanningCancellationManagerInput,

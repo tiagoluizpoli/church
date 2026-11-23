@@ -1,6 +1,7 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import type {
+  PlanningEditPreview,
   PlanningEventGraph,
   PlanningMovePreview,
   PlanningMoveResult,
@@ -178,6 +179,64 @@ export const eventMoveMapper = {
     return {
       ...eventGraphMapper.toResponse(graph),
       withdrawn: withdrawn.map(toMoveClashResponse),
+    };
+  },
+};
+
+/**
+ * The complete proposed bounds and blocks of a sent Event: a block with `id`
+ * keeps that block, one without is added and a left-out block is dropped.
+ */
+export const editPlanningEventBodySchema = z.object({
+  start: z.string().datetime(),
+  end: z.string().datetime(),
+  eventTimeBlocks: z.array(
+    z.object({
+      id: z.string().uuid().optional(),
+      label: z.string().trim().min(1),
+      startTime: z.string().datetime(),
+      endTime: z.string().datetime(),
+    }),
+  ),
+});
+
+export type EditPlanningEventBody = z.infer<typeof editPlanningEventBodySchema>;
+
+/** Proposed bounds, a row per block and typed clash rows; nothing was written. */
+export const eventEditPreviewResponseSchema = z.object({
+  event: z.object({
+    previous: instantBoundsResponseSchema,
+    proposed: instantBoundsResponseSchema,
+  }),
+  eventTimeBlocks: z.array(
+    z.object({
+      id: z.string().nullable(),
+      label: z.string().optional(),
+      change: z.enum(['kept', 'added', 'dropped']),
+      previous: instantBoundsResponseSchema.nullable(),
+      proposed: instantBoundsResponseSchema.nullable(),
+    }),
+  ),
+  clashes: z.array(moveClashResponseSchema),
+});
+
+export const eventEditPreviewMapper = {
+  toResponse({ proposal, clashes }: PlanningEditPreview) {
+    return {
+      event: {
+        previous: proposal.previousEvent,
+        proposed: proposal.proposedEvent,
+      },
+      eventTimeBlocks: proposal.eventTimeBlocks.map(
+        ({ eventTimeBlockId, label, change, previous, proposed }) => ({
+          id: eventTimeBlockId ?? null,
+          label,
+          change,
+          previous: previous ?? null,
+          proposed: proposed ?? null,
+        }),
+      ),
+      clashes: clashes.map(toMoveClashResponse),
     };
   },
 };

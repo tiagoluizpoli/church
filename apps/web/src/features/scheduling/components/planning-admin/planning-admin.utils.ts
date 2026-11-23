@@ -605,6 +605,25 @@ function hasStarted({ start }: HasStartedInput): boolean {
   return compareInstants({ left: currentInstant, right: startInstant }) >= 0;
 }
 
+interface CanEditEventInput {
+  cycleState: string;
+  eventStatus: string;
+  end: string;
+}
+
+/** A scheduled Event of a Sent Cycle until it ends; a running one included. */
+export function canEditEvent({
+  cycleState,
+  eventStatus,
+  end,
+}: CanEditEventInput): boolean {
+  const lifecycleAllows = canCancelEventBlocks({ cycleState, eventStatus });
+  const endInstant = parseInstant({ value: end });
+  return (
+    lifecycleAllows && compareInstants({ left: now(), right: endInstant }) < 0
+  );
+}
+
 /** An active block that has not started; a started sibling does not matter. */
 export function canCancelEventTimeBlock({
   eventAllows,

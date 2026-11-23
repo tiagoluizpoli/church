@@ -433,6 +433,30 @@ describe('PlanningEventCard move preview', () => {
   });
 });
 
+describe('PlanningEventCard edit', () => {
+  it.each([
+    [true, 1],
+    [false, 0],
+  ])('with canEdit=%s renders %s edit button', (canEdit, count) => {
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="UTC">
+        <PlanningEventCard
+          row={rowWithTwoEventTimeBlocks()}
+          isReadOnly
+          canEdit={canEdit}
+          {...baseProps()}
+        />
+      </TimezoneProvider>,
+    );
+
+    expect(
+      screen.queryAllByRole('button', {
+        name: m.event_edit_preview_action_label({ title: 'Sunday Service' }),
+      }),
+    ).toHaveLength(count);
+  });
+});
+
 describe('PlanningEventCard cancellation', () => {
   it('offers Cancel event beside the move preview for a cancellable Event', () => {
     renderWithProviders(

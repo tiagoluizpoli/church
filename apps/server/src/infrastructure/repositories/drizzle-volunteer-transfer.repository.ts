@@ -14,9 +14,11 @@ import {
   ministryParticipation,
   organization,
   role,
+  scheduleLastTold,
   sector,
   shift,
   shiftRequirement,
+  swapRequest,
   user,
   volunteer,
   volunteerTransfer,
@@ -333,6 +335,39 @@ export class DrizzleVolunteerTransferRepository
           timestamp: confirmedAt,
         })),
       );
+      // Their open Swap requests end as covered (no N8) and the last-told
+      // snapshots forget the withdrawn Assignments, so the leader's swap queue
+      // and the next schedule send hold nothing for them.
+      await db
+        .update(swapRequest)
+        .set({ status: 'covered', closedBy: userId, closedAt: confirmedAt })
+        .where(
+          and(
+            eq(swapRequest.churchId, sourceChurchId),
+            eq(swapRequest.status, 'open'),
+            inArray(swapRequest.assignmentId, withdrawnAssignmentIds),
+          ),
+        );
+      const withdrawn = sql`entry.value ->> 'assignmentId' in (${sql.join(
+        withdrawnAssignmentIds.map((id) => sql`${id}`),
+        sql`, `,
+      )})`;
+      await db
+        .update(scheduleLastTold)
+        .set({
+          assignments: sql`coalesce((
+            select jsonb_agg(entry.value order by entry.position)
+            from jsonb_array_elements(${scheduleLastTold.assignments})
+              with ordinality as entry(value, position)
+            where not (${withdrawn})
+          ), '[]'::jsonb)`,
+        })
+        .where(
+          and(
+            eq(scheduleLastTold.churchId, sourceChurchId),
+            eq(scheduleLastTold.volunteerId, activeProfile.id),
+          ),
+        );
     }
 
     // 7. Select one digest per affected Ministry (spec §8.8, issue #60) —

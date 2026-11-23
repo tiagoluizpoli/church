@@ -281,7 +281,7 @@ export class ChurchSettingsController implements FastifyController {
           operationId: 'uploadChurchLogo',
           summary: 'Upload the Active Church logo',
           description:
-            'Applies at once, outside the settings save. PNG, JPEG or WebP by content, at most 5 MB, longest side at least 128 px, ratio within 1:4–4:1; stored as one PNG of at most 512 px under a content-hashed key. Earlier logos stay stored. ChurchAdmin only.',
+            'Applies at once, outside the settings save. PNG, JPEG or WebP by content, at most 5 MB, longest side at least 128 px, from square to 4:3 landscape; stored as one PNG of at most 512 px under a content-hashed key. Earlier logos stay stored. ChurchAdmin only.',
           consumes: ['multipart/form-data'],
           body: uploadChurchLogoBodySchema,
           response: {

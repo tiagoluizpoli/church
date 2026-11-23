@@ -73,8 +73,9 @@ export function ChurchPreview({
         }
         style={band}
       >
+        {/* 4:3, the widest logo allowed: square to 4:3 logos fill it. */}
         {logoUrl ? (
-          <span className="flex h-10 w-24 shrink-0 items-center justify-center rounded-md bg-white p-1">
+          <span className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-white p-1">
             <LogoImage logoUrl={logoUrl} className="h-full w-full" />
           </span>
         ) : null}

@@ -4,7 +4,6 @@ import type { ChurchId } from './branded-ids';
 export const LOGO_MAX_BYTES = 5 * 1024 * 1024;
 export const LOGO_MIN_LONGEST_SIDE = 128;
 export const LOGO_MAX_LONGEST_SIDE = 512;
-export const LOGO_MAX_ASPECT_RATIO = 4;
 export const LOGO_CONTENT_TYPE = 'image/png';
 export const LOGO_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
@@ -57,16 +56,13 @@ interface DimensionsInput {
 
 export type LogoDimensionRefusal = 'LOGO_TOO_SMALL' | 'LOGO_BAD_ASPECT_RATIO';
 
-/** Longest side at least 128 px, ratio within 1:4–4:1. */
+/** Longest side at least 128 px; from square to 4:3 landscape (owner, 2026-11-22). */
 export function logoDimensionRefusal({
   width,
   height,
 }: DimensionsInput): LogoDimensionRefusal | null {
-  const longest = Math.max(width, height);
-  if (longest < LOGO_MIN_LONGEST_SIDE) return 'LOGO_TOO_SMALL';
-  if (longest > LOGO_MAX_ASPECT_RATIO * Math.min(width, height)) {
-    return 'LOGO_BAD_ASPECT_RATIO';
-  }
+  if (Math.max(width, height) < LOGO_MIN_LONGEST_SIDE) return 'LOGO_TOO_SMALL';
+  if (width < height || 3 * width > 4 * height) return 'LOGO_BAD_ASPECT_RATIO';
   return null;
 }
 

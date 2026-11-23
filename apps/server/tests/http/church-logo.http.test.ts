@@ -216,7 +216,7 @@ describe('Church logo', () => {
     signIn();
 
     const res = await upload({
-      bytes: await image({ width: 1200, height: 600, format }),
+      bytes: await image({ width: 1200, height: 900, format }),
       filename: `logo.${format}`,
       contentType,
     });
@@ -227,7 +227,7 @@ describe('Church logo', () => {
     expect(object.contentType).toBe('image/png');
     expect(object.cacheControl).toBe('public, max-age=31536000, immutable');
     const stored = await sharp(object.body).metadata();
-    expect(stored).toMatchObject({ format: 'png', width: 512, height: 256 });
+    expect(stored).toMatchObject({ format: 'png', width: 512, height: 384 });
     expect(res.json()).toMatchObject({
       logoKey: key,
       logoUrl: `https://storage.test/church/${key}`,
@@ -253,6 +253,23 @@ describe('Church logo', () => {
     const stored = await sharp(object.body).metadata();
     expect(stored).toMatchObject({ width: 200, height: 150 });
     expect(stored.exif).toBeUndefined();
+  });
+
+  it('judges the shape as the photo is shown, after its EXIF rotation', async () => {
+    signIn();
+    // Stored 300×400 (taller than square), shown 400×300 once rotated.
+    const bytes = await sharp({
+      create: { width: 300, height: 400, channels: 3, background: '#000' },
+    })
+      .jpeg()
+      .withMetadata({ orientation: 6 })
+      .toBuffer();
+
+    const res = await upload({ bytes, contentType: 'image/jpeg' });
+
+    expect(res.statusCode).toBe(200);
+    const stored = await sharp(onlyObject().body).metadata();
+    expect(stored).toMatchObject({ width: 400, height: 300 });
   });
 
   it('gives the same image the same key and no new object', async () => {
@@ -342,18 +359,18 @@ describe('Church logo', () => {
         'A imagem é pequena demais: o lado maior precisa ter pelo menos 128 px.',
       ],
       [
-        'a logo wider than 4:1',
-        async () => ({ bytes: await image({ width: 801, height: 200 }) }),
+        'a logo wider than 4:3',
+        async () => ({ bytes: await image({ width: 401, height: 300 }) }),
         422,
         'LOGO_BAD_ASPECT_RATIO',
-        'A imagem é larga ou alta demais: a proporção precisa ficar entre 1:4 e 4:1.',
+        'A imagem precisa ser quadrada ou um pouco mais larga que alta: a proporção vai de 1:1 a 4:3.',
       ],
       [
-        'a logo taller than 1:4',
-        async () => ({ bytes: await image({ width: 200, height: 801 }) }),
+        'a logo taller than square',
+        async () => ({ bytes: await image({ width: 300, height: 301 }) }),
         422,
         'LOGO_BAD_ASPECT_RATIO',
-        'A imagem é larga ou alta demais: a proporção precisa ficar entre 1:4 e 4:1.',
+        'A imagem precisa ser quadrada ou um pouco mais larga que alta: a proporção vai de 1:1 a 4:3.',
       ],
       [
         'a GIF',

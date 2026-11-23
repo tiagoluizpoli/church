@@ -17,16 +17,16 @@ interface LogoPngInput {
   page: Page;
 }
 
-/** A 400×200 PNG drawn by the browser, so the spec needs no binary fixture. */
+/** A 400×300 (4:3) PNG drawn by the browser, so the spec needs no binary fixture. */
 async function logoPng({ page }: LogoPngInput): Promise<Buffer> {
   const base64 = await page.evaluate(async () => {
-    const canvas = new OffscreenCanvas(400, 200);
+    const canvas = new OffscreenCanvas(400, 300);
     const context = canvas.getContext('2d');
     if (!context) throw new Error('no 2d context');
     context.fillStyle = '#0f766e';
-    context.fillRect(0, 0, 400, 200);
+    context.fillRect(0, 0, 400, 300);
     context.fillStyle = '#ffffff';
-    context.fillRect(150, 50, 100, 100);
+    context.fillRect(150, 100, 100, 100);
     const blob = await canvas.convertToBlob({ type: 'image/png' });
     const bytes = new Uint8Array(await blob.arrayBuffer());
     return btoa(String.fromCharCode(...bytes));
@@ -69,6 +69,12 @@ test.describe('Church Settings', () => {
       mimeType: 'image/png',
       buffer: await logoPng({ page }),
     });
+    // Already 4:3: the framing dialog offers to send it as it is.
+    await page
+      .getByRole('button', {
+        name: m.church_settings_logo_crop_original({}, PT),
+      })
+      .click();
     await expect(
       page.getByText(m.church_settings_logo_updated({}, PT)),
     ).toBeVisible();

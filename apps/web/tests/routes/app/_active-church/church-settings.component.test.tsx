@@ -1,5 +1,11 @@
 import { m } from '@church/i18n/messages';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -446,6 +452,24 @@ describe('Church Settings screen', () => {
       return screen.getByLabelText(m.church_settings_logo_file());
     }
 
+    beforeEach(() => {
+      URL.createObjectURL = vi.fn(() => 'blob:logo');
+      URL.revokeObjectURL = vi.fn();
+    });
+
+    /** The pick opens the crop dialog; a 4:3 image is sent as it is. */
+    async function sendUncropped(user: ReturnType<typeof userEvent.setup>) {
+      const image = await screen.findByTestId('logo-crop-image');
+      Object.defineProperty(image, 'naturalWidth', { value: 400 });
+      Object.defineProperty(image, 'naturalHeight', { value: 300 });
+      fireEvent.load(image);
+      await user.click(
+        screen.getByRole('button', {
+          name: m.church_settings_logo_crop_original(),
+        }),
+      );
+    }
+
     function refusedLogo(status: number, error: string, message: string) {
       return new AxiosError(
         'Refused',
@@ -464,6 +488,7 @@ describe('Church Settings screen', () => {
       const file = logoFile();
 
       await user.upload(fileInput(), file);
+      await sendUncropped(user);
 
       await waitFor(() =>
         expect(uploadChurchLogo).toHaveBeenCalledWith({ file }),
@@ -517,6 +542,7 @@ describe('Church Settings screen', () => {
       queryClient.setQueryData(['active-church', 'options'], { churches: [] });
 
       await user.upload(fileInput(), logoFile());
+      await sendUncropped(user);
 
       await waitFor(() =>
         expect(
@@ -540,7 +566,7 @@ describe('Church Settings screen', () => {
       [
         422,
         'LOGO_BAD_ASPECT_RATIO',
-        'A imagem é larga ou alta demais: a proporção precisa ficar entre 1:4 e 4:1.',
+        'A imagem precisa ser quadrada ou um pouco mais larga que alta: a proporção vai de 1:1 a 4:3.',
       ],
       [
         415,
@@ -554,8 +580,34 @@ describe('Church Settings screen', () => {
       await nameField();
 
       await user.upload(fileInput(), logoFile());
+      await sendUncropped(user);
 
       expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    });
+
+    it('frames the picked image first and uploads nothing when the framing is cancelled', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      await nameField();
+
+      await user.upload(fileInput(), logoFile());
+      const dialog = await screen.findByRole('dialog', {
+        name: m.church_settings_logo_crop_title(),
+      });
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: m.church_settings_logo_crop_cancel(),
+        }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', {
+            name: m.church_settings_logo_crop_title(),
+          }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(uploadChurchLogo).not.toHaveBeenCalled();
     });
 
     it('refuses a file over 5 MB or of another type without uploading it', async () => {

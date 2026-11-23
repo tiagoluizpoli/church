@@ -42,12 +42,13 @@ describe('detectLogoFormat', () => {
 describe('logoDimensionRefusal', () => {
   it.each([
     [128, 128, null],
-    [512, 128, null],
-    [128, 512, null],
+    [512, 384, null],
+    [400, 300, null],
     [127, 100, 'LOGO_TOO_SMALL'],
     [100, 127, 'LOGO_TOO_SMALL'],
-    [513, 128, 'LOGO_BAD_ASPECT_RATIO'],
-    [128, 513, 'LOGO_BAD_ASPECT_RATIO'],
+    [401, 300, 'LOGO_BAD_ASPECT_RATIO'],
+    [300, 301, 'LOGO_BAD_ASPECT_RATIO'],
+    [512, 128, 'LOGO_BAD_ASPECT_RATIO'],
   ])('%i×%i → %s', (width, height, refusal) => {
     expect(logoDimensionRefusal({ width, height })).toBe(refusal);
   });

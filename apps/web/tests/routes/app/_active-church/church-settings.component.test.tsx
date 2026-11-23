@@ -1838,6 +1838,42 @@ describe('Church Settings social links', () => {
     expect(network).toHaveTextContent('Grupo do WhatsApp');
   });
 
+  it('keeps the typed link when its network is picked again or changed, and pre-fills only an empty link', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      socialLinks: [
+        { url: 'https://t.me/semente', network: 'telegram', description: null },
+        { url: 'https://example.com/x', network: null, description: null },
+      ],
+    });
+    renderSettings();
+    const url = await screen.findByRole('textbox', { name: 'Link 1' });
+    const pick = async (row: number, label: string) => {
+      await user.click(
+        screen.getByRole('combobox', { name: `Rede ${String(row)}` }),
+      );
+      await user.click(await screen.findByRole('option', { name: label }));
+    };
+
+    await pick(1, 'Telegram');
+    expect(url).toHaveValue('https://t.me/semente');
+
+    await pick(1, 'Instagram');
+    expect(url).toHaveValue('https://instagram.com/semente');
+    await pick(1, 'YouTube');
+    expect(url).toHaveValue('https://youtube.com/@semente');
+
+    await pick(2, 'Facebook');
+    expect(screen.getByRole('textbox', { name: 'Link 2' })).toHaveValue(
+      'https://example.com/x',
+    );
+
+    await user.clear(url);
+    await pick(1, 'Kwai');
+    expect(url).toHaveValue('https://kwai.com/@');
+  });
+
   it('allows several links on one network with descriptions, and counts them as public', async () => {
     const user = userEvent.setup();
     renderSettings();

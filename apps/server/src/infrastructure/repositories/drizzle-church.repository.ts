@@ -17,7 +17,19 @@ import {
   user,
 } from '@church/db';
 import { fromDate, nowAsDate } from '@church/time';
-import { and, asc, desc, eq, gt, ne, notInArray, or } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  lte,
+  ne,
+  notInArray,
+  or,
+} from 'drizzle-orm';
+import { union } from 'drizzle-orm/pg-core';
 import { ChurchId, type UserId } from '../../domain/branded-ids';
 import {
   type AddressReplacement,
@@ -69,20 +81,33 @@ import type {
 } from '../../domain/social-link';
 import { mapChurch } from '../mappers/church.mapper';
 import { getClient, isValidUuid } from './helpers';
+import { resolvedPlace } from './time-block-place';
 import type { AnyDrizzleDb } from './types';
-import { isUniqueViolation } from './unique-violation';
+import { isChurchSlugConflict, isUniqueViolation } from './unique-violation';
 
 // Church identity lives on the `organization` row and the rest on the `church`
 // extension row keyed by the same id, so every read joins the two.
 const churchJoinShape = { church, organization };
 
+interface FreezeStartedBlockPlacesInput {
+  client: AnyDrizzleDb;
+  id: ChurchId;
+}
+
+interface AddressesInUseInput extends FreezeStartedBlockPlacesInput {
+  addressIds: readonly string[];
+}
+
 interface ReplaceDeletedAddressUsageInput {
   client: AnyDrizzleDb;
-  tx?: TransactionContext;
   id: ChurchId;
   stored: readonly ChurchAddress[];
   kept: readonly string[];
   replacements: readonly AddressReplacement[];
+}
+
+interface FindLegalProfileInput extends ListAddressesInput {
+  onlyPublic?: boolean;
 }
 
 interface ListContactsInput extends ListAddressesInput {
@@ -94,7 +119,6 @@ interface ListAddressesInput {
   tx?: TransactionContext;
 }
 
-const ORGANIZATION_SLUG_UNIQUE = 'organization_slug_unique';
 const LEGAL_DOCUMENT_UNIQUE = 'church_legal_profile_document_idx';
 
 type DrizzleClient = ReturnType<typeof getClient>;
@@ -105,12 +129,15 @@ interface FindSlugAvailabilityInput {
   slug: string;
 }
 
+/** A Social Link row with its Contact Group resolved to an id. */
+interface GroupedSocialLinkRow extends Omit<SocialLinkChange, 'group'> {
+  groupId: string | null;
+}
+
 interface ReplaceSocialLinksInput {
   client: DrizzleClient;
   id: string;
-  links: readonly (Omit<SocialLinkChange, 'group'> & {
-    groupId: string | null;
-  })[];
+  links: readonly GroupedSocialLinkRow[];
 }
 
 interface GroupedRow {
@@ -289,14 +316,16 @@ export class DrizzleChurchRepository implements ChurchRepository {
     churchId,
   }: GetPublicContactDetailsInput): Promise<PublicContactDetails> {
     const id = churchId;
-    const legalProfile = await this.findLegalProfile({ id });
-    return {
-      contacts: await this.listChurchContacts({ id, onlyPublic: true }),
-      socialLinks: await this.listSocialLinks({ id }),
-      groupNames: await this.listGroupNames({ id }),
-      // Private legal data never leaves the query's result.
-      legalProfile: legalProfile?.isPublic ? legalProfile : null,
-    };
+    const [contacts, socialLinks, groupNames, legalProfile] = await Promise.all(
+      [
+        this.listChurchContacts({ id, onlyPublic: true }),
+        this.listSocialLinks({ id }),
+        this.listGroupNames({ id }),
+        // Private legal data never leaves the database.
+        this.findLegalProfile({ id, onlyPublic: true }),
+      ],
+    );
+    return { contacts, socialLinks, groupNames, legalProfile };
   }
 
   private async listGroupNames({
@@ -314,7 +343,8 @@ export class DrizzleChurchRepository implements ChurchRepository {
   private async findLegalProfile({
     id,
     tx,
-  }: ListAddressesInput): Promise<ChurchLegalProfile | null> {
+    onlyPublic = false,
+  }: FindLegalProfileInput): Promise<ChurchLegalProfile | null> {
     const [row] = await getClient({ db: this.db, tx })
       .select({
         legalName: churchLegalProfile.legalName,
@@ -322,7 +352,12 @@ export class DrizzleChurchRepository implements ChurchRepository {
         isPublic: churchLegalProfile.isPublic,
       })
       .from(churchLegalProfile)
-      .where(eq(churchLegalProfile.churchId, id));
+      .where(
+        and(
+          eq(churchLegalProfile.churchId, id),
+          onlyPublic ? eq(churchLegalProfile.isPublic, true) : undefined,
+        ),
+      );
     return row ?? null;
   }
 
@@ -380,7 +415,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     id,
     slug,
   }: SlugAvailabilityInput): Promise<
-    Exclude<ChurchSlugAvailability, 'reserved'>
+    Exclude<ChurchSlugAvailability, 'reserved' | 'invalid'>
   > {
     return this.findSlugAvailability({
       client: getClient({ db: this.db }),
@@ -394,7 +429,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     id,
     slug,
   }: FindSlugAvailabilityInput): Promise<
-    Exclude<ChurchSlugAvailability, 'reserved'>
+    Exclude<ChurchSlugAvailability, 'reserved' | 'invalid'>
   > {
     const [live] = await client
       .select({ id: organization.id })
@@ -428,12 +463,9 @@ export class DrizzleChurchRepository implements ChurchRepository {
     const groupIds = await this.replaceGroups({
       client,
       id,
-      requested: contactGroups ?? (await this.listGroupNames({ id, tx })),
-      // Omitted contacts stay, so their groups must stay too.
+      requested: contactGroups,
       members: [
-        ...(contacts ?? (await this.listContacts({ id, tx }))).map(
-          ({ group }) => group,
-        ),
+        ...contacts.map(({ group }) => group),
         ...changes.socialLinks.map(({ group }) => group),
       ],
     });
@@ -457,9 +489,9 @@ export class DrizzleChurchRepository implements ChurchRepository {
       incoming: changes.addresses,
     });
     const kept = writes.flatMap((write) => (write.id ? [write.id] : []));
+    await this.freezeStartedBlockPlaces({ client, id });
     await this.replaceDeletedAddressUsage({
       client,
-      tx,
       id,
       stored: await this.listAddresses({ id, tx }),
       kept,
@@ -494,21 +526,19 @@ export class DrizzleChurchRepository implements ChurchRepository {
         await client.insert(churchAddress).values({ ...values, churchId: id });
       }
     }
-    if (contacts !== undefined) {
-      await client.delete(churchContact).where(eq(churchContact.churchId, id));
-      if (contacts.length > 0) {
-        await client.insert(churchContact).values(
-          contacts.map((contact, position) => {
-            const { group: _group, ...columns } = contact;
-            return {
-              ...columns,
-              groupId: groupIdOf(contact),
-              churchId: id,
-              position,
-            };
-          }),
-        );
-      }
+    await client.delete(churchContact).where(eq(churchContact.churchId, id));
+    if (contacts.length > 0) {
+      await client.insert(churchContact).values(
+        contacts.map((contact, position) => {
+          const { group: _group, ...columns } = contact;
+          return {
+            ...columns,
+            groupId: groupIdOf(contact),
+            churchId: id,
+            position,
+          };
+        }),
+      );
     }
     await this.deleteUnusedGroups({ client, id });
   }
@@ -579,17 +609,6 @@ export class DrizzleChurchRepository implements ChurchRepository {
       );
   }
 
-  private listContacts({ id, tx }: ListAddressesInput): Promise<GroupedRow[]> {
-    return getClient({ db: this.db, tx })
-      .select({ group: churchContactGroup.name })
-      .from(churchContact)
-      .leftJoin(
-        churchContactGroup,
-        eq(churchContactGroup.id, churchContact.groupId),
-      )
-      .where(eq(churchContact.churchId, id));
-  }
-
   async getAddressUsage({
     id,
     addressId,
@@ -620,11 +639,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
       .where(
         and(
           eq(eventTimeBlock.placeAddressId, addressId),
-          eq(eventTimeBlock.isPublic, true),
-          ne(eventTimeBlock.status, 'cancelled'),
-          ne(event.status, 'cancelled'),
-          eq(cycle.hasBeenSent, true),
-          gt(eventTimeBlock.endTime, nowAsDate()),
+          gt(eventTimeBlock.startTime, nowAsDate()),
         ),
       )
       .orderBy(asc(event.start), asc(event.id));
@@ -638,12 +653,68 @@ export class DrizzleChurchRepository implements ChurchRepository {
   }
 
   /**
-   * A deleted address that templates or upcoming Public Events still use needs
+   * Started EventTimeBlocks keep the place they had: their resolved place is
+   * copied into `place` and the address link dropped, before any address of
+   * the Church is edited or deleted. Blocks not yet started follow the address.
+   */
+  private async freezeStartedBlockPlaces({
+    client,
+    id,
+  }: FreezeStartedBlockPlacesInput): Promise<void> {
+    await client
+      .update(eventTimeBlock)
+      .set({
+        place: resolvedPlace(eventTimeBlock.place),
+        placeAddressId: null,
+      })
+      .from(churchAddress)
+      .where(
+        and(
+          eq(eventTimeBlock.churchId, id),
+          eq(churchAddress.id, eventTimeBlock.placeAddressId),
+          lte(eventTimeBlock.startTime, nowAsDate()),
+        ),
+      );
+  }
+
+  /** The given addresses a template or a not-yet-started EventTimeBlock uses. */
+  private async addressesInUse({
+    client,
+    id,
+    addressIds,
+  }: AddressesInUseInput): Promise<Set<string>> {
+    if (addressIds.length === 0) return new Set();
+    const templateUses = client
+      .selectDistinct({ addressId: templateTimeBlock.placeAddressId })
+      .from(templateTimeBlock)
+      .where(
+        and(
+          eq(templateTimeBlock.churchId, id),
+          inArray(templateTimeBlock.placeAddressId, addressIds),
+        ),
+      );
+    const eventUses = client
+      .selectDistinct({ addressId: eventTimeBlock.placeAddressId })
+      .from(eventTimeBlock)
+      .where(
+        and(
+          eq(eventTimeBlock.churchId, id),
+          inArray(eventTimeBlock.placeAddressId, addressIds),
+          gt(eventTimeBlock.startTime, nowAsDate()),
+        ),
+      );
+    const rows = await union(templateUses, eventUses);
+    return new Set(
+      rows.flatMap(({ addressId }) => (addressId ? [addressId] : [])),
+    );
+  }
+
+  /**
+   * A deleted address that templates or not-yet-started Events still use needs
    * a replacement (a kept address, or null); it is applied to every reference.
    */
   private async replaceDeletedAddressUsage({
     client,
-    tx,
     id,
     stored,
     kept,
@@ -663,15 +734,16 @@ export class DrizzleChurchRepository implements ChurchRepository {
       }
     });
     const deleted = stored.filter((address) => !kept.includes(address.id));
+    const inUse = await this.addressesInUse({
+      client,
+      id,
+      addressIds: deleted.map((address) => address.id),
+    });
     for (const { id: addressId } of deleted) {
       const replacement = replacements.find(
         (entry) => entry.addressId === addressId,
       );
-      const usage = await this.getAddressUsage({ id, addressId, tx });
-      const inUse =
-        usage !== null &&
-        (usage.templates.length > 0 || usage.events.length > 0);
-      if (inUse && !replacement) {
+      if (inUse.has(addressId) && !replacement) {
         refusals.push({
           field: 'addresses',
           code: 'ADDRESS_REPLACEMENT_REQUIRED',
@@ -766,20 +838,18 @@ export class DrizzleChurchRepository implements ChurchRepository {
     await client
       .delete(churchSlugHistory)
       .where(eq(churchSlugHistory.slug, slug));
-    await client
-      .insert(churchSlugHistory)
-      .values({ slug: current.slug, churchId: id })
-      .onConflictDoNothing();
     try {
+      await client
+        .insert(churchSlugHistory)
+        .values({ slug: current.slug, churchId: id })
+        .onConflictDoNothing();
       await client
         .update(organization)
         .set({ slug })
         .where(eq(organization.id, id));
     } catch (error) {
-      // Another save took the slug between the check above and this write.
-      if (isUniqueViolation({ error, constraint: ORGANIZATION_SLUG_UNIQUE })) {
-        throw new ChurchSlugTakenError(slug);
-      }
+      // Another write claimed the slug after the check above (the database holds the rule, 0070).
+      if (isChurchSlugConflict({ error })) throw new ChurchSlugTakenError(slug);
       throw error;
     }
   }
@@ -794,7 +864,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
   async findPublicIdentityBySlug({
     slug,
   }: FindPublicIdentityBySlugInput): Promise<PublicChurchIdentity | null> {
-    // A live slug and the slug history are disjoint, so at most one row matches.
+    // The database keeps live slugs and history disjoint (0070); a live match still wins.
     const [row] = await getClient({ db: this.db })
       .select({
         churchId: church.id,
@@ -814,6 +884,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
         ),
       )
       .where(or(eq(organization.slug, slug), eq(churchSlugHistory.slug, slug)))
+      .orderBy(desc(eq(organization.slug, slug)), church.id)
       .limit(1);
     return row ? { ...row, churchId: ChurchId.from(row.churchId) } : null;
   }
@@ -821,44 +892,55 @@ export class DrizzleChurchRepository implements ChurchRepository {
   async findPublicAddresses({
     churchId,
   }: FindPublicAddressesInput): Promise<PublicChurchAddresses> {
-    // Private addresses are read only to take the Main Address's area; the
-    // street, number and pin of one never reach the result.
-    const rows = await getClient({ db: this.db })
-      .select({
-        label: churchAddress.label,
-        street: churchAddress.street,
-        number: churchAddress.number,
-        complement: churchAddress.complement,
-        bairro: churchAddress.bairro,
-        city: churchAddress.city,
-        uf: churchAddress.uf,
-        cep: churchAddress.cep,
-        latitude: churchAddress.latitude,
-        longitude: churchAddress.longitude,
-        placeId: churchAddress.placeId,
-        isMain: churchAddress.isMain,
-        isPublic: churchAddress.isPublic,
-      })
-      .from(churchAddress)
-      .where(eq(churchAddress.churchId, churchId))
-      .orderBy(
-        desc(churchAddress.isMain),
-        asc(churchAddress.position),
-        asc(churchAddress.id),
-      );
-    const main = rows.find((row) => row.isMain);
+    const client = getClient({ db: this.db });
+    const [addresses, [main]] = await Promise.all([
+      client
+        .select({
+          label: churchAddress.label,
+          street: churchAddress.street,
+          number: churchAddress.number,
+          complement: churchAddress.complement,
+          bairro: churchAddress.bairro,
+          city: churchAddress.city,
+          uf: churchAddress.uf,
+          cep: churchAddress.cep,
+          latitude: churchAddress.latitude,
+          longitude: churchAddress.longitude,
+          placeId: churchAddress.placeId,
+          isMain: churchAddress.isMain,
+        })
+        .from(churchAddress)
+        .where(
+          and(
+            eq(churchAddress.churchId, churchId),
+            eq(churchAddress.isPublic, true),
+          ),
+        )
+        .orderBy(
+          desc(churchAddress.isMain),
+          asc(churchAddress.position),
+          asc(churchAddress.id),
+        ),
+      // Only the area of the Main Address, public or not: a private one's
+      // street, number and pin never leave the database.
+      client
+        .select({
+          bairro: churchAddress.bairro,
+          city: churchAddress.city,
+          uf: churchAddress.uf,
+        })
+        .from(churchAddress)
+        .where(
+          and(
+            eq(churchAddress.churchId, churchId),
+            eq(churchAddress.isMain, true),
+          ),
+        ),
+    ]);
     return {
-      addresses: rows
-        .filter((row) => row.isPublic)
-        .map(
-          ({ isPublic: _isPublic, ...address }) => address,
-        ) as PublicChurchAddress[],
+      addresses: addresses as PublicChurchAddress[],
       mainAddressArea: main
-        ? {
-            bairro: main.bairro,
-            city: main.city,
-            uf: main.uf as MainAddressArea['uf'],
-          }
+        ? { ...main, uf: main.uf as MainAddressArea['uf'] }
         : null,
     };
   }

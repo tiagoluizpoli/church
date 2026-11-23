@@ -176,12 +176,14 @@ export function formatCnpj({ digits }: FormatCnpjInput): string {
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
-interface IsHexColorInput {
+interface PaintableAccentInput {
   value: string | null;
 }
 
 /** The typed accent when it is a complete `#rrggbb`, safe to paint with; otherwise `null`. */
-export function paintableAccent({ value }: IsHexColorInput): string | null {
+export function paintableAccent({
+  value,
+}: PaintableAccentInput): string | null {
   return value !== null && HEX_COLOR.test(value) ? value : null;
 }
 
@@ -231,4 +233,43 @@ export function addressSummary({ address }: AddressSummaryInput): string {
   const line = [address.street, address.number].join(', ');
   const complement = address.complement ? ` – ${address.complement}` : '';
   return `${line}${complement} · ${address.bairro} · ${address.city}/${address.uf}`;
+}
+
+interface ClearEditedErrorsInput {
+  errors: Readonly<Record<string, string>>;
+  field: string;
+  before: unknown;
+  after: unknown;
+}
+
+/**
+ * The errors left once `field` changed from `before` to `after`: a list keeps
+ * the errors of rows that did not change; a row added, removed or a non-list
+ * value clears every error of the field (rows would shift under them).
+ */
+export function clearEditedErrors({
+  errors,
+  field,
+  before,
+  after,
+}: ClearEditedErrorsInput): Record<string, string> {
+  const sameLength =
+    Array.isArray(before) &&
+    Array.isArray(after) &&
+    before.length === after.length;
+  const changedRows = sameLength
+    ? after.flatMap((row, index) =>
+        JSON.stringify(row) === JSON.stringify(before[index]) ? [] : [index],
+      )
+    : [];
+  const cleared = (key: string) => {
+    if (key === field) return true;
+    if (!key.startsWith(`${field}.`)) return false;
+    if (!sameLength) return true;
+    const row = Number(key.slice(field.length + 1).split('.')[0]);
+    return changedRows.includes(row);
+  };
+  return Object.fromEntries(
+    Object.entries(errors).filter(([key]) => !cleared(key)),
+  );
 }

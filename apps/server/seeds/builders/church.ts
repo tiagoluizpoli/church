@@ -1,4 +1,3 @@
-import { detectSocialNetwork } from '@church/app-config/social-networks';
 import {
   addChurchMember,
   type ChurchAccessLevel,
@@ -14,6 +13,7 @@ import {
   invitation,
   user,
 } from '@church/db';
+import { detectSocialNetwork } from '@church/domain-rules/social-networks';
 import { and, eq } from 'drizzle-orm';
 import sharp from 'sharp';
 import { z } from 'zod';
@@ -245,6 +245,39 @@ export function churchAddressSeedId({
   });
 }
 
+interface ChurchAddressRowInput {
+  churchId: string;
+  address: ChurchAddressBlueprint;
+  position: number;
+  isMain: boolean;
+}
+
+function churchAddressRow({
+  churchId,
+  address,
+  position,
+  isMain,
+}: ChurchAddressRowInput) {
+  return {
+    id: churchAddressSeedId({ churchId, position }),
+    churchId,
+    label: address.label ?? null,
+    street: address.street,
+    number: address.number,
+    complement: address.complement ?? null,
+    bairro: address.bairro,
+    city: address.city,
+    uf: address.uf,
+    cep: address.cep?.replace('-', '') ?? null,
+    isPublic: address.isPublic ?? true,
+    isMain,
+    position,
+    latitude: address.pin?.latitude ?? null,
+    longitude: address.pin?.longitude ?? null,
+    pinSource: address.pin?.source ?? null,
+  };
+}
+
 /** Direct-state builder: the Church's addresses in order, the first one main. */
 export async function buildChurchAddresses({
   db,
@@ -253,25 +286,34 @@ export async function buildChurchAddresses({
 }: BuildChurchAddressesInput): Promise<void> {
   if (addresses.length === 0) return;
   await db.insert(churchAddress).values(
-    addresses.map((address, position) => ({
-      id: churchAddressSeedId({ churchId, position }),
-      churchId,
-      label: address.label ?? null,
-      street: address.street,
-      number: address.number,
-      complement: address.complement ?? null,
-      bairro: address.bairro,
-      city: address.city,
-      uf: address.uf,
-      cep: address.cep?.replace('-', '') ?? null,
-      isPublic: address.isPublic ?? true,
-      isMain: position === 0,
-      position,
-      latitude: address.pin?.latitude ?? null,
-      longitude: address.pin?.longitude ?? null,
-      pinSource: address.pin?.source ?? null,
-    })),
+    addresses.map((address, position) =>
+      churchAddressRow({
+        churchId,
+        address,
+        position,
+        isMain: position === 0,
+      }),
+    ),
   );
+}
+
+export interface BuildChurchAddressInput {
+  db: SeedWriter;
+  churchId: string;
+  address: ChurchAddressBlueprint;
+  position: number;
+  /** One address per Church is main (the database holds it). */
+  isMain: boolean;
+}
+
+/** Direct-state builder: one Church Address at `position`; returns its id. */
+export async function buildChurchAddress({
+  db,
+  ...input
+}: BuildChurchAddressInput): Promise<string> {
+  const row = churchAddressRow(input);
+  await db.insert(churchAddress).values(row);
+  return row.id;
 }
 
 export interface BuildChurchLogoInput {

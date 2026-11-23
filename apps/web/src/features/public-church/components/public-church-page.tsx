@@ -16,6 +16,7 @@ interface PublicChurchPageProps {
 /** The Public Church Profile: identity on top, the platform credit below. Sections join later. */
 export function PublicChurchPage({ profile }: PublicChurchPageProps) {
   const accent = profile.accentColor ?? undefined;
+  const area = profile.mainAddressArea;
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <div
@@ -32,21 +33,30 @@ export function PublicChurchPage({ profile }: PublicChurchPageProps) {
               className="size-16 shrink-0 rounded-md border bg-white object-contain p-1 sm:size-20"
             />
           ) : null}
-          <h1
-            className="border-primary border-l-4 pl-3 font-semibold text-2xl tracking-tight sm:text-3xl"
+          <div
+            className="border-primary border-l-4 pl-3"
             style={accent ? { borderColor: accent } : undefined}
           >
-            {profile.name}
-          </h1>
+            <h1 className="font-semibold text-2xl tracking-tight sm:text-3xl">
+              {profile.name}
+            </h1>
+            {/* Shown even for a private Main Address: only bairro and city/UF. */}
+            {area ? (
+              <p className="text-muted-foreground text-sm">
+                {`${area.bairro} · ${area.city}/${area.uf}`}
+              </p>
+            ) : null}
+          </div>
         </header>
-        <PublicProgrammeSection programme={profile.programme} />
+        {/* #1001 order: contacts with Social Links, legal, addresses, programme, events. */}
+        <PublicContactsSection contactGroups={profile.contactGroups} />
+        <PublicLegalSection legalProfile={profile.legalProfile} />
         <PublicAddressesSection
           addresses={profile.addresses}
           mapsEmbedKey={env.VITE_GOOGLE_MAPS_EMBED_KEY}
         />
+        <PublicProgrammeSection programme={profile.programme} />
         <PublicEventsSection slug={profile.slug} />
-        <PublicContactsSection contactGroups={profile.contactGroups} />
-        <PublicLegalSection legalProfile={profile.legalProfile} />
       </main>
       <PoweredByFooter
         appName={appConfig.appName}

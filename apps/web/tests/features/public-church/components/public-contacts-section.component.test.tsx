@@ -1,3 +1,4 @@
+import { m } from '@church/i18n/messages';
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PublicContactsSection } from '@/features/public-church/components/public-contacts-section';
@@ -72,10 +73,15 @@ describe('PublicContactsSection', () => {
       'href',
       'tel:+551133334444',
     );
-    const mobile = screen.getByRole('link', { name: /99999-0000/ });
+    const mobile = screen.getByRole('link', { name: /99999-0000\s*WhatsApp/ });
     expect(mobile).toHaveAttribute('href', 'https://wa.me/5511999990000');
     expect(within(mobile).getByText('WhatsApp')).toBeInTheDocument();
     expect(screen.getAllByText('WhatsApp')).toHaveLength(1);
+    expect(
+      screen.getByRole('link', {
+        name: m.public_contacts_call({ number: '(11) 99999-0000' }),
+      }),
+    ).toHaveAttribute('href', 'tel:+5511999990000');
   });
 
   it('shows Social Links with their network label and description', () => {

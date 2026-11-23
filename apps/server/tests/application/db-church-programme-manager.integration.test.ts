@@ -271,4 +271,99 @@ describe('DbChurchProgrammeManager', () => {
       [],
     ]);
   });
+
+  it('words the except only on the block a winner overlaps', async () => {
+    const sunday = await templates.createTemplate({
+      churchId: churchA,
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+      blocks: [
+        block('Morning', '09:00', true, undefined, '10:00'),
+        block('Evening', '19:00', true, undefined, '21:00'),
+      ],
+    });
+    await templates.createTemplate({
+      churchId: churchA,
+      name: 'Santa Ceia',
+      recurrence: {
+        kind: 'monthly',
+        entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+      },
+      blocks: [block('Supper', '19:30', true, undefined, '20:30')],
+      precedences: [{ otherTemplateId: sunday.id, answer: 'thisWins' }],
+    });
+
+    const result = await programme.getProgramme({ churchId: churchA });
+
+    expect(
+      result.map(({ label, exceptOrdinals }) => [label, exceptOrdinals]),
+    ).toEqual([
+      ['Morning', []],
+      ['Evening', [1]],
+      ['Supper', []],
+    ]);
+  });
+
+  it('places weekly by its first weekday, a mixed Recurrence by its first entry, and day-of-month ones by day then time, last day last', async () => {
+    const create = (name: string, recurrence: never, startTime: string) =>
+      templates.createTemplate({
+        churchId: churchA,
+        name,
+        recurrence,
+        blocks: [
+          block(name, startTime, true, undefined, `${startTime.slice(0, 3)}30`),
+        ],
+      });
+    await create(
+      'day 15 late',
+      monthly({ kind: 'dayOfMonth', day: 15 }),
+      '20:00',
+    );
+    await create('last day', monthly({ kind: 'lastDayOfMonth' }), '08:00');
+    await create(
+      'day 15 early',
+      monthly({ kind: 'dayOfMonth', day: 15 }),
+      '07:00',
+    );
+    await create('day 2', monthly({ kind: 'dayOfMonth', day: 2 }), '22:00');
+    await create('sat', { kind: 'weekly', weekdays: [6] } as never, '23:00');
+    await create(
+      'mixed day first',
+      monthly(
+        { kind: 'dayOfMonth', day: 1 },
+        { kind: 'nthWeekday', ordinal: 1, weekday: 0 },
+      ),
+      '10:00',
+    );
+    await create(
+      'mixed weekday first',
+      monthly(
+        { kind: 'nthWeekday', ordinal: 'last', weekday: 5 },
+        { kind: 'dayOfMonth', day: 1 },
+      ),
+      '09:00',
+    );
+    await create(
+      'wed and mon',
+      { kind: 'weekly', weekdays: [3, 1] } as never,
+      '06:00',
+    );
+
+    const result = await programme.getProgramme({ churchId: churchA });
+
+    expect(result.map(({ label }) => label)).toEqual([
+      'wed and mon',
+      'mixed weekday first',
+      'sat',
+      'mixed day first',
+      'day 2',
+      'day 15 early',
+      'day 15 late',
+      'last day',
+    ]);
+  });
 });
+
+function monthly(...entries: unknown[]): never {
+  return { kind: 'monthly', entries } as never;
+}

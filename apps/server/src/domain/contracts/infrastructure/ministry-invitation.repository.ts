@@ -6,6 +6,7 @@ import type {
   RoleId,
   UserId,
 } from '../../branded-ids';
+import type { ChurchIdentitySnapshot } from '../../church-identity-snapshot';
 import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { PublicRedemptionPreview } from '../../entities/public-redemption-preview';
@@ -301,14 +302,32 @@ export interface IsInvitationAddressedToUserInput {
   tx?: TransactionContext;
 }
 
-export interface EnqueueOutboxMessageInput {
+interface ChainedInvitationEnqueuePayload extends ChurchIdentitySnapshot {
+  ministryInvitationId: string;
+  churchInvitationId?: string;
+}
+
+interface ChurchBootstrapEnqueuePayload extends ChurchIdentitySnapshot {
+  churchInvitationId: string;
+}
+
+/** Every new invitation row carries the Church identity snapshot; only old rows lack it. */
+type InvitationEnqueue =
+  | { kind: 'invitation.chained'; payload: ChainedInvitationEnqueuePayload }
+  | {
+      kind: 'invitation.church-bootstrap';
+      payload: ChurchBootstrapEnqueuePayload;
+    };
+
+interface EnqueueOutboxMessageBase {
   churchId: ChurchId;
-  kind: 'invitation.chained' | 'invitation.church-bootstrap';
-  payload: Record<string, unknown>;
   correlationId: string;
   scheduledFor: Date;
   tx?: TransactionContext;
 }
+
+export type EnqueueOutboxMessageInput = EnqueueOutboxMessageBase &
+  InvitationEnqueue;
 
 export interface MinistryInvitationRepository {
   /**

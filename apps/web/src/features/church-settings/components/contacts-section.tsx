@@ -28,6 +28,7 @@ import type {
   ContactType,
 } from '@/features/church-settings/church-settings-form';
 import { GroupField } from '@/features/church-settings/components/group-field';
+import { useControlSizes } from '@/features/church-settings/use-control-sizes';
 
 const CONTACT_TYPES: ContactType[] = ['mobile', 'landline', 'email'];
 
@@ -67,6 +68,7 @@ export function ContactsSection({
   errors,
   onChange,
 }: ContactsSectionProps) {
+  const sizes = useControlSizes();
   const [confirming, setConfirming] = React.useState<string | null>(null);
   const counter = React.useRef(0);
   const confirmingContact = contacts.find(({ key }) => key === confirming);
@@ -224,7 +226,7 @@ export function ContactsSection({
                   <div className="ml-auto flex items-center gap-1">
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size={sizes.icon}
                       disabled={index === 0}
                       aria-label={m.church_settings_contact_move_up({
                         position,
@@ -235,7 +237,7 @@ export function ContactsSection({
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size={sizes.icon}
                       disabled={index === contacts.length - 1}
                       aria-label={m.church_settings_contact_move_down({
                         position,
@@ -246,7 +248,7 @@ export function ContactsSection({
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size={sizes.icon}
                       aria-label={m.church_settings_contact_remove({
                         position,
                       })}

@@ -10,7 +10,7 @@ import {
   listBuckets,
   localStorageClient,
 } from './storage-buckets';
-import { BUCKET_PREFIX, worktreeBucketName } from './storage-targets';
+import { worktreeBucketName } from './storage-targets';
 
 /**
  * `bun run db:prune [-- --apply]`: recovers databases and `church-<worktree>`
@@ -51,17 +51,46 @@ export function selectStaleDatabases(
 export interface SelectStaleBucketsInput {
   buckets: string[];
   activeIdentities: Set<string>;
+  /** The stale worktree databases: evidence a readable-name bucket was a worktree's. */
+  staleDatabases: string[];
 }
 
+// `church-<words>` or `church-<words>--<8 hex>`: the only shapes
+// worktreeBucketName produces (identities are `[a-z0-9_]`, `__<hash>` when hashed).
+const WORKTREE_BUCKET_NAME =
+  /^church-([a-z0-9]+(?:-[a-z0-9]+)*?)(--[0-9a-f]{8})?$/;
+const HASHED_BUCKET_NAME = /--[0-9a-f]{8}$/;
+// Never a feature worktree's (worktree-identity.ts reserves them).
+const RESERVED_BUCKETS = new Set(['church-develop', 'church-unspecified']);
+
+/**
+ * Stale buckets of removed worktrees. A `church-` bucket is selected only in
+ * a worktree bucket's exact shape, never reserved, and, unless its name
+ * carries the identity hash only tooling writes, only beside a stale
+ * database of the same worktree: a hand-made `church-uploads` stays.
+ */
 export function selectStaleBuckets(input: SelectStaleBucketsInput): string[] {
   const owned = new Set(
     [...input.activeIdentities].map((worktree) =>
       worktreeBucketName({ worktree }),
     ),
   );
+  const staleWorktreeBuckets = new Set(
+    input.staleDatabases.map((database) =>
+      worktreeBucketName({
+        worktree: database
+          .replace(/^church_/, '')
+          .replace(/_(dev|int|e2e)$/, ''),
+      }),
+    ),
+  );
 
   return input.buckets.filter(
-    (bucket) => bucket.startsWith(BUCKET_PREFIX) && !owned.has(bucket),
+    (bucket) =>
+      WORKTREE_BUCKET_NAME.test(bucket) &&
+      !RESERVED_BUCKETS.has(bucket) &&
+      !owned.has(bucket) &&
+      (HASHED_BUCKET_NAME.test(bucket) || staleWorktreeBuckets.has(bucket)),
   );
 }
 
@@ -94,6 +123,7 @@ async function prune(input: ArgvInput): Promise<void> {
   const staleBuckets = selectStaleBuckets({
     buckets: await listBuckets({ client }),
     activeIdentities,
+    staleDatabases: stale,
   });
 
   if (stale.length + staleBuckets.length === 0) {

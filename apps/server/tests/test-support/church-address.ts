@@ -1,5 +1,5 @@
-import { churchAddress } from '@church/db';
 import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
+import { buildChurchAddress } from '@/seeds/builders/church';
 
 export interface InsertChurchAddressInput {
   db: AnyDrizzleDb;
@@ -12,8 +12,8 @@ export interface InsertChurchAddressInput {
   position?: number;
 }
 
-/** A Church Address in Centro, Campinas/SP; returns its id. */
-export async function insertChurchAddress({
+/** A Church Address in Centro, Campinas/SP through the seed builder (ADR-0006); returns its id. */
+export function insertChurchAddress({
   db,
   churchId,
   label = 'Templo',
@@ -22,21 +22,19 @@ export async function insertChurchAddress({
   isMain = true,
   position = 0,
 }: InsertChurchAddressInput): Promise<string> {
-  const [row] = await db
-    .insert(churchAddress)
-    .values({
-      churchId,
-      label,
+  return buildChurchAddress({
+    db,
+    churchId,
+    position,
+    isMain,
+    address: {
+      label: label ?? undefined,
       street,
       number: '10',
       bairro: 'Centro',
       city: 'Campinas',
       uf: 'SP',
       isPublic,
-      isMain,
-      position,
-    })
-    .returning({ id: churchAddress.id });
-  if (!row) throw new Error('Church Address insert failed');
-  return row.id;
+    },
+  });
 }

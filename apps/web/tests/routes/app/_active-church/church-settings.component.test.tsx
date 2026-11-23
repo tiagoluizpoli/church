@@ -18,6 +18,7 @@ const getChurchSlugAvailability = vi.fn();
 const getChurchAddressUsage = vi.fn();
 const toastSuccess = vi.fn();
 const toastPlain = vi.fn();
+const toastError = vi.fn();
 const uploadChurchLogo = vi.fn();
 const removeChurchLogo = vi.fn();
 const restoreChurchLogo = vi.fn();
@@ -36,12 +37,20 @@ const maps = vi.hoisted(() => ({
   enabled: false,
   onPick: undefined as undefined | ((place: unknown) => void),
   onDrag: undefined as undefined | ((pin: unknown) => void),
+  onSearchError: undefined as undefined | (() => void),
 }));
 
 vi.mock('@/features/church-settings/google-maps', () => ({
   isMapsEnabled: () => maps.enabled,
-  attachPlaceSearch: ({ onPick }: { onPick: (place: unknown) => void }) => {
+  attachPlaceSearch: ({
+    onPick,
+    onError,
+  }: {
+    onPick: (place: unknown) => void;
+    onError: () => void;
+  }) => {
     maps.onPick = onPick;
+    maps.onSearchError = onError;
     return () => undefined;
   },
   mountPinMap: ({ onDrag }: { onDrag: (pin: unknown) => void }) => {
@@ -91,7 +100,7 @@ vi.mock('@/components/ui/sonner', () => ({ Toaster: () => null }));
 vi.mock('sonner', () => ({
   toast: Object.assign((...args: unknown[]) => toastPlain(...args), {
     success: (...args: unknown[]) => toastSuccess(...args),
-    error: vi.fn(),
+    error: (...args: unknown[]) => toastError(...args),
   }),
 }));
 
@@ -252,6 +261,41 @@ describe('Church Settings screen', () => {
     );
     expect(toastSuccess).toHaveBeenCalledWith(m.church_settings_saved());
     await waitFor(() => expect(saveBar()).not.toBeInTheDocument());
+  });
+
+  it('keeps unsaved edits when the settings are read again in the background', async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderSettings();
+    await user.type(await nameField(), ' Viva');
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      website: 'https://outra-admin.test',
+    });
+
+    await act(() => queryClient.invalidateQueries());
+
+    expect(await nameField()).toHaveValue('Igreja Semente Viva');
+    expect(saveBar()).toBeInTheDocument();
+  });
+
+  it('takes a background read of the settings while nothing is unsaved', async () => {
+    const { queryClient } = renderSettings();
+    await nameField();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      website: 'https://outra-admin.test',
+    });
+
+    await act(() => queryClient.invalidateQueries());
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', {
+          name: m.church_settings_website_label(),
+        }),
+      ).toHaveValue('https://outra-admin.test'),
+    );
+    expect(saveBar()).not.toBeInTheDocument();
   });
 
   it('saves on Ctrl+S, and picking "Padrão do app" clears the accent colour', async () => {
@@ -436,23 +480,40 @@ describe('Church Settings screen', () => {
       );
       expect(await nameField()).toHaveValue('Igreja Semente Viva');
       expect(saveBar()).toBeInTheDocument();
+      // The app's own tile, near-white in both themes, as the header shows it.
       for (const testId of [
         'church-preview-logo-light',
         'church-preview-logo-dark',
-        'church-preview-email-band',
       ]) {
-        const logo = within(screen.getByTestId(testId)).getByRole('img', {
-          name: m.church_settings_logo_alt(),
+        const frame = screen.getByTestId(testId);
+        const logo = within(frame).getByRole('img', {
+          name: 'Igreja Semente Viva',
         });
         expect(logo).toHaveAttribute('src', LOGO_URL);
-        expect(logo).toHaveClass('object-contain');
+        expect(within(frame).getByTestId('church-logo-tile')).toHaveClass(
+          'bg-white',
+        );
       }
+      const bandLogo = within(
+        screen.getByTestId('church-preview-email-band'),
+      ).getByRole('img', { name: m.church_settings_logo_alt() });
+      expect(bandLogo).toHaveAttribute('src', LOGO_URL);
+      expect(bandLogo).toHaveClass('object-contain');
       expect(
         screen.getByRole('button', { name: m.church_settings_logo_replace() }),
       ).toBeInTheDocument();
       expect(
         screen.getByTestId('church-settings-public-count'),
       ).toHaveTextContent('4');
+    });
+
+    it('shows the name alone in the email band of a Church without a logo', async () => {
+      renderSettings();
+      await nameField();
+
+      const band = screen.getByTestId('church-preview-email-band');
+      expect(within(band).queryByText('I')).not.toBeInTheDocument();
+      expect(within(band).getByText('Igreja Semente')).toBeInTheDocument();
     });
 
     it('marks the Active Church options stale after an upload so the header shows the new logo', async () => {
@@ -710,6 +771,45 @@ describe('Church Settings screen', () => {
       expect(getChurchSlugAvailability).toHaveBeenCalledWith({
         slug: 'church-b',
       });
+    });
+
+    it('ignores a late taken answer for a slug no longer typed', async () => {
+      let answer!: (value: { status: string }) => void;
+      getChurchSlugAvailability.mockReturnValueOnce(
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+      );
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+      await user.clear(slug);
+      await user.type(slug, 'church-b');
+      await user.tab();
+      await user.clear(slug);
+      await user.type(slug, 'church-c');
+
+      await act(async () => answer({ status: 'taken' }));
+
+      expect(slug).not.toHaveAccessibleDescription(
+        m.error_church_settings_slug_taken(),
+      );
+    });
+
+    it('leaves the slug unmarked when the availability check fails', async () => {
+      getChurchSlugAvailability.mockRejectedValueOnce(new Error('offline'));
+      const user = userEvent.setup();
+      renderSettings();
+      const slug = await slugField();
+      await user.clear(slug);
+      await user.type(slug, 'church-b');
+
+      await user.tab();
+
+      await waitFor(() => expect(getChurchSlugAvailability).toHaveBeenCalled());
+      expect(slug).not.toHaveAccessibleDescription(
+        m.error_church_settings_slug_taken(),
+      );
     });
 
     it("shows the server's refusal of a slug taken meanwhile", async () => {
@@ -986,6 +1086,23 @@ describe('Church Settings addresses', () => {
       maps.enabled = false;
     });
 
+    it('says the Google search and map did not load, and keeps CEP and manual entry', async () => {
+      const user = userEvent.setup();
+      renderSettings();
+      const dialog = await openNewAddress(user);
+
+      act(() => maps.onSearchError?.());
+
+      expect(
+        within(dialog).getByText(m.church_settings_address_maps_failed()),
+      ).toBeInTheDocument();
+      const street = within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_street(),
+      });
+      await user.type(street, 'Rua Manual');
+      expect(street).toHaveValue('Rua Manual');
+    });
+
     it('fills the fields from a picked place and proposes a pin from Google', async () => {
       const user = userEvent.setup();
       renderSettings();
@@ -1173,6 +1290,53 @@ describe('Church Settings addresses', () => {
     expect(street).toHaveValue('Rua Manual');
   });
 
+  it('keeps what is typed while a CEP is looked up when the CEP lacks that field', async () => {
+    let answer!: (value: unknown) => void;
+    lookupCep.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderSettings();
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '13015904');
+    const street = within(dialog).getByRole('textbox', {
+      name: m.church_settings_address_street(),
+    });
+
+    await user.type(street, 'Rua Digitada');
+    await act(async () =>
+      answer({
+        cep: '13015904',
+        street: '',
+        bairro: '',
+        city: 'Campinas',
+        uf: 'SP',
+      }),
+    );
+
+    expect(street).toHaveValue('Rua Digitada');
+    expect(
+      within(dialog).getByRole('textbox', {
+        name: m.church_settings_address_city(),
+      }),
+    ).toHaveValue('Campinas');
+  });
+
+  it('says the lookup failed on any lookup error, not only a provider one', async () => {
+    lookupCep.mockRejectedValue(new Error('aborted'));
+    const user = userEvent.setup();
+    renderSettings();
+
+    const dialog = await openNewAddress(user);
+    await searchCep(user, dialog, '13015904');
+
+    expect(
+      await within(dialog).findByText(m.church_settings_address_cep_failed()),
+    ).toBeInTheDocument();
+  });
+
   it('adds the first address by hand as the Main Address, staged into the save bar', async () => {
     const user = userEvent.setup();
     renderSettings();
@@ -1335,6 +1499,27 @@ describe('Church Settings addresses', () => {
         name: m.church_settings_address_delete({ name: 'Templo' }),
       }),
     ).toBeEnabled();
+  });
+
+  it('says so, and deletes nothing, when where an address is used cannot be read', async () => {
+    const user = userEvent.setup();
+    withAddresses(SEDE, CASA);
+    getChurchAddressUsage.mockRejectedValue(new Error('offline'));
+    renderSettings();
+    await nameField();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_address_delete({ name: 'Casa do Marcos' }),
+      }),
+    );
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        m.church_settings_address_usage_failed(),
+      ),
+    );
+    expect(saveBar()).not.toBeInTheDocument();
   });
 
   it('lists where an address in use is used and defaults the replacement to the Main Address', async () => {
@@ -1916,6 +2101,27 @@ describe('Church Contacts section', () => {
     ).toHaveTextContent('1');
   });
 
+  it('gives every row and section control a 44 px touch target on a phone', async () => {
+    // The component setup answers every media query as matching: a phone.
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      contacts: [PHONE, EMAIL],
+      contactGroups: [],
+    });
+    renderSettings();
+    await nameField();
+
+    for (const name of [
+      m.church_settings_contact_move_up({ position: 2 }),
+      m.church_settings_contact_move_down({ position: 1 }),
+    ]) {
+      expect(screen.getByRole('button', { name })).toHaveClass('size-11');
+    }
+    expect(
+      screen.getByRole('button', { name: m.church_settings_slug_generate() }),
+    ).toHaveClass('h-11');
+  });
+
   it('reorders with the move controls and saves the new order', async () => {
     const user = userEvent.setup();
     getChurchSettings.mockResolvedValue({
@@ -1989,6 +2195,39 @@ describe('Church Contacts section', () => {
     await user.type(second(), '0');
 
     expect(second()).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('clears only the edited row of a list, keeping the other rows marked', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...SAVED,
+      contacts: [PHONE, { ...PHONE, value: '+5511912345678' }],
+    });
+    updateChurchSettings.mockRejectedValue(
+      refusedSave(
+        [0, 1].map((row) => ({
+          field: `contacts.${row}.value`,
+          code: 'CONTACT_PHONE_INVALID',
+          message: `Telefone ${row} inválido.`,
+        })),
+      ),
+    );
+    renderSettings();
+    await nameField();
+    const phone = (row: number) =>
+      within(rows()[row] as HTMLElement).getByRole('textbox', {
+        name: m.church_settings_contact_phone_label(),
+      });
+    await user.type(phone(1), '9');
+    await user.click(
+      screen.getByRole('button', { name: m.church_settings_save() }),
+    );
+    await screen.findByText('Telefone 0 inválido.');
+
+    await user.type(phone(0), '1');
+
+    expect(phone(0)).not.toHaveAttribute('aria-invalid');
+    expect(phone(1)).toHaveAttribute('aria-invalid', 'true');
   });
 });
 
@@ -2276,5 +2515,50 @@ describe('Contact Groups', () => {
         }),
       ),
     );
+  });
+
+  it('keeps a group of only private contacts renamable and in the move order, marked as not public', async () => {
+    const user = userEvent.setup();
+    getChurchSettings.mockResolvedValue({
+      ...GROUPED,
+      contacts: [
+        LOUVOR_EMAIL,
+        PUBLIC_PHONE,
+        {
+          ...LOUVOR_EMAIL,
+          value: 'diacono@igreja.org',
+          isPublic: false,
+          group: 'Diaconia',
+        },
+      ],
+      contactGroups: ['Pastora Helena', 'Diaconia', 'Louvor'],
+    });
+    renderSettings();
+    await nameField();
+
+    const [, , diaconia] = groupBlocks();
+    expect(diaconia).toHaveTextContent(
+      m.church_settings_preview_group_private_only(),
+    );
+    expect(diaconia).not.toHaveTextContent('diacono@igreja.org');
+    expect(
+      screen.getByRole('textbox', {
+        name: m.church_settings_preview_group_rename({ name: 'Diaconia' }),
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: m.church_settings_preview_group_move_down({
+          name: 'Pastora Helena',
+        }),
+      }),
+    );
+
+    const [, first, second] = groupBlocks();
+    expect(first).toHaveTextContent(
+      m.church_settings_preview_group_private_only(),
+    );
+    expect(second).toHaveTextContent('Instagram');
   });
 });

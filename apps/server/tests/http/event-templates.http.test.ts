@@ -1583,6 +1583,32 @@ describe('Template Precedence', () => {
     ).toBe(422);
   });
 
+  it('drops the answer of a pair an edit no longer makes collide', async () => {
+    await seedEditGraph();
+    const created = await createAnsweredSantaCeia();
+
+    const edited = await patch({
+      templateId: created.id,
+      payload: santaCeia({
+        blocks: [{ label: 'Ceia', startTime: '09:30', endTime: '10:30' }],
+      }),
+    });
+
+    expect(edited.statusCode).toBe(200);
+    expect((await listPrecedences(created.id)).json()).toEqual({
+      precedences: [
+        {
+          otherTemplateId: ids.template,
+          otherTemplateName: 'Sunday',
+          answer: 'thisWins',
+        },
+      ],
+    });
+    expect((await listPrecedences(ids.sibling)).json()).toEqual({
+      precedences: [],
+    });
+  });
+
   it('drops its precedences when a template is deleted', async () => {
     await seedEditGraph();
     const created = await createAnsweredSantaCeia();

@@ -26,6 +26,7 @@ import { UnansweredTemplateCollisionsError } from '../domain/errors/unanswered-t
 import { assertRecurrence } from '../domain/recurrence';
 import { templatesCollide } from '../domain/template-collision';
 import {
+  type TemplatePrecedence,
   type TemplatePrecedenceAnswer,
   toPrecedenceAnswer,
   toStoredPrecedence,
@@ -111,19 +112,15 @@ export class DbEventTemplateManager implements IEventTemplateManager {
         other.id !== template.id &&
         templatesCollide({ left: template, right: other }),
     );
-    const stored = new Set(
-      (
-        await this.precedenceRepository.listByTemplate({
-          churchId,
-          templateId: template.id,
-          tx,
-        })
-      ).map(
-        (precedence) =>
-          toPrecedenceAnswer({ precedence, templateId: template.id })
-            .otherTemplateId,
-      ),
-    );
+    const storedPairs = await this.precedenceRepository.listByTemplate({
+      churchId,
+      templateId: template.id,
+      tx,
+    });
+    const otherOf = (precedence: TemplatePrecedence) =>
+      toPrecedenceAnswer({ precedence, templateId: template.id })
+        .otherTemplateId;
+    const stored = new Set(storedPairs.map(otherOf));
     const submitted = new Map(
       answers.map((answer) => [
         answer.otherTemplateId.toLowerCase(),
@@ -141,6 +138,15 @@ export class DbEventTemplateManager implements IEventTemplateManager {
         })),
       });
     }
+    // An answer for a pair this save no longer makes collide would mislead the list and the Programme.
+    const collidingIds = new Set(colliding.map(({ id }) => id));
+    await this.precedenceRepository.delete({
+      churchId,
+      precedences: storedPairs.filter(
+        (precedence) => !collidingIds.has(otherOf(precedence)),
+      ),
+      tx,
+    });
     await this.precedenceRepository.save({
       churchId,
       precedences: colliding.flatMap((other) => {

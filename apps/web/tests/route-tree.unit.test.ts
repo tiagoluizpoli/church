@@ -1,4 +1,4 @@
-import { RESERVED_CHURCH_SLUGS } from '@church/app-config/church-slug';
+import { RESERVED_CHURCH_SLUGS } from '@church/domain-rules/church-slug';
 import { QueryClient } from '@tanstack/react-query';
 import { createRouter } from '@tanstack/react-router';
 import { describe, expect, it } from 'vitest';

@@ -34,7 +34,7 @@
     "test": "bun run test:integration"
   },
   "dependencies": {
-    "@church/app-config": "workspace:*",
+    "@church/domain-rules": "workspace:*",
     "@church/env": "workspace:*",
     "@church/time": "workspace:*",
     "date-fns": "^4.1.0",

@@ -181,6 +181,8 @@ function saveSettings(payload: Record<string, unknown>) {
     payload: {
       addresses: [],
       socialLinks: [],
+      contacts: [],
+      contactGroups: [],
       legalProfile: NO_LEGAL,
       ...payload,
     },
@@ -367,6 +369,8 @@ const ANEXO = {
   uf: 'SP',
 };
 
+const NO_CONTACTS = { contacts: [], contactGroups: [] };
+
 const BASE = {
   name: 'Igreja Batista Esperança',
   website: '',
@@ -536,6 +540,32 @@ describe('Church Addresses', () => {
     expect(await readAddresses()).toEqual([]);
   });
 
+  it.each([
+    'contacts',
+    'contactGroups',
+  ])('names a missing %s list instead of keeping or clearing it', async (list) => {
+    signIn();
+    const { [list as 'contacts']: _left, ...payload } = {
+      ...BASE,
+      addresses: [],
+      socialLinks: [],
+      contacts: [],
+      contactGroups: [],
+      legalProfile: NO_LEGAL,
+    };
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/church-settings',
+      payload,
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().fieldErrors).toEqual([
+      expect.objectContaining({ field: list, code: 'INVALID' }),
+    ]);
+  });
+
   it('names a missing address list instead of clearing the addresses', async () => {
     signIn();
     await saveAddresses([SEDE]);
@@ -543,7 +573,12 @@ describe('Church Addresses', () => {
     const res = await app.inject({
       method: 'PUT',
       url: '/api/v1/church-settings',
-      payload: { ...BASE, socialLinks: [], legalProfile: NO_LEGAL },
+      payload: {
+        ...BASE,
+        ...NO_CONTACTS,
+        socialLinks: [],
+        legalProfile: NO_LEGAL,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -774,6 +809,11 @@ describe('Church Slug', () => {
     expect((await availability({ slug: 'login' })).json()).toEqual({
       status: 'reserved',
     });
+    for (const malformed of ['Igreja Nova', 'ab', 'a--b']) {
+      expect((await availability({ slug: malformed })).json()).toEqual({
+        status: 'invalid',
+      });
+    }
     expect((await availability({ slug: 'ib-esperanca' })).json()).toEqual({
       status: 'free',
     });
@@ -788,6 +828,8 @@ describe('Church Slug', () => {
       accentColor: null,
       addresses: [],
       socialLinks: [],
+      contacts: [],
+      contactGroups: [],
       legalProfile: null,
     };
     let release!: () => void;
@@ -960,7 +1002,12 @@ describe('Social Links', () => {
     const res = await app.inject({
       method: 'PUT',
       url: '/api/v1/church-settings',
-      payload: { ...BASE, addresses: [], legalProfile: NO_LEGAL },
+      payload: {
+        ...BASE,
+        ...NO_CONTACTS,
+        addresses: [],
+        legalProfile: NO_LEGAL,
+      },
     });
 
     expect(res.statusCode).toBe(422);
@@ -1025,11 +1072,9 @@ describe('Church Contacts', () => {
     ).toEqual(['phone', 'email']);
   });
 
-  it('leaves contacts alone when none are sent and clears them with an empty list', async () => {
+  it('clears the contacts with an empty list', async () => {
     signIn();
     await saveSettings({ ...base, contacts: [phone] });
-
-    await saveSettings(base);
     expect((await getSettings()).json().contacts).toHaveLength(1);
 
     await saveSettings({ ...base, contacts: [] });
@@ -1152,7 +1197,7 @@ describe('Church Legal Profile', () => {
     const res = await app.inject({
       method: 'PUT',
       url: '/api/v1/church-settings',
-      payload: { ...BASE, addresses: [], socialLinks: [] },
+      payload: { ...BASE, ...NO_CONTACTS, addresses: [], socialLinks: [] },
     });
 
     expect(res.statusCode).toBe(422);
@@ -1399,6 +1444,128 @@ describe('Deleting a Church Address in use', () => {
     expect(await readAddresses()).toHaveLength(2);
   });
 
+  async function seedStartedBlock(anexoId: string, cycleId: string) {
+    const past = await buildEvent({
+      db,
+      churchId: CHURCH_A,
+      cycleId,
+      title: 'Culto antigo',
+      start: parseInstant({ value: '2000-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2000-03-02T00:00:00.000Z' }),
+      status: 'past',
+    });
+    return buildEventTimeBlock({
+      db,
+      churchId: CHURCH_A,
+      eventId: past.id,
+      start: parseInstant({ value: '2000-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2000-03-02T00:00:00.000Z' }),
+      isPublic: true,
+      placeAddressId: anexoId,
+    });
+  }
+
+  async function blockPlace(eventBlockId: string) {
+    const [row] = await db
+      .select({
+        place: eventTimeBlock.place,
+        placeAddressId: eventTimeBlock.placeAddressId,
+      })
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, eventBlockId));
+    return row;
+  }
+
+  it('keeps the place of a started Event when its address is replaced', async () => {
+    const { sede, anexo, upcoming, publicBlock } = await seedUsage();
+    const started = await seedStartedBlock(anexo.id, upcoming.cycleId);
+
+    const res = await deleteAnexo(sede, [
+      { addressId: anexo.id, replacementAddressId: sede.id },
+    ]);
+
+    expect(res.statusCode).toBe(200);
+    expect(await blockPlace(started.id)).toEqual({
+      place: 'Anexo',
+      placeAddressId: null,
+    });
+    expect((await blockPlace(publicBlock.id))?.placeAddressId).toBe(sede.id);
+  });
+
+  it('keeps the place of a started Event when its address is edited', async () => {
+    const { sede, anexo, upcoming, publicBlock } = await seedUsage();
+    const started = await seedStartedBlock(anexo.id, upcoming.cycleId);
+
+    const res = await saveAddresses([sede, { ...anexo, label: 'Salão novo' }]);
+
+    expect(res.statusCode).toBe(200);
+    expect(await blockPlace(started.id)).toEqual({
+      place: 'Anexo',
+      placeAddressId: null,
+    });
+    expect((await blockPlace(publicBlock.id))?.placeAddressId).toBe(anexo.id);
+  });
+
+  it('asks for a replacement when only a private block of a draft plan that has not started uses the address', async () => {
+    signIn();
+    const [sede, anexo] = (await saveAddresses([SEDE, ANEXO])).json().addresses;
+    const draft = await buildCycle({
+      db,
+      churchId: CHURCH_A,
+      name: 'Draft',
+      state: 'draft',
+      startDate: '2099-01-01' as never,
+      endDate: '2099-12-31' as never,
+    });
+    const planned = await buildEvent({
+      db,
+      churchId: CHURCH_A,
+      cycleId: draft.id,
+      title: 'Ensaio',
+      start: parseInstant({ value: '2099-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2099-03-02T00:00:00.000Z' }),
+      status: 'draft',
+    });
+    await buildEventTimeBlock({
+      db,
+      churchId: CHURCH_A,
+      eventId: planned.id,
+      start: parseInstant({ value: '2099-03-01T22:00:00.000Z' }),
+      end: parseInstant({ value: '2099-03-02T00:00:00.000Z' }),
+      isPublic: false,
+      placeAddressId: anexo.id,
+    });
+
+    expect((await usage(anexo.id)).json().events).toEqual([
+      { id: planned.id, title: 'Ensaio', start: '2099-03-01T22:00:00.000Z' },
+    ]);
+    expect((await deleteAnexo(sede)).json().fieldErrors).toEqual([
+      expect.objectContaining({ code: 'ADDRESS_REPLACEMENT_REQUIRED' }),
+    ]);
+  });
+
+  it('deletes an address only started Events used, keeping their place', async () => {
+    signIn();
+    const [sede, anexo] = (await saveAddresses([SEDE, ANEXO])).json().addresses;
+    const sent = await buildCycle({
+      db,
+      churchId: CHURCH_A,
+      name: 'Sent',
+      state: 'sent',
+      startDate: '2000-01-01' as never,
+      endDate: '2000-12-31' as never,
+    });
+    const started = await seedStartedBlock(anexo.id, sent.id);
+
+    const res = await deleteAnexo(sede);
+
+    expect(res.statusCode).toBe(200);
+    expect(await blockPlace(started.id)).toEqual({
+      place: 'Anexo',
+      placeAddressId: null,
+    });
+  });
+
   it('deletes an unused address without a replacement, and the Main Address rule still holds', async () => {
     signIn();
     const [sede, anexo] = (await saveAddresses([SEDE, ANEXO])).json().addresses;
@@ -1486,7 +1653,7 @@ describe('Contact Groups', () => {
     });
   });
 
-  it('deletes a group with no member on save and keeps groups of contacts left alone', async () => {
+  it('deletes a group with no member on save and keeps the groups still used', async () => {
     signIn();
     await saveSettings({
       ...base,
@@ -1496,7 +1663,11 @@ describe('Contact Groups', () => {
     });
     expect((await read()).groups).toEqual(['Louvor', 'Jovens']);
 
-    await saveSettings({ ...base, socialLinks: [] });
+    await saveSettings({
+      ...base,
+      contacts: [{ ...email, group: 'Louvor' }],
+      socialLinks: [],
+    });
 
     expect(await read()).toEqual({
       groups: ['Louvor'],

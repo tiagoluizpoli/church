@@ -12,14 +12,49 @@ import type {
   ListRegularActivitiesInput,
 } from '../../domain/contracts/infrastructure/church-programme.repository';
 import type { RegularActivity } from '../../domain/entities/regular-activity';
-import {
-  compareRegularActivities,
-  exceptOrdinals,
-} from '../../domain/programme-order';
+import { exceptOrdinals } from '../../domain/programme-order';
 import type { Recurrence } from '../../domain/recurrence';
+import { timeBlocksOverlap } from '../../domain/template-collision';
 import { withChurchIsolation } from './helpers';
 import { resolvedPlace } from './time-block-place';
 import type { AnyDrizzleDb } from './types';
+
+interface BlockTimes {
+  startTime: string;
+  endTime: string;
+}
+
+interface WinnerBlock {
+  recurrence: Recurrence;
+  block: BlockTimes;
+}
+
+/** Day-of-month activities follow weekday ones; the last day of the month closes the month. */
+const LAST_DAY_POSITION = 32;
+
+/**
+ * The Programme order (backend owns ordering): weekday activities Sunday
+ * onward, then time, weekly before monthly; then day-of-month ones by day,
+ * then time. A weekly one sits on its first weekday, a monthly one on its
+ * first entry.
+ */
+function programmeOrder() {
+  const { recurrence } = eventTemplate;
+  const first = sql`${recurrence}->'entries'->0`;
+  const group = sql`case when ${recurrence}->>'kind' = 'weekly' or ${first}->>'kind' = 'nthWeekday' then 0 else 1 end`;
+  const position = sql`case
+    when ${recurrence}->>'kind' = 'weekly' then (select min(weekday::int) from jsonb_array_elements_text(${recurrence}->'weekdays') as weekday)
+    when ${first}->>'kind' = 'nthWeekday' then (${first}->>'weekday')::int
+    when ${first}->>'kind' = 'dayOfMonth' then (${first}->>'day')::int
+    else ${LAST_DAY_POSITION} end`;
+  const monthlyLast = sql`case when ${recurrence}->>'kind' = 'monthly' then 1 else 0 end`;
+  return [
+    asc(group),
+    asc(position),
+    asc(templateTimeBlock.startTime),
+    asc(monthlyLast),
+  ];
+}
 
 interface DrizzleChurchProgrammeRepositoryInput {
   db: AnyDrizzleDb;
@@ -42,6 +77,7 @@ export class DrizzleChurchProgrammeRepository
         templateId: eventTemplate.id,
         recurrence: eventTemplate.recurrence,
         startTime: templateTimeBlock.startTime,
+        endTime: templateTimeBlock.endTime,
         label: templateTimeBlock.label,
         place: resolvedPlace(templateTimeBlock.place),
         atMainAddress: sql<boolean>`coalesce(${churchAddress.isMain}, false)`,
@@ -61,58 +97,63 @@ export class DrizzleChurchProgrammeRepository
           withChurchIsolation({ table: eventTemplate, churchId }),
         ),
       )
-      // A stable base order; the Recurrence sort key then orders it.
       .orderBy(
-        asc(templateTimeBlock.startTime),
+        ...programmeOrder(),
         asc(sql`lower(${templateTimeBlock.label})`),
         asc(templateTimeBlock.id),
       );
 
     const winnersByTemplate = await this.listWinners({ churchId });
 
-    const activities = rows.map((row) => ({
-      recurrence: row.recurrence as Recurrence,
-      exceptOrdinals: exceptOrdinals({
-        recurrence: row.recurrence as Recurrence,
-        winners: winnersByTemplate.get(row.templateId) ?? [],
-      }),
-      startTime: fromTimeColumn({ value: row.startTime }),
-      label: row.label,
-      place: row.place,
-      atMainAddress: row.atMainAddress,
-    }));
-    // Array.sort is stable, so ties keep the SQL order.
-    return activities.sort((left, right) =>
-      compareRegularActivities({ left, right }),
-    );
+    return rows.map((row) => {
+      const recurrence = row.recurrence as Recurrence;
+      // Apply drops only the blocks a winner overlaps, so only those say "exceto".
+      const winners = (winnersByTemplate.get(row.templateId) ?? [])
+        .filter((winner) =>
+          timeBlocksOverlap({ left: row, right: winner.block }),
+        )
+        .map((winner) => winner.recurrence);
+      return {
+        recurrence,
+        exceptOrdinals: exceptOrdinals({ recurrence, winners }),
+        startTime: fromTimeColumn({ value: row.startTime }),
+        label: row.label,
+        place: row.place,
+        atMainAddress: row.atMainAddress,
+      };
+    });
   }
 
-  /** Recurrences of the templates that won over each template of the Church. */
+  /** Each block of the templates that won over each template of the Church, with its Recurrence. */
   private async listWinners({
     churchId,
-  }: ListRegularActivitiesInput): Promise<Map<string, Recurrence[]>> {
+  }: ListRegularActivitiesInput): Promise<Map<string, WinnerBlock[]>> {
     const winner = alias(eventTemplate, 'winner');
+    const winnerBlock = alias(templateTimeBlock, 'winner_block');
     const rows = await this.db
       .select({
         loserId: sql<string>`case when ${templatePrecedence.outcome} = 'a_wins' then ${templatePrecedence.templateBId} else ${templatePrecedence.templateAId} end`,
         recurrence: winner.recurrence,
+        startTime: winnerBlock.startTime,
+        endTime: winnerBlock.endTime,
       })
       .from(templatePrecedence)
       .innerJoin(
         winner,
         sql`${winner.id} = case when ${templatePrecedence.outcome} = 'a_wins' then ${templatePrecedence.templateAId} else ${templatePrecedence.templateBId} end`,
       )
+      .innerJoin(winnerBlock, eq(winnerBlock.templateId, winner.id))
       .where(
         and(
           ne(templatePrecedence.outcome, 'both'),
           withChurchIsolation({ table: templatePrecedence, churchId }),
         ),
       );
-    const byLoser = new Map<string, Recurrence[]>();
-    for (const { loserId, recurrence } of rows) {
+    const byLoser = new Map<string, WinnerBlock[]>();
+    for (const { loserId, recurrence, startTime, endTime } of rows) {
       byLoser.set(loserId, [
         ...(byLoser.get(loserId) ?? []),
-        recurrence as Recurrence,
+        { recurrence: recurrence as Recurrence, block: { startTime, endTime } },
       ]);
     }
     return byLoser;

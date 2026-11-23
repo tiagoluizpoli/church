@@ -1,5 +1,5 @@
-import { churchSlugRefusal } from '@church/app-config/church-slug';
 import { NotFoundError } from '@church/core';
+import { churchSlugRefusal } from '@church/domain-rules/church-slug';
 import type { ChurchAddressUsage } from '../domain/church-address';
 import { isChurchLogoKey } from '../domain/church-logo';
 import type { ChurchSlugAvailability } from '../domain/church-settings';
@@ -18,6 +18,7 @@ import type { ObjectStorage } from '../domain/contracts/infrastructure/object-st
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import { LogoKeyInvalidError } from '../domain/errors/church-logo';
 import { storeChurchLogo } from './church-logo-pipeline';
+import { churchLogoUrl } from './church-logo-url';
 
 interface DbChurchSettingsManagerDependencies {
   churchRepository: ChurchRepository;
@@ -51,9 +52,10 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
     const settings = await this.churchRepository.getSettings({ id: churchId });
     return {
       ...settings,
-      logoUrl: settings.logoKey
-        ? this.objectStorage.publicUrl({ key: settings.logoKey })
-        : null,
+      logoUrl: churchLogoUrl({
+        objectStorage: this.objectStorage,
+        logoKey: settings.logoKey,
+      }),
       publicOrigin: this.publicOrigin,
     };
   }
@@ -75,7 +77,9 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
     churchId,
     slug,
   }: SlugAvailabilityInput): Promise<ChurchSlugAvailability> {
-    if (churchSlugRefusal(slug) === 'RESERVED') return 'reserved';
+    const refusal = churchSlugRefusal(slug);
+    if (refusal === 'RESERVED') return 'reserved';
+    if (refusal) return 'invalid';
     return this.churchRepository.slugAvailability({ id: churchId, slug });
   }
 
@@ -113,7 +117,11 @@ export class DbChurchSettingsManager implements IChurchSettingsManager {
     churchId,
     key,
   }: RestoreChurchLogoInput): Promise<ChurchSettingsView> {
-    if (!isChurchLogoKey({ churchId, key })) throw new LogoKeyInvalidError();
+    // A key whose object is gone would serve a 404 the edge then caches.
+    const restorable =
+      isChurchLogoKey({ churchId, key }) &&
+      (await this.objectStorage.exists({ key }));
+    if (!restorable) throw new LogoKeyInvalidError();
     await this.churchRepository.saveLogoKey({ id: churchId, logoKey: key });
     return this.getChurchSettings({ churchId });
   }

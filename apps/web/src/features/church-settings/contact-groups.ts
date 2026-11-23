@@ -59,7 +59,7 @@ export function renameGroup({
   const fromKey = keyOf({ name: from });
   const order = groupOrder({ form });
   if (!target) return { ...form, contactGroups: order };
-  const rename = <T extends { group: string }>(rows: T[]): T[] =>
+  const rename = <T extends GroupedRow>(rows: T[]): T[] =>
     rows.map((row) =>
       keyOf({ name: row.group }) === fromKey ? { ...row, group: target } : row,
     );
@@ -91,6 +91,11 @@ export function moveGroup({ form, name, by }: MoveInput): string[] {
   return next;
 }
 
+/** A contact or Social Link row, by the group it names. */
+interface GroupedRow {
+  group: string;
+}
+
 interface MembersOfInput<T> {
   rows: T[];
   /** `null` is the ungrouped block. */
@@ -98,7 +103,7 @@ interface MembersOfInput<T> {
 }
 
 /** One block of the preview: a group's rows, in the form's order. */
-export function membersOf<T extends { group: string }>({
+export function membersOf<T extends GroupedRow>({
   rows,
   name,
 }: MembersOfInput<T>): T[] {

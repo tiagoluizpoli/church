@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { ArrowDown, ArrowUp, Home, Pencil, Plus, Trash2 } from 'lucide-react';
 import * as React from 'react';
+import { toast } from 'sonner';
 import { IconInputField } from '@/components/icon-input-field';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,11 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import {
-  CepLookupFailed,
-  lookupCep,
-  normalizeCep,
-} from '@/features/church-settings/cep-client';
+import { lookupCep, normalizeCep } from '@/features/church-settings/cep-client';
 import {
   type AddressDraft,
   type AddressReplacement,
@@ -40,6 +37,7 @@ import {
   type PickedPlace,
   type PinMap,
 } from '@/features/church-settings/google-maps';
+import { useControlSizes } from '@/features/church-settings/use-control-sizes';
 import type { GetChurchAddressUsage200 } from '@/infrastructure/api/churchAPI.schemas';
 import { churchSettingsApi } from '@/utils/api-instances';
 
@@ -92,12 +90,21 @@ interface DraftFields {
   longitude: number | null;
   pinSource: AddressDraft['pinSource'];
   /** The Google place the fields came from; kept only while street, number and city stay as picked. */
-  picked: {
-    placeId: string;
-    street: string;
-    number: string;
-    city: string;
-  } | null;
+  picked: PickedOrigin | null;
+}
+
+/** What a Google pick filled, to tell whether the admin changed it since. */
+interface PickedOrigin {
+  placeId: string;
+  street: string;
+  number: string;
+  city: string;
+}
+
+/** An address the admin asked to delete, with where it is still used. */
+interface PendingDeletion {
+  address: AddressDraft;
+  usage: GetChurchAddressUsage200;
 }
 
 interface ToFieldsInput {
@@ -155,6 +162,7 @@ function AddressDialog({
   onCancel,
   onConfirm,
 }: AddressDialogProps) {
+  const sizes = useControlSizes();
   const [fields, setFields] = React.useState<DraftFields>(() =>
     toFields({ address: editing ?? null }),
   );
@@ -190,16 +198,18 @@ function AddressDialog({
           pinSource: 'cep',
         });
       }
-      set({
+      // Merged into the current fields: what was typed during the lookup stays.
+      setFields((current) => ({
+        ...current,
         cep: found.cep || cep,
-        street: found.street || fields.street,
-        bairro: found.bairro || fields.bairro,
-        city: found.city || fields.city,
-        uf: found.uf || fields.uf,
-      });
+        street: found.street || current.street,
+        bairro: found.bairro || current.bairro,
+        city: found.city || current.city,
+        uf: found.uf || current.uf,
+      }));
       setCepStatus('filled');
-    } catch (error) {
-      if (!(error instanceof CepLookupFailed)) throw error;
+    } catch {
+      // Every failure reads the same to the admin: manual entry stays usable.
       setCepStatus('failed');
     }
   };
@@ -209,7 +219,8 @@ function AddressDialog({
       ? { latitude: fields.latitude, longitude: fields.longitude }
       : null;
   // State, not refs: the dialog content mounts after the first effect pass.
-  const [searchEl, setSearchEl] = React.useState<HTMLInputElement | null>(null);
+  const [searchEl, setSearchEl] = React.useState<HTMLDivElement | null>(null);
+  const [mapsFailed, setMapsFailed] = React.useState(false);
   const [mapEl, setMapEl] = React.useState<HTMLDivElement | null>(null);
   const pinMap = React.useRef<PinMap | null>(null);
   const initialPin = React.useRef(pin);
@@ -256,14 +267,18 @@ function AddressDialog({
 
   React.useEffect(() => {
     if (!mapsEnabled || !searchEl || !mapEl) return;
+    const failed = () => setMapsFailed(true);
     const detach = attachPlaceSearch({
-      input: searchEl,
+      container: searchEl,
+      label: m.church_settings_address_google_search(),
       onPick: (place) => picker.current(place),
+      onError: failed,
     });
     const map = mountPinMap({
       element: mapEl,
       pin: initialPin.current,
       onDrag: (moved) => dragged.current(moved),
+      onError: failed,
     });
     pinMap.current = map;
     return () => {
@@ -419,7 +434,7 @@ function AddressDialog({
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              size={sizes.small}
               disabled={cepStatus === 'loading'}
               onClick={searchCep}
             >
@@ -442,19 +457,16 @@ function AddressDialog({
           </div>
           {mapsEnabled ? (
             <div className="space-y-2 sm:col-span-2">
-              <Label
-                className="font-medium text-sm"
-                htmlFor="address-google-search"
-              >
+              <p className="font-medium text-sm">
                 {m.church_settings_address_google_search()}
-              </Label>
-              <input
-                id="address-google-search"
-                ref={setSearchEl}
-                type="text"
-                autoComplete="off"
-                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
-              />
+              </p>
+              {/* Google's own search field (Places API New) mounts here. */}
+              <div ref={setSearchEl} className="w-full" />
+              {mapsFailed ? (
+                <p role="alert" className="text-destructive text-sm">
+                  {m.church_settings_address_maps_failed()}
+                </p>
+              ) : null}
               <p className="text-muted-foreground text-sm">
                 {m.church_settings_address_google_search_hint()}
               </p>
@@ -482,7 +494,7 @@ function AddressDialog({
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
+                      size={sizes.small}
                       onClick={() => setPin({ moved: pin, pinSource: 'admin' })}
                     >
                       {m.church_settings_address_pin_confirm()}
@@ -491,7 +503,7 @@ function AddressDialog({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size={sizes.small}
                     onClick={() => setPin({ moved: null, pinSource: null })}
                   >
                     {m.church_settings_address_pin_remove()}
@@ -719,9 +731,10 @@ export function AddressSection({
   onChange,
   onDelete,
 }: AddressSectionProps) {
-  const [deleting, setDeleting] = React.useState<
-    { address: AddressDraft; usage: GetChurchAddressUsage200 } | undefined
-  >(undefined);
+  const sizes = useControlSizes();
+  const [deleting, setDeleting] = React.useState<PendingDeletion | undefined>(
+    undefined,
+  );
   const [editingKey, setEditingKey] = React.useState<string | null | undefined>(
     undefined,
   );
@@ -775,10 +788,16 @@ export function AddressSection({
     onChange(rest);
   };
 
-  // A saved address may be used by templates and upcoming Public Events: ask the server, then confirm a replacement.
+  // A saved address may be used by templates and Events not yet started: ask the server, then confirm a replacement.
   const requestRemove = async (address: AddressDraft) => {
     if (!address.id) return remove(address.key);
-    const usage = await churchSettingsApi.getChurchAddressUsage(address.id);
+    const usage = await churchSettingsApi
+      .getChurchAddressUsage(address.id)
+      .catch(() => undefined);
+    if (!usage) {
+      toast.error(m.church_settings_address_usage_failed());
+      return;
+    }
     if (usage.templates.length === 0 && usage.events.length === 0) {
       return remove(address.key);
     }
@@ -859,7 +878,7 @@ export function AddressSection({
                   {address.isMain ? null : (
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size={sizes.small}
                       onClick={() => makeMain(address.key)}
                     >
                       {m.church_settings_address_make_main()}
@@ -867,7 +886,7 @@ export function AddressSection({
                   )}
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size={sizes.icon}
                     aria-label={m.church_settings_address_move_up({ name })}
                     disabled={index === 0}
                     onClick={() => move({ index, by: -1 })}
@@ -876,7 +895,7 @@ export function AddressSection({
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size={sizes.icon}
                     aria-label={m.church_settings_address_move_down({ name })}
                     disabled={index === addresses.length - 1}
                     onClick={() => move({ index, by: 1 })}
@@ -885,7 +904,7 @@ export function AddressSection({
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size={sizes.icon}
                     aria-label={m.church_settings_address_edit({ name })}
                     onClick={() => setEditingKey(address.key)}
                   >
@@ -893,7 +912,7 @@ export function AddressSection({
                   </Button>
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size={sizes.icon}
                     aria-label={m.church_settings_address_delete({ name })}
                     title={
                       mainBlocked

@@ -18,11 +18,12 @@ describe('ChurchLogoTile', () => {
   });
 
   it('falls back to the platform logo on the same tile when the Church has none', () => {
-    const { container } = render(
+    render(
       <ChurchLogoTile name="Igreja Semente" logoUrl={null} size="mobile" />,
     );
 
-    const logo = container.querySelector('img');
+    // Named by the Church even on the fallback: the collapsed sidebar shows no name beside it.
+    const logo = screen.getByRole('img', { name: 'Igreja Semente' });
     expect(logo).toHaveAttribute('src', '/logo.png');
     expect(logo).toHaveClass('object-contain', 'h-7');
     expect(logo?.closest('[data-testid="church-logo-tile"]')).not.toBeNull();
@@ -36,5 +37,19 @@ describe('ChurchLogoTile', () => {
       'border',
       'rounded-md',
     );
+  });
+
+  it('fits a wide logo inside the collapsed sidebar instead of cropping it', () => {
+    render(
+      <ChurchLogoTile
+        name="Igreja Semente"
+        logoUrl="https://files.test/wide.png"
+        size="collapsed"
+      />,
+    );
+
+    const logo = screen.getByRole('img', { name: 'Igreja Semente' });
+    expect(logo).toHaveClass('object-contain', 'h-8', 'max-w-9');
+    expect(logo).not.toHaveClass('max-w-32');
   });
 });

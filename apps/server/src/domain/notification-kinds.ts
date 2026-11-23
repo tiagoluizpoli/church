@@ -1,6 +1,7 @@
 import { calendarDaySchema, type Instant, instantSchema } from '@church/time';
 import { z } from 'zod';
 import { MinistryId, VolunteerId } from './branded-ids';
+import type { ChurchIdentitySnapshot } from './church-identity-snapshot';
 import {
   MINISTRY_ACCESS_LEVEL_OPTIONS,
   type MinistryAccessLevel,
@@ -351,6 +352,13 @@ const notificationEnqueueDataSchemas = {
 export type NotificationEnqueueDataOf<K extends NotificationRequestKind> =
   z.infer<(typeof notificationEnqueueDataSchemas)[K]>;
 
+/** Every enqueue kind, each persisted with the Church identity: a kind left out, or without it, fails type-checking. */
+export type ChurchScopedRequestSchemas = {
+  [K in NotificationEnqueueKind]: z.ZodType<ChurchIdentitySnapshot>;
+};
+
+type NotificationEnqueueKind = keyof typeof notificationEnqueueDataSchemas;
+
 /**
  * What is persisted per kind: the enqueue data plus the required Church
  * identity snapshot, so a new Church kind cannot be queued without it.
@@ -412,7 +420,7 @@ export const notificationRequestDataSchemas = {
     notificationEnqueueDataSchemas.transfer_leaderless_ministry.extend(
       requiredChurchIdentitySchema.shape,
     ),
-} as const;
+} as const satisfies ChurchScopedRequestSchemas;
 
 /** Every kind Church code can enqueue: the inbox kinds plus email-only kinds. */
 export type NotificationRequestKind =

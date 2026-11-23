@@ -48,6 +48,8 @@ describe('Church Settings body', () => {
         socialLinks: [
           { url: ' Instagram.com/igreja ', description: ' Perfil ' },
         ],
+        contacts: [],
+        contactGroups: [],
         legalProfile: {
           legalName: ' Igreja  Viva LTDA ',
           cnpj: '11.222.333/0001-81',
@@ -86,6 +88,8 @@ describe('Church Settings body', () => {
           description: 'Perfil',
         },
       ],
+      contacts: [],
+      contactGroups: [],
       legalProfile: {
         legalName: 'Igreja Viva LTDA',
         cnpj: '11222333000181',

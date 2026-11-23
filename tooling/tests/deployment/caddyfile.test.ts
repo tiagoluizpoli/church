@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'bun:test';
-import { RESERVED_CHURCH_SLUGS } from '../../../packages/app-config/src/church-slug';
+import {
+  LEGACY_APP_ROUTE_SLUGS,
+  RESERVED_CHURCH_SLUGS,
+} from '../../../packages/domain-rules/src/church-slug';
 import { ROOT } from '../env/ci-workflow';
 
 /**
@@ -20,5 +23,17 @@ describe('deployment Caddyfile', () => {
       .split(/\s+/);
 
     expect(excluded).toEqual(RESERVED_CHURCH_SLUGS.map((slug) => `/${slug}`));
+  });
+
+  it('redirects every pre-/app route, with its subpaths and query, to /app', () => {
+    const matched = caddyfile
+      .match(/@legacyApp path ([^\n]+)/)?.[1]
+      ?.trim()
+      .split(/\s+/);
+
+    expect(matched).toEqual(
+      LEGACY_APP_ROUTE_SLUGS.flatMap((slug) => [`/${slug}`, `/${slug}/*`]),
+    );
+    expect(caddyfile).toContain('redir @legacyApp /app{uri} 301');
   });
 });

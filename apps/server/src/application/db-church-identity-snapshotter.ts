@@ -6,6 +6,7 @@ import type {
 } from '../domain/contracts/application/church-identity-snapshotter';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { ObjectStorage } from '../domain/contracts/infrastructure/object-storage';
+import { churchLogoUrl } from './church-logo-url';
 
 interface DbChurchIdentitySnapshotterDependencies {
   churchRepository: Pick<ChurchRepository, 'getSettings'>;
@@ -37,9 +38,10 @@ export class DbChurchIdentitySnapshotter implements ChurchIdentitySnapshotter {
       addresses.find((address) => address.isMain),
     );
     return {
-      churchLogoUrl: logoKey
-        ? this.objectStorage.publicUrl({ key: logoKey })
-        : null,
+      churchLogoUrl: churchLogoUrl({
+        objectStorage: this.objectStorage,
+        logoKey,
+      }),
       churchAccent: accentColor,
       ...(churchLocality ? { churchLocality } : {}),
     };

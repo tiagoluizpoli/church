@@ -1,7 +1,7 @@
-import { SOCIAL_NETWORKS } from '@church/app-config/social-networks';
+import { SOCIAL_NETWORKS } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { toast } from 'sonner';
+import { ChurchLogoTile } from '@/components/church-logo-tile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { accentTextColor } from '@/features/church-settings/accent-text-color';
@@ -22,11 +22,10 @@ import {
   moveGroup,
   renameGroup,
 } from '@/features/church-settings/contact-groups';
-import {
-  detectDevice,
-  directionsLink,
-  formatAddress,
-} from '@/features/church-settings/directions';
+import { useControlSizes } from '@/features/church-settings/use-control-sizes';
+import { cn } from '@/lib/utils';
+import { AddressActions } from '@/shared/components/address-actions';
+import { formatAddress } from '@/shared/utils/directions';
 
 interface ChurchPreviewProps {
   form: ChurchSettingsForm;
@@ -78,14 +77,7 @@ export function ChurchPreview({
           <span className="flex h-10 w-24 shrink-0 items-center justify-center rounded-md bg-white p-1">
             <LogoImage logoUrl={logoUrl} className="h-full w-full" />
           </span>
-        ) : (
-          <span
-            aria-hidden
-            className="flex size-10 shrink-0 items-center justify-center rounded-md bg-background/90 font-semibold text-foreground"
-          >
-            {name.charAt(0).toUpperCase()}
-          </span>
-        )}
+        ) : null}
         <div className="min-w-0">
           {name ? <p className="truncate font-semibold">{name}</p> : null}
           {website ? (
@@ -136,8 +128,8 @@ export function ChurchPreview({
       ) : null}
       {logoUrl ? (
         <div className="grid grid-cols-2 gap-3 border-t p-4">
-          <LogoTile logoUrl={logoUrl} dark={false} />
-          <LogoTile logoUrl={logoUrl} dark />
+          <LogoTile name={name} logoUrl={logoUrl} dark={false} />
+          <LogoTile name={name} logoUrl={logoUrl} dark />
         </div>
       ) : null}
     </div>
@@ -145,12 +137,13 @@ export function ChurchPreview({
 }
 
 interface LogoTileProps {
+  name: string;
   logoUrl: string;
   dark: boolean;
 }
 
-/** The logo on the app's logo tile, painted as in light or dark mode. */
-function LogoTile({ logoUrl, dark }: LogoTileProps) {
+/** The app's own logo tile (near-white in both themes) on a light or a dark surface. */
+function LogoTile({ name, logoUrl, dark }: LogoTileProps) {
   const label = dark
     ? m.church_settings_preview_logo_dark()
     : m.church_settings_preview_logo_light();
@@ -163,47 +156,15 @@ function LogoTile({ logoUrl, dark }: LogoTileProps) {
         className={
           dark
             ? 'flex h-16 items-center justify-center rounded-md border border-neutral-700 bg-neutral-900 p-2'
-            : 'flex h-16 items-center justify-center rounded-md border bg-white p-2'
+            : 'flex h-16 items-center justify-center rounded-md border bg-sidebar p-2'
         }
       >
-        <LogoImage logoUrl={logoUrl} className="h-full w-full" />
+        <ChurchLogoTile name={name} logoUrl={logoUrl} size="desktop" />
       </div>
       <figcaption className="text-center text-muted-foreground text-xs">
         {label}
       </figcaption>
     </figure>
-  );
-}
-
-interface AddressActionsProps {
-  address: ChurchSettingsForm['addresses'][number];
-}
-
-/** *Como chegar* for the visitor's device and *Copiar endereço*. */
-function AddressActions({ address }: AddressActionsProps) {
-  const copy = async () => {
-    await navigator.clipboard.writeText(formatAddress({ address }));
-    toast.success(m.church_settings_preview_address_copied());
-  };
-  return (
-    <div className="flex flex-wrap gap-3">
-      <a
-        href={directionsLink({
-          address,
-          device: detectDevice({ userAgent: navigator.userAgent }),
-        })}
-        className="font-medium text-primary underline-offset-4 hover:underline"
-      >
-        {m.church_settings_preview_directions()}
-      </a>
-      <button
-        type="button"
-        onClick={copy}
-        className="font-medium text-primary underline-offset-4 hover:underline"
-      >
-        {m.church_settings_preview_copy_address()}
-      </button>
-    </div>
   );
 }
 
@@ -246,12 +207,12 @@ function PreviewPublic({ form, onChange }: PreviewPublicProps) {
     ({ isPublic, value }) => isPublic && value.trim() !== '',
   );
   const links = form.socialLinks.filter(({ url }) => url.trim() !== '');
-  const blocks = [null, ...order].filter(
-    (name) =>
-      membersOf({ rows: contacts, name }).length +
-        membersOf({ rows: links, name }).length >
-      0,
-  );
+  const publicRows = (name: string | null) =>
+    membersOf({ rows: contacts, name }).length +
+    membersOf({ rows: links, name }).length;
+  // Every named group gets its block, so one of only private contacts can
+  // still be renamed and moved, and a move never swaps with a hidden group.
+  const blocks = [...(publicRows(null) > 0 ? [null] : []), ...order];
   if (blocks.length === 0) return null;
   return (
     <div data-testid="church-preview-public-contacts" className="border-t">
@@ -277,6 +238,11 @@ function PreviewPublic({ form, onChange }: PreviewPublicProps) {
               onChange={onChange}
             />
           )}
+          {publicRows(name) === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              {m.church_settings_preview_group_private_only()}
+            </p>
+          ) : null}
           <ul className="space-y-0.5 text-sm">
             {membersOf({ rows: contacts, name }).map((contact) => (
               <li key={contact.key} className="truncate">
@@ -324,7 +290,7 @@ function PreviewLink({ link }: PreviewLinkProps) {
 interface GroupHeadingProps {
   form: ChurchSettingsForm;
   name: string;
-  /** Among the named groups, not counting those with no public row. */
+  /** Among every named group. */
   position: number;
   count: number;
   onChange: ChurchPreviewProps['onChange'];
@@ -338,6 +304,7 @@ function GroupHeading({
   count,
   onChange,
 }: GroupHeadingProps) {
+  const sizes = useControlSizes();
   const commit = (to: string) => {
     if (to.trim() !== '' && to !== name)
       onChange(renameGroup({ form, from: name, to }));
@@ -348,7 +315,7 @@ function GroupHeading({
         key={name}
         defaultValue={name}
         aria-label={m.church_settings_preview_group_rename({ name })}
-        className="h-8 font-semibold text-sm"
+        className={cn('font-semibold text-sm', !sizes.touch && 'h-8')}
         onBlur={(event) => commit(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') event.currentTarget.blur();
@@ -356,7 +323,7 @@ function GroupHeading({
       />
       <Button
         variant="ghost"
-        size="icon"
+        size={sizes.icon}
         disabled={position === 0}
         aria-label={m.church_settings_preview_group_move_up({ name })}
         onClick={() =>
@@ -367,7 +334,7 @@ function GroupHeading({
       </Button>
       <Button
         variant="ghost"
-        size="icon"
+        size={sizes.icon}
         disabled={position === count - 1}
         aria-label={m.church_settings_preview_group_move_down({ name })}
         onClick={() =>

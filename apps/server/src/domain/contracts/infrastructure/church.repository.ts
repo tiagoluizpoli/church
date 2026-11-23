@@ -42,14 +42,14 @@ export interface ChurchRepository {
    * Throws `ChurchAddressesRefused` when the stored addresses make the save invalid.
    */
   saveSettings(input: SaveChurchSettingsInput): Promise<void>;
-  /** What templates and upcoming Public Events still use this address; `null` when it is not an address of this Church. */
+  /** What templates and not-yet-started EventTimeBlocks still use this address; `null` when it is not an address of this Church. */
   getAddressUsage(
     input: GetChurchAddressUsageInput,
   ): Promise<ChurchAddressUsage | null>;
   /** Whether `slug` is free for this Church; the Church's own current slug counts as free. Never names the holder. */
   slugAvailability(
     input: SlugAvailabilityInput,
-  ): Promise<Exclude<ChurchSlugAvailability, 'reserved'>>;
+  ): Promise<Exclude<ChurchSlugAvailability, 'reserved' | 'invalid'>>;
   /** Points the Church at a logo key, or at none; objects are never touched. */
   saveLogoKey(input: SaveChurchLogoKeyInput): Promise<void>;
   /**

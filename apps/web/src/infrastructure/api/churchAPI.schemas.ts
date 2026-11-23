@@ -2840,23 +2840,23 @@ export type UpdateChurchSettingsBody = {
      */
   accentColor: string | null;
   /**
-     * Church Contacts in order; phones validated as allowed-country numbers and stored as E.164, emails lower-cased. Omitted, the contacts stay; sent, the list replaces them. A refused row is reported by index, e.g. contacts.1.value.
+     * Every Church Contact in order; the whole list replaces the stored one. Phones validated as allowed-country numbers and stored as E.164, emails lower-cased. A refused row is reported by index, e.g. contacts.1.value.
      * @maxItems 50
      */
-  contacts?: UpdateChurchSettingsBodyContactsItem[];
+  contacts: UpdateChurchSettingsBodyContactsItem[];
   /**
-     * Contact Group names in display order, for the `group` of contacts and links. A group is created by naming it on a row, case-insensitively one group; unlisted groups follow in first-use order; a group no row uses is deleted on save. Omitted, the stored order stays.
+     * Contact Group names in display order, for the `group` of contacts and links. A group is created by naming it on a row, case-insensitively one group; unlisted groups follow in first-use order; a group no row uses is deleted on save.
      * @maxItems 100
      * @items.maxLength 120
      */
-  contactGroups?: string[];
+  contactGroups: string[];
   /**
      * Every Church Address in display order; the whole list replaces the stored one. `id` keeps a stored address, null or absent adds one. At most one is the Main Address; the first address a Church gets becomes main, later the list must name one. Country is always BR; number is "s/n" without a number; a `placeId` is dropped when street, number or city change from the stored pick.
      * @maxItems 50
      */
   addresses: UpdateChurchSettingsBodyAddressesItem[];
   /**
-     * What replaces each deleted address that templates or upcoming public events still use: another kept address of the Church, or null for no place. Deleting such an address without an entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the replacement is applied to every reference in the same save.
+     * What replaces each deleted address that templates or not-yet-started Event time blocks still use: another kept address of the Church, or null for no place. Deleting such an address without an entry is refused (ADDRESS_REPLACEMENT_REQUIRED); the replacement is applied to every reference in the same save.
      * @maxItems 50
      */
   addressReplacements?: UpdateChurchSettingsBodyAddressReplacementsItem[];
@@ -3115,6 +3115,9 @@ export type GetChurchSlugAvailabilityParams = {
 slug: string;
 };
 
+/**
+ * invalid: not 3–63 lower-case letters, digits and single hyphens; reserved: a platform word.
+ */
 export type GetChurchSlugAvailability200Status = typeof GetChurchSlugAvailability200Status[keyof typeof GetChurchSlugAvailability200Status];
 
 
@@ -3122,10 +3125,12 @@ export const GetChurchSlugAvailability200Status = {
   free: 'free',
   taken: 'taken',
   reserved: 'reserved',
+  invalid: 'invalid',
   own_history: 'own_history',
 } as const;
 
 export type GetChurchSlugAvailability200 = {
+  /** invalid: not 3–63 lower-case letters, digits and single hyphens; reserved: a platform word. */
   status: GetChurchSlugAvailability200Status;
 };
 
@@ -3159,7 +3164,7 @@ export type GetChurchAddressUsage200EventsItem = {
 export type GetChurchAddressUsage200 = {
   /** Event Templates with a time block at this address, by name. */
   templates: GetChurchAddressUsage200TemplatesItem[];
-  /** Upcoming Public Events (sent, not cancelled, a public block here that has not ended), by start. */
+  /** Events with a time block here that has not started, any Cycle or visibility, by start. Started blocks keep their place and are not listed. */
   events: GetChurchAddressUsage200EventsItem[];
 };
 

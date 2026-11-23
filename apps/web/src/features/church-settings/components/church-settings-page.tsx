@@ -2,7 +2,7 @@ import {
   type ChurchSlugRefusal,
   churchSlugRefusal,
   slugFromName,
-} from '@church/app-config/church-slug';
+} from '@church/domain-rules/church-slug';
 import { m } from '@church/i18n/messages';
 import { Link } from '@tanstack/react-router';
 import {
@@ -48,6 +48,7 @@ import {
 } from '@/components/workspace-page';
 import {
   type ChurchSettingsForm,
+  clearEditedErrors,
   toChurchSettingsForm,
   toSaveBody,
 } from '@/features/church-settings/church-settings-form';
@@ -76,6 +77,8 @@ type FieldErrors = Record<string, string>;
 
 const INFO_FIELDS = ['name', 'slug', 'website', 'accentColor'];
 const CONTACTS_PREFIX = 'contacts.';
+/** Below Tailwind's `md` breakpoint: the phone layout with touch targets. */
+const MOBILE_QUERY = '(max-width: 767px)';
 
 const SLUG_REFUSAL_MESSAGES: Record<ChurchSlugRefusal, () => string> = {
   LENGTH: m.error_church_settings_slug_length,
@@ -265,11 +268,22 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
   );
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [confirmingSlug, setConfirmingSlug] = React.useState(false);
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useMediaQuery(MOBILE_QUERY);
   const saveSettings = useSaveChurchSettings();
 
-  // A successful save hands back the server's normalised settings; show them.
-  React.useEffect(() => setForm(savedForm), [savedForm]);
+  // A new read replaces the form only when it holds no unsaved edit, or when
+  // it is this screen's own save answering with the normalised settings.
+  const lastSaved = React.useRef(savedForm);
+  const adoptNextRead = React.useRef(false);
+  React.useEffect(() => {
+    const previous = JSON.stringify(lastSaved.current);
+    lastSaved.current = savedForm;
+    const adopt = adoptNextRead.current;
+    adoptNextRead.current = false;
+    setForm((current) =>
+      adopt || JSON.stringify(current) === previous ? savedForm : current,
+    );
+  }, [savedForm]);
 
   const groups = groupOrder({ form });
   const dirty = JSON.stringify(form) !== JSON.stringify(savedForm);
@@ -327,7 +341,9 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
     form.contacts.length -
     publicContacts +
     (legalFilled && !legalPublic ? 1 : 0);
-  const mainAddress = form.addresses.find((address) => address.isMain);
+  // Until a Main Address is marked, the first one places the summary.
+  const mainAddress =
+    form.addresses.find((address) => address.isMain) ?? form.addresses[0];
   const addressSummary =
     form.addresses.length === 0
       ? m.church_settings_address_summary_none()
@@ -340,43 +356,42 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
             place: `${mainAddress?.city}/${mainAddress?.uf}`,
           });
 
+  /** Clears the errors of what changed only: an edited row, not its whole list. */
   const patch = (changes: Partial<ChurchSettingsForm>) => {
     setForm((current) => ({ ...current, ...changes }));
     setErrors((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(
-          ([field]) =>
-            !Object.keys(changes).some(
-              (key) => field === key || field.startsWith(`${key}.`),
-            ),
-        ),
+      Object.entries(changes).reduce(
+        (left, [field, after]) =>
+          clearEditedErrors({
+            errors: left,
+            field,
+            before: form[field as keyof ChurchSettingsForm],
+            after,
+          }),
+        current,
       ),
     );
   };
 
-  /** Rows move and vanish, so every row error is dropped rather than left on the wrong row. */
-  const setContacts = (nextContacts: ChurchSettingsForm['contacts']) => {
-    setForm((current) => ({ ...current, contacts: nextContacts }));
-    setErrors((current) =>
-      Object.fromEntries(
-        Object.entries(current).filter(
-          ([field]) => !field.startsWith(CONTACTS_PREFIX),
-        ),
-      ),
-    );
-  };
+  const setContacts = (contacts: ChurchSettingsForm['contacts']) =>
+    patch({ contacts });
 
+  // The slug the field holds now, so a late answer about an older one is dropped.
+  const typedSlug = React.useRef(form.slug);
+  typedSlug.current = form.slug;
   const checkSlug = () => {
     if (!slugChanged || typedSlugError) return;
     const typed = form.slug.trim();
-    checkChurchSlug({ slug: typed }).then(({ status }) => {
-      if (status === 'taken') {
+    checkChurchSlug({ slug: typed })
+      .then(({ status }) => {
+        if (status !== 'taken' || typedSlug.current.trim() !== typed) return;
         setErrors((current) => ({
           ...current,
           slug: m.error_church_settings_slug_taken(),
         }));
-      }
-    });
+      })
+      // A hint only: the save still checks the slug and words a refusal.
+      .catch(() => undefined);
   };
 
   const save = () => {
@@ -386,12 +401,14 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
       return;
     }
     setConfirmingSlug(false);
+    adoptNextRead.current = true;
     saveSettings.mutate(toSaveBody({ form, slugChanged }), {
       onSuccess: () => {
         setErrors({});
         toast.success(m.church_settings_saved());
       },
       onError: (error) => {
+        adoptNextRead.current = false;
         const refused = fieldErrorsOf({ error });
         if (!refused) {
           toast.error(m.church_settings_save_failed());
@@ -559,7 +576,7 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
                       </p>
                       <Button
                         variant="outline"
-                        size="sm"
+                        size={isMobile ? 'touch' : 'sm'}
                         onClick={() => patch({ slug: slugFromName(form.name) })}
                       >
                         <Wand2 aria-hidden />{' '}

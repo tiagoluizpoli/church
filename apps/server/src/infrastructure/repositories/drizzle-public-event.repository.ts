@@ -6,7 +6,7 @@ import {
   eventTimeBlockMove,
 } from '@church/db';
 import { fromDate, toDate } from '@church/time';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type {
   ListPublicEventsInput,
   PublicEventRepository,
@@ -58,7 +58,7 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
       .select({
         eventId: event.id,
         title: event.title,
-        eventCancelled: event.status,
+        eventStatus: event.status,
         start: firstStart,
         allCancelled: allBlocksCancelled,
       })
@@ -69,6 +69,8 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
         and(
           withChurchIsolation({ table: event, churchId }),
           eq(cycle.hasBeenSent, true),
+          // An Event reopened inside a Sent Cycle is a draft again.
+          ne(event.status, 'draft'),
           eq(eventTimeBlock.isPublic, true),
         ),
       )
@@ -133,7 +135,7 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
 
     const items: PublicEvent[] = page.map((head) => {
       const eventCancelled =
-        head.eventCancelled === 'cancelled' || head.allCancelled === true;
+        head.eventStatus === 'cancelled' || head.allCancelled === true;
       return {
         eventId: head.eventId,
         title: head.title,
@@ -150,7 +152,7 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
               end,
               place: block.place,
               cancelled:
-                head.eventCancelled === 'cancelled' ||
+                head.eventStatus === 'cancelled' ||
                 block.status === 'cancelled',
               movePath: eventTimeBlockMovePath({
                 currentStart: start,

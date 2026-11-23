@@ -1,4 +1,4 @@
-import { SOCIAL_NETWORKS } from '@church/app-config/social-networks';
+import { SOCIAL_NETWORKS } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
 import {
   Facebook,
@@ -28,6 +28,11 @@ const NETWORK_ICONS: Record<string, LucideIcon> = {
   deezer: Music,
 };
 
+const BRAZIL_CALLING_CODE = '55';
+const AREA_CODE_DIGITS = 2;
+/** `(11) 99999-0000`: the hyphen sits before the last four digits. */
+const LINE_TAIL_DIGITS = 4;
+
 interface ContactTargetInput {
   contact: Contact;
 }
@@ -38,10 +43,12 @@ function contactTarget({ contact }: ContactTargetInput) {
     return { href: `mailto:${contact.value}`, label: contact.value };
   }
   const digits = contact.value.replace(/\D/g, '');
-  const national = digits.startsWith('55') ? digits.slice(2) : digits;
-  const area = national.slice(0, 2);
-  const rest = national.slice(2);
-  const split = rest.length - 4;
+  const national = digits.startsWith(BRAZIL_CALLING_CODE)
+    ? digits.slice(BRAZIL_CALLING_CODE.length)
+    : digits;
+  const area = national.slice(0, AREA_CODE_DIGITS);
+  const rest = national.slice(AREA_CODE_DIGITS);
+  const split = rest.length - LINE_TAIL_DIGITS;
   return {
     href: contact.isWhatsApp
       ? `https://wa.me/${digits}`
@@ -77,7 +84,7 @@ export function PublicContactsSection({
               {contacts.map((contact) => {
                 const { href, label } = contactTarget({ contact });
                 return (
-                  <li key={contact.value}>
+                  <li key={contact.value} className="flex flex-wrap gap-x-3">
                     <a
                       href={href}
                       className="underline-offset-4 hover:underline"
@@ -95,6 +102,16 @@ export function PublicContactsSection({
                         </span>
                       ) : null}
                     </a>
+                    {/* A WhatsApp number is a phone too: calling stays one tap away. */}
+                    {contact.isWhatsApp ? (
+                      <a
+                        href={`tel:${contact.value}`}
+                        aria-label={m.public_contacts_call({ number: label })}
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        {m.public_contacts_call_short()}
+                      </a>
+                    ) : null}
                   </li>
                 );
               })}

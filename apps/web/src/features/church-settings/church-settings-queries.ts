@@ -10,6 +10,10 @@ import type {
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { churchSettingsApi } from '@/utils/api-instances';
 
+const HTTP_UNPROCESSABLE = 422;
+const HTTP_CLIENT_ERROR = 400;
+const HTTP_SERVER_ERROR = 500;
+
 /** The shell and select-church read the Church's name and logo from here. */
 const ACTIVE_CHURCH_OPTIONS_KEY = ['active-church', 'options'] as const;
 
@@ -53,7 +57,8 @@ export function fieldErrorsOf({
 }: FieldErrorsOfInput): Record<string, string> | null {
   if (!isAxiosError<UpdateChurchSettings422>(error)) return null;
   const fieldErrors = error.response?.data?.fieldErrors;
-  if (error.response?.status !== 422 || !fieldErrors) return null;
+  if (error.response?.status !== HTTP_UNPROCESSABLE || !fieldErrors)
+    return null;
   return Object.fromEntries(
     fieldErrors.map(({ field, message }) => [field, message]),
   );
@@ -106,14 +111,20 @@ export function useRestoreChurchLogo() {
   });
 }
 
+/** The worded body of a refused logo request. */
+interface LogoRefusalBody {
+  message?: string;
+}
+
 interface LogoErrorOfInput {
   error: unknown;
 }
 
 /** The server's worded refusal of a logo (too big, too small, wrong type, ratio), if it gave one. */
 export function logoErrorOf({ error }: LogoErrorOfInput): string | null {
-  if (!isAxiosError<{ message?: string }>(error)) return null;
+  if (!isAxiosError<LogoRefusalBody>(error)) return null;
   const status = error.response?.status ?? 0;
   const message = error.response?.data?.message;
-  return status >= 400 && status < 500 && message ? message : null;
+  const refused = status >= HTTP_CLIENT_ERROR && status < HTTP_SERVER_ERROR;
+  return refused && message ? message : null;
 }

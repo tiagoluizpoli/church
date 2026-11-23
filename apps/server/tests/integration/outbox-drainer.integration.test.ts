@@ -2228,13 +2228,42 @@ describe('Church identity snapshot at queue time (ticket #1030, integration)', (
     ).data;
     await testDb
       .update(outboxMessage)
-      .set({ payload: { ...(queued?.payload as object), data: oldData } });
+      .set({ payload: { ...(queued?.payload as object), data: oldData } })
+      .where(eq(outboxMessage.id, queued?.id ?? ''));
 
     const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
 
     expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
     expect(emailSender.sent[0]).toMatchObject({ kind: 'event.cancelled' });
+    const sentIdentity = emailSender.sent[0] as {
+      churchLogoUrl?: string | null;
+      churchAccent?: string | null;
+    };
+    expect(sentIdentity.churchLogoUrl ?? null).toBeNull();
+    expect(sentIdentity.churchAccent ?? null).toBeNull();
+  });
+
+  it('still sends a chained invitation stored before the identity fields existed, name-only', async () => {
+    await mintInvitation();
+    // Rewrite the row into the shape stored before the identity fields.
+    const [queued] = await testDb.select().from(outboxMessage);
+    const {
+      churchLogoUrl: _logo,
+      churchAccent: _accent,
+      churchLocality: _locality,
+      ...oldPayload
+    } = queued?.payload as Record<string, unknown>;
+    await testDb
+      .update(outboxMessage)
+      .set({ payload: oldPayload })
+      .where(eq(outboxMessage.id, queued?.id ?? ''));
+
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
+    const result = await buildDrainer({ emailSender }).drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 1, failed: 0 });
+    expect(emailSender.sent[0]).toMatchObject({ kind: 'invitation.chained' });
     const sentIdentity = emailSender.sent[0] as {
       churchLogoUrl?: string | null;
       churchAccent?: string | null;

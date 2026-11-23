@@ -1,5 +1,4 @@
 import { appConfig } from '@church/app-config';
-import { slugFromName } from '@church/app-config/church-slug';
 import { NotFoundError } from '@church/core';
 import {
   type ChurchRecord,
@@ -10,14 +9,13 @@ import {
   type TenancyWriter,
   user,
 } from '@church/db';
+import { slugFromName } from '@church/domain-rules/church-slug';
 import { now } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { ChurchSlugTakenError } from '../domain/errors/church-slug-taken';
-import { isUniqueViolation } from '../infrastructure/repositories/unique-violation';
+import { isChurchSlugConflict } from '../infrastructure/repositories/unique-violation';
 import { expiresAtAfter } from './shared-time';
-
-const ORGANIZATION_SLUG_UNIQUE_CONSTRAINT = 'organization_slug_unique';
 
 /** The invitation table's `expiresAt`, `churchInvitation.ttlMs` from now. */
 function churchInvitationExpiresAt(): Date {
@@ -136,12 +134,7 @@ export async function provisionChurch(
         timezone: input.timezone,
       });
     } catch (error) {
-      if (
-        isUniqueViolation({
-          error,
-          constraint: ORGANIZATION_SLUG_UNIQUE_CONSTRAINT,
-        })
-      ) {
+      if (isChurchSlugConflict({ error })) {
         throw new ChurchSlugTakenError(churchSlug);
       }
       throw error;

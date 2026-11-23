@@ -35,6 +35,38 @@ function template(
   };
 }
 
+describe('losingBlockIds across midnight', () => {
+  const saturdays: Recurrence = { kind: 'weekly', weekdays: [6] };
+  // 2026-10-31 is the Saturday before the 1st Sunday of November.
+  const saturdayBefore = '2026-10-31' as CalendarDay;
+
+  it('drops an overnight loser block that runs into a winner block of the next day', () => {
+    const winner = template('ceia', firstSunday, ['w1', '00:30', '02:00']);
+    const loser = template('vigil', saturdays, ['night', '22:00', '01:00']);
+
+    expect(
+      losingBlockIds({
+        day: saturdayBefore,
+        loser,
+        pairs: [{ winner, loser }],
+      }),
+    ).toEqual(new Set(['night']));
+  });
+
+  it('drops an early loser block that a winner block of the day before runs into', () => {
+    const winner = template('vigil', saturdays, ['w1', '22:00', '01:00']);
+    const loser = template('dawn', sundays, ['dawn', '00:30', '02:00']);
+
+    expect(
+      losingBlockIds({
+        day: firstSundayDay,
+        loser,
+        pairs: [{ winner, loser }],
+      }),
+    ).toEqual(new Set(['dawn']));
+  });
+});
+
 describe('losingBlockIds', () => {
   const winner = template('monthly', firstSunday, ['w1', '10:00', '11:00']);
   const loser = template(

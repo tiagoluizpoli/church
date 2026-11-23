@@ -119,6 +119,10 @@ under Bun.
   `index.html` back from `web` through its `church-web` alias
   (`WEB_INTERNAL_URL`, default `http://church-web:8080`) and answers it with
   the Church's meta tags, a 301 for an old slug or a 404.
+- `server` trusts two proxy hops in `X-Forwarded-For` (`TRUST_PROXY_HOPS: 2`:
+  Dokploy's Traefik, then the web's Caddy), so `request.ip`, which keys the
+  public and redemption rate limits, is the visitor and not a proxy. Change it
+  only when the proxy chain changes; a higher number lets visitors spoof it.
 - `web` is the only public service. Its healthcheck reads `/revision.txt`, and
   it starts once `server` is healthy.
 - `migrate` and `server` join `DATABASE_NETWORK` to reach PostgreSQL. `web`

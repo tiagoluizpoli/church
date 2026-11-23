@@ -21,6 +21,7 @@
   "dependencies": {
     "@base-ui/react": "^1.0.0",
     "@church/app-config": "workspace:*",
+    "@church/domain-rules": "workspace:*",
     "@church/env": "workspace:*",
     "@church/i18n": "workspace:*",
     "@church/time": "workspace:*",

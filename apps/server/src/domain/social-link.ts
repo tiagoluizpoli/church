@@ -1,7 +1,7 @@
 import {
   detectSocialNetwork,
   type SocialNetwork,
-} from '@church/app-config/social-networks';
+} from '@church/domain-rules/social-networks';
 import { z } from 'zod';
 import { contactGroupNameSchema } from './contact-group';
 

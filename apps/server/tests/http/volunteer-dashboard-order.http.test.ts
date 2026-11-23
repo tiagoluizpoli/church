@@ -106,7 +106,6 @@ beforeAll(async () => {
         autoSelected: false,
       }),
     } as never,
-    config: appConfig,
   });
   app = await createFastify({
     locale: testLocale,
@@ -297,7 +296,7 @@ interface ArrangedItem {
   id: string;
   eventId: string;
   start: string;
-  status: 'pending' | 'confirmed' | 'declined';
+  status: 'pending' | 'confirmed';
   ministry?: string;
 }
 
@@ -453,69 +452,6 @@ async function getDashboard() {
 const assignmentIds = (groups: { assignments: { assignmentId: string }[] }[]) =>
   groups.flatMap((group) => group.assignments.map((a) => a.assignmentId));
 
-describe('volunteer dashboard declined shifts', () => {
-  const sunday = [{ id: 'e', title: 'Sunday', start: '2026-08-02T08:00:00Z' }];
-
-  it('never makes a declined shift next, but still lists it with its status', async () => {
-    arrange({
-      events: sunday,
-      items: [
-        {
-          id: 'a-declined',
-          eventId: 'e',
-          start: '2026-08-02T09:00:00Z',
-          status: 'declined',
-        },
-        {
-          id: 'a-confirmed',
-          eventId: 'e',
-          start: '2026-08-02T12:00:00Z',
-          status: 'confirmed',
-        },
-      ],
-    });
-    const dashboard = await getDashboard();
-    expect(dashboard.nextAssignment?.assignmentId).toBe('a-confirmed');
-    expect(
-      dashboard.upcomingAssignmentGroups.flatMap((group) =>
-        group.assignments.map(({ assignmentId, status }) => [
-          assignmentId,
-          status,
-        ]),
-      ),
-    ).toEqual([
-      ['a-declined', 'declined'],
-      ['a-confirmed', 'confirmed'],
-    ]);
-  });
-
-  it('returns no next assignment when every upcoming shift was declined', async () => {
-    arrange({
-      events: sunday,
-      items: [
-        {
-          id: 'a-1',
-          eventId: 'e',
-          start: '2026-08-02T09:00:00Z',
-          status: 'declined',
-        },
-        {
-          id: 'a-2',
-          eventId: 'e',
-          start: '2026-08-02T12:00:00Z',
-          status: 'declined',
-        },
-      ],
-    });
-    const dashboard = await getDashboard();
-    expect(dashboard.nextAssignment).toBeNull();
-    expect(assignmentIds(dashboard.upcomingAssignmentGroups)).toEqual([
-      'a-1',
-      'a-2',
-    ]);
-  });
-});
-
 describe('volunteer dashboard upcoming cap and order', () => {
   it('caps upcoming assignments without changing which one is next', async () => {
     const limit = appConfig.volunteerDashboard.upcomingLimit;
@@ -587,7 +523,7 @@ describe('volunteer dashboard upcoming cap and order', () => {
 });
 
 describe('volunteer dashboard serving history', () => {
-  it('counts started, published, non-declined shifts per Church month, skipping cancelled Events', async () => {
+  it('counts started, published shifts per Church month, skipping cancelled Events', async () => {
     arrange({
       events: [
         { id: 'e', title: 'Sunday', start: '2026-02-01T08:00:00Z' },
@@ -617,12 +553,6 @@ describe('volunteer dashboard serving history', () => {
           eventId: 'e',
           start: '2026-07-05T12:00:00Z',
           status: 'confirmed',
-        },
-        {
-          id: 'jul-declined',
-          eventId: 'e',
-          start: '2026-07-12T12:00:00Z',
-          status: 'declined',
         },
         // 31 July 22:00 in São Paulo: this month, but not served yet.
         {

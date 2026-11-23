@@ -396,7 +396,7 @@ describe('DbPlanningEventManager cancellation', () => {
     expect(await statusOf(sunday.anaWelcome.assignment.id)).toBe('cancelled');
     expect(await statusOf(sunday.biaService.assignment.id)).toBe('cancelled');
     expect(await statusOf(sunday.caioService.assignment.id)).toBe('cancelled');
-    expect(await statusOf(sunday.daniService.assignment.id)).toBe('declined');
+    expect(await statusOf(sunday.daniService.assignment.id)).toBe('cancelled');
     expect(await db.select().from(assignmentAudit)).toHaveLength(3);
     expect(await db.select().from(unavailableShift)).toEqual([]);
     expect((await lastToldOf(sunday.bia.volunteer.id))?.assignments).toEqual(

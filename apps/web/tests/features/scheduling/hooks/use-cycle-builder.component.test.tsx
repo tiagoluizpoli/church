@@ -254,7 +254,7 @@ describe('useCycleBuilder optimistic assignments', () => {
         id: 'assignment-3',
         volunteerId: 'declined',
         shiftRequirementId: 'requirement-2',
-        status: 'declined',
+        status: 'cancelled',
       },
       {
         ...ANA_ASSIGNMENT,

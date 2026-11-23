@@ -22,8 +22,7 @@ export function countCoveredPlaces({
 }: CountCoveredPlacesInput): number {
   const activeByRequirement = new Map<string, number>();
   for (const assignment of assignments) {
-    if (assignment.status === 'declined' || assignment.status === 'cancelled')
-      continue;
+    if (assignment.status === 'cancelled') continue;
     const { shiftRequirementId } = assignment;
     const activeCount = activeByRequirement.get(shiftRequirementId) ?? 0;
     activeByRequirement.set(shiftRequirementId, activeCount + 1);

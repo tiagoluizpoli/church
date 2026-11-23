@@ -38,7 +38,7 @@ import {
  * - `teamService`: a draft Event at `availability_requested`, needing one
  *   Greeter and one Usher.
  * - `assignedService`: read-only for every journey — a published Host seat
- *   for three, holding a pending, a confirmed and a declined assignment, so
+ *   for three, holding a pending, a confirmed and a cancelled assignment, so
  *   the accessibility scan covers assignment chips.
  *
  * Ushers, Greeters and Hosts are disjoint pools, each qualified for its one
@@ -139,7 +139,7 @@ const PLAN = {
     }),
     hostPending: { name: 'Mariana Duarte', memberships: [HOST_MEMBERSHIP] },
     hostConfirmed: { name: 'Nicolas Ramos', memberships: [HOST_MEMBERSHIP] },
-    hostDeclined: { name: 'Olívia Prates', memberships: [HOST_MEMBERSHIP] },
+    hostCancelled: { name: 'Olívia Prates', memberships: [HOST_MEMBERSHIP] },
   },
 } as const satisfies AssignChurchPlan;
 
@@ -155,7 +155,7 @@ export interface AssignBoardAssignment {
 }
 
 export interface AssignedServiceEvent extends AssignEvent<'host'> {
-  /** Pending, confirmed and declined, in that order. */
+  /** Pending, confirmed and cancelled, in that order. */
   assignments: AssignBoardAssignment[];
 }
 
@@ -270,7 +270,7 @@ export function createAssignBoardRecipe({
     const hostAssignments: HostAssignmentPlan[] = [
       { volunteer: base.pool.hostPending, status: 'pending' },
       { volunteer: base.pool.hostConfirmed, status: 'confirmed' },
-      { volunteer: base.pool.hostDeclined, status: 'declined' },
+      { volunteer: base.pool.hostCancelled, status: 'cancelled' },
     ];
     const assignments: AssignBoardAssignment[] = [];
     for (const { volunteer, status } of hostAssignments) {

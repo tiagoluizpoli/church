@@ -160,7 +160,7 @@ export function buildControllers({
       webShell,
       config,
     }),
-    new VolunteerController({ volunteerManager, activeChurchResolver, config }),
+    new VolunteerController({ volunteerManager, activeChurchResolver }),
     new VolunteerScheduleController({ volunteerManager, activeChurchResolver }),
     new SwapRequestController({ swapRequestManager, activeChurchResolver }),
     new SwapRequestListController({

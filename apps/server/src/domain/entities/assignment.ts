@@ -16,7 +16,6 @@ export const ASSIGNMENT_STATUS_OPTIONS = [
   'draft',
   'pending',
   'confirmed',
-  'declined',
   'cancelled',
 ] as const;
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUS_OPTIONS)[number];
@@ -101,19 +100,6 @@ export class Assignment extends Entity<AssignmentProps, AssignmentId> {
 
   get assignedBy(): UserId | undefined {
     return this._props.assignedBy;
-  }
-
-  public confirm(): void {
-    this._props.status = 'confirmed';
-    this._updatedAt = toDate({ instant: now() });
-  }
-
-  public decline(reason?: string): void {
-    this._props.status = 'declined';
-    if (reason !== undefined) {
-      this._props.reason = reason;
-    }
-    this._updatedAt = toDate({ instant: now() });
   }
 
   public markAsPending(): void {

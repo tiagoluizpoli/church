@@ -54,7 +54,7 @@ class MockAssignmentRepository implements AssignmentRepository {
         volunteerId: '44444444-4444-4444-4444-444444444442' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
-        status: 'declined',
+        status: 'cancelled',
         reason: 'Sick',
       },
       id: '99999999-9999-9999-9999-999999999992' as AssignmentId,
@@ -261,18 +261,6 @@ class MockAssignmentRepository implements AssignmentRepository {
     if (eventId === ('66666666-6666-6666-6666-666666666661' as EventId)) {
       this.assignments.clear();
     }
-  }
-
-  async listDeclinedByEventTimeBlock({
-    churchId,
-    eventTimeBlockId,
-  }: AssignmentsByEventTimeBlockInput): Promise<Assignment[]> {
-    return Array.from(this.assignments.values()).filter(
-      (a) =>
-        a.churchId === churchId &&
-        a.eventTimeBlockId === eventTimeBlockId &&
-        a.status === 'declined',
-    );
   }
 
   async deleteById({

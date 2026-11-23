@@ -117,9 +117,8 @@ const dashboardAssignmentItemSchema = z.object({
   sectorName: z.string(),
   startTime: instantSchema,
   endTime: instantSchema,
-  status: z.enum(['pending', 'confirmed', 'declined']),
+  status: z.enum(['pending', 'confirmed']),
   timingState: z.enum(['in_progress', 'upcoming']),
-  canRespond: z.boolean(),
 });
 type DashboardAssignmentItemResponse = z.infer<
   typeof dashboardAssignmentItemSchema
@@ -131,7 +130,7 @@ const dashboardAssignmentGroupSchema = z.object({
   ministryId: z.string(),
   ministryName: z.string(),
   eventStart: instantSchema,
-  aggregateResponseState: z.enum(['pending', 'confirmed', 'mixed', 'declined']),
+  aggregateResponseState: z.enum(['pending', 'confirmed', 'mixed']),
   hasPendingResponse: z.boolean(),
   assignments: z.array(dashboardAssignmentItemSchema),
 });
@@ -185,7 +184,7 @@ const volunteerScheduleAssignmentSchema = z.object({
   sectorName: z.string(),
   roleId: z.string(),
   roleName: z.string(),
-  status: z.enum(['pending', 'confirmed', 'declined']),
+  status: z.enum(['pending', 'confirmed']),
   swapRequested: z.boolean(),
 });
 
@@ -280,11 +279,6 @@ export type AssignmentDetailResponse = z.infer<
   typeof assignmentDetailResponseSchema
 >;
 
-export const respondToAssignmentBodySchema = z.object({
-  response: z.enum(['accepted', 'declined']),
-  reason: z.string().optional(),
-});
-
 const assignmentToResponse = assignmentMapper.toResponse;
 
 function availabilityCheckSummaryToResponse(
@@ -352,7 +346,6 @@ function dashboardAssignmentItemToResponse(
     endTime: parseInstant({ value: item.endTime }),
     status: item.status,
     timingState: item.timingState,
-    canRespond: item.canRespond,
   };
 }
 

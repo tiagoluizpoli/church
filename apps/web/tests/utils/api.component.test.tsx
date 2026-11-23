@@ -1,9 +1,10 @@
 import { m } from '@church/i18n/messages';
 import { QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { Toaster } from 'sonner';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mswServer } from '@/tests/setup/msw';
 import { createQueryClient } from '@/utils/api';
 import { apiClient } from '@/utils/api-client';
@@ -25,9 +26,9 @@ function Thing() {
   return null;
 }
 
-function renderThing() {
+function renderThing(client = createQueryClient()) {
   render(
-    <QueryClientProvider client={createQueryClient()}>
+    <QueryClientProvider client={client}>
       <Thing />
       <Toaster />
     </QueryClientProvider>,
@@ -62,7 +63,7 @@ describe('request error toast', () => {
       http.get(URL, () =>
         HttpResponse.json(
           { error: 'OVERLAPPING_CYCLE', message: 'Ciclo sobreposto.' },
-          { status: 409, headers: HEADERS },
+          { status: 422, headers: HEADERS },
         ),
       ),
     );
@@ -73,5 +74,81 @@ describe('request error toast', () => {
     expect(
       screen.queryByText(m.common_reference_code({ code: '4bf92f35' })),
     ).toBeNull();
+  });
+
+  it('retries the query from the toast Retry button', async () => {
+    let calls = 0;
+    mswServer.use(
+      http.get(URL, () => {
+        calls += 1;
+        return HttpResponse.json(
+          { error: 'BOOM', message: 'Falhou.' },
+          { status: 422, headers: HEADERS },
+        );
+      }),
+    );
+
+    renderThing();
+    await userEvent.click(
+      await screen.findByRole('button', { name: m.common_retry() }),
+    );
+
+    await waitFor(() => expect(calls).toBe(2));
+  });
+
+  it('shows one toast for repeated failures', async () => {
+    mswServer.use(
+      http.get(URL, () =>
+        HttpResponse.json(
+          { error: 'BOOM', message: 'Falhou.' },
+          { status: 422, headers: HEADERS },
+        ),
+      ),
+    );
+    const client = createQueryClient();
+
+    renderThing(client);
+    await screen.findByText('Falhou.');
+    await client.refetchQueries({ queryKey: ['thing'] });
+
+    expect(screen.getAllByText('Falhou.')).toHaveLength(1);
+  });
+
+  it.each([404, 409, 410])('does not toast an expected %i', async (status) => {
+    let calls = 0;
+    mswServer.use(
+      http.get(URL, () => {
+        calls += 1;
+        return HttpResponse.json(
+          { error: 'EXPECTED', message: 'Esperado.' },
+          { status, headers: HEADERS },
+        );
+      }),
+    );
+
+    renderThing();
+
+    await waitFor(() => expect(calls).toBe(1));
+    expect(screen.queryByText('Esperado.')).toBeNull();
+  });
+
+  it('redirects once on 401 and does not toast', async () => {
+    mswServer.use(
+      http.get(URL, () =>
+        HttpResponse.json(
+          { error: 'UNAUTHORIZED', message: 'Sessão expirada.' },
+          { status: 401, headers: HEADERS },
+        ),
+      ),
+    );
+    const onSessionExpired = vi.fn();
+    const client = createQueryClient({ onSessionExpired });
+
+    renderThing(client);
+    await waitFor(() => expect(onSessionExpired).toHaveBeenCalledTimes(1));
+    await client.refetchQueries({ queryKey: ['thing'] });
+
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Sessão expirada.')).toBeNull();
   });
 });

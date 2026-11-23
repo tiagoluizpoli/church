@@ -12,6 +12,7 @@ interface ErrorResponseBody {
 interface ToastRequestErrorInput {
   error: unknown;
   action?: ExternalToast['action'];
+  id?: ExternalToast['id'];
 }
 
 /**
@@ -19,7 +20,11 @@ interface ToastRequestErrorInput {
  * 8 characters of the response's `x-request-id`, which support finds in the
  * logs; a domain error needs none, its message already says what happened.
  */
-export function toastRequestError({ error, action }: ToastRequestErrorInput) {
+export function toastRequestError({
+  error,
+  action,
+  id,
+}: ToastRequestErrorInput) {
   const response = isAxiosError<ErrorResponseBody>(error)
     ? error.response
     : undefined;
@@ -29,6 +34,7 @@ export function toastRequestError({ error, action }: ToastRequestErrorInput) {
     typeof requestId === 'string';
   const message = requestErrorMessage(error);
   toast.error(message, {
+    id,
     action,
     description: generic
       ? m.common_reference_code({

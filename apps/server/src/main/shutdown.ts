@@ -1,9 +1,14 @@
+export interface LogEntry {
+  message: string;
+  error?: unknown;
+}
+
 export interface ShutdownSteps {
   closeApp: () => Promise<void>;
   stopPoller: () => Promise<void>;
   closeDatabase: () => Promise<void>;
   exit: (code: number) => void;
-  log: (message: string, error?: unknown) => void;
+  log: (entry: LogEntry) => void;
 }
 
 /** Ordered, run-once graceful shutdown: stop intake, drain the poller, free the pool. */
@@ -11,7 +16,7 @@ export function createShutdown(steps: ShutdownSteps) {
   let running: Promise<void> | undefined;
   return (signal: string): Promise<void> => {
     running ??= (async () => {
-      steps.log(`[server] ${signal} received, shutting down`);
+      steps.log({ message: `[server] ${signal} received, shutting down` });
       let failed = false;
       for (const step of [
         steps.closeApp,
@@ -22,7 +27,7 @@ export function createShutdown(steps: ShutdownSteps) {
           await step();
         } catch (error) {
           failed = true;
-          steps.log('[server] shutdown step failed', error);
+          steps.log({ message: '[server] shutdown step failed', error });
         }
       }
       steps.exit(failed ? 1 : 0);
@@ -32,9 +37,12 @@ export function createShutdown(steps: ShutdownSteps) {
 }
 
 /** A stray rejection is logged, not fatal: the server keeps serving. */
-export function logUnhandledRejection(
-  reason: unknown,
-  log: ShutdownSteps['log'],
-): void {
-  log('[server] unhandled rejection', reason);
+export function logUnhandledRejection(options: {
+  reason: unknown;
+  log: ShutdownSteps['log'];
+}): void {
+  options.log({
+    message: '[server] unhandled rejection',
+    error: options.reason,
+  });
 }

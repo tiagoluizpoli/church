@@ -45,10 +45,10 @@ describe('createShutdown', () => {
 describe('logUnhandledRejection', () => {
   it('logs the rejection without exiting', () => {
     const log = vi.fn();
-    logUnhandledRejection(new Error('late'), log);
-    expect(log).toHaveBeenCalledWith(
-      '[server] unhandled rejection',
-      expect.any(Error),
-    );
+    logUnhandledRejection({ reason: new Error('late'), log });
+    expect(log).toHaveBeenCalledWith({
+      message: '[server] unhandled rejection',
+      error: expect.any(Error),
+    });
   });
 });

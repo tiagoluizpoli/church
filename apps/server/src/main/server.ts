@@ -59,13 +59,16 @@ async function start(): Promise<void> {
     stopPoller: () => outboxPoller.stop(),
     closeDatabase: () => db.$client.end(),
     exit: (code) => process.exit(code),
-    log: (message, error) => console.error(message, error ?? ''),
+    log: ({ message, error }) => console.error(message, error ?? ''),
   });
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     process.once(signal, () => void shutdown(signal));
   }
   process.on('unhandledRejection', (reason) =>
-    logUnhandledRejection(reason, (m, e) => console.error(m, e)),
+    logUnhandledRejection({
+      reason,
+      log: ({ message, error }) => console.error(message, error),
+    }),
   );
 
   await app.listen({ port: env.PORT, host: '0.0.0.0' });

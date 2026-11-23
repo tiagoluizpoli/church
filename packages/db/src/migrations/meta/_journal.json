@@ -505,6 +505,13 @@
       "when": 1795387854534,
       "tag": "0071_church_contact_group_unique_name",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1795467936314,
+      "tag": "0072_drop-declined-assignment-status",
+      "breakpoints": true
     }
   ]
 }

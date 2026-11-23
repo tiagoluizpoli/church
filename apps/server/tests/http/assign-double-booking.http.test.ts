@@ -101,7 +101,6 @@ beforeAll(async () => {
       const volunteerController = new VolunteerController({
         volunteerManager: managers.volunteerManager,
         activeChurchResolver: activeChurchResolver as never,
-        config: appConfig,
       });
       instance.register(
         volunteerController.registerRoutes.bind(volunteerController),
@@ -1479,7 +1478,7 @@ describe('move Assignment', () => {
       volunteerId: seed.freeVolunteerId,
       roleId: seed.targetRoleId,
       shiftRequirementId: seed.targetRequirementId,
-      status: 'declined',
+      status: 'cancelled',
     });
     await seedTargetAssignment({
       churchId: seed.churchId,
@@ -1730,7 +1729,7 @@ describe('requirement coverage and published placement HTTP contract', () => {
       email: 'coverage-extra@test.com',
     });
     for (const [volunteerId, requirementId, status] of [
-      [seed.freeVolunteerId, sideRequirement.id, 'declined'],
+      [seed.freeVolunteerId, sideRequirement.id, 'cancelled'],
       [seed.freeVolunteerId, seed.targetRequirementId, 'confirmed'],
       [extra.volunteer.id, seed.targetRequirementId, 'pending'],
       [extra.volunteer.id, sideRequirement.id, 'cancelled'],

@@ -172,7 +172,6 @@ function createRepos(): Repos {
     countByVolunteerInRange: vi.fn(),
     deleteByEvent: vi.fn(),
     deleteById: vi.fn(),
-    listDeclinedByEventTimeBlock: vi.fn(),
   };
 
   const unavailableShiftRepo: UnavailableShiftRepository = {

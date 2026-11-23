@@ -14,8 +14,6 @@ export const appConfigSchema = z.object({
   platformSiteUrl: z.url().optional(),
   /** Parked features: false = UI hidden and server route not registered. */
   parked: z.object({
-    assignmentResponse: z.boolean(),
-    volunteerCancel: z.boolean(),
     auditPanel: z.boolean(),
     commandPalette: z.boolean(),
   }),
@@ -62,7 +60,6 @@ export const appConfigSchema = z.object({
      */
     emailIdempotencyRetentionMs: positiveInt,
   }),
-  assignment: z.object({ cancelLeadTimeDays: positiveInt }),
   swapRequest: z.object({ noteMaxLength: positiveInt }),
   availability: z.object({
     /** How long a Schedule must wait between reminders. */
@@ -116,8 +113,6 @@ export type AppConfig = z.infer<typeof appConfigSchema>;
 export const appConfig = appConfigSchema.parse({
   appName: 'Church',
   parked: {
-    assignmentResponse: false,
-    volunteerCancel: false,
     auditPanel: false,
     commandPalette: false,
   },
@@ -145,7 +140,6 @@ export const appConfig = appConfigSchema.parse({
     backoffCapMinutes: 60,
     emailIdempotencyRetentionMs: DAY_MS,
   },
-  assignment: { cancelLeadTimeDays: 3 },
   swapRequest: { noteMaxLength: 500 },
   availability: { reminderCooldownMs: DAY_MS },
   notifications: {

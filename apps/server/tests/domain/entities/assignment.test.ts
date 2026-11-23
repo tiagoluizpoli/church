@@ -38,13 +38,6 @@ describe('Assignment Entity', () => {
     assignment.markAsPending();
     expect(assignment.status).toBe('pending');
 
-    assignment.confirm();
-    expect(assignment.status).toBe('confirmed');
-
-    assignment.decline('Too busy');
-    expect(assignment.status).toBe('declined');
-    expect(assignment.reason).toBe('Too busy');
-
     assignment.cancel();
     expect(assignment.status).toBe('cancelled');
   });

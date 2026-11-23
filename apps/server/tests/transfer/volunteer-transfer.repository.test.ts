@@ -123,7 +123,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
       roleId: fixture.roleInMinistryInB,
       start: fromDate({ date: spec.start }),
       end: fromDate({ date: new Date(spec.start.getTime() + 3_600_000) }),
-      status: spec.key === 'alreadyDeclined' ? 'declined' : 'confirmed',
+      status: spec.key === 'alreadyDeclined' ? 'cancelled' : 'confirmed',
     });
     ids[spec.key] = booked.assignment.id;
   }
@@ -204,7 +204,7 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
       'confirmed',
     );
     expect((await statusOf(assignmentIds.alreadyDeclined))?.status).toBe(
-      'declined',
+      'cancelled',
     );
     const cancelled = await statusOf(assignmentIds.cancelledAfter);
     expect(cancelled?.status).toBe('cancelled');

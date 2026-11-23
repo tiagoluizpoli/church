@@ -330,7 +330,7 @@ describe('GET /prepare/insights', () => {
       ministryId: seed.ministryAId,
       month: '2026-09',
       requirements: [
-        { peopleNeeded: 3, assignments: ['confirmed', 'declined'] },
+        { peopleNeeded: 3, assignments: ['confirmed', 'cancelled'] },
         { peopleNeeded: 1, assignments: ['pending', 'draft'] },
       ],
     });

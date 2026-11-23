@@ -95,7 +95,7 @@ interface StaffInput {
   volunteerId: string;
   start: string;
   end: string;
-  status: 'draft' | 'pending' | 'confirmed' | 'declined';
+  status: 'draft' | 'pending' | 'confirmed' | 'cancelled';
 }
 
 /** One Shift on an existing block with one Assignment on it. */
@@ -278,7 +278,7 @@ export async function seedSentSunday() {
     volunteerId: dani.volunteer.id,
     start: '10:00',
     end: '11:00',
-    status: 'declined',
+    status: 'cancelled',
   });
   const caioService = await staff({
     churchId,

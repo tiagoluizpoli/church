@@ -208,13 +208,7 @@ describe('GET /prepare/cycles/:cycleId/participation guard data', () => {
       if (!seeded) throw new Error(`Volunteer ${index} was not seeded`);
       return seeded;
     };
-    const statuses = [
-      'confirmed',
-      'pending',
-      'cancelled',
-      'declined',
-      'draft',
-    ] as const;
+    const statuses = ['confirmed', 'pending', 'cancelled', 'draft'] as const;
     for (const [index, status] of statuses.entries()) {
       await buildAssignment({
         db: schedulingTestDb,

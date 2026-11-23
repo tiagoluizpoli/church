@@ -60,7 +60,6 @@ export interface SchedulingManagers {
 }
 
 export interface CreateSchedulingManagersInput {
-  cancelLeadTimeDays?: number;
   /** Replaces the recording spy, e.g. to write real outbox rows. */
   notifications?: IChurchNotifications;
   /** Replaces the Role repository, e.g. to pause a write mid-transaction. */
@@ -74,7 +73,6 @@ export interface SeedRoleQualificationInput {
 }
 
 export function createSchedulingManagers({
-  cancelLeadTimeDays = appConfig.assignment.cancelLeadTimeDays,
   notifications,
   roleRepository,
 }: CreateSchedulingManagersInput = {}): SchedulingManagers {
@@ -192,7 +190,7 @@ export function createSchedulingManagers({
         ministryRepository: ministryRepo,
       }),
       unitOfWork,
-      config: { ...appConfig, assignment: { cancelLeadTimeDays } },
+      config: appConfig,
     }),
     assignmentRepo,
     participationRepo,

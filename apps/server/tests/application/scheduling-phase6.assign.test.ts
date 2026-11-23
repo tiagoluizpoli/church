@@ -327,7 +327,7 @@ describe('Assignment and publication managers', () => {
       },
     });
     const declined = new Assignment({
-      id: AssignmentId.from('declined'),
+      id: AssignmentId.from('cancelled'),
       props: {
         churchId,
         participationId,
@@ -336,7 +336,7 @@ describe('Assignment and publication managers', () => {
         volunteerId: VolunteerId.from('third'),
         roleId: RoleId.from('role'),
         shiftRequirementId: ShiftRequirementId.from({ raw: 'beta' }),
-        status: 'declined',
+        status: 'cancelled',
       },
     });
     const cancelled = new Assignment({
@@ -706,7 +706,7 @@ describe('Assignment and publication managers', () => {
       },
     });
     const declined = new Assignment({
-      id: AssignmentId.from('declined'),
+      id: AssignmentId.from('cancelled'),
       props: {
         churchId,
         participationId,
@@ -715,7 +715,7 @@ describe('Assignment and publication managers', () => {
         volunteerId,
         roleId: RoleId.from('role'),
         shiftRequirementId: ShiftRequirementId.from({ raw: 'beta' }),
-        status: 'declined',
+        status: 'cancelled',
       },
     });
     f.volunteerRepository.listMemberMinistryIds.mockResolvedValue([ministryId]);

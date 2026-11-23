@@ -170,9 +170,7 @@ export class DbSwapRequestManager implements ISwapRequestManager {
         tx,
       });
       const published =
-        assignment.status === 'pending' ||
-        assignment.status === 'confirmed' ||
-        assignment.status === 'declined';
+        assignment.status === 'pending' || assignment.status === 'confirmed';
       if (!published || !shiftId || !participationId) {
         throw new SwapRequestUnpublishedError();
       }

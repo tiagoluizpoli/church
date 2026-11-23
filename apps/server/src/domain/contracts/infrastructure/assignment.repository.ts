@@ -152,7 +152,4 @@ export interface AssignmentRepository {
   ): Promise<number>;
   deleteByEvent(input: AssignmentsByEventInput): Promise<void>;
   deleteById(input: GetAssignmentInput): Promise<void>;
-  listDeclinedByEventTimeBlock(
-    input: AssignmentsByEventTimeBlockInput,
-  ): Promise<Assignment[]>;
 }

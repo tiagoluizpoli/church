@@ -1754,7 +1754,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       base: Base;
       shiftId: string;
       shiftRequirementId: string;
-      status?: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
+      status?: 'draft' | 'pending' | 'confirmed' | 'cancelled';
     }
 
     async function assign({
@@ -2358,10 +2358,9 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       }
     });
 
-    describe('cancelled and declined Assignments', () => {
+    describe('cancelled Assignments', () => {
       it.each([
         'cancelled',
-        'declined',
       ] as const)('%s never blocks a lower headcount, a re-split or an opt-out', async (status) => {
         const base = await seedPreparation();
         const { shift: seeded, requirement } = await seedBlockShift({ base });

@@ -99,6 +99,7 @@ const builderData: CycleBuilderData = {
           label: 'Morning service',
           startTime: '2026-08-02T09:00:00.000Z',
           endTime: '2026-08-02T11:00:00.000Z',
+          cancelled: false,
           included: true,
           peopleNeeded: 1,
           assignedCount: 0,
@@ -110,6 +111,7 @@ const builderData: CycleBuilderData = {
               eventTimeBlockId: 'event-time-block-1',
               startTime: '2026-08-02T09:00:00.000Z',
               endTime: '2026-08-02T11:00:00.000Z',
+              cancelled: false,
               peopleNeeded: 1,
               assignedCount: 0,
               requirements: [

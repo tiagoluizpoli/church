@@ -18,6 +18,7 @@ import {
 } from '@church/db';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { env } from '@church/env/server';
+import { m } from '@church/i18n/messages';
 import { parseInstant, setTestClock } from '@church/time';
 import { makeSignature } from 'better-auth/crypto';
 import { and, eq, inArray, lt, ne } from 'drizzle-orm';
@@ -766,6 +767,14 @@ async function shiftAssignmentRows(shiftId: string) {
     .where(eq(assignment.shiftId, shiftId));
 }
 
+const cancelledRefusal = {
+  event: { error: 'EVENT_CANCELLED', message: m.error_event_cancelled() },
+  eventTimeBlock: {
+    error: 'EVENT_TIME_BLOCK_CANCELLED',
+    message: m.error_event_time_block_cancelled(),
+  },
+} as const;
+
 for (const scope of ['event', 'eventTimeBlock'] as const) {
   for (const mutation of ['create', 'reassign'] as const) {
     it(`${mutation} refuses a Shift whose ${scope} is cancelled`, async () => {
@@ -785,9 +794,7 @@ for (const scope of ['event', 'eventTimeBlock'] as const) {
             });
 
       expect(result.statusCode).toBe(409);
-      expect(result.json()).toMatchObject({
-        error: 'ILLEGAL_STATE_TRANSITION',
-      });
+      expect(result.json()).toMatchObject(cancelledRefusal[scope]);
       expect(await shiftAssignmentRows(seed.shift.id)).toEqual(before);
     });
   }
@@ -819,9 +826,7 @@ for (const scope of ['event', 'eventTimeBlock'] as const) {
       expect((await cancel).statusCode).toBe(200);
       const created = await create;
       expect(created.statusCode).toBe(409);
-      expect(created.json()).toMatchObject({
-        error: 'ILLEGAL_STATE_TRANSITION',
-      });
+      expect(created.json()).toMatchObject(cancelledRefusal[scope]);
       expect(await shiftAssignmentRows(seed.shift.id)).toEqual([
         { volunteerId: seed.current.volunteerId, status: 'cancelled' },
       ]);

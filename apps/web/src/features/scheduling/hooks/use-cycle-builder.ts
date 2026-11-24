@@ -98,14 +98,25 @@ interface AssignedCountShift {
   assignments: AssignedCountAssignment[];
 }
 
-interface PeopleNeededEventTimeBlock {
-  included: boolean;
+interface PeopleNeededEventTimeBlock extends CountedEventTimeBlock {
   shifts: PeopleNeededShift[];
 }
 
-interface AssignedCountEventTimeBlock {
-  included: boolean;
+interface AssignedCountEventTimeBlock extends CountedEventTimeBlock {
   shifts: AssignedCountShift[];
+}
+
+interface CountedEventTimeBlock {
+  included: boolean;
+  cancelled: boolean;
+}
+
+/** A time block asks for people only when this Ministry serves it and neither it nor its Event was cancelled. */
+export function isStaffedEventTimeBlock({
+  included,
+  cancelled,
+}: CountedEventTimeBlock): boolean {
+  return included && !cancelled;
 }
 
 export interface CycleBuilderShiftSummary {
@@ -114,6 +125,8 @@ export interface CycleBuilderShiftSummary {
   label?: string;
   startTime: string;
   endTime: string;
+  /** Its time block or Event was cancelled: read-only, asks for nobody. */
+  cancelled: boolean;
   peopleNeeded: number;
   assignedCount: number;
   requirements: CycleBuilderRequirementSummary[];
@@ -153,6 +166,8 @@ export interface CycleBuilderEventTimeBlockSummary {
   startTime: string;
   endTime: string;
   included: boolean;
+  /** The time block or its Event was cancelled. */
+  cancelled: boolean;
   peopleNeeded: number;
   assignedCount: number;
   shiftCount: number;
@@ -192,7 +207,7 @@ function sumPeopleNeeded(
   eventTimeBlocks: PeopleNeededEventTimeBlock[],
 ): number {
   return eventTimeBlocks.reduce((total, eventTimeBlock) => {
-    if (!eventTimeBlock.included) return total;
+    if (!isStaffedEventTimeBlock(eventTimeBlock)) return total;
     return (
       total +
       eventTimeBlock.shifts.reduce(
@@ -212,7 +227,7 @@ function sumAssignedCount(
   eventTimeBlocks: AssignedCountEventTimeBlock[],
 ): number {
   return eventTimeBlocks.reduce((total, eventTimeBlock) => {
-    if (!eventTimeBlock.included) return total;
+    if (!isStaffedEventTimeBlock(eventTimeBlock)) return total;
     return (
       total +
       eventTimeBlock.shifts.reduce(
@@ -258,6 +273,9 @@ function mapCycleBuilderData(
   );
   const events = data.events.map((item) => {
     const eventTimeBlocks = item.eventTimeBlocks.map((eventTimeBlockItem) => {
+      const cancelled =
+        item.event.status === 'cancelled' ||
+        eventTimeBlockItem.eventTimeBlock.status === 'cancelled';
       const shifts = eventTimeBlockItem.shifts.map((shiftItem) => {
         const peopleNeeded = shiftItem.requirements.reduce(
           (total, requirement) => total + requirement.peopleNeeded,
@@ -273,6 +291,7 @@ function mapCycleBuilderData(
           label: shiftItem.shift.label,
           startTime: shiftItem.shift.startTime,
           endTime: shiftItem.shift.endTime,
+          cancelled,
           peopleNeeded,
           assignedCount,
           requirements: shiftItem.requirements,
@@ -301,6 +320,7 @@ function mapCycleBuilderData(
         startTime: eventTimeBlockItem.eventTimeBlock.startTime,
         endTime: eventTimeBlockItem.eventTimeBlock.endTime,
         included: eventTimeBlockItem.included,
+        cancelled,
         peopleNeeded,
         assignedCount,
         shiftCount: shifts.length,
@@ -308,10 +328,10 @@ function mapCycleBuilderData(
       };
     });
 
-    const peopleNeeded = sumPeopleNeeded(item.eventTimeBlocks);
-    const assignedCount = sumAssignedCount(item.eventTimeBlocks);
-    const coveredPlaces = item.eventTimeBlocks
-      .filter((block) => block.included)
+    const peopleNeeded = sumPeopleNeeded(eventTimeBlocks);
+    const assignedCount = sumAssignedCount(eventTimeBlocks);
+    const coveredPlaces = eventTimeBlocks
+      .filter(isStaffedEventTimeBlock)
       .reduce(
         (covered, block) =>
           covered +
@@ -333,9 +353,8 @@ function mapCycleBuilderData(
       fillRatio: peopleNeeded === 0 ? 0 : coveredPlaces / peopleNeeded,
       peopleNeeded,
       assignedCount,
-      eventTimeBlockCount: eventTimeBlocks.filter(
-        (eventTimeBlock) => eventTimeBlock.included,
-      ).length,
+      eventTimeBlockCount: eventTimeBlocks.filter(isStaffedEventTimeBlock)
+        .length,
       eventTimeBlocks,
     };
   });

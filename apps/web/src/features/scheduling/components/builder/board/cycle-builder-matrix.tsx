@@ -15,6 +15,7 @@ import {
 import {
   type CycleBuilderData,
   isActiveAssignment,
+  isStaffedEventTimeBlock,
 } from '../../../hooks/use-cycle-builder';
 import {
   assignableFits,
@@ -300,7 +301,7 @@ export function CycleBuilderMatrix(props: Props) {
   const canManageAnyRequirement = props.data.events.some((event) =>
     event.eventTimeBlocks.some(
       (eventTimeBlock) =>
-        eventTimeBlock.included &&
+        isStaffedEventTimeBlock(eventTimeBlock) &&
         eventTimeBlock.shifts.some((shift) => shift.requirements.length > 0),
     ),
   );
@@ -334,6 +335,8 @@ export function CycleBuilderMatrix(props: Props) {
     : undefined;
   const focusedRequirementIsEditable = Boolean(
     focused &&
+      focusedShift &&
+      !focusedShift.cancelled &&
       focusedShiftStart &&
       compareInstants({ left: focusedShiftStart, right: currentInstant }) > 0,
   );

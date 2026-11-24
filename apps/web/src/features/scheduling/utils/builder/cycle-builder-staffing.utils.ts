@@ -1,4 +1,7 @@
-import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
+import {
+  type CycleBuilderData,
+  isStaffedEventTimeBlock,
+} from '../../hooks/use-cycle-builder';
 
 interface RequirementCoverage {
   id: string;
@@ -52,9 +55,9 @@ interface SummarizeCycleStaffingInput {
 
 /**
  * The one number a coordinator building a 40-assignment schedule never had: how
- * much of the cycle is done. Counted over *included* time blocks only — a time block this
- * ministry is not serving asks for nobody, so counting it would make the
- * denominator lie (B-4).
+ * much of the cycle is done. Counted over *staffed* time blocks only — a time block this
+ * ministry is not serving, or one cancelled, asks for nobody, so counting it
+ * would make the denominator lie (B-4).
  */
 export function summarizeCycleStaffing({
   data,
@@ -65,7 +68,7 @@ export function summarizeCycleStaffing({
   let shiftsBelowTarget = 0;
   for (const event of data.events) {
     for (const eventTimeBlock of event.eventTimeBlocks) {
-      if (!eventTimeBlock.included) continue;
+      if (!isStaffedEventTimeBlock(eventTimeBlock)) continue;
       for (const shift of eventTimeBlock.shifts) {
         const coveredPlaces = countCoveredPlaces(shift);
         covered += coveredPlaces;
@@ -113,7 +116,7 @@ export function summarizeCycleCounts({
   let shiftCount = 0;
   for (const event of data.events) {
     for (const eventTimeBlock of event.eventTimeBlocks) {
-      if (!eventTimeBlock.included) continue;
+      if (!isStaffedEventTimeBlock(eventTimeBlock)) continue;
       eventTimeBlockCount += 1;
       shiftCount += eventTimeBlock.shifts.length;
     }

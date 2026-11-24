@@ -49,6 +49,7 @@ const boardData: CycleBuilderData = {
           label: 'Morning service',
           startTime: '2026-08-02T09:00:00.000Z',
           endTime: '2026-08-02T11:00:00.000Z',
+          cancelled: false,
           included: true,
           peopleNeeded: 2,
           assignedCount: 0,
@@ -59,6 +60,7 @@ const boardData: CycleBuilderData = {
               eventTimeBlockId: 'event-time-block-1',
               startTime: '2026-08-02T09:00:00.000Z',
               endTime: '2026-08-02T11:00:00.000Z',
+              cancelled: false,
               peopleNeeded: 2,
               assignedCount: 0,
               requirements: [
@@ -468,6 +470,60 @@ describe('CycleBuilderMatrix', () => {
     } finally {
       overwriteGetLocale(() => 'en');
     }
+  });
+
+  it.each([
+    ['time block', 'block'],
+    ['Event', 'event'],
+  ] as const)('shows a cancelled %s as Cancelled with no way to staff it', async (_, scope) => {
+    const user = userEvent.setup();
+    const event = boardData.events[0];
+    const block = event.eventTimeBlocks[0];
+    const cancelledShifts = block.shifts.map((shift) => ({
+      ...shift,
+      cancelled: true,
+    }));
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={{
+          ...boardData,
+          events: [
+            {
+              ...event,
+              status: scope === 'event' ? 'cancelled' : event.status,
+              eventTimeBlocks: [
+                { ...block, cancelled: true, shifts: cancelledShifts },
+              ],
+            },
+          ],
+        }}
+        selectedDate="2026-08-02"
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText(m.event_status_cancelled())).toHaveLength(1);
+    const percent = screen.queryByTestId(
+      'cycle-event-staffing-percent-event-1',
+    );
+    if (scope === 'event') expect(percent).not.toBeInTheDocument();
+    else expect(percent).toHaveTextContent('0%');
+    expect(
+      screen.queryByTestId('cycle-shift-footer-shift-1'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: m.builder_ui_add() }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByTestId('cycle-requirement-focus-requirement-role-1'),
+    );
+    expect(
+      screen.queryByRole('button', {
+        name: new RegExp(m.builder_ui_pick_me()),
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('excludes same-shift assignees and warns when they serve in another shift', async () => {

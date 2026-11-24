@@ -137,7 +137,7 @@ export function CycleBuilderCell({
       left: parseInstant({ value: shift.startTime }),
       right: currentInstant,
     }) <= 0;
-  const isEditable = editable && !isStarted;
+  const isEditable = editable && !isStarted && !shift.cancelled;
   const isTouch = useFormControlSize() === 'touch';
   const { churchTimezone } = useTimezone();
   const shiftLabel =
@@ -303,12 +303,17 @@ export function CycleBuilderCell({
             } else onToggleFocus();
           }}
         />
-        <span className="shrink-0 text-muted-foreground text-xs">
+        <span
+          className={cn(
+            'shrink-0 text-muted-foreground text-xs',
+            shift.cancelled && 'line-through',
+          )}
+        >
           {assignments.length}/{peopleNeeded}
         </span>
       </div>
 
-      {isStarted ? (
+      {isStarted && !shift.cancelled ? (
         <p className="mt-2 text-muted-foreground text-xs">
           {m.builder_shift_started({
             shift: shiftLabel,
@@ -319,7 +324,7 @@ export function CycleBuilderCell({
           })}
         </p>
       ) : null}
-      {!hasRoleHolder ? (
+      {!hasRoleHolder && !shift.cancelled ? (
         <p className="mt-2 text-muted-foreground text-xs">
           <span>
             {m.builder_no_role_holders({ role: displayRoleLabel ?? roleLabel })}

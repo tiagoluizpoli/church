@@ -84,6 +84,109 @@
   .s62 .vC .band .stamp { width: 8.5mm; height: 8.5mm; }
   .vC .num { font-size: 1.6em; vertical-align: -0.15em; margin-right: 1mm; }
 
+  /* ---- C1 / C2 / C3: directions evolved from C. Shared parts first. ---- */
+  .s29 .cx { --ts: 2.5mm; --tn: 2.7mm; --tx: 2.1mm; --tc: 3.8mm; --m: 1.5mm; }
+  .s62 .cx { --ts: 3.8mm; --tn: 4.2mm; --tx: 3mm; --tc: 6.5mm; --m: 2.5mm; }
+  .cx { line-height: 1.1; }
+  .cx .name, .cx .first, .cx .rest { font-weight: 700; white-space: nowrap; overflow: hidden; line-height: 1.1; letter-spacing: -0.01em; }
+  .cx .fit.two { white-space: normal; text-wrap: balance; max-height: 2.25em; }
+  .cx .band, .cx .block { background: #000; color: #fff; }
+  .cx .slots { display: flex; align-items: center; justify-content: space-around; }
+  .cx .q { aspect-ratio: 1; flex: none; }
+  .cx .q svg { display: block; width: 100%; height: 100%; }
+  .cx .who, .cx .kp { font-size: var(--ts); }
+  .cx .who { white-space: nowrap; overflow: hidden; }
+  .cx .note { font-size: var(--tn); text-wrap: balance; }
+  .cx .num { font-weight: 700; line-height: .8; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .cx .num small { font-size: .3em; vertical-align: top; margin-right: .15em; }
+  .cx .lock { white-space: nowrap; font-size: var(--ts); }
+  .cx .lock b { font-size: 1.9em; font-variant-numeric: tabular-nums; }
+  .cx .body { grid-area: body; display: flex; flex-direction: column; gap: 1mm; overflow: hidden; }
+  .cx .body > * { flex: none; }
+  .cx .body .kp { margin-top: auto; }
+  .cx .row { display: flex; align-items: baseline; gap: 2mm; }
+  .cx.grd .lock b { font-size: 2.4em; }
+  /* Pickup code: mono, letter-spaced, reversed. Never set like the Call number. */
+  .cx .pick { grid-area: pick; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .8mm; }
+  .cx .pcode { font: 700 var(--tc)/1.1 ui-monospace, "Courier New", monospace; letter-spacing: .12em; background: #000; color: #fff;
+    padding: .3mm 1mm .3mm 1.5mm; border-radius: .6mm; }
+  /* Claim QR: dashed frame, so it reads as a third kind of code. */
+  .cx .clm { grid-area: clm; display: flex; flex-direction: column; justify-content: center; gap: .6mm; font-size: var(--tx); line-height: 1.15; }
+  .cx .clm .q { border: .3mm dashed #000; padding: .4mm; box-sizing: border-box; }
+  .s29 .cx .clm { width: 13mm; } .s29 .cx .clm .more { display: none; }
+  .s62 .cx .clm { flex-direction: row; align-items: center; justify-content: flex-start; gap: 2mm; }
+  .s62 .cx .clm .q { width: 16mm; }
+  .cx .rot { writing-mode: vertical-rl; font-weight: 700; letter-spacing: .14em; }
+
+  /* C1: Faixa e coluna. Slim stamp band on the left edge; Call number stacked over the QR in a right column.
+     Guardian tag is the mirror image: pickup QR on the left, band on the right edge. */
+  .s29 .vC1.kid { grid-template: "band name side" auto "band who side" auto "band note side" 1fr / 8.5mm 1fr 16mm; padding-left: 0; column-gap: 2mm; }
+  .s62 .vC1.kid { grid-template: "band name name" auto "band who who" auto "band note side" 1fr / 14mm 1fr 21mm; padding-left: 0; column-gap: 3.5mm; }
+  .vC1 .band { grid-area: band; margin: calc(-1 * var(--m)) 0; display: flex; align-items: center; justify-content: space-around; }
+  .vC1.kid .band { flex-direction: column; padding: var(--m) 0 var(--m) var(--m); }
+  .s29 .vC1 .band .stamp { width: 5mm; height: 5mm; }
+  .s62 .vC1 .band .stamp { width: 9mm; height: 9mm; }
+  .vC1.kid .who { grid-area: who; }
+  .vC1.kid .note { grid-area: note; align-self: end; }
+  .vC1 .side { grid-area: side; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
+  .s29 .vC1 .side .num { font-size: 8.5mm; } .s29 .vC1 .side .q { width: 16mm; }
+  .s62 .vC1 .side .num { font-size: 12.5mm; } .s62 .vC1 .side .q { width: 21mm; }
+  .s62 .vC1 .side { justify-content: flex-end; gap: 2mm; }
+  .s29 .vC1.grd { grid-template: "pick body clm band" 1fr / 18.5mm 1fr auto 8.5mm; padding-right: 0; column-gap: 2mm; }
+  .s62 .vC1.grd { grid-template: "pick body band" 1fr "pick clm band" auto / 34mm 1fr 14mm; padding-right: 0; column-gap: 3.5mm; }
+  .vC1.grd .band { padding-right: var(--m); }
+  .s29 .vC1 .rot { font-size: 3mm; } .s62 .vC1 .rot { font-size: 5mm; }
+  .vC1.grd .pick .q { width: 100%; }
+  .s29 .vC1.grd .num { font-size: 6.5mm; } .s62 .vC1.grd .num { font-size: 12mm; }
+
+  /* C2: Faixa no topo. The band runs along the top edge and carries the screen lockup "247 · Ana" plus the four slots;
+     the name gets the full label width. Guardian tag has no band at all: a heavy frame. */
+  .s29 .vC2.kid { grid-template: "band band" 8.5mm "name name" auto "foot qr" 1fr / 1fr auto; padding-top: 0; }
+  .s62 .vC2.kid { grid-template: "band band" 15mm "name name" auto "foot qr" 1fr / 1fr auto; padding-top: 0; }
+  .vC2.kid .band { grid-area: band; margin: 0 calc(-1 * var(--m)); display: flex; align-items: center; justify-content: space-between;
+    padding: calc(var(--m) + .9mm) calc(var(--m) + .5mm) .9mm; }
+  .vC2.kid .band .lock { font-size: 3.6mm; } .s62 .vC2.kid .band .lock { font-size: 5mm; }
+  .vC2.kid .band .lock b { font-size: 1.7em; line-height: .8; }
+  .vC2.kid .slots { gap: 1.6mm; } .s62 .vC2.kid .slots { gap: 2mm; }
+  .s29 .vC2 .band .stamp { width: 4.8mm; height: 4.8mm; }
+  .s62 .vC2 .band .stamp { width: 9mm; height: 9mm; }
+  .cx .foot { grid-area: foot; display: flex; flex-direction: column; justify-content: space-between; gap: .6mm; overflow: hidden; }
+  .cx.kid > .q { grid-area: qr; align-self: end; }
+  .s29 .vC2.kid > .q { width: 10mm; } .s62 .vC2.kid > .q { width: 22mm; }
+  .vC2.grd { display: block; }
+  .vC2 .frame { height: 100%; box-sizing: border-box; border: .9mm solid #000; display: grid; }
+  .s29 .vC2 .frame { grid-template: "pick body clm" 1fr / 21.5mm 1fr auto; padding: 1mm; column-gap: 2mm; }
+  .s62 .vC2 .frame { grid-template: "pick body" 1fr "pick clm" auto / 36mm 1fr; padding: 2mm; gap: 2mm 3.5mm; }
+  .vC2 .frame > * { min-width: 0; min-height: 0; }
+  .s29 .vC2 .body { gap: .6mm; }
+  .vC2 .frame .pick .q { width: 100%; }
+  .vC2 .pbar { background: #000; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: .5mm 1.2mm; }
+  .vC2 .pbar small { font-size: var(--tx); font-weight: 700; letter-spacing: .14em; }
+  .vC2 .pbar .pcode { padding: 0; }
+
+  /* C3: Bloco de chamada. A wide black block is the volunteer zone: Call number over a 2x2 grid of slots.
+     The name splits in two tiers: first name huge, the rest on a smaller line. Guardian tag mirrors it: block on the right holds the pickup QR. */
+  .s29 .vC3.kid { grid-template: "block first first" auto "block rest qr" auto "block foot qr" 1fr / 20.5mm 1fr 13.5mm; padding-left: 0; column-gap: 2mm; row-gap: .3mm; }
+  .s62 .vC3.kid { grid-template: "block first first" auto "block rest rest" auto "block foot qr" 1fr / 28mm 1fr 22mm; padding-left: 0; column-gap: 3.5mm; row-gap: .6mm; }
+  .vC3 .block { grid-area: block; margin: calc(-1 * var(--m)) 0; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
+  .vC3.kid .block { padding: var(--m) var(--m) var(--m) calc(var(--m) + .5mm); }
+  .vC3 .block .num { width: 100%; text-align: center; overflow: hidden; line-height: 1.16; margin: -.08em 0; }
+  .vC3 .block .slots { display: grid; grid-template-columns: auto auto; gap: 1mm; }
+  .s62 .vC3 .block .slots { gap: 1.5mm; }
+  .s29 .vC3 .block .stamp { width: 5.6mm; height: 5.6mm; }
+  .s62 .vC3 .block .stamp { width: 10.5mm; height: 10.5mm; }
+  .vC3 .first { grid-area: first; line-height: 1.16; margin: -.08em 0 -.04em; }
+  .s62 .vC3 .note { -webkit-line-clamp: 5; }
+  .vC3 .rest { grid-area: rest; }
+  .vC3.kid .foot { justify-content: flex-end; }
+  .s29 .vC3.kid > .q { width: 13.5mm; } .s62 .vC3.kid > .q { width: 22mm; }
+  .s29 .vC3.grd { grid-template: "body clm block" 1fr / 1fr auto 22mm; padding-right: 0; column-gap: 2mm; }
+  .s62 .vC3.grd { grid-template: "body block" 1fr "clm block" auto / 1fr 38mm; padding-right: 0; column-gap: 3.5mm; }
+  .vC3.grd .block { padding: var(--m) calc(var(--m) + 1.5mm) var(--m) 1.5mm; justify-content: center; gap: .8mm; }
+  .vC3.grd .block small { font-size: var(--tx); font-weight: 700; letter-spacing: .14em; }
+  .vC3.grd .block .q { width: 100%; background: #fff; padding: .4mm; box-sizing: border-box; border-radius: .6mm; }
+  .vC3.grd .block .pcode { padding: 0; }
+
   .overflow { outline: 0.4mm solid #e00; outline-offset: -0.4mm; }
   .switcher { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 3; background: #111; color: #fff;
     border-radius: 999px; padding: 6px 8px; display: flex; gap: 10px; align-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.35); font-size: 14px; }
@@ -104,6 +207,9 @@
     <label><input type="radio" name="v" value="A"> A · Nome primeiro</label>
     <label><input type="radio" name="v" value="B"> B · Número primeiro</label>
     <label><input type="radio" name="v" value="C"> C · Faixa de cuidado</label>
+    <label><input type="radio" name="v" value="C1"> C1 · Faixa e coluna</label>
+    <label><input type="radio" name="v" value="C2"> C2 · Faixa no topo</label>
+    <label><input type="radio" name="v" value="C3"> C3 · Bloco de chamada</label>
   </fieldset>
   <fieldset><legend>Etiqueta</legend>
     <label><input type="radio" name="stock" value="29"> 29 x 90 mm</label>
@@ -130,7 +236,7 @@
 <div class="switcher"><button id="prev">←</button><span id="vlabel"></span><button id="next">→</button></div>
 
 <script>
-const VARIANTS = { A: 'Nome primeiro', B: 'Número primeiro', C: 'Faixa de cuidado' };
+const VARIANTS = { A: 'Nome primeiro', B: 'Número primeiro', C: 'Faixa de cuidado', C1: 'Faixa e coluna', C2: 'Faixa no topo', C3: 'Bloco de chamada' };
 const STAMPS = ['neuro', 'allergy', 'medical', 'mobility'];
 const STAMP_NAMES = { neuro: 'Neurodivergência', allergy: 'Alergia / restrição alimentar', medical: 'Condição médica', mobility: 'Mobilidade / apoio físico' };
 const CASES = {
@@ -154,6 +260,8 @@ const state = { v: params.get('v') || 'A', stock: params.get('stock') || '29', s
 
 function stamp(kind, style, empty) {
   const W = 'stroke="#000" stroke-width="1.4" fill="none"';
+  // C1-C3: a solid white dot, because a dithered grey is not reliable on thermal stock.
+  if (empty && state.v !== 'C') return `<svg class="stamp" viewBox="0 0 20 20"><circle cx="10" cy="10" r="1.6" fill="#fff"/></svg>`;
   if (empty) return `<svg class="stamp" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2" fill="#fff" opacity=".35"/></svg>`;
   const inner = {
     shapes: { neuro: '<circle cx="10" cy="10" r="8" fill="#000"/>', allergy: '<path d="M10 2 L18.5 17.5 H1.5Z" fill="#000"/>',
@@ -166,7 +274,7 @@ function stamp(kind, style, empty) {
       mobility: `<circle cx="10" cy="3.5" r="2" fill="#000"/><path ${W} stroke-width="2" d="M10 6 V12 H15 L16.5 17 M10 9 H14"/><path ${W} stroke-width="2" d="M7 9.5 A5 5 0 1 0 13 16.5"/>`,
     },
   }[style][kind];
-  const inBand = state.v === 'C';
+  const inBand = state.v[0] === 'C';
   const svg = inBand ? `<rect width="20" height="20" rx="3" fill="#fff"/>${inner}` : inner;
   return `<svg class="stamp" viewBox="0 0 20 20"><title>${STAMP_NAMES[kind]}</title>${svg}</svg>`;
 }
@@ -188,6 +296,7 @@ const call = n => `<div class="call"><small>Nº</small><b>${n}</b></div>`;
 const nameMax = () => state.stock === '29' ? 7 : 11;
 
 function childTag(c, kid) {
+  if (state.v.length > 1) return childTagX(c, kid);
   const v = state.v;
   const meta = v === 'C' ? `<b class="num">${c.call}</b>${c.guardian} · ${c.date}` : `Responsável: ${c.guardian} · ${c.date}`;
   const stampsInline = v === 'C' ? '' : kid.stamps.map(s => stamp(s, state.stamps)).join('');
@@ -202,6 +311,7 @@ function childTag(c, kid) {
 }
 
 function guardianTag(c) {
+  if (state.v.length > 1) return guardianTagX(c);
   const v = state.v;
   const kids = c.kids.length === 1 ? c.kids[0].name : list(c.kids.map(k => first(k.name)));
   const meta = v === 'C' ? `<b class="num">${c.call}</b>Guarde para a retirada · ${c.date}` : `<span class="keep">Guarde para a retirada</span> · ${c.date}`;
@@ -216,16 +326,92 @@ function guardianTag(c) {
   </div>`;
 }
 
+
+// ---- C1 / C2 / C3 ----
+const slots = kid => STAMPS.map(s => stamp(s, state.stamps, !kid.stamps.includes(s))).join('');
+const Q = seed => `<div class="q">${qr(seed)}</div>`;
+const lock = (c, tail = '') => `<span class="lock"><b>${c.call}</b> · ${c.guardian}${tail}</span>`;
+const sz = (a, b) => state.stock === '62' ? b : a;
+
+function childTagX(c, kid) {
+  const v = state.v, note = kid.note ? `<div class="note chk">${kid.note}</div>` : '', code = Q(kid.name + c.call);
+  if (v === 'C1') return `<div class="tag cx vC1 kid"><div class="band">${slots(kid)}</div>
+    <div class="name fit" data-rule="two" data-max="${sz(7.5, 12)}" data-floor="${sz(5, 8)}" data-min="3.4">${kid.name}</div>
+    <div class="who">Resp. ${c.guardian} · ${c.date}</div>${note}
+    <div class="side chk"><div class="num"><small>Nº</small>${c.call}</div>${code}</div></div>`;
+  if (v === 'C2') return `<div class="tag cx vC2 kid"><div class="band">${lock(c, ' · ' + c.date)}<span class="slots">${slots(kid)}</span></div>
+    <div class="name fit" data-rule="drop" data-max="${sz(7, 15)}" data-floor="${sz(5, 6)}" data-min="3.4">${kid.name}</div>
+    <div class="foot chk">${note}</div>${code}</div>`;
+  const [f, ...rest] = kid.name.split(' ');
+  return `<div class="tag cx vC3 kid"><div class="block chk"><div class="num fit" data-max="${sz(9.5, 13.5)}" data-min="5">${c.call}</div><div class="slots">${slots(kid)}</div></div>
+    <div class="first fit" data-max="${sz(10, 17)}" data-min="5">${f}</div>
+    <div class="rest fit" data-max="${sz(4.2, 7)}" data-min="2.6">${rest.join(' ')}</div>
+    <div class="foot chk">${note}<div class="who">Resp. ${c.guardian} · ${c.date}</div></div>${code}</div>`;
+}
+
+function guardianTagX(c) {
+  const v = state.v, many = c.kids.length > 1;
+  const kids = many ? list(c.kids.map(k => first(k.name))) : c.kids[0].name;
+  const name = `<div class="name fit" data-rule="two" data-max="${v === 'C2' ? sz(5.5, 8.5) : sz(6.5, 10)}" data-floor="${sz(4.6, 7)}" data-min="3">${kids}</div>`;
+  const kp = `<div class="kp">Guarde esta etiqueta${v === 'C2' ? '' : ' para retirar ' + (many ? 'as crianças' : 'a criança')}</div>`;
+  const clm = c.contact ? `<div class="clm chk">${Q('claim' + c.pickup)}<span><b>Crie sua conta</b><span class="more"> e receba as chamadas no celular</span></span></div>` : '';
+  const pq = Q('pickup' + c.pickup), pcode = `<span class="pcode">${c.pickup}</span>`;
+  if (v === 'C1') return `<div class="tag cx vC1 grd"><div class="pick chk">${pq}${pcode}</div>
+    <div class="body chk">${name}<div class="row"><div class="num"><small>Nº</small>${c.call}</div><span class="who">${c.date}</span></div>${kp}</div>
+    ${clm}<div class="band"><span class="rot">RETIRADA</span></div></div>`;
+  if (v === 'C2') return `<div class="tag cx vC2 grd"><div class="frame"><div class="pick chk">${pq}</div>
+    <div class="body chk"><div class="pbar"><small>RETIRADA</small>${pcode}</div>${name}${lock(c, ' · ' + c.date)}${kp}</div>${clm}</div></div>`;
+  return `<div class="tag cx vC3 grd"><div class="body chk">${name}${lock(c, ' · ' + c.date)}${kp}</div>
+    ${clm}<div class="block chk"><small>RETIRADA</small>${pq}${pcode}</div></div>`;
+}
+
+// Long-name rule "drop": remove the name just before the last surname (keeping its de/da/do particle).
+const PARTICLE = /^(de|da|do|dos|das|e)$/i;
+function dropMiddle(words) {
+  let last = words.length - 1;
+  while (last > 1 && PARTICLE.test(words[last - 1])) last--;
+  if (last <= 1) return null;
+  const w = words.slice(); w.splice(last - 1, 1);
+  if (last - 2 >= 1 && PARTICLE.test(w[last - 2])) w.splice(last - 2, 1);
+  return w;
+}
+console.assert(dropMiddle('Maria Eduarda Vasconcelos de Albuquerque'.split(' ')).join(' ') === 'Maria Eduarda de Albuquerque');
+console.assert(dropMiddle('Maria de Albuquerque'.split(' ')) === null);
+
+function shrink(el, max, min, ok) {
+  let size = max; el.style.fontSize = size + 'mm';
+  while (!ok(el) && size > min + 0.01) { size -= 0.2; el.style.fontSize = size + 'mm'; }
+  el.dataset.size = size.toFixed(1);
+  return ok(el);
+}
+const bodyOk = el => { const b = el.closest('.body'); return !b || b.scrollHeight <= b.clientHeight + 1; };
+const oneLine = el => el.scrollWidth <= el.clientWidth && bodyOk(el);
+const twoLines = el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1 && bodyOk(el);
+function fitRule(el) {
+  const max = +el.dataset.max, floor = +el.dataset.floor, min = +el.dataset.min;
+  if (el.dataset.rule === 'two') {   // one line down to the floor size, then two balanced lines
+    if (!shrink(el, max, floor, oneLine)) { el.classList.add('two'); shrink(el, floor + 1, min, twoLines); }
+  } else {                           // 'drop': one line down to the floor size, then drop middle names
+    let words = el.textContent.split(' ');
+    while (!shrink(el, max, floor, oneLine)) {
+      const next = dropMiddle(words);
+      if (!next) { shrink(el, floor, min, oneLine); break; }
+      words = next; el.textContent = words.join(' ');
+    }
+  }
+}
+
 // Shrink each name until it fits its box, as a printing module would; red outline = still overflowing at the minimum.
 function fit() {
   for (const el of document.querySelectorAll('.fit')) {
+    if (el.dataset.rule) { fitRule(el); continue; }
     let size = +el.dataset.max;
     el.style.fontSize = size + 'mm';
     while (el.scrollWidth > el.clientWidth && size > +el.dataset.min) { size -= 0.2; el.style.fontSize = size + 'mm'; }
     el.dataset.size = size.toFixed(1);
   }
   let over = 0;
-  for (const el of document.querySelectorAll('.tag .fit, .tag .meta, .tag .note, .tag .care')) {
+  for (const el of document.querySelectorAll('.tag .fit, .tag .meta, .tag .note, .tag .care, .tag.cx, .cx .chk')) {
     const o = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
     el.classList.toggle('overflow', o); over += o;
   }

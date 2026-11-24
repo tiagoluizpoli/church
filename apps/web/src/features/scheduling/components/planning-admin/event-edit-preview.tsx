@@ -156,12 +156,16 @@ function pairMessagesOf({ draft, refusal }: PairMessagesInput): PairMessages {
   const labels = new Map<string, string>();
   let form: string | undefined;
   const target = refusal?.target;
+  const targetBlock =
+    target?.kind === 'block' ? draft.blocks[target.index] : undefined;
   if (refusal && target) {
     if (target.kind === 'start' || target.kind === 'end') {
       times.set(EVENT_PAIR, refusal.message);
-    } else if (target.kind === 'block' && draft.blocks[target.index]) {
-      const { key } = draft.blocks[target.index] as DraftBlock;
-      (target.part === 'label' ? labels : times).set(key, refusal.message);
+    } else if (target.kind === 'block' && targetBlock) {
+      (target.part === 'label' ? labels : times).set(
+        targetBlock.key,
+        refusal.message,
+      );
     } else {
       form = refusal.message;
     }

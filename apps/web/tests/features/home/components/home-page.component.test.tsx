@@ -102,8 +102,9 @@ const churchSection = () =>
   screen.queryByRole('heading', { name: m.home_section_church() });
 const leadershipSection = () =>
   screen.queryByRole('heading', { name: m.home_attention_schedules() });
+// Every serving caller gets their history; Próxima escala only appears when one exists.
 const servingSection = () =>
-  screen.queryByRole('heading', { name: m.home_next_assignment() });
+  screen.queryByRole('heading', { name: m.home_serving_title() });
 
 function givenCapabilities(
   input: Parameters<typeof callerCapabilitiesFixture>[0],
@@ -203,19 +204,41 @@ describe('HomePage', () => {
     expect(screen.queryByText(/Nothing needs you/)).not.toBeInTheDocument();
   });
 
-  it('puts volunteer actions ahead of the summary and attention list', async () => {
+  it('orders Home by attention: Agora, volunteer actions, leader attention, then statistics', async () => {
     givenCapabilities({ isChurchAdmin: true, hasVolunteerMembership: true });
     renderHomePage();
+    await screen.findByRole('heading', { name: m.home_agora() });
     await screen.findByRole('heading', { name: m.home_attention_schedules() });
-    const headings = screen
-      .getAllByRole('heading', { level: 2 })
-      .map((h) => h.textContent);
-    expect(headings.indexOf(m.home_next_assignment())).toBeLessThan(
-      headings.indexOf(m.home_summary()),
-    );
-    expect(headings.indexOf(m.home_summary())).toBeLessThan(
-      headings.indexOf(m.home_attention_schedules()),
-    );
+
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent),
+    ).toEqual([
+      m.home_agora(),
+      m.home_attention_schedules(),
+      m.home_cycle_band(),
+      m.home_trend_coverage(),
+      m.home_trend_title(),
+      m.home_serving_title(),
+      m.home_section_church(),
+    ]);
+    const quietServingLine = screen.getByText(m.home_serving_all_clear());
+    expect(
+      quietServingLine.compareDocumentPosition(
+        screen.getByRole('heading', { name: m.home_attention_schedules() }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('leads with one sentence and one action for what needs the caller first', async () => {
+    givenCapabilities({ isChurchAdmin: true });
+    renderHomePage();
+
+    expect(
+      await screen.findByText(m.home_agora_people_other({ count: 3 })),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: m.home_agora_see_people() }),
+    ).toHaveAttribute('href', '/app/people?withoutMinistry=true');
   });
 
   it('links whole-scope counts to the matching list filters', async () => {

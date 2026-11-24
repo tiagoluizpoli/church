@@ -19,9 +19,9 @@ interface UseDragScrollOptions {
  * Pointer-drag-to-scroll for a horizontal `ScrollArea`. Shared by the board and
  * the date strip so both pan identically. A press on an `ignoreSelector`
  * target never arms (dnd-kit draggables carry `role="button"`, so a card being
- * dragged is never also a pan). Touch keeps its native swipe — the surfaces
- * set `touch-pan-y`, so the browser owns horizontal touch and no pointer
- * capture is needed there.
+ * dragged is never also a pan). Touch pans through the same path — the surfaces
+ * set `touch-pan-y`, which leaves only vertical panning to the browser and
+ * hands horizontal touch to this hook (`scrollLeft` plus pointer capture).
  *
  * `onClickCapture` swallows the one click a finished drag would otherwise fire
  * on whatever sits under the pointer on release.

@@ -1,0 +1,268 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway (wayfinder ticket #1084). Never merged.
+  Question: how should the Child tag and the Guardian tag look?
+  Three layouts (A/B/C) x two stocks (29x90 DK-1201, 62x100 DK-1202) x three Care stamp styles x three cases.
+  Tags render at real mm size; Ctrl+P / "Imprimir" prints one tag per page at the label size (the printer emulator).
+  QR codes are fake placeholders at the real size, not scannable. Thermal stock is black only, so no colour.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>PROTOTYPE · Etiquetas Kids</title>
+<style id="page-size"></style>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #e6e3dc; color: #222; }
+  .controls { position: sticky; top: 0; z-index: 2; background: #fff; border-bottom: 1px solid #bbb;
+    padding: 8px 14px; display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: center; font-size: 14px; }
+  .controls fieldset { border: 0; padding: 0; margin: 0; display: flex; gap: 8px; align-items: center; }
+  .controls legend { float: left; font-weight: 600; margin-right: 6px; }
+  .state { font: 12px ui-monospace, monospace; color: #555; padding: 6px 14px; }
+  .legend { font-size: 13px; padding: 0 14px; display: flex; gap: 16px; align-items: center; }
+  .legend .stamp { width: 6mm; height: 6mm; }
+  .sheet { padding: 18px 14px 80px; display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .slot h3 { font-size: 12px; font-weight: 600; color: #555; margin: 0 0 4px; }
+
+  /* ---- the tag itself: everything below is what a printing module would reproduce ---- */
+  .tag { zoom: var(--zoom, 2.5); background: #fff; color: #000; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    font-family: Arial, Helvetica, sans-serif; overflow: hidden; box-sizing: border-box; display: grid;
+    padding: 1.5mm; gap: 0.8mm 1.5mm; }
+  .s29 .tag { width: 90mm; height: 29mm; }
+  .s62 .tag { width: 100mm; height: 62mm; padding: 2.5mm; gap: 1.5mm 2.5mm; }
+  .tag > * { min-width: 0; min-height: 0; }
+  .name { grid-area: name; font-weight: 700; white-space: nowrap; overflow: hidden; line-height: 1.05; }
+  .meta { grid-area: meta; font-size: 2.6mm; white-space: nowrap; overflow: hidden; }
+  .s62 .meta { font-size: 3.6mm; }
+  .care { grid-area: care; display: flex; gap: 1mm; align-items: center; overflow: hidden; }
+  .note { font-size: 2.6mm; font-weight: 700; line-height: 1.15; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .s62 .note { font-size: 3.6mm; -webkit-line-clamp: 3; }
+  .call { grid-area: call; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 0.5mm solid #000; border-radius: 1mm; padding: 0 1.2mm; line-height: 1; }
+  .call small { font-size: 2mm; font-weight: 700; }
+  .call b { font-size: 6mm; }
+  .s62 .call small { font-size: 3mm; }
+  .s62 .call b { font-size: 10mm; }
+  .qr { grid-area: qr; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .qr svg { flex: 1 1 auto; min-height: 0; width: 100%; }
+  .qr .code { font: 700 3.4mm ui-monospace, "Courier New", monospace; letter-spacing: .6mm; }
+  .s62 .qr .code { font-size: 5mm; }
+  .qr .cap { font-size: 1.8mm; }
+  .s62 .qr .cap { font-size: 2.6mm; }
+  .claim { display: flex; gap: 1mm; align-items: center; height: 100%; }
+  .claim svg { height: 100%; max-height: 13mm; aspect-ratio: 1; flex: none; }
+  .s62 .claim svg { max-height: 18mm; }
+  .claim span { font-size: 2.2mm; line-height: 1.15; }
+  .s62 .claim span { font-size: 3.2mm; }
+  .stamp { width: 4.2mm; height: 4.2mm; flex: none; }
+  .s62 .stamp { width: 6.5mm; height: 6.5mm; }
+  .keep { font-weight: 700; }
+
+  /* A: Nome primeiro. The name leads, QR on the right. */
+  .s29 .vA { grid-template: auto auto 1fr / 1fr auto 26mm; grid-template-areas: "name call qr" "meta meta qr" "care care qr"; }
+  .s62 .vA { grid-template: auto auto auto 1fr / 1fr 36mm; grid-template-areas: "name name" "call qr" "meta qr" "care qr"; }
+  .s62 .vA .call { justify-self: start; flex-direction: row; gap: 2mm; padding: 1mm 3mm; }
+
+  /* B: Número primeiro. A black ticket block carries the Call number; the QR is secondary. */
+  .vB .call { background: #000; color: #fff; border: 0; border-radius: 0; }
+  .s29 .vB { grid-template: auto auto 1fr / 19mm 1fr 20mm; grid-template-areas: "call name qr" "call meta qr" "call care qr"; padding: 0 1.5mm 0 0; }
+  .s29 .vB .call b { font-size: 10mm; }
+  .s29 .vB > :not(.call) { margin-top: 1.5mm; margin-bottom: 1.5mm; }
+  .s62 .vB { grid-template: 17mm auto auto 1fr / 1fr 30mm; grid-template-areas: "call call" "name name" "meta qr" "care qr"; padding: 0 2.5mm 2.5mm; }
+  .s62 .vB .call { flex-direction: row; justify-content: flex-start; gap: 3mm; margin: 0 -2.5mm; padding: 0 3mm; }
+  .s62 .vB .call b { font-size: 13mm; }
+
+  /* C: Faixa de cuidado. A black edge band: fixed Care stamp slots on the Child tag, "RETIRADA" on the Guardian tag. */
+  .vC .band { grid-area: band; background: #000; color: #fff; display: flex; flex-direction: column;
+    justify-content: space-around; align-items: center; margin: -1.5mm 0 -1.5mm -1.5mm; }
+  .s62 .vC .band { margin: -2.5mm 0 -2.5mm -2.5mm; }
+  .vC .band .rot { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; letter-spacing: .5mm; font-size: 3mm; }
+  .s62 .vC .band .rot { font-size: 5mm; }
+  .s29 .vC { grid-template: auto auto 1fr / 7mm 1fr 22mm; grid-template-areas: "band name qr" "band meta qr" "band care qr"; }
+  .s62 .vC { grid-template: auto auto 1fr / 12mm 1fr 32mm; grid-template-areas: "band name name" "band meta qr" "band care qr"; }
+  .s29 .vC .band .stamp { width: 5mm; height: 5mm; }
+  .s62 .vC .band .stamp { width: 8.5mm; height: 8.5mm; }
+  .vC .num { font-size: 1.6em; vertical-align: -0.15em; margin-right: 1mm; }
+
+  .overflow { outline: 0.4mm solid #e00; outline-offset: -0.4mm; }
+  .switcher { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 3; background: #111; color: #fff;
+    border-radius: 999px; padding: 6px 8px; display: flex; gap: 10px; align-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.35); font-size: 14px; }
+  .switcher button { background: #333; color: #fff; border: 0; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; }
+
+  @media print {
+    .controls, .state, .legend, .slot h3, .switcher { display: none !important; }
+    body { background: #fff; }
+    .sheet { padding: 0; display: block; }
+    .tag { zoom: 1 !important; box-shadow: none; break-after: page; }
+    .overflow { outline: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="controls">
+  <fieldset><legend>Layout</legend>
+    <label><input type="radio" name="v" value="A"> A · Nome primeiro</label>
+    <label><input type="radio" name="v" value="B"> B · Número primeiro</label>
+    <label><input type="radio" name="v" value="C"> C · Faixa de cuidado</label>
+  </fieldset>
+  <fieldset><legend>Etiqueta</legend>
+    <label><input type="radio" name="stock" value="29"> 29 x 90 mm</label>
+    <label><input type="radio" name="stock" value="62"> 62 x 100 mm</label>
+  </fieldset>
+  <fieldset><legend>Selos</legend>
+    <label><input type="radio" name="stamps" value="shapes"> Formas</label>
+    <label><input type="radio" name="stamps" value="letters"> Letras</label>
+    <label><input type="radio" name="stamps" value="pictos"> Pictogramas</label>
+  </fieldset>
+  <fieldset><legend>Caso</legend>
+    <select name="case">
+      <option value="tipico">Típico: 1 criança, 1 selo</option>
+      <option value="irmaos">Pior caso: 4 irmãos, nome longo, todos os selos</option>
+      <option value="visitante">Visitante da mesa (contato, QR de cadastro)</option>
+    </select>
+  </fieldset>
+  <fieldset><legend>Zoom</legend><input type="range" name="zoom" min="1" max="4" step="0.25"></fieldset>
+  <button onclick="print()">Imprimir / PDF</button>
+</div>
+<div class="legend" id="legend"></div>
+<div class="state" id="state"></div>
+<div class="sheet" id="sheet"></div>
+<div class="switcher"><button id="prev">←</button><span id="vlabel"></span><button id="next">→</button></div>
+
+<script>
+const VARIANTS = { A: 'Nome primeiro', B: 'Número primeiro', C: 'Faixa de cuidado' };
+const STAMPS = ['neuro', 'allergy', 'medical', 'mobility'];
+const STAMP_NAMES = { neuro: 'Neurodivergência', allergy: 'Alergia / restrição alimentar', medical: 'Condição médica', mobility: 'Mobilidade / apoio físico' };
+const CASES = {
+  tipico: { date: '24/11', call: 47, guardian: 'Ana', pickup: 'K7P4', contact: false,
+    kids: [{ name: 'Laura Souza', stamps: ['allergy'], note: 'Alergia a amendoim: nada de lanche da sala' }] },
+  irmaos: { date: '24/11', call: 247, guardian: 'Ana', pickup: 'X3M9', contact: false,
+    kids: [
+      { name: 'Maria Eduarda Vasconcelos de Albuquerque', stamps: STAMPS, note: 'Chame pelo nome, não responde a comandos de grupo; evite barulho alto' },
+      { name: 'João Pedro Vasconcelos', stamps: [], note: '' },
+      { name: 'Davi Vasconcelos', stamps: ['neuro'], note: 'Se chorar, leve ao cantinho calmo' },
+      { name: 'Sofia Vasconcelos', stamps: [], note: '' },
+    ] },
+  // A Guardian contact gives no consent, so no Care stamps or Tag note; its Guardian tag carries the claim QR.
+  visitante: { date: '24/11', call: 12, guardian: 'Pedro', pickup: 'R8T2', contact: true,
+    kids: [{ name: 'Lucas Lima', stamps: [], note: '' }] },
+};
+
+const params = new URLSearchParams(location.search);
+const state = { v: params.get('v') || 'A', stock: params.get('stock') || '29', stamps: params.get('stamps') || 'shapes',
+  case: params.get('case') || 'tipico', zoom: params.get('zoom') || '2.5' };
+
+function stamp(kind, style, empty) {
+  const W = 'stroke="#000" stroke-width="1.4" fill="none"';
+  if (empty) return `<svg class="stamp" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2" fill="#fff" opacity=".35"/></svg>`;
+  const inner = {
+    shapes: { neuro: '<circle cx="10" cy="10" r="8" fill="#000"/>', allergy: '<path d="M10 2 L18.5 17.5 H1.5Z" fill="#000"/>',
+      medical: '<rect x="2.5" y="2.5" width="15" height="15" fill="#000"/>', mobility: '<path d="M10 1 L19 10 L10 19 L1 10Z" fill="#000"/>' },
+    letters: Object.fromEntries(STAMPS.map(k => [k, `<rect x="1" y="1" width="18" height="18" rx="3" fill="#000"/><text x="10" y="15" text-anchor="middle" font-family="Arial" font-weight="700" font-size="14" fill="#fff">${{ neuro: 'N', allergy: 'A', medical: 'S', mobility: 'M' }[k]}</text>`])),
+    pictos: {
+      neuro: `<path ${W} stroke-width="2" d="M10 10 C7 5 2 5 2 10 C2 15 7 15 10 10 C13 5 18 5 18 10 C18 15 13 15 10 10Z"/>`,
+      allergy: `<circle cx="10" cy="10" r="8" ${W} stroke-width="2"/><path d="M4.5 4.5 L15.5 15.5" ${W} stroke-width="2"/>`,
+      medical: '<path d="M7 2 H13 V7 H18 V13 H13 V18 H7 V13 H2 V7 H7Z" fill="#000"/>',
+      mobility: `<circle cx="10" cy="3.5" r="2" fill="#000"/><path ${W} stroke-width="2" d="M10 6 V12 H15 L16.5 17 M10 9 H14"/><path ${W} stroke-width="2" d="M7 9.5 A5 5 0 1 0 13 16.5"/>`,
+    },
+  }[style][kind];
+  const inBand = state.v === 'C';
+  const svg = inBand ? `<rect width="20" height="20" rx="3" fill="#fff"/>${inner}` : inner;
+  return `<svg class="stamp" viewBox="0 0 20 20"><title>${STAMP_NAMES[kind]}</title>${svg}</svg>`;
+}
+
+// Fake QR at the real size: finder squares plus seeded noise. Layout only, not scannable.
+function qr(seed) {
+  let h = 2166136261; for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  const rnd = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296;
+  const n = 25; let cells = '';
+  const finder = (x, y) => (x < 8 && y < 8) || (x >= n - 8 && y < 8) || (x < 8 && y >= n - 8);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (!finder(x, y) && rnd() < 0.5) cells += `M${x} ${y}h1v1h-1z`;
+  const f = (x, y) => `M${x} ${y}h7v7h-7zM${x + 1} ${y + 1}v5h5v-5zM${x + 2} ${y + 2}h3v3h-3z`;
+  return `<svg viewBox="-1 -1 ${n + 2} ${n + 2}" shape-rendering="crispEdges"><rect x="-1" y="-1" width="${n + 2}" height="${n + 2}" fill="#fff"/><path fill-rule="evenodd" d="${f(0, 0)}${f(n - 7, 0)}${f(0, n - 7)}${cells}"/></svg>`;
+}
+
+const first = name => name.split(' ')[0];
+const list = names => names.length < 2 ? names.join('') : names.slice(0, -1).join(', ') + ' e ' + names.at(-1);
+const call = n => `<div class="call"><small>Nº</small><b>${n}</b></div>`;
+const nameMax = () => state.stock === '29' ? 7 : 11;
+
+function childTag(c, kid) {
+  const v = state.v;
+  const meta = v === 'C' ? `<b class="num">${c.call}</b>${c.guardian} · ${c.date}` : `Responsável: ${c.guardian} · ${c.date}`;
+  const stampsInline = v === 'C' ? '' : kid.stamps.map(s => stamp(s, state.stamps)).join('');
+  const band = v === 'C' ? `<div class="band">${STAMPS.map(s => stamp(s, state.stamps, !kid.stamps.includes(s))).join('')}</div>` : '';
+  return `<div class="tag v${v}">${band}
+    <div class="name fit" data-max="${nameMax()}" data-min="3.2">${kid.name}</div>
+    ${v === 'C' ? '' : call(c.call)}
+    <div class="meta">${meta}</div>
+    <div class="care">${stampsInline}${kid.note ? `<div class="note">${kid.note}</div>` : ''}</div>
+    <div class="qr">${qr(kid.name + c.call)}</div>
+  </div>`;
+}
+
+function guardianTag(c) {
+  const v = state.v;
+  const kids = c.kids.length === 1 ? c.kids[0].name : list(c.kids.map(k => first(k.name)));
+  const meta = v === 'C' ? `<b class="num">${c.call}</b>Guarde para a retirada · ${c.date}` : `<span class="keep">Guarde para a retirada</span> · ${c.date}`;
+  const claim = c.contact ? `<div class="claim">${qr('claim' + c.pickup)}<span><b>Crie sua conta</b> e receba as chamadas no celular</span></div>` : '';
+  const band = v === 'C' ? `<div class="band"><span class="rot">RETIRADA</span></div>` : '';
+  return `<div class="tag v${v}">${band}
+    <div class="name fit" data-max="${nameMax()}" data-min="3.2">${kids}</div>
+    ${v === 'C' ? '' : call(c.call)}
+    <div class="meta">${meta}</div>
+    <div class="care">${claim}</div>
+    <div class="qr">${qr('pickup' + c.pickup)}<span class="cap">código de retirada</span><span class="code">${c.pickup}</span></div>
+  </div>`;
+}
+
+// Shrink each name until it fits its box, as a printing module would; red outline = still overflowing at the minimum.
+function fit() {
+  for (const el of document.querySelectorAll('.fit')) {
+    let size = +el.dataset.max;
+    el.style.fontSize = size + 'mm';
+    while (el.scrollWidth > el.clientWidth && size > +el.dataset.min) { size -= 0.2; el.style.fontSize = size + 'mm'; }
+    el.dataset.size = size.toFixed(1);
+  }
+  let over = 0;
+  for (const el of document.querySelectorAll('.tag .fit, .tag .meta, .tag .note, .tag .care')) {
+    const o = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+    el.classList.toggle('overflow', o); over += o;
+  }
+  return over;
+}
+
+function render() {
+  for (const [k, val] of Object.entries(state)) {
+    document.querySelectorAll(`[name="${k}"]`).forEach(el => el.type === 'radio' ? (el.checked = el.value === val) : (el.value = val));
+  }
+  history.replaceState(null, '', '?' + new URLSearchParams(state));
+  const c = CASES[state.case];
+  const sheet = document.getElementById('sheet');
+  sheet.className = 'sheet s' + state.stock;
+  sheet.style.setProperty('--zoom', state.zoom);
+  sheet.innerHTML = c.kids.map((k, i) => `<div class="slot"><h3>Etiqueta da criança ${i + 1}/${c.kids.length}</h3>${childTag(c, k)}</div>`).join('')
+    + `<div class="slot"><h3>Etiqueta do responsável</h3>${guardianTag(c)}</div>`;
+  document.getElementById('page-size').textContent = `@page { size: ${state.stock === '29' ? '90mm 29mm' : '100mm 62mm'}; margin: 0; }`;
+  document.getElementById('legend').innerHTML = STAMPS.map(s => `<span>${stamp(s, state.stamps).replace('class="stamp"', 'class="stamp" style="width:6mm;height:6mm"')} ${STAMP_NAMES[s]}</span>`).join('');
+  document.getElementById('vlabel').textContent = `${state.v} (${VARIANTS[state.v]})`;
+  const over = fit();
+  const sizes = [...document.querySelectorAll('.fit')].map(e => e.dataset.size + 'mm').join(', ');
+  document.getElementById('state').textContent =
+    `layout=${state.v} stock=${state.stock === '29' ? '90x29mm' : '100x62mm'} stamps=${state.stamps} case=${state.case} · tags=${c.kids.length + 1} · name sizes=[${sizes}] · overflowing boxes=${over}`;
+}
+
+document.querySelector('.controls').addEventListener('input', e => { if (e.target.name) { state[e.target.name] = e.target.value; render(); } });
+const keys = Object.keys(VARIANTS);
+const step = d => { state.v = keys[(keys.indexOf(state.v) + d + keys.length) % keys.length]; render(); };
+document.getElementById('prev').onclick = () => step(-1);
+document.getElementById('next').onclick = () => step(1);
+addEventListener('keydown', e => {
+  if (e.target.closest('input[type=range], select, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') step(-1);
+  if (e.key === 'ArrowRight') step(1);
+});
+render();
+</script>
+</body>
+</html>

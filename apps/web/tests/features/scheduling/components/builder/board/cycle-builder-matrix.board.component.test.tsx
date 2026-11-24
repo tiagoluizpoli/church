@@ -749,6 +749,45 @@ describe('CycleBuilderMatrix', () => {
     expect(viewport.scrollLeft).toBe(0);
   });
 
+  it('scrolls the date columns freely, with no snap lanes', () => {
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={boardData}
+        selectedDate={null}
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+
+    const viewport = screen.getByTestId('cycle-board-viewport');
+    expect(viewport.className).not.toMatch(/snap|scroll-px/);
+    expect(viewport.querySelector('section[class*="snap"]')).toBeNull();
+  });
+
+  it('brings a focused control into view without leaving the column half-cut', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={boardData}
+        selectedDate={null}
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+
+    act(() => screen.getByRole('button', { name: 'Add' }).focus());
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      inline: 'nearest',
+      block: 'nearest',
+    });
+  });
+
   describe('filter row', () => {
     /** Opens the "Date filters" disclosure that holds the range + weekday controls. */
     const openDateFilters = async () => {

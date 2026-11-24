@@ -1662,9 +1662,30 @@ const churchLockWriters: Record<string, ChurchLockWriter> = {
     writerFirst: async ({ seed, applied, written }) => {
       expect(written.statusCode).toBe(200);
       expect(applied.statusCode).toBe(409);
-      expect(applied.json()).toMatchObject({
-        error: 'ILLEGAL_STATE_TRANSITION',
-      });
+      expect(applied.json()).toMatchObject(cancelledRefusal.event);
+      expect(await shiftAssignmentRows(seed.shift.id)).toEqual([
+        { volunteerId: seed.current.volunteerId, status: 'cancelled' },
+      ]);
+    },
+    // The cancellation cancels the Assignment Apply added too.
+    applyFirst: async ({ seed, written }) => {
+      expect(written.statusCode).toBe(200);
+      expect(await sortedShiftAssignmentRows(seed.shift.id)).toEqual(
+        [
+          { volunteerId: seed.current.volunteerId, status: 'cancelled' },
+          { volunteerId: seed.replacementId, status: 'cancelled' },
+        ].sort((left, right) =>
+          left.volunteerId.localeCompare(right.volunteerId),
+        ),
+      );
+    },
+  },
+  "a cancellation of the reviewed Shift's time block": {
+    run: (seed) => confirmCancel({ seed, scope: 'eventTimeBlock' }),
+    writerFirst: async ({ seed, applied, written }) => {
+      expect(written.statusCode).toBe(200);
+      expect(applied.statusCode).toBe(409);
+      expect(applied.json()).toMatchObject(cancelledRefusal.eventTimeBlock);
       expect(await shiftAssignmentRows(seed.shift.id)).toEqual([
         { volunteerId: seed.current.volunteerId, status: 'cancelled' },
       ]);

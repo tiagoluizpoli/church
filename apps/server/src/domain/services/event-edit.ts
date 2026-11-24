@@ -124,32 +124,50 @@ export interface ProposeShiftBoundsInput {
   previousBlock: InstantBounds;
   proposedBlock: InstantBounds;
   shift: InstantBounds;
+  now: Instant;
 }
 
 interface FollowInput {
   instant: Instant;
 }
 
+const later = ({ left, right }: { left: Instant; right: Instant }) =>
+  compareInstants({ left, right }) >= 0 ? left : right;
+
 /**
- * A Shift follows its block by keeping its share of the block: a whole-block
- * Shift stays whole and equal parts stay equal, always inside the new block.
+ * A Shift follows its block by keeping its share of the block's part still to
+ * come: a whole-block Shift stays whole and equal parts stay equal, always
+ * inside the new block. A past instant never moves: an ended Shift keeps its
+ * times and a running one its start, while its end follows the block.
  */
 export function proposeShiftBounds({
   previousBlock,
   proposedBlock,
   shift,
+  now,
 }: ProposeShiftBoundsInput): InstantBounds {
-  const previousLength = millisecondsBetween(previousBlock);
-  const proposedLength = millisecondsBetween(proposedBlock);
+  const previousFrom = later({ left: previousBlock.start, right: now });
+  const proposedFrom = later({ left: proposedBlock.start, right: now });
+  const previousLength = millisecondsBetween({
+    start: previousFrom,
+    end: previousBlock.end,
+  });
+  const proposedLength = millisecondsBetween({
+    start: proposedFrom,
+    end: proposedBlock.end,
+  });
+  // A future instant lies after previousFrom, so previousLength is positive.
   const follow = ({ instant }: FollowInput) =>
-    addMilliseconds({
-      instant: proposedBlock.start,
-      milliseconds: Math.round(
-        (millisecondsBetween({ start: previousBlock.start, end: instant }) *
-          proposedLength) /
-          previousLength,
-      ),
-    });
+    compareInstants({ left: instant, right: now }) <= 0
+      ? instant
+      : addMilliseconds({
+          instant: proposedFrom,
+          milliseconds: Math.round(
+            (millisecondsBetween({ start: previousFrom, end: instant }) *
+              proposedLength) /
+              previousLength,
+          ),
+        });
   return {
     start: follow({ instant: shift.start }),
     end: follow({ instant: shift.end }),
@@ -162,6 +180,7 @@ export interface FindEditClashesInput {
   scopeAssignments: MoveScopeAssignment[];
   /** Must exclude every Assignment of the edited Event. */
   candidates: MoveClashCandidate[];
+  now: Instant;
 }
 
 interface ProposedAssignment {
@@ -191,6 +210,7 @@ export function findEditClashes({
   proposal,
   scopeAssignments,
   candidates,
+  now,
 }: FindEditClashesInput): MoveClash[] {
   const blocks = new Map(
     proposal.eventTimeBlocks.map((block) => [block.eventTimeBlockId, block]),
@@ -205,6 +225,7 @@ export function findEditClashes({
             previousBlock: block.previous,
             proposedBlock: block.proposed,
             shift,
+            now,
           })
         : shift;
     return { assignment, bounds };

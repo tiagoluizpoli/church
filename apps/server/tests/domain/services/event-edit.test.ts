@@ -204,6 +204,7 @@ describe('proposeShiftBounds', () => {
         previousBlock: { start: at(13), end: at(15) },
         proposedBlock: { start: at(13), end: at(17) },
         shift: { start: at(14), end: at(15) },
+        now: BEFORE,
       }),
     ).toEqual({ start: at(15), end: at(17) });
     expect(
@@ -211,8 +212,45 @@ describe('proposeShiftBounds', () => {
         previousBlock: { start: at(13), end: at(15) },
         proposedBlock: { start: at(12, 30), end: at(14, 30) },
         shift: { start: at(13), end: at(15) },
+        now: BEFORE,
       }),
     ).toEqual({ start: at(12, 30), end: at(14, 30) });
+  });
+
+  it('never moves a past instant: an ended Shift stays, a running one keeps its start and its end follows the rest of the block', () => {
+    // Block 18–20 extended to 22 at 19:30.
+    const extend = (shift: { start: number; end: number }) =>
+      proposeShiftBounds({
+        previousBlock: { start: at(18), end: at(20) },
+        proposedBlock: { start: at(18), end: at(22) },
+        shift: { start: at(shift.start), end: at(shift.end) },
+        now: at(19, 30),
+      });
+
+    expect(extend({ start: 18, end: 19 })).toEqual({
+      start: at(18),
+      end: at(19),
+    });
+    expect(extend({ start: 19, end: 20 })).toEqual({
+      start: at(19),
+      end: at(22),
+    });
+    expect(extend({ start: 18, end: 20 })).toEqual({
+      start: at(18),
+      end: at(22),
+    });
+  });
+
+  it('spreads Shifts still to come over the rest of a running block', () => {
+    // At 18:30, 18:30–20 becomes 18:30–21:30: 19–20 keeps its share of it.
+    expect(
+      proposeShiftBounds({
+        previousBlock: { start: at(18), end: at(20) },
+        proposedBlock: { start: at(18), end: at(21, 30) },
+        shift: { start: at(19), end: at(20) },
+        now: at(18, 30),
+      }),
+    ).toEqual({ start: at(19, 30), end: at(21, 30) });
   });
 });
 
@@ -243,6 +281,7 @@ describe('findEditClashes', () => {
         assignment('a1', 'ana', serviceId, 13, 15),
         assignment('a2', 'bia', serviceId, 13, 15),
       ],
+      now: BEFORE,
       candidates: [
         {
           volunteerId: 'ana' as VolunteerId,
@@ -287,8 +326,45 @@ describe('findEditClashes', () => {
         assignment('a2', 'ana', serviceId, 13, 15),
       ],
       candidates: [],
+      now: BEFORE,
     });
 
     expect(clashes.map(({ assignmentId }) => assignmentId)).toEqual(['a2']);
+  });
+
+  it('withdraws a running Shift’s Assignment whose end follows the block into a clash, its start kept', () => {
+    // At 13:30 Service 13–15 → 13–17: the rest of the block, 13:30–15, becomes
+    // 13:30–17, so Ana's running 13–14 becomes 13–14:40 and Bia's 14–15 14:40–17.
+    const clashes = findEditClashes({
+      proposal: propose({ now: at(13, 30) }),
+      scopeAssignments: [
+        assignment('a1', 'ana', serviceId, 13, 14),
+        assignment('a2', 'bia', serviceId, 14, 15),
+      ],
+      candidates: [
+        {
+          volunteerId: 'ana' as VolunteerId,
+          shiftStart: at(14, 30),
+          shiftEnd: at(16),
+        },
+        // Touching the new end is compatible.
+        {
+          volunteerId: 'bia' as VolunteerId,
+          shiftStart: at(17),
+          shiftEnd: at(18),
+        },
+      ],
+      now: at(13, 30),
+    });
+
+    expect(
+      clashes.map(({ assignmentId, proposedStart, proposedEnd }) => ({
+        assignmentId,
+        proposedStart,
+        proposedEnd,
+      })),
+    ).toEqual([
+      { assignmentId: 'a1', proposedStart: at(13), proposedEnd: at(14, 40) },
+    ]);
   });
 });

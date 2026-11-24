@@ -1618,7 +1618,8 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     const rowsBefore = await outboxRows();
     setTestClock({ instant: '2026-12-25T03:00:00.000Z' as Instant });
 
-    // 02:30–04:00 → 02:30–05:00: each Shift keeps its share of the block.
+    // 02:30–04:00 → 02:30–05:00 at 03:00: the rest of the block, 03:00–04:00,
+    // becomes 03:00–05:00, so each upcoming Shift keeps its share of it.
     const edited = await buildPlanningManager().confirmEdit({
       churchId: ChurchId.from(ids.churchId),
       cycleId: CycleId.from(cycleId),
@@ -1673,7 +1674,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
                 endsAt: '2026-12-25T04:00:00.000Z',
               }),
               after: expect.objectContaining({
-                startsAt: '2026-12-25T03:45:00.000Z',
+                startsAt: '2026-12-25T03:30:00.000Z',
                 endsAt: '2026-12-25T05:00:00.000Z',
               }),
             }),

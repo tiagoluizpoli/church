@@ -675,6 +675,53 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/edit/preview', () => {
     expect(await writeSnapshot()).toEqual(before);
   });
 
+  it('previews a running Shift keeping its start while its end follows the block into a clash', async () => {
+    const seed = await signIn();
+    const { cycle, sunday, media, ana } = await seedStaffedSunday({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+    });
+    // Ana and Bia serve Media's second half, 11–12, running at 11:30.
+    await db
+      .update(shift)
+      .set({ startTime: new Date(at('11:00')) })
+      .where(eq(shift.id, media.shift.id));
+    setTestClock({ instant: inst(at('11:30')) });
+    const body = currentBody(sunday);
+
+    // Media 10–12 → 10–13:30: the rest of it, 11:30–12, becomes 11:30–13:30.
+    const response = await preview({
+      cycleId: cycle.id,
+      eventId: sunday.event.id,
+      body: {
+        ...body,
+        end: at('13:30'),
+        eventTimeBlocks: [
+          ...body.eventTimeBlocks,
+          {
+            id: media.eventTimeBlock.id,
+            label: 'Media',
+            startTime: at('10:00'),
+            endTime: at('13:30'),
+          },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().clashes).toEqual([
+      {
+        assignmentId: media.assignment.id,
+        eventTimeBlockId: media.eventTimeBlock.id,
+        shiftId: media.shift.id,
+        volunteer: { id: ana.id, name: 'ana' },
+        ministry: { id: seed.ministryAId, name: 'Scheduling Ministry A' },
+        proposedStart: at('11:00'),
+        proposedEnd: at('13:30'),
+      },
+    ]);
+  });
+
   it('refuses dropping a staffed block with STAFFED_EVENT_TIME_BLOCK_DROP', async () => {
     const seed = await signIn();
     const { cycle, sunday } = await seedStaffedSunday({
@@ -1057,6 +1104,58 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/edit', () => {
       .from(eventTimeBlock)
       .where(eq(eventTimeBlock.id, sunday.service.id));
     expect(boundsOf(service)).toEqual([at('10:00'), at('14:00')]);
+  });
+
+  it('keeps the past of a running block: an ended Shift stays, a running one keeps its start, the rest follows', async () => {
+    const seed = await signIn();
+    const churchId = seed.churchAId;
+    const cycle = await seedCycle({ churchId, state: 'sent' });
+    const sunday = await seedScheduledEvent({ churchId, cycleId: cycle.id });
+    const participation = await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: seed.ministryAId,
+      eventId: sunday.event.id,
+      state: 'preparing',
+      eventTimeBlockIds: [],
+    });
+    const serviceShift = (start: string, end: string) =>
+      buildShift({
+        db,
+        churchId,
+        participationId: participation.id,
+        eventTimeBlockId: sunday.service.id,
+        start: inst(at(start)),
+        end: inst(at(end)),
+        label: start,
+      });
+    const ended = await serviceShift('10:00', '11:00');
+    const running = await serviceShift('11:00', '11:45');
+    const upcoming = await serviceShift('11:45', '12:00');
+    setTestClock({ instant: inst(at('11:30')) });
+    const body = currentBody(sunday);
+
+    // Service 10–12 → 10–14: the rest of it, 11:30–12, becomes 11:30–14.
+    const response = await apply({
+      cycleId: cycle.id,
+      eventId: sunday.event.id,
+      body: {
+        ...body,
+        end: at('14:00'),
+        eventTimeBlocks: body.eventTimeBlocks.map((block) =>
+          block.label === 'Service'
+            ? { ...block, endTime: at('14:00') }
+            : block,
+        ),
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const shiftBounds = async (id: string) =>
+      boundsOf((await db.select().from(shift).where(eq(shift.id, id)))[0]);
+    expect(await shiftBounds(ended.id)).toEqual([at('10:00'), at('11:00')]);
+    expect(await shiftBounds(running.id)).toEqual([at('11:00'), at('12:45')]);
+    expect(await shiftBounds(upcoming.id)).toEqual([at('12:45'), at('14:00')]);
   });
 
   it('refuses an Event that has ended with EDIT_WINDOW_CLOSED and writes nothing', async () => {

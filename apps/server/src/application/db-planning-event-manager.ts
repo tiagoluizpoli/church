@@ -3,6 +3,7 @@ import {
   compareCalendarDays,
   compareInstants,
   fromDate,
+  type Instant,
   now,
   toDate,
   today,
@@ -133,6 +134,8 @@ interface ComputedEdit extends PlanningEditPreview {
   event: Event;
   eventTimeBlocks: EventTimeBlock[];
   scopeAssignments: MoveScopeAssignment[];
+  /** The one instant preview and apply judge started Shifts by. */
+  now: Instant;
 }
 
 interface ComputeCancellationInput {
@@ -1477,6 +1480,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
                 previousBlock: block.previous,
                 proposedBlock: block.proposed,
                 shift: { start, end },
+                now: computed.now,
               }),
             },
           ];
@@ -1588,6 +1592,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         eventId,
         tx,
       });
+    const editNow = now();
     const proposal = proposeEdit({
       event,
       eventTimeBlocks,
@@ -1606,7 +1611,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       staffedBlockIds: scopeAssignments.map(
         ({ eventTimeBlockId }) => eventTimeBlockId,
       ),
-      now: now(),
+      now: editNow,
       cycle,
       timeZone: church.timezone,
     });
@@ -1628,7 +1633,13 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       eventTimeBlocks,
       scopeAssignments,
       proposal,
-      clashes: findEditClashes({ proposal, scopeAssignments, candidates }),
+      now: editNow,
+      clashes: findEditClashes({
+        proposal,
+        scopeAssignments,
+        candidates,
+        now: editNow,
+      }),
     };
   }
 

@@ -197,14 +197,6 @@ function projectRequirementCoverage({
   return { bound, openCount: Math.max(0, requirement.peopleNeeded - filled) };
 }
 
-function aggregateState(
-  statuses: Array<'pending' | 'confirmed'>,
-): 'pending' | 'confirmed' | 'mixed' {
-  const unique = new Set(statuses);
-  if (unique.size === 1) return statuses[0] ?? 'mixed';
-  return 'mixed';
-}
-
 interface ScheduleShiftLabelInput {
   label?: string;
   startTime: Instant;
@@ -499,7 +491,6 @@ export class DbVolunteerManager implements IVolunteerManager {
           ministryId: group.ministryId,
           ministryName: group.ministryName,
           eventStart: group.eventStart,
-          aggregateResponseState: aggregateState(sorted.map((i) => i.status)),
           hasPendingResponse: sorted.some((i) => i.status === 'pending'),
           assignments: sorted,
         };

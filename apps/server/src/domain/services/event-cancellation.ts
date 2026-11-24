@@ -99,7 +99,7 @@ export interface CancellationScopeAssignment {
   shiftStart: Instant;
   shiftEnd: Instant;
   /**
-   * Already visible to the Volunteer: pending/confirmed in a published
+   * Already visible to the Volunteer: pending in a published
    * Schedule. Only these are told (N9) and counted.
    */
   published: boolean;

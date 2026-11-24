@@ -56,7 +56,7 @@ interface DeclineWithNotificationInput {
   journey: VolunteerAssignmentsJourney;
 }
 
-/** What the journey does to its graph: the volunteer declines. */
+/** What the journey does to its graph: the volunteer is withdrawn (cancelled). */
 async function mutateLikeTheJourney({
   journey,
 }: DeclineWithNotificationInput): Promise<void> {

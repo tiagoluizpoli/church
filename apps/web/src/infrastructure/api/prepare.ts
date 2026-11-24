@@ -46,7 +46,7 @@ const listSchedules = (
       );
     }
   /**
- * Totals over the caller's Ministries (every active one for a ChurchAdmin, the led ones for a leader): for each of the latest six Sent or Past Cycles, oldest first, the requirement headcount (`needed`), the seats held by a draft, pending or confirmed assignment (`filled`, capped per requirement), assignments by response, and availability checks asked and answered; plus, for the Cycle running on the Church's today (else the latest), the same staffing totals per serving Ministry, least covered first, then by name. Cancelled Events, inactive blocks and archived Ministries, Sectors and Roles are left out.
+ * Totals over the caller's Ministries (every active one for a ChurchAdmin, the led ones for a leader): for each of the latest six Sent or Past Cycles, oldest first, the requirement headcount (`needed`), the seats held by a draft or pending assignment (`filled`, capped per requirement), and availability checks asked and answered; plus, for the Cycle running on the Church's today (else the latest), the same staffing totals per serving Ministry, least covered first, then by name. Cancelled Events, inactive blocks and archived Ministries, Sectors and Roles are left out.
  * @summary Staffing trends of the caller's Schedules
  */
 const getScheduleInsights = (

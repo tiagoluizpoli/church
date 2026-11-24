@@ -235,7 +235,7 @@ export interface ListMinistryStaffingInput {
 export interface StaffingTotals {
   /** People the requirements ask for. */
   needed: number;
-  /** Seats held by a draft, pending or confirmed assignment, never above `needed` per requirement. */
+  /** Seats held by a draft or pending assignment, never above `needed` per requirement. */
   filled: number;
 }
 

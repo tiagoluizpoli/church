@@ -193,7 +193,7 @@ describe('DrizzleEventTimeBlockRepository (extra coverage)', () => {
     expect(updated.label).toBe(graph.eventTimeBlock.label ?? undefined);
   });
 
-  it('countActiveAssignments counts only pending/confirmed assignments for the role on the event time block', async () => {
+  it('countActiveAssignments counts only pending assignments for the role on the event time block', async () => {
     const seed = await seedSchedulingPhase3Base();
     const graph = await seedEventGraph(seed.churchAId, seed.ministryAId);
     const repo = new DrizzleEventTimeBlockRepository({ db: schedulingTestDb });

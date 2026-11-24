@@ -2207,7 +2207,6 @@
   "event_templates_collision_title": "Choose which template wins",
   "event_templates_collision_description": "This template shares days and times with the templates below. Decide once for each pair.",
   "event_templates_collision_confirm": "Save with these answers",
-  "event_templates_precedences_title": "Precedences",
   "event_templates_precedences_description": "What happens when this template shares a day and time with another one. Changing an answer does not edit either template.",
   "event_templates_precedences_dialog_title": "Precedences for {name}",
   "event_templates_precedences_label": "Precedences for {name}",

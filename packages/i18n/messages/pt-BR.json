@@ -2207,7 +2207,6 @@
   "event_templates_collision_title": "Escolha qual modelo vence",
   "event_templates_collision_description": "Este modelo divide dias e horários com os modelos abaixo. Decida uma vez para cada par.",
   "event_templates_collision_confirm": "Salvar com estas respostas",
-  "event_templates_precedences_title": "Precedências",
   "event_templates_precedences_description": "O que acontece quando este modelo divide dia e horário com outro. Mudar uma resposta não edita nenhum dos modelos.",
   "event_templates_precedences_dialog_title": "Precedências de {name}",
   "event_templates_precedences_label": "Precedências de {name}",

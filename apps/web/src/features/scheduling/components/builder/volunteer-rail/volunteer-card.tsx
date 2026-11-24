@@ -168,7 +168,10 @@ function TruncatedLine({ text, className, testId }: TruncatedLineProps) {
           <button
             type="button"
             ref={measureRef}
-            className={cn('truncate text-left', className)}
+            // block + max-w-full keep the button as narrow as its container, so a
+            // clipped line still measures as clipped (an inline-block one grows
+            // to fit, reads as unclipped and flips back in a loop).
+            className={cn('block max-w-full truncate text-left', className)}
             data-testid={testId}
           >
             {text}

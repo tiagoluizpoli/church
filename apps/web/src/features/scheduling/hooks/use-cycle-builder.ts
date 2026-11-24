@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { builderErrorMessage } from '../utils/builder/cycle-builder-error.utils';
 import { countCoveredPlaces } from '../utils/builder/cycle-builder-staffing.utils';
+import { isCancelledEventTimeBlock } from '../utils/event-time-block-cancellation';
 import {
   addOptimisticAssignment,
   type CycleBuilderQueryData,
@@ -273,9 +274,10 @@ function mapCycleBuilderData(
   );
   const events = data.events.map((item) => {
     const eventTimeBlocks = item.eventTimeBlocks.map((eventTimeBlockItem) => {
-      const cancelled =
-        item.event.status === 'cancelled' ||
-        eventTimeBlockItem.eventTimeBlock.status === 'cancelled';
+      const cancelled = isCancelledEventTimeBlock({
+        eventStatus: item.event.status,
+        eventTimeBlockStatus: eventTimeBlockItem.eventTimeBlock.status,
+      });
       const shifts = eventTimeBlockItem.shifts.map((shiftItem) => {
         const peopleNeeded = shiftItem.requirements.reduce(
           (total, requirement) => total + requirement.peopleNeeded,

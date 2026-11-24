@@ -24,6 +24,7 @@ import {
   countCoveredPlaces,
   staffingStatusClasses,
 } from '../../../utils/builder/cycle-builder-staffing.utils';
+import { CancelledBadge } from '../../cancelled-badge';
 import { useBoardDragIdentity } from './board-drag-identity';
 import {
   CycleBuilderCell,
@@ -481,14 +482,5 @@ export function CycleBuilderBoardGrid({
         </ScrollArea>
       </CardContent>
     </Card>
-  );
-}
-
-/** Same label and variant as Planning's cancelled Event status. */
-function CancelledBadge() {
-  return (
-    <Badge variant="destructive" className="shrink-0">
-      {m.event_status_cancelled()}
-    </Badge>
   );
 }

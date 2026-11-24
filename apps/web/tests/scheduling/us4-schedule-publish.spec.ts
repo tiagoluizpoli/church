@@ -30,7 +30,7 @@ interface ParticipationResponse {
   events: ParticipationEventResponse[];
 }
 
-test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below full, volunteer sees published slice, sibling ministry stays unpublished', async ({
+test('DL4-US4 leader applies a proposal over realistic availability, publishes below full, volunteer sees published slice, sibling ministry stays unpublished', async ({
   browser,
   page,
 }, testInfo) => {
@@ -44,6 +44,7 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
   const careParticipationId = journey.care.id;
   const eventTitle = journey.event.title;
   const volunteerName = journey.personas.volunteer.name;
+  const elisaName = journey.pool.elisa.name;
   const peopleNeeded = journey.worship.peopleNeeded;
   await signInPersonaPage({ page, persona: journey.personas.leader });
 
@@ -116,9 +117,20 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
   );
   await expect(requirement).toContainText(`0/${peopleNeeded}`);
 
-  // Only the Volunteer persona confirmed availability: the proposal suggests
-  // exactly that persona and leaves one place open. Reviewing and discarding
-  // it writes nothing; Apply adds exactly the reviewed Assignment.
+  // Availability (see the recipe): Rafael is free for both Shifts, Elisa only
+  // for the first, Davi for none, Caio has not answered and Beatriz was never
+  // asked. The scarcest Volunteer goes first, so the proposal is Elisa and
+  // Rafael on the first Shift and Rafael on the second, leaving one place open
+  // there. Reviewing and discarding it writes nothing; Apply adds exactly the
+  // three reviewed Assignments.
+  const secondRequirement = page.getByTestId(
+    requirementCellTestId({
+      requirementId: journey.worshipSecond.requirementId,
+    }),
+  );
+  await expect(secondRequirement).toContainText(
+    `0/${journey.worshipSecond.peopleNeeded}`,
+  );
   const ptBR = { locale: 'pt-BR' } as const;
   const proposalDialog = page.getByRole('dialog', {
     name: m.builder_proposal_title({}, ptBR),
@@ -128,14 +140,22 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
       .getByRole('button', { name: m.builder_proposal_open({}, ptBR) })
       .click();
     await expect(proposalDialog).toContainText(
-      m.builder_proposal_stat_additions_one({}, ptBR),
+      m.builder_proposal_stat_additions_many({ count: 3 }, ptBR),
     );
   };
   await openProposal();
   // Every tab stays mounted; read the one on screen.
-  await expect(
-    proposalDialog.getByRole('tabpanel').getByText(volunteerName),
-  ).toBeVisible();
+  const shiftsTab = proposalDialog.getByRole('tabpanel');
+  await expect(shiftsTab.getByText(volunteerName)).toHaveCount(2);
+  await expect(shiftsTab.getByText(elisaName)).toHaveCount(1);
+  // Unavailable, unanswered and never-asked Volunteers are not suggested.
+  for (const excluded of [
+    journey.pool.davi.name,
+    journey.pool.caio.name,
+    journey.personas.other.name,
+  ]) {
+    await expect(shiftsTab.getByText(excluded)).toHaveCount(0);
+  }
   await expect(proposalDialog).toContainText(
     m.builder_proposal_gap_one({}, ptBR),
   );
@@ -144,21 +164,35 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
     .click();
   await expect(proposalDialog).toBeHidden();
   await expect(requirement).toContainText(`0/${peopleNeeded}`);
+  await expect(secondRequirement).toContainText(
+    `0/${journey.worshipSecond.peopleNeeded}`,
+  );
 
   await openProposal();
   await proposalDialog
     .getByRole('button', {
-      name: m.builder_proposal_apply_count({ selected: 1, total: 1 }, ptBR),
+      name: m.builder_proposal_apply_count({ selected: 3, total: 3 }, ptBR),
     })
     .click();
   await expect(
-    page.getByText(m.builder_proposal_applied({ count: 1 }, ptBR)),
+    page.getByText(m.builder_proposal_applied({ count: 3 }, ptBR)),
   ).toBeVisible();
   await expect(proposalDialog).toBeHidden();
-  await expect(requirement.getByTestId('assignment-chip')).toContainText(
-    volunteerName,
+  const chips = (cell: typeof requirement) =>
+    cell.getByTestId('assignment-chip');
+  await expect(chips(requirement)).toHaveCount(2);
+  await expect(
+    chips(requirement).filter({ hasText: volunteerName }),
+  ).toHaveCount(1);
+  await expect(chips(requirement).filter({ hasText: elisaName })).toHaveCount(
+    1,
   );
-  await expect(requirement).toContainText(`1/${peopleNeeded}`);
+  await expect(requirement).toContainText(`2/${peopleNeeded}`);
+  await expect(chips(secondRequirement)).toHaveCount(1);
+  await expect(chips(secondRequirement)).toContainText(volunteerName);
+  await expect(secondRequirement).toContainText(
+    `1/${journey.worshipSecond.peopleNeeded}`,
+  );
   // Apply does not publish: the Schedule is still open for changes.
   await expect(
     page.getByRole('button', { name: m.builder_proposal_open({}, ptBR) }),
@@ -227,26 +261,29 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
 
   await volunteerPage.goto(`/app/my-schedule/${worshipMinistryId}/${cycleId}`);
   await expect(volunteerPage.getByText(eventTitle)).toBeVisible();
+  // Rafael serves both Events.
   await expect(
-    volunteerPage.getByText(shortVolunteerName({ name: volunteerName }), {
-      exact: true,
-    }),
+    volunteerPage.getByText(journey.worshipSecond.event.title),
+  ).toBeVisible();
+  await expect(
+    volunteerPage
+      .getByText(shortVolunteerName({ name: volunteerName }), { exact: true })
+      .first(),
   ).toBeVisible();
 
   // Replace, undo, then replace again: only the final net change is sent.
-  const choose = async (name: string) => {
-    await requirement.getByTestId('assignment-chip').click();
+  const choose = async ({ from, name }: { from: string; name: string }) => {
+    await chips(requirement).filter({ hasText: from }).click();
     const picker = page.getByTestId('assignment-picker');
     await picker.getByRole('textbox').fill(name);
     await picker.getByTestId('picker-option').filter({ hasText: name }).click();
-    await expect(requirement.getByTestId('assignment-chip')).toContainText(
-      name,
-    );
+    await expect(chips(requirement).filter({ hasText: name })).toHaveCount(1);
   };
-  await choose(journey.personas.other.name);
+  const otherName = journey.personas.other.name;
+  await choose({ from: volunteerName, name: otherName });
   const sendLabel = m.builder_send_updates({ count: 2 }, { locale: 'pt-BR' });
   await expect(page.getByRole('button', { name: sendLabel })).toBeVisible();
-  await choose(volunteerName);
+  await choose({ from: otherName, name: volunteerName });
   await expect(page.getByRole('button', { name: sendLabel })).toHaveCount(0);
   await expect
     .poll(async () => {
@@ -266,7 +303,7 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
   await expect(page.getByRole('button', { name: onePersonLabel })).toHaveCount(
     0,
   );
-  await choose(journey.personas.other.name);
+  await choose({ from: volunteerName, name: otherName });
   await page.getByRole('button', { name: sendLabel }).click();
   await expect(
     page.getByText(m.schedule_updates_sent({}, { locale: 'pt-BR' })),
@@ -331,7 +368,15 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
         const updates = emails.filter(
           (email) => email.payload.kind === 'schedule.updated',
         );
-        if (published.length !== 1 || updates.length !== 2) return false;
+        // Published to each assigned Volunteer: Rafael and Elisa.
+        if (
+          published.length !== 2 ||
+          !published.some(
+            ({ payload }) => payload.to === journey.personas.volunteer.email,
+          ) ||
+          updates.length !== 2
+        )
+          return false;
         const removed = updates.find(
           (email) => email.payload.to === journey.personas.volunteer.email,
         );
@@ -339,7 +384,6 @@ test('DL4-US4 leader applies a proposal assigning one volunteer, publishes below
           (email) => email.payload.to === journey.personas.other.email,
         );
         return (
-          published[0]?.payload.to === journey.personas.volunteer.email &&
           !!removed?.request.text.includes('Removido:') &&
           !!added?.request.text.includes('Adicionado:') &&
           removed.request.text.includes('/app/my-schedule') &&

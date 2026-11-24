@@ -4,6 +4,7 @@ import {
   assignment,
   assignmentProposalApplication,
   availabilityCheck,
+  ministry,
   ministryMembership,
   ministryMembershipRole,
   ministryParticipation,
@@ -30,6 +31,7 @@ import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
+import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DbMinistryMembershipManager } from '@/application/db-ministry-membership-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import {
@@ -45,6 +47,7 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import { MinistryInUseError } from '@/domain/errors/ministry-in-use';
 import { UpcomingAssignmentsError } from '@/domain/errors/upcoming-assignments';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
@@ -58,6 +61,7 @@ import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-ev
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryInvitationRepository } from '@/infrastructure/repositories/drizzle-ministry-invitation.repository';
 import { DrizzleMinistryMembershipRepository } from '@/infrastructure/repositories/drizzle-ministry-membership.repository';
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
@@ -94,6 +98,7 @@ import { testLocale } from '@/tests/test-support/fastify-locale';
 let app: FastifyTypedInstance;
 let managers: SchedulingManagers;
 let membershipManager: DbMinistryMembershipManager;
+let ministryManager: DbMinistryManager;
 
 beforeAll(async () => {
   app = await createFastify({
@@ -123,6 +128,20 @@ beforeAll(async () => {
     membershipRepository: new DrizzleMinistryMembershipRepository({ db }),
     roleRepository: new DrizzleRoleRepository({ db }),
     unitOfWork,
+  });
+  // Archives the Ministry while Apply races it.
+  ministryManager = new DbMinistryManager({
+    ministryRepo: ministryRepository,
+    volunteerRepo: new DrizzleVolunteerRepository({ db }),
+    invitationRepo: new DrizzleMinistryInvitationRepository({
+      db,
+      config: appConfig,
+    }),
+    unitOfWork,
+    sectorRepo: {} as never,
+    roleRepo: {} as never,
+    usualSetupRepo: {} as never,
+    templateRepo: {} as never,
   });
   const activeChurchResolver = new DbActiveChurchResolver({
     actorRepository,
@@ -1454,3 +1473,72 @@ for (const [writerName, writer] of Object.entries(mixedWriters)) {
     await writer.afterApply({ seed, written });
   });
 }
+
+// ── Apply against Ministry archive (#946) ───────────────────────────────────
+
+function archiveMinistry(seed: MixedSeed) {
+  return ministryManager.archive({
+    churchId: ChurchId.from(seed.churchAId),
+    ministryId: MinistryId.from(seed.ministryAId),
+    callerId: UserId.from(seed.adminUserId),
+  });
+}
+
+async function ministryArchivedAt(ministryId: string) {
+  const [row] = await db
+    .select({ deletedAt: ministry.deletedAt })
+    .from(ministry)
+    .where(eq(ministry.id, ministryId));
+  return row?.deletedAt;
+}
+
+it('Apply queued behind Ministry archive refuses the archived Ministry and writes nothing', async () => {
+  const seed = await seedMixedWriters();
+  const key = randomUUID();
+  // Every Event has ended, so archive passes its un-ended participation guard.
+  setTestClock({ instant: parseInstant({ value: '2026-08-02T11:00:01Z' }) });
+
+  const [archived, applied] = await raceBehindOwner({
+    // Archive waits for the Ministry row; Apply then queues behind archive.
+    hold: (blocker) =>
+      blocker.query('SELECT id FROM ministry WHERE id = $1 FOR UPDATE', [
+        seed.ministryAId,
+      ]),
+    first: () => settle(archiveMinistry(seed)),
+    second: () => seed.apply(key),
+  });
+
+  expect(archived).toMatchObject({ ok: true });
+  expect(await ministryArchivedAt(seed.ministryAId)).not.toBeNull();
+  expect(applied.statusCode).toBe(404);
+  expect(await activeShiftVolunteers(seed.shift.id)).toEqual([
+    seed.current.volunteerId,
+  ]);
+  expect(await applicationRows(key)).toEqual([]);
+});
+
+it('Ministry archive queued behind Apply sees its participation and refuses', async () => {
+  const seed = await seedMixedWriters();
+  const key = randomUUID();
+
+  const [applied, archived] = await raceBehindOwner({
+    // Apply waits at its Assignment insert, the Ministry share-locked. Its
+    // outcome row cannot be held: that insert key-share locks the Ministry.
+    hold: (blocker) =>
+      blocker.query(
+        'SELECT id FROM shift_requirement WHERE id = $1 FOR UPDATE',
+        [seed.pair.shiftRequirementId],
+      ),
+    first: () => seed.apply(key),
+    second: () => settle(archiveMinistry(seed)),
+  });
+
+  expect(applied.statusCode).toBe(200);
+  expect(applied.json()).toMatchObject({ replayed: false });
+  expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
+    [seed.current.volunteerId, seed.replacementId].sort(),
+  );
+  expect(archived.ok).toBe(false);
+  if (!archived.ok) expect(archived.error).toBeInstanceOf(MinistryInUseError);
+  expect(await ministryArchivedAt(seed.ministryAId)).toBeNull();
+});

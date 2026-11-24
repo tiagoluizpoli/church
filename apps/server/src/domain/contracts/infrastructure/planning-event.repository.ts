@@ -224,7 +224,7 @@ export interface PlanningEventRepository {
   seedParticipations(
     input: SeedPlanningParticipationsInput,
   ): Promise<SeededMinistry[]>;
-  /** The active Assignments (draft, pending, confirmed) on the move scope. */
+  /** The active Assignments (draft, pending) on the move scope. */
   listMoveScopeAssignments(
     input: ListMoveScopeAssignmentsInput,
   ): Promise<MoveScopeAssignment[]>;
@@ -252,8 +252,8 @@ export interface PlanningEventRepository {
    */
   retimeEventTimeBlocks(input: RetimeEventTimeBlocksInput): Promise<void>;
   /**
-   * The active Assignments (draft, pending, confirmed) on the cancellation
-   * scope, flagged published (pending/confirmed in a published Schedule) and
+   * The active Assignments (draft, pending) on the cancellation
+   * scope, flagged published (pending in a published Schedule) and
    * with an open SwapRequest, with the Shift-line facts N9 freezes.
    */
   listCancellationScopeAssignments(

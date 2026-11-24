@@ -153,7 +153,7 @@ A child a Family brings to Kids. A Child is not a Person: it has no User, no Chu
 _Avoid_: Kid, minor, dependent, member (for a Child)
 
 **Care notes** (pt-BR: Cuidados):
-Short instructions a Guardian gives the room about how to look after a Child, such as autism or a food restriction, in free text plus a few standard flags. They are health data, given under their own consent, and seen only by the volunteers of the room the Child is in.
+Short instructions a Guardian gives the room about how to look after a Child, such as autism or a food restriction, in free text plus a few standard flags. They are health data, given under their own consent, and seen only by the volunteers of the room the Child is in, apart from the Care stamps and Tag note a Guardian chooses to print on the Child tag.
 _Avoid_: Medical record, medical registry, health profile
 
 **Guardian** (pt-BR: Responsável):
@@ -163,6 +163,46 @@ _Avoid_: Parent (when meaning any Guardian), responsible, tutor
 **Guardian contact** (pt-BR: Contato do responsável):
 A Guardian known only by name and phone, with no login, as registered at the desk for a visitor. It lets the Church reach the Guardian by hand and show a call on the big screen, but it can never be paged in the app. It gives way to the real Person once that adult has an account.
 _Avoid_: Visitor account, guest user
+
+**Check-in** (pt-BR: Check-in):
+A Child's stay in Kids at one Church, from the moment it is checked in until a volunteer releases it at check-out. A Guardian starts it by scanning a Check-in point with their own phone, or a desk volunteer starts it for them; it is never started before the Child is there. One scan may check in several Children of the same Family. A Child has at most one open Check-in, but once checked out it may be checked in again at once, as many times a day as needed, each time with a new Pickup code. A Check-in still open when the day ends is an anomaly for the Kids leaders, never taken as picked up.
+_Avoid_: Attendance (for the open stay), session, drop-off
+
+**Check-in point** (pt-BR: Ponto de check-in):
+A place at the venue where Guardians check Children in, shown as a printed QR code and served by one printer. It names a place, not a room, and the code alone lets nobody in without a Guardian's own login.
+_Avoid_: Station, kiosk, totem, room QR
+
+**Pickup code** (pt-BR: Código de retirada):
+The secret that releases the Children of one Check-in, new for every Check-in and shared by all the Children it covers. It is shown as a QR code on the Guardian tag and in the app of every Guardian of the Family, whoever made the Check-in, so any Guardian may pick up. Scanning it shows the volunteer the Children and the Family's Guardians, so the volunteer can check the adult in front of them by face or by name before releasing; typing it is a last resort.
+_Avoid_: Security code, checkout code, family code, token
+
+**Child tag** (pt-BR: Etiqueta da criança):
+The label stuck on a Child at check-in. Its QR code only identifies the Child's Check-in inside the app and never releases the Child, because anyone can read a toddler's back.
+_Avoid_: Name tag, badge, sticker (alone)
+
+**Guardian tag** (pt-BR: Etiqueta do responsável):
+The label an adult keeps after a Check-in, carrying its Pickup code and naming the Children it covers. Each Church chooses whether it is printed for every Check-in or only for Guardians without the app.
+_Avoid_: Parent receipt, claim ticket, security tag
+
+**Authorised adult** (pt-BR: Autorizado para retirada):
+An adult who is not a Guardian, such as a babysitter or an aunt, whom a Guardian allows to pick up the Family's Children for one Check-in or until a chosen date, never indefinitely. Any Guardian may revoke it. An authorised adult has no login, cannot check Children in on their own phone, and is always checked against an identity document at pickup.
+_Avoid_: Delegate, pickup person, secondary guardian
+
+**Care stamp** (pt-BR: Selo de cuidado):
+A small icon printed on a Child tag for one of the standard Care notes flags (neurodivergence, allergy or food restriction, medical condition, mobility or physical support), telling the room at a glance that a Child needs particular care before anyone opens the app. The set is the same in every Church. Stamps print only with a Guardian's own consent to showing them, since the tag is public.
+_Avoid_: Badge, medical icon, alert
+
+**Tag note** (pt-BR: Aviso na etiqueta):
+One short line a Guardian writes to print beside the Care stamps, saying how to act in the first minute ("chame pelo nome, não responde a comandos"). Under the same consent as the stamps, and optional.
+_Avoid_: Sticker note, care summary
+
+**Pickup restriction** (pt-BR: Restrição de retirada):
+A Church's own record that a named adult, Guardian or not, must not take a Child away from it, set by its Kids leadership after seeing a court order in person. A restricted Guardian stays in the Family but cannot check that Child in or out at that Church, and is told only to speak to the Kids leadership. It belongs to the Church, never to the Family, so it does not follow the Child to another Church.
+_Avoid_: Custody block, ban, removing a Guardian
+
+**Release override** (pt-BR: Liberação manual):
+A Kids leader's release of a Child to an adult who cannot show its pickup code, after checking that adult against the Family's Guardians. It records who released the Child, to whom and why. A plain volunteer cannot give one.
+_Avoid_: Manual checkout, bypass, forced checkout
 
 ## Time
 

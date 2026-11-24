@@ -2,7 +2,7 @@
 <!--
   PROTOTYPE, throwaway (wayfinder ticket #1084). Never merged.
   Question: how should the Child tag and the Guardian tag look?
-  Layouts A/B/C and C1-C3 x two stocks (29x90 DK-1201, 62x100 DK-1202) x three Care stamp icon families x a growing stamp catalogue x three cases.
+  Layouts A/B/C, C1-C3 and C4 (wristband-first) x two stocks (29x90 DK-1201, 62x100 DK-1202) x three Care stamp icon families x a growing stamp catalogue x three cases.
   Tags render at real mm size; Ctrl+P / "Imprimir" prints one tag per page at the label size (the printer emulator).
   QR codes are fake placeholders at the real size, not scannable. Thermal stock is black only, so no colour.
 -->
@@ -35,9 +35,9 @@
   /* ---- the tag itself: everything below is what a printing module would reproduce ---- */
   .tag { zoom: var(--zoom, 2.5); background: #fff; color: #000; box-shadow: 0 1px 4px rgba(0,0,0,.3);
     font-family: Arial, Helvetica, sans-serif; overflow: hidden; box-sizing: border-box; display: grid;
-    padding: 1.5mm; gap: 0.8mm 1.5mm; }
+    padding: 2mm; gap: 0.8mm 1.5mm; position: relative; }
   .s29 .tag { width: 90mm; height: 29mm; }
-  .s62 .tag { width: 100mm; height: 62mm; padding: 2.5mm; gap: 1.5mm 2.5mm; }
+  .s62 .tag { width: 100mm; height: 62mm; padding: 3mm; gap: 1.5mm 2.5mm; }
   .tag > * { min-width: 0; min-height: 0; }
   .name { grid-area: name; font-weight: 700; white-space: nowrap; overflow: hidden; line-height: 1.05; }
   .meta { grid-area: meta; font-size: 2.6mm; white-space: nowrap; overflow: hidden; }
@@ -74,17 +74,15 @@
 
   /* B: Número primeiro. A black ticket block carries the Call number; the QR is secondary. */
   .vB .call { background: #000; color: #fff; border: 0; border-radius: 0; }
-  .s29 .vB { grid-template: auto auto 1fr / 19mm 1fr 20mm; grid-template-areas: "call name qr" "call meta qr" "call care qr"; padding: 0 1.5mm 0 0; }
+  .s29 .vB { grid-template: auto auto 1fr / 19mm 1fr 20mm; grid-template-areas: "call name qr" "call meta qr" "call care qr"; }
   .s29 .vB .call b { font-size: 10mm; }
-  .s29 .vB > :not(.call) { margin-top: 1.5mm; margin-bottom: 1.5mm; }
-  .s62 .vB { grid-template: 17mm auto auto 1fr / 1fr 30mm; grid-template-areas: "call call" "name name" "meta qr" "care qr"; padding: 0 2.5mm 2.5mm; }
-  .s62 .vB .call { flex-direction: row; justify-content: flex-start; gap: 3mm; margin: 0 -2.5mm; padding: 0 3mm; }
+  .s62 .vB { grid-template: 17mm auto auto 1fr / 1fr 30mm; grid-template-areas: "call call" "name name" "meta qr" "care qr"; }
+  .s62 .vB .call { flex-direction: row; justify-content: flex-start; gap: 3mm; padding: 0 3mm; }
   .s62 .vB .call b { font-size: 13mm; }
 
   /* C: Faixa de cuidado. A black edge band: fixed Care stamp slots on the Child tag, "RETIRADA" on the Guardian tag. */
   .vC .band { grid-area: band; background: #000; color: #fff; display: flex; flex-direction: column;
-    justify-content: space-around; align-items: center; margin: -1.5mm 0 -1.5mm -1.5mm; }
-  .s62 .vC .band { margin: -2.5mm 0 -2.5mm -2.5mm; }
+    justify-content: space-around; align-items: center; }
   .vC .band .rot { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; letter-spacing: .5mm; font-size: 3mm; }
   .s62 .vC .band .rot { font-size: 5mm; }
   .s29 .vC { grid-template: auto auto 1fr / 7mm 1fr 22mm; grid-template-areas: "band name qr" "band meta qr" "band care qr"; }
@@ -94,8 +92,8 @@
   .vC .num { font-size: 1.6em; vertical-align: -0.15em; margin-right: 1mm; }
 
   /* ---- C1 / C2 / C3: directions evolved from C. Shared parts first. ---- */
-  .s29 .cx { --ts: 2.5mm; --tn: 2.7mm; --tx: 2.1mm; --tc: 3.8mm; --m: 1.5mm; }
-  .s62 .cx { --ts: 3.8mm; --tn: 4.2mm; --tx: 3mm; --tc: 6.5mm; --m: 2.5mm; }
+  .s29 .cx { --ts: 2.5mm; --tn: 2.7mm; --tx: 2.1mm; --tc: 3.8mm; --m: 2mm; }
+  .s62 .cx { --ts: 3.8mm; --tn: 4.2mm; --tx: 3mm; --tc: 6.5mm; --m: 3mm; }
   .cx { line-height: 1.1; }
   .cx .name, .cx .first, .cx .rest { font-weight: 700; white-space: nowrap; overflow: hidden; line-height: 1.1; letter-spacing: -0.01em; }
   .cx .fit.two { white-space: normal; text-wrap: balance; max-height: 2.25em; }
@@ -131,29 +129,28 @@
 
   /* C1: Faixa e coluna. Slim stamp band on the left edge; Call number stacked over the QR in a right column.
      Guardian tag is the mirror image: pickup QR on the left, band on the right edge. */
-  .s29 .vC1.kid { grid-template: "band name side" auto "band who side" auto "band note side" 1fr / 8.5mm 1fr 16mm; padding-left: 0; column-gap: 2mm; }
-  .s62 .vC1.kid { grid-template: "band name name" auto "band who who" auto "band note side" 1fr / 14mm 1fr 21mm; padding-left: 0; column-gap: 3.5mm; }
-  .vC1 .band { grid-area: band; margin: calc(-1 * var(--m)) 0; display: flex; align-items: center; justify-content: space-around; }
-  .vC1.kid .band { flex-direction: column; padding: var(--m) 0 var(--m) var(--m); }
+  .s29 .vC1.kid { grid-template: "band name side" auto "band who side" auto "band note side" 1fr / 8.5mm 1fr 16mm; column-gap: 2mm; }
+  .s62 .vC1.kid { grid-template: "band name name" auto "band who who" auto "band note side" 1fr / 14mm 1fr 21mm; column-gap: 3.5mm; }
+  .vC1 .band { grid-area: band; display: flex; align-items: center; justify-content: space-around; }
+  .vC1.kid .band { flex-direction: column; }
   .vC1.kid .who { grid-area: who; }
   .vC1.kid .note { grid-area: note; align-self: end; }
   .vC1 .side { grid-area: side; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
   .s29 .vC1 .side .num { font-size: 8.5mm; } .s29 .vC1 .side .q { width: 16mm; }
   .s62 .vC1 .side .num { font-size: 12.5mm; } .s62 .vC1 .side .q { width: 21mm; }
   .s62 .vC1 .side { justify-content: flex-end; gap: 2mm; }
-  .s29 .vC1.grd { grid-template: "pick body clm band" 1fr / 18.5mm 1fr auto 8.5mm; padding-right: 0; column-gap: 2mm; }
-  .s62 .vC1.grd { grid-template: "pick body band" 1fr "pick clm band" auto / 34mm 1fr 14mm; padding-right: 0; column-gap: 3.5mm; }
-  .vC1.grd .band { padding-right: var(--m); }
+  .s29 .vC1.grd { grid-template: "pick body clm band" 1fr / 18.5mm 1fr auto 8.5mm; column-gap: 2mm; }
+  .s62 .vC1.grd { grid-template: "pick body band" 1fr "pick clm band" auto / 34mm 1fr 14mm; column-gap: 3.5mm; }
   .s29 .vC1 .rot { font-size: 3mm; } .s62 .vC1 .rot { font-size: 5mm; }
   .vC1.grd .pick .q { width: 100%; }
   .s29 .vC1.grd .num { font-size: 6.5mm; } .s62 .vC1.grd .num { font-size: 12mm; }
 
   /* C2: Faixa no topo. The band runs along the top edge and carries the screen lockup "247 · Ana" plus the four slots;
      the name gets the full label width. Guardian tag has no band at all: a heavy frame. */
-  .s29 .vC2.kid { grid-template: "band band" 8.5mm "name name" auto "foot qr" 1fr / 1fr auto; padding-top: 0; }
-  .s62 .vC2.kid { grid-template: "band band" 15mm "name name" auto "foot qr" 1fr / 1fr auto; padding-top: 0; }
-  .vC2.kid .band { grid-area: band; margin: 0 calc(-1 * var(--m)); display: flex; align-items: center; justify-content: space-between;
-    padding: calc(var(--m) + .9mm) calc(var(--m) + .5mm) .9mm; }
+  .s29 .vC2.kid { grid-template: "band band" 7mm "name name" auto "foot qr" 1fr / 1fr auto; }
+  .s62 .vC2.kid { grid-template: "band band" 13mm "name name" auto "foot qr" 1fr / 1fr auto; }
+  .vC2.kid .band { grid-area: band; display: flex; align-items: center; justify-content: space-between;
+    padding: .9mm 1.4mm; }
   .vC2.kid .band .lock { font-size: 3.6mm; } .s62 .vC2.kid .band .lock { font-size: 5mm; }
   .vC2.kid .band .lock b { font-size: 1.7em; line-height: .8; }
   .cx .foot { grid-area: foot; display: flex; flex-direction: column; justify-content: space-between; gap: .6mm; overflow: hidden; }
@@ -172,22 +169,48 @@
 
   /* C3: Bloco de chamada. A wide black block is the volunteer zone: Call number over a 2x2 grid of slots.
      The name splits in two tiers: first name huge, the rest on a smaller line. Guardian tag mirrors it: block on the right holds the pickup QR. */
-  .s29 .vC3.kid { grid-template: "block first first" auto "block rest qr" auto "block foot qr" 1fr / 20.5mm 1fr 13.5mm; padding-left: 0; column-gap: 2mm; row-gap: .3mm; }
-  .s62 .vC3.kid { grid-template: "block first first" auto "block rest rest" auto "block foot qr" 1fr / 28mm 1fr 22mm; padding-left: 0; column-gap: 3.5mm; row-gap: .6mm; }
-  .vC3 .block { grid-area: block; margin: calc(-1 * var(--m)) 0; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
-  .vC3.kid .block { padding: var(--m) var(--m) var(--m) calc(var(--m) + .5mm); }
+  .s29 .vC3.kid { grid-template: "block first first" auto "block rest qr" auto "block foot qr" 1fr / 21.5mm 1fr 13.5mm; column-gap: 2mm; row-gap: .3mm; }
+  .s62 .vC3.kid { grid-template: "block first first" auto "block rest rest" auto "block foot qr" 1fr / 28mm 1fr 22mm; column-gap: 3.5mm; row-gap: .6mm; }
+  .vC3 .block { grid-area: block; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
+  .vC3.kid .block { padding: 1mm; } .s62 .vC3.kid .block { padding: 1.5mm; }
   .vC3 .block .num { width: 100%; text-align: center; overflow: hidden; line-height: 1.16; margin: -.08em 0; }
   .vC3 .first { grid-area: first; line-height: 1.16; margin: -.08em 0 -.04em; }
-  .s62 .vC3 .note { -webkit-line-clamp: 5; }
+  .s62 .vC3 .note { -webkit-line-clamp: 6; font-size: 3.8mm; } .s29 .vC3 .note { -webkit-line-clamp: 3; font-size: 2.5mm; }
   .vC3 .rest { grid-area: rest; }
   .vC3.kid .foot { justify-content: flex-end; }
   .s29 .vC3.kid > .q { width: 13.5mm; } .s62 .vC3.kid > .q { width: 22mm; }
-  .s29 .vC3.grd { grid-template: "body clm block" 1fr / 1fr auto 22mm; padding-right: 0; column-gap: 2mm; }
-  .s62 .vC3.grd { grid-template: "body block" 1fr "clm block" auto / 1fr 38mm; padding-right: 0; column-gap: 3.5mm; }
-  .vC3.grd .block { padding: var(--m) calc(var(--m) + 1.5mm) var(--m) 1.5mm; justify-content: center; gap: .8mm; }
+  .s29 .vC3.grd { grid-template: "body clm block" 1fr / 1fr auto 18mm; column-gap: 2mm; }
+  .s62 .vC3.grd { grid-template: "body block" 1fr "clm block" auto / 1fr 38mm; column-gap: 3.5mm; }
+  .vC3.grd .block { padding: 1mm 1.5mm; justify-content: center; gap: .8mm; }
   .vC3.grd .block small { font-size: var(--tx); font-weight: 700; letter-spacing: .14em; }
+  .s29 .vC3.grd .block .q { width: 14mm; }
   .vC3.grd .block .q { width: 100%; background: #fff; padding: .4mm; box-sizing: border-box; border-radius: .6mm; }
   .vC3.grd .block .pcode { padding: 0; }
+
+  /* C4: Pulseira. The Child tag sticks onto a paper wristband: the band is narrower than the label (top and bottom strips fold over)
+     and wraps the wrist (the ends curve away). Name, Call number and stamps sit in the centred visible face; Tag note and Resp. on the
+     left end, Check-in QR on the right end (turn the wrist to scan); nothing in the fold strips. Uses the 29 mm type scale on both stocks. */
+  .cx.vC4 { --ts: 2.5mm; --tn: 2.4mm; --tx: 2.1mm; --tc: 3.8mm; }
+  .vC4.kid { padding: max(var(--m), calc(var(--fold) + 1mm)) var(--m); gap: .3mm 0;
+    grid-template: "info first qr" auto "info rest qr" auto "info block qr" 1fr / 1fr calc(var(--face) - 2mm) 1fr; }
+  .vC4 .first { grid-area: first; line-height: 1.02; overflow: clip visible; }
+  .vC4 .rest { grid-area: rest; }
+  .vC4 .block { grid-area: block; justify-self: start; align-self: stretch; display: flex; align-items: center; gap: 1.5mm; padding: .6mm .8mm; }
+  .vC4 .block .num { font-size: 9mm; line-height: 1; flex: none; }
+  .vC4 .info { grid-area: info; display: flex; flex-direction: column; justify-content: space-between; gap: .6mm; margin-right: 2mm; overflow: hidden; }
+  .vC4 .info .who { white-space: normal; line-height: 1.2; flex: none; }
+  .vC4 .note { -webkit-line-clamp: 6; }
+  .vC4.kid > .q { width: min(17mm, 100% - 2mm); justify-self: end; align-self: center; }
+
+  /* Wristband preview (wrist=1), screen only: hatched = folds over the band edge (lost); shaded = curves away from the volunteer. */
+  .wz i { position: absolute; pointer-events: none; }
+  .wz .f { left: 0; right: 0; height: var(--fold); background: repeating-linear-gradient(45deg, rgba(210,0,0,.42) 0 .5mm, rgba(210,0,0,.14) .5mm 1.1mm); }
+  .wz .f.t { top: 0; border-bottom: .15mm dashed #c00; } .wz .f.b { bottom: 0; border-top: .15mm dashed #c00; }
+  .wz .e { top: var(--fold); bottom: var(--fold); width: calc((100% - var(--face)) / 2); }
+  .wz .e.l { left: 0; background: linear-gradient(to left, rgba(0,60,160,.07), rgba(0,30,90,.5)); border-right: .15mm dashed #036; }
+  .wz .e.r { right: 0; background: linear-gradient(to right, rgba(0,60,160,.07), rgba(0,30,90,.5)); border-left: .15mm dashed #036; }
+  .lost { outline: .5mm solid #e00; outline-offset: .2mm; }
+  .controls input[type=number] { width: 4em; }
 
   .overflow { outline: 0.4mm solid #e00; outline-offset: -0.4mm; }
   .switcher { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 3; background: #111; color: #fff;
@@ -195,11 +218,11 @@
   .switcher button { background: #333; color: #fff; border: 0; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; }
 
   @media print {
-    .controls, .state, .legend, .slot h3, .switcher { display: none !important; }
+    .controls, .state, .legend, .slot h3, .switcher, .wz { display: none !important; }
     body { background: #fff; }
     .sheet { padding: 0; display: block; }
     .tag { zoom: 1 !important; box-shadow: none; break-after: page; }
-    .overflow { outline: 0; }
+    .overflow, .lost { outline: 0; }
   }
 </style>
 </head>
@@ -212,21 +235,28 @@
     <label><input type="radio" name="v" value="C1"> C1 · Faixa e coluna</label>
     <label><input type="radio" name="v" value="C2"> C2 · Faixa no topo</label>
     <label><input type="radio" name="v" value="C3"> C3 · Bloco de chamada</label>
+    <label><input type="radio" name="v" value="C4"> C4 · Pulseira</label>
   </fieldset>
   <fieldset><legend>Etiqueta</legend>
     <label><input type="radio" name="stock" value="29"> 29 x 90 mm</label>
     <label><input type="radio" name="stock" value="62"> 62 x 100 mm</label>
   </fieldset>
   <fieldset><legend>Selos</legend>
-    <label><input type="radio" name="stamps" value="bonecos"> Bonequinhos</label>
-    <label><input type="radio" name="stamps" value="camisa"> Bonequinho + símbolo</label>
-    <label><input type="radio" name="stamps" value="simbolos"> Símbolos</label>
+    <label><input type="radio" name="stamps" value="material"> Material</label>
+    <label><input type="radio" name="stamps" value="phosphor"> Phosphor</label>
+    <label><input type="radio" name="stamps" value="fa"> Font Awesome</label>
   </fieldset>
   <fieldset><legend>Selos no catálogo</legend>
     <label><input type="radio" name="cat" value="4"> 4</label>
     <label><input type="radio" name="cat" value="6"> 6</label>
     <label><input type="radio" name="cat" value="8"> 8</label>
     <label><input type="radio" name="cat" value="all"> Todos</label>
+  </fieldset>
+  <fieldset><legend>Pulseira</legend>
+    <label><input type="radio" name="wrist" value="0"> sem prévia</label>
+    <label><input type="radio" name="wrist" value="1"> prévia</label>
+    <label>largura <input type="number" name="band" min="15" max="62" step="1"> mm</label>
+    <label>face visível <input type="number" name="face" min="25" max="100" step="1"> mm</label>
   </fieldset>
   <fieldset><legend>Ver</legend>
     <label><input type="radio" name="view" value="tags"> Etiquetas</label>
@@ -248,7 +278,7 @@
 <div class="switcher"><button id="prev">←</button><span id="vlabel"></span><button id="next">→</button></div>
 
 <script>
-const VARIANTS = { A: 'Nome primeiro', B: 'Número primeiro', C: 'Faixa de cuidado', C1: 'Faixa e coluna', C2: 'Faixa no topo', C3: 'Bloco de chamada' };
+const VARIANTS = { A: 'Nome primeiro', B: 'Número primeiro', C: 'Faixa de cuidado', C1: 'Faixa e coluna', C2: 'Faixa no topo', C3: 'Bloco de chamada', C4: 'Pulseira' };
 const CASES = {
   tipico: { date: '24/11', call: 47, guardian: 'Ana', pickup: 'K7P4', contact: false,
     kids: [{ name: 'Laura Souza', stamps: ['allergy'], note: 'Alergia a amendoim: nada de lanche da sala' }] },
@@ -264,70 +294,80 @@ const CASES = {
     kids: [{ name: 'Lucas Lima', stamps: [], note: '' }] },
 };
 
-// ---- Care stamp catalogue. Icons are 20x20 inline SVG
-// in currentColor on var(--bg), so the same drawing works black-on-white (tile) and white-on-black (the shirt family).
-const BG = 'var(--bg)';
-const st = (d, w = 2.2, c = 'currentColor') => `<path d="${d}" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke:${c};stroke-width:calc(var(--k,1)*${w}px)"/>`;
-const fl = (d, c = 'currentColor') => `<path d="${d}" style="fill:${c}"/>`;
-const dot = (x, y, r, c = 'currentColor') => `<circle cx="${x}" cy="${y}" r="${r}" style="fill:${c}"/>`;
-const slash = (d = 'M3 17.5L17 2.5', w = 2) => st(d, w * 2.4, BG) + st(d, w);
-const SYM = {
-  neuro: st('M10 10C7.6 5.4 2.4 5.4 2.4 10C2.4 14.6 7.6 14.6 10 10C12.4 5.4 17.6 5.4 17.6 10C17.6 14.6 12.4 14.6 10 10Z', 2.8),
-  // an apple with "!": mind the food. Not a slash, which would read "do not feed".
-  allergy: fl('M10 6.2C8.2 4.4 2.6 4.6 2.6 10.6C2.6 15.2 5.8 18.6 7.8 18.6C8.8 18.6 9.2 18.1 10 18.1C10.8 18.1 11.2 18.6 12.2 18.6C14.2 18.6 17.4 15.2 17.4 10.6C17.4 4.6 11.8 4.4 10 6.2Z')
-    + fl('M10.2 5.2C10.2 3 11.8 1.4 14.4 1.4C14.4 3.6 12.8 5.2 10.2 5.2Z') + st('M10 8.6V12.6', 2.4, BG) + dot(10, 15.6, 1.3, BG),
-  medical: fl('M7 2H13V7H18V13H13V18H7V13H2V7H7Z'),
-  mobility: dot(8.5, 3.4, 2.3) + st('M8.5 7.2V12.2H13.5L15.8 17.6') + st('M8.5 9.6H13') + st('M5.6 10.2A5 5 0 1 0 12.6 16.8', 2),
-  seizure: fl('M12.2 1.5L4 11.4H8.8L7.2 18.5L16 8.4H11.2Z'),
-  diabetes: fl('M10 1.6C8 4.6 3.8 9.4 3.8 12.6A6.2 6.2 0 0 0 16.2 12.6C16.2 9.4 12 4.6 10 1.6Z') + st('M10 9.6V15.6M7 12.6H13', 1.8, BG),
-  photo: fl('M2 6.5H6.3L7.8 4H12.2L13.7 6.5H18V16.5H2Z') + dot(10, 11.2, 3.3, BG) + dot(10, 11.2, 1.5) + slash(),
-  toilet: fl('M3.5 2H7.5V10.2H3.5Z') + fl('M3.5 11.5H17C17 14.8 14.6 16.6 12 17L12.5 19H6L6.5 16.6C4.6 15.6 3.5 13.8 3.5 11.5Z') + st('M9.6 9.4H16.4', 1.6),
-  flight: st('M10.5 2.6H4V17.4H10.5') + st('M9 10H18M14.6 6.4L18 10L14.6 13.6'),
-  hearing: fl('M10.5 1.8C6.6 1.8 4 4.8 4 8.4C4 11 5.4 12.4 6.2 14C6.9 15.4 6.8 18.2 9.8 18.2C12.6 18.2 13.2 16 13.6 14.6C14.2 12.6 16.4 11.6 16.4 8C16.4 4.8 14 1.8 10.5 1.8Z')
-    + st('M7.4 8.2A3 3 0 0 1 13.4 8.2C13.4 10 11.4 10.4 10.8 12.2', 1.7, BG) + slash('M2.6 17.8L17.6 2.4', 1.5),
-  vision: st('M1.8 10C5 4.5 15 4.5 18.2 10C15 15.5 5 15.5 1.8 10Z', 2) + dot(10, 10, 2.7) + slash(),
-  nonverbal: fl('M2.5 3H17.5V13.4H10.5L6 17.8V13.4H2.5Z') + st('M7.2 5.4L12.8 11M12.8 5.4L7.2 11', 2, BG),
-};
-// Bonequinhos with a pose of their own; every other stamp is the little person standing next to its symbol.
-const fig = dot(4.6, 5, 2.8) + fl('M1 19V13A3.6 3.6 0 0 1 8.2 13V19Z');
-const POSE = {
-  neuro: dot(10, 4, 3.1) + st('M10 13.6C7.8 9.6 2.4 9.6 2.4 13.6C2.4 17.6 7.8 17.6 10 13.6C12.2 9.6 17.6 9.6 17.6 13.6C17.6 17.6 12.2 17.6 10 13.6Z', 2.4),
-  mobility: SYM.mobility,
-  flight: dot(12.6, 3.6, 2.5) + st('M11.4 7.4L9.6 12.2L13.2 14.6L12.2 18.6M9.6 12.2L6.8 15.2L3 15.2M7 9.4L11.4 7.6L15.4 10.4', 2),
-  vision: dot(7.5, 3.6, 2.6) + st('M7.5 7.2V13L5 18.6M7.5 13L10 18.6M7.5 9L11.4 11.2') + st('M11.4 11.2L17.6 18.6', 1.6),
-};
-const FAMILIES = { bonecos: 'Bonequinhos', camisa: 'Bonequinho + símbolo', simbolos: 'Símbolos' };
-// The catalogue, in print-priority order. Growing it is one line here plus one drawing in SYM.
+// ---- Care stamp catalogue. Icons are professionally drawn open-licence sets, inlined (no runtime fetch): [icon name, viewBox, markup].
+// Licences: Material Symbols (Google, Apache-2.0) · Phosphor Icons fill (MIT) · Font Awesome Free 6 solid (CC BY 4.0, by @fontawesome, fontawesome.com; attribution required).
+const ICONS = {"material":{"neuro":["cognition","0 -960 960 960","<path d=\"M475-344q66 0 112-41.5t46-102.03Q633-540 600-577t-81.53-37Q476-614 446-586.5T416-520q0 18 7 34.22 7 16.21 19 29 12 10.78 24.5 9.28T487-458q8-9 8.5-20.65.5-11.65-9.5-20.35-5-4-7.5-8.8-2.5-4.8-2.5-11.2 0-13 11.5-23.5T518-553q23 0 39.5 19t16.5 47q0 35-27.5 59.5T476-403q-50 0-86-40.5T354-544q0-23 6.5-45t19.5-41q7-10 6.5-22.5T377-674q-9-9-21-9t-20 10q-21 27-32 60t-11 68q0 84 53 142.5T475-344ZM265-58q-20 0-33.5-13.5T218-105v-137q-57-55-88.5-127.5T98-520q0-159.58 111.28-271.29Q320.56-903 479.53-903 612-903 714.5-824T849-620l56 224q6 23-7.91 40.5T860-338h-77v106q0 40.05-27.27 67.02Q728.46-138 688-138h-65v33q0 20-14.06 33.5T575-58H265Z\"/>"],
+    "allergy":["allergy","0 -960 960 960","<path d=\"M797-53q-15 0-28-6.5T748-79q-138-12-237-95T364-400q-88 39-141 114t-66 175q-2 19-16 31.5T109-67q-18 0-30.5-12.5T68-110q13-131 84-229t190-146q-19-118 3.5-213T429-857v-4q-1-27 17.5-46.5T493-927q26 0 44.5 18.5T556-863q0 26-16.5 44T497-800h-5q-33 41-47 73.5T428-646q34-37 91-54.5T653-715q16 3 29 5.5t5 4.5q8-8 20-13.5t26-5.5q26 0 44.5 18.5T796-660q0 27-18.5 45T733-597q-14 0-27-5.5T684-619q-20-2-26-4t-16-4q-86-3-136 25.5T448-517q36-6 82-7t67 4q8-10 20.5-17t27.5-7q27 0 45.5 18.5T709-480q0 27-18.5 45T645-417q-13 0-24-4.5T601-435q-14-5-60.5-3t-79.5 8q19 38 62 54.5T635-363q22-3 51-6.5t63-10.5q8-15 22-23.5t32-8.5q27 0 45.5 18.5T867-348q0 27-18.5 45T803-285q-8 0-16.5-2t-15.5-5q-45 7-79.5 11t-61.5 5q-27 1-52-2t-47-9q46 58 103 88t125 32q9-6 18-9.5t20-3.5q27 0 45.5 18.5T861-116q0 27-18.5 45T797-53Z\"/>"],
+    "medical":["medical_services","0 -960 960 960","<path d=\"M149-55q-39.05 0-66.53-27.47Q55-109.95 55-149v-490q0-39.46 27.47-67.23Q109.95-734 149-734h148v-100q0-38 27.48-66 27.47-28 66.52-28h178q39.05 0 66.53 28Q663-872 663-834v100h148q39.46 0 67.23 27.77Q906-678.46 906-639v490q0 39.05-27.77 66.53Q850.46-55 811-55H149Zm242-679h178v-100H391v100Zm42 387v73q0 19.75 13.68 33.37Q460.35-227 480.18-227q19.82 0 33.32-13.63Q527-254.25 527-274v-73h73q19.75 0 33.38-13.68Q647-374.35 647-394.18q0-19.82-13.62-33.32Q619.75-441 600-441h-73v-73q0-19.75-13.68-33.38Q499.65-561 479.82-561q-19.82 0-33.32 13.62Q433-533.75 433-514v73h-73q-19.75 0-33.37 13.68Q313-413.65 313-393.82q0 19.82 13.63 33.32Q340.25-347 360-347h73Z\"/>"],
+    "mobility":["accessible_forward","0 -960 960 960","<path d=\"M298-55q-84 0-144-59.5T94-259q0-68 42-122.5T245-455q18-7 35 2.5t21 27.5q3 16-5.5 30T270-376q-40 9-67 42t-27 75q0 50 36 86t86 36q43 0 73-23.5t41-66.5q5-16 20.5-23t31.5-2q16 5 23 20t2 31q-19 68-71 107T298-55Zm280.5-687.5Q554-767 554-802t24.5-59.5Q603-886 638-886t59.5 24.5Q722-837 722-802t-24.5 59.5Q673-718 638-718t-59.5-24.5ZM415-300q-49 0-73.5-38t-4.5-81l92-201h-92l-14 40q-6 14-19.5 20t-27.5 2q-16-6-23-20.5t-1-30.5l13-33q9-23 25-36t45-13h187q48 0 71.5 34.5T598-582l-86 180h134q40 0 68.5 29t28.5 69v168q0 18-12 29.5T702-95q-17 0-29-11.5T661-136v-164H415Z\"/>"],
+    "seizure":["bolt","0 -960 960 960","<path d=\"M338-332H213q-29 0-42.5-25t3.5-49l376-542q10-14 25-18.5t30 1q15 5.5 24 20t7 30.5l-41 326h159q30 0 42.5 27t-5.5 50L381-18Q371-5 355.5-1.5t-30-3q-14.5-6.5-22-20T298-55l40-277Z\"/>"],
+    "diabetes":["glucose","0 -960 960 960","<path d=\"M554-67q-35.85 0-67.8-14.98Q454.25-96.96 430-124L207-383q-14-13.91-11-34.46Q199-438 215-450l9-7q24-18 53-19t54 15l79 51v-400q0-18.3 12.5-31.15Q435-854 452.51-854q18.51 0 31.5 12.85Q497-828.3 497-810v373h67v-213q0-18.3 13-31.15Q590-694 607.5-694q18.5 0 31 12.85T651-650v213h58v-173q0-18.3 12.5-31.15Q734-654 751.51-654q18.51 0 31.5 12.85Q796-628.3 796-610v173h67v-93q0-18.3 13-31.15Q889-574 906.5-574q18.5 0 31 12.85T950-530v300q0 68-47.5 115.5T787.17-67H554ZM179.63-543Q114-543 68.5-587.85T23-698.38Q23-736 37.5-763 52-790 104-850l40-47q14.25-17 36.13-17Q202-914 217-897l39.61 47q51.39 61 65.89 88t14.5 63.9q0 65.1-45.85 110.1t-111.52 45Z\"/>"],
+    "photo":["no_photography","0 -960 960 960","<path d=\"m820-50-45-45H149q-40 0-67-27t-27-67v-495q0-40 27-67.5t67-27.5h36v95L47-823q-10-10-10.5-24.5T47-873q11-11 25.5-11T98-873l773 772q10 11 10 25.5T870-50q-10 10-24.5 10T820-50Zm30-184.5q-14-1.5-25-12.5L653-419q3-39-8-76.5T606-561q-29-28-66.5-39.5T462-609L303-769q-4-3-6-8t-2-10q0-5 1.5-10t6.5-9l27-33q13-14 29.5-20.5T396-866h169q18 0 35 6.5t30 20.5l57 60h124q40 0 67.5 27.5T906-684v403q0 16-9 27.5t-21 16q-12 4.5-26 3ZM483-259q26 0 51.5-7t48.5-22L332-539q-15 23-22 48.5t-7 51.5q0 75 52.5 127.5T483-259Zm-4-80q-40 0-68-28t-28-68q0-19 7-37t21-32l137 137q-14 14-32 21t-37 7Z\"/>"],
+    "toilet":["baby_changing_station","0 -960 960 960","<path d=\"M130-40q-19.75 0-33.37-13.63Q83-67.25 83-87v-378q0-7.9 1-15.45Q85-488 88-495l58-173q10-28 33-43.5t50.37-15.5q8.16 0 17.81 1.79 9.66 1.78 17.82 5.21l165 73h60q19.75 0 33.38 13.68Q537-619.65 537-599.82q0 19.82-13.62 33.32Q509.75-553 490-553h-61q-10.25 0-20-1.43T390-560l-84-38-49 149v362q0 19.75-13.62 33.37Q229.75-40 210-40h-80Zm279-95q-19.75 0-33.37-13.68Q362-162.35 362-182.18 362-202 375.63-216q13.62-14 33.37-14h421q19.75 0 33.88 14.18 14.12 14.17 14.12 34 0 19.82-14.12 33.32Q849.75-135 830-135H409Zm397-145q-29 0-50.5-21T734-351.5q0-29.5 21.5-50.5t50.5-21q30 0 51 21t21 50.5q0 29.5-21 50.5t-51 21Zm-282-10q-38.75 0-60.37-22.13Q442-334.25 442-373v-37h-39q-17.75 0-29.37-12.18Q362-434.35 362-451.68 362-469 374.13-481q12.12-12 29.87-12h73q19.75 0 33.38 13.62Q524-465.75 524-446v33h98v-39q0-16.75 12.18-28.88 12.17-12.12 29-12.12Q680-493 692-480.88q12 12.13 12 28.88v79q0 39.75-21.62 61.37Q660.75-290 622-290h-98ZM305.08-785Q270-785 245-810.42t-25-59.5Q220-905 244.92-930t60-25Q339-955 364-930.08t25 60q0 34.08-24.92 59.58t-59 25.5Z\"/>"],
+    "flight":["directions_run","0 -960 960 960","<path d=\"M524-70v-203l-90-82-30 133q-5 19-20.5 29.5T349-186l-204-42q-16-3-25.5-16.5T114-275q3-16 17-24.5t30-6.5l160 32 67-339-80 39v96q0 18-12 30t-30 12q-18 0-30-12t-12-30v-120q0-15 8.5-27t21.5-18l149-59q33-14 47.5-18.5T480-725q23 0 41 11t30 30l44 67q20 33 54 59.5t81 34.5q17 4 29 16t12 29q0 18-12 30t-29 9q-55-7-98-34t-82-76l-33 132 73 68q8 7 12 16t4 19v244q0 17-12 29t-29 12q-17 0-29-12t-12-29Zm-42.5-720Q457-815 457-850.5t24.5-60q24.5-24.5 60-24.5t60 24.5q24.5 24.5 24.5 60T601.5-790q-24.5 25-60 25t-60-25Z\"/>"],
+    "hearing":["hearing_disabled","0 -960 960 960","<path d=\"M381-796q-19 1-38 6t-35 14q-20 5-37-4.5T248.5-809q-5.5-19 4.5-36.5t29-22.5q23-12 48-17.5t51-5.5q59 0 113 20.5t95 62.5q57 57 75 135t-5 154q-6 20-23.5 29.5T598-485q-20-6-30-23.5t-5-37.5q18-50 6.5-102.5T520-739q-28-28-64-44.5T381-796Zm-13 303q-40 0-66.5-27T275-586q0-23 11-42t27-30l126 126q-11 17-29.5 28T368-493ZM820-51 541-330q-19 15-36 31t-31 35q-15 19-24.5 40T431-181q-22 56-69 88.5T255-60q-71 0-118-49T87-238q0-20 13.5-33.5T134-285q20 0 33.5 13.5T181-238q4 40 25 61.5t50 21.5q34 0 56.5-20.5T352-242q9-22 21-43t27-41q15-21 33-39t38-34L196-674q-6 18-10.5 38t-5.5 41q0 20-13.5 33.5T133-548q-20 0-33.5-13.5T86-595q1-42 11-80t28-70l-78-78q-10-10-10.5-25T47-874q11-11 25.5-11T98-874l773 773q10 11 10.5 25T871-51q-11 11-25.5 11T820-51Zm-40-555q0-64-18-123.5T711-838q-11-16-9-35.5t17-32.5q14-13 33.5-10.5T783-898q46 63 69 138.5T875-606q0 65-19 133t-52 123q-8 17-26.5 22t-36.5-6q-17-10-22-29.5t4-37.5q27-43 42-98t15-107Zm-324-11-56-56q7-3 13-5.5t14-2.5q15 0 25.5 11t10.5 26q0 7-2 14t-5 13Z\"/>"],
+    "vision":["blind","0 -960 960 960","<path d=\"M397.5-800.5Q374-824 374-857.5t23.5-57q23.5-23.5 57-23.5t57 23.5q23.5 23.5 23.5 57t-23.5 57Q488-777 454.5-777t-57-23.5Zm326 325Q712-464 695-464h-39l209 359q6 10 3 22.5T854.5-64Q844-58 831-62t-18-14L577-482q-39-9-79-34.5T434-572q-9 26-13.5 57t-3.5 63l96 135v229q0 17-11.5 28.5T473-48q-17 0-28.5-11.5T433-88v-205l-59-60-14 133L254-79q-10 13-26.5 15.5T199-71q-13-9-16-26t8-30l89-119-9-172q-3-54 5-114t25-106l-88 53v81q0 17-11.5 28.5T174-464q-17 0-28.5-11.5T134-504v-100q0-13 5.5-23.5T156-645l112-68q31-18 55.5-27t46.5-9q24 0 43 12t31 34l36 63q21 38 84.5 67T695-544q17 0 28.5 11.5T735-504q0 17-11.5 28.5Z\"/>"],
+    "nonverbal":["voice_over_off","0 -960 960 960","<path d=\"M517-555 272-799q12-7 37-13t53-6q77 0 126.5 49T538-643q0 24-6.5 49T517-555ZM17-191v-26q0-44 24.5-78T99-344q69-32 135-47t128-15q23 0 56 4t58 13l-83-84q-5 2-13 4t-18 2q-78 0-126-49t-49-123q0-8 1.5-17t3.5-16L66-796q-12-12-11.5-26.5T67-848q10-11 25-11t27 11l729 724q11 11 11 25.5T847-73q-12 11-26.5 11T796-73l-92-89h4q0 28-19.5 47T642-96H111q-39 0-66.5-27.5T17-191Zm926-453q0 82-24.5 145.5T849-381q-11 13-27.5 14T794-378q-11-12-11.5-28t10.5-29q35-44 54.5-92.5T867-644q0-67-18-115t-53-92q-10-12-9.5-28.5T798-907q11-11 26.5-9.5T851-902q44 54 68 116t24 142Zm-210 1q0 31-9.5 59.5T699-530q-8 13-22.5 13T651-528q-11-12-12-27t6-30q6-12 9.5-26.5T658-643q0-15-3.5-29t-9.5-26q-7-14-5.5-30t13.5-28q11-11 26-10.5t23 13.5q14 25 22.5 52.5T733-643Z\"/>"]},
+  "phosphor":{"neuro":["brain","0 0 256 256","<path d=\"M212,76V72a44,44,0,0,0-74.86-31.31,3.93,3.93,0,0,0-1.14,2.8v88.72a4,4,0,0,0,6.2,3.33A47.67,47.67,0,0,1,167.68,128a8.18,8.18,0,0,1,8.31,7.58,8,8,0,0,1-8,8.42,32,32,0,0,0-32,32v33.88a4,4,0,0,0,1.49,3.12,47.92,47.92,0,0,0,74.21-17.16,4,4,0,0,0-4.49-5.56A68.06,68.06,0,0,1,192,192h-7.73a8.18,8.18,0,0,1-8.25-7.47,8,8,0,0,1,8-8.53h8a51.6,51.6,0,0,0,24-5.88v0A52,52,0,0,0,212,76Zm-12,36h-4a36,36,0,0,1-36-36V72a8,8,0,0,1,16,0v4a20,20,0,0,0,20,20h4a8,8,0,0,1,0,16ZM88,28A44.05,44.05,0,0,0,44,72v4a52,52,0,0,0-4,94.12h0A51.6,51.6,0,0,0,64,176h7.73A8.18,8.18,0,0,1,80,183.47,8,8,0,0,1,72,192H64a67.48,67.48,0,0,1-15.21-1.73,4,4,0,0,0-4.5,5.55A47.93,47.93,0,0,0,118.51,213a4,4,0,0,0,1.49-3.12V176a32,32,0,0,0-32-32,8,8,0,0,1-8-8.42A8.18,8.18,0,0,1,88.32,128a47.67,47.67,0,0,1,25.48,7.54,4,4,0,0,0,6.2-3.33V43.49a4,4,0,0,0-1.14-2.81A43.85,43.85,0,0,0,88,28Zm8,48a36,36,0,0,1-36,36H56a8,8,0,0,1,0-16h4A20,20,0,0,0,80,76V72a8,8,0,0,1,16,0Z\"/>"],
+    "allergy":["grains-slash","0 0 256 256","<path d=\"M216,64v80a87.66,87.66,0,0,1-5.45,30.49,4,4,0,0,1-6.7,1.27L162.52,130.3a4,4,0,0,1,1-6.16A87.36,87.36,0,0,1,200,112.37V72.45a72.33,72.33,0,0,0-50.35,29.36A8,8,0,0,1,137.72,103a8.17,8.17,0,0,1-.89-10.75,88.06,88.06,0,0,1,25-23.11C152.62,49.8,135.45,37.74,128,33.2a99.79,99.79,0,0,0-23.4,19.94,8,8,0,0,1-12,.27,8.18,8.18,0,0,1-.06-10.8,112.35,112.35,0,0,1,31.86-25.76,8,8,0,0,1,7.16,0c1.32.66,30.27,15.43,44.59,45.15a87.86,87.86,0,0,1,31.74-6A8,8,0,0,1,216,64Zm-2.08,146.62a8,8,0,1,1-11.84,10.76l-12.9-14.19A87.77,87.77,0,0,1,128.52,232C79.83,232.28,40,191.51,40,142.83V64a8,8,0,0,1,8.09-8c1.25,0,2.48,0,3.72.09L42.08,45.38A8,8,0,1,1,53.92,34.62Zm-77.6-61.57L69.18,75.19A71.31,71.31,0,0,0,56,72.44v39.94a88.17,88.17,0,0,1,72,51A88.22,88.22,0,0,1,136.32,149.05Z\"/>"],
+    "medical":["first-aid-kit","0 0 256 256","<path d=\"M216,56H176V48a24,24,0,0,0-24-24H104A24,24,0,0,0,80,48v8H40A16,16,0,0,0,24,72V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V72A16,16,0,0,0,216,56Zm-64,88H136v16a8,8,0,0,1-16,0V144H104a8,8,0,0,1,0-16h16V112a8,8,0,0,1,16,0v16h16a8,8,0,0,1,0,16Zm8-88H96V48a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8Z\"/>"],
+    "mobility":["wheelchair-motion","0 0 256 256","<path d=\"M144,48a32,32,0,1,1,32,32A32,32,0,0,1,144,48Zm16,112a8,8,0,0,0-8,8,48,48,0,1,1-48-48,8,8,0,0,0,0-16,64,64,0,1,0,64,64A8,8,0,0,0,160,160Zm40-32H141.82l17.12-29.78a8,8,0,0,0-2.57-10.69A96,96,0,0,0,42.91,94a8,8,0,1,0,10.18,12.33,80.09,80.09,0,0,1,88-9.17L121.06,132A8,8,0,0,0,128,144h62.24l-14.08,70.43a8,8,0,0,0,6.27,9.41A7.77,7.77,0,0,0,184,224a8,8,0,0,0,7.83-6.43l16-80A8,8,0,0,0,200,128Z\"/>"],
+    "seizure":["lightning","0 0 256 256","<path d=\"M213.85,125.46l-112,120a8,8,0,0,1-13.69-7l14.66-73.33L45.19,143.49a8,8,0,0,1-3-13l112-120a8,8,0,0,1,13.69,7L153.18,90.9l57.63,21.61a8,8,0,0,1,3,12.95Z\"/>"],
+    "diabetes":["drop","0 0 256 256","<path d=\"M174,47.75a254.19,254.19,0,0,0-41.45-38.3,8,8,0,0,0-9.18,0A254.19,254.19,0,0,0,82,47.75C54.51,79.32,40,112.6,40,144a88,88,0,0,0,176,0C216,112.6,201.49,79.32,174,47.75Zm9.85,105.59a57.6,57.6,0,0,1-46.56,46.55A8.75,8.75,0,0,1,136,200a8,8,0,0,1-1.32-15.89c16.57-2.79,30.63-16.85,33.44-33.45a8,8,0,0,1,15.78,2.68Z\"/>"],
+    "photo":["camera-slash","0 0 256 256","<path d=\"M232,80V192a24.52,24.52,0,0,1-.45,4.65,4,4,0,0,1-6.9,2L86,46.08a4,4,0,0,1-.37-4.91l3.74-5.61A8,8,0,0,1,96,32h64a8,8,0,0,1,6.66,3.56L180.28,56H208A24,24,0,0,1,232,80ZM213.92,210.62a8,8,0,1,1-11.84,10.76L197.19,216H48a24,24,0,0,1-24-24V80A24,24,0,0,1,48,56h3.73L42.08,45.38A8,8,0,1,1,53.92,34.62ZM148,161.92l-47.88-52.68A36,36,0,0,0,148,161.92Z\"/>"],
+    "toilet":["toilet-paper","0 0 256 256","<path d=\"M184,120a8,8,0,0,1-8,8H160a8,8,0,0,1,0-16h16A8,8,0,0,1,184,120Zm56,0v88a16,16,0,0,1-16,16H112a16,16,0,0,1-16-16V186.35C87.37,200.37,76.18,208,64,208c-13.87,0-26.46-9.89-35.44-27.85C20.46,164,16,142.59,16,120s4.46-43.95,12.56-60.15C37.54,41.89,50.13,32,64,32H192c13.87,0,26.46,9.89,35.44,27.85C235.54,76.05,240,97.41,240,120ZM76,120a12,12,0,1,0-12,12A12,12,0,0,0,76,120Zm148,8H208a8,8,0,0,1,0-16h15.79C221.84,73.9,206.16,48,192,48H92.12a73.6,73.6,0,0,1,7.32,11.85c7.14,14.28,11.44,32.56,12.37,52.15H128a8,8,0,0,1,0,16H112v80H224Z\"/>"],
+    "flight":["person-simple-run","0 0 256 256","<path d=\"M120,56a32,32,0,1,1,32,32A32,32,0,0,1,120,56Zm103.28,74.08a8,8,0,0,0-10.6-4c-.25.12-26.71,10.72-72.18-20.19-52.29-35.54-88-7.77-89.51-6.57a8,8,0,1,0,10,12.48c.26-.21,25.12-19.5,64.07,3.27-4.25,13.35-12.76,31.82-25.25,47-18.56,22.48-41.11,32.56-67,30A8,8,0,0,0,31.2,208a92.29,92.29,0,0,0,9.34.47c27.38,0,52-12.38,71.63-36.18.57-.69,1.14-1.4,1.69-2.1C133.31,175.29,168,190.3,168,232a8,8,0,0,0,16,0c0-24.65-10.08-45.35-29.15-59.86a104.29,104.29,0,0,0-31.31-15.81A169.31,169.31,0,0,0,139,124c26.14,16.09,46.84,20,60.69,20,12.18,0,19.06-3,19.67-3.28A8,8,0,0,0,223.28,130.08Z\"/>"],
+    "hearing":["ear-slash","0 0 256 256","<path d=\"M213.92,210.62a8,8,0,1,1-11.84,10.76L191.8,210.07a103.18,103.18,0,0,0,11.83-10.77ZM64.2,45.93,53.92,34.62A8,8,0,1,0,42.08,45.38L52.37,56.7A103.18,103.18,0,0,1,64.2,45.93ZM203.63,199.3,64.2,45.93A103.94,103.94,0,0,1,203.63,199.3ZM159,104a32,32,0,0,0-20.08-22.09,8,8,0,0,0-5.45,15,16,16,0,0,1,10,11,8,8,0,0,0,7.74,6,7.68,7.68,0,0,0,2-.26A8,8,0,0,0,159,104Zm33,8a64,64,0,0,0-85.89-60.16,8,8,0,0,0,5.47,15A48,48,0,0,1,176,112a8,8,0,0,0,16,0Zm-44,56a20,20,0,0,1-20-20,24.11,24.11,0,0,1,1-7l-20.45-22.5A7.91,7.91,0,0,1,104,120a8,8,0,0,1-8-8,32,32,0,0,1,.68-6.56L84.39,91.92A47.59,47.59,0,0,0,80,112c0,11.9,6.71,20.5,13.82,29.6,7,8.92,14.18,18.15,14.18,30.4a20,20,0,0,0,34,14.29,8,8,0,1,1,11.19,11.42A36,36,0,0,1,92,172c0-6.74-5-13.14-10.79-20.55C73.54,141.63,64,129.41,64,112a63.5,63.5,0,0,1,9-32.66L52.37,56.7A103.94,103.94,0,0,0,191.8,210.07L153,167.37A19.82,19.82,0,0,1,148,168Z\"/>"],
+    "vision":["eye-slash","0 0 256 256","<path d=\"M96.68,57.87a4,4,0,0,1,2.08-6.6A130.13,130.13,0,0,1,128,48c34.88,0,66.57,13.26,91.66,38.35,18.83,18.83,27.3,37.62,27.65,38.41a8,8,0,0,1,0,6.5c-.35.79-8.82,19.57-27.65,38.4q-4.28,4.26-8.79,8.07a4,4,0,0,1-5.55-.36ZM213.92,210.62a8,8,0,1,1-11.84,10.76L180,197.13A127.21,127.21,0,0,1,128,208c-34.88,0-66.57-13.26-91.66-38.34C17.51,150.83,9,132.05,8.69,131.26a8,8,0,0,1,0-6.5C9,124,17.51,105.18,36.34,86.35a135,135,0,0,1,25-19.78L42.08,45.38A8,8,0,1,1,53.92,34.62Zm-65.49-48.25-52.69-58a40,40,0,0,0,52.69,58Z\"/>"],
+    "nonverbal":["chat-circle-slash","0 0 256 256","<path d=\"M213.92,210.62a8,8,0,1,1-11.84,10.76l-10.26-11.29a104,104,0,0,1-112.7,9.73L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104.06,104.06,0,0,1,52.33,56.66L42.08,45.38A8,8,0,1,1,53.92,34.62ZM128,24a103.39,103.39,0,0,0-40.33,8.11,8,8,0,0,0-2.81,12.75l121.8,134a8,8,0,0,0,13-1.59A104,104,0,0,0,128,24Z\"/>"]},
+  "fa":{"neuro":["infinity","0 0 640 512","<path d=\"M0 241.1C0 161 65 96 145.1 96c38.5 0 75.4 15.3 102.6 42.5L320 210.7l72.2-72.2C419.5 111.3 456.4 96 494.9 96C575 96 640 161 640 241.1l0 29.7C640 351 575 416 494.9 416c-38.5 0-75.4-15.3-102.6-42.5L320 301.3l-72.2 72.2C220.5 400.7 183.6 416 145.1 416C65 416 0 351 0 270.9l0-29.7zM274.7 256l-72.2-72.2c-15.2-15.2-35.9-23.8-57.4-23.8C100.3 160 64 196.3 64 241.1l0 29.7c0 44.8 36.3 81.1 81.1 81.1c21.5 0 42.2-8.5 57.4-23.8L274.7 256zm90.5 0l72.2 72.2c15.2 15.2 35.9 23.8 57.4 23.8c44.8 0 81.1-36.3 81.1-81.1l0-29.7c0-44.8-36.3-81.1-81.1-81.1c-21.5 0-42.2 8.5-57.4 23.8L365.3 256z\"/>"],
+    "allergy":["hand-dots","0 0 512 512","<path d=\"M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 208c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-176c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 272c0 1.5 0 3.1 .1 4.6L67.6 283c-16-15.2-41.3-14.6-56.6 1.4s-14.6 41.3 1.4 56.6L124.8 448c43.1 41.1 100.4 64 160 64l19.2 0c97.2 0 176-78.8 176-176l0-208c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 112c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-176c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 176c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-208zM240 336a16 16 0 1 1 32 0 16 16 0 1 1 -32 0zm80 16a16 16 0 1 1 0 32 16 16 0 1 1 0-32zm48-16a16 16 0 1 1 32 0 16 16 0 1 1 -32 0zm-16 80a16 16 0 1 1 0 32 16 16 0 1 1 0-32zM240 432a16 16 0 1 1 32 0 16 16 0 1 1 -32 0zm-48-48a16 16 0 1 1 0 32 16 16 0 1 1 0-32z\"/>"],
+    "medical":["suitcase-medical","0 0 512 512","<path d=\"M184 48l144 0c4.4 0 8 3.6 8 8l0 40L176 96l0-40c0-4.4 3.6-8 8-8zm-56 8l0 40 0 32 0 352 256 0 0-352 0-32 0-40c0-30.9-25.1-56-56-56L184 0c-30.9 0-56 25.1-56 56zM96 96L64 96C28.7 96 0 124.7 0 160L0 416c0 35.3 28.7 64 64 64l32 0L96 96zM416 480l32 0c35.3 0 64-28.7 64-64l0-256c0-35.3-28.7-64-64-64l-32 0 0 384zM224 208c0-8.8 7.2-16 16-16l32 0c8.8 0 16 7.2 16 16l0 48 48 0c8.8 0 16 7.2 16 16l0 32c0 8.8-7.2 16-16 16l-48 0 0 48c0 8.8-7.2 16-16 16l-32 0c-8.8 0-16-7.2-16-16l0-48-48 0c-8.8 0-16-7.2-16-16l0-32c0-8.8 7.2-16 16-16l48 0 0-48z\"/>"],
+    "mobility":["wheelchair-move","0 0 448 512","<path d=\"M320 48a48 48 0 1 1 96 0 48 48 0 1 1 -96 0zM204.5 121.3c-5.4-2.5-11.7-1.9-16.4 1.7l-40.9 30.7c-14.1 10.6-34.2 7.7-44.8-6.4s-7.7-34.2 6.4-44.8l40.9-30.7c23.7-17.8 55.3-21 82.1-8.4l90.4 42.5c29.1 13.7 36.8 51.6 15.2 75.5L299.1 224l97.4 0c30.3 0 53 27.7 47.1 57.4L415.4 422.3c-3.5 17.3-20.3 28.6-37.7 25.1s-28.6-20.3-25.1-37.7L377 288l-70.3 0c8.6 19.6 13.3 41.2 13.3 64c0 88.4-71.6 160-160 160S0 440.4 0 352s71.6-160 160-160c11.1 0 22 1.1 32.4 3.3l54.2-54.2-42.1-19.8zM160 448a96 96 0 1 0 0-192 96 96 0 1 0 0 192z\"/>"],
+    "seizure":["bolt-lightning","0 0 384 512","<path d=\"M0 256L28.5 28c2-16 15.6-28 31.8-28H228.9c15 0 27.1 12.1 27.1 27.1c0 3.2-.6 6.5-1.7 9.5L208 160H347.3c20.2 0 36.7 16.4 36.7 36.7c0 7.4-2.2 14.6-6.4 20.7l-192.2 281c-5.9 8.6-15.6 13.7-25.9 13.7h-2.9c-15.7 0-28.5-12.8-28.5-28.5c0-2.3 .3-4.6 .9-6.9L176 288H32c-17.7 0-32-14.3-32-32z\"/>"],
+    "diabetes":["syringe","0 0 512 512","<path d=\"M441 7l32 32 32 32c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-15-15L417.9 128l55 55c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-72-72L295 73c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l55 55L422.1 56 407 41c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0zM210.3 155.7l61.1-61.1c.3 .3 .6 .7 1 1l16 16 56 56 56 56 16 16c.3 .3 .6 .6 1 1l-191 191c-10.5 10.5-24.7 16.4-39.6 16.4l-88.8 0L41 505c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l57-57 0-88.8c0-14.9 5.9-29.1 16.4-39.6l43.3-43.3 57 57c6.2 6.2 16.4 6.2 22.6 0s6.2-16.4 0-22.6l-57-57 41.4-41.4 57 57c6.2 6.2 16.4 6.2 22.6 0s6.2-16.4 0-22.6l-57-57z\"/>"],
+    "photo":["video-slash","0 0 640 512","<path d=\"M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7l-86.4-67.7 13.8 9.2c9.8 6.5 22.4 7.2 32.9 1.6s16.9-16.4 16.9-28.2l0-256c0-11.8-6.5-22.6-16.9-28.2s-23-5-32.9 1.6l-96 64L448 174.9l0 17.1 0 128 0 5.8-32-25.1L416 128c0-35.3-28.7-64-64-64L113.9 64 38.8 5.1zM407 416.7L32.3 121.5c-.2 2.1-.3 4.3-.3 6.5l0 256c0 35.3 28.7 64 64 64l256 0c23.4 0 43.9-12.6 55-31.3z\"/>"],
+    "toilet":["baby","0 0 448 512","<path d=\"M152 88a72 72 0 1 1 144 0A72 72 0 1 1 152 88zM39.7 144.5c13-17.9 38-21.8 55.9-8.8L131.8 162c26.8 19.5 59.1 30 92.2 30s65.4-10.5 92.2-30l36.2-26.4c17.9-13 42.9-9 55.9 8.8s9 42.9-8.8 55.9l-36.2 26.4c-13.6 9.9-28.1 18.2-43.3 25l0 36.3-192 0 0-36.3c-15.2-6.7-29.7-15.1-43.3-25L48.5 200.3c-17.9-13-21.8-38-8.8-55.9zm89.8 184.8l60.6 53-26 37.2 24.3 24.3c15.6 15.6 15.6 40.9 0 56.6s-40.9 15.6-56.6 0l-48-48C70 438.6 68.1 417 79.2 401.1l50.2-71.8zm128.5 53l60.6-53 50.2 71.8c11.1 15.9 9.2 37.5-4.5 51.2l-48 48c-15.6 15.6-40.9 15.6-56.6 0s-15.6-40.9 0-56.6L284 419.4l-26-37.2z\"/>"],
+    "flight":["person-running","0 0 448 512","<path d=\"M320 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM125.7 175.5c9.9-9.9 23.4-15.5 37.5-15.5c1.9 0 3.8 .1 5.6 .3L137.6 254c-9.3 28 1.7 58.8 26.8 74.5l86.2 53.9-25.4 88.8c-4.9 17 5 34.7 22 39.6s34.7-5 39.6-22l28.7-100.4c5.9-20.6-2.6-42.6-20.7-53.9L238 299l30.9-82.4 5.1 12.3C289 264.7 323.9 288 362.7 288l21.3 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-21.3 0c-12.9 0-24.6-7.8-29.5-19.7l-6.3-15c-14.6-35.1-44.1-61.9-80.5-73.1l-48.7-15c-11.1-3.4-22.7-5.2-34.4-5.2c-31 0-60.8 12.3-82.7 34.3L57.4 153.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l23.1-23.1zM91.2 352L32 352c-17.7 0-32 14.3-32 32s14.3 32 32 32l69.6 0c19 0 36.2-11.2 43.9-28.5L157 361.6l-9.5-6c-17.5-10.9-30.5-26.8-37.9-44.9L91.2 352z\"/>"],
+    "hearing":["ear-deaf","0 0 512 512","<path d=\"M502.6 54.6l-40 40c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l40-40c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3zm-320 320l-128 128c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l128-128c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3zM240 128c-57.6 0-105.1 43.6-111.3 99.5c-1.9 17.6-17.8 30.2-35.3 28.3s-30.2-17.8-28.3-35.3C74.8 132.5 149.4 64 240 64c97.2 0 176 78.8 176 176c0 46-17.7 87.9-46.6 119.3c-12 13-17.4 24.8-17.4 34.7l0 6.1c0 61.9-50.1 112-112 112c-17.7 0-32-14.3-32-32s14.3-32 32-32c26.5 0 48-21.5 48-48l0-6.1c0-32.9 17.4-59.6 34.4-78c18.4-20 29.6-46.6 29.6-75.9c0-61.9-50.1-112-112-112zm0 80c-17.7 0-32 14.3-32 32c0 13.3-10.7 24-24 24s-24-10.7-24-24c0-44.2 35.8-80 80-80s80 35.8 80 80c0 13.3-10.7 24-24 24s-24-10.7-24-24c0-17.7-14.3-32-32-32z\"/>"],
+    "vision":["person-walking-with-cane","0 0 512 512","<path d=\"M176 96a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm-8.4 32c-36.4 0-69.6 20.5-85.9 53.1L35.4 273.7c-7.9 15.8-1.5 35 14.3 42.9s35 1.5 42.9-14.3L128 231.6l0 43.2c0 17 6.7 33.3 18.7 45.3L224 397.3l0 82.7c0 17.7 14.3 32 32 32s32-14.3 32-32l0-89.4c0-12.7-5.1-24.9-14.1-33.9L224 306.7l0-93.4 70.4 93.9c10.6 14.1 30.7 17 44.8 6.4s17-30.7 6.4-44.8L268.8 166.4C250.7 142.2 222.2 128 192 128l-24.4 0zM128.3 346.8L97 472.2c-4.3 17.1 6.1 34.5 23.3 38.8s34.5-6.1 38.8-23.3l22-88.2-52.8-52.8zM450.8 505.1c5 7.3 15 9.1 22.3 4s9.1-15 4-22.3L358.9 316.1c-2.8 3.8-6.1 7.3-10.1 10.3c-5 3.8-10.5 6.4-16.2 7.9L450.8 505.1z\"/>"],
+    "nonverbal":["comment-slash","0 0 640 512","<path d=\"M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L512.9 376.7C552.2 340.2 576 292.3 576 240C576 125.1 461.4 32 320 32c-67.7 0-129.3 21.4-175.1 56.3L38.8 5.1zm385.2 425L82.9 161.3C70.7 185.6 64 212.2 64 240c0 45.1 17.7 86.8 47.7 120.9c-1.9 24.5-11.4 46.3-21.4 62.9c-5.5 9.2-11.1 16.6-15.2 21.6c-2.1 2.5-3.7 4.4-4.9 5.7c-.6 .6-1 1.1-1.3 1.4l-.3 .3c0 0 0 0 0 0c0 0 0 0 0 0s0 0 0 0s0 0 0 0c-4.6 4.6-5.9 11.4-3.4 17.4c2.5 6 8.3 9.9 14.8 9.9c28.7 0 57.6-8.9 81.6-19.3c22.9-10 42.4-21.9 54.3-30.6c31.8 11.5 67 17.9 104.1 17.9c37 0 72.3-6.4 104.1-17.9z\"/>"]}};
+// family: [label, source, inset inside the white tile in 20-unit space]
+const FAMILIES = { material: ['Material Symbols', 'Rounded, fill, peso 700 · Apache-2.0', 1.4], phosphor: ['Phosphor', 'Fill · MIT', 1.4], fa: ['Font Awesome', 'Free 6 solid · CC BY 4.0 (exige atribuição)', 2.8] };
+// The catalogue, in print-priority order. Growing it is one line here plus one icon per family in ICONS.
 const CAT = Object.entries({ neuro: 'Neurodivergência', allergy: 'Alergia / restrição alimentar', medical: 'Condição médica', mobility: 'Mobilidade / apoio físico',
   seizure: 'Epilepsia / convulsões', diabetes: 'Diabetes', photo: 'Sem fotos', toilet: 'Ajuda no banheiro / fralda',
   flight: 'Tende a sair da sala', hearing: 'Deficiência auditiva', vision: 'Deficiência visual', nonverbal: 'Comunicação não verbal',
-}).map(([key, name]) => ({ key, name, simbolos: SYM[key],
-  bonecos: POSE[key] || fig + `<g transform="translate(8.3 3.6) scale(.58)" style="--k:1.3">${SYM[key]}</g>`,
-  // the same little person wearing the symbol on its shirt, knocked out in white
-  camisa: dot(10, 2.7, 2.3) + fl('M1.2 9.2A3 3 0 0 1 4.2 6.2H15.8A3 3 0 0 1 18.8 9.2V19.8H1.2Z') + `<g transform="translate(3.8 6.8) scale(.62)" style="color:#fff;--bg:#000;--k:1.5">${SYM[key]}</g>` }));
+}).map(([key, name]) => ({ key, name }));
 const OLD4 = CAT.slice(0, 4);   // layouts A, B and C stay on the first four
 const active = () => CAT.slice(0, state.cat === 'all' ? CAT.length : +state.cat);
 const has = (kid, s) => kid.stamps === 'all' || kid.stamps.includes(s.key);
 
 const params = new URLSearchParams(location.search);
-const state = { v: params.get('v') || 'A', stock: params.get('stock') || '29', stamps: params.get('stamps') in FAMILIES ? params.get('stamps') : 'bonecos',
-  cat: params.get('cat') || '4', case: params.get('case') || 'tipico', view: params.get('view') || 'tags', zoom: params.get('zoom') || '2.5' };
+const state = { v: params.get('v') || 'A', stock: params.get('stock') || '29', stamps: params.get('stamps') in FAMILIES ? params.get('stamps') : 'material',
+  cat: params.get('cat') || '4', case: params.get('case') || 'tipico', view: params.get('view') || 'tags', zoom: params.get('zoom') || '2.5',
+  wrist: params.get('wrist') || '0', band: params.get('band') || '25', face: params.get('face') || '45' };
 
 // tile = a white rounded tile for the black band or block; without it the icon prints black on the label.
 function stamp(s, tile, fam = state.stamps) {
-  const inner = tile ? `<rect width="20" height="20" rx="3" fill="#fff"/><g transform="translate(1.4 1.4) scale(.86)">${s[fam]}</g>` : s[fam];
-  return `<svg class="stamp" viewBox="0 0 20 20" style="color:#000;--bg:#fff"><title>${s.name}</title>${inner}</svg>`;
+  const [, vb, d] = ICONS[fam][s.key], p = tile ? FAMILIES[fam][2] : 0;
+  return `<svg class="stamp" viewBox="0 0 20 20"><title>${s.name}</title>${tile ? '<rect width="20" height="20" rx="3" fill="#fff"/>' : ''}<svg x="${p}" y="${p}" width="${20 - 2 * p}" height="${20 - 2 * p}" viewBox="${vb}" fill="#000">${d}</svg></svg>`;
 }
 const emptyDot = `<svg class="stamp" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2" fill="#fff" opacity=".35"/></svg>`;
 // "+N": more stamps than the area holds at the smallest readable size. Outline only, so it never reads as a stamp.
 const plus = n => `<svg class="stamp" viewBox="0 0 20 20"><title>mais ${n}: abra o app</title><rect x="1" y="1" width="18" height="18" rx="3" fill="none" stroke="#fff" stroke-width="1.6"/><text x="10" y="14.2" text-anchor="middle" font-family="Arial" font-weight="700" font-size="${n > 9 ? 9 : 11.5}" fill="#fff">+${n}</text></svg>`;
 
 // Stamp area per layout and stock, in mm: [width, height, biggest stamp, gap].
-const AREA = { C1: { 29: [7, 26, 7, .8], 62: [11.5, 57, 10, 1.2] }, C2: { 29: [44, 4.8, 4.8, .8], 62: [42, 10, 9, 1.2] }, C3: { 29: [17, 15, 8, .8], 62: [22.5, 41, 11, 1.2] } };
+const AREA = { C1: { 29: [7, 24.5, 7, .8], 62: [11.5, 55, 10, 1.2] }, C2: { 29: [44, 5, 5, .8], 62: [42, 10.5, 9, 1.2] }, C3: { 29: [19.4, 14.4, 8, .8], 62: [22.5, 37, 11, 1.2] } };
 const MIN_STAMP = 4.2;   // mm; below this the icons stop reading at arm's length
 // Biggest square cell that fits n stamps in the area; past the minimum size, the last cell becomes "+N".
-function pack(n) {
-  const [W, H, max, g] = AREA[state.v][state.stock];
+const SIZE = { 29: [90, 29], 62: [100, 62] };   // stock: label [length, height] in mm
+const fold = () => Math.max(0, (SIZE[state.stock][1] - state.band) / 2);   // strip folded over each band edge
+// C4 strip: what the centred face leaves beside the Call number (9 mm Arial Bold digits, .556 em each), under the two name lines.
+const areaC4 = c => [state.face - 2 - 1.6 - 1.5 - String(c.call).length * .556 * 9,
+  SIZE[state.stock][1] - 2 * Math.max(state.stock === '29' ? 2 : 3, fold() + 1) - 11.9 - 1.2, 9, .8];
+function pack(n, c) {
+  const [W, H, max, g] = state.v === 'C4' ? areaC4(c) : AREA[state.v][state.stock];
   const best = n => { let b = { size: 0 };
     for (let cols = 1; cols <= n; cols++) { const rows = Math.ceil(n / cols), size = Math.min(max, (W - (cols - 1) * g) / cols, (H - (rows - 1) * g) / rows); if (size > b.size) b = { size, cols }; }
     return b; };
@@ -335,16 +375,16 @@ function pack(n) {
   while (cells > 1 && b.size < MIN_STAMP) b = best(--cells);
   return { size: Math.floor(b.size * 10) / 10, cols: b.cols, g, shown: cells < n ? cells - 1 : n };
 }
-function slots(kid) {
+function slots(kid, c) {
   const mine = active().filter(s => has(kid, s));
   if (!mine.length) return '';
-  const p = pack(mine.length), more = mine.length - p.shown;
+  const p = pack(mine.length, c), more = mine.length - p.shown;
   return `<div class="slots" data-shown="${p.shown}/${mine.length}@${p.size}" style="--sz:${p.size}mm;--cols:${p.cols};--g:${p.g}mm">${mine.slice(0, p.shown).map(s => stamp(s, true)).join('')}${more ? plus(more) : ''}</div>`;
 }
 function iconSheet() {
   const real = (f, sz) => `<div class="real" style="--sz:${sz}mm">${CAT.map(s => stamp(s, true, f)).join('')}${plus(4)}<span>&nbsp;${String(sz).replace('.', ',')} mm</span></div>`;
-  return Object.entries(FAMILIES).map(([f, label]) => `<div class="cs"><h3>${label} (stamps=${f})</h3>
-    <div class="big">${CAT.map(s => `<figure>${stamp(s, true, f)}<figcaption>${s.name}</figcaption></figure>`).join('')}</div>${real(f, 5.6)}${real(f, 4.3)}</div>`).join('');
+  return Object.entries(FAMILIES).map(([f, [label, src]]) => `<div class="cs"><h3>${label} (stamps=${f}) · ${src}</h3>
+    <div class="big">${CAT.map(s => `<figure>${stamp(s, true, f)}<figcaption>${s.name}<br><code>${ICONS[f][s.key][0]}</code></figcaption></figure>`).join('')}</div>${real(f, 5.6)}${real(f, 4.3)}</div>`).join('');
 }
 
 // Fake QR at the real size: finder squares plus seeded noise. Layout only, not scannable.
@@ -369,7 +409,7 @@ function childTag(c, kid) {
   const meta = v === 'C' ? `<b class="num">${c.call}</b>${c.guardian} · ${c.date}` : `Responsável: ${c.guardian} · ${c.date}`;
   const stampsInline = v === 'C' ? '' : OLD4.filter(s => has(kid, s)).map(s => stamp(s)).join('');
   const band = v === 'C' ? `<div class="band">${OLD4.map(s => has(kid, s) ? stamp(s, true) : emptyDot).join('')}</div>` : '';
-  return `<div class="tag v${v}">${band}
+  return `<div class="tag v${v} kid">${band}
     <div class="name fit" data-max="${nameMax()}" data-min="3.2">${kid.name}</div>
     ${v === 'C' ? '' : call(c.call)}
     <div class="meta">${meta}</div>
@@ -402,22 +442,26 @@ const sz = (a, b) => state.stock === '62' ? b : a;
 
 function childTagX(c, kid) {
   const v = state.v, note = kid.note ? `<div class="note chk">${kid.note}</div>` : '', code = Q(kid.name + c.call);
-  if (v === 'C1') return `<div class="tag cx vC1 kid"><div class="band">${slots(kid)}</div>
+  if (v === 'C1') return `<div class="tag cx vC1 kid"><div class="band">${slots(kid, c)}</div>
     <div class="name fit" data-rule="two" data-max="${sz(7.5, 12)}" data-floor="${sz(5, 8)}" data-min="3.4">${kid.name}</div>
     <div class="who">Resp. ${c.guardian} · ${c.date}</div>${note}
     <div class="side chk"><div class="num"><small>Nº</small>${c.call}</div>${code}</div></div>`;
-  if (v === 'C2') return `<div class="tag cx vC2 kid"><div class="band">${lock(c, ' · ' + c.date)}${slots(kid)}</div>
+  if (v === 'C2') return `<div class="tag cx vC2 kid"><div class="band">${lock(c, ' · ' + c.date)}${slots(kid, c)}</div>
     <div class="name fit" data-rule="drop" data-max="${sz(7, 15)}" data-floor="${sz(5, 6)}" data-min="3.4">${kid.name}</div>
     <div class="foot chk">${note}</div>${code}</div>`;
   const [f, ...rest] = kid.name.split(' ');
-  return `<div class="tag cx vC3 kid"><div class="block chk"><div class="num fit" data-max="${sz(9.5, 13.5)}" data-min="5">${c.call}</div>${slots(kid)}</div>
-    <div class="first fit" data-max="${sz(10, 17)}" data-min="5">${f}</div>
+  if (v === 'C4') return `<div class="tag cx vC4 kid"><div class="info chk">${note || '<span></span>'}<div class="who">Resp. ${c.guardian}<br>${c.date}</div></div>
+    <div class="first fit" data-max="8.2" data-min="5">${f}</div>
+    <div class="rest fit" data-max="2.6" data-min="2.2">${rest.join(' ')}</div>
+    <div class="block chk"><div class="num">${c.call}</div>${slots(kid, c)}</div>${code}</div>`;
+  return `<div class="tag cx vC3 kid"><div class="block chk"><div class="num fit" data-max="${sz(8, 13.5)}" data-min="5">${c.call}</div>${slots(kid, c)}</div>
+    <div class="first fit" data-max="${sz(9, 17)}" data-min="5">${f}</div>
     <div class="rest fit" data-max="${sz(4.2, 7)}" data-min="2.6">${rest.join(' ')}</div>
     <div class="foot chk">${note}<div class="who">Resp. ${c.guardian} · ${c.date}</div></div>${code}</div>`;
 }
 
 function guardianTagX(c) {
-  const v = state.v, many = c.kids.length > 1;
+  const v = state.v === 'C4' ? 'C3' : state.v, many = c.kids.length > 1;   // the Guardian tag is not worn: C4 reuses C3's
   const kids = many ? list(c.kids.map(k => first(k.name))) : c.kids[0].name;
   const name = `<div class="name fit" data-rule="two" data-max="${v === 'C2' ? sz(5.5, 8.5) : sz(6.5, 10)}" data-floor="${sz(4.6, 7)}" data-min="3">${kids}</div>`;
   const kp = `<div class="kp">Guarde esta etiqueta${v === 'C2' ? '' : ' para retirar ' + (many ? 'as crianças' : 'a criança')}</div>`;
@@ -485,6 +529,25 @@ function fit() {
   return over;
 }
 
+// Wristband preview: shade the lost zones on every Child tag and outline in red any critical element whose ink leaves the visible face.
+function wristCheck() {
+  let lost = 0;
+  for (const tag of document.querySelectorAll('.tag.kid')) {
+    tag.insertAdjacentHTML('beforeend', '<div class="wz"><i class="f t"></i><i class="f b"></i><i class="e l"></i><i class="e r"></i></div>');
+    const t = tag.getBoundingClientRect(), mm = t.width / SIZE[state.stock][0], [L, H] = SIZE[state.stock];
+    const x0 = (L - state.face) / 2, x1 = L - x0, y0 = fold(), y1 = H - y0, tol = .3;
+    for (const el of tag.querySelectorAll('.name, .first, .num, .call b, .lock b, .slots, .care > .stamp, .band > .stamp')) {
+      const r = document.createRange(); r.selectNodeContents(el);
+      const b = r.getBoundingClientRect(); if (!b.width) continue;
+      // a text rect is the font's full ascent + descent; the ink of capitals and digits sits about .12 em inside it
+      const ink = el.children.length ? 0 : parseFloat(getComputedStyle(el).fontSize) * .12 * (t.width / tag.offsetWidth);
+      const out = (b.left - t.left) / mm < x0 - tol || (b.right - t.left) / mm > x1 + tol || (b.top + ink - t.top) / mm < y0 - tol || (b.bottom - ink - t.top) / mm > y1 + tol;
+      el.classList.toggle('lost', out); lost += out;
+    }
+  }
+  return lost;
+}
+
 function render() {
   for (const [k, val] of Object.entries(state)) {
     document.querySelectorAll(`[name="${k}"]`).forEach(el => el.type === 'radio' ? (el.checked = el.value === val) : (el.value = val));
@@ -494,16 +557,17 @@ function render() {
   const sheet = document.getElementById('sheet');
   sheet.className = 'sheet s' + state.stock;
   sheet.style.setProperty('--zoom', state.zoom);
+  sheet.style.setProperty('--fold', fold() + 'mm'); sheet.style.setProperty('--face', state.face + 'mm');
   sheet.innerHTML = state.view === 'icons' ? iconSheet() : c.kids.map((k, i) => `<div class="slot"><h3>Etiqueta da criança ${i + 1}/${c.kids.length}</h3>${childTag(c, k)}</div>`).join('')
     + `<div class="slot"><h3>Etiqueta do responsável</h3>${guardianTag(c)}</div>`;
   document.getElementById('page-size').textContent = `@page { size: ${state.stock === '29' ? '90mm 29mm' : '100mm 62mm'}; margin: 0; }`;
   document.getElementById('legend').innerHTML = (state.v.length > 1 ? active() : OLD4).map(s => `<span>${stamp(s)} ${s.name}</span>`).join('');
   document.getElementById('vlabel').textContent = `${state.v} (${VARIANTS[state.v]})`;
-  const over = fit();
+  const over = fit(), lost = state.wrist === '1' && state.view === 'tags' ? wristCheck() : null;
   const shown = [...document.querySelectorAll('.slots')].map(e => e.dataset.shown + 'mm').join(', ');
   const sizes = [...document.querySelectorAll('.fit')].map(e => e.dataset.size + 'mm').join(', ');
   document.getElementById('state').textContent =
-    `layout=${state.v} stock=${state.stock === '29' ? '90x29mm' : '100x62mm'} stamps=${state.stamps} cat=${state.cat} case=${state.case} · stamps shown=[${shown}] · tags=${c.kids.length + 1} · name sizes=[${sizes}] · overflowing boxes=${over}`;
+    `layout=${state.v} stock=${state.stock === '29' ? '90x29mm' : '100x62mm'} stamps=${state.stamps} cat=${state.cat} case=${state.case} · stamps shown=[${shown}] · tags=${c.kids.length + 1} · name sizes=[${sizes}] · overflowing boxes=${over}` + (lost === null ? '' : ` · pulseira ${state.band} mm, face ${state.face} mm: hachura = dobra (perdido), sombra = curva do pulso · critical in lost zones=${lost}`);
 }
 
 document.querySelector('.controls').addEventListener('input', e => { if (e.target.name) { state[e.target.name] = e.target.value; render(); } });

@@ -698,7 +698,7 @@ describe('POST /ministries/:ministryId/roles/:roleId/archive', () => {
       volunteerId: volunteer.id,
       roleId: fixture.singerId,
       shiftRequirementId: requirement.id,
-      status: 'confirmed',
+      status: 'pending',
     });
     signIn('leader');
 

@@ -255,7 +255,7 @@ async function seedCrossMinistryOverlap({
     volunteerId: doubleBooked.volunteer.id,
     roleId: otherRole.id,
     shiftRequirementId: otherRequirement.id,
-    status: 'confirmed',
+    status: 'pending',
   });
 
   const free = await seedVolunteerMembership({
@@ -772,7 +772,7 @@ describe('Assignment proposal preview', () => {
         .select()
         .from(assignment)
         .where(eq(assignment.id, seed.overlapId));
-      expect(overlap?.status).toBe('confirmed');
+      expect(overlap?.status).toBe('pending');
     });
 
     it('recovers the committed outcome on a replay and after a lost response, even once published', async () => {
@@ -1838,7 +1838,7 @@ describe('requirement coverage and published placement HTTP contract', () => {
     });
     for (const [volunteerId, requirementId, status] of [
       [seed.freeVolunteerId, sideRequirement.id, 'cancelled'],
-      [seed.freeVolunteerId, seed.targetRequirementId, 'confirmed'],
+      [seed.freeVolunteerId, seed.targetRequirementId, 'pending'],
       [extra.volunteer.id, seed.targetRequirementId, 'pending'],
       [extra.volunteer.id, sideRequirement.id, 'cancelled'],
     ] as const) {
@@ -1873,7 +1873,7 @@ describe('requirement coverage and published placement HTTP contract', () => {
     });
     expect(published.statusCode).toBe(200);
     const rows = published.json().events[0].rows;
-    // A declined place reads as Open; rows carry no confirmation state.
+    // A cancelled place reads as Open; rows carry no confirmation state.
     expect(rows).toHaveLength(3);
     for (const row of rows) expect(row).not.toHaveProperty('confirmationState');
     expect(

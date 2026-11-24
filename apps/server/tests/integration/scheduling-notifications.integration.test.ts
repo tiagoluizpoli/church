@@ -1251,7 +1251,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     const sentBefore = new Set((await outboxRows()).map((row) => row.id));
     await schedulingTestDb
       .update(assignment)
-      .set({ status: 'confirmed' })
+      .set({ status: 'pending' })
       .where(eq(assignment.id, lateAssignment.id));
     await managers.participationManager.sendScheduleUpdates(publishInput);
     await schedulingTestDb
@@ -1317,7 +1317,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: requirement.id,
         volunteerId,
         roleId: role.id,
-        status: 'confirmed',
+        status: 'pending',
       });
     };
     // A block move leaves this other block's Shift alone (same times).
@@ -1550,7 +1550,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: requirement.id,
         volunteerId,
         roleId: role.id,
-        status: 'confirmed',
+        status: 'pending',
       });
     };
     const started = await seedMember({ name: 'Ana', email: 'ana@test.com' });
@@ -1734,7 +1734,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       shiftRequirementId: vigilRequirement.id,
       volunteerId: told.volunteer.id,
       roleId: role.id,
-      status: 'confirmed',
+      status: 'pending',
     });
     await schedulingTestDb
       .update(ministryParticipation)
@@ -1919,7 +1919,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: requirement.id,
         volunteerId,
         roleId: role.id,
-        status: 'confirmed',
+        status: 'pending',
       });
     };
     const vigil = await book({
@@ -2053,7 +2053,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: requirement.id,
         volunteerId,
         roleId: role.id,
-        status: 'confirmed',
+        status: 'pending',
       });
     };
     const cancelled = await book(eventTimeBlockId, ana.volunteer.id, 3);
@@ -2155,7 +2155,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: requirement.id,
         volunteerId,
         roleId: role.id,
-        status: 'confirmed',
+        status: 'pending',
       });
     };
     const removed = await book(eventTimeBlockId, ana.volunteer.id, 3);

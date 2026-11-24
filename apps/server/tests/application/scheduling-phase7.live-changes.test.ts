@@ -108,7 +108,7 @@ function createHarness() {
       volunteerId,
       roleId: RoleId.from('role'),
       shiftRequirementId: requirementId,
-      status: 'confirmed',
+      status: 'pending',
     },
   });
   const assignmentRepo = createAssignmentRepositoryFake();

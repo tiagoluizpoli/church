@@ -1166,10 +1166,7 @@ describe('development seed recipe', () => {
       .from(assignment)
       .groupBy(assignment.status)
       .orderBy(assignment.status);
-    expect(statuses).toEqual([
-      { status: 'confirmed', value: 364 },
-      { status: 'cancelled', value: 1 },
-    ]);
+    expect(statuses).toEqual([{ status: 'pending', value: 364 }]);
 
     // Every Assignment staffs its named requirement, including same-Role Sectors.
     const result = await testDb.execute<StaffingRow>(sql`
@@ -1178,7 +1175,7 @@ describe('development seed recipe', () => {
         sum(sr.people_needed)::int as required,
         (select count(*) from ${assignment} a
           where a.shift_requirement_id = sr.id
-            and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
+            and a.status in ('draft', 'pending'))::int as assigned
       from ${shiftRequirement} sr
       join ${shift} sh on sh.id = sr.shift_id
       join ${ministryParticipation} p on p.id = sr.participation_id
@@ -1201,7 +1198,7 @@ describe('development seed recipe', () => {
       await queryCount({
         query: sql`select count(*) as value from ${assignment} a
           join ${ministryParticipation} p on p.id = a.participation_id
-          where a.status in ('draft', 'pending', 'confirmed')
+          where a.status in ('draft', 'pending')
             and not exists (select 1 from ${ministryMembership} mv
               join ${ministryMembershipRole} q on q.ministry_membership_id = mv.id
               where mv.volunteer_id = a.volunteer_id and mv.ministry_id = p.ministry_id
@@ -1214,8 +1211,8 @@ describe('development seed recipe', () => {
           join ${shift} s on s.id = a.shift_id
           join ${assignment} b on b.volunteer_id = a.volunteer_id and b.id < a.id
           join ${shift} t on t.id = b.shift_id
-          where a.status in ('draft', 'pending', 'confirmed')
-            and b.status in ('draft', 'pending', 'confirmed')
+          where a.status in ('draft', 'pending')
+            and b.status in ('draft', 'pending')
             and s.start_time < t.end_time and t.start_time < s.end_time`,
       }),
     ).toBe(0);
@@ -1225,13 +1222,13 @@ describe('development seed recipe', () => {
           join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
           join ${availabilityCheck} c on c.ministry_membership_id = mv.id
           join unavailable_shift u on u.availability_check_id = c.id
-          where a.status in ('draft', 'pending', 'confirmed')
+          where a.status in ('draft', 'pending')
             and u.shift_id = a.shift_id`,
       }),
     ).toBe(0);
   });
 
-  it('keeps a trail of unavailability, a decline, a resolved overlap, replacements and cross-Ministry service', async () => {
+  it('keeps a trail of unavailability, a resolved overlap, replacements and cross-Ministry service', async () => {
     const [checks] = await testDb
       .select({
         total: count(),
@@ -1322,8 +1319,7 @@ describe('development seed recipe', () => {
           to_char(s.start_time at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI'))
         in (values ('bruno.dias', '2026-02-01 10:30'), ('bruno.dias', '2026-02-01 18:30'),
           ('rafael.moura', '2026-02-08 10:30'), ('rafael.moura', '2026-02-08 18:30'),
-          ('joao.pereira', '2026-02-11 20:00'), ('daniel.moreira', '2026-02-11 20:00'),
-          ('isabela.medeiros', '2026-02-18 20:00'), ('vanessa.campos', '2026-02-18 20:00'))
+          ('joao.pereira', '2026-02-11 20:00'), ('daniel.moreira', '2026-02-11 20:00'))
       order by starts, ministry, email`);
     const row = ({ email, ministryName, starts }: TrailPersonInput) => ({
       email: `${email}@igreja-semente.test`,
@@ -1337,7 +1333,7 @@ describe('development seed recipe', () => {
           ministryName: 'Projeção',
           starts: '2026-02-01 10:30',
         }),
-        status: 'confirmed',
+        status: 'pending',
         reason: null,
       },
       {
@@ -1346,7 +1342,7 @@ describe('development seed recipe', () => {
           ministryName: 'Kids',
           starts: '2026-02-01 18:30',
         }),
-        status: 'confirmed',
+        status: 'pending',
         reason: null,
       },
       {
@@ -1355,7 +1351,7 @@ describe('development seed recipe', () => {
           ministryName: 'Intercessão',
           starts: '2026-02-11 20:00',
         }),
-        status: 'confirmed',
+        status: 'pending',
         reason: null,
       },
       // The leader reassigned João's Projeção post to Daniel: the product
@@ -1366,26 +1362,8 @@ describe('development seed recipe', () => {
           ministryName: 'Projeção',
           starts: '2026-02-11 20:00',
         }),
-        status: 'confirmed',
+        status: 'pending',
         reason: 'Já escalado na Intercessão neste culto',
-      },
-      {
-        ...row({
-          email: 'isabela.medeiros',
-          ministryName: 'Intercessão',
-          starts: '2026-02-18 20:00',
-        }),
-        status: 'cancelled',
-        reason: 'Viagem a trabalho',
-      },
-      {
-        ...row({
-          email: 'vanessa.campos',
-          ministryName: 'Intercessão',
-          starts: '2026-02-18 20:00',
-        }),
-        status: 'confirmed',
-        reason: null,
       },
     ]);
 
@@ -1401,7 +1379,7 @@ describe('development seed recipe', () => {
       join ${assignment} a on a.id = au.assignment_id
       where au.action = 'created'`)
       .then((result) => result.rows);
-    expect(created).toEqual({ audits: 365, assignments: 365, matching: 365 });
+    expect(created).toEqual({ audits: 364, assignments: 364, matching: 364 });
 
     const audits = await testDb.execute<AuditRow>(sql`
       select actor.email as actor, subject.email as subject, au.action, au.reason,
@@ -1428,20 +1406,13 @@ describe('development seed recipe', () => {
         reason: 'Já escalado na Intercessão neste culto',
         at: '2026-02-09T13:00Z',
       },
-      {
-        actor: 'henrique.freitas@igreja-semente.test',
-        subject: 'vanessa.campos@igreja-semente.test',
-        action: 'created',
-        reason: null,
-        at: '2026-02-16T13:00Z',
-      },
     ]);
 
     const crossMinistryServers = await queryCount({
       query: sql`select count(*) as value from (
           select a.volunteer_id from ${assignment} a
           join ${ministryParticipation} p on p.id = a.participation_id
-          where a.status = 'confirmed'
+          where a.status = 'pending'
           group by a.volunteer_id having count(distinct p.ministry_id) > 1
         ) as cross_ministry`,
     });
@@ -1629,11 +1600,11 @@ describe('development seed recipe', () => {
       },
     },
     {
-      label: 'a confirmed Assignment is removed',
+      label: 'an Assignment is removed',
       problem: 'staffed',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from ${assignment}
-          where id = (select a.id from ${assignment} a where a.status = 'confirmed'
+          where id = (select a.id from ${assignment} a where a.status = 'pending'
             and a.assigned_at = '2026-01-27T13:00:00Z' order by a.id limit 1)`);
       },
     },
@@ -1645,14 +1616,14 @@ describe('development seed recipe', () => {
           from ${assignment} other, ${shift} target_shift, ${shift} other_shift
           where target.id = (select a.id from ${assignment} a join ${shift} s on s.id = a.shift_id
               join ${shift} o on o.event_time_block_id = s.event_time_block_id and o.id <> s.id
-              join ${assignment} b on b.shift_id = o.id and b.status = 'confirmed'
-              where a.status = 'confirmed' order by a.id limit 1)
+              join ${assignment} b on b.shift_id = o.id and b.status = 'pending'
+              where a.status = 'pending' order by a.id limit 1)
             and target_shift.id = target.shift_id
             and other_shift.event_time_block_id = target_shift.event_time_block_id
             and other_shift.id <> target_shift.id
-            and other.shift_id = other_shift.id and other.status = 'confirmed'
+            and other.shift_id = other_shift.id and other.status = 'pending'
             and other.id = (select b.id from ${assignment} b where b.shift_id = other_shift.id
-              and b.status = 'confirmed' order by b.id limit 1)`);
+              and b.status = 'pending' order by b.id limit 1)`);
       },
     },
     {
@@ -1664,7 +1635,7 @@ describe('development seed recipe', () => {
           from ${assignment} a
           join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
           join ${availabilityCheck} c on c.ministry_membership_id = mv.id
-          where a.status = 'confirmed'
+          where a.status = 'pending'
           order by a.id, c.id
           limit 1`);
       },
@@ -1697,15 +1668,6 @@ describe('development seed recipe', () => {
             join ${volunteer} v on v.id = mv.volunteer_id
             join ${user} usr on usr.id = v.user_id
             where usr.email = 'bruno.dias@igreja-semente.test' order by u.id limit 1)`);
-      },
-    },
-    {
-      label: 'the decline is lost from the trail',
-      problem: 'trail',
-      break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(
-          sql`update ${assignment} set status = 'confirmed' where status = 'cancelled'`,
-        );
       },
     },
   ])('refuses the graph when $label', async ({

@@ -180,7 +180,7 @@ async function seedGraph() {
       volunteerId,
       roleId: role.id,
       shiftRequirementId: requirement.id,
-      status: 'confirmed',
+      status: 'pending',
     });
     const [row] = await db
       .insert(swapRequest)

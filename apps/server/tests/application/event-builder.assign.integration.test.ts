@@ -1022,7 +1022,7 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
         shiftRequirementId,
         volunteerId: seed.adminVolunteerId,
         roleId,
-        status: 'confirmed',
+        status: 'pending',
       }),
     ).rejects.toThrow('No matching ShiftRequirement');
     const createdAt = parseInstant({ value: '2026-08-01T10:00:00.000Z' });
@@ -1034,7 +1034,7 @@ describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => 
       volunteerId: seed.adminVolunteerId,
       roleId,
       shiftRequirementId,
-      status: 'confirmed',
+      status: 'pending',
       assignedAt: createdAt,
       assignedBy: seed.adminUserId,
     });

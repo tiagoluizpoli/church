@@ -233,7 +233,7 @@ export function createVolunteerAssignmentsRecipe({
       volunteerId: volunteer.id,
       roleId: role.id,
       id: idOf({ kind: 'assignment' }),
-      status: 'confirmed',
+      status: 'pending',
     });
 
     return {

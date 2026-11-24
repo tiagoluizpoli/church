@@ -430,7 +430,7 @@ async function seedEveryTenantedTable(): Promise<void> {
     volunteerId: IDS.volunteer,
     roleId: IDS.role,
     shiftRequirementId: requirement.id,
-    status: 'confirmed',
+    status: 'pending',
     assignedBy: IDS.user,
   });
 

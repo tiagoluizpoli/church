@@ -528,6 +528,28 @@ describe('CycleBuilderCell', () => {
     expect(screen.queryByTestId('assignment-picker')).not.toBeInTheDocument();
   });
 
+  it('opens its own picker instead when the rail is stacked below xl', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const user = userEvent.setup();
+    const onFocus = vi.fn();
+    const onToggleFocus = vi.fn();
+    renderCell({ onFocus, onToggleFocus });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Show volunteers for Greeter first' }),
+    );
+
+    expect(onFocus).toHaveBeenCalled();
+    expect(onToggleFocus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('assignment-picker')).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it('marks the focus control as pressed while its own cell is focused', () => {
     renderCell({ isFocused: true });
 

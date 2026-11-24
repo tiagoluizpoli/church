@@ -50,12 +50,6 @@ describe.each([
     expect(screen.getByTestId('viewport').scrollLeft).toBe(0);
   });
 
-  it.each(['button', 'draggable'])('does not arm on the %s', (id) => {
-    render(<Surface hook={hook} />);
-    pan(screen.getByTestId(id), 200, 100);
-    expect(screen.getByTestId('viewport').scrollLeft).toBe(0);
-  });
-
   it('swallows only the click that ends a real drag', () => {
     const onClick = vi.fn();
     render(<Surface hook={hook} />);
@@ -79,5 +73,50 @@ describe.each([
     fireEvent.pointerUp(plain, { pointerId: 1 });
     fireEvent.click(plain);
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('board drag-to-scroll targets', () => {
+  it.each(['button', 'draggable'])('does not arm on the %s', (id) => {
+    render(<Surface hook={useBoardDragScroll} />);
+    pan(screen.getByTestId(id), 200, 100);
+    expect(screen.getByTestId('viewport').scrollLeft).toBe(0);
+  });
+});
+
+// Every date chip is a whole button, so the strip pans from a button too.
+describe('date strip drag-to-scroll on a chip', () => {
+  it('scrolls when the drag starts on a button', () => {
+    render(<Surface hook={useDateStripDragScroll} />);
+    pan(screen.getByTestId('button'), 200, 100);
+    expect(screen.getByTestId('viewport').scrollLeft).toBe(100);
+  });
+
+  it('keeps a plain click on the button and swallows the click after a drag', () => {
+    const onClick = vi.fn();
+    render(<Surface hook={useDateStripDragScroll} />);
+    const button = screen.getByTestId('button');
+    button.addEventListener('click', onClick);
+    fireEvent.pointerDown(button, { pointerId: 1, clientX: 200, buttons: 1 });
+    fireEvent.pointerUp(button, { pointerId: 1 });
+    fireEvent.click(button);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    pan(button, 200, 100);
+    fireEvent.pointerUp(button, { pointerId: 1 });
+    fireEvent.click(button);
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('captures the pointer only once a drag starts', () => {
+    render(<Surface hook={useDateStripDragScroll} />);
+    const surface = screen.getByTestId('surface');
+    const capture = vi.fn();
+    surface.setPointerCapture = capture;
+    const button = screen.getByTestId('button');
+    fireEvent.pointerDown(button, { pointerId: 1, clientX: 200, buttons: 1 });
+    fireEvent.pointerMove(button, { pointerId: 1, clientX: 195, buttons: 1 });
+    expect(capture).not.toHaveBeenCalled();
+    fireEvent.pointerMove(button, { pointerId: 1, clientX: 150, buttons: 1 });
+    expect(capture).toHaveBeenCalledWith(1);
   });
 });

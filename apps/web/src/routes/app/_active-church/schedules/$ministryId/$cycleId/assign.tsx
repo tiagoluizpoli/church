@@ -12,8 +12,16 @@ import { useCycleBuilder } from '@/features/scheduling/hooks/use-cycle-builder';
 import { NotFoundScreen } from '@/shared/components/route-fallbacks';
 import { adminApi } from '@/utils/api-instances';
 
-/** The id an N7 swap request alert (bell or email) deep-links with. */
-const assignSearchSchema = z.object({ swapRequest: z.string().optional() });
+const assignSearchSchema = z.object({
+  /** The id an N7 swap request alert (bell or email) deep-links with. */
+  swapRequest: z.string().optional(),
+  /** The date strip's selected days, `2027-01-06,2027-01-13`; a malformed value shows every date. */
+  days: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}(,\d{4}-\d{2}-\d{2})*$/)
+    .optional()
+    .catch(undefined),
+});
 
 export const Route = createFileRoute(
   '/app/_active-church/schedules/$ministryId/$cycleId/assign',
@@ -44,7 +52,8 @@ function EventBuilderRoute() {
       ? query.error.response?.status
       : undefined;
   const navigate = Route.useNavigate();
-  const { swapRequest: linkedSwapRequestId } = Route.useSearch();
+  const { swapRequest: linkedSwapRequestId, days } = Route.useSearch();
+  const selectedDates = useMemo(() => days?.split(',') ?? [], [days]);
   const swapRequestList = useQuery({
     queryKey: ['ministry-swap-requests', ministryId, cycleId],
     queryFn: () => adminApi.listMinistrySwapRequests(ministryId, { cycleId }),
@@ -67,7 +76,10 @@ function EventBuilderRoute() {
     } else {
       toast.error(m.swap_board_unavailable());
     }
-    void navigate({ search: {}, replace: true });
+    void navigate({
+      search: (previous) => ({ ...previous, swapRequest: undefined }),
+      replace: true,
+    });
   }, [linkedSwapRequestId, listSettled, swapRequestList.data, navigate]);
   useEffect(() => {
     if (status === 401) {
@@ -122,6 +134,16 @@ function EventBuilderRoute() {
         swapRequests={swapRequests}
         selectedSwapRequestId={selectedSwapRequestId}
         onSelectSwapRequest={setSelectedSwapRequestId}
+        selectedDates={selectedDates}
+        onSelectedDatesChange={(next) =>
+          void navigate({
+            search: (previous) => ({
+              ...previous,
+              days: next.length ? next.join(',') : undefined,
+            }),
+            replace: true,
+          })
+        }
       />
     </div>
   );

@@ -53,7 +53,6 @@ function useDragScroll({ thresholdPx, ignoreSelector }: UseDragScrollOptions) {
       hasDragged: false,
       captureElement: event.currentTarget,
     };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -69,6 +68,9 @@ function useDragScroll({ thresholdPx, ignoreSelector }: UseDragScrollOptions) {
       if (!drag.hasDragged) {
         drag.hasDragged = true;
         event.currentTarget.classList.add('select-none');
+        // Captured only once a drag starts: capturing on press would retarget
+        // a plain click from the pressed button to this surface.
+        event.currentTarget.setPointerCapture?.(event.pointerId);
       }
       event.preventDefault();
       viewport.scrollLeft = drag.startScrollLeft - distance;
@@ -108,10 +110,10 @@ export const useBoardDragScroll = () =>
       'button, input, select, textarea, a, [role="button"], [data-slot="scroll-area-scrollbar"]',
   });
 
-// The strip's cards sit edge-to-edge, so a drag must arm on the card body; the
-// higher threshold absorbs click jitter. Its only control is the per-card button.
+// Every date chip is a whole button, so a drag must arm on the chips
+// themselves; the higher threshold keeps a plain click a toggle.
 export const useDateStripDragScroll = () =>
   useDragScroll({
     thresholdPx: 10,
-    ignoreSelector: 'button, [role="button"]',
+    ignoreSelector: '[data-slot="scroll-area-scrollbar"]',
   });

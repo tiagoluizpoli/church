@@ -2,20 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { dayFilterName } from './assign-church';
 import { dateLabel } from '@/features/scheduling/utils/builder/cycle-builder-date.utils';
 
-interface ShowOnlyLabelInput {
+interface ChipLabelInput {
   day: string;
 }
 
-/** The accessible name the cycle builder's date strip gives a day. */
-function showOnlyLabel({ day }: ShowOnlyLabelInput): string {
-  return `Mostrar apenas ${dateLabel({ day, locale: 'pt-BR' })}`;
+/** The accessible name the cycle builder's date strip gives a day's chip. */
+function chipLabel({ day }: ChipLabelInput): string {
+  return `${dateLabel({ day, locale: 'pt-BR' })}, 40% preenchido, 1 evento`;
 }
 
 describe('dayFilterName', () => {
   it("matches the builder's own label for a day past the year boundary", () => {
     expect(
       dayFilterName({ day: '2027-01-04' }).test(
-        showOnlyLabel({ day: '2027-01-04' }),
+        chipLabel({ day: '2027-01-04' }),
       ),
     ).toBe(true);
   });
@@ -29,7 +29,7 @@ describe('dayFilterName', () => {
       '2026-12-04',
       '2027-02-04',
     ]) {
-      expect(name.test(showOnlyLabel({ day }))).toBe(false);
+      expect(name.test(chipLabel({ day }))).toBe(false);
     }
   });
 });

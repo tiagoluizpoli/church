@@ -142,6 +142,23 @@ describe('/app/ministries/$ministryId/usual-setup', () => {
     ]);
   });
 
+  it('keeps one group per template when its blocks arrive apart', async () => {
+    listUsualSetup.mockResolvedValue(setupOf(WELCOME, NIGHT, SERVICE));
+    renderList();
+
+    await screen.findAllByTestId('data-table-mobile-list');
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
+    ).toEqual(['Sunday · Domingo', 'Vigil · Sábado']);
+    expect(rowsOf('Sunday')).toEqual([
+      `Welcome09:00–10:00${m.usual_setup_not_served()}`,
+      `Service10:00–12:00${m.usual_setup_shift_count_one()} · ${m.usual_setup_people_count_other({ count: 3 })}`,
+    ]);
+    expect(rowsOf('Vigil')).toEqual([
+      `Night22:00–02:00 (${m.usual_setup_next_day()})${m.usual_setup_not_served()}`,
+    ]);
+  });
+
   it('counts people across every Shift, singular when one', async () => {
     listUsualSetup.mockResolvedValue(
       setupOf({

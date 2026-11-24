@@ -32,7 +32,7 @@ describe('query error policy', () => {
 
   it('toasts a failed query unless it shows its own error', async () => {
     const client = createQueryClient();
-    const fail = () => Promise.reject(serverError(404));
+    const fail = () => Promise.reject(serverError(403));
     await client
       .fetchQuery({ queryKey: ['toasted'], queryFn: fail })
       .catch(() => {});

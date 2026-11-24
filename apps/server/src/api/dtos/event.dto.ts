@@ -1,6 +1,7 @@
 import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { ScheduleBuilderData } from '../../domain/contracts/application/event-manager';
+import { ASSIGNMENT_STATUS_OPTIONS } from '../../domain/entities/assignment';
 import type { Event } from '../../domain/entities/event';
 
 export const listEventsQuerySchema = z.object({
@@ -64,13 +65,7 @@ export const scheduleBuilderDataResponseSchema = z.object({
       shiftId: z.string().optional(),
       volunteerId: z.string(),
       roleId: z.string(),
-      status: z.enum([
-        'draft',
-        'pending',
-        'confirmed',
-        'declined',
-        'cancelled',
-      ]),
+      status: z.enum(ASSIGNMENT_STATUS_OPTIONS),
       reason: z.string().optional(),
       assignedAt: instantSchema,
       assignedBy: z.string().optional(),

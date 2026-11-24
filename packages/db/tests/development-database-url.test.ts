@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getDevelopmentDatabaseUrl } from '../src/development-database-url';
+import { getDevelopmentDatabaseUrl } from '@/development-database-url';
 
 const PRIMARY_URL = 'postgresql://postgres:postgres@localhost:5444/church';
 const FEATURE_URL =

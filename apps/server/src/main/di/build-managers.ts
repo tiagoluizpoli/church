@@ -234,6 +234,7 @@ export function buildManagers({
       redemptionRepository,
       securityLogRepository,
       unitOfWork,
+      verificationCodeRepository: invitationVerificationCodeRepository,
       failureLog: new ConsoleRedemptionFailureLog(),
       verificationCodeInspector: debugEndpointsEnabled()
         ? verificationCodeInspector

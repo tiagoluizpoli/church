@@ -62,7 +62,6 @@ export const assignmentStatusEnum = pgEnum('assignment_status', [
   'draft',
   'pending',
   'confirmed',
-  'declined',
   'cancelled',
 ]);
 

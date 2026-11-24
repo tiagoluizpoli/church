@@ -688,6 +688,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/event-templates.spec.ts',
       'tests/scheduling/j10-admin-cancel.spec.ts',
+      'tests/scheduling/j11-admin-edit-event.spec.ts',
       'tests/scheduling/j6-leader-availability.spec.ts',
       'tests/scheduling/j9-swap-request.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',

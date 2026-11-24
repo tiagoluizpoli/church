@@ -1,13 +1,12 @@
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
+import type { ActiveChurchSwitchedMessage } from '@/shared/utils/active-church-broadcast';
 import {
-  type ActiveChurchSwitchedMessage,
-  subscribeToActiveChurchSwitch,
-} from '@/shared/utils/active-church-broadcast';
-import {
+  clearActiveChurchScopedCache,
   getActiveChurchDestination,
   switchActiveChurch,
 } from '@/shared/utils/active-church-switch';
+import { listenAsAnotherTab } from '@/tests/setup/active-church-broadcast';
 
 interface SelectActiveChurchInput {
   churchId: string;
@@ -198,7 +197,7 @@ describe('switchActiveChurch', () => {
     const { queryClient, selectActiveChurch, navigate } =
       createSwitchTestDependencies();
     const received: ActiveChurchSwitchedMessage[] = [];
-    const unsubscribe = subscribeToActiveChurchSwitch({
+    const unsubscribe = listenAsAnotherTab({
       onMessage: (message) => received.push(message),
     });
 
@@ -231,7 +230,7 @@ describe('switchActiveChurch', () => {
     selectActiveChurch.mockRejectedValue(selectionError);
     queryClient.setQueryData(['cycles'], { church: 'church-a' });
     const received: ActiveChurchSwitchedMessage[] = [];
-    const unsubscribe = subscribeToActiveChurchSwitch({
+    const unsubscribe = listenAsAnotherTab({
       onMessage: (message) => received.push(message),
     });
 
@@ -258,5 +257,22 @@ describe('switchActiveChurch', () => {
     } finally {
       unsubscribe();
     }
+  });
+});
+
+describe('clearActiveChurchScopedCache', () => {
+  it('keeps the active-church and mounted redemption queries, removes the rest', async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['active-church'], 1);
+    queryClient.setQueryData(['redemption', 'church-invitation', 'i1'], 2);
+    queryClient.setQueryData(['schedules'], 3);
+
+    await clearActiveChurchScopedCache({ queryClient });
+
+    expect(queryClient.getQueryData(['active-church'])).toBe(1);
+    expect(
+      queryClient.getQueryData(['redemption', 'church-invitation', 'i1']),
+    ).toBe(2);
+    expect(queryClient.getQueryData(['schedules'])).toBeUndefined();
   });
 });

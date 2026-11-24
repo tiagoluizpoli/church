@@ -4,7 +4,7 @@ import {
   compareInstants,
   parseCalendarDay,
   parseInstant,
-} from '../src';
+} from '@/index';
 
 describe('compareInstants', () => {
   const earlier = parseInstant({ value: '2027-01-04T09:59:59.999Z' });

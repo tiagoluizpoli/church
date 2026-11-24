@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { church } from '../../src/schema/church';
-import { organization } from '../../src/schema/organization';
-import { createChurch } from '../../src/tenancy';
 import { clearDatabase, testDb } from './setup';
+import { church } from '@/schema/church';
+import { organization } from '@/schema/organization';
+import { createChurch } from '@/tenancy';
 
 describe('Church Schema', () => {
   beforeEach(async () => {

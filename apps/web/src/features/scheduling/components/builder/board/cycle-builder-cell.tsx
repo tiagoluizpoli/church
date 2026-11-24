@@ -57,7 +57,6 @@ interface CycleBuilderCellProps {
   eventTimeBlockLabel: string;
   selectedVolunteerId?: string;
   selectedVolunteerName?: string;
-  isPublished: boolean;
   isEditable?: boolean;
   /** True while the rail is ranking people for this shift×role. */
   isFocused?: boolean;
@@ -121,7 +120,6 @@ export function CycleBuilderCell({
   eventTimeBlockLabel,
   selectedVolunteerId,
   selectedVolunteerName,
-  isPublished,
   isEditable: editable = true,
   isFocused,
   failedWrites,
@@ -345,7 +343,6 @@ export function CycleBuilderCell({
             shiftLabel={shiftLabel}
             shiftRequirementId={shiftRequirementId}
             roleId={roleId}
-            isPublished={isPublished}
             isUnavailable={shift.eligibleVolunteers.some(
               (volunteer) =>
                 volunteer.volunteerId === assignment.volunteerId &&

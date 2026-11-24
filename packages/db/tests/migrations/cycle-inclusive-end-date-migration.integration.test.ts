@@ -11,7 +11,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { getIntegrationDatabaseUrl } from '../../src/integration-database-url';
+import { getIntegrationDatabaseUrl } from '@/integration-database-url';
 
 const MIGRATIONS = join(import.meta.dirname, '../../src/migrations');
 const MIGRATION_TAG = '0042_cycle-inclusive-end-date';

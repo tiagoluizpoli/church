@@ -1,13 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as schema from '../src/schema';
+import { clearDatabase, testDb } from './schema/setup';
+import * as schema from '@/schema';
 import {
   addChurchMember,
   ChurchIdentityConflictError,
   createChurch,
   ensureChurch,
-} from '../src/tenancy';
-import { clearDatabase, testDb } from './schema/setup';
+} from '@/tenancy';
 
 const FIRST_CHURCH_ID = 'd0000000-0000-4000-8000-000000000001';
 const SECOND_CHURCH_ID = 'd0000000-0000-4000-8000-000000000002';

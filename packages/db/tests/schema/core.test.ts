@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { clearDatabase, testDb } from './setup';
 import {
   invitation as churchInvitation,
   ministry,
@@ -10,9 +11,8 @@ import {
   team,
   user,
   volunteer,
-} from '../../src/schema';
-import { createChurch } from '../../src/tenancy';
-import { clearDatabase, testDb } from './setup';
+} from '@/schema';
+import { createChurch } from '@/tenancy';
 
 /**
  * Deliberately malformed: `ministryId` is required now that global roles

@@ -78,7 +78,6 @@ beforeAll(async () => {
   const controller = new VolunteerController({
     volunteerManager: managers.volunteerManager,
     activeChurchResolver,
-    config: appConfig,
   });
   const assignController = new AssignController({
     participationManager: managers.participationManager,

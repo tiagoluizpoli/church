@@ -37,7 +37,6 @@ const cycleManager = {
   listCycles: vi.fn(),
   getCycle: vi.fn(),
   sendCycle: vi.fn(),
-  reopenEvent: vi.fn(),
 };
 
 const templateManager = {

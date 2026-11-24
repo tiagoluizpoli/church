@@ -36,11 +36,7 @@ async function registeredRoutes(
   return routes;
 }
 
-const PARKED_ROUTES = [
-  'PATCH /api/v1/volunteer/assignments/:assignmentId',
-  'POST /api/v1/volunteer/assignments/:assignmentId/cancel',
-  'GET /api/v1/assign/cycles/:cycleId/audit',
-];
+const PARKED_ROUTES = ['GET /api/v1/assign/cycles/:cycleId/audit'];
 
 describe('composition root', () => {
   it('registers at least one route under every controller prefix', async () => {

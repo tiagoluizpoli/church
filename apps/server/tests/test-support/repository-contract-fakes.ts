@@ -66,8 +66,6 @@ export function createAssignmentRepositoryFake() {
       vi.fn<AssignmentRepository['countByVolunteerInRange']>(),
     deleteByEvent: vi.fn<AssignmentRepository['deleteByEvent']>(),
     deleteById: vi.fn<AssignmentRepository['deleteById']>(),
-    listDeclinedByEventTimeBlock:
-      vi.fn<AssignmentRepository['listDeclinedByEventTimeBlock']>(),
   } satisfies AssignmentRepository;
 }
 
@@ -283,6 +281,9 @@ export function createPlanningEventRepositoryFake() {
       vi.fn<PlanningEventRepository['listScopeParticipatingMinistries']>(),
     moveEventTimeBlocks:
       vi.fn<PlanningEventRepository['moveEventTimeBlocks']>(),
+    listEventShifts: vi.fn<PlanningEventRepository['listEventShifts']>(),
+    retimeEventTimeBlocks:
+      vi.fn<PlanningEventRepository['retimeEventTimeBlocks']>(),
     listCancellationScopeAssignments:
       vi.fn<PlanningEventRepository['listCancellationScopeAssignments']>(),
     cancelEventTimeBlock:

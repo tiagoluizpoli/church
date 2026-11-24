@@ -122,7 +122,6 @@ function renderCell(
         ]}
         needsResponseSuggestions={[]}
         eventTimeBlockLabel="Morning service"
-        isPublished={false}
         onFocus={vi.fn()}
         onToggleFocus={vi.fn()}
         onSelect={vi.fn()}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { wallClockFields, zoneOffsetMs } from '../src/wall-clock';
+import { wallClockFields, zoneOffsetMs } from '@/wall-clock';
 
 const HOUR_MS = 60 * 60 * 1000;
 

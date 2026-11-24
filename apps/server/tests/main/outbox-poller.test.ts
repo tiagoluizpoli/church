@@ -105,3 +105,35 @@ describe('OutboxPoller', () => {
     consoleError.mockRestore();
   });
 });
+
+describe('OutboxPoller.stop', () => {
+  it('waits for an in-flight tick before resolving', async () => {
+    let resolveDrain: () => void = () => {};
+    drainer.drainOnce.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDrain = () => resolve({ claimed: 0, sent: 0, failed: 0 });
+        }),
+    );
+    const poller = createPoller({ intervalMs: 1000 });
+    poller.start();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    let stopped = false;
+    const stopping = poller.stop().then(() => {
+      stopped = true;
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(stopped).toBe(false);
+
+    resolveDrain();
+    await stopping;
+    expect(stopped).toBe(true);
+  });
+
+  it('resolves immediately when no tick is in flight', async () => {
+    const poller = createPoller();
+    poller.start();
+    await expect(poller.stop()).resolves.toBeUndefined();
+  });
+});

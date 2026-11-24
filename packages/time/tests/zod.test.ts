@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calendarDaySchema, instantSchema, timeOfDaySchema } from '../src/zod';
+import { calendarDaySchema, instantSchema, timeOfDaySchema } from '@/zod';
 
 describe('instantSchema', () => {
   it('accepts a canonical Instant string', () => {

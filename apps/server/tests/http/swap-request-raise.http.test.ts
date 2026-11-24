@@ -152,7 +152,6 @@ beforeAll(async () => {
     new VolunteerController({
       volunteerManager: createSchedulingManagers().volunteerManager,
       activeChurchResolver,
-      config: appConfig,
     }),
   ];
   await app.register(

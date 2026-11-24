@@ -924,7 +924,6 @@ describe('GET /event-templates/:templateId', () => {
   it.each([
     ['another Church', ids.foreign],
     ['a missing id', '99999999-9999-4999-8999-999999999999'],
-    ['a malformed id', 'not-a-uuid'],
   ])('answers 404 NOT_FOUND for %s, alike for detail and usage', async (_case, templateId) => {
     await seedEditGraph();
 
@@ -934,6 +933,17 @@ describe('GET /event-templates/:templateId', () => {
     ]) {
       expect(res.statusCode).toBe(404);
       expect(res.json().error).toBe('NOT_FOUND');
+    }
+  });
+
+  it('answers 422 for a malformed id, alike for detail and usage', async () => {
+    await seedEditGraph();
+
+    for (const res of [
+      await getDetail('not-a-uuid'),
+      await getUsage('not-a-uuid'),
+    ]) {
+      expect(res.statusCode).toBe(422);
     }
   });
 });
@@ -1269,18 +1279,20 @@ describe('DELETE /event-templates/:templateId', () => {
     expect(await countOf(assignment)).toBe(before.assignments);
   });
 
-  it('answers the same 404 for a missing, malformed and foreign-Church target and changes nothing', async () => {
+  it('answers the same 404 for a missing and foreign-Church target, 422 for a malformed one, and changes nothing', async () => {
     await seedEditGraph();
     const before = await storedState();
 
     const responses = await Promise.all(
-      [crypto.randomUUID(), 'not-a-uuid', ids.foreign].map(del),
+      [crypto.randomUUID(), ids.foreign].map(del),
     );
+    const malformed = await del('not-a-uuid');
 
     for (const res of responses) {
       expect(res.statusCode).toBe(404);
       expect(res.json().error).toBe('NOT_FOUND');
     }
+    expect(malformed.statusCode).toBe(422);
     expect(new Set(responses.map((r) => r.json().message)).size).toBe(1);
     expect(await storedState()).toEqual(before);
   });
@@ -1564,13 +1576,21 @@ describe('Template Precedence', () => {
       [ids.template, ids.sibling],
       [ids.foreign, created.id],
       [created.id, ids.foreign],
-      [created.id, 'not-a-uuid'],
     ] as const) {
       expect(
         (await putPrecedence({ templateId, otherTemplateId, answer: 'both' }))
           .statusCode,
       ).toBe(404);
     }
+    expect(
+      (
+        await putPrecedence({
+          templateId: created.id,
+          otherTemplateId: 'not-a-uuid',
+          answer: 'both',
+        })
+      ).statusCode,
+    ).toBe(422);
     expect((await listPrecedences(ids.foreign)).statusCode).toBe(404);
     expect(
       (

@@ -2,7 +2,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
-    alias: [{ find: /^@\//, replacement: `${import.meta.dirname}/src/` }],
+    alias: [
+      { find: /^@\/tests\//, replacement: `${import.meta.dirname}/tests/` },
+      { find: /^@\//, replacement: `${import.meta.dirname}/src/` },
+    ],
   },
   test: {
     globals: true,

@@ -1,4 +1,3 @@
-import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -27,12 +26,10 @@ import {
   answerAvailabilityCheckBodySchema,
   answerConflictResponseSchema,
   assignmentDetailResponseSchema,
-  assignmentResponseSchema,
   availabilityCheckDetailResponseSchema,
   availabilityCheckListResponseSchema,
   dashboardResponseSchema,
   ministryScheduleResponseSchema,
-  respondToAssignmentBodySchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
 import { refuse } from '../utils/refuse';
@@ -56,7 +53,6 @@ interface AssignmentRouteParams {
 interface VolunteerControllerDependencies {
   volunteerManager: IVolunteerManager;
   activeChurchResolver: IActiveChurchResolver;
-  config: AppConfig;
 }
 
 interface PrivateObjectOperationInput<T> {
@@ -80,17 +76,12 @@ export class VolunteerController implements FastifyController {
   private readonly volunteerManager: IVolunteerManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
 
-  private readonly parked: AppConfig['parked'];
-
   constructor({
     volunteerManager,
     activeChurchResolver,
-    config,
   }: VolunteerControllerDependencies) {
     this.volunteerManager = volunteerManager;
     this.activeChurchResolver = activeChurchResolver;
-    const { parked } = config;
-    this.parked = parked;
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -299,79 +290,6 @@ export class VolunteerController implements FastifyController {
         );
       },
     );
-
-    if (this.parked.assignmentResponse) {
-      app.patch(
-        '/assignments/:assignmentId',
-        {
-          schema: {
-            tags: ['volunteer'],
-            operationId: 'respondToAssignment',
-            summary: 'Respond to an Assignment',
-            description:
-              "Record the current Volunteer's accept/decline response to one of their own Assignments.",
-            body: respondToAssignmentBodySchema,
-            response: {
-              200: assignmentResponseSchema,
-              404: notFoundResponseSchema,
-            },
-          },
-        },
-        async (request, reply) => {
-          const { assignmentId } = request.params as AssignmentRouteParams;
-          const body = request.body as z.infer<
-            typeof respondToAssignmentBodySchema
-          >;
-          const result = await this.withPrivateObjectNotFound({
-            request,
-            reply,
-            operation: () =>
-              this.volunteerManager.respondToAssignment({
-                assignmentId: AssignmentId.from(assignmentId),
-                volunteerId: VolunteerId.from(request.volunteerId as string),
-                churchId: ChurchId.from(request.churchId),
-                response: body.response,
-                reason: body.reason,
-              }),
-          });
-          if (!result) return;
-          return reply.send(volunteerMapper.assignmentToResponse(result));
-        },
-      );
-    }
-
-    if (this.parked.volunteerCancel) {
-      app.post(
-        '/assignments/:assignmentId/cancel',
-        {
-          schema: {
-            tags: ['volunteer'],
-            operationId: 'cancelOwnAssignment',
-            summary: "Cancel one of the caller's Assignments",
-            description:
-              "Cancel one of the current Volunteer's own Assignments.",
-            response: { 204: z.null(), 404: notFoundResponseSchema },
-          },
-        },
-        async (request, reply) => {
-          const { assignmentId } = request.params as AssignmentRouteParams;
-          const cancelled = await this.withPrivateObjectNotFound({
-            request,
-            reply,
-            operation: async () => {
-              await this.volunteerManager.cancelOwnAssignment({
-                assignmentId: AssignmentId.from(assignmentId),
-                volunteerId: VolunteerId.from(request.volunteerId as string),
-                churchId: ChurchId.from(request.churchId),
-              });
-              return true;
-            },
-          });
-          if (!cancelled) return;
-          return reply.status(204).send(null);
-        },
-      );
-    }
   }
 
   private async withPrivateObjectNotFound<T>({

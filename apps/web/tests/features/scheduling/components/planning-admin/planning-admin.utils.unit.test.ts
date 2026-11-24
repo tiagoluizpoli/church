@@ -1,6 +1,11 @@
-import { fromTimeColumn } from '@church/time';
+import {
+  fromTimeColumn,
+  parseInstant,
+  resetClock,
+  setTestClock,
+} from '@church/time';
 import { AxiosError, type AxiosResponse } from 'axios';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import type {
   CycleEventGroup,
   CycleFormState,
@@ -12,6 +17,7 @@ import type {
 import {
   calculateTotalEventTimeBlocks,
   canCreateCycle,
+  canEditEvent,
   canSaveTemplate,
   conflictingCyclesOf,
   cycleIsReadOnly,
@@ -531,5 +537,34 @@ describe('Recurrence in the template request', () => {
       toTemplateRequestBody({ form: makeTemplateForm({ recurrence: monthly }) })
         .recurrence,
     ).toEqual(monthly);
+  });
+});
+
+describe('canEditEvent', () => {
+  const sunday = {
+    cycleState: 'sent',
+    eventStatus: 'scheduled',
+    end: '2026-08-02T11:00:00Z',
+  };
+  afterEach(() => resetClock());
+
+  it.each([
+    ['before it starts', '2026-08-01T09:00:00Z', true],
+    ['while it runs', '2026-08-02T10:00:00Z', true],
+    ['once it has ended', '2026-08-02T11:00:00Z', false],
+  ])('%s', (_when, instant, expected) => {
+    setTestClock({ instant: parseInstant({ value: instant }) });
+
+    expect(canEditEvent(sunday)).toBe(expected);
+  });
+
+  it.each([
+    [{ cycleState: 'draft' }],
+    [{ cycleState: 'past' }],
+    [{ eventStatus: 'cancelled' }],
+  ])('is closed outside a scheduled Event of a Sent Cycle: %o', (override) => {
+    setTestClock({ instant: parseInstant({ value: '2026-08-01T09:00:00Z' }) });
+
+    expect(canEditEvent({ ...sunday, ...override })).toBe(false);
   });
 });

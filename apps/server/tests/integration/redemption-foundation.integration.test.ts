@@ -22,6 +22,7 @@ import {
   MinistryInvitationId,
   RoleId,
   UserId,
+  VolunteerId,
 } from '@/domain/branded-ids';
 import type { RedemptionIdentityGateway } from '@/domain/contracts/infrastructure/redemption-identity-gateway';
 import type { MinistryInvitation } from '@/domain/entities/ministry-invitation';
@@ -94,6 +95,9 @@ const unusedIdentityGateway: RedemptionIdentityGateway = {
   async verifyPassword() {
     throw new Error('Identity gateway is not used by checkpoint-three tests.');
   },
+  async signIn() {
+    throw new Error('Identity gateway is not used by checkpoint-three tests.');
+  },
 };
 
 function createHarness(): RedemptionHarness {
@@ -115,6 +119,7 @@ function createHarness(): RedemptionHarness {
       redemptionRepository,
       securityLogRepository,
       unitOfWork,
+      verificationCodeRepository,
       failureLog: { record: () => {} },
     }),
   };
@@ -289,6 +294,67 @@ describe('verification code persistence', () => {
         now,
       }),
     ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
+  });
+
+  it('reads a stored redemption outcome back through its schema, refusing a malformed one', async () => {
+    const invitation = await mintInvitation();
+    const { verificationCodeManager } = createHarness();
+    const churchInvitationId = pairedChurchInvitationId({ invitation });
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    const idempotencyKey = '33333333-3333-4333-8333-333333333333';
+    await verificationCodeManager.issue({
+      churchId: ChurchId.from(fixture.churchA.id),
+      churchInvitationId,
+      recipientEmail: 'new-redemption-user@fixture.test',
+      churchName: fixture.churchA.name,
+      now,
+    });
+    await verificationCodeManager.verify({
+      churchInvitationId,
+      code: '123456',
+      idempotencyKey,
+      now,
+    });
+    const stored = {
+      email: 'new-redemption-user@fixture.test',
+      outcome: {
+        kind: 'full-success' as const,
+        volunteerId: VolunteerId.from('44444444-4444-4444-8444-444444444444'),
+      },
+    };
+    const key = {
+      churchInvitationId,
+      redemptionIdempotencyKey: idempotencyKey,
+    };
+    await unitOfWork.run((tx) =>
+      verificationCodeRepository.recordRedemptionOutcome({
+        ...key,
+        outcome: stored,
+        tx,
+      }),
+    );
+
+    await expect(
+      verificationCodeRepository.findRedemptionOutcome(key),
+    ).resolves.toEqual(stored);
+    await expect(
+      verificationCodeRepository.findRedemptionOutcome({
+        churchInvitationId,
+        redemptionIdempotencyKey: '55555555-5555-4555-8555-555555555555',
+      }),
+    ).resolves.toBeNull();
+
+    await testDb
+      .update(invitationVerificationCode)
+      .set({
+        redemptionOutcome: { email: stored.email, outcome: { kind: 'x' } },
+      })
+      .where(
+        eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
+      );
+    await expect(
+      verificationCodeRepository.findRedemptionOutcome(key),
+    ).rejects.toThrow();
   });
 
   it('never increments past five failed attempts under concurrent invalid submissions', async () => {

@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm';
 import pg from 'pg';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { createDb } from '../src/client';
-import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
+import { createDb } from '@/client';
+import { getIntegrationDatabaseUrl } from '@/integration-database-url';
 
 const db = createDb();
 const admin = new pg.Client({ connectionString: getIntegrationDatabaseUrl() });

@@ -96,7 +96,6 @@ const assignment = (id: string, day: number, swapRequested = false) => ({
   roleName: 'Teacher',
   status: 'confirmed' as const,
   timingState: 'upcoming' as const,
-  canRespond: true,
   swapRequested,
 });
 
@@ -413,7 +412,7 @@ describe('Home serving widgets', () => {
     );
   });
 
-  it('lists a declined upcoming assignment without a response label', async () => {
+  it('lists a pending upcoming assignment without a response label', async () => {
     givenServing();
     const next = assignment('a-1', 11);
     volunteerApi.getVolunteerDashboard.mockResolvedValue({
@@ -426,7 +425,7 @@ describe('Home serving widgets', () => {
           ministryName: 'Kids',
           assignments: [
             next,
-            { ...assignment('a-2', 12), status: 'declined' },
+            { ...assignment('a-2', 12), status: 'pending' as const },
             assignment('a-3', 13),
           ],
         },
@@ -439,7 +438,7 @@ describe('Home serving widgets', () => {
         name: m.home_upcoming_assignments(),
       })
     ).closest('section') as HTMLElement;
-    // Assignments are informational: a declined one is listed like any other, with no response label.
+    // Assignments are informational: a pending one is listed like any other, with no response label.
     await waitFor(() =>
       expect(
         within(upcoming)

@@ -8,7 +8,7 @@ import {
   timeOfDayOffset,
   timeOfDaySpan,
   toInstantAfter,
-} from '../src';
+} from '@/index';
 
 function instant(value: string): Instant {
   return parseInstant({ value });

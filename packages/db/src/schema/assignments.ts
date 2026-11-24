@@ -41,7 +41,7 @@ export const assignment = pgTable(
     shiftRequirementId: uuid('shift_requirement_id')
       .notNull()
       .references(() => shiftRequirement.id, { onDelete: 'cascade' }),
-    status: assignmentStatusEnum('status').default('pending').notNull(), // pending, confirmed, declined
+    status: assignmentStatusEnum('status').default('pending').notNull(),
     reason: text('reason'),
     assignedAt: timestamp('assigned_at', {
       withTimezone: true,
@@ -60,14 +60,14 @@ export const assignment = pgTable(
     ),
     index('assignment_shift_requirement_idx').on(table.shiftRequirementId),
     // Partial: a volunteer may hold only one ACTIVE assignment per Shift.
-    // Declined/cancelled rows are excluded so a volunteer can be re-assigned
-    // (or substituted in) after declining the same Shift.
+    // Cancelled rows are excluded so a volunteer can be re-assigned
+    // (or substituted in) after the same Shift was cancelled for them.
     uniqueIndex('assignment_shift_volunteer_idx')
       .on(table.shiftId, table.volunteerId)
       .where(sql`${table.status} IN ('draft', 'pending', 'confirmed')`),
     check(
       'assignment_status_check',
-      sql`${table.status} IN ('draft', 'pending', 'confirmed', 'declined', 'cancelled')`,
+      sql`${table.status} IN ('draft', 'pending', 'confirmed', 'cancelled')`,
     ),
   ],
 );

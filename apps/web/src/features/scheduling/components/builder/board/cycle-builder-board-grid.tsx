@@ -342,9 +342,6 @@ export function CycleBuilderBoardGrid({
                                                   selectedVolunteerName={
                                                     selectedVolunteerName
                                                   }
-                                                  isPublished={
-                                                    event.state === 'published'
-                                                  }
                                                   isFocused={
                                                     focusedKey ===
                                                     requirementFocusKey

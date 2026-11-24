@@ -9,7 +9,6 @@ import type {
   UserId,
   VolunteerId,
 } from '../../branded-ids';
-import type { Assignment } from '../../entities/assignment';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
 import type { Notification } from '../../entities/notification';
 import type { CheckDayState } from '../../services/availability-check-days';
@@ -24,9 +23,8 @@ export interface DashboardAssignmentItem {
   sectorName: string;
   startTime: string;
   endTime: string;
-  status: 'pending' | 'confirmed' | 'declined';
+  status: 'pending' | 'confirmed';
   timingState: 'in_progress' | 'upcoming';
-  canRespond: boolean;
 }
 
 export interface DashboardAssignmentGroup {
@@ -35,7 +33,7 @@ export interface DashboardAssignmentGroup {
   ministryId: string;
   ministryName: string;
   eventStart: string;
-  aggregateResponseState: 'pending' | 'confirmed' | 'mixed' | 'declined';
+  aggregateResponseState: 'pending' | 'confirmed' | 'mixed';
   hasPendingResponse: boolean;
   assignments: DashboardAssignmentItem[];
 }
@@ -52,7 +50,7 @@ export interface DashboardNextAssignment extends DashboardAssignmentItem {
   ministryName: string;
 }
 
-/** Published, non-declined Assignments whose Shift starts in one Church month. */
+/** Published Assignments whose Shift starts in one Church month. */
 export interface DashboardServingMonth {
   /** First day of the month. */
   month: CalendarDay;
@@ -83,7 +81,7 @@ export interface VolunteerScheduleAssignment {
   sectorName: string;
   roleId: string;
   roleName: string;
-  status: 'pending' | 'confirmed' | 'declined';
+  status: 'pending' | 'confirmed';
   /** An open Swap request on a not-yet-started Shift. */
   swapRequested: boolean;
 }
@@ -267,20 +265,6 @@ export interface AnswerAvailabilityCheckInput {
   wholeDayDates?: string[];
 }
 
-export interface RespondToAssignmentInput {
-  assignmentId: AssignmentId;
-  churchId: ChurchId;
-  reason?: string;
-  response: 'accepted' | 'declined';
-  volunteerId: VolunteerId;
-}
-
-export interface CancelOwnAssignmentInput {
-  assignmentId: AssignmentId;
-  churchId: ChurchId;
-  volunteerId: VolunteerId;
-}
-
 export interface GetDashboardInput {
   userId: UserId;
   volunteerId: VolunteerId;
@@ -328,6 +312,4 @@ export interface IVolunteerManager {
   answerAvailabilityCheck(
     input: AnswerAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail>;
-  respondToAssignment(input: RespondToAssignmentInput): Promise<Assignment>;
-  cancelOwnAssignment(input: CancelOwnAssignmentInput): Promise<void>;
 }

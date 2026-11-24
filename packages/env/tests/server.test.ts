@@ -18,7 +18,7 @@ async function parse(overrides: Record<string, string>) {
   for (const [key, value] of Object.entries({ ...baseEnv, ...overrides })) {
     vi.stubEnv(key, value);
   }
-  return (await import('../src/server')).env;
+  return (await import('@/server')).env;
 }
 
 /** Parses invalid env and returns the issues the parser logged for it. */

@@ -1,6 +1,7 @@
 import { db } from '@church/db';
 import { env } from '@church/env/server';
 import { sql } from 'drizzle-orm';
+import { serializeError } from '../infrastructure/privacy/privacy';
 import { initErrorReporting } from '../infrastructure/services/sentry-error-reporter';
 import { createCompositionRoot } from './di/composition-root';
 import { registerErrorReportTunnel } from './fastify/error-report-tunnel';
@@ -8,6 +9,11 @@ import { registerReadiness } from './fastify/readiness';
 import { registerControllers } from './fastify/register-controllers';
 import { createFastify } from './fastify/setup';
 import { OutboxPoller } from './outbox-poller';
+import {
+  createShutdown,
+  type LogEntry,
+  logUnhandledRejection,
+} from './shutdown';
 
 async function start(): Promise<void> {
   const reportingDsn = initErrorReporting({
@@ -46,20 +52,38 @@ async function start(): Promise<void> {
     checkDatabase: () => db.execute(sql`select 1`),
   });
 
+  // The app logger's err serializer scrubs the error (ADR-0014).
+  const log = ({ message, error }: LogEntry) =>
+    error === undefined
+      ? app.log.info(message)
+      : app.log.error({ err: error }, message);
+
   const outboxPoller = new OutboxPoller({
     drainer: root.outboxDrainer,
     intervalMs: env.OUTBOX_POLL_INTERVAL_MS,
     batchSize: env.OUTBOX_DRAIN_BATCH_SIZE,
   });
   outboxPoller.start();
-  app.addHook('onClose', async () => {
-    outboxPoller.stop();
+
+  const shutdown = createShutdown({
+    closeApp: () => app.close(),
+    stopPoller: () => outboxPoller.stop(),
+    closeDatabase: () => db.$client.end(),
+    exit: (code) => process.exit(code),
+    log,
   });
+  for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+    process.once(signal, () => void shutdown(signal));
+  }
+  process.on('unhandledRejection', (reason) =>
+    logUnhandledRejection({ reason, log }),
+  );
 
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
 }
 
 start().catch((err) => {
-  console.error(err);
+  // No app logger yet: scrub like its err serializer does (ADR-0014).
+  console.error('[server] startup failed:', serializeError(err));
   process.exit(1);
 });

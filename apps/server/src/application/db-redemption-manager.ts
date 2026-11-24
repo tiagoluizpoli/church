@@ -32,6 +32,7 @@ import type {
   RequestRedemptionCodeInput,
 } from '../domain/contracts/application/redemption-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
+import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
 import type {
   ChurchInvitationContext,
   MinistryInvitationContext,
@@ -54,6 +55,7 @@ import { PendingMinistryInvitationNotFoundError } from '../domain/errors/pending
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 import { maskEmail } from '../domain/services/mask-email';
 import { reviewTokenFor } from '../domain/services/redemption-review-token';
+import type { StoredRedemption } from '../domain/stored-redemption';
 
 interface DbRedemptionManagerDependencies {
   churchRepository: ChurchRepository;
@@ -63,6 +65,7 @@ interface DbRedemptionManagerDependencies {
   redemptionRepository: RedemptionRepository;
   securityLogRepository: SecurityLogRepository;
   unitOfWork: UnitOfWork;
+  verificationCodeRepository: InvitationVerificationCodeRepository;
   failureLog: RedemptionFailureLog;
   /** Non-production only — see `getDebugVerificationCode`. */
   verificationCodeInspector?: VerificationCodeInspector;
@@ -86,6 +89,14 @@ interface AdmittedChurchOnly {
 }
 
 type AdmittedNewPerson = FullRedemptionSuccess | AdmittedChurchOnly;
+
+interface ReplayCommittedInput {
+  churchInvitationId: ChurchInvitationId;
+  password: string;
+  code: string;
+  idempotencyKey: string;
+  now: Date;
+}
 
 interface ClassifyIdentityFailureInput {
   email: string;
@@ -230,6 +241,7 @@ export class DbRedemptionManager implements RedemptionManager {
   private readonly redemptionRepository: RedemptionRepository;
   private readonly securityLogRepository: SecurityLogRepository;
   private readonly unitOfWork: UnitOfWork;
+  private readonly verificationCodeRepository: InvitationVerificationCodeRepository;
   private readonly failureLog: RedemptionFailureLog;
   private readonly verificationCodeInspector:
     | VerificationCodeInspector
@@ -243,6 +255,7 @@ export class DbRedemptionManager implements RedemptionManager {
     redemptionRepository,
     securityLogRepository,
     unitOfWork,
+    verificationCodeRepository,
     failureLog,
     verificationCodeInspector,
   }: DbRedemptionManagerDependencies) {
@@ -253,6 +266,7 @@ export class DbRedemptionManager implements RedemptionManager {
     this.redemptionRepository = redemptionRepository;
     this.securityLogRepository = securityLogRepository;
     this.unitOfWork = unitOfWork;
+    this.verificationCodeRepository = verificationCodeRepository;
     this.failureLog = failureLog;
     this.verificationCodeInspector = verificationCodeInspector;
   }
@@ -292,8 +306,21 @@ export class DbRedemptionManager implements RedemptionManager {
     now = nowAsDate(),
   }: RedeemNewUserInput): Promise<RedeemNewUserOutcome> {
     const preview = await this.getPublicPreview({ churchInvitationId, now });
-    if (!preview)
-      return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
+    if (!preview) {
+      const replayed = await this.replayCommitted({
+        churchInvitationId,
+        password,
+        code,
+        idempotencyKey,
+        now,
+      });
+      return (
+        replayed ?? {
+          kind: 'terminal-failure',
+          reason: 'INVITATION_UNAVAILABLE',
+        }
+      );
+    }
     try {
       await this.invitationVerificationCodeManager.verify({
         churchInvitationId,
@@ -308,28 +335,54 @@ export class DbRedemptionManager implements RedemptionManager {
       throw error;
     }
     try {
-      const committed = await this.unitOfWork.run((tx) =>
-        this.admitNewPerson({
+      return await this.unitOfWork.run(async (tx) => {
+        const admitted = await this.admitNewPerson({
           preview,
           name,
           password,
           correlationId: idempotencyKey,
           now,
           tx,
-        }),
-      );
-      if (committed.kind === 'full-success') return committed;
-      const outcome = await this.churchOnlyOutcome({
-        sourceChurchId: committed.sourceChurchId,
-        destinationChurchId: preview.churchId,
-        destinationChurchName: preview.churchName,
-        ministryInvitationId: committed.ministry.ministryInvitationId,
-        ministryName: committed.ministry.ministryName,
+        });
+        const { sessionCookie, ...outcome } =
+          admitted.kind === 'full-success'
+            ? admitted
+            : {
+                ...(await this.churchOnlyOutcome({
+                  sourceChurchId: admitted.sourceChurchId,
+                  destinationChurchId: preview.churchId,
+                  destinationChurchName: preview.churchName,
+                  ministryInvitationId: admitted.ministry.ministryInvitationId,
+                  ministryName: admitted.ministry.ministryName,
+                })),
+                sessionCookie: admitted.sessionCookie,
+              };
+        const stored: StoredRedemption = { email: preview.email, outcome };
+        await this.verificationCodeRepository.recordRedemptionOutcome({
+          churchInvitationId,
+          redemptionIdempotencyKey: idempotencyKey,
+          outcome: stored,
+          tx,
+        });
+        return { ...outcome, sessionCookie };
       });
-      return { ...outcome, sessionCookie: committed.sessionCookie };
     } catch (error) {
-      if (error instanceof InvitationNotPendingError)
-        return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
+      if (error instanceof InvitationNotPendingError) {
+        // A concurrent request with this key may have just committed it.
+        const replayed = await this.replayCommitted({
+          churchInvitationId,
+          password,
+          code,
+          idempotencyKey,
+          now,
+        });
+        return (
+          replayed ?? {
+            kind: 'terminal-failure',
+            reason: 'INVITATION_UNAVAILABLE',
+          }
+        );
+      }
       const reason =
         error instanceof MinistryGrantFailure
           ? 'MINISTRY_ACCEPTANCE_FAILED'
@@ -347,6 +400,45 @@ export class DbRedemptionManager implements RedemptionManager {
         return { kind: 'terminal-failure', reason };
       return { kind: 'retryable-failure', reason };
     }
+  }
+
+  /**
+   * A retry of a redeem that already committed under this key (or the loser
+   * of two concurrent same-key requests) gets the original outcome with a
+   * fresh session. Needs the code and the account password, so a bare key
+   * replays nothing. Null when this key committed nothing.
+   */
+  private async replayCommitted({
+    churchInvitationId,
+    password,
+    code,
+    idempotencyKey,
+    now,
+  }: ReplayCommittedInput): Promise<RedeemNewUserOutcome | null> {
+    const stored = await this.verificationCodeRepository.findRedemptionOutcome({
+      churchInvitationId,
+      redemptionIdempotencyKey: idempotencyKey,
+    });
+    if (!stored) return null;
+    try {
+      await this.invitationVerificationCodeManager.verify({
+        churchInvitationId,
+        code,
+        idempotencyKey,
+        now,
+      });
+    } catch (error) {
+      if (error instanceof VerificationCodeError)
+        return { kind: 'terminal-failure', reason: 'VERIFICATION_FAILED' };
+      throw error;
+    }
+    const sessionCookie = await this.identityGateway.signIn({
+      email: stored.email,
+      password,
+    });
+    if (!sessionCookie)
+      return { kind: 'terminal-failure', reason: 'VERIFICATION_FAILED' };
+    return { ...stored.outcome, sessionCookie };
   }
 
   /**

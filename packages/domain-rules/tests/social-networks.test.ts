@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectSocialNetwork, SOCIAL_NETWORKS } from '../src/social-networks';
+import { detectSocialNetwork, SOCIAL_NETWORKS } from '@/social-networks';
 
 const SUPPORTED = [
   ['https://instagram.com/igreja', 'instagram'],

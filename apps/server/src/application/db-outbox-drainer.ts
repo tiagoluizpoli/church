@@ -1,5 +1,6 @@
 import type { AppConfig } from '@church/app-config';
 import {
+  addMilliseconds,
   fromDate,
   millisecondsBetween,
   now,
@@ -117,10 +118,17 @@ export class DbOutboxDrainer implements IOutboxDrainer {
 
   async drainOnce(input: DrainOnceInput): Promise<DrainOnceResult> {
     const { limit } = input;
+    const claimedAt = now();
     const claimed = await this.unitOfWork.run((tx) =>
       this.outboxRepository.claimPending({
         limit,
-        now: nowAsDate(),
+        now: toDate({ instant: claimedAt }),
+        staleBefore: toDate({
+          instant: addMilliseconds({
+            instant: claimedAt,
+            milliseconds: -this.outboxPolicy.processingLeaseMs,
+          }),
+        }),
         tx,
       }),
     );
@@ -131,13 +139,48 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       // One span per delivery, so its SQL nests under it in the trace.
       const outcome = await this.tracing.inSpan({
         name: 'outbox.delivery',
-        run: () => this.processOne({ message }),
+        run: () => this.processIsolated({ message }),
       });
       if (outcome === 'sent') sent += 1;
       else failed += 1;
     }
 
     return { claimed: claimed.length, sent, failed };
+  }
+
+  /**
+   * One message never aborts the batch. An unexpected error (a read before
+   * the send, bookkeeping after it) is retried like a retryable send: only a
+   * provider refusal or an exhausted attempt cap fails the row for good.
+   */
+  private async processIsolated({
+    message,
+  }: ProcessOneInput): Promise<'sent' | 'failed'> {
+    try {
+      // A reclaimed row that keeps stranding is a poison message.
+      if (
+        hasExhaustedRetries({
+          attempts: message.attempts,
+          policy: this.outboxPolicy,
+        })
+      ) {
+        await this.failTerminally({
+          message,
+          reason: 'Processing lease expired too many times',
+        });
+        return 'failed';
+      }
+      return await this.processOne({ message });
+    } catch (error) {
+      // Name only: a raw message can echo recipient data.
+      const reason = error instanceof Error ? error.name : 'UnknownError';
+      try {
+        await this.retryOrFail({ message, reason, retryable: true });
+      } catch {
+        // Bookkeeping is down too: the row stays processing and the lease reclaims it.
+      }
+      return 'failed';
+    }
   }
 
   private async processOne({
@@ -704,7 +747,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       return 'sent';
     } catch (error) {
       if (!(error instanceof EmailSendError)) throw error;
-      await this.handleSendFailure({ message, error });
+      // The code, not the message: provider text can echo the recipient.
+      await this.retryOrFail({
+        message,
+        reason: error.code,
+        retryable: error.retryable,
+      });
       return 'failed';
     }
   }
@@ -720,20 +768,21 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     );
   }
 
-  private async handleSendFailure({
+  private async retryOrFail({
     message,
-    error,
-  }: HandleSendFailureInput): Promise<void> {
+    reason,
+    retryable,
+  }: RetryOrFailInput): Promise<void> {
     const attempts = message.attempts + 1;
     if (
-      error.retryable &&
+      retryable &&
       !hasExhaustedRetries({ attempts, policy: this.outboxPolicy })
     ) {
       const retryAt = nextRetryAt({ attempts, policy: this.outboxPolicy });
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.markFailed({
           id: message.id,
-          lastError: error.message,
+          lastError: reason,
           attempts,
           status: 'pending',
           scheduledFor: toDate({ instant: retryAt }),
@@ -744,7 +793,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     }
     await this.failTerminally({
       message,
-      reason: error.message,
+      reason,
       attempts,
     });
   }
@@ -891,9 +940,10 @@ function firstNameOf(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
 }
 
-interface HandleSendFailureInput {
+interface RetryOrFailInput {
   message: OutboxMessage;
-  error: EmailSendError;
+  reason: string;
+  retryable: boolean;
 }
 
 interface FailTerminallyInput {

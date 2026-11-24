@@ -62,8 +62,8 @@ describe('VolunteerCard (T048)', () => {
       </div>,
     );
 
-    expect(screen.getByText('Local L.')).toBeVisible();
-    expect(screen.getByText('Local V.')).toBeVisible();
+    expect(screen.getByText('Local Leader')).toBeVisible();
+    expect(screen.getByText('Local Volunteer')).toBeVisible();
 
     const badges = screen.getAllByTestId('assignee-role-badge');
     expect(badges).toHaveLength(1);
@@ -125,11 +125,9 @@ describe('VolunteerCard (T048)', () => {
 
     const actions = screen.getAllByTestId('volunteer-select-shift');
     expect(actions[0]).toHaveAccessibleName(
-      'Select Local Leader, Leader to place on a shift',
+      'Select shift for Local Leader, Leader',
     );
-    expect(actions[1]).toHaveAccessibleName(
-      'Select Local Volunteer to place on a shift',
-    );
+    expect(actions[1]).toHaveAccessibleName('Select shift for Local Volunteer');
   });
 
   it('falls back to the full name when there is no role to disambiguate', () => {
@@ -144,7 +142,7 @@ describe('VolunteerCard (T048)', () => {
     );
 
     expect(screen.getByTestId('volunteer-select-shift')).toHaveAccessibleName(
-      'Select John Doe to place on a shift',
+      'Select shift for John Doe',
     );
   });
 
@@ -224,10 +222,44 @@ describe('VolunteerCard (T048)', () => {
     ).not.toBeInTheDocument();
     const pickMe = screen.getByTestId('volunteer-pick-me');
     expect(pickMe).toHaveTextContent('Pick me');
+    // WCAG 2.5.3: the accessible name starts with the visible label.
+    expect(pickMe).toHaveAccessibleName(/^Pick me/);
     await userEvent.click(pickMe);
 
     expect(onAssignToFocused).toHaveBeenCalledWith('volunteer-1');
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('shows the full volunteer name, not an abbreviation', () => {
+    renderWithProviders(
+      <VolunteerCard
+        volunteer={buildVolunteer({ volunteerName: 'Ana Maria Almeida' })}
+      />,
+    );
+
+    expect(screen.getByText('Ana Maria Almeida')).toBeVisible();
+  });
+
+  it('fills Pick me only for the ideal ready pick', () => {
+    const { rerender } = renderWithProviders(
+      <VolunteerCard
+        volunteer={buildVolunteer({})}
+        assignFit="ready"
+        onAssignToFocused={vi.fn()}
+      />,
+    );
+    const outline = screen.getByTestId('volunteer-pick-me').className;
+    rerender(
+      <VolunteerCard
+        volunteer={buildVolunteer({})}
+        isIdeal
+        assignFit="ready"
+        onAssignToFocused={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('volunteer-pick-me').className).not.toBe(outline);
+    expect(outline).toMatch(/border/);
   });
 
   it('warns on Pick me when availability will demand an override', () => {
@@ -245,7 +277,7 @@ describe('VolunteerCard (T048)', () => {
     const pickMe = screen.getByTestId('volunteer-pick-me');
     expect(pickMe).toHaveAttribute('data-assign-fit', 'unavailable');
     expect(pickMe).toHaveAccessibleName(
-      'Assign Local Leader to this role — Not available for this shift — confirmation required',
+      'Pick me — assign Local Leader to this role — Not available for this shift — confirmation required',
     );
   });
 

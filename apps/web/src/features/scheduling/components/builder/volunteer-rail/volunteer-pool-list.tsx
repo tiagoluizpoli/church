@@ -210,7 +210,7 @@ function GroupHeader({ label, count, icon, open, onToggle }: GroupHeaderProps) {
         <LocateFixed className="size-3.5 text-primary" />
       ) : null}
       <span>{label}</span>
-      <span className="ml-auto normal-case">{count}</span>
+      <span className="ml-auto">{count}</span>
     </>
   );
 
@@ -221,7 +221,7 @@ function GroupHeader({ label, count, icon, open, onToggle }: GroupHeaderProps) {
         onClick={onToggle}
         aria-expanded={open}
         aria-label={`${label} (${count})`}
-        className="flex w-full items-center gap-1.5 text-muted-foreground text-xs uppercase tracking-wide"
+        className="flex w-full items-center gap-1.5 text-muted-foreground text-xs"
       >
         {content}
       </button>
@@ -229,7 +229,7 @@ function GroupHeader({ label, count, icon, open, onToggle }: GroupHeaderProps) {
   }
 
   return (
-    <h3 className="flex items-center gap-1.5 text-muted-foreground text-xs uppercase tracking-wide">
+    <h3 className="flex items-center gap-1.5 text-muted-foreground text-xs">
       {content}
     </h3>
   );

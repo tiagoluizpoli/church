@@ -23,7 +23,7 @@ import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-bui
 import { dateLabel } from '@/features/scheduling/utils/builder/cycle-builder-date.utils';
 import { renderWithProviders } from '@/tests/setup/render';
 import { adminApi } from '@/utils/api-instances';
-import * as volunteerName from '@/utils/format-volunteer-name';
+import * as volunteerInitials from '@/utils/format-volunteer-initials';
 
 beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
@@ -315,7 +315,7 @@ describe('moving assignments', () => {
       sectorName: 'Side',
       peopleNeeded: 1,
     });
-    const formatName = vi.spyOn(volunteerName, 'formatVolunteerName');
+    const formatName = vi.spyOn(volunteerInitials, 'formatVolunteerInitials');
     renderBuilder({ data });
     const grip = screen.getByTestId('volunteer-card-grip');
     fireEvent.pointerDown(grip, { button: 0, clientX: 10, clientY: 10 });

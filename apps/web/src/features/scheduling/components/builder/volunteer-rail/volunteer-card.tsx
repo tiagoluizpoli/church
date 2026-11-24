@@ -22,7 +22,6 @@ import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatAssigneeRoleLabel } from '@/utils/format-assignee-role-label';
 import { formatLastServed } from '@/utils/format-last-served';
 import { formatVolunteerInitials } from '@/utils/format-volunteer-initials';
-import { formatVolunteerName } from '@/utils/format-volunteer-name';
 
 interface SquareGripIconProps {
   className?: string;
@@ -126,27 +125,28 @@ function useIsTruncated(): UseIsTruncatedResult {
   return { measureRef, truncated };
 }
 
-interface RolesLineProps {
-  roleNames: string[];
+interface TruncatedLineProps {
+  text: string;
+  className: string;
+  testId?: string;
 }
 
 /**
- * Roles the volunteer is qualified for. The card body is inert — not clickable,
- * not draggable — so hovering a clipped line is how a leader reads the full set
- * without leaving the page.
+ * One line of card text (name, roles). The card body is inert — not clickable,
+ * not draggable — so hovering or focusing a clipped line is how a leader reads
+ * the full text without leaving the page.
  */
-function RolesLine({ roleNames }: RolesLineProps) {
+function TruncatedLine({ text, className, testId }: TruncatedLineProps) {
   const { measureRef, truncated } = useIsTruncated();
-  const label = roleNames.join(' · ');
   if (!truncated) {
     return (
-      <p
+      <span
         ref={measureRef}
-        className="truncate text-muted-foreground text-xs"
-        data-testid="volunteer-qualified-roles"
+        className={cn('block truncate', className)}
+        data-testid={testId}
       >
-        {label}
-      </p>
+        {text}
+      </span>
     );
   }
   return (
@@ -160,14 +160,14 @@ function RolesLine({ roleNames }: RolesLineProps) {
           <button
             type="button"
             ref={measureRef}
-            className="truncate text-left text-muted-foreground text-xs"
-            data-testid="volunteer-qualified-roles"
+            className={cn('truncate text-left', className)}
+            data-testid={testId}
           >
-            {label}
+            {text}
           </button>
         }
       />
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>{text}</TooltipContent>
     </Tooltip>
   );
 }
@@ -272,9 +272,8 @@ const VolunteerCardPresentation = memo(function VolunteerCardPresentation({
   const roleLabel = formatAssigneeRoleLabel({
     membership: volunteer.membership,
   });
-  // What the card's actions call this person. The visible name truncates to
-  // "First L." and two people can share that, so the accessible name carries
-  // the full name plus the role label (FR-013) — this is the disambiguation
+  // What the card's actions call this person. Two people can share a name, so
+  // the accessible name carries the full name plus the role label (FR-013) — this is the disambiguation
   // the grip's aria-label used to hold, before the grip went aria-hidden.
   const accessibleName = roleLabel
     ? `${volunteer.volunteerName}, ${roleLabel}`
@@ -360,9 +359,12 @@ const VolunteerCardPresentation = memo(function VolunteerCardPresentation({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-1.5">
-          <span className="min-w-0 truncate font-medium text-sm">
-            {formatVolunteerName(volunteer.volunteerName)}
-          </span>
+          <div className="min-w-0">
+            <TruncatedLine
+              text={volunteer.volunteerName}
+              className="font-medium text-sm"
+            />
+          </div>
           {isIdeal ? (
             // The strongest recommendation signal on the card, badged with
             // no explanation anywhere else in the product (B-9) — the
@@ -397,7 +399,11 @@ const VolunteerCardPresentation = memo(function VolunteerCardPresentation({
           </p>
         ) : null}
         {volunteer.qualifiedRoleNames?.length ? (
-          <RolesLine roleNames={volunteer.qualifiedRoleNames} />
+          <TruncatedLine
+            text={volunteer.qualifiedRoleNames.join(' · ')}
+            className="text-muted-foreground text-xs"
+            testId="volunteer-qualified-roles"
+          />
         ) : null}
 
         {/* Two separate facts, never side by side: the clock pins to the first
@@ -451,11 +457,12 @@ const VolunteerCardPresentation = memo(function VolunteerCardPresentation({
           <Button
             type="button"
             size={isTouch ? 'touch' : 'sm'}
-            variant={assignFit === 'ready' ? 'default' : 'outline'}
+            // One Voice: only the ideal pick is filled; the rest stay outline.
+            variant={isIdeal && assignFit === 'ready' ? 'default' : 'outline'}
             aria-label={
               assignFit === 'ready'
-                ? m.builder_ui_assign_role({ name: accessibleName })
-                : m.builder_ui_assign_role_explanation({
+                ? m.builder_ui_pick_me_person({ name: accessibleName })
+                : m.builder_ui_pick_me_person_explanation({
                     name: accessibleName,
                     explanation: m.builder_unavailable_confirmation_required(),
                   })

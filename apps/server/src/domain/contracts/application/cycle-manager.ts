@@ -1,4 +1,4 @@
-import type { ChurchId, CycleId, EventId } from '../../branded-ids';
+import type { ChurchId, CycleId } from '../../branded-ids';
 import type {
   Cycle,
   CycleAnchors,
@@ -63,12 +63,6 @@ export interface DeleteCycleManagerInput {
   cycleId: CycleId;
 }
 
-export interface ReopenPlanningEventManagerInput {
-  churchId: ChurchId;
-  cycleId: CycleId;
-  eventId: EventId;
-}
-
 export interface CycleDetails {
   cycle: Cycle;
   events: EventWithEventTimeBlocks[];
@@ -84,5 +78,4 @@ export interface ICycleManager {
   sendCycle(input: SendCycleManagerInput): Promise<void>;
   updateCycle(input: UpdateCycleManagerInput): Promise<Cycle>;
   deleteCycle(input: DeleteCycleManagerInput): Promise<void>;
-  reopenEvent(input: ReopenPlanningEventManagerInput): Promise<void>;
 }

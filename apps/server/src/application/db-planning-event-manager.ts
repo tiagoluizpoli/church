@@ -590,7 +590,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
         churchTimeZone: church.timezone,
       });
       const currentEvent = await this.getCycleEvent({ input, tx });
-      // Draft-only: a reopened Event of a Sent Cycle is no back door.
+      // Draft-only: after the send, removal is the cancellation.
       if (cycle.state !== 'draft' || currentEvent.status !== 'draft') {
         throw new IllegalStateTransitionError({
           from: cycle.state === 'draft' ? currentEvent.status : cycle.state,
@@ -932,7 +932,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       });
       const currentEvent = await this.getCycleEvent({ input, tx });
 
-      // Draft-only: a reopened Event of a Sent Cycle is no back door.
+      // Draft-only: after the send, removal is the cancellation.
       if (cycle.state !== 'draft' || currentEvent.status !== 'draft') {
         throw new IllegalStateTransitionError({
           from: cycle.state === 'draft' ? currentEvent.status : cycle.state,

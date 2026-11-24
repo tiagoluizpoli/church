@@ -166,19 +166,6 @@ const sendCycle = (
       );
     }
   /**
- * Move a scheduled Event in a sent Cycle back to draft so it can be edited.
- * @summary Reopen an Event for editing
- */
-const reopenPlanningEvent = (
-    cycleId: string,
-    eventId: string,
- ) => {
-      return apiClient<void>(
-      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/reopen`, method: 'POST'
-    },
-      );
-    }
-  /**
  * Create a church-owned EventTemplate with its ordered TemplateTimeBlocks on a weekly or monthly Recurrence. When it collides with templates it has no Template Precedence for, nothing is saved and 409 UNANSWERED_TEMPLATE_COLLISIONS names them; resubmit with an answer per pair in `precedences`.
  * @summary Create an EventTemplate
  */
@@ -546,7 +533,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycleAnchors,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,reopenPlanningEvent,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,listTemplatePrecedences,changeTemplatePrecedence,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,previewPlanningEventCancellation,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,previewPlanningEventTimeBlockCancellation,cancelPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycleAnchors,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,listTemplatePrecedences,changeTemplatePrecedence,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,previewPlanningEventCancellation,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,previewPlanningEventTimeBlockCancellation,cancelPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleAnchorsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycleAnchors']>>>
@@ -555,7 +542,6 @@ export type UpdateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof
 export type DeleteCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['deleteCycle']>>>
 export type GetCycleSendSummaryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycleSendSummary']>>>
 export type SendCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['sendCycle']>>>
-export type ReopenPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['reopenPlanningEvent']>>>
 export type CreateEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createEventTemplate']>>>
 export type ListEventTemplatesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listEventTemplates']>>>
 export type GetEventTemplateResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getEventTemplate']>>>

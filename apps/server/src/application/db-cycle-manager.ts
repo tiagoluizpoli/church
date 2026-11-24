@@ -1,4 +1,3 @@
-import { NotFoundError } from '@church/core';
 import {
   addCalendarDays,
   addCalendarMonths,
@@ -29,7 +28,6 @@ import type {
   GetSendSummaryManagerInput,
   ICycleManager,
   ListCyclesManagerInput,
-  ReopenPlanningEventManagerInput,
   SendCycleManagerInput,
   UpdateCycleManagerInput,
 } from '../domain/contracts/application/cycle-manager';
@@ -496,39 +494,6 @@ export class DbCycleManager implements ICycleManager {
       }
 
       await this.cycleRepository.delete({ ...input, tx });
-    });
-  }
-
-  async reopenEvent(input: ReopenPlanningEventManagerInput): Promise<void> {
-    const church = await this.churchRepository.getById({ id: input.churchId });
-
-    await this.unitOfWork.run(async (tx) => {
-      await this.cycleRepository.acquireChurchLock({
-        churchId: input.churchId,
-        tx,
-      });
-
-      const cycle = await this.ensureResolvedCycle({
-        cycle: await this.cycleRepository.getById({ ...input, tx }),
-        churchTimeZone: church.timezone,
-      });
-      const event = await this.eventRepository.getEvent({
-        churchId: input.churchId,
-        eventId: input.eventId,
-        tx,
-      });
-      // An Event under another Cycle is as missing as an unknown Event.
-      if (event.cycleId !== input.cycleId) {
-        throw new NotFoundError(`Event not found: ${input.eventId}`);
-      }
-
-      cycle.assertCanReopenEvent({ eventState: event.status });
-      await this.eventRepository.updateEvent({
-        churchId: input.churchId,
-        eventId: input.eventId,
-        status: 'draft',
-        tx,
-      });
     });
   }
 

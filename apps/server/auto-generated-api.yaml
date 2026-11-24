@@ -8684,7 +8684,6 @@ paths:
                             - draft
                             - pending
                             - confirmed
-                            - declined
                             - cancelled
                         reason:
                           type: string
@@ -14068,7 +14067,6 @@ paths:
                                               - draft
                                               - pending
                                               - confirmed
-                                              - declined
                                               - cancelled
                                           reason:
                                             type: string
@@ -15001,7 +14999,6 @@ paths:
                           - draft
                           - pending
                           - confirmed
-                          - declined
                           - cancelled
                       reason:
                         type: string
@@ -15184,7 +15181,6 @@ paths:
                       - draft
                       - pending
                       - confirmed
-                      - declined
                       - cancelled
                   reason:
                     type: string
@@ -15291,7 +15287,6 @@ paths:
                       - draft
                       - pending
                       - confirmed
-                      - declined
                       - cancelled
                   reason:
                     type: string

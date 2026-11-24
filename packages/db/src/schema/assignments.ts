@@ -41,7 +41,7 @@ export const assignment = pgTable(
     shiftRequirementId: uuid('shift_requirement_id')
       .notNull()
       .references(() => shiftRequirement.id, { onDelete: 'cascade' }),
-    status: assignmentStatusEnum('status').default('pending').notNull(), // pending, confirmed, declined
+    status: assignmentStatusEnum('status').default('pending').notNull(),
     reason: text('reason'),
     assignedAt: timestamp('assigned_at', {
       withTimezone: true,

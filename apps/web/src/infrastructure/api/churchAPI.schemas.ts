@@ -4213,7 +4213,6 @@ export const GetScheduleBuilderData200AssignmentsItemStatus = {
   draft: 'draft',
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
   cancelled: 'cancelled',
 } as const;
 
@@ -6552,7 +6551,6 @@ export const GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssign
   draft: 'draft',
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
   cancelled: 'cancelled',
 } as const;
 
@@ -6963,7 +6961,6 @@ export const CreateParticipationAssignment201AssignmentStatus = {
   draft: 'draft',
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
   cancelled: 'cancelled',
 } as const;
 
@@ -7042,7 +7039,6 @@ export const MoveParticipationAssignment200Status = {
   draft: 'draft',
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
   cancelled: 'cancelled',
 } as const;
 
@@ -7083,7 +7079,6 @@ export const ReassignParticipationAssignment200Status = {
   draft: 'draft',
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
   cancelled: 'cancelled',
 } as const;
 

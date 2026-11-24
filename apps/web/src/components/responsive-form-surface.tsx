@@ -64,10 +64,15 @@ export function ResponsiveFormSurface({
   // A review opens on its title, not with a focus ring on its first control.
   const titleRef = useRef<HTMLHeadingElement>(null);
   const wideForm = wide && !reviewSummary;
+  // `closeDisabled` holds for every way out (Escape, overlay, swipe), not just ×.
+  const requestOpenChange = (next: boolean) => {
+    if (closeDisabled && !next) return;
+    onOpenChange(next);
+  };
 
   if (isDesktop) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={requestOpenChange}>
         <DialogContent
           initialFocus={reviewSummary ? titleRef : undefined}
           closeDisabled={closeDisabled}
@@ -155,7 +160,7 @@ export function ResponsiveFormSurface({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
+    <Drawer open={open} onOpenChange={requestOpenChange} showSwipeHandle>
       <DrawerContent
         data-testid={dataTestId}
         className={

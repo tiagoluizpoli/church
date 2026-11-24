@@ -220,6 +220,18 @@ _Avoid_: Custody block, ban, removing a Guardian
 A Kids leader's release of a Child to an adult who cannot show its pickup code, after checking that adult against the Family's Guardians. It records who released the Child, to whom and why. A plain volunteer cannot give one.
 _Avoid_: Manual checkout, bypass, forced checkout
 
+**Page** (pt-BR: Chamada):
+A call for a Child's Guardians to come to the Child's Room, sent by the room's people or a Kids leader while the Child is checked in. It reaches every Guardian with an account who wants pages for that Check-in, and always the Guardian who made it. The reason stays inside the app; the lock screen only says the Child needs them. A Guardian answers "on my way" or "can't come"; a page nobody answers in the Church's set time is unanswered, and the room may page again or show it on the big screen. A volunteer closes it as resolved, with an optional note. A Child has one open page at a time, but may be paged again after that one is resolved, and every page stays in the Check-in's history.
+_Avoid_: Alert, notification (for a page), summon, call (alone)
+
+**Notice** (pt-BR: Aviso):
+A message telling a Guardian about a change to a Check-in that asks nothing of them, such as a Move or a Child leaving Awaiting drop-off. Each Guardian chooses whether to receive notices for every Check-in of the Family, only those they made, or none.
+_Avoid_: Page, alert
+
+**Call number** (pt-BR: Número de chamada):
+A short number given to each Check-in, counted from 1 in each EventTimeBlock of a Church and shared by the Children it covers. It is not secret: it is printed on the Child tag and Guardian tag, shown in every Guardian's app, and shown on the big screen with the Child's first name when the room cannot reach a Guardian by page. It never releases a Child.
+_Avoid_: Code, pickup number, ticket number
+
 ## Time
 
 Three kinds of time exist in this context, and every date bug so far has come from confusing them. They meet in one direction only: **TimeOfDay + CalendarDay + Church Timezone → Instant**. An Instant may be read back as a CalendarDay, but only through the Church Timezone.

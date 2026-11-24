@@ -42,7 +42,7 @@ interface DrizzleMinistryMembershipRepositoryInput {
   db: AnyDrizzleDb;
 }
 
-const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
+const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending'] as const;
 
 /** The ids every Ministry Membership audit starts with. */
 function membershipFacts({ target }: Pick<SaveMembershipRolesInput, 'target'>) {

@@ -1003,7 +1003,7 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
         volunteerId: await holderVolunteerId(askable),
         roleId: askable.teacher.id,
         shiftRequirementId: await firstTeacherRequirementId(askable),
-        status: 'confirmed',
+        status: 'pending',
       });
       const { paused, release } = pauseCall(
         DrizzleMinistryParticipationRepository.prototype,

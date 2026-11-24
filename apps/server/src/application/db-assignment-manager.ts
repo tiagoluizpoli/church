@@ -531,7 +531,7 @@ export class DbAssignmentManager implements IAssignmentManager {
 }
 
 function isActiveAssignmentStatus(status: Assignment['status']): boolean {
-  return status === 'draft' || status === 'pending' || status === 'confirmed';
+  return status === 'draft' || status === 'pending';
 }
 
 interface RequirementRoomInput {

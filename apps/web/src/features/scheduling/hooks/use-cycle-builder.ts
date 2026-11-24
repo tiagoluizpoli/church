@@ -129,13 +129,12 @@ export type CycleBuilderAssignment =
 /**
  * The only assignment statuses that count toward fairness and workload
  * (FR-017). Stated as an allowlist rather than "everything except cancelled": the two are equivalent only while the domain enum has exactly
- * these four members, and a status added later must not silently start
+ * these members, and a status added later must not silently start
  * counting.
  */
 const ACTIVE_ASSIGNMENT_STATUSES: ReadonlySet<string> = new Set([
   'draft',
   'pending',
-  'confirmed',
 ]);
 
 interface IsActiveAssignmentInput {

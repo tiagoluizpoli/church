@@ -3264,7 +3264,7 @@ function rangesOverlap({
 }
 
 function isActiveAssignmentStatus(status: string): boolean {
-  return status === 'draft' || status === 'pending' || status === 'confirmed';
+  return status === 'draft' || status === 'pending';
 }
 
 function buildEligibleVolunteerView({

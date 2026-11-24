@@ -88,7 +88,7 @@ import {
 } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
-const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
+const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending'] as const;
 
 interface DrizzlePlanningEventRepositoryInput {
   db: AnyDrizzleDb;

@@ -54,6 +54,7 @@ import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
+import { SCHEDULE_TITLE_TRANSITION } from '@/shared/utils/view-transition-names';
 import { adminApi } from '@/utils/api-instances';
 
 const DUE_SOON_DAYS = 2;
@@ -359,6 +360,7 @@ function PrepareWorkspaceRoute() {
             : m.prepare_schedule_description()
         }
         autoFocusTitle
+        titleViewTransitionName={SCHEDULE_TITLE_TRANSITION}
         className={selectedBlockId ? 'max-xl:hidden' : undefined}
         aside={
           ready ? (

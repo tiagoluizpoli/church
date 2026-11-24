@@ -434,6 +434,25 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
     expect(profiles).toHaveLength(2);
   });
 
+  it('refuses a second transfer row for the same User and Ministry Invitation', async () => {
+    expect((await runTransfer()).kind).toBe('transferred');
+    const [stored] = await testDb
+      .select()
+      .from(volunteerTransfer)
+      .where(eq(volunteerTransfer.userId, fixture.dualMemberAB));
+    if (!stored) throw new Error('unreachable');
+    const { id: _id, ...duplicate } = stored;
+
+    await expect(
+      testDb.insert(volunteerTransfer).values(duplicate),
+    ).rejects.toMatchObject({
+      cause: {
+        code: '23505',
+        constraint: 'volunteer_transfer_user_invitation_idx',
+      },
+    });
+  });
+
   it('is a terminal failure that changes nothing when the invitation is no longer pending', async () => {
     await testDb
       .update(ministryInvitation)

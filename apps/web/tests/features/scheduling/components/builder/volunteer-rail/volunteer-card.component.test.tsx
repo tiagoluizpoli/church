@@ -240,6 +240,19 @@ describe('VolunteerCard (T048)', () => {
     expect(screen.getByText('Ana Maria Almeida')).toBeVisible();
   });
 
+  it('shows the full name on focus when the card shows a shortened one', async () => {
+    renderWithProviders(
+      <VolunteerCard
+        volunteer={buildVolunteer({ volunteerName: 'Ana Maria Almeida' })}
+        displayName="Ana Almeida"
+      />,
+    );
+
+    screen.getByRole('button', { name: 'Ana Almeida' }).focus();
+
+    expect(await screen.findByText('Ana Maria Almeida')).toBeVisible();
+  });
+
   it('fills Pick me only for the ideal ready pick', () => {
     const { rerender } = renderWithProviders(
       <VolunteerCard

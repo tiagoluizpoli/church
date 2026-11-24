@@ -1,19 +1,19 @@
 import { DomainError } from '@church/core';
 
-/** An Assignment targets a Shift whose Event was cancelled. */
+/** A write (an Assignment or a preparation) targets a cancelled Event. */
 export class EventCancelledError extends DomainError {
   readonly code = 'EVENT_CANCELLED' as const;
 
   constructor() {
-    super('Cannot assign to a Shift of a cancelled Event');
+    super('Cannot change a cancelled Event');
   }
 }
 
-/** An Assignment targets a Shift whose EventTimeBlock was cancelled. */
+/** A write (an Assignment or a preparation) targets a cancelled EventTimeBlock. */
 export class EventTimeBlockCancelledError extends DomainError {
   readonly code = 'EVENT_TIME_BLOCK_CANCELLED' as const;
 
   constructor() {
-    super('Cannot assign to a Shift of a cancelled EventTimeBlock');
+    super('Cannot change a cancelled EventTimeBlock');
   }
 }

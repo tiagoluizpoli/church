@@ -112,11 +112,7 @@ import {
   type UsualSetup,
   type UsualSetupHeadcount,
 } from '../domain/entities/usual-setup';
-import {
-  EventCancelledError,
-  EventTimeBlockCancelledError,
-  IllegalStateTransitionError,
-} from '../domain/errors';
+import { IllegalStateTransitionError } from '../domain/errors';
 import { HeadcountBelowAssignedError } from '../domain/errors/headcount-below-assigned';
 import { InvalidShiftIndexError } from '../domain/errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
@@ -130,6 +126,10 @@ import {
   ScheduleHasNoAssignmentsError,
 } from '../domain/errors/schedule-publish';
 import { ShiftHasResponsesError } from '../domain/errors/shift-has-responses';
+import {
+  assertEventTimeBlockNotCancelled,
+  isEventTimeBlockCancelled,
+} from '../domain/event-time-block-cancellation';
 import { scheduleChanges } from '../domain/schedule-changes';
 import type { ScheduleAssignmentSnapshot } from '../domain/schedule-last-told';
 import {
@@ -480,7 +480,7 @@ interface ToScheduleViewInput extends ScheduleListRow {
 
 interface RefuseCancelledAdditionsInput {
   churchId: ChurchId;
-  cycleId: CycleId;
+  eventGroups: EventWithEventTimeBlocks[];
   additions: ReviewedAddition[];
   tx: TransactionContext;
 }
@@ -489,6 +489,8 @@ interface LoadProposalFactsInput {
   churchId: ChurchId;
   cycleId: CycleId;
   ministryId: MinistryId;
+  /** Already read in this transaction; read here when absent. */
+  eventGroups?: EventWithEventTimeBlocks[];
   tx: TransactionContext;
 }
 
@@ -937,9 +939,7 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
       ensurePreparationEditable({ cycle, timeZone });
-      if (event.status === 'cancelled') throw new EventCancelledError();
-      if (eventTimeBlock.status === 'cancelled')
-        throw new EventTimeBlockCancelledError();
+      assertEventTimeBlockNotCancelled({ event, eventTimeBlock });
 
       const target = { churchId, participation, eventTimeBlock, tx };
       // Locked so a racing answer or Assignment is counted below, never cascaded away.
@@ -1506,9 +1506,14 @@ export class DbParticipationManager implements IParticipationManager {
         strength: 'share',
         tx,
       });
-      await this.refuseCancelledAdditions({
+      const eventGroups = await this.eventRepository.listCycleEvents({
         churchId,
         cycleId,
+        tx,
+      });
+      await this.refuseCancelledAdditions({
+        churchId,
+        eventGroups,
         additions,
         tx,
       });
@@ -1516,6 +1521,7 @@ export class DbParticipationManager implements IParticipationManager {
         churchId,
         cycleId,
         ministryId,
+        eventGroups,
         tx,
       });
       const stale = findStaleAdditions({ facts, additions });
@@ -1601,7 +1607,7 @@ export class DbParticipationManager implements IParticipationManager {
   /** Names the cancellation an addition targets, as manual assign does, before staleness. */
   private async refuseCancelledAdditions({
     churchId,
-    cycleId,
+    eventGroups,
     additions,
     tx,
   }: RefuseCancelledAdditionsInput): Promise<void> {
@@ -1612,32 +1618,22 @@ export class DbParticipationManager implements IParticipationManager {
       ),
       tx,
     });
-    const shifts = await Promise.all(
-      [
+    const targets = await this.shiftRepository.listConflictFacts({
+      churchId,
+      shiftIds: [
         ...new Set(
           requirements.flatMap(({ shiftId }) => (shiftId ? [shiftId] : [])),
         ),
-      ].map((shiftId) =>
-        this.shiftRepository.getById({ churchId, shiftId, tx }),
-      ),
-    );
-    const targetBlockIds = new Set(
-      shifts.map(({ eventTimeBlockId }) => eventTimeBlockId as string),
-    );
-    const eventGroups = await this.eventRepository.listCycleEvents({
-      churchId,
-      cycleId,
+      ],
       tx,
     });
-    for (const { event, eventTimeBlocks } of eventGroups) {
-      const targeted = eventTimeBlocks.filter(({ id }) =>
-        targetBlockIds.has(id as string),
-      );
-      if (targeted.length === 0) continue;
-      if (event.status === 'cancelled') throw new EventCancelledError();
-      if (targeted.some(({ status }) => status === 'cancelled'))
-        throw new EventTimeBlockCancelledError();
-    }
+    const targetBlockIds = new Set(
+      targets.map(({ shift }) => shift.eventTimeBlockId as string),
+    );
+    for (const { event, eventTimeBlocks } of eventGroups)
+      for (const eventTimeBlock of eventTimeBlocks)
+        if (targetBlockIds.has(eventTimeBlock.id as string))
+          assertEventTimeBlockNotCancelled({ event, eventTimeBlock });
   }
 
   /** The Schedule's proposal facts; refuses outside availability requested/assigning. */
@@ -1645,13 +1641,12 @@ export class DbParticipationManager implements IParticipationManager {
     churchId,
     cycleId,
     ministryId,
+    eventGroups: loadedEventGroups,
     tx,
   }: LoadProposalFactsInput): Promise<ProposalFacts> {
-    const eventGroups = await this.eventRepository.listCycleEvents({
-      churchId,
-      cycleId,
-      tx,
-    });
+    const eventGroups =
+      loadedEventGroups ??
+      (await this.eventRepository.listCycleEvents({ churchId, cycleId, tx }));
     const cycleBlockIds = new Set<string>(
       eventGroups.flatMap(({ eventTimeBlocks }) =>
         eventTimeBlocks.map(({ id }) => id as string),
@@ -3243,9 +3238,10 @@ function buildEventView({
           ),
         ),
       );
-      const cancelled =
-        eventGroup.event.status === 'cancelled' ||
-        eventTimeBlock.status === 'cancelled';
+      const cancelled = isEventTimeBlockCancelled({
+        event: eventGroup.event,
+        eventTimeBlock,
+      });
       const headcounts = shiftViews.map(({ requirements: shiftRequirements }) =>
         shiftRequirements.reduce(
           (sum, { requirement }) => sum + requirement.peopleNeeded,

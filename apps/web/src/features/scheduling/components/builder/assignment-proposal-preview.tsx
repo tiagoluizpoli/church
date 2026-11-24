@@ -8,10 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import {
-  type CycleBuilderData,
-  isStaffedEventTimeBlock,
-} from '../../hooks/use-cycle-builder';
+import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import {
   coverageOf,
   groupProposalByDay,
@@ -20,6 +17,7 @@ import {
   scheduleOrdinals,
 } from '../../utils/builder/assignment-proposal.utils';
 import { churchDayOf } from '../../utils/builder/cycle-builder-date.utils';
+import { isStaffedEventTimeBlock } from '../../utils/builder/cycle-builder-staffing.utils';
 import {
   type AttentionPerson,
   ProposalAttention,

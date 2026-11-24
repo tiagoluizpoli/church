@@ -1,5 +1,12 @@
-interface IsCancelledEventTimeBlockInput {
+interface IsCancelledEventInput {
   eventStatus: string;
+}
+
+export function isCancelledEvent({ eventStatus }: IsCancelledEventInput) {
+  return eventStatus === 'cancelled';
+}
+
+interface IsCancelledEventTimeBlockInput extends IsCancelledEventInput {
   eventTimeBlockStatus: string;
 }
 
@@ -8,5 +15,7 @@ export function isCancelledEventTimeBlock({
   eventStatus,
   eventTimeBlockStatus,
 }: IsCancelledEventTimeBlockInput): boolean {
-  return eventStatus === 'cancelled' || eventTimeBlockStatus === 'cancelled';
+  return (
+    isCancelledEvent({ eventStatus }) || eventTimeBlockStatus === 'cancelled'
+  );
 }

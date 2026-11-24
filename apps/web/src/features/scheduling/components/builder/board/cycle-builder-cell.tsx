@@ -34,7 +34,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useMediaQuery, XL_MEDIA_QUERY } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
@@ -61,6 +60,8 @@ interface CycleBuilderCellProps {
   isEditable?: boolean;
   /** True while the rail is ranking people for this shift×role. */
   isFocused?: boolean;
+  /** The volunteer rail sits beside the board (xl+), read once by the board. */
+  railIsBeside: boolean;
   /** Writes for this shift×role that the server rejected, kept on the board. */
   failedWrites?: FailedAssignmentWrite[];
   onFocus: () => void;
@@ -123,6 +124,7 @@ export function CycleBuilderCell({
   selectedVolunteerName,
   isEditable: editable = true,
   isFocused,
+  railIsBeside,
   failedWrites,
   onFocus,
   onToggleFocus,
@@ -144,9 +146,6 @@ export function CycleBuilderCell({
     shift.label ??
     `${eventTimeBlockLabel} · ${timeLabel({ instant: shift.startTime, timeZone: churchTimezone })} – ${timeLabel({ instant: shift.endTime, timeZone: churchTimezone })}`;
   const [addPickerOpen, setAddPickerOpen] = useState(false);
-  // Below xl the volunteer rail is stacked far under the board, so focusing a
-  // role there would change nothing in view: open this slot's picker instead.
-  const railIsBeside = useMediaQuery(XL_MEDIA_QUERY);
   const canAdd = assignments.length < peopleNeeded;
   const hasRoleHolder = shift.eligibleVolunteers.some((volunteer) =>
     volunteer.qualifiedRoleIds.includes(roleId),
@@ -297,6 +296,8 @@ export function CycleBuilderCell({
           shiftRequirementId={shiftRequirementId}
           isFocused={isFocused ?? false}
           onToggleFocus={() => {
+            // Below xl the rail is stacked far under the board, so focusing a role there
+            // would change nothing in view: open this slot's picker instead.
             if (!railIsBeside && !isFocused && isEditable && canAdd) {
               onFocus();
               setAddPickerOpen(true);

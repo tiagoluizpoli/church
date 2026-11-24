@@ -143,8 +143,8 @@ interface TruncatedLineProps {
 
 /**
  * One line of card text (name, roles). The card body is inert — not clickable,
- * not draggable — so hovering or focusing a clipped line is how a leader reads
- * the full text without leaving the page.
+ * not draggable — so hovering or focusing a clipped or shortened line is how a
+ * leader reads the full text without leaving the page.
  */
 function TruncatedLine({
   text,
@@ -153,7 +153,8 @@ function TruncatedLine({
   testId,
 }: TruncatedLineProps) {
   const { measureRef, truncated } = useIsTruncated();
-  if (!truncated) {
+  // A shortened name is not the whole story even when it fits.
+  if (!truncated && tooltip === text) {
     return (
       <span
         ref={measureRef}

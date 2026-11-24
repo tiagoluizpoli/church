@@ -1,7 +1,17 @@
-import {
-  type CycleBuilderData,
-  isStaffedEventTimeBlock,
-} from '../../hooks/use-cycle-builder';
+import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
+
+export interface CountedEventTimeBlock {
+  included: boolean;
+  cancelled: boolean;
+}
+
+/** A time block asks for people only when this Ministry serves it and neither it nor its Event was cancelled. */
+export function isStaffedEventTimeBlock({
+  included,
+  cancelled,
+}: CountedEventTimeBlock): boolean {
+  return included && !cancelled;
+}
 
 interface RequirementCoverage {
   id: string;

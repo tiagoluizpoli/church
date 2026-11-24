@@ -24,6 +24,7 @@ import {
   countCoveredPlaces,
   staffingStatusClasses,
 } from '../../../utils/builder/cycle-builder-staffing.utils';
+import { isCancelledEvent } from '../../../utils/event-time-block-cancellation';
 import { CancelledBadge } from '../../cancelled-badge';
 import { useBoardDragIdentity } from './board-drag-identity';
 import {
@@ -36,6 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useMediaQuery, XL_MEDIA_QUERY } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 
 interface BoardEmptyStateProps {
@@ -129,17 +131,24 @@ export function CycleBuilderBoardGrid({
   dragScroll,
 }: CycleBuilderBoardGridProps) {
   const isDragging = Boolean(useBoardDragIdentity());
+  // Read once for every cell: below xl the rail is stacked under the board.
+  const railIsBeside = useMediaQuery(XL_MEDIA_QUERY);
   // Which sides still hide columns, so the fade only shows where there is more.
   const [edge, setEdge] = useState({ start: false, end: false });
   useEffect(() => {
     const viewport = dragScroll.viewportRef.current;
     if (!viewport) return;
-    const update = () =>
-      setEdge({
-        start: viewport.scrollLeft > 1,
-        end:
-          viewport.scrollLeft + viewport.clientWidth < viewport.scrollWidth - 1,
-      });
+    // Same object while the edges hold, so scrolling re-renders the board only when one flips.
+    const update = () => {
+      const start = viewport.scrollLeft > 1;
+      const end =
+        viewport.scrollLeft + viewport.clientWidth < viewport.scrollWidth - 1;
+      setEdge((current) =>
+        current.start === start && current.end === end
+          ? current
+          : { start, end },
+      );
+    };
     update();
     viewport.addEventListener('scroll', update, { passive: true });
     const observer = new ResizeObserver(update);
@@ -224,13 +233,13 @@ export function CycleBuilderBoardGrid({
                           <h2
                             className={cn(
                               'truncate font-semibold text-foreground text-sm',
-                              event.status === 'cancelled' &&
+                              isCancelledEvent({ eventStatus: event.status }) &&
                                 'text-muted-foreground line-through',
                             )}
                           >
                             {event.title}
                           </h2>
-                          {event.status === 'cancelled' ? (
+                          {isCancelledEvent({ eventStatus: event.status }) ? (
                             <CancelledBadge />
                           ) : (
                             <Badge
@@ -270,7 +279,9 @@ export function CycleBuilderBoardGrid({
                                     m.builder_ui_time_block()}
                                 </h3>
                                 {eventTimeBlock.cancelled &&
-                                event.status !== 'cancelled' ? (
+                                !isCancelledEvent({
+                                  eventStatus: event.status,
+                                }) ? (
                                   <CancelledBadge />
                                 ) : null}
                               </div>
@@ -410,6 +421,7 @@ export function CycleBuilderBoardGrid({
                                                     focusedKey ===
                                                     requirementFocusKey
                                                   }
+                                                  railIsBeside={railIsBeside}
                                                   onFocus={focusOnRequirement}
                                                   onToggleFocus={() => {
                                                     if (

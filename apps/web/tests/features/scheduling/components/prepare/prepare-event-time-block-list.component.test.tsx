@@ -265,6 +265,7 @@ it.each([
 ] as const)('shows a cancelled %s as Cancelled with nothing to open', (_, scope) => {
   const cancelledBlock = {
     ...BLOCK,
+    cancelled: true,
     answerCoverage: { available: 2, needed: null },
     eventTimeBlock: {
       ...BLOCK.eventTimeBlock,

@@ -15,7 +15,6 @@ import {
 import {
   type CycleBuilderData,
   isActiveAssignment,
-  isStaffedEventTimeBlock,
 } from '../../../hooks/use-cycle-builder';
 import {
   assignableFits,
@@ -56,6 +55,7 @@ import {
   focusKey,
   requirementHasRoom,
 } from '../../../utils/builder/cycle-builder-shift-lookup.utils';
+import { isStaffedEventTimeBlock } from '../../../utils/builder/cycle-builder-staffing.utils';
 import { VolunteerCard } from '../volunteer-rail/volunteer-card';
 import { VolunteerPoolSidebar } from '../volunteer-rail/volunteer-pool-sidebar';
 import {

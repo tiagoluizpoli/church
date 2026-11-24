@@ -7,7 +7,6 @@ import { isAxiosError } from 'axios';
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { isCancelledEventTimeBlock } from '../../utils/event-time-block-cancellation';
 import { CancelledBadge } from '../cancelled-badge';
 import { blockTitle } from '../participation-prepare.utils';
 import {
@@ -111,11 +110,7 @@ export function PreparationBlockEditor({
     events?.flatMap((candidate) =>
       candidate.eventTimeBlocks.filter(
         (item) =>
-          item.eventTimeBlock.id === eventTimeBlockId ||
-          !isCancelledEventTimeBlock({
-            eventStatus: candidate.event.status,
-            eventTimeBlockStatus: item.eventTimeBlock.status,
-          }),
+          item.eventTimeBlock.id === eventTimeBlockId || !item.cancelled,
       ),
     );
   const listItems = navigable(list.data?.events);
@@ -186,10 +181,7 @@ export function PreparationBlockEditor({
         previousServed={items[blockIndex - 1]?.included ?? true}
         nextServed={items[blockIndex + 1]?.included ?? true}
         sourceVersion={participation.dataUpdatedAt}
-        cancelled={isCancelledEventTimeBlock({
-          eventStatus: event.event.status,
-          eventTimeBlockStatus: block.eventTimeBlock.status,
-        })}
+        cancelled={block.cancelled}
         readOnly={schedule.cycle.state === 'past'}
         participationId={event.participation.id}
         eventTitle={event.event.title}

@@ -89,7 +89,7 @@ describe('select-church route (compare-access selector)', () => {
     expect(screen.queryByLabelText(m.select_church_loading())).toBeNull();
   });
 
-  it("shows each Church's logo tile, with the platform logo for a Church that has none", async () => {
+  it("shows each Church's logo tile, with the initials for a Church that has none", async () => {
     listActiveChurchOptions.mockResolvedValue({
       churches: ['church-a', 'church-b'].map((churchId, index) => ({
         churchId,
@@ -112,9 +112,12 @@ describe('select-church route (compare-access selector)', () => {
     }
     const plain = screen
       .getAllByTestId('select-church-option-church-b')
-      .map((option) => option.querySelector('img'));
-    for (const logo of plain) {
-      expect(logo).toHaveAttribute('src', '/logo.png');
+      .map((option) =>
+        option.querySelector('[data-testid="church-logo-tile"]'),
+      );
+    for (const tile of plain) {
+      expect(tile?.querySelector('img')).toBeNull();
+      expect(tile).toHaveTextContent('IC');
     }
   });
 

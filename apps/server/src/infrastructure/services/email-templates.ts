@@ -1,3 +1,4 @@
+import { PLATFORM_ACCENT } from '@church/domain-rules/email-accent';
 import { m } from '@church/i18n/messages';
 import {
   formatCalendarDay,
@@ -50,9 +51,6 @@ export interface PlatformBranding {
   /** Where the "Enviado com {appName}" credit links; plain text when unset. */
   siteUrl?: string;
 }
-
-/** The app's primary navy (`--primary`, apps/web/src/index.css) in sRGB: the platform band and an unset Church accent. */
-const PLATFORM_ACCENT = '#1d4270';
 
 /**
  * The one renderer every EmailSender adapter prepares with, so capture and

@@ -51,6 +51,8 @@ export interface UseTemplateFormInput {
 
 export interface UseTemplateFormResult {
   form: TemplateFormState;
+  /** The draft differs from what the form opened with. */
+  dirty: boolean;
   setRefusal: Dispatch<SetStateAction<SaveRefusal>>;
   fields: TemplateEditorFields;
 }
@@ -63,6 +65,7 @@ export function useTemplateForm({
   initialForm,
 }: UseTemplateFormInput): UseTemplateFormResult {
   const [form, setForm] = useState<TemplateFormState>(initialForm);
+  const [baseline] = useState(() => JSON.stringify(form));
   const [refusal, setRefusal] = useState<SaveRefusal>({});
 
   const onBlockChange: TemplateTimeBlockRowProps['onBlockChange'] = (input) => {
@@ -79,6 +82,7 @@ export function useTemplateForm({
 
   return {
     form,
+    dirty: baseline !== JSON.stringify(form),
     setRefusal,
     fields: {
       form,

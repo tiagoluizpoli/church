@@ -15,6 +15,8 @@ const getEventTemplateUsage = vi.fn();
 const updateEventTemplate = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
+const blocker = { status: 'idle', reset: vi.fn(), proceed: vi.fn() };
+let shouldBlock: () => boolean = () => false;
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -45,6 +47,10 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => navigate,
+  useBlocker: (options: { shouldBlockFn: () => boolean }) => {
+    shouldBlock = options.shouldBlockFn;
+    return blocker;
+  },
 }));
 
 const template = {
@@ -89,6 +95,7 @@ function httpError(status: number) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  blocker.status = 'idle';
   getEventTemplate.mockResolvedValue(template);
   updateEventTemplate.mockResolvedValue(template);
   getEventTemplateUsage.mockResolvedValue({
@@ -135,7 +142,10 @@ describe('TemplateEditDialog surface', () => {
     ).not.toBeInTheDocument();
 
     await user.click(cancel);
-    expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' });
+    expect(navigate).toHaveBeenCalledWith({
+      to: '/app/event-templates',
+      replace: true,
+    });
     expect(updateEventTemplate).not.toHaveBeenCalled();
   });
 });
@@ -153,7 +163,10 @@ describe('TemplateEditDialog', () => {
     await user.click(screen.getByTestId('create-template-button'));
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
     expect(getEventTemplateUsage).not.toHaveBeenCalled();
     expect(updateEventTemplate).toHaveBeenCalledWith('template-1', {
@@ -191,7 +204,10 @@ describe('TemplateEditDialog', () => {
     await user.click(screen.getByTestId('create-template-button'));
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: USUAL_SETUP_QUERY_KEY,
@@ -424,7 +440,48 @@ describe('TemplateEditDialog loading', () => {
       { otherTemplateId: 'other-1', answer: 'both' },
     ]);
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
+  });
+});
+
+describe('TemplateEditDialog leave guard', () => {
+  it('holds navigation only once the draft differs from the saved template', async () => {
+    const user = await renderLoaded();
+    expect(shouldBlock()).toBe(false);
+
+    await user.type(screen.getByTestId('template-name-input'), 'X');
+    expect(shouldBlock()).toBe(true);
+  });
+
+  it('asks before discarding: Keep editing resets, Discard proceeds', async () => {
+    blocker.status = 'blocked';
+    const user = await renderLoaded();
+
+    const leave = await screen.findByTestId('template-leave-dialog');
+    await user.click(
+      within(leave).getByRole('button', { name: 'Continuar editando' }),
+    );
+    expect(blocker.reset).toHaveBeenCalledTimes(1);
+    await user.click(
+      within(leave).getByRole('button', { name: 'Descartar e sair' }),
+    );
+    expect(blocker.proceed).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores Escape while saving and holds navigation', async () => {
+    updateEventTemplate.mockReturnValue(new Promise(() => undefined));
+    const user = await renderLoaded();
+
+    await user.type(screen.getByTestId('template-name-input'), 'X');
+    await user.click(screen.getByTestId('create-template-button'));
+    await waitFor(() => expect(updateEventTemplate).toHaveBeenCalled());
+    await user.keyboard('{Escape}');
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(shouldBlock()).toBe(true);
   });
 });

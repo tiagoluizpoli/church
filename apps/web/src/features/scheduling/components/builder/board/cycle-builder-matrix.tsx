@@ -242,13 +242,12 @@ export function CycleBuilderMatrix(props: Props) {
   // earns no column; with nothing selected every filtered date shows.
   // The URL is untrusted: a stale or foreign day is dropped, and a selection
   // that resolves to nothing falls back to every date.
-  const selectedDates = useMemo(
-    () =>
-      [...new Set(props.selectedDates)]
-        .filter((date) => eventsForDate.has(date))
-        .sort(),
-    [eventsForDate, props.selectedDates],
-  );
+  const selectedDates = useMemo(() => {
+    const known = new Set<string>(eventsForDate.keys());
+    return [...new Set(props.selectedDates)]
+      .filter((date) => known.has(date))
+      .sort();
+  }, [eventsForDate, props.selectedDates]);
   const columns = selectedDates.length
     ? dates.filter((date) => selectedDates.includes(date))
     : dates;

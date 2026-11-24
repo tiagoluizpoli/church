@@ -1,6 +1,4 @@
-import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
-import { Check, Clock, X } from 'lucide-react';
 import { AssigneeRoleBadge } from './assignee-role-badge';
 import { Badge } from '@/components/ui/badge';
 import { useFormControlSize } from '@/components/ui/form-control-size';
@@ -8,14 +6,11 @@ import { cn } from '@/lib/utils';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 export type ConflictStatus = 'double_booked' | 'unavailable';
-export type ConfirmationStatus = 'pending' | 'confirmed' | 'declined';
 
 /**
- * Where this row stands with the *server*, which is a different question from
- * `confirmationStatus` (where the volunteer stands with the assignment). A
- * pre-publish board never renders a confirmation icon, so without this a write
- * still in flight, one that saved a moment ago and one that saved last week are
- * the same pixels.
+ * Where this row stands with the *server*: without it a write still in
+ * flight, one that saved a moment ago and one that saved last week are the
+ * same pixels.
  */
 export type AssignmentSyncState = 'pending' | 'saved' | 'failed';
 
@@ -29,8 +24,6 @@ interface AssignmentChipProps {
   volunteerName: string;
   volunteerMembership?: AssigneeMembership;
   conflictStatus?: ConflictStatus;
-  confirmationStatus?: ConfirmationStatus;
-  isPublished: boolean;
   syncState?: AssignmentSyncState;
   onClick?: () => void;
   readOnly?: boolean;
@@ -40,13 +33,10 @@ export function AssignmentChip({
   volunteerName,
   volunteerMembership,
   conflictStatus,
-  confirmationStatus,
-  isPublished,
   syncState = 'saved',
   onClick,
   readOnly = false,
 }: AssignmentChipProps) {
-  const { assignmentResponse } = appConfig.parked;
   const isTouch = useFormControlSize() === 'touch';
   const Tag = readOnly ? 'span' : 'button';
   return (
@@ -96,29 +86,6 @@ export function AssignmentChip({
               ? m.builder_state_unavailable()
               : m.builder_ui_double_booked()}
           </Badge>
-        )}
-
-        {assignmentResponse && isPublished && confirmationStatus && (
-          <span data-testid="confirmation-badge">
-            {confirmationStatus === 'confirmed' && (
-              <Check
-                className="size-3 text-green-600"
-                aria-label={m.builder_ui_confirmed()}
-              />
-            )}
-            {confirmationStatus === 'declined' && (
-              <X
-                className="size-3 text-destructive"
-                aria-label={m.builder_ui_declined()}
-              />
-            )}
-            {confirmationStatus === 'pending' && (
-              <Clock
-                className="size-3 text-muted-foreground"
-                aria-label={m.builder_ui_pending()}
-              />
-            )}
-          </span>
         )}
       </span>
     </Tag>

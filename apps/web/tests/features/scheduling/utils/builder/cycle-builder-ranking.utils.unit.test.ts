@@ -285,7 +285,7 @@ describe('countWorkload', () => {
         makeAssignment({ id: 'a-1', volunteerId: 'ana', status: 'draft' }),
         makeAssignment({ id: 'a-2', volunteerId: 'ana', status: 'pending' }),
         makeAssignment({ id: 'a-3', volunteerId: 'ana', status: 'confirmed' }),
-        makeAssignment({ id: 'a-4', volunteerId: 'ana', status: 'declined' }),
+        makeAssignment({ id: 'a-4', volunteerId: 'ana', status: 'cancelled' }),
         makeAssignment({ id: 'a-5', volunteerId: 'ana', status: 'cancelled' }),
       ],
     });

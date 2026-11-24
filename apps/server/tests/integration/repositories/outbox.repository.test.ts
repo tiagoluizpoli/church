@@ -43,7 +43,12 @@ describe('DrizzleOutboxRepository', () => {
     const invitation = await mintOne();
 
     const claimed = await unitOfWork.run((tx) =>
-      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(),
+        staleBefore: new Date(0),
+        tx,
+      }),
     );
 
     expect(claimed).toHaveLength(1);
@@ -58,7 +63,12 @@ describe('DrizzleOutboxRepository', () => {
   it('no longer claims a row once marked sent', async () => {
     await mintOne();
     const [claimed] = await unitOfWork.run((tx) =>
-      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(),
+        staleBefore: new Date(0),
+        tx,
+      }),
     );
     if (!claimed) throw new Error('Expected a claimed row');
 
@@ -72,7 +82,12 @@ describe('DrizzleOutboxRepository', () => {
     );
 
     const claimedAgain = await unitOfWork.run((tx) =>
-      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(),
+        staleBefore: new Date(0),
+        tx,
+      }),
     );
     expect(claimedAgain).toHaveLength(0);
   });
@@ -80,7 +95,12 @@ describe('DrizzleOutboxRepository', () => {
   it('a retryable failure stays pending but is not due until its bumped schedule', async () => {
     await mintOne();
     const [claimed] = await unitOfWork.run((tx) =>
-      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(),
+        staleBefore: new Date(0),
+        tx,
+      }),
     );
     if (!claimed) throw new Error('Expected a claimed row');
 
@@ -97,7 +117,12 @@ describe('DrizzleOutboxRepository', () => {
     );
 
     const tooEarly = await unitOfWork.run((tx) =>
-      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(),
+        staleBefore: new Date(0),
+        tx,
+      }),
     );
     expect(tooEarly).toHaveLength(0);
 
@@ -105,6 +130,7 @@ describe('DrizzleOutboxRepository', () => {
       outboxRepository.claimPending({
         limit: 10,
         now: new Date(retryAt.getTime() + 1),
+        staleBefore: new Date(0),
         tx,
       }),
     );
@@ -116,7 +142,12 @@ describe('DrizzleOutboxRepository', () => {
   it('a terminal failure is never claimed again', async () => {
     await mintOne();
     const [claimed] = await unitOfWork.run((tx) =>
-      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(),
+        staleBefore: new Date(0),
+        tx,
+      }),
     );
     if (!claimed) throw new Error('Expected a claimed row');
 
@@ -134,6 +165,7 @@ describe('DrizzleOutboxRepository', () => {
       outboxRepository.claimPending({
         limit: 10,
         now: new Date(Date.now() + 60 * 60_000),
+        staleBefore: new Date(0),
         tx,
       }),
     );
@@ -149,6 +181,7 @@ describe('DrizzleOutboxRepository', () => {
         outboxRepository.claimPending({
           limit: 1,
           now,
+          staleBefore: new Date(0),
           tx: asTxContext(new DrizzleTransactionContext({ tx })),
         }),
       );
@@ -181,7 +214,12 @@ describe('DrizzleOutboxRepository', () => {
       .where(eq(outboxMessage.id, earlier));
 
     const claimed = await unitOfWork.run((tx) =>
-      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(),
+        staleBefore: new Date(0),
+        tx,
+      }),
     );
 
     expect(claimed.map(({ id }) => id)).toEqual([earlier, later]);
@@ -205,7 +243,12 @@ describe('DrizzleOutboxRepository.findLatestStatusForMinistryInvitation', () => 
   it('reflects sent once the claimed row is marked sent', async () => {
     const invitation = await mintOne();
     const [claimed] = await unitOfWork.run((tx) =>
-      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(),
+        staleBefore: new Date(0),
+        tx,
+      }),
     );
     if (!claimed) throw new Error('Expected a claimed row');
 
@@ -231,7 +274,12 @@ describe('DrizzleOutboxRepository.findLatestStatusForMinistryInvitation', () => 
   it('returns the most recently enqueued row after a resend', async () => {
     const invitation = await mintOne();
     const [claimed] = await unitOfWork.run((tx) =>
-      outboxRepository.claimPending({ limit: 10, now: new Date(), tx }),
+      outboxRepository.claimPending({
+        limit: 10,
+        now: new Date(),
+        staleBefore: new Date(0),
+        tx,
+      }),
     );
     if (!claimed) throw new Error('Expected a claimed row');
     await unitOfWork.run((tx) =>

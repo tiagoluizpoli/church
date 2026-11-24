@@ -164,7 +164,11 @@ describe('buildShiftAssignmentIndex', () => {
           shiftId: 'shift-2',
           status: 'cancelled',
         }),
-        makeAssignment({ id: 'a-4', volunteerId: 'bruno', status: 'declined' }),
+        makeAssignment({
+          id: 'a-4',
+          volunteerId: 'bruno',
+          status: 'cancelled',
+        }),
       ],
     });
 

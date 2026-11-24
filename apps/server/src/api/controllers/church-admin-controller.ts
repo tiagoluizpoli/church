@@ -61,6 +61,10 @@ import {
   cancellationImpactResponseSchema,
   cancelPlanningEventBodySchema,
   createPlanningEventBodySchema,
+  type EditPlanningEventBody,
+  editPlanningEventBodySchema,
+  eventEditPreviewMapper,
+  eventEditPreviewResponseSchema,
   eventGraphMapper,
   eventGraphResponseSchema,
   eventMoveMapper,
@@ -930,17 +934,110 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
+      '/cycles/:cycleId/events/:eventId/edit/preview',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'previewPlanningEventEdit',
+          summary: 'Preview editing a sent Event',
+          description:
+            "Preview new bounds and EventTimeBlocks for a scheduled Event of a Sent Cycle, writing and sending nothing. A block with `id` keeps that active block, one without is added and a left-out block is dropped. Each kept Shift keeps its share of its block. Returns the proposed bounds, a row per kept, added or dropped block and a typed clash row, with Volunteer and Ministry identities, for each active Assignment whose new Shift would strictly overlap another active Assignment of its Volunteer (touching ends are compatible; of two of the Event's own, the earlier is kept). Advisory only: a later apply recalculates. Allowed while the Event runs. Refuses a Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION), an ended Event (EDIT_WINDOW_CLOSED), a proposal breaking the final-graph rules (VALIDATION_ERROR, EVENT_OUTSIDE_CYCLE), a dropped block with active Assignments (STAFFED_EVENT_TIME_BLOCK_DROP: cancel it instead) and an unknown or foreign block (404).",
+          body: editPlanningEventBodySchema,
+          response: {
+            200: eventEditPreviewResponseSchema,
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const body = request.body as EditPlanningEventBody;
+        const preview = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.planningEventManager.previewEdit({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              start: dateFromInstantString({ value: body.start }),
+              end: dateFromInstantString({ value: body.end }),
+              eventTimeBlocks: body.eventTimeBlocks.map(
+                ({ id, label, startTime, endTime }) => ({
+                  id: id === undefined ? undefined : EventTimeBlockId.from(id),
+                  label,
+                  startTime: dateFromInstantString({ value: startTime }),
+                  endTime: dateFromInstantString({ value: endTime }),
+                }),
+              ),
+            }),
+        });
+        if (!preview) return;
+        return reply.send(eventEditPreviewMapper.toResponse(preview));
+      },
+    );
+
+    app.post(
+      '/cycles/:cycleId/events/:eventId/edit',
+      {
+        schema: {
+          tags: ['planning'],
+          operationId: 'editPlanningEvent',
+          summary: 'Edit a sent Event',
+          description:
+            'Apply new bounds and EventTimeBlocks to a scheduled Event of a Sent Cycle, with the body of the edit preview. Recalculates the clashes under the Church lock shared with Assignment creation (never trusting a preview) and withdraws only the active Assignments whose new Shift would strictly overlap another active Assignment of their Volunteer: each is audited, its open SwapRequest closes as covered, and it is deleted. The Event and its kept blocks take the new times, each Shift keeping its share of its block; kept Assignments keep their identity, UnavailableShifts and open SwapRequests. A block without `id` is added with a Shift per Participation; a left-out unstaffed block is cancelled, never deleted. Last-told snapshots are untouched, so Send updates tells Volunteers (never about a started Shift); the leaders of the affected Ministries get the Event changed alert. Returns the edited graph and the actual withdrawals. Refuses as the preview does.',
+          body: editPlanningEventBodySchema,
+          response: {
+            200: eventMoveResponseSchema,
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
+        const body = request.body as EditPlanningEventBody;
+        const result = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: () =>
+            this.planningEventManager.confirmEdit({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              start: dateFromInstantString({ value: body.start }),
+              end: dateFromInstantString({ value: body.end }),
+              eventTimeBlocks: body.eventTimeBlocks.map(
+                ({ id, label, startTime, endTime }) => ({
+                  id: id === undefined ? undefined : EventTimeBlockId.from(id),
+                  label,
+                  startTime: dateFromInstantString({ value: startTime }),
+                  endTime: dateFromInstantString({ value: endTime }),
+                }),
+              ),
+              actingUserId: UserId.from(request.userId),
+            }),
+        });
+        if (!result) return;
+        return reply.send(eventMoveMapper.toResponse(result));
+      },
+    );
+
+    app.post(
       '/cycles/:cycleId/events/:eventId/event-time-blocks',
       {
         schema: {
           tags: ['planning'],
           operationId: 'createPlanningEventTimeBlock',
           summary: 'Create a EventTimeBlock on an Event',
-          description: 'Create a church-level EventTimeBlock within an Event.',
+          description:
+            'Create a church-level EventTimeBlock within an Event. The resulting Event graph must pass the final-graph rules (every block within the Event bounds, labels non-empty and unique, start before end), refused with VALIDATION_ERROR before any write.',
           body: createEventTimeBlockBodySchema,
           response: {
             201: eventTimeBlockResponseSchema,
             404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
           },
         },
       },
@@ -1141,11 +1238,13 @@ export class ChurchAdminController implements FastifyController {
           tags: ['planning'],
           operationId: 'updatePlanningEventTimeBlock',
           summary: 'Update a EventTimeBlock',
-          description: "Update a EventTimeBlock's bounds or label.",
+          description:
+            "Update a EventTimeBlock's bounds or label; an omitted field keeps its stored value. The resulting Event graph must pass the final-graph rules (every block within the Event bounds, labels non-empty and unique, start before end), refused with VALIDATION_ERROR before any write.",
           body: updateEventTimeBlockBodySchema,
           response: {
             200: eventTimeBlockResponseSchema,
             404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
           },
         },
       },

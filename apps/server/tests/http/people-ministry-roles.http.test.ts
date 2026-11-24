@@ -167,7 +167,6 @@ beforeAll(async () => {
   const volunteer = new VolunteerController({
     volunteerManager: scheduling.volunteerManager,
     activeChurchResolver: activeChurchResolver as never,
-    config: appConfig,
   });
   const prepare = new PrepareController({
     config: appConfig,
@@ -972,7 +971,7 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
           title: 'Recusada',
           eventStart: '2026-11-20T09:00:00.000Z',
           eventEnd: '2026-11-20T11:00:00.000Z',
-          status: 'declined',
+          status: 'cancelled',
         },
         {
           roleId: f.vocals,
@@ -2110,7 +2109,7 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
         title: 'Recusado',
         eventStart: '2026-11-16T10:00:00.000Z',
         eventEnd: '2026-11-16T12:00:00.000Z',
-        status: 'declined',
+        status: 'cancelled',
       });
 
       const res = await removeFrom({

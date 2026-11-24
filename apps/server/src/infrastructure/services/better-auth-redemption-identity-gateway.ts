@@ -135,6 +135,20 @@ export class BetterAuthRedemptionIdentityGateway
     return true;
   }
 
+  async signIn({
+    email,
+    password,
+  }: VerifyPasswordInput): Promise<string | null> {
+    const response = await this.auth.handler(
+      new Request('http://localhost/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      }),
+    );
+    return response.ok ? response.headers.get('set-cookie') : null;
+  }
+
   private authFor({ tx }: AuthForInput): Auth {
     if (!(tx instanceof DrizzleTransactionContext)) return this.auth;
     const existing = this.transactionAuth.get(tx.tx);

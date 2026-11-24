@@ -517,11 +517,11 @@ interface PlacementTarget {
 }
 
 /**
- * What became of an Assignment: still serving, declined by its Volunteer, or
+ * What became of an Assignment: still serving, withdrawn by its Volunteer, or
  * reassigned away (the product deletes that row, so it is never written).
  */
 type AssignmentOutcome =
-  | Extract<AssignmentStatus, 'confirmed' | 'declined'>
+  | Extract<AssignmentStatus, 'confirmed' | 'cancelled'>
   | 'reassigned';
 
 interface AssignmentWrite {
@@ -1079,7 +1079,7 @@ function applyHistoryTrail({
     ledger.withdraw({
       target,
       email: incident.email,
-      outcome: 'declined',
+      outcome: 'cancelled',
       assignedAt,
       reason: incident.reason,
     });

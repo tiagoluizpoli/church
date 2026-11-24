@@ -2,7 +2,6 @@ import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   addCalendarMonths,
-  addMilliseconds,
   type CalendarDay,
   compareCalendarDays,
   compareInstants,
@@ -25,7 +24,6 @@ import type { IAuthorityManager } from '../domain/contracts/application/authorit
 import type {
   AnswerAvailabilityCheckInput,
   AssignmentDetail,
-  CancelOwnAssignmentInput,
   DashboardAssignmentGroup,
   DashboardAssignmentItem,
   GetAssignmentDetailInput,
@@ -36,7 +34,6 @@ import type {
   IVolunteerManager,
   ListAvailabilityChecksInput,
   MinistrySchedule,
-  RespondToAssignmentInput,
   VolunteerAvailabilityCheckDetail,
   VolunteerAvailabilityCheckSummary,
   VolunteerCheckShift,
@@ -72,7 +69,6 @@ import type { EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import { isSwapRequestExpired } from '../domain/entities/swap-request';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
-import { CancelWindowClosedError } from '../domain/errors/cancel-window-closed';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
 import { IllegalStateTransitionError } from '../domain/errors/illegal-state-transition';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
@@ -88,7 +84,6 @@ import {
 } from '../domain/services/unavailable-shifts';
 
 const NOTIFICATION_PREVIEW_LIMIT = 3;
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 interface DashboardAssignmentGroupDraft {
   eventId: string;
@@ -169,10 +164,8 @@ function servingMonths({
 
 function isPublishedStatus(
   status: AssignmentStatus,
-): status is 'pending' | 'confirmed' | 'declined' {
-  return (
-    status === 'pending' || status === 'confirmed' || status === 'declined'
-  );
+): status is 'pending' | 'confirmed' {
+  return status === 'pending' || status === 'confirmed';
 }
 
 interface RequirementCoverageStatusInput {
@@ -205,8 +198,8 @@ function projectRequirementCoverage({
 }
 
 function aggregateState(
-  statuses: Array<'pending' | 'confirmed' | 'declined'>,
-): 'pending' | 'confirmed' | 'mixed' | 'declined' {
+  statuses: Array<'pending' | 'confirmed'>,
+): 'pending' | 'confirmed' | 'mixed' {
   const unique = new Set(statuses);
   if (unique.size === 1) return statuses[0] ?? 'mixed';
   return 'mixed';
@@ -284,7 +277,6 @@ export class DbVolunteerManager implements IVolunteerManager {
   private readonly authorityManager: Pick<IAuthorityManager, 'decideAuthority'>;
   private readonly unitOfWork: UnitOfWork;
 
-  private readonly cancelLeadTimeDays: number;
   private readonly upcomingLimit: number;
 
   constructor({
@@ -320,8 +312,6 @@ export class DbVolunteerManager implements IVolunteerManager {
     this.authorityManager = authorityManager;
     this.availabilityCheckRepo = availabilityCheckRepo;
     this.unitOfWork = unitOfWork;
-    const { assignment } = config;
-    this.cancelLeadTimeDays = assignment.cancelLeadTimeDays;
     this.upcomingLimit = config.volunteerDashboard.upcomingLimit;
   }
 
@@ -431,7 +421,6 @@ export class DbVolunteerManager implements IVolunteerManager {
         shift &&
         servedEvent &&
         servedEvent.status !== 'cancelled' &&
-        assignment.status !== 'declined' &&
         compareInstants({ left: shift.startTime, right: now }) <= 0
       ) {
         const bucket = servedByMonth.get(
@@ -475,7 +464,6 @@ export class DbVolunteerManager implements IVolunteerManager {
         endTime: shift.endTime,
         status: assignment.status,
         timingState,
-        canRespond: timingState === 'upcoming',
       };
 
       const groupKey = `${event.id}:${participation.ministryId}`;
@@ -527,13 +515,12 @@ export class DbVolunteerManager implements IVolunteerManager {
           compareText({ left: a.ministryId, right: b.ministryId }),
       );
 
-    // Chosen over every upcoming assignment, before the list is capped; a declined shift is never next.
+    // Chosen over every upcoming assignment, before the list is capped.
     const nextAssignment = allUpcomingGroups.reduce<
       VolunteerDashboard['nextAssignment']
     >((previous, group) => {
       let next = previous;
       for (const assignment of group.assignments) {
-        if (assignment.status === 'declined') continue;
         const order = next
           ? compareInstants({
               left: assignment.startTime as Instant,
@@ -1344,57 +1331,6 @@ export class DbVolunteerManager implements IVolunteerManager {
     });
 
     return this.resolveCheckDetail({ context, input });
-  }
-
-  async respondToAssignment(
-    input: RespondToAssignmentInput,
-  ): Promise<Assignment> {
-    const { assignmentId, churchId, volunteerId, response, reason } = input;
-    const assignment = await this.assignmentRepo.getById({
-      churchId,
-      assignmentId,
-    });
-    if (assignment.volunteerId !== volunteerId) {
-      throw new AssignmentAccessDeniedError();
-    }
-    const status = response === 'accepted' ? 'confirmed' : 'declined';
-    await this.assignmentRepo.updateStatus({
-      churchId,
-      assignmentId,
-      input: {
-        status,
-        reason,
-      },
-    });
-    return this.assignmentRepo.getById({ churchId, assignmentId });
-  }
-
-  async cancelOwnAssignment(input: CancelOwnAssignmentInput): Promise<void> {
-    const { assignmentId, churchId, volunteerId } = input;
-    const assignment = await this.assignmentRepo.getById({
-      churchId,
-      assignmentId,
-    });
-    if (assignment.volunteerId !== volunteerId) {
-      throw new AssignmentAccessDeniedError();
-    }
-
-    if (assignment.shiftId) {
-      const shift = await this.shiftRepo.getById({
-        churchId,
-        shiftId: assignment.shiftId,
-      });
-      const cancelLeadTimeMs = this.cancelLeadTimeDays * MILLISECONDS_PER_DAY;
-      const cutoff = addMilliseconds({
-        instant: shift.startTime,
-        milliseconds: -cancelLeadTimeMs,
-      });
-      if (compareInstants({ left: nowInstant(), right: cutoff }) >= 0) {
-        throw new CancelWindowClosedError();
-      }
-    }
-
-    await this.assignmentRepo.deleteById({ churchId, assignmentId });
   }
 
   private async listPublishedAssignmentsForVolunteer({

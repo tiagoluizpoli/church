@@ -1,4 +1,3 @@
-import { appConfig } from '@church/app-config';
 import { assignment, ministryParticipation } from '@church/db';
 import { eq } from 'drizzle-orm';
 import {
@@ -59,7 +58,6 @@ beforeAll(async () => {
       actorRepository: new DrizzleAuthorityActorResolver({ db }),
       membershipRepository: new DrizzleChurchMembershipRepository({ db }),
     }),
-    config: appConfig,
   });
   await app.register(
     async (instance) => {

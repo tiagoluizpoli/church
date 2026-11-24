@@ -52,7 +52,7 @@ describe('useVolunteerPool (T098)', () => {
       const volunteers = [vol('1', 'A', 'available')];
       const assignments = [
         { volunteerId: '1', roleId: 'r1', status: 'cancelled' },
-        { volunteerId: '1', roleId: 'r2', status: 'declined' },
+        { volunteerId: '1', roleId: 'r2', status: 'cancelled' },
         { volunteerId: '1', roleId: 'r3', status: 'confirmed' },
       ];
       const { result } = renderHook(() =>

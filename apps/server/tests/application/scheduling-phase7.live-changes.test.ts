@@ -1,6 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { parseInstant } from '@church/time';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
@@ -27,8 +27,6 @@ import { MinistryParticipation } from '@/domain/entities/ministry-participation'
 import { Shift } from '@/domain/entities/shift';
 import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { UnavailableShift } from '@/domain/entities/unavailable-shift';
-import { AssignmentAccessDeniedError } from '@/domain/errors/assignment-access-denied';
-import { CancelWindowClosedError } from '@/domain/errors/cancel-window-closed';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 import {
   createAssignmentAuditRepositoryFake,
@@ -272,19 +270,6 @@ const createInput = {
 };
 
 describe('live assignment changes', () => {
-  it('cancels an owner’s assignment outside the window', async () => {
-    const f = createHarness();
-    await f.volunteerManager.cancelOwnAssignment({
-      churchId,
-      assignmentId,
-      volunteerId,
-    });
-    expect(f.assignmentRepo.deleteById).toHaveBeenCalledWith({
-      churchId,
-      assignmentId,
-    });
-    expect(f.notificationRepo.create).not.toHaveBeenCalled();
-  });
   it('reports the reopened participation after cancellation', async () => {
     const f = createHarness();
     f.shiftRepository.listRequirementsByParticipation.mockResolvedValue([
@@ -297,11 +282,6 @@ describe('live assignment changes', () => {
     const before = await f.participationManager.getCompletion({
       churchId,
       participationId,
-    });
-    await f.volunteerManager.cancelOwnAssignment({
-      churchId,
-      assignmentId,
-      volunteerId,
     });
     const after = await f.participationManager.getCompletion({
       churchId,
@@ -318,34 +298,6 @@ describe('live assignment changes', () => {
       completionPercent: 0,
     });
     expect(f.notifications.enqueue).not.toHaveBeenCalled();
-  });
-  it('rejects another volunteer without deleting the assignment', async () => {
-    const f = createHarness();
-    await expect(
-      f.volunteerManager.cancelOwnAssignment({
-        churchId,
-        assignmentId,
-        volunteerId: replacementId,
-      }),
-    ).rejects.toBeInstanceOf(AssignmentAccessDeniedError);
-    expect(f.assignmentRepo.deleteById).not.toHaveBeenCalled();
-  });
-  it('rejects cancellation within the configured lead time', async () => {
-    const f = createHarness();
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2099-01-01T08:00:00Z'));
-    try {
-      await expect(
-        f.volunteerManager.cancelOwnAssignment({
-          churchId,
-          assignmentId,
-          volunteerId,
-        }),
-      ).rejects.toBeInstanceOf(CancelWindowClosedError);
-      expect(f.assignmentRepo.deleteById).not.toHaveBeenCalled();
-    } finally {
-      vi.useRealTimers();
-    }
   });
   it('creates a pending assignment and requests an audit even with the audit panel parked', async () => {
     const f = createHarness();

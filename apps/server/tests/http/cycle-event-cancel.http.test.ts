@@ -362,7 +362,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
     expect(await statusOf(anaWelcome.assignment.id)).toBe('cancelled');
     expect(await statusOf(biaService.assignment.id)).toBe('cancelled');
     expect(await statusOf(caioService.assignment.id)).toBe('cancelled');
-    expect(await statusOf(daniService.assignment.id)).toBe('declined');
+    expect(await statusOf(daniService.assignment.id)).toBe('cancelled');
     const audits = await db
       .select({
         assignmentId: assignmentAudit.assignmentId,
@@ -755,7 +755,7 @@ describe('POST …/event-time-blocks/:eventTimeBlockId/cancel(/preview)', () => 
     const { anaWelcome, biaService, caioService, daniService } = sunday;
     expect(await statusOf(biaService.assignment.id)).toBe('cancelled');
     expect(await statusOf(caioService.assignment.id)).toBe('cancelled');
-    expect(await statusOf(daniService.assignment.id)).toBe('declined');
+    expect(await statusOf(daniService.assignment.id)).toBe('cancelled');
     expect(await statusOf(anaWelcome.assignment.id)).toBe('confirmed');
     const audits = await db.select().from(assignmentAudit);
     expect(audits.map(({ assignmentId }) => assignmentId).sort()).toEqual(

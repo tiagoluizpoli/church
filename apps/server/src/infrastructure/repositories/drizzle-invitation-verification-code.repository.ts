@@ -5,12 +5,15 @@ import { and, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import type {
   ClaimVerificationCodeDeliveryInput,
   ConsumeVerificationCodeIfValidInput,
+  FindRedemptionOutcomeInput,
   FindVerificationCodeInput,
   InvitationVerificationCodeRepository,
   RecordFailedVerificationAttemptIfAllowedInput,
+  RecordRedemptionOutcomeInput,
   ReleaseVerificationCodeDeliveryClaimInput,
 } from '../../domain/contracts/infrastructure/invitation-verification-code.repository';
 import type { VerificationCodeState } from '../../domain/entities/invitation-verification-code';
+import { getClient } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzleInvitationVerificationCodeRepositoryInput {
@@ -69,6 +72,7 @@ export class DrizzleInvitationVerificationCodeRepository
         failedAttempts: 0,
         consumedAt: null,
         redemptionIdempotencyKey: null,
+        redemptionOutcome: null,
       })
       .onConflictDoUpdate({
         target: invitationVerificationCode.churchInvitationId,
@@ -76,9 +80,10 @@ export class DrizzleInvitationVerificationCodeRepository
           codeHash,
           expiresAt,
           lastSentAt: sentAt,
-          failedAttempts: 0,
+          // failedAttempts is kept: a resend never refills the attempt budget.
           consumedAt: null,
           redemptionIdempotencyKey: null,
+          redemptionOutcome: null,
         },
         where: or(
           isNull(invitationVerificationCode.lastSentAt),
@@ -127,6 +132,46 @@ export class DrizzleInvitationVerificationCodeRepository
       )
       .returning({ id: invitationVerificationCode.id });
     return row != null;
+  }
+
+  async recordRedemptionOutcome({
+    churchInvitationId,
+    redemptionIdempotencyKey,
+    outcome,
+    tx,
+  }: RecordRedemptionOutcomeInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .update(invitationVerificationCode)
+      .set({ redemptionOutcome: outcome })
+      .where(
+        and(
+          eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
+          eq(
+            invitationVerificationCode.redemptionIdempotencyKey,
+            redemptionIdempotencyKey,
+          ),
+        ),
+      );
+  }
+
+  async findRedemptionOutcome({
+    churchInvitationId,
+    redemptionIdempotencyKey,
+  }: FindRedemptionOutcomeInput): Promise<unknown> {
+    const [row] = await this.db
+      .select({ outcome: invitationVerificationCode.redemptionOutcome })
+      .from(invitationVerificationCode)
+      .where(
+        and(
+          eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
+          eq(
+            invitationVerificationCode.redemptionIdempotencyKey,
+            redemptionIdempotencyKey,
+          ),
+        ),
+      )
+      .limit(1);
+    return row?.outcome ?? null;
   }
 
   async recordFailedAttemptIfAllowed({

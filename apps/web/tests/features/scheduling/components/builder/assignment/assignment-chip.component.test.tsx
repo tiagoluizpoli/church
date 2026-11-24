@@ -5,43 +5,25 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssignmentChip } from '@/features/scheduling/components/builder/assignment/assignment-chip';
 
-const parked = vi.hoisted(() => ({ on: true }));
-
-vi.mock('@church/app-config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@church/app-config')>();
-  return {
-    ...actual,
-    get appConfig() {
-      return parked.on
-        ? actual.withAllParkedOn(actual.appConfig)
-        : actual.appConfig;
-    },
-  };
-});
-
 beforeEach(() => {
-  parked.on = true;
   overwriteGetLocale(() => 'en');
 });
 
 describe('AssignmentChip (T100)', () => {
-  it('localizes conflict and confirmation labels in Portuguese', () => {
+  it('localizes the conflict label in Portuguese', () => {
     overwriteGetLocale(() => 'pt-BR');
     render(
       <AssignmentChip
         volunteerName="John Doe"
         conflictStatus="double_booked"
-        confirmationStatus="confirmed"
-        isPublished
       />,
     );
     expect(screen.getByTestId('conflict-badge')).toHaveTextContent(
       m.builder_ui_double_booked(),
     );
-    expect(screen.getByLabelText(m.builder_ui_confirmed())).toBeInTheDocument();
   });
   it('renders the volunteer full name', () => {
-    render(<AssignmentChip volunteerName="John Doe" isPublished={false} />);
+    render(<AssignmentChip volunteerName="John Doe" />);
     expect(screen.getByText('John Doe')).toBeVisible();
   });
 
@@ -51,7 +33,6 @@ describe('AssignmentChip (T100)', () => {
         <AssignmentChip
           volunteerName="John Doe"
           conflictStatus="double_booked"
-          isPublished={false}
         />,
       );
       const badge = screen.getByTestId('conflict-badge');
@@ -64,7 +45,6 @@ describe('AssignmentChip (T100)', () => {
         <AssignmentChip
           volunteerName="John Doe"
           conflictStatus="unavailable"
-          isPublished={false}
         />,
       );
       const badge = screen.getByTestId('conflict-badge');
@@ -73,47 +53,9 @@ describe('AssignmentChip (T100)', () => {
     });
 
     it('shows no conflict badge when there is no conflict', () => {
-      render(<AssignmentChip volunteerName="John Doe" isPublished={false} />);
+      render(<AssignmentChip volunteerName="John Doe" />);
       expect(screen.queryByTestId('conflict-badge')).not.toBeInTheDocument();
     });
-  });
-
-  describe('confirmation badge (published only)', () => {
-    it('shows the confirmation badge when published', () => {
-      render(
-        <AssignmentChip
-          volunteerName="John Doe"
-          confirmationStatus="confirmed"
-          isPublished={true}
-        />,
-      );
-      expect(screen.getByLabelText('confirmed')).toBeInTheDocument();
-    });
-
-    it('hides the confirmation badge when not published', () => {
-      render(
-        <AssignmentChip
-          volunteerName="John Doe"
-          confirmationStatus="confirmed"
-          isPublished={false}
-        />,
-      );
-      expect(
-        screen.queryByTestId('confirmation-badge'),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  it('hides the confirmation badge while the response is parked', () => {
-    parked.on = false;
-    render(
-      <AssignmentChip
-        volunteerName="John Doe"
-        confirmationStatus="confirmed"
-        isPublished={true}
-      />,
-    );
-    expect(screen.queryByTestId('confirmation-badge')).not.toBeInTheDocument();
   });
 
   describe('role badge (FR-013)', () => {
@@ -124,7 +66,6 @@ describe('AssignmentChip (T100)', () => {
           volunteerMembership={{
             ministryAccessLevel: 'leader',
           }}
-          isPublished={false}
         />,
       );
       expect(screen.getByTestId('assignee-role-badge')).toHaveTextContent(
@@ -139,7 +80,6 @@ describe('AssignmentChip (T100)', () => {
           volunteerMembership={{
             ministryAccessLevel: 'volunteer',
           }}
-          isPublished={false}
         />,
       );
       expect(
@@ -150,7 +90,7 @@ describe('AssignmentChip (T100)', () => {
 
   describe('sync state (B-1)', () => {
     it('reads as saved by default', () => {
-      render(<AssignmentChip volunteerName="John Doe" isPublished={false} />);
+      render(<AssignmentChip volunteerName="John Doe" />);
       expect(screen.getByTestId('assignment-chip')).toHaveAttribute(
         'data-sync-state',
         'saved',
@@ -158,13 +98,7 @@ describe('AssignmentChip (T100)', () => {
     });
 
     it('marks an in-flight write as pending with a dotted, faded chip', () => {
-      render(
-        <AssignmentChip
-          volunteerName="John Doe"
-          isPublished={false}
-          syncState="pending"
-        />,
-      );
+      render(<AssignmentChip volunteerName="John Doe" syncState="pending" />);
       const chip = screen.getByTestId('assignment-chip');
       expect(chip).toHaveAttribute('data-sync-state', 'pending');
       expect(chip.className).toContain('border-dotted');
@@ -173,13 +107,7 @@ describe('AssignmentChip (T100)', () => {
     });
 
     it('marks a rejected write as failed', () => {
-      render(
-        <AssignmentChip
-          volunteerName="John Doe"
-          isPublished={false}
-          syncState="failed"
-        />,
-      );
+      render(<AssignmentChip volunteerName="John Doe" syncState="failed" />);
       const chip = screen.getByTestId('assignment-chip');
       expect(chip).toHaveAttribute('data-sync-state', 'failed');
       expect(chip.className).toContain('border-destructive');
@@ -190,13 +118,7 @@ describe('AssignmentChip (T100)', () => {
   it('calls onClick when the chip is clicked', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
-    render(
-      <AssignmentChip
-        volunteerName="John Doe"
-        isPublished={false}
-        onClick={onClick}
-      />,
-    );
+    render(<AssignmentChip volunteerName="John Doe" onClick={onClick} />);
     await user.click(screen.getByTestId('assignment-chip'));
     expect(onClick).toHaveBeenCalledTimes(1);
   });

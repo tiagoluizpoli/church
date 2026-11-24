@@ -1922,6 +1922,305 @@ export type MovePlanningEvent422 = {
   issues?: unknown[];
 };
 
+export type PreviewPlanningEventEditBodyEventTimeBlocksItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id?: string;
+  /** @minLength 1 */
+  label: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+};
+
+export type PreviewPlanningEventEditBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  eventTimeBlocks: PreviewPlanningEventEditBodyEventTimeBlocksItem[];
+};
+
+export type PreviewPlanningEventEdit200EventPrevious = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventEdit200EventProposed = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+};
+
+export type PreviewPlanningEventEdit200Event = {
+  previous: PreviewPlanningEventEdit200EventPrevious;
+  proposed: PreviewPlanningEventEdit200EventProposed;
+};
+
+export type PreviewPlanningEventEdit200EventTimeBlocksItemChange = typeof PreviewPlanningEventEdit200EventTimeBlocksItemChange[keyof typeof PreviewPlanningEventEdit200EventTimeBlocksItemChange];
+
+
+export const PreviewPlanningEventEdit200EventTimeBlocksItemChange = {
+  kept: 'kept',
+  added: 'added',
+  dropped: 'dropped',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PreviewPlanningEventEdit200EventTimeBlocksItemPrevious = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+} | null;
+
+/**
+ * @nullable
+ */
+export type PreviewPlanningEventEdit200EventTimeBlocksItemProposed = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+} | null;
+
+export type PreviewPlanningEventEdit200EventTimeBlocksItem = {
+  /** @nullable */
+  id: string | null;
+  label?: string;
+  change: PreviewPlanningEventEdit200EventTimeBlocksItemChange;
+  /** @nullable */
+  previous: PreviewPlanningEventEdit200EventTimeBlocksItemPrevious;
+  /** @nullable */
+  proposed: PreviewPlanningEventEdit200EventTimeBlocksItemProposed;
+};
+
+export type PreviewPlanningEventEdit200ClashesItemVolunteer = {
+  id: string;
+  name: string;
+};
+
+export type PreviewPlanningEventEdit200ClashesItemMinistry = {
+  id: string;
+  name: string;
+};
+
+export type PreviewPlanningEventEdit200ClashesItem = {
+  assignmentId: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  volunteer: PreviewPlanningEventEdit200ClashesItemVolunteer;
+  ministry: PreviewPlanningEventEdit200ClashesItemMinistry;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedEnd: string;
+};
+
+export type PreviewPlanningEventEdit200 = {
+  event: PreviewPlanningEventEdit200Event;
+  eventTimeBlocks: PreviewPlanningEventEdit200EventTimeBlocksItem[];
+  clashes: PreviewPlanningEventEdit200ClashesItem[];
+};
+
+export type PreviewPlanningEventEdit404 = {
+  error: string;
+  message: string;
+};
+
+export type PreviewPlanningEventEdit422Error = typeof PreviewPlanningEventEdit422Error[keyof typeof PreviewPlanningEventEdit422Error];
+
+
+export const PreviewPlanningEventEdit422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type PreviewPlanningEventEdit422Reason = typeof PreviewPlanningEventEdit422Reason[keyof typeof PreviewPlanningEventEdit422Reason];
+
+
+export const PreviewPlanningEventEdit422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type PreviewPlanningEventEdit422 = {
+  error: PreviewPlanningEventEdit422Error;
+  message: string;
+  reason?: PreviewPlanningEventEdit422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type EditPlanningEventBodyEventTimeBlocksItem = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  id?: string;
+  /** @minLength 1 */
+  label: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+};
+
+export type EditPlanningEventBody = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  eventTimeBlocks: EditPlanningEventBodyEventTimeBlocksItem[];
+};
+
+export type EditPlanningEvent200EventStatus = typeof EditPlanningEvent200EventStatus[keyof typeof EditPlanningEvent200EventStatus];
+
+
+export const EditPlanningEvent200EventStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  cancelled: 'cancelled',
+  past: 'past',
+} as const;
+
+export type EditPlanningEvent200Event = {
+  id: string;
+  churchId: string;
+  cycleId: string;
+  sourceTemplateId?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  start: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  end: string;
+  status: EditPlanningEvent200EventStatus;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  createdAt: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  updatedAt: string;
+};
+
+export type EditPlanningEvent200EventTimeBlocksItemStatus = typeof EditPlanningEvent200EventTimeBlocksItemStatus[keyof typeof EditPlanningEvent200EventTimeBlocksItemStatus];
+
+
+export const EditPlanningEvent200EventTimeBlocksItemStatus = {
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export type EditPlanningEvent200EventTimeBlocksItemRequirementsItem = {
+  id: string;
+  eventTimeBlockId: string;
+  roleId: string;
+  sectorId: string;
+  peopleNeeded: number;
+  notes?: string;
+};
+
+export type EditPlanningEvent200EventTimeBlocksItem = {
+  id: string;
+  churchId: string;
+  eventId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  startTime: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  endTime: string;
+  label?: string;
+  isPublic: boolean;
+  /** @nullable */
+  place: string | null;
+  /** @nullable */
+  placeAddressId: string | null;
+  status: EditPlanningEvent200EventTimeBlocksItemStatus;
+  requirements: EditPlanningEvent200EventTimeBlocksItemRequirementsItem[];
+};
+
+export type EditPlanningEvent200WithdrawnItemVolunteer = {
+  id: string;
+  name: string;
+};
+
+export type EditPlanningEvent200WithdrawnItemMinistry = {
+  id: string;
+  name: string;
+};
+
+export type EditPlanningEvent200WithdrawnItem = {
+  assignmentId: string;
+  eventTimeBlockId: string;
+  shiftId: string;
+  volunteer: EditPlanningEvent200WithdrawnItemVolunteer;
+  ministry: EditPlanningEvent200WithdrawnItemMinistry;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedStart: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
+  proposedEnd: string;
+};
+
+export type EditPlanningEvent200 = {
+  event: EditPlanningEvent200Event;
+  eventTimeBlocks: EditPlanningEvent200EventTimeBlocksItem[];
+  withdrawn: EditPlanningEvent200WithdrawnItem[];
+};
+
+export type EditPlanningEvent404 = {
+  error: string;
+  message: string;
+};
+
+export type EditPlanningEvent422Error = typeof EditPlanningEvent422Error[keyof typeof EditPlanningEvent422Error];
+
+
+export const EditPlanningEvent422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type EditPlanningEvent422Reason = typeof EditPlanningEvent422Reason[keyof typeof EditPlanningEvent422Reason];
+
+
+export const EditPlanningEvent422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type EditPlanningEvent422 = {
+  error: EditPlanningEvent422Error;
+  message: string;
+  reason?: EditPlanningEvent422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
 export type CreatePlanningEventTimeBlockBody = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   startTime: string;
@@ -1968,6 +2267,42 @@ export type CreatePlanningEventTimeBlock201 = {
 export type CreatePlanningEventTimeBlock404 = {
   error: string;
   message: string;
+};
+
+export type CreatePlanningEventTimeBlock422Error = typeof CreatePlanningEventTimeBlock422Error[keyof typeof CreatePlanningEventTimeBlock422Error];
+
+
+export const CreatePlanningEventTimeBlock422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type CreatePlanningEventTimeBlock422Reason = typeof CreatePlanningEventTimeBlock422Reason[keyof typeof CreatePlanningEventTimeBlock422Reason];
+
+
+export const CreatePlanningEventTimeBlock422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type CreatePlanningEventTimeBlock422 = {
+  error: CreatePlanningEventTimeBlock422Error;
+  message: string;
+  reason?: CreatePlanningEventTimeBlock422Reason;
+  field?: string;
+  issues?: unknown[];
 };
 
 export type PreviewPlanningEventTimeBlockMoveBody = {
@@ -2441,6 +2776,42 @@ export type UpdatePlanningEventTimeBlock200 = {
 export type UpdatePlanningEventTimeBlock404 = {
   error: string;
   message: string;
+};
+
+export type UpdatePlanningEventTimeBlock422Error = typeof UpdatePlanningEventTimeBlock422Error[keyof typeof UpdatePlanningEventTimeBlock422Error];
+
+
+export const UpdatePlanningEventTimeBlock422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type UpdatePlanningEventTimeBlock422Reason = typeof UpdatePlanningEventTimeBlock422Reason[keyof typeof UpdatePlanningEventTimeBlock422Reason];
+
+
+export const UpdatePlanningEventTimeBlock422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type UpdatePlanningEventTimeBlock422 = {
+  error: UpdatePlanningEventTimeBlock422Error;
+  message: string;
+  reason?: UpdatePlanningEventTimeBlock422Reason;
+  field?: string;
+  issues?: unknown[];
 };
 
 /**
@@ -8224,6 +8595,18 @@ export type RedeemChurchInvitation200 = {
   reason: 'INVITATION_UNAVAILABLE' | 'VERIFICATION_FAILED' | 'EMAIL_ALREADY_REGISTERED';
 };
 
+export type RedeemChurchInvitation429Error = typeof RedeemChurchInvitation429Error[keyof typeof RedeemChurchInvitation429Error];
+
+
+export const RedeemChurchInvitation429Error = {
+  RATE_LIMITED: 'RATE_LIMITED',
+} as const;
+
+export type RedeemChurchInvitation429 = {
+  error: RedeemChurchInvitation429Error;
+  message: string;
+};
+
 export type DeclineChurchInvitation200Kind = typeof DeclineChurchInvitation200Kind[keyof typeof DeclineChurchInvitation200Kind];
 
 
@@ -8747,7 +9130,6 @@ export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateRespon
   pending: 'pending',
   confirmed: 'confirmed',
   mixed: 'mixed',
-  declined: 'declined',
 } as const;
 
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus];
@@ -8756,7 +9138,6 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemS
 export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = {
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
 } as const;
 
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState];
@@ -8781,7 +9162,6 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem 
   endTime: string;
   status: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus;
   timingState: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState;
-  canRespond: boolean;
 };
 
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItem = {
@@ -8802,7 +9182,6 @@ export type GetVolunteerDashboard200NextAssignmentStatus = typeof GetVolunteerDa
 export const GetVolunteerDashboard200NextAssignmentStatus = {
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
 } as const;
 
 export type GetVolunteerDashboard200NextAssignmentTimingState = typeof GetVolunteerDashboard200NextAssignmentTimingState[keyof typeof GetVolunteerDashboard200NextAssignmentTimingState];
@@ -8830,7 +9209,6 @@ export type GetVolunteerDashboard200NextAssignment = {
   endTime: string;
   status: GetVolunteerDashboard200NextAssignmentStatus;
   timingState: GetVolunteerDashboard200NextAssignmentTimingState;
-  canRespond: boolean;
   eventId: string;
   eventTitle: string;
   ministryId: string;
@@ -9287,51 +9665,6 @@ export type GetAssignmentDetail404 = {
   message: string;
 };
 
-export type RespondToAssignmentBodyResponse = typeof RespondToAssignmentBodyResponse[keyof typeof RespondToAssignmentBodyResponse];
-
-
-export const RespondToAssignmentBodyResponse = {
-  accepted: 'accepted',
-  declined: 'declined',
-} as const;
-
-export type RespondToAssignmentBody = {
-  response: RespondToAssignmentBodyResponse;
-  reason?: string;
-};
-
-export type RespondToAssignment200Status = typeof RespondToAssignment200Status[keyof typeof RespondToAssignment200Status];
-
-
-export const RespondToAssignment200Status = {
-  draft: 'draft',
-  pending: 'pending',
-  confirmed: 'confirmed',
-  declined: 'declined',
-  cancelled: 'cancelled',
-} as const;
-
-export type RespondToAssignment200 = {
-  id: string;
-  churchId: string;
-  eventTimeBlockId: string;
-  participationId?: string;
-  shiftId?: string;
-  volunteerId: string;
-  roleId: string;
-  shiftRequirementId: string;
-  status: RespondToAssignment200Status;
-  reason?: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  assignedAt: string;
-  assignedBy?: string;
-};
-
-export type RespondToAssignment404 = {
-  error: string;
-  message: string;
-};
-
 export type GetMinistryScheduleParams = {
 /**
  * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
@@ -9587,20 +9920,6 @@ export type AnswerAvailabilityCheck409 = {
   shiftIds?: string[];
 };
 
-/**
- * @nullable
- */
-export type CancelOwnAssignment204 = typeof CancelOwnAssignment204[keyof typeof CancelOwnAssignment204] | null;
-
-
-export const CancelOwnAssignment204 = {
-} as const;
-
-export type CancelOwnAssignment404 = {
-  error: string;
-  message: string;
-};
-
 export type GetPublishedVolunteerScheduleParams = {
 /**
  * @minLength 1
@@ -9623,7 +9942,6 @@ export type GetPublishedVolunteerSchedule200AssignmentsItemStatus = typeof GetPu
 export const GetPublishedVolunteerSchedule200AssignmentsItemStatus = {
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
 } as const;
 
 export type GetPublishedVolunteerSchedule200AssignmentsItem = {
@@ -9675,7 +9993,6 @@ export type GetPublishedVolunteerSchedule200NextStatus = typeof GetPublishedVolu
 export const GetPublishedVolunteerSchedule200NextStatus = {
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
 } as const;
 
 /**

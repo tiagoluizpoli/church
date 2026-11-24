@@ -554,6 +554,49 @@ it('warns before leaving an unsaved form, keeps edits when staying, and cancels 
   expect(api.saveEventTimeBlockPreparation).not.toHaveBeenCalled();
 });
 
+it('guards the X close like Cancel: warns when dirty, leaves clean', async () => {
+  const user = userEvent.setup();
+  const { router } = renderRoute({
+    initialPath: EDITOR_PATH,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByRole('checkbox');
+  const close = screen.getByRole('button', { name: m.prepare_close_block() });
+  await user.type(
+    screen.getByRole('spinbutton', { name: /Singer.*Stage|Stage.*Singer/ }),
+    '9',
+  );
+  await user.click(close);
+  expect(await screen.findByRole('alertdialog')).toHaveTextContent(
+    m.prepare_block_leave_title(),
+  );
+  await user.click(
+    screen.getByRole('button', { name: m.prepare_block_stay() }),
+  );
+  expect(router.state.location.pathname).toBe(EDITOR_PATH);
+  await user.click(close);
+  await user.click(
+    screen.getByRole('button', { name: m.prepare_block_leave() }),
+  );
+  await waitFor(() =>
+    expect(router.state.location.pathname).toBe(
+      `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
+    ),
+  );
+  expect(api.saveEventTimeBlockPreparation).not.toHaveBeenCalled();
+});
+
+it('gives the narrow editor view a page heading', async () => {
+  renderRoute({
+    initialPath: EDITOR_PATH,
+    churchTimezone: 'America/Sao_Paulo',
+  });
+  await screen.findByRole('checkbox');
+  expect(
+    screen.getByRole('heading', { level: 1, name: /Sunday · Night/ }),
+  ).toBeInTheDocument();
+});
+
 it('keeps a published participation editable for an Event added to the Sent Cycle', async () => {
   api.getCycleParticipation.mockResolvedValue({
     dayMarkers: ['2027-01-03'],

@@ -412,6 +412,8 @@ function PreparationBlockForm({
   const [baseline] = useState(() => JSON.stringify({ serves, draft, values }));
   const dirty = baseline !== JSON.stringify({ serves, draft, values });
   const isMobile = useMediaQuery('(max-width: 767px)');
+  // Below xl the page's own h1 is hidden behind the editor, so the editor is the page.
+  const Title = useMediaQuery('(max-width: 1279px)') ? 'h1' : 'h2';
   const backToSchedule = () =>
     navigate({
       to: '/app/schedules/$ministryId/$cycleId',
@@ -585,7 +587,7 @@ function PreparationBlockForm({
               </p>
               {/* Title on its own line, the when under it in muted text, as the page intro. */}
               <div>
-                <h2
+                <Title
                   ref={heading}
                   tabIndex={-1}
                   aria-describedby="preparation-block-when"
@@ -599,7 +601,7 @@ function PreparationBlockForm({
                       timeZone: churchTimezone,
                     }),
                   })}
-                </h2>
+                </Title>
                 <p
                   id="preparation-block-when"
                   data-testid="preparation-block-when"
@@ -629,6 +631,7 @@ function PreparationBlockForm({
               // Dense beside the list for a mouse; a finger keeps 44px.
               className="md:pointer-fine:size-8"
               aria-label={m.prepare_close_block()}
+              disabled={save.isPending}
               onClick={() => backToSchedule()}
             >
               <XIcon />

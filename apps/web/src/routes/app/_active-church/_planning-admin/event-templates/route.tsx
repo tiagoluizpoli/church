@@ -1,14 +1,15 @@
 import { m } from '@church/i18n/messages';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, Outlet } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button';
 import { TemplateManagerCard } from '@/features/scheduling/components/planning-admin/template-manager-card';
 
 export const Route = createFileRoute(
-  '/app/_active-church/_planning-admin/event-templates/',
+  '/app/_active-church/_planning-admin/event-templates',
 )({
   component: TemplateLibraryRoute,
 });
 
+/** The list stays mounted under the create and edit dialogs (`new`, `$templateId`). */
 function TemplateLibraryRoute() {
   return (
     <>
@@ -23,6 +24,7 @@ function TemplateLibraryRoute() {
       </div>
 
       <TemplateManagerCard />
+      <Outlet />
     </>
   );
 }

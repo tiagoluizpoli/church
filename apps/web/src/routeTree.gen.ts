@@ -37,8 +37,8 @@ import { Route as AppActiveChurchPeopleMemberIdRouteImport } from './routes/app/
 import { Route as AppActiveChurchMyScheduleAssignmentIdRouteImport } from './routes/app/_active-church/my-schedule/$assignmentId'
 import { Route as AppActiveChurchMinistriesMinistryIdRouteImport } from './routes/app/_active-church/ministries/$ministryId'
 import { Route as AppActiveChurchAvailabilityCheckIdRouteImport } from './routes/app/_active-church/availability_.$checkId'
+import { Route as AppActiveChurchPlanningAdminEventTemplatesRouteRouteImport } from './routes/app/_active-church/_planning-admin/event-templates/route'
 import { Route as AppActiveChurchMinistriesMinistryIdIndexRouteImport } from './routes/app/_active-church/ministries/$ministryId/index'
-import { Route as AppActiveChurchPlanningAdminEventTemplatesIndexRouteImport } from './routes/app/_active-church/_planning-admin/event-templates/index'
 import { Route as AppActiveChurchPlanningAdminCyclesIndexRouteImport } from './routes/app/_active-church/_planning-admin/cycles/index'
 import { Route as AppInvitationsChurchInvitationIdReviewRouteImport } from './routes/app/invitations/church/$invitationId.review'
 import { Route as AppActiveChurchMyScheduleMinistryIdCycleIdRouteImport } from './routes/app/_active-church/my-schedule/$ministryId/$cycleId'
@@ -213,17 +213,17 @@ const AppActiveChurchAvailabilityCheckIdRoute =
     path: '/availability/$checkId',
     getParentRoute: () => AppActiveChurchRoute,
   } as any)
+const AppActiveChurchPlanningAdminEventTemplatesRouteRoute =
+  AppActiveChurchPlanningAdminEventTemplatesRouteRouteImport.update({
+    id: '/event-templates',
+    path: '/event-templates',
+    getParentRoute: () => AppActiveChurchPlanningAdminRoute,
+  } as any)
 const AppActiveChurchMinistriesMinistryIdIndexRoute =
   AppActiveChurchMinistriesMinistryIdIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AppActiveChurchMinistriesMinistryIdRoute,
-  } as any)
-const AppActiveChurchPlanningAdminEventTemplatesIndexRoute =
-  AppActiveChurchPlanningAdminEventTemplatesIndexRouteImport.update({
-    id: '/event-templates/',
-    path: '/event-templates/',
-    getParentRoute: () => AppActiveChurchPlanningAdminRoute,
   } as any)
 const AppActiveChurchPlanningAdminCyclesIndexRoute =
   AppActiveChurchPlanningAdminCyclesIndexRouteImport.update({
@@ -269,15 +269,15 @@ const AppActiveChurchMinistriesMinistryIdOperationalRoute =
   } as any)
 const AppActiveChurchPlanningAdminEventTemplatesNewRoute =
   AppActiveChurchPlanningAdminEventTemplatesNewRouteImport.update({
-    id: '/event-templates/new',
-    path: '/event-templates/new',
-    getParentRoute: () => AppActiveChurchPlanningAdminRoute,
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AppActiveChurchPlanningAdminEventTemplatesRouteRoute,
   } as any)
 const AppActiveChurchPlanningAdminEventTemplatesTemplateIdRoute =
   AppActiveChurchPlanningAdminEventTemplatesTemplateIdRouteImport.update({
-    id: '/event-templates/$templateId',
-    path: '/event-templates/$templateId',
-    getParentRoute: () => AppActiveChurchPlanningAdminRoute,
+    id: '/$templateId',
+    path: '/$templateId',
+    getParentRoute: () => AppActiveChurchPlanningAdminEventTemplatesRouteRoute,
   } as any)
 const AppActiveChurchMinistriesMinistryIdUsualSetupIndexRoute =
   AppActiveChurchMinistriesMinistryIdUsualSetupIndexRouteImport.update({
@@ -354,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/app/schedules': typeof AppActiveChurchSchedulesRouteWithChildren
   '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
   '/app/': typeof AppActiveChurchIndexRoute
+  '/app/event-templates': typeof AppActiveChurchPlanningAdminEventTemplatesRouteRouteWithChildren
   '/app/availability/$checkId': typeof AppActiveChurchAvailabilityCheckIdRoute
   '/app/ministries/$ministryId': typeof AppActiveChurchMinistriesMinistryIdRouteWithChildren
   '/app/my-schedule/$assignmentId': typeof AppActiveChurchMyScheduleAssignmentIdRoute
@@ -373,7 +374,6 @@ export interface FileRoutesByFullPath {
   '/app/my-schedule/$ministryId/$cycleId': typeof AppActiveChurchMyScheduleMinistryIdCycleIdRoute
   '/app/invitations/church/$invitationId/review': typeof AppInvitationsChurchInvitationIdReviewRoute
   '/app/cycles/': typeof AppActiveChurchPlanningAdminCyclesIndexRoute
-  '/app/event-templates/': typeof AppActiveChurchPlanningAdminEventTemplatesIndexRoute
   '/app/ministries/$ministryId/': typeof AppActiveChurchMinistriesMinistryIdIndexRoute
   '/app/ministries/$ministryId/usual-setup/$blockId': typeof AppActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute
   '/app/schedules/$ministryId/$cycleId': typeof AppActiveChurchSchedulesMinistryIdCycleIdPrepareRouteWithChildren
@@ -400,6 +400,7 @@ export interface FileRoutesByTo {
   '/app/dashboard': typeof AppActiveChurchDashboardRoute
   '/app/notifications': typeof AppActiveChurchNotificationsRoute
   '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
+  '/app/event-templates': typeof AppActiveChurchPlanningAdminEventTemplatesRouteRouteWithChildren
   '/app/availability/$checkId': typeof AppActiveChurchAvailabilityCheckIdRoute
   '/app/my-schedule/$assignmentId': typeof AppActiveChurchMyScheduleAssignmentIdRoute
   '/app/people/$memberId': typeof AppActiveChurchPeopleMemberIdRoute
@@ -418,7 +419,6 @@ export interface FileRoutesByTo {
   '/app/my-schedule/$ministryId/$cycleId': typeof AppActiveChurchMyScheduleMinistryIdCycleIdRoute
   '/app/invitations/church/$invitationId/review': typeof AppInvitationsChurchInvitationIdReviewRoute
   '/app/cycles': typeof AppActiveChurchPlanningAdminCyclesIndexRoute
-  '/app/event-templates': typeof AppActiveChurchPlanningAdminEventTemplatesIndexRoute
   '/app/ministries/$ministryId': typeof AppActiveChurchMinistriesMinistryIdIndexRoute
   '/app/ministries/$ministryId/usual-setup/$blockId': typeof AppActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute
   '/app/schedules/$ministryId/$cycleId/assign': typeof AppActiveChurchSchedulesMinistryIdCycleIdAssignRoute
@@ -449,6 +449,7 @@ export interface FileRoutesById {
   '/app/_active-church/schedules': typeof AppActiveChurchSchedulesRouteWithChildren
   '/invitations/church/$invitationId': typeof InvitationsChurchInvitationIdRoute
   '/app/_active-church/': typeof AppActiveChurchIndexRoute
+  '/app/_active-church/_planning-admin/event-templates': typeof AppActiveChurchPlanningAdminEventTemplatesRouteRouteWithChildren
   '/app/_active-church/availability_/$checkId': typeof AppActiveChurchAvailabilityCheckIdRoute
   '/app/_active-church/ministries/$ministryId': typeof AppActiveChurchMinistriesMinistryIdRouteWithChildren
   '/app/_active-church/my-schedule/$assignmentId': typeof AppActiveChurchMyScheduleAssignmentIdRoute
@@ -468,7 +469,6 @@ export interface FileRoutesById {
   '/app/_active-church/my-schedule/$ministryId/$cycleId': typeof AppActiveChurchMyScheduleMinistryIdCycleIdRoute
   '/app/invitations/church/$invitationId/review': typeof AppInvitationsChurchInvitationIdReviewRoute
   '/app/_active-church/_planning-admin/cycles/': typeof AppActiveChurchPlanningAdminCyclesIndexRoute
-  '/app/_active-church/_planning-admin/event-templates/': typeof AppActiveChurchPlanningAdminEventTemplatesIndexRoute
   '/app/_active-church/ministries/$ministryId/': typeof AppActiveChurchMinistriesMinistryIdIndexRoute
   '/app/_active-church/ministries/$ministryId/usual-setup/$blockId': typeof AppActiveChurchMinistriesMinistryIdUsualSetupBlockIdRoute
   '/app/_active-church/schedules/$ministryId/$cycleId/_prepare': typeof AppActiveChurchSchedulesMinistryIdCycleIdPrepareRouteWithChildren
@@ -499,6 +499,7 @@ export interface FileRouteTypes {
     | '/app/schedules'
     | '/invitations/church/$invitationId'
     | '/app/'
+    | '/app/event-templates'
     | '/app/availability/$checkId'
     | '/app/ministries/$ministryId'
     | '/app/my-schedule/$assignmentId'
@@ -518,7 +519,6 @@ export interface FileRouteTypes {
     | '/app/my-schedule/$ministryId/$cycleId'
     | '/app/invitations/church/$invitationId/review'
     | '/app/cycles/'
-    | '/app/event-templates/'
     | '/app/ministries/$ministryId/'
     | '/app/ministries/$ministryId/usual-setup/$blockId'
     | '/app/schedules/$ministryId/$cycleId'
@@ -545,6 +545,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/notifications'
     | '/invitations/church/$invitationId'
+    | '/app/event-templates'
     | '/app/availability/$checkId'
     | '/app/my-schedule/$assignmentId'
     | '/app/people/$memberId'
@@ -563,7 +564,6 @@ export interface FileRouteTypes {
     | '/app/my-schedule/$ministryId/$cycleId'
     | '/app/invitations/church/$invitationId/review'
     | '/app/cycles'
-    | '/app/event-templates'
     | '/app/ministries/$ministryId'
     | '/app/ministries/$ministryId/usual-setup/$blockId'
     | '/app/schedules/$ministryId/$cycleId/assign'
@@ -593,6 +593,7 @@ export interface FileRouteTypes {
     | '/app/_active-church/schedules'
     | '/invitations/church/$invitationId'
     | '/app/_active-church/'
+    | '/app/_active-church/_planning-admin/event-templates'
     | '/app/_active-church/availability_/$checkId'
     | '/app/_active-church/ministries/$ministryId'
     | '/app/_active-church/my-schedule/$assignmentId'
@@ -612,7 +613,6 @@ export interface FileRouteTypes {
     | '/app/_active-church/my-schedule/$ministryId/$cycleId'
     | '/app/invitations/church/$invitationId/review'
     | '/app/_active-church/_planning-admin/cycles/'
-    | '/app/_active-church/_planning-admin/event-templates/'
     | '/app/_active-church/ministries/$ministryId/'
     | '/app/_active-church/ministries/$ministryId/usual-setup/$blockId'
     | '/app/_active-church/schedules/$ministryId/$cycleId/_prepare'
@@ -833,19 +833,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppActiveChurchAvailabilityCheckIdRouteImport
       parentRoute: typeof AppActiveChurchRoute
     }
+    '/app/_active-church/_planning-admin/event-templates': {
+      id: '/app/_active-church/_planning-admin/event-templates'
+      path: '/event-templates'
+      fullPath: '/app/event-templates'
+      preLoaderRoute: typeof AppActiveChurchPlanningAdminEventTemplatesRouteRouteImport
+      parentRoute: typeof AppActiveChurchPlanningAdminRoute
+    }
     '/app/_active-church/ministries/$ministryId/': {
       id: '/app/_active-church/ministries/$ministryId/'
       path: '/'
       fullPath: '/app/ministries/$ministryId/'
       preLoaderRoute: typeof AppActiveChurchMinistriesMinistryIdIndexRouteImport
       parentRoute: typeof AppActiveChurchMinistriesMinistryIdRoute
-    }
-    '/app/_active-church/_planning-admin/event-templates/': {
-      id: '/app/_active-church/_planning-admin/event-templates/'
-      path: '/event-templates'
-      fullPath: '/app/event-templates/'
-      preLoaderRoute: typeof AppActiveChurchPlanningAdminEventTemplatesIndexRouteImport
-      parentRoute: typeof AppActiveChurchPlanningAdminRoute
     }
     '/app/_active-church/_planning-admin/cycles/': {
       id: '/app/_active-church/_planning-admin/cycles/'
@@ -898,17 +898,17 @@ declare module '@tanstack/react-router' {
     }
     '/app/_active-church/_planning-admin/event-templates/new': {
       id: '/app/_active-church/_planning-admin/event-templates/new'
-      path: '/event-templates/new'
+      path: '/new'
       fullPath: '/app/event-templates/new'
       preLoaderRoute: typeof AppActiveChurchPlanningAdminEventTemplatesNewRouteImport
-      parentRoute: typeof AppActiveChurchPlanningAdminRoute
+      parentRoute: typeof AppActiveChurchPlanningAdminEventTemplatesRouteRoute
     }
     '/app/_active-church/_planning-admin/event-templates/$templateId': {
       id: '/app/_active-church/_planning-admin/event-templates/$templateId'
-      path: '/event-templates/$templateId'
+      path: '/$templateId'
       fullPath: '/app/event-templates/$templateId'
       preLoaderRoute: typeof AppActiveChurchPlanningAdminEventTemplatesTemplateIdRouteImport
-      parentRoute: typeof AppActiveChurchPlanningAdminRoute
+      parentRoute: typeof AppActiveChurchPlanningAdminEventTemplatesRouteRoute
     }
     '/app/_active-church/ministries/$ministryId/usual-setup/': {
       id: '/app/_active-church/ministries/$ministryId/usual-setup/'
@@ -976,11 +976,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AppActiveChurchPlanningAdminRouteChildren {
+interface AppActiveChurchPlanningAdminEventTemplatesRouteRouteChildren {
   AppActiveChurchPlanningAdminEventTemplatesTemplateIdRoute: typeof AppActiveChurchPlanningAdminEventTemplatesTemplateIdRoute
   AppActiveChurchPlanningAdminEventTemplatesNewRoute: typeof AppActiveChurchPlanningAdminEventTemplatesNewRoute
+}
+
+const AppActiveChurchPlanningAdminEventTemplatesRouteRouteChildren: AppActiveChurchPlanningAdminEventTemplatesRouteRouteChildren =
+  {
+    AppActiveChurchPlanningAdminEventTemplatesTemplateIdRoute:
+      AppActiveChurchPlanningAdminEventTemplatesTemplateIdRoute,
+    AppActiveChurchPlanningAdminEventTemplatesNewRoute:
+      AppActiveChurchPlanningAdminEventTemplatesNewRoute,
+  }
+
+const AppActiveChurchPlanningAdminEventTemplatesRouteRouteWithChildren =
+  AppActiveChurchPlanningAdminEventTemplatesRouteRoute._addFileChildren(
+    AppActiveChurchPlanningAdminEventTemplatesRouteRouteChildren,
+  )
+
+interface AppActiveChurchPlanningAdminRouteChildren {
+  AppActiveChurchPlanningAdminEventTemplatesRouteRoute: typeof AppActiveChurchPlanningAdminEventTemplatesRouteRouteWithChildren
   AppActiveChurchPlanningAdminCyclesIndexRoute: typeof AppActiveChurchPlanningAdminCyclesIndexRoute
-  AppActiveChurchPlanningAdminEventTemplatesIndexRoute: typeof AppActiveChurchPlanningAdminEventTemplatesIndexRoute
   AppActiveChurchPlanningAdminCyclesCycleIdIndexRoute: typeof AppActiveChurchPlanningAdminCyclesCycleIdIndexRoute
   AppActiveChurchPlanningAdminCyclesCycleIdEventsEventIdRoute: typeof AppActiveChurchPlanningAdminCyclesCycleIdEventsEventIdRoute
   AppActiveChurchPlanningAdminCyclesCycleIdEventsNewRoute: typeof AppActiveChurchPlanningAdminCyclesCycleIdEventsNewRoute
@@ -988,14 +1004,10 @@ interface AppActiveChurchPlanningAdminRouteChildren {
 
 const AppActiveChurchPlanningAdminRouteChildren: AppActiveChurchPlanningAdminRouteChildren =
   {
-    AppActiveChurchPlanningAdminEventTemplatesTemplateIdRoute:
-      AppActiveChurchPlanningAdminEventTemplatesTemplateIdRoute,
-    AppActiveChurchPlanningAdminEventTemplatesNewRoute:
-      AppActiveChurchPlanningAdminEventTemplatesNewRoute,
+    AppActiveChurchPlanningAdminEventTemplatesRouteRoute:
+      AppActiveChurchPlanningAdminEventTemplatesRouteRouteWithChildren,
     AppActiveChurchPlanningAdminCyclesIndexRoute:
       AppActiveChurchPlanningAdminCyclesIndexRoute,
-    AppActiveChurchPlanningAdminEventTemplatesIndexRoute:
-      AppActiveChurchPlanningAdminEventTemplatesIndexRoute,
     AppActiveChurchPlanningAdminCyclesCycleIdIndexRoute:
       AppActiveChurchPlanningAdminCyclesCycleIdIndexRoute,
     AppActiveChurchPlanningAdminCyclesCycleIdEventsEventIdRoute:

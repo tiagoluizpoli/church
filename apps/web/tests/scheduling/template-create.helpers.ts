@@ -7,7 +7,7 @@ interface TemplateBlockInput {
   endTime: string;
 }
 
-export interface CreateTemplateOnNestedPageInput {
+export interface CreateTemplateInDialogInput {
   page: Page;
   name: string;
   /** 0 (Sunday) … 6 (Saturday). */
@@ -15,28 +15,30 @@ export interface CreateTemplateOnNestedPageInput {
   blocks: TemplateBlockInput[];
 }
 
-/** From the template list, fills the nested create page and saves; resolves on the refreshed list. */
-export async function createTemplateOnNestedPage({
+/** From the template list, fills the create dialog over it and saves; resolves on the refreshed list. */
+export async function createTemplateInDialog({
   page,
   name,
   weekday,
   blocks,
-}: CreateTemplateOnNestedPageInput): Promise<void> {
+}: CreateTemplateInDialogInput): Promise<void> {
   await page.getByTestId('new-template-button').click();
   await expect(page).toHaveURL(/\/event-templates\/new$/);
+  const dialog = page.getByTestId('template-create-dialog');
+  await expect(dialog).toBeVisible();
 
-  await page.getByTestId('template-name-input').fill(name);
+  await dialog.getByTestId('template-name-input').fill(name);
   // A new template starts weekly on Sunday (0); pick the weekday, then drop Sunday.
   if (weekday !== 0) {
-    await page.getByTestId(`template-weekday-toggle-${weekday}`).click();
-    await page.getByTestId('template-weekday-toggle-0').click();
+    await dialog.getByTestId(`template-weekday-toggle-${weekday}`).click();
+    await dialog.getByTestId('template-weekday-toggle-0').click();
   }
 
   for (const [index, block] of blocks.entries()) {
     if (index > 0) {
-      await page.getByTestId('add-template-time-block-button').click();
+      await dialog.getByTestId('add-template-time-block-button').click();
     }
-    const row = page.getByTestId('template-time-block-row').nth(index);
+    const row = dialog.getByTestId('template-time-block-row').nth(index);
     await row.getByTestId('template-time-block-label-input').fill(block.label);
     await fillTimeOfDayField({
       field: row.getByTestId('template-time-block-start-time-input'),
@@ -48,8 +50,9 @@ export async function createTemplateOnNestedPage({
     });
   }
 
-  await page.getByTestId('create-template-button').click();
+  await dialog.getByTestId('create-template-button').click();
   await expect(page).toHaveURL(/\/event-templates$/);
+  await expect(dialog).toBeHidden();
   await expect(
     page.getByTestId('saved-template-row').filter({ hasText: name }),
   ).toBeAttached(); // the card list is hidden at desktop widths

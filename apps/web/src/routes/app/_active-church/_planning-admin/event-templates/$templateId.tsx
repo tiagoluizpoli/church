@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { TemplateEditPage } from '@/features/scheduling/components/planning-admin/template-edit-page';
+import { TemplateEditDialog } from '@/features/scheduling/components/planning-admin/template-edit-dialog';
 
 export const Route = createFileRoute(
   '/app/_active-church/_planning-admin/event-templates/$templateId',
@@ -9,5 +9,5 @@ export const Route = createFileRoute(
 
 function TemplateEditRoute() {
   const { templateId } = Route.useParams();
-  return <TemplateEditPage templateId={templateId} />;
+  return <TemplateEditDialog key={templateId} templateId={templateId} />;
 }

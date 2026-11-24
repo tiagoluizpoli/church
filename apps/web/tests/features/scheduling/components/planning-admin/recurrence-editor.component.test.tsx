@@ -39,13 +39,23 @@ describe('RecurrenceEditor weekly', () => {
   it('toggles several weekdays and keeps at least one', async () => {
     const { user, onChange } = setup({ kind: 'weekly', weekdays: [0] });
 
-    expect(screen.getByTestId('template-weekday-toggle-0')).toBeDisabled();
+    // The lone picked day stays enabled; deselecting it is ignored.
+    expect(screen.getByTestId('template-weekday-toggle-0')).toBeEnabled();
+    await user.click(screen.getByTestId('template-weekday-toggle-0'));
+    expect(onChange).not.toHaveBeenCalled();
+
     await user.click(screen.getByTestId('template-weekday-toggle-3'));
     expect(lastCall(onChange)).toEqual({ kind: 'weekly', weekdays: [0, 3] });
 
     await user.click(screen.getByTestId('template-weekday-toggle-0'));
     expect(lastCall(onChange)).toEqual({ kind: 'weekly', weekdays: [3] });
-    expect(screen.getByTestId('template-weekday-toggle-3')).toBeDisabled();
+    expect(screen.getByTestId('template-weekday-toggle-3')).toBeEnabled();
+    await user.click(screen.getByTestId('template-weekday-toggle-3'));
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('template-weekday-toggle-3')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('switches to monthly with one starting entry', async () => {

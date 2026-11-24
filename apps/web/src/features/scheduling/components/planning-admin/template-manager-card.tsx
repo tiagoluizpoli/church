@@ -7,6 +7,7 @@ import type { TemplateLibraryTableRow } from './planning-admin.types';
 import { toTemplateLibraryTableRow } from './planning-admin.utils';
 import { RetryAlert } from './retry-alert';
 import { TemplateDeleteDialog } from './template-delete-dialog';
+import { TemplatePrecedencesDialog } from './template-precedences-dialog';
 import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -36,6 +37,7 @@ function PublicBadge() {
 interface TemplateRowActionsProps {
   templateId: string;
   templateName: string;
+  onPrecedences: () => void;
   onDelete: () => void;
   /** Only one copy (the mobile card) carries test ids; both are in the DOM. */
   withTestIds?: boolean;
@@ -59,6 +61,7 @@ function moveActionFocus(event: KeyboardEvent<HTMLDivElement>) {
 function TemplateRowActions({
   templateId,
   templateName,
+  onPrecedences,
   onDelete,
   withTestIds,
 }: TemplateRowActionsProps) {
@@ -84,6 +87,17 @@ function TemplateRowActions({
         type="button"
         size="xs"
         className="min-h-11 min-w-11 md:min-h-0 md:min-w-0"
+        variant="outline"
+        aria-label={m.event_templates_precedences_label({ name: templateName })}
+        data-testid={withTestIds ? 'template-precedences-button' : undefined}
+        onClick={onPrecedences}
+      >
+        {m.event_templates_precedences()}
+      </Button>
+      <Button
+        type="button"
+        size="xs"
+        className="min-h-11 min-w-11 md:min-h-0 md:min-w-0"
         variant="destructive"
         aria-label={m.event_templates_delete_label({ name: templateName })}
         data-testid={withTestIds ? 'delete-template-button' : undefined}
@@ -103,6 +117,12 @@ export function TemplateManagerCard() {
   const templates = templatesQuery.data?.templates ?? [];
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const deleteTarget = templates.find(({ id }) => id === deleteTargetId);
+  const [precedencesTargetId, setPrecedencesTargetId] = useState<string | null>(
+    null,
+  );
+  const precedencesTarget = templates.find(
+    ({ id }) => id === precedencesTargetId,
+  );
 
   const rows: TemplateLibraryTableRow[] = templates.map((template) =>
     toTemplateLibraryTableRow({ template, locale: getLocale() }),
@@ -156,6 +176,7 @@ export function TemplateManagerCard() {
                   <TemplateRowActions
                     templateId={item.id}
                     templateName={item.name}
+                    onPrecedences={() => setPrecedencesTargetId(item.id)}
                     onDelete={() => setDeleteTargetId(item.id)}
                   />
                 ) : null}
@@ -178,6 +199,7 @@ export function TemplateManagerCard() {
                 <TemplateRowActions
                   templateId={item.id}
                   templateName={item.name}
+                  onPrecedences={() => setPrecedencesTargetId(item.id)}
                   onDelete={() => setDeleteTargetId(item.id)}
                   withTestIds
                 />
@@ -191,6 +213,13 @@ export function TemplateManagerCard() {
             publicBlockCount={deleteTarget.publicBlockCount}
             onClose={() => setDeleteTargetId(null)}
             onDeleted={() => setDeleteTargetId(null)}
+          />
+        ) : null}
+        {precedencesTarget ? (
+          <TemplatePrecedencesDialog
+            templateId={precedencesTarget.id}
+            templateName={precedencesTarget.name}
+            onClose={() => setPrecedencesTargetId(null)}
           />
         ) : null}
       </CardContent>

@@ -10,7 +10,7 @@ import { expect, test } from '@playwright/test';
 import { fillDatePickerField } from './date-picker.helpers';
 import { addEventOnNestedPage } from './event-create.helpers';
 import { planningMonth } from './planning-month.helpers';
-import { createTemplateOnNestedPage } from './template-create.helpers';
+import { createTemplateInDialog } from './template-create.helpers';
 import {
   newPersonaContext,
   signInPersonaPage,
@@ -152,7 +152,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
 
   // The recipe owns Sunday's source-bound Usual setup; create a second
   // template through the UI and retain the library edit/apply outcomes.
-  await createTemplateOnNestedPage({
+  await createTemplateInDialog({
     page,
     name: wednesdayTemplateName,
     weekday: 3,
@@ -164,7 +164,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     .filter({ hasText: sundayTemplateName })
     .getByTestId('edit-template-button')
     .click();
-  await expect(page.getByTestId('template-edit-page')).toBeVisible();
+  await expect(page.getByTestId('template-edit-dialog')).toBeVisible();
   await page.getByTestId('template-name-input').fill(sundayGatheringName);
   await page.getByTestId('create-template-button').click();
 

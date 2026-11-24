@@ -1,5 +1,5 @@
 import { m } from '@church/i18n/messages';
-import type { ReactNode } from 'react';
+import { PlusIcon } from 'lucide-react';
 import type { TemplateFormState } from './planning-admin.types';
 import { templateBlockErrors } from './planning-admin.utils';
 import {
@@ -11,6 +11,7 @@ import {
   type TemplateTimeBlockRowProps,
 } from './template-time-block-row';
 import { Button } from '@/components/ui/button';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -35,12 +36,10 @@ export interface TemplateEditorFormProps {
   onRemoveBlock: TemplateTimeBlockRowProps['onRemoveBlock'];
   onAddBlock: () => void;
   onSave: () => void;
-  /** Rendered beside Save (e.g. Cancel). */
-  actions?: ReactNode;
 }
 
 /** What a create or edit hook hands the editor. */
-export type TemplateEditorState = Omit<TemplateEditorFormProps, 'actions'>;
+export type TemplateEditorState = TemplateEditorFormProps;
 
 /** The draft fields shared by both hooks, before mode and save are added. */
 export type TemplateEditorFields = Omit<
@@ -50,9 +49,6 @@ export type TemplateEditorFields = Omit<
 
 export function TemplateEditorForm({
   form: templateForm,
-  mode,
-  canSave,
-  pending,
   nameError,
   formError,
   onNameChange,
@@ -60,13 +56,12 @@ export function TemplateEditorForm({
   onBlockChange,
   onRemoveBlock,
   onAddBlock,
-  onSave,
-  actions,
 }: TemplateEditorFormProps) {
   const blockErrors = templateBlockErrors({ blocks: templateForm.blocks });
+  const touch = useFormControlSize() === 'touch';
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
+      <div className="max-w-md space-y-1">
         <Label htmlFor="template-name">{m.event_templates_name_label()}</Label>
         <Input
           id="template-name"
@@ -113,6 +108,16 @@ export function TemplateEditorForm({
             onRemoveBlock={onRemoveBlock}
           />
         ))}
+        <Button
+          type="button"
+          variant="ghost"
+          size={touch ? 'touch' : 'sm'}
+          data-testid="add-template-time-block-button"
+          onClick={onAddBlock}
+        >
+          <PlusIcon aria-hidden />
+          {m.event_templates_block_add()}
+        </Button>
       </div>
 
       {formError ? (
@@ -124,33 +129,62 @@ export function TemplateEditorForm({
           {formError}
         </p>
       ) : null}
-
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          data-testid="add-template-time-block-button"
-          onClick={onAddBlock}
-        >
-          {m.event_templates_block_add()}
-        </Button>
-        <Button
-          type="button"
-          data-testid="create-template-button"
-          disabled={!canSave || pending}
-          onClick={onSave}
-        >
-          {pending
-            ? mode === 'edit'
-              ? m.event_templates_save_pending()
-              : m.event_templates_create_pending()
-            : mode === 'edit'
-              ? m.event_templates_save_submit()
-              : m.event_templates_create_submit()}
-        </Button>
-        {actions}
-      </div>
     </div>
+  );
+}
+
+interface TemplateEditorFooterProps
+  extends Pick<
+    TemplateEditorFormProps,
+    'mode' | 'canSave' | 'pending' | 'onSave'
+  > {
+  onCancel: () => void;
+}
+
+const SAVE_BLOCKED_HINT_ID = 'template-save-blocked-hint';
+
+/** Cancel then Save, for the surface footer; a blocked Save says why. */
+export function TemplateEditorFooter({
+  mode,
+  canSave,
+  pending,
+  onSave,
+  onCancel,
+}: TemplateEditorFooterProps) {
+  return (
+    <>
+      {canSave ? null : (
+        <p
+          id={SAVE_BLOCKED_HINT_ID}
+          className="self-center text-muted-foreground text-xs sm:mr-auto"
+          data-testid="template-save-blocked-hint"
+        >
+          {m.event_templates_save_blocked_hint()}
+        </p>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        data-testid="cancel-template-button"
+        onClick={onCancel}
+      >
+        {m.event_templates_cancel()}
+      </Button>
+      <Button
+        type="button"
+        data-testid="create-template-button"
+        disabled={!canSave || pending}
+        aria-describedby={canSave ? undefined : SAVE_BLOCKED_HINT_ID}
+        onClick={onSave}
+      >
+        {pending
+          ? mode === 'edit'
+            ? m.event_templates_save_pending()
+            : m.event_templates_create_pending()
+          : mode === 'edit'
+            ? m.event_templates_save_submit()
+            : m.event_templates_create_submit()}
+      </Button>
+    </>
   );
 }

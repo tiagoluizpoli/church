@@ -2,8 +2,10 @@ import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import { formatWeekdayOfIndex } from '@church/time';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
+import { useState } from 'react';
 import type { TemplateRecurrence } from './planning-admin.types';
 import { Button } from '@/components/ui/button';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -89,6 +91,7 @@ function EntryRow({
   onRemove,
 }: EntryRowProps) {
   const testId = `template-recurrence-entry-${index}`;
+  const touch = useFormControlSize() === 'touch';
 
   return (
     <div className="flex flex-wrap items-end gap-2" data-testid={testId}>
@@ -216,7 +219,7 @@ function EntryRow({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size={touch ? 'icon-touch' : 'icon'}
         disabled={!canRemove}
         aria-label={m.event_templates_recurrence_remove_entry()}
         data-testid={`${testId}-remove`}
@@ -232,6 +235,10 @@ export function RecurrenceEditor({
   recurrence,
   onChange,
 }: RecurrenceEditorProps) {
+  // The lone picked weekday stays enabled; deselecting it explains itself instead.
+  const [keptLastWeekday, setKeptLastWeekday] = useState(false);
+  // An explicit size opts out of the drawer's touch promotion, so pick it here.
+  const compactSize = useFormControlSize() === 'touch' ? 'touch' : 'sm';
   const kindLabels = {
     weekly: m.event_templates_recurrence_kind_weekly(),
     monthly: m.event_templates_recurrence_kind_monthly(),
@@ -258,7 +265,7 @@ export function RecurrenceEditor({
           <SelectTrigger
             aria-label={m.event_templates_recurrence_kind_label()}
             data-testid="template-recurrence-kind"
-            className="w-full"
+            className="w-auto min-w-40"
           >
             <SelectValue>{kindLabels[recurrence.kind]}</SelectValue>
           </SelectTrigger>
@@ -280,8 +287,13 @@ export function RecurrenceEditor({
       </div>
 
       {recurrence.kind === 'weekly' ? (
-        <fieldset className="space-y-1">
-          <legend className="font-medium text-sm">
+        <fieldset
+          className="space-y-1"
+          aria-describedby={
+            keptLastWeekday ? 'template-weekdays-hint' : undefined
+          }
+        >
+          <legend className="mb-1 text-xs leading-none">
             {m.event_templates_recurrence_weekdays_label()}
           </legend>
           <div className="flex flex-wrap gap-1">
@@ -292,12 +304,21 @@ export function RecurrenceEditor({
                 <Button
                   key={weekday}
                   type="button"
-                  size="sm"
+                  size={compactSize}
                   variant={picked ? 'default' : 'outline'}
                   aria-pressed={picked}
-                  disabled={isOnlyPicked}
+                  aria-describedby={
+                    isOnlyPicked && keptLastWeekday
+                      ? 'template-weekdays-hint'
+                      : undefined
+                  }
                   data-testid={`template-weekday-toggle-${weekday}`}
-                  onClick={() =>
+                  onClick={() => {
+                    if (isOnlyPicked) {
+                      setKeptLastWeekday(true);
+                      return;
+                    }
+                    setKeptLastWeekday(false);
                     onChange({
                       recurrence: {
                         kind: 'weekly',
@@ -305,14 +326,22 @@ export function RecurrenceEditor({
                           ? recurrence.weekdays.filter((w) => w !== weekday)
                           : [...recurrence.weekdays, weekday],
                       },
-                    })
-                  }
+                    });
+                  }}
                 >
                   {weekdayLabel(weekday)}
                 </Button>
               );
             })}
           </div>
+          <p
+            id="template-weekdays-hint"
+            aria-live="polite"
+            className="text-muted-foreground text-xs"
+            data-testid="template-weekdays-hint"
+          >
+            {keptLastWeekday ? m.event_templates_weekdays_keep_one() : null}
+          </p>
         </fieldset>
       ) : (
         <div className="space-y-2">
@@ -347,7 +376,7 @@ export function RecurrenceEditor({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size={compactSize}
             data-testid="template-recurrence-add-entry"
             onClick={() =>
               onChange({

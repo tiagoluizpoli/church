@@ -49,8 +49,15 @@ export function createQueryClient({
   onSessionExpired = redirectToLogin,
 }: CreateQueryClientInput = {}): QueryClient {
   let sessionExpired = false;
+  // Every query the toast announces, so its one Retry retries them all.
+  const failed = new Set<string>();
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
+      onSuccess: (_data, query) => {
+        // An answer means the session works again (a 401 on /login redirects nowhere).
+        sessionExpired = false;
+        failed.delete(query.queryHash);
+      },
       onError: (error, query) => {
         if (isOutageError(error)) return;
         const status = isAxiosError(error) ? error.response?.status : undefined;
@@ -66,6 +73,7 @@ export function createQueryClient({
         }
         // The page renders its own error and retry, so a toast would repeat it.
         if (query.meta?.showsOwnError) return;
+        failed.add(query.queryHash);
         const retryLabel = m.common_retry();
         toastRequestError({
           error,
@@ -73,11 +81,13 @@ export function createQueryClient({
           action: {
             label: retryLabel,
             // Query#invalidate only marks it stale; refetch to retry.
-            onClick: () =>
+            onClick: () => {
+              const retried = new Set(failed);
+              failed.clear();
               void client.refetchQueries({
-                queryKey: query.queryKey,
-                exact: true,
-              }),
+                predicate: ({ queryHash }) => retried.has(queryHash),
+              });
+            },
           },
         });
       },

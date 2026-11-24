@@ -145,7 +145,7 @@ _Avoid_: Gathering, service
 ## Kids
 
 **Family** (pt-BR: Família):
-The Guardians and the Children they share. Each Child belongs to exactly one Family, and every Guardian in it may check in and manage every Child in it. A Guardian may belong to several Families, and separated parents stay Guardians of the same Family.
+The Guardians and the Children they share. Each Child belongs to exactly one Family, and every Guardian in it may check in and manage every Child in it. A Guardian may belong to several Families, and separated parents stay Guardians of the same Family. A Guardian may leave the Family at any time, except the Guardian who made an open Check-in, who stays until its Children are checked out; a Family cannot be unlinked from a Church while a Check-in there is open.
 _Avoid_: Household, family group, grupo familiar, casa
 
 **Family Link** (pt-BR: Vínculo da família):
@@ -153,7 +153,7 @@ A Guardian's act of making their Family known to one Church, so it may check the
 _Avoid_: Family registration (per Church), church family, family membership
 
 **Family invitation** (pt-BR: Convite para a família):
-A single-use link a Guardian shares, by WhatsApp or email, for another adult to join the Family as a Guardian. It expires after 7 days, and any Guardian may revoke it. It grants the Family only, never Church Membership.
+A single-use link a Guardian shares, by WhatsApp or email, for another adult to join the Family as a Guardian. It expires after 7 days, and any Guardian may revoke it. It grants the Family only, never Church Membership, though an invitee without an account signs up through the inviter's Church unless they choose their own.
 _Avoid_: Share link, family code
 
 **Child** (pt-BR: Criança):
@@ -193,7 +193,7 @@ A volunteer's or Kids leader's transfer of a checked-in Child to another Room. T
 _Avoid_: Transfer, re-check-in
 
 **Awaiting drop-off** (pt-BR: A caminho):
-A Child included in a Check-in made at a Check-in point that does not serve the Child's Room. The Child is not yet checked in: that happens when a Guardian scans a point serving the Room, where its Child tag prints. A Child still awaiting when the Church's **drop-off window** runs out leaves the Check-in, and the Guardian is told.
+A Child included in a Check-in made at a Check-in point that does not serve the Child's Room. The Child is not yet checked in: that happens when a Guardian scans a point serving the Room, where its Child tag prints. The Guardian is sent to that point by its name, never to the Room. A Child still awaiting when the Church's **drop-off window** runs out leaves the Check-in, and the Guardian is told.
 _Avoid_: Pending check-in, reserved
 
 **Pickup code** (pt-BR: Código de retirada):
@@ -229,7 +229,7 @@ A Kids leader's release of a Child to an adult who cannot show its pickup code, 
 _Avoid_: Manual checkout, bypass, forced checkout
 
 **Call** (pt-BR: Chamada):
-A request for a Child's Guardians to come to the Child's Room, sent by the room's people or a Kids leader while the Child is checked in. It reaches every Guardian with an account who wants calls for that Check-in, and always the Guardian who made it. The reason stays inside the app; the lock screen only says the Child needs them. A Guardian answers "on my way" or "can't come"; a call nobody answers in the Church's set time is unanswered, and the room may call again or show it on the big screen. A volunteer closes it as resolved, with an optional note. A Child has one open call at a time, but may be called for again after that one is resolved, and every call stays in the Check-in's history.
+A request for a Child's Guardians to come to the Child's Room, meeting at the Check-in point that serves it, sent by the room's people or a Kids leader while the Child is checked in. It reaches every Guardian with an account who wants calls for that Check-in, and always the Guardian who made it. The reason stays inside the app; the lock screen only says the Child needs them. A Guardian answers "on my way" or "can't come"; a call nobody answers in the Church's set time is unanswered, and the room may call again or show it on the big screen. A volunteer closes it as resolved, with an optional note. A Child has one open call at a time, but may be called for again after that one is resolved, and every call stays in the Check-in's history.
 _Avoid_: Page, pager, summon, alert, notification (for a call), phone call (a volunteer ringing a Guardian contact is a phone call, not a Call)
 
 **Notice** (pt-BR: Aviso):

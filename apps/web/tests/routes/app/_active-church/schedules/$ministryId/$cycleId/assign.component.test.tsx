@@ -1,6 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { focusManager } from '@tanstack/react-query';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SCHEDULE } from '@/tests/features/scheduling/components/prepare/preparation-block.fixtures';
@@ -219,6 +220,102 @@ describe('Assign board route', () => {
       await screen.findByRole('heading', { name: m.shell_not_found_title() }),
     ).toBeVisible();
     expect(screen.queryByTestId('event-builder-route')).not.toBeInTheDocument();
+  });
+});
+
+describe('date strip selection in the URL', () => {
+  const DAYS = ['2026-07-10', '2026-07-11', '2026-07-12'];
+  const path = '/app/schedules/ministry-1/cycle-1/assign';
+
+  beforeEach(() => {
+    getCycleBuilderData.mockResolvedValue({
+      cycle: {
+        id: 'cycle-1',
+        name: 'August 2026',
+        startDate: '2026-07-10',
+        endDate: '2026-07-12',
+      },
+      roles: [],
+      events: DAYS.map((day, index) => ({
+        participation: {
+          id: `participation-${index}`,
+          churchId: 'church-1',
+          eventId: `event-${index}`,
+          ministryId: 'ministry-1',
+          state: 'assigning',
+        },
+        event: {
+          id: `event-${index}`,
+          churchId: 'church-1',
+          cycleId: 'cycle-1',
+          title: `Service ${index}`,
+          start: `${day}T09:00:00.000Z`,
+          end: `${day}T11:00:00.000Z`,
+          status: 'scheduled',
+          createdAt: '2026-07-01T09:00:00.000Z',
+          updatedAt: '2026-07-01T09:00:00.000Z',
+        },
+        eventTimeBlocks: [],
+      })),
+    });
+  });
+
+  const pressed = () =>
+    within(screen.getByRole('group', { name: m.builder_ui_cycle_dates() }))
+      .getAllByTestId('cycle-date-chip')
+      .filter((chip) => chip.getAttribute('aria-pressed') === 'true')
+      .map((chip) => chip.dataset.date);
+
+  it('shows every date on a fresh visit', async () => {
+    renderRoute({ initialPath: path, churchTimezone: 'UTC' });
+    await screen.findByRole('group', { name: m.builder_ui_cycle_dates() });
+    expect(pressed()).toEqual([]);
+  });
+
+  it('restores the selection from ?days= and writes each change back', async () => {
+    const user = userEvent.setup();
+    const { router } = renderRoute({
+      initialPath: `${path}?days=2026-07-11`,
+      churchTimezone: 'UTC',
+    });
+    await screen.findByRole('group', { name: m.builder_ui_cycle_dates() });
+    expect(pressed()).toEqual(['2026-07-11']);
+
+    const [first] = screen.getAllByTestId('cycle-date-chip');
+    await user.click(first);
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({
+        days: '2026-07-10,2026-07-11',
+      }),
+    );
+    expect(pressed()).toEqual(['2026-07-10', '2026-07-11']);
+
+    await user.click(screen.getByTestId('cycle-date-strip-clear'));
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    expect(pressed()).toEqual([]);
+  });
+
+  it('ignores a malformed ?days= and shows every date', async () => {
+    renderRoute({
+      initialPath: `${path}?days=not-a-date`,
+      churchTimezone: 'UTC',
+    });
+    await screen.findByRole('group', { name: m.builder_ui_cycle_dates() });
+    expect(pressed()).toEqual([]);
+  });
+
+  it('keeps ?days= when it consumes a swap request link', async () => {
+    const { router } = renderRoute({
+      initialPath: `${path}?swapRequest=gone&days=2026-07-12`,
+      churchTimezone: 'UTC',
+    });
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(m.swap_board_unavailable()),
+    );
+    await waitFor(() =>
+      expect(router.state.location.search).toEqual({ days: '2026-07-12' }),
+    );
+    expect(pressed()).toEqual(['2026-07-12']);
   });
 });
 

@@ -165,8 +165,8 @@ function renderBoard(data: CycleBuilderData = janeiroData) {
       data={data}
       cycleStartDate="2027-01-01T00:00:00.000Z"
       cycleEndDate="2027-01-31T00:00:00.000Z"
-      selectedDate={null}
-      onSelectedDateChange={vi.fn()}
+      selectedDates={[]}
+      onSelectedDatesChange={vi.fn()}
       onSelectVolunteer={vi.fn()}
       onSelectAssignment={vi.fn()}
       onRemoveAssignment={vi.fn()}
@@ -281,7 +281,7 @@ describe.each([
 
     renderBoard(lateFridayData);
 
-    // "Fri, 08/01" also appears on the date-strip focus button; the board
+    // "Fri, 08/01" can also appear in the date strip's tooltip; the board
     // column's own copy is the `<p>` heading inside its `<section>`.
     const fridayLabels = await screen.findAllByText('Sex., 08/01');
     const fridayHeading = fridayLabels.find(

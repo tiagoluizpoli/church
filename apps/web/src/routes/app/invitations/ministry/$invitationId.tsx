@@ -238,7 +238,7 @@ function MinistryInvitationContent({
 
   if (acceptMutation.data?.kind === 'church-only') {
     const split = acceptMutation.data;
-    // The User now belongs to both Churches: make the one just joined active.
+    // A user action after accept: covers the already-member split, where the server leaves the Active Church alone; idempotent otherwise.
     const continueToDestination = (): Promise<void> =>
       continueToChurch({ churchId: split.destinationChurchId });
     return (

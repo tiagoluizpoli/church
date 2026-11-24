@@ -8684,7 +8684,6 @@ paths:
                           enum:
                             - draft
                             - pending
-                            - confirmed
                             - cancelled
                         reason:
                           type: string
@@ -14069,7 +14068,6 @@ paths:
                                             enum:
                                               - draft
                                               - pending
-                                              - confirmed
                                               - cancelled
                                           reason:
                                             type: string
@@ -15011,7 +15009,6 @@ paths:
                         enum:
                           - draft
                           - pending
-                          - confirmed
                           - cancelled
                       reason:
                         type: string
@@ -15193,7 +15190,6 @@ paths:
                     enum:
                       - draft
                       - pending
-                      - confirmed
                       - cancelled
                   reason:
                     type: string
@@ -15299,7 +15295,6 @@ paths:
                     enum:
                       - draft
                       - pending
-                      - confirmed
                       - cancelled
                   reason:
                     type: string
@@ -20497,7 +20492,6 @@ paths:
                                 type: string
                                 enum:
                                   - pending
-                                  - confirmed
                               timingState:
                                 type: string
                                 enum:
@@ -20555,7 +20549,6 @@ paths:
                         type: string
                         enum:
                           - pending
-                          - confirmed
                       timingState:
                         type: string
                         enum:
@@ -22357,7 +22350,6 @@ paths:
                           type: string
                           enum:
                             - pending
-                            - confirmed
                         swapRequested:
                           type: boolean
                       required:
@@ -22448,7 +22440,6 @@ paths:
                         type: string
                         enum:
                           - pending
-                          - confirmed
                       swapRequested:
                         type: boolean
                     required:

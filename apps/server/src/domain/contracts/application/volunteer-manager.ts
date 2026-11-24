@@ -23,7 +23,7 @@ export interface DashboardAssignmentItem {
   sectorName: string;
   startTime: string;
   endTime: string;
-  status: 'pending' | 'confirmed';
+  status: 'pending';
   timingState: 'in_progress' | 'upcoming';
 }
 
@@ -80,7 +80,7 @@ export interface VolunteerScheduleAssignment {
   sectorName: string;
   roleId: string;
   roleName: string;
-  status: 'pending' | 'confirmed';
+  status: 'pending';
   /** An open Swap request on a not-yet-started Shift. */
   swapRequested: boolean;
 }

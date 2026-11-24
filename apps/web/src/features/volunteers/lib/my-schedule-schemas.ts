@@ -17,7 +17,7 @@ const assignmentSchema = z.object({
   sectorName: z.string(),
   roleId: z.string(),
   roleName: z.string(),
-  status: z.enum(['pending', 'confirmed']),
+  status: z.enum(['pending']),
   // Absent in copies stored before the flag existed.
   swapRequested: z.boolean().default(false),
 });

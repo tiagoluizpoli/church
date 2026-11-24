@@ -28,8 +28,7 @@ interface CycleBuilderDateStripProps {
 
 /** The horizontal strip of per-date staffing cards, pinned next to the "All
  * dates" focus control. Drag-to-scroll comes from `useDateStripDragScroll`,
- * kept separate from the board's own drag-to-scroll (see that hook's doc
- * comment for why the two aren't unified). */
+ * the same mechanism the board uses. */
 export function CycleBuilderDateStrip({
   selectedDate,
   onSelectedDateChange,
@@ -95,6 +94,8 @@ export function CycleBuilderDateStrip({
           onPointerMove={dragScroll.onPointerMove}
           onPointerUp={dragScroll.onPointerUp}
           onPointerCancel={dragScroll.onPointerCancel}
+          onLostPointerCapture={dragScroll.onLostPointerCapture}
+          onClickCapture={dragScroll.onClickCapture}
         >
           {dates.map((date) => {
             const dayEvents = eventsForDate.get(date) ?? [];

@@ -499,7 +499,7 @@ describe('repository list ordering', () => {
           roleId: role.id,
           start: at(start),
           end: at('02T13:00'),
-          status: 'confirmed',
+          status: 'pending',
         });
       }
       const repo = new DrizzlePlanningEventRepository({ db });

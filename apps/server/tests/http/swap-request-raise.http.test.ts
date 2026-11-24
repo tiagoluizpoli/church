@@ -240,7 +240,7 @@ async function seedGraph({ year = 2030 }: { year?: number } = {}) {
       volunteerId,
       roleId: role.id,
       shiftRequirementId: requirement.id,
-      status: 'confirmed',
+      status: 'pending',
     });
   const mine = await assign(me.volunteer.id);
   const theirs = await assign(other.volunteer.id);
@@ -284,7 +284,7 @@ describe('Raise a swap request', () => {
       .select()
       .from(assignment)
       .where(eq(assignment.id, mine.id));
-    expect(after).toMatchObject({ status: 'confirmed', id: mine.id });
+    expect(after).toMatchObject({ status: 'pending', id: mine.id });
   });
 
   it("raises and withdraws inside one transaction's connection", async () => {
@@ -529,7 +529,7 @@ describe('Withdraw a swap request', () => {
       .select()
       .from(assignment)
       .where(eq(assignment.id, mine.id));
-    expect(after).toMatchObject({ status: 'confirmed' });
+    expect(after).toMatchObject({ status: 'pending' });
     expect(await db.select().from(outboxMessage)).toHaveLength(
       outboxBefore.length,
     );

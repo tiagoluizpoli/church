@@ -62,7 +62,7 @@ describe('volunteer-dashboard E2E journey recipe', () => {
       .from(assignment)
       .where(eq(assignment.churchId, journey.church.id));
     expect(assignments).toEqual([
-      { id: expect.any(String), status: 'confirmed', volunteerId },
+      { id: expect.any(String), status: 'pending', volunteerId },
     ]);
 
     const participations = await testDb

@@ -400,7 +400,7 @@ interface BookInput {
   volunteerId: string;
   start: string;
   end: string;
-  status: 'draft' | 'pending' | 'confirmed' | 'cancelled';
+  status: 'draft' | 'pending' | 'cancelled';
 }
 
 function book({ start, end, ...rest }: BookInput) {
@@ -480,7 +480,7 @@ async function seedStaffedSunday({ churchId, ministryId }: StaffedSundayInput) {
     participationId: participation.id,
     roleId: role.id,
     volunteerId: ana.id,
-    status: 'confirmed',
+    status: 'pending',
     start: at('10:00'),
     end: at('12:00'),
   });
@@ -496,7 +496,7 @@ async function seedStaffedSunday({ churchId, ministryId }: StaffedSundayInput) {
     volunteerId: bia.id,
     roleId: role.id,
     shiftRequirementId: media.assignment.shiftRequirementId,
-    status: 'confirmed',
+    status: 'pending',
   });
   for (const [volunteerId, start, end] of [
     [ana.id, '13:00', '14:00'],
@@ -508,7 +508,7 @@ async function seedStaffedSunday({ churchId, ministryId }: StaffedSundayInput) {
       participationId: otherParticipation.id,
       roleId: role.id,
       volunteerId,
-      status: 'confirmed',
+      status: 'pending',
       start: at(start),
       end: at(end),
     });
@@ -1240,7 +1240,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/edit', () => {
       participationId: lateParticipation.id,
       roleId: role.id,
       volunteerId: bia.volunteerId,
-      status: 'confirmed',
+      status: 'pending',
       start: at('13:30'),
       end: at('14:30'),
     });
@@ -1482,7 +1482,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/edit', () => {
       participationId: participation.id,
       roleId: role.id,
       volunteerId: ana.id,
-      status: 'confirmed',
+      status: 'pending',
       start: lisbon('2026-10-25', '10:00'),
       end: lisbon('2026-10-25', '12:00'),
     });

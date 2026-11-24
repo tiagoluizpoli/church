@@ -190,7 +190,7 @@ async function seedWorld() {
   const role = await seedRole({ churchId, ministryId, name: 'Teacher' });
   const assignMe = async (
     seeded: Awaited<ReturnType<typeof seedShiftGraph>>,
-    status: 'confirmed' | 'pending' | 'cancelled' = 'confirmed',
+    status: 'pending' | 'cancelled' = 'pending',
   ) => {
     const requirement = await seedRequirement({
       churchId,
@@ -592,7 +592,7 @@ describe('GET /volunteer/ministries/:ministryId/schedule (database-backed)', () 
 describe('Volunteer reads after an admin cancellation', () => {
   /**
    * Live, a cancelled Event and a scheduled Event whose block is cancelled.
-   * Cancellation cancels active Assignments; a declined one stays declined,
+   * Cancellation cancels active Assignments; a cancelled one stays cancelled,
    * so only the Event or block status can hide it.
    */
   async function seedCancelled() {

@@ -298,7 +298,7 @@ describe('Assignment and publication managers', () => {
   beforeEach(() =>
     setTestClock({ instant: parseInstant({ value: '2026-08-01T00:00:00Z' }) }),
   );
-  it('caps completion per requirement and excludes declined and cancelled assignments', async () => {
+  it('caps completion per requirement and excludes cancelled assignments', async () => {
     const f = createHarness();
     const beta = new ShiftRequirement({
       id: ShiftRequirementId.from({ raw: 'beta' }),
@@ -323,10 +323,10 @@ describe('Assignment and publication managers', () => {
         volunteerId: VolunteerId.from('other'),
         roleId: RoleId.from('role'),
         shiftRequirementId,
-        status: 'confirmed',
+        status: 'pending',
       },
     });
-    const declined = new Assignment({
+    const cancelledAlso = new Assignment({
       id: AssignmentId.from('cancelled'),
       props: {
         churchId,
@@ -359,7 +359,7 @@ describe('Assignment and publication managers', () => {
     f.assignmentRepository.listByParticipation.mockResolvedValue([
       f.assignment,
       extra,
-      declined,
+      cancelledAlso,
       cancelled,
     ]);
     await expect(
@@ -415,7 +415,7 @@ describe('Assignment and publication managers', () => {
         volunteerId,
         roleId: RoleId.from('role'),
         shiftRequirementId,
-        status: 'confirmed',
+        status: 'pending',
       },
     });
     f.assignmentRepository.listByVolunteerInRange.mockResolvedValue([overlap]);
@@ -511,7 +511,7 @@ describe('Assignment and publication managers', () => {
         volunteerId,
         roleId: RoleId.from('role'),
         shiftRequirementId,
-        status: 'confirmed',
+        status: 'pending',
       },
     });
     const draft = new Assignment({
@@ -622,7 +622,7 @@ describe('Assignment and publication managers', () => {
           volunteerId: volunteer,
           roleId: RoleId.from('role'),
           shiftRequirementId,
-          status: 'confirmed',
+          status: 'pending',
         },
       });
     f.volunteerRepository.listQualifiedForRole.mockResolvedValue([
@@ -705,7 +705,7 @@ describe('Assignment and publication managers', () => {
         peopleNeeded: 1,
       },
     });
-    const declined = new Assignment({
+    const cancelledAlso = new Assignment({
       id: AssignmentId.from('cancelled'),
       props: {
         churchId,
@@ -734,7 +734,7 @@ describe('Assignment and publication managers', () => {
     ]);
     f.assignmentRepository.listByParticipation.mockResolvedValue([
       f.assignment,
-      declined,
+      cancelledAlso,
     ]);
     f.roleRepository.listByMinistry.mockResolvedValue([
       new Role({
@@ -749,7 +749,7 @@ describe('Assignment and publication managers', () => {
       volunteerId,
     });
     expect(schedule).toMatchObject({ cycleName: 'Cycle', published: true });
-    // A declined place reads as Open; rows carry no confirmation state.
+    // A cancelled place reads as Open; rows carry no confirmation state.
     expect(schedule.events[0]?.rows).toEqual([
       expect.objectContaining({
         roleName: 'Host',
@@ -858,7 +858,7 @@ describe('Assignment and publication managers', () => {
         volunteerId: VolunteerId.from('amy'),
         roleId: RoleId.from('role'),
         shiftRequirementId,
-        status: 'confirmed',
+        status: 'pending',
       },
     });
     f.assignmentRepository.listByVolunteers.mockResolvedValue([overlap]);

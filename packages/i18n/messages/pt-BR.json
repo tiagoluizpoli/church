@@ -1470,8 +1470,6 @@
   "builder_ui_workload_many": "Já serve em {count} turnos neste ciclo",
   "builder_ui_ideal": "Ideal",
   "builder_ui_ideal_help": "Qualificado, disponível e ainda não escalado neste ciclo",
-  "builder_ui_assign_role": "Escalar {name} para esta função",
-  "builder_ui_assign_role_explanation": "Escalar {name} para esta função — {explanation}",
   "builder_ui_pick_me_person": "Escolher {name} para esta função",
   "builder_ui_pick_me_person_explanation": "Escolher {name} para esta função — {explanation}",
   "builder_ui_pick_me": "Escolher",

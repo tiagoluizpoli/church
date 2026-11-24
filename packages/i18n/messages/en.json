@@ -1470,8 +1470,6 @@
   "builder_ui_workload_many": "Already serving {count} shifts in this cycle",
   "builder_ui_ideal": "Ideal",
   "builder_ui_ideal_help": "Qualified, available, and not already serving this cycle",
-  "builder_ui_assign_role": "Assign {name} to this role",
-  "builder_ui_assign_role_explanation": "Assign {name} to this role — {explanation}",
   "builder_ui_pick_me_person": "Pick me — assign {name} to this role",
   "builder_ui_pick_me_person_explanation": "Pick me — assign {name} to this role — {explanation}",
   "builder_ui_pick_me": "Pick me",

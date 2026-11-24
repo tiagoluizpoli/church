@@ -12,7 +12,7 @@ import {
   parseCalendarDay,
   parseInstant,
   weekdayIndex,
-} from '../src';
+} from '@/index';
 
 describe('Instant arithmetic', () => {
   it('adds minutes to an Instant', () => {

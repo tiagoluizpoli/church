@@ -78,6 +78,13 @@ describe('test placement guard', () => {
     }
   });
 
+  it('rejects ../ climbs inside a package tests/ folder', () => {
+    const path = 'packages/db/tests/a.test.ts';
+    expect(failuresFor(path, "import { x } from '../src/x';")).toEqual([
+      `${path}: '../src/x' climbs with ../: import it as @/…, @/tests/… or @/seeds/…`,
+    ]);
+  });
+
   it('rejects a ../ climb in vi.importActual with a type argument', () => {
     const path = 'apps/server/tests/a/b.test.ts';
     expect(

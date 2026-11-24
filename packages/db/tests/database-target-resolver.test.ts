@@ -3,8 +3,8 @@ import {
   DatabaseTargetError,
   formatDatabaseTargetPreflight,
   resolveDatabaseTarget,
-} from '../src/database-target-resolver';
-import { integrationWorkerDatabaseName } from '../src/integration-worker-database-name';
+} from '@/database-target-resolver';
+import { integrationWorkerDatabaseName } from '@/integration-worker-database-name';
 
 interface ExpectRejectionReasonInput {
   action: () => unknown;

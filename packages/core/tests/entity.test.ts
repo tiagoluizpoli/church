@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Entity } from '../src/entity';
+import { Entity } from '@/entity';
 
 interface MockProps {
   name: string;

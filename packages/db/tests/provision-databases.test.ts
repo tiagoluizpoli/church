@@ -3,16 +3,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
-import { integrationWorkerDatabaseName } from '../src/integration-worker-database-name';
+import { getIntegrationDatabaseUrl } from '@/integration-database-url';
+import { integrationWorkerDatabaseName } from '@/integration-worker-database-name';
 import {
   cloneDatabasesFromTemplate,
   DatabaseProvisioningError,
   PROVISIONING_LOCK_KEY,
   provisionDatabases,
-} from '../src/provision-databases';
-import { worktreeOrUnspecified } from '../src/purpose-database-url-guard';
-import { scratchDatabaseName } from '../src/scratch-database-name';
+} from '@/provision-databases';
+import { worktreeOrUnspecified } from '@/purpose-database-url-guard';
+import { scratchDatabaseName } from '@/scratch-database-name';
 
 const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
   scratchDatabaseName({ purpose: 'prov', kind }),

@@ -226,6 +226,11 @@ function PrepareWorkspaceRoute() {
   const wide = useMediaQuery('(min-width: 1280px)');
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const animateClose = wide && !reducedMotion;
+  const blockPanel = selectedBlockId ? (
+    <PreparePanel key="panel" panel={panel} animated={animateClose}>
+      <Outlet />
+    </PreparePanel>
+  ) : null;
   const rowsReady = Boolean(ready);
   const selectedDay = selectedDate
     ? parseCalendarDay({ value: selectedDate })
@@ -621,13 +626,12 @@ function PrepareWorkspaceRoute() {
                 </p>
               )}
             </div>
-            <AnimatePresence>
-              {selectedBlockId ? (
-                <PreparePanel key="panel" panel={panel} animated={animateClose}>
-                  <Outlet />
-                </PreparePanel>
-              ) : null}
-            </AnimatePresence>
+            {/* Reduced motion, or a narrow screen: no exit, so no presence either (it unmounts at once). */}
+            {animateClose ? (
+              <AnimatePresence>{blockPanel}</AnimatePresence>
+            ) : (
+              blockPanel
+            )}
           </div>
         </>
       )}

@@ -74,8 +74,6 @@ interface AssignmentPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trigger: ReactElement;
-  mode?: 'assign' | 'substitution';
-  declinedVolunteerName?: string;
   volunteers: PickerVolunteer[];
   suggestions?: SuggestionGroups;
   hasAssignment?: boolean;
@@ -90,8 +88,6 @@ export function AssignmentPicker({
   open,
   onOpenChange,
   trigger,
-  mode = 'assign',
-  declinedVolunteerName,
   volunteers,
   suggestions,
   hasAssignment,
@@ -171,12 +167,6 @@ export function AssignmentPicker({
         data-testid="assignment-picker"
         initialFocus={false}
       >
-        {mode === 'substitution' && declinedVolunteerName && (
-          <p className="mb-2 font-medium text-xs">
-            {m.builder_ui_find_replacement({ name: declinedVolunteerName })}
-          </p>
-        )}
-
         {moveTargets?.length && onMove ? (
           <div className="mb-3">
             <Button

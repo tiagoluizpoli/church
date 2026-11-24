@@ -130,7 +130,6 @@ const dashboardAssignmentGroupSchema = z.object({
   ministryId: z.string(),
   ministryName: z.string(),
   eventStart: instantSchema,
-  aggregateResponseState: z.enum(['pending', 'confirmed', 'mixed']),
   hasPendingResponse: z.boolean(),
   assignments: z.array(dashboardAssignmentItemSchema),
 });
@@ -358,7 +357,6 @@ function dashboardAssignmentGroupToResponse(
     ministryId: group.ministryId,
     ministryName: group.ministryName,
     eventStart: parseInstant({ value: group.eventStart }),
-    aggregateResponseState: group.aggregateResponseState,
     hasPendingResponse: group.hasPendingResponse,
     assignments: group.assignments.map(dashboardAssignmentItemToResponse),
   };

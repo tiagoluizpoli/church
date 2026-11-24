@@ -33,7 +33,6 @@ export interface DashboardAssignmentGroup {
   ministryId: string;
   ministryName: string;
   eventStart: string;
-  aggregateResponseState: 'pending' | 'confirmed' | 'mixed';
   hasPendingResponse: boolean;
   assignments: DashboardAssignmentItem[];
 }

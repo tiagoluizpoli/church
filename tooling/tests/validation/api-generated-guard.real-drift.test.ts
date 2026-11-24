@@ -33,7 +33,7 @@ function git(args: string[], cwd = worktree) {
 
 function runGuard() {
   const result = Bun.spawnSync(
-    ['mise', 'exec', '--', 'bun', 'tooling/validation/api-generated-guard.ts'],
+    [process.execPath, 'tooling/validation/api-generated-guard.ts'],
     { cwd: worktree, stderr: 'pipe', stdout: 'pipe' },
   );
   return { exitCode: result.exitCode, stderr: result.stderr.toString() };

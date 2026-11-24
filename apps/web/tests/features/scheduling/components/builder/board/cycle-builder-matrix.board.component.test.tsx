@@ -334,7 +334,11 @@ describe('CycleBuilderMatrix', () => {
     );
 
     await user.click(within(kidsCell).getByRole('button', { name: 'Add' }));
-    await user.click(await screen.findByText('Available Volunteer'));
+    await user.click(
+      within(await screen.findByTestId('assignment-picker')).getByText(
+        'Available Volunteer',
+      ),
+    );
     expect(onSelectAssignment).toHaveBeenCalledWith(
       expect.objectContaining({
         shiftId: 'shift-1',
@@ -350,7 +354,11 @@ describe('CycleBuilderMatrix', () => {
       screen.getByTestId('cycle-requirement-focus-babies-requirement'),
     ).toHaveAttribute('aria-pressed', 'false');
     await user.click(within(babiesCell).getByText('Local Volunteer'));
-    await user.click(await screen.findByText('Available Volunteer'));
+    await user.click(
+      within(await screen.findByTestId('assignment-picker')).getByText(
+        'Available Volunteer',
+      ),
+    );
     expect(onSelectAssignment).toHaveBeenLastCalledWith(
       expect.objectContaining({
         assignmentId: assigned.id,
@@ -1430,7 +1438,7 @@ describe('focused candidates after a refreshed payload', () => {
     expect(focus).toHaveAttribute('aria-pressed', 'true');
     expect(
       within(screen.getByTestId('volunteer-pool')).getByRole('button', {
-        name: m.builder_ui_assign_role({ name: 'New Role Holder' }),
+        name: m.builder_ui_pick_me_person({ name: 'New Role Holder' }),
       }),
     ).toBeVisible();
   });
@@ -1515,7 +1523,7 @@ for (const locale of ['en', 'pt-BR'] as const) {
       ).toHaveAttribute('aria-pressed', 'true');
       expect(
         rail.queryByRole('button', {
-          name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+          name: m.builder_ui_pick_me_person({ name: 'Grace Hopper' }),
         }),
       ).not.toBeInTheDocument();
     });
@@ -1529,7 +1537,7 @@ for (const locale of ['en', 'pt-BR'] as const) {
         const { rail } = renderFocusedRail();
         expect(
           rail.getByRole('button', {
-            name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+            name: m.builder_ui_pick_me_person({ name: 'Grace Hopper' }),
           }),
         ).toBeVisible();
         setTestClock({
@@ -1541,7 +1549,7 @@ for (const locale of ['en', 'pt-BR'] as const) {
         ).toHaveAttribute('aria-pressed', 'true');
         expect(
           rail.queryByRole('button', {
-            name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+            name: m.builder_ui_pick_me_person({ name: 'Grace Hopper' }),
           }),
         ).not.toBeInTheDocument();
       } finally {
@@ -1555,7 +1563,7 @@ for (const locale of ['en', 'pt-BR'] as const) {
       });
       const { rail, onSelectAssignment } = renderFocusedRail();
       const assign = rail.getByRole('button', {
-        name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+        name: m.builder_ui_pick_me_person({ name: 'Grace Hopper' }),
       });
       setTestClock({
         instant: parseInstant({ value: '2026-08-02T09:00:00Z' }),

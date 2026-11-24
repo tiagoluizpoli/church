@@ -937,6 +937,9 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
       ensurePreparationEditable({ cycle, timeZone });
+      if (event.status === 'cancelled') throw new EventCancelledError();
+      if (eventTimeBlock.status === 'cancelled')
+        throw new EventTimeBlockCancelledError();
 
       const target = { churchId, participation, eventTimeBlock, tx };
       // Locked so a racing answer or Assignment is counted below, never cascaded away.

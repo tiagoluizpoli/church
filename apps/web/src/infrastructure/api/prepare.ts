@@ -111,7 +111,7 @@ const listScheduleSummaries = (
       );
     }
   /**
- * Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup. A headcount cannot drop below its active Assignments. Re-splitting, deleting a Shift or opting out is refused while an affected Shift carries UnavailableShift marks or active Assignments.
+ * Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup. A headcount cannot drop below its active Assignments. Re-splitting, deleting a Shift or opting out is refused while an affected Shift carries UnavailableShift marks or active Assignments. A block under a cancelled Event or EventTimeBlock is refused as EVENT_CANCELLED or EVENT_TIME_BLOCK_CANCELLED.
  * @summary Save one EventTimeBlock's preparation
  */
 const saveEventTimeBlockPreparation = (

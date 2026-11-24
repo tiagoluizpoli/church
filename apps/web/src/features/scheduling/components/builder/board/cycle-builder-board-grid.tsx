@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import type { now } from '@church/time';
 import { CalendarDays } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import type { useBoardDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
 import {
   type CycleBuilderData,
@@ -23,6 +24,7 @@ import {
   countCoveredPlaces,
   staffingStatusClasses,
 } from '../../../utils/builder/cycle-builder-staffing.utils';
+import { useBoardDragIdentity } from './board-drag-identity';
 import {
   CycleBuilderCell,
   type CycleBuilderCellSelectInput,
@@ -125,6 +127,29 @@ export function CycleBuilderBoardGrid({
   onClearFilters,
   dragScroll,
 }: CycleBuilderBoardGridProps) {
+  const isDragging = Boolean(useBoardDragIdentity());
+  // Which sides still hide columns, so the fade only shows where there is more.
+  const [edge, setEdge] = useState({ start: false, end: false });
+  useEffect(() => {
+    const viewport = dragScroll.viewportRef.current;
+    if (!viewport) return;
+    const update = () =>
+      setEdge({
+        start: viewport.scrollLeft > 1,
+        end:
+          viewport.scrollLeft + viewport.clientWidth < viewport.scrollWidth - 1,
+      });
+    update();
+    viewport.addEventListener('scroll', update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    if (viewport.firstElementChild)
+      observer.observe(viewport.firstElementChild);
+    return () => {
+      viewport.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+  }, [dragScroll.viewportRef]);
   const gridStyle = {
     gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(320px, 1fr))`,
   };
@@ -145,9 +170,22 @@ export function CycleBuilderBoardGrid({
       onLostPointerCapture={dragScroll.onLostPointerCapture}
       onClickCapture={dragScroll.onClickCapture}
     >
-      <CardContent className="workspace-panel">
+      <CardContent className="workspace-panel min-w-0">
         <ScrollArea
           className="min-w-0 pb-3"
+          viewportClassName={cn(
+            // Proximity, not mandatory: drag-to-scroll writes scrollLeft
+            // directly and mandatory would fight it. Snap is off while a
+            // card is dragged so DnD auto-scroll is not pulled back.
+            !isDragging && 'snap-x snap-proximity scroll-px-2',
+            edge.start && edge.end
+              ? '[mask-image:linear-gradient(to_right,transparent,black_2rem,black_calc(100%-2rem),transparent)]'
+              : edge.start
+                ? '[mask-image:linear-gradient(to_right,transparent,black_2rem)]'
+                : edge.end
+                  ? '[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]'
+                  : '',
+          )}
           data-testid="cycle-board-scroll"
           viewportRef={dragScroll.viewportRef}
           viewportTestId="cycle-board-viewport"
@@ -164,7 +202,7 @@ export function CycleBuilderBoardGrid({
               {columns.map((date) => (
                 <section
                   key={date}
-                  className="min-w-0 self-start rounded-md border bg-card"
+                  className="min-w-0 snap-start self-start rounded-md border bg-card"
                 >
                   <header className="border-b px-3 py-2">
                     <p className="font-semibold text-foreground text-sm">

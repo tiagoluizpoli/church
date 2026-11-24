@@ -3,7 +3,7 @@ import { eq, isNull, ne, or } from 'drizzle-orm';
 import { expect } from 'vitest';
 import { testDb } from '@/tests/integration/repositories/setup';
 
-/** Includes declined/cancelled history: every seeded Assignment keeps its place. */
+/** Includes cancelled history: every seeded Assignment keeps its place. */
 export async function expectAssignmentRequirementsToAgree(): Promise<void> {
   const mismatches = await testDb
     .select({ id: assignment.id })

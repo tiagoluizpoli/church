@@ -315,7 +315,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel/preview', () => {
       eventTitle: 'Sunday',
       start: at('09:00'),
       end: at('12:00'),
-      // Ana and Bia are published; Dani declined, Caio is unpublished.
+      // Ana and Bia are published; Dani cancelled, Caio is unpublished.
       volunteerCount: 2,
       ministryCount: 1,
       ministries: [
@@ -357,7 +357,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
     });
     const [sundayRow] = await db.select().from(event);
     expect(sundayRow?.status).toBe('cancelled');
-    // Soft-cancelled and retained; the declined one is not active work.
+    // Soft-cancelled and retained; the cancelled one is not active work.
     const { anaWelcome, biaService, caioService, daniService } = sunday;
     expect(await statusOf(anaWelcome.assignment.id)).toBe('cancelled');
     expect(await statusOf(biaService.assignment.id)).toBe('cancelled');
@@ -478,7 +478,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
       volunteerId: fia.volunteer.id,
       start: '09:00',
       end: '10:00',
-      status: 'confirmed',
+      status: 'pending',
     });
 
     const response = await confirm(sunday);
@@ -756,7 +756,7 @@ describe('POST …/event-time-blocks/:eventTimeBlockId/cancel(/preview)', () => 
     expect(await statusOf(biaService.assignment.id)).toBe('cancelled');
     expect(await statusOf(caioService.assignment.id)).toBe('cancelled');
     expect(await statusOf(daniService.assignment.id)).toBe('cancelled');
-    expect(await statusOf(anaWelcome.assignment.id)).toBe('confirmed');
+    expect(await statusOf(anaWelcome.assignment.id)).toBe('pending');
     const audits = await db.select().from(assignmentAudit);
     expect(audits.map(({ assignmentId }) => assignmentId).sort()).toEqual(
       [biaService.assignment.id, caioService.assignment.id].sort(),

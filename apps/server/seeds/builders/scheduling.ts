@@ -25,7 +25,7 @@ import { requireInsertedRow } from './require-inserted-row';
 
 /**
  * Direct-state builders for fixture graphs (ADR 0006): they write the rows a
- * journey starts from. A published Participation or a confirmed Assignment
+ * journey starts from. A published Participation or an Assignment
  * bypasses the planning and publishing workflows by purpose; the workflows
  * themselves are exercised by the journeys, not seeded through here.
  */
@@ -406,7 +406,7 @@ export interface BuildAssignmentInput {
   shiftRequirementId: string;
   id?: string;
   status: AssignmentStatus;
-  /** Why it was declined or cancelled. */
+  /** Why it was cancelled. */
   reason?: string;
   /** Explicit, so a graph never depends on the wall clock at load time. */
   assignedAt?: Instant;

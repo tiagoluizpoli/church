@@ -1424,6 +1424,7 @@ export class DbParticipationManager implements IParticipationManager {
       additions: reviewed,
       excludedAdditions,
     } = input;
+    // 404 short-circuits only; the Ministry is re-read, locked, in the transaction.
     await this.ministryRepository.getById({ churchId, id: ministryId });
     await this.cycleRepository.getById({ churchId, cycleId });
 
@@ -1478,6 +1479,14 @@ export class DbParticipationManager implements IParticipationManager {
         churchId,
         ministryId,
         cycleId,
+        tx,
+      });
+      // Adding Assignments is new use: archive waits for this to commit, or
+      // commits first and this refuses the archived Ministry.
+      await this.ministryRepository.lockActive({
+        churchId,
+        ministryId,
+        strength: 'share',
         tx,
       });
       const { facts, shifts, proposable } = await this.loadProposalFacts({

@@ -35,14 +35,6 @@ export interface UnavailabilityIncident {
   gatherings: readonly GatheringRef[];
 }
 
-/** Assigned, then declined by the Volunteer; the leader assigned a replacement. */
-export interface DeclineIncident {
-  email: string;
-  post: ServicePost;
-  reason: string;
-  replacementEmail: string;
-}
-
 /**
  * A cross-Ministry Volunteer two Ministries assigned at the same gathering.
  * The `withdrawn` Ministry's leader reassigned that post to
@@ -76,7 +68,6 @@ export interface Shortfall {
  */
 export interface HistoryBlueprint {
   unavailability: readonly UnavailabilityIncident[];
-  declines: readonly DeclineIncident[];
   resolvedOverlaps: readonly ResolvedOverlapIncident[];
   crossMinistryService: readonly CrossMinistryServiceIncident[];
   shortfalls: readonly Shortfall[];
@@ -93,19 +84,6 @@ export const IGREJA_SEMENTE_HISTORY: HistoryBlueprint = {
         { block: 'sunday-10:30', week: 2 },
         { block: 'sunday-18:30', week: 2 },
       ],
-    },
-  ],
-  declines: [
-    {
-      email: 'isabela.medeiros@igreja-semente.test',
-      post: post({
-        ministry: INTERCESSAO,
-        role: 'Intercessor',
-        sector: 'Sala de Oração',
-        gathering: { block: 'wednesday-20:00', week: 3 },
-      }),
-      reason: 'Viagem a trabalho',
-      replacementEmail: 'vanessa.campos@igreja-semente.test',
     },
   ],
   resolvedOverlaps: [

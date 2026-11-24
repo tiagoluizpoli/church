@@ -51,7 +51,7 @@ describe('User Story 4: UnitOfWork Integration', () => {
       await mockAssignmentRepo.updateStatus?.({
         churchId,
         assignmentId,
-        input: { status: 'confirmed' },
+        input: { status: 'pending' },
         tx,
       });
       await mockAuditRepo.create?.({

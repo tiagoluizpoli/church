@@ -31,7 +31,7 @@ async function seedAssignment(input: SeedAssignmentInput) {
   return buildAssignment({
     db: schedulingTestDb,
     ...input,
-    status: 'confirmed',
+    status: 'pending',
   });
 }
 describe('assignment audit deletion persistence', () => {

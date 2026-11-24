@@ -28,7 +28,7 @@ import { type AssignEvent, buildAssignEvent } from './assign-event';
 /**
  * The starting graph of the Volunteer Dashboard journeys (#329): a small
  * Church whose one Volunteer persona sits in two Ministries and owns what
- * the dashboard shows: a confirmed Assignment on a published Care event
+ * the dashboard shows: an Assignment on a published Care event
  *, an event still needing availability, and an
  * unread notification. The notification reports a removal the way the
  * product leaves one: the Assignment row is gone (its id survives only in the
@@ -99,7 +99,7 @@ export interface VolunteerDashboardNotification {
 
 export interface VolunteerDashboardJourney extends DashboardChurch {
   anchor: CalendarDay;
-  /** Published Care event the Volunteer is confirmed on. */
+  /** Published Care event the Volunteer is assigned to. */
   careEvent: AssignEvent<'careHost'>;
   /** Event whose availability the Volunteer has not answered. */
   availabilityEvent: AssignEvent<'usher'>;
@@ -166,7 +166,7 @@ export function createVolunteerDashboardRecipe({
       volunteerId: volunteer.volunteerId,
       roleId: care.roles.careHost.id,
       id: idOf({ kind: 'assignment:care' }),
-      status: 'confirmed',
+      status: 'pending',
     });
     const availabilityEvent = await buildAssignEvent({
       db,

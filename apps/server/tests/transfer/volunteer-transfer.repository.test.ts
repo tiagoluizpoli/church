@@ -59,7 +59,7 @@ interface ScheduleAssignmentIds {
   untouchedBefore: string;
   cancelledAfter: string;
   startedRunning: string;
-  alreadyDeclined: string;
+  alreadyCancelled: string;
 }
 
 let fixture: TwoChurchIdentityFixture;
@@ -112,7 +112,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
       key: 'startedRunning',
       start: new Date('2026-09-15T11:00:00Z'),
     },
-    { key: 'alreadyDeclined', start: new Date(COMMIT.getTime() + 3_600_000) },
+    { key: 'alreadyCancelled', start: new Date(COMMIT.getTime() + 3_600_000) },
   ] as const;
 
   const ids: Partial<ScheduleAssignmentIds> = {};
@@ -126,7 +126,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
       roleId: fixture.roleInMinistryInB,
       start: fromDate({ date: spec.start }),
       end: fromDate({ date: new Date(spec.start.getTime() + 3_600_000) }),
-      status: spec.key === 'alreadyDeclined' ? 'cancelled' : 'confirmed',
+      status: spec.key === 'alreadyCancelled' ? 'cancelled' : 'pending',
     });
     ids[spec.key] = booked.assignment.id;
   }
@@ -203,12 +203,12 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
     };
 
     expect((await statusOf(assignmentIds.untouchedBefore))?.status).toBe(
-      'confirmed',
+      'pending',
     );
     expect((await statusOf(assignmentIds.startedRunning))?.status).toBe(
-      'confirmed',
+      'pending',
     );
-    expect((await statusOf(assignmentIds.alreadyDeclined))?.status).toBe(
+    expect((await statusOf(assignmentIds.alreadyCancelled))?.status).toBe(
       'cancelled',
     );
     const cancelled = await statusOf(assignmentIds.cancelledAfter);
@@ -657,7 +657,7 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — digest recipien
         roleId: fixture.roleInMinistryInB,
         start: fromDate({ date: start }),
         end: fromDate({ date: new Date(start.getTime() + 3_600_000) }),
-        status: 'confirmed',
+        status: 'pending',
       });
     }
 

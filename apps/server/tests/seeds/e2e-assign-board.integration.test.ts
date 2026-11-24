@@ -194,7 +194,7 @@ describe('assign-board E2E journey recipe', () => {
     ).toEqual([]);
   });
 
-  it('seeds the assigned service with a pending, a confirmed and a cancelled Host', async () => {
+  it('seeds the assigned service with two pending and a cancelled Host', async () => {
     const journey = await loadBoard({ anchor: ANCHOR });
     const { assignedService } = journey.events;
     const { pool } = journey;
@@ -223,8 +223,8 @@ describe('assign-board E2E journey recipe', () => {
         },
         {
           id: assignedService.assignments[1]?.id,
-          volunteerId: pool.hostConfirmed.volunteerId,
-          status: 'confirmed',
+          volunteerId: pool.hostSecondPending.volunteerId,
+          status: 'pending',
           shiftId: assignedService.shiftId,
         },
         {

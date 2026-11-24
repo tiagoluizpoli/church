@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { Link, Outlet } from '@tanstack/react-router';
+import { Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 import {
   MinistrySetupGuide,
   useMinistrySetupGuide,
@@ -61,7 +62,18 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
   const isConfigured =
     (sectors.data?.sectors.length ?? 0) > 0 &&
     (roles.data?.roles.length ?? 0) > 0;
-  const guideOpen = dismissedOpen && !isConfigured;
+  // Until both reads settle we cannot tell; a failed read falls back to dismissal alone.
+  const isUndecided = sectors.isPending || roles.isPending;
+  const guideOpen = dismissedOpen && !isConfigured && !isUndecided;
+  const tabList = useRef<HTMLUListElement>(null);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Keeps the active tab on screen in a narrow, scrolling bar. Instant, never smooth.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run on navigation
+  useEffect(() => {
+    tabList.current
+      ?.querySelector('[data-status="active"]')
+      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [pathname, ministryQuery.isSuccess]);
 
   function reopenGuide() {
     try {
@@ -121,7 +133,7 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
         <h1 className="font-semibold text-2xl tracking-[-0.02em] md:text-3xl">
           {ministryQuery.data?.name}
         </h1>
-        {!guideOpen && !isConfigured && (
+        {!guideOpen && !isConfigured && !isUndecided && (
           <Button
             type="button"
             variant="ghost"
@@ -135,7 +147,10 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
       </div>
       <MinistrySetupGuide open={guideOpen} onDismiss={dismissGuide} />
       <nav aria-label={m.ministry_tabs_label()}>
-        <ul className="flex gap-1 overflow-x-auto border-border border-b">
+        <ul
+          ref={tabList}
+          className="flex gap-1 overflow-x-auto border-border border-b pb-px"
+        >
           {tabs.map((tab) => (
             <li key={tab.to}>
               <Link

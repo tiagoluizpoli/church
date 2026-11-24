@@ -267,6 +267,44 @@ describe('Ministry setup guide and tab bar', () => {
     ).toBeNull();
   });
 
+  it('shows neither the guide nor its reopen button while the Sector and Role reads are pending', async () => {
+    asAdmin();
+    listSectors.mockReturnValue(new Promise(() => undefined));
+    listMinistryRoles.mockReturnValue(new Promise(() => undefined));
+    renderWorkspace('/operational');
+
+    await screen.findByRole('heading', { name: 'Worship' });
+    expect(screen.queryByText(m.ministry_setup_guide_title())).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: m.ministry_setup_guide_open() }),
+    ).toBeNull();
+  });
+
+  it('falls back to the dismissal flag alone when a read fails', async () => {
+    asAdmin();
+    listSectors.mockRejectedValue(new Error('offline'));
+    renderWorkspace('/operational');
+
+    expect(
+      await screen.findByText(m.ministry_setup_guide_title()),
+    ).toBeVisible();
+  });
+
+  it('scrolls the active tab into view on mount', async () => {
+    asAdmin();
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderWorkspace('/settings');
+
+    await screen.findByRole('heading', { name: 'Worship' });
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        block: 'nearest',
+        inline: 'nearest',
+      }),
+    );
+  });
+
   it('keeps the guide with only a Sector and no Role', async () => {
     asAdmin();
     listSectors.mockResolvedValue({ sectors: [{ id: 's1', name: 'Stage' }] });

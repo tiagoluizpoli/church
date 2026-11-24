@@ -34,6 +34,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useMediaQuery, XL_MEDIA_QUERY } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
@@ -143,6 +144,9 @@ export function CycleBuilderCell({
     shift.label ??
     `${eventTimeBlockLabel} · ${timeLabel({ instant: shift.startTime, timeZone: churchTimezone })} – ${timeLabel({ instant: shift.endTime, timeZone: churchTimezone })}`;
   const [addPickerOpen, setAddPickerOpen] = useState(false);
+  // Below xl the volunteer rail is stacked far under the board, so focusing a
+  // role there would change nothing in view: open this slot's picker instead.
+  const railIsBeside = useMediaQuery(XL_MEDIA_QUERY);
   const canAdd = assignments.length < peopleNeeded;
   const hasRoleHolder = shift.eligibleVolunteers.some((volunteer) =>
     volunteer.qualifiedRoleIds.includes(roleId),
@@ -292,7 +296,12 @@ export function CycleBuilderCell({
           roleLabel={displayRoleLabel ?? roleLabel}
           shiftRequirementId={shiftRequirementId}
           isFocused={isFocused ?? false}
-          onToggleFocus={onToggleFocus}
+          onToggleFocus={() => {
+            if (!railIsBeside && !isFocused && isEditable && canAdd) {
+              onFocus();
+              setAddPickerOpen(true);
+            } else onToggleFocus();
+          }}
         />
         <span className="shrink-0 text-muted-foreground text-xs">
           {assignments.length}/{peopleNeeded}

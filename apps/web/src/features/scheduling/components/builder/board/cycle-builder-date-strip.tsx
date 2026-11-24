@@ -5,6 +5,7 @@ import type { useDateStripDragScroll } from '../../../hooks/use-cycle-board-drag
 import type { CycleBuilderEventSummary } from '../../../hooks/use-cycle-builder';
 import { dateLabel } from '../../../utils/builder/cycle-builder-date.utils';
 import { staffingStatusClasses } from '../../../utils/builder/cycle-builder-staffing.utils';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +37,7 @@ export function CycleBuilderDateStrip({
   eventsForDate,
   dragScroll,
 }: CycleBuilderDateStripProps) {
+  const isTouch = useFormControlSize() === 'touch';
   return (
     <div className="flex items-stretch gap-2">
       {/* pb-3 matches the date strip's own scrollbar clearance so this
@@ -130,7 +132,10 @@ export function CycleBuilderDateStrip({
                           })
                     }
                     onClick={() => onSelectedDateChange(selected ? null : date)}
-                    className="-my-1 -ml-1 flex items-center gap-1.5 rounded-md p-1 text-foreground hover:bg-muted aria-pressed:text-primary"
+                    className={cn(
+                      '-my-1 -ml-1 flex items-center gap-1.5 rounded-md p-1 text-foreground hover:bg-muted aria-pressed:text-primary',
+                      isTouch && 'min-h-11 px-2',
+                    )}
                   >
                     {dateLabel({ day: date, locale: getLocale() })}
                     <LocateFixed className="size-3.5 text-muted-foreground" />

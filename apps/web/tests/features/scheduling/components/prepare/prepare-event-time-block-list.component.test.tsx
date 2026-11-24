@@ -259,6 +259,62 @@ it('shows server coverage during asking and marks the active compact row', () =>
   ).toHaveClass('text-destructive');
 });
 
+it.each([
+  ['time block', 'block'],
+  ['Event', 'event'],
+] as const)('shows a cancelled %s as Cancelled with nothing to open', (_, scope) => {
+  const cancelledBlock = {
+    ...BLOCK,
+    answerCoverage: { available: 2, needed: null },
+    eventTimeBlock: {
+      ...BLOCK.eventTimeBlock,
+      id: 'cancelled-block',
+      status: scope === 'block' ? ('cancelled' as const) : ('active' as const),
+    },
+  };
+  renderList(
+    <PrepareEventTimeBlockList
+      ministryId={MINISTRY_ID}
+      cycleId={CYCLE_ID}
+      stage="asking"
+      events={[
+        {
+          ...EVENT,
+          event: {
+            ...EVENT.event,
+            status: scope === 'event' ? 'cancelled' : EVENT.event.status,
+          },
+          eventTimeBlocks: [cancelledBlock],
+        },
+        {
+          ...EVENT,
+          event: { ...EVENT.event, id: 'event-2' },
+          eventTimeBlocks: [
+            { ...BLOCK, answerCoverage: { available: 2, needed: 5 } },
+          ],
+        },
+      ]}
+    />,
+  );
+  const links = screen
+    .getAllByRole('link')
+    .map((link) => link.getAttribute('href') ?? '');
+  expect(links.some((href) => href.includes('cancelled-block'))).toBe(false);
+  expect(
+    links.filter((href) => href.includes(BLOCK.eventTimeBlock.id)),
+  ).toHaveLength(2);
+  const [row] = screen
+    .getAllByRole('row')
+    .filter((element) =>
+      element.textContent?.includes(m.event_status_cancelled()),
+    );
+  if (!row) throw new Error('Missing cancelled row');
+  expect(row).toHaveTextContent('—');
+  expect(row.querySelector('.line-through')).toHaveTextContent('Sunday');
+  // Table row and phone card, each with the one badge.
+  expect(screen.getAllByText(m.event_status_cancelled())).toHaveLength(2);
+});
+
 it('keeps coverage neutral while pending answers could still fill the block', () => {
   renderList(
     <PrepareEventTimeBlockList

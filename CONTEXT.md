@@ -7,7 +7,7 @@ Every term people see on screen or in an email carries its Brazilian Portuguese 
 ## Language
 
 **Person** (pt-BR: Pessoa):
-A human the Church knows. Capacities stack on a Person: they log in as a User, belong to a Church as a Church Member, and may in addition lead a Ministry or be a ChurchAdmin. A Person may administer multiple Churches but may be a Volunteer in only one. Every Person has exactly one User.
+A human the platform knows. Capacities stack on a Person: they log in as a User, belong to one or more Churches as a Church Member, and may in addition lead a Ministry or be a ChurchAdmin. A Person may administer multiple Churches but may be a Volunteer in only one. Every Person has exactly one User. A Person first signs up through one Church and becomes its Church Member by doing so; nobody signs up without a Church, though a Person may later leave every Church.
 _Avoid_: Individual, account, user (for the human)
 
 **User**:
@@ -63,7 +63,7 @@ The act of bringing a Church into existence: the Platform Operator atomically cr
 _Avoid_: Church signup, tenant creation, onboarding
 
 **Church Membership**:
-The Scoped Membership that grants a Person access to a Church. Its Access Level is `member` (pt-BR: Membro) or `admin` (UI: Admin · pt-BR: Administrador), and it is independent of whether the Person is a Volunteer. Only a ChurchAdmin raises a Church Member to `admin` or lowers one to `member`; a Church always keeps at least one ChurchAdmin, so the last one cannot be lowered.
+The Scoped Membership that grants a Person access to a Church. Its Access Level is `member` (pt-BR: Membro) or `admin` (UI: Admin · pt-BR: Administrador), and it is independent of whether the Person is a Volunteer. A Person gains it at `member` by signing up through the Church, by joining it later, or by redeeming a Church Invitation; joining needs nobody's approval. A Church Member may leave at any time, and a ChurchAdmin may remove one (pt-BR: Remover da igreja); a removed Person may join again, and neither leaving nor removal touches their Family Links. Only a ChurchAdmin raises a Church Member to `admin` or lowers one to `member`; a Church always keeps at least one ChurchAdmin, so the last one cannot be lowered.
 _Avoid_: Organization membership, tenant membership
 
 **Church Member** (pt-BR: Membro):
@@ -71,8 +71,12 @@ A Person associated with a Church through Church Membership: anyone registered i
 _Avoid_: Organization member, tenant member
 
 **Church Invitation** (pt-BR: Convite para a igreja):
-An email-addressed invitation for a person outside a Church to become a Church Member, creating or connecting their User identity as needed. It grants the `member` or `admin` Access Level; only a ChurchAdmin may invite at `admin`. A person has at most one pending Church Invitation per Church: inviting them as admin while a `member` one is pending raises that one to `admin`, keeping any Ministry Invitation paired with it.
+An email-addressed invitation for a person outside a Church to become a Church Member, creating or connecting their User identity as needed. Anyone may join through the Church sign-up link without one; it is how a ChurchAdmin or Ministry leader brings a named person in directly, at `admin`, or together with a Ministry Invitation. It grants the `member` or `admin` Access Level; only a ChurchAdmin may invite at `admin`. A person has at most one pending Church Invitation per Church: inviting them as admin while a `member` one is pending raises that one to `admin`, keeping any Ministry Invitation paired with it.
 _Avoid_: Sign-up link, magic link, organization invitation
+
+**Church sign-up link** (pt-BR: Link de cadastro):
+A Church's public link and QR code through which a person creates their account and, by doing so, joins that Church; a Check-in point and the Public Church Profile lead to the same sign-up. It is the only way to create an account: the platform has no sign-up without a Church.
+_Avoid_: Invite link, registration page, sign-up (without a Church)
 
 **Ministry Invitation** (pt-BR: Convite para o ministério):
 A targeted invitation to join one Ministry, granting a Ministry Membership at a stated Ministry Access Level together with a set of Roles; at `volunteer` level it names at least one Role. It is addressed either to an existing Church Member or to a Church Invitation, in which case the two are minted as a pair and accepted together. A ChurchAdmin may issue one for any Ministry in their Church; a Ministry leader may issue one for their own Ministry only and may grant only the `volunteer` Ministry Access Level. A TeamLeader cannot issue one. It is never a shareable link, and it never grants Team Membership. A person has at most one pending Ministry Invitation per Ministry; a fresh one is refused while it is pending, even if expired, and is resent instead. Whoever may issue an invitation may resend or revoke it. A revoked invitation is kept, with who revoked it, when, and why (by hand, or because its Ministry was archived, which revokes every pending invitation to it). Revoking the last pending Ministry Invitation paired with a Church Invitation revokes that Church Invitation too.
@@ -148,6 +152,10 @@ _Avoid_: Household, family group, grupo familiar, casa
 A Guardian's act of making their Family known to one Church, so it may check the Children in there. A Family belongs to its Guardians, not to any Church, and needs no Church Membership to be linked; only Churches it is linked to see its Children. Unlinking ends that Church's access, but the attendance that Church already recorded stays with it.
 _Avoid_: Family registration (per Church), church family, family membership
 
+**Family invitation** (pt-BR: Convite para a família):
+A single-use link a Guardian shares, by WhatsApp or email, for another adult to join the Family as a Guardian. It expires after 7 days, and any Guardian may revoke it. It grants the Family only, never Church Membership.
+_Avoid_: Share link, family code
+
 **Child** (pt-BR: Criança):
 A child a Family brings to Kids. A Child is not a Person: it has no User, no Church Membership and no login, and holds only what check-in needs.
 _Avoid_: Kid, minor, dependent, member (for a Child)
@@ -161,7 +169,7 @@ An adult in a Family who answers for its Children: either a Person, or a Guardia
 _Avoid_: Parent (when meaning any Guardian), responsible, tutor
 
 **Guardian contact** (pt-BR: Contato do responsável):
-A Guardian known only by name and phone, with no login, as registered at the desk for a visitor. It lets the Church reach the Guardian by hand and show its Call number on the big screen, but it can never receive a Call in the app. It gives way to the real Person once that adult has an account.
+A Guardian known only by name and phone, with no login, as registered at the desk for a visitor. It lets the Church reach the Guardian by hand and show its Call number on the big screen, but it can never receive a Call in the app. No consent, Care notes or photo are taken for it. It and the Children registered with it are kept only until 30 days after its last desk Check-in, unless that adult claims them by signing up through the claim code printed on its Guardian tag, when the new Person takes its place in the Family.
 _Avoid_: Visitor account, guest user
 
 **Check-in** (pt-BR: Check-in):

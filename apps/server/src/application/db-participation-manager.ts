@@ -130,6 +130,10 @@ import {
   ScheduleHasNoAssignmentsError,
 } from '../domain/errors/schedule-publish';
 import { ShiftHasResponsesError } from '../domain/errors/shift-has-responses';
+import {
+  assertEventTimeBlockNotCancelled,
+  isEventTimeBlockCancelled,
+} from '../domain/event-time-block-cancellation';
 import { scheduleChanges } from '../domain/schedule-changes';
 import type { ScheduleAssignmentSnapshot } from '../domain/schedule-last-told';
 import {
@@ -937,9 +941,7 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
       ensurePreparationEditable({ cycle, timeZone });
-      if (event.status === 'cancelled') throw new EventCancelledError();
-      if (eventTimeBlock.status === 'cancelled')
-        throw new EventTimeBlockCancelledError();
+      assertEventTimeBlockNotCancelled({ event, eventTimeBlock });
 
       const target = { churchId, participation, eventTimeBlock, tx };
       // Locked so a racing answer or Assignment is counted below, never cascaded away.
@@ -3243,9 +3245,10 @@ function buildEventView({
           ),
         ),
       );
-      const cancelled =
-        eventGroup.event.status === 'cancelled' ||
-        eventTimeBlock.status === 'cancelled';
+      const cancelled = isEventTimeBlockCancelled({
+        event: eventGroup.event,
+        eventTimeBlock,
+      });
       const headcounts = shiftViews.map(({ requirements: shiftRequirements }) =>
         shiftRequirements.reduce(
           (sum, { requirement }) => sum + requirement.peopleNeeded,

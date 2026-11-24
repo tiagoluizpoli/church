@@ -110,6 +110,7 @@ const LIST_PATH = `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`;
 const CANCELLED_ID = '77777777-7777-4777-8777-777777777777';
 const CANCELLED = {
   ...BLOCK,
+  cancelled: true,
   eventTimeBlock: {
     ...BLOCK.eventTimeBlock,
     id: CANCELLED_ID,

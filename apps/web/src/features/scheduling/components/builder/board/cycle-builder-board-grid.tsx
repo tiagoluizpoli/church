@@ -24,6 +24,7 @@ import {
   countCoveredPlaces,
   staffingStatusClasses,
 } from '../../../utils/builder/cycle-builder-staffing.utils';
+import { isCancelledEvent } from '../../../utils/event-time-block-cancellation';
 import { CancelledBadge } from '../../cancelled-badge';
 import { useBoardDragIdentity } from './board-drag-identity';
 import {
@@ -229,13 +230,13 @@ export function CycleBuilderBoardGrid({
                           <h2
                             className={cn(
                               'truncate font-semibold text-foreground text-sm',
-                              event.status === 'cancelled' &&
+                              isCancelledEvent({ eventStatus: event.status }) &&
                                 'text-muted-foreground line-through',
                             )}
                           >
                             {event.title}
                           </h2>
-                          {event.status === 'cancelled' ? (
+                          {isCancelledEvent({ eventStatus: event.status }) ? (
                             <CancelledBadge />
                           ) : (
                             <Badge
@@ -275,7 +276,9 @@ export function CycleBuilderBoardGrid({
                                     m.builder_ui_time_block()}
                                 </h3>
                                 {eventTimeBlock.cancelled &&
-                                event.status !== 'cancelled' ? (
+                                !isCancelledEvent({
+                                  eventStatus: event.status,
+                                }) ? (
                                   <CancelledBadge />
                                 ) : null}
                               </div>

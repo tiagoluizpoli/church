@@ -13,7 +13,6 @@ import {
 import { Link } from '@tanstack/react-router';
 import { ChevronRightIcon, TriangleAlertIcon } from 'lucide-react';
 import { memo, useEffect, useMemo, useState } from 'react';
-import { isCancelledEventTimeBlock } from '../../utils/event-time-block-cancellation';
 import { CancelledBadge } from '../cancelled-badge';
 import { blockTitle, coverageTone } from '../participation-prepare.utils';
 import { Badge } from '@/components/ui/badge';
@@ -147,10 +146,7 @@ export const PrepareEventTimeBlockList = memo(
               block,
               day,
               week: addCalendarDays({ day, days: -weekdayIndex({ day }) }),
-              cancelled: isCancelledEventTimeBlock({
-                eventStatus: event.event.status,
-                eventTimeBlockStatus: block.eventTimeBlock.status,
-              }),
+              cancelled: block.cancelled,
             };
           }),
         ),

@@ -26,6 +26,7 @@ import {
   cycleDetailsResponseSchema,
   cycleListResponseSchema,
   cycleMapper,
+  cycleParamsSchema,
   cycleResponseSchema,
   cycleSendSummaryResponseSchema,
   listCyclesQuerySchema,
@@ -92,7 +93,26 @@ import {
   optionalDateFromInstantString,
 } from '../utils/request-time';
 
-const cycleParamsSchema = z.object({ cycleId: z.guid() });
+interface EditInputInput {
+  body: EditPlanningEventBody;
+}
+
+/** The edit body as the manager reads it: the same for preview and apply. */
+function editInput({ body }: EditInputInput) {
+  return {
+    start: dateFromInstantString({ value: body.start }),
+    end: dateFromInstantString({ value: body.end }),
+    eventTimeBlocks: body.eventTimeBlocks.map(
+      ({ id, label, startTime, endTime }) => ({
+        id: id === undefined ? undefined : EventTimeBlockId.from(id),
+        label,
+        startTime: dateFromInstantString({ value: startTime }),
+        endTime: dateFromInstantString({ value: endTime }),
+      }),
+    ),
+  };
+}
+
 const cycleEventParamsSchema = z.object({
   cycleId: z.guid(),
   eventId: z.guid(),
@@ -999,16 +1019,7 @@ export class ChurchAdminController implements FastifyController {
               churchId: ChurchId.from(request.churchId),
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
-              start: dateFromInstantString({ value: body.start }),
-              end: dateFromInstantString({ value: body.end }),
-              eventTimeBlocks: body.eventTimeBlocks.map(
-                ({ id, label, startTime, endTime }) => ({
-                  id: id === undefined ? undefined : EventTimeBlockId.from(id),
-                  label,
-                  startTime: dateFromInstantString({ value: startTime }),
-                  endTime: dateFromInstantString({ value: endTime }),
-                }),
-              ),
+              ...editInput({ body }),
             }),
         });
         if (!preview) return;
@@ -1025,7 +1036,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'editPlanningEvent',
           summary: 'Edit a sent Event',
           description:
-            'Apply new bounds and EventTimeBlocks to a scheduled Event of a Sent Cycle, with the body of the edit preview. Recalculates the clashes under the Church lock shared with Assignment creation (never trusting a preview) and withdraws only the active Assignments whose new Shift would strictly overlap another active Assignment of their Volunteer: each is audited, its open SwapRequest closes as covered, and it is deleted. The Event and its kept blocks take the new times, each Shift keeping its share of its block; kept Assignments keep their identity, UnavailableShifts and open SwapRequests. A block without `id` is added with a Shift per Participation; a left-out unstaffed block is cancelled, never deleted. Last-told snapshots are untouched, so Send updates tells Volunteers (never about a started Shift); the leaders of the affected Ministries get the Event changed alert. Returns the edited graph and the actual withdrawals. Refuses as the preview does.',
+            'Apply new bounds and EventTimeBlocks to a scheduled Event of a Sent Cycle, with the body of the edit preview. Recalculates the clashes under the Church lock shared with Assignment creation (never trusting a preview) and withdraws only the active Assignments whose new Shift would strictly overlap another active Assignment of their Volunteer: each is audited, its open SwapRequest closes as covered, and it is deleted. The Event and its kept blocks take the new times, a Shift still to come keeping its share of the rest of its block, a running one its start and an ended one its times; kept Assignments keep their identity, UnavailableShifts and open SwapRequests. A block without `id` is added with a Shift per Participation; a left-out unstaffed block is cancelled, never deleted. Last-told snapshots are untouched, so Send updates tells Volunteers (never about a started Shift); the leaders of the affected Ministries get the Event changed alert. Returns the edited graph and the actual withdrawals. Refuses as the preview does.',
           body: editPlanningEventBodySchema,
           response: {
             200: eventMoveResponseSchema,
@@ -1047,16 +1058,7 @@ export class ChurchAdminController implements FastifyController {
               churchId: ChurchId.from(request.churchId),
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
-              start: dateFromInstantString({ value: body.start }),
-              end: dateFromInstantString({ value: body.end }),
-              eventTimeBlocks: body.eventTimeBlocks.map(
-                ({ id, label, startTime, endTime }) => ({
-                  id: id === undefined ? undefined : EventTimeBlockId.from(id),
-                  label,
-                  startTime: dateFromInstantString({ value: startTime }),
-                  endTime: dateFromInstantString({ value: endTime }),
-                }),
-              ),
+              ...editInput({ body }),
               actingUserId: UserId.from(request.userId),
             }),
         });

@@ -4823,8 +4823,9 @@ paths:
         preview) and withdraws only the active Assignments whose new Shift would
         strictly overlap another active Assignment of their Volunteer: each is
         audited, its open SwapRequest closes as covered, and it is deleted. The
-        Event and its kept blocks take the new times, each Shift keeping its
-        share of its block; kept Assignments keep their identity,
+        Event and its kept blocks take the new times, a Shift still to come
+        keeping its share of the rest of its block, a running one its start and
+        an ended one its times; kept Assignments keep their identity,
         UnavailableShifts and open SwapRequests. A block without `id` is added
         with a Shift per Participation; a left-out unstaffed block is cancelled,
         never deleted. Last-told snapshots are untouched, so Send updates tells

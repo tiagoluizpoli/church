@@ -88,6 +88,7 @@ import {
   type EventGraphTimeBlock,
 } from '../domain/services/event-graph';
 import {
+  type BoundsPair,
   findMoveClashes,
   type InstantBounds,
   type MoveScopeAssignment,
@@ -100,11 +101,6 @@ import {
 import type { TemplatePrecedence } from '../domain/template-precedence';
 import { cancelAssignment } from './cancel-assignment';
 import { removeAssignment } from './remove-assignment';
-
-interface BoundsPair {
-  left: InstantBounds;
-  right: InstantBounds;
-}
 
 const sameBounds = ({ left, right }: BoundsPair) =>
   compareInstants({ left: left.start, right: right.start }) === 0 &&

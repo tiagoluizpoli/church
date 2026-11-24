@@ -38,6 +38,7 @@ import {
   assignmentResponseSchema,
   auditListResponseSchema,
 } from '../dtos/assignment.dto';
+import { cycleParamsSchema } from '../dtos/cycle.dto';
 import {
   cycleBuilderMapper,
   cycleBuilderResponseSchema,
@@ -47,7 +48,6 @@ import {
 } from '../dtos/cycle-builder.dto';
 import { refuse } from '../utils/refuse';
 
-const cycleParamsSchema = z.object({ cycleId: z.guid() });
 const shiftParamsSchema = z.object({ shiftId: z.guid() });
 const assignmentParamsSchema = z.object({ assignmentId: z.guid() });
 const participationParamsSchema = z.object({ participationId: z.guid() });

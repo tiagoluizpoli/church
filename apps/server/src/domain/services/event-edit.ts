@@ -12,11 +12,13 @@ import type { EventTimeBlock } from '../entities/event-time-block';
 import { EditWindowClosedError } from '../errors/edit-window-closed';
 import { StaffedEventTimeBlockDropError } from '../errors/staffed-event-time-block-drop';
 import { assertEventGraph, type EventGraph } from './event-graph';
-import type {
-  InstantBounds,
-  MoveClash,
-  MoveClashCandidate,
-  MoveScopeAssignment,
+import {
+  type InstantBounds,
+  type InstantPair,
+  type MoveClash,
+  type MoveClashCandidate,
+  type MoveScopeAssignment,
+  overlaps,
 } from './event-move';
 
 /** What an edit does to one block: keeps (and retimes) it, adds it or drops it. */
@@ -131,7 +133,7 @@ interface FollowInput {
   instant: Instant;
 }
 
-const later = ({ left, right }: { left: Instant; right: Instant }) =>
+const later = ({ left, right }: InstantPair) =>
   compareInstants({ left, right }) >= 0 ? left : right;
 
 /**
@@ -186,19 +188,6 @@ export interface FindEditClashesInput {
 interface ProposedAssignment {
   assignment: MoveScopeAssignment;
   bounds: InstantBounds;
-}
-
-interface BoundsPair {
-  left: InstantBounds;
-  right: InstantBounds;
-}
-
-/** Strict interval intersection: touching ends do not overlap. */
-function overlaps({ left, right }: BoundsPair) {
-  return (
-    compareInstants({ left: left.start, right: right.end }) < 0 &&
-    compareInstants({ left: right.start, right: left.end }) < 0
-  );
 }
 
 /**

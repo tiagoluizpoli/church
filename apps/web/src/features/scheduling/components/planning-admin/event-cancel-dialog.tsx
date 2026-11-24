@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { Ban } from 'lucide-react';
 import { useState } from 'react';
+import { refreshPlanning } from './refresh-planning';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,17 +19,14 @@ import { Label } from '@/components/ui/label';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-builder';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
-/** Every read a cancellation changes: planning, Schedules, notices, Volunteer reads. */
+/** The reads a cancellation changes beyond planning and Schedules: notices and Volunteer reads. */
 const CANCELLATION_READERS = [
-  ['cycles'],
-  CYCLE_BUILDER_QUERY_KEY,
   ['notifications'],
   ['my-schedule'],
   ['my-ministry-schedule'],
@@ -68,24 +66,15 @@ export function EventCancelDialog({
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
   const queryClient = useQueryClient();
-  const refreshPlanning = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
-      ...CANCELLATION_READERS.map((queryKey) =>
-        queryClient.invalidateQueries({ queryKey }),
-      ),
-      queryClient.invalidateQueries({
-        predicate: ({ queryKey: [key] }) =>
-          typeof key === 'string' && key.startsWith('prepare-'),
-      }),
-    ]);
+  const refreshCancelled = () =>
+    refreshPlanning({ queryClient, cycleId, readers: CANCELLATION_READERS });
   // The scope has started: refresh so it shows read-only behind the refusal.
   const refreshWhenWindowClosed = (error: Error) => {
     if (
       isAxiosError<RefusalBody>(error) &&
       error.response?.data?.error === 'ADMIN_CANCELLATION_WINDOW_CLOSED'
     ) {
-      void refreshPlanning();
+      void refreshCancelled();
     }
   };
   const preview = useMutation({
@@ -127,7 +116,7 @@ export function EventCancelDialog({
     setOpen(next);
     if (next) return;
     // Refresh only once closed, so the success state stays readable.
-    if (done) void refreshPlanning();
+    if (done) void refreshCancelled();
     setTyped('');
     preview.reset();
     cancel.reset();

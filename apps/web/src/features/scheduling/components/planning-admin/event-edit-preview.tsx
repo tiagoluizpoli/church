@@ -9,6 +9,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { type BoundsRange, ClashList } from './event-move-preview';
 import type { CycleCalendarEventTimeBlockRow } from './planning-admin.types';
+import { refreshPlanning } from './refresh-planning';
 import { InstantField } from '@/components/instant-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +24,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-builder';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
@@ -125,17 +125,7 @@ export function EventEditPreview({
   const apply = useMutation({
     mutationFn: (body: ReturnType<typeof bodyOf>) =>
       adminApi.editPlanningEvent(cycleId, eventId, body),
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
-        queryClient.invalidateQueries({ queryKey: ['cycles'] }),
-        queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY }),
-        // Every Ministry's Schedule reads the retimed Shifts.
-        queryClient.invalidateQueries({
-          predicate: ({ queryKey: [key] }) =>
-            typeof key === 'string' && key.startsWith('prepare-'),
-        }),
-      ]),
+    onSuccess: () => refreshPlanning({ queryClient, cycleId }),
   });
   const body = bodyOf(draft);
   const result = preview.data;

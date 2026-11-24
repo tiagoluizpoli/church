@@ -11,6 +11,7 @@ import {
   type TemplateTimeBlockRowProps,
 } from './template-time-block-row';
 import { Button } from '@/components/ui/button';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -57,6 +58,7 @@ export function TemplateEditorForm({
   onAddBlock,
 }: TemplateEditorFormProps) {
   const blockErrors = templateBlockErrors({ blocks: templateForm.blocks });
+  const touch = useFormControlSize() === 'touch';
   return (
     <div className="space-y-4">
       <div className="max-w-md space-y-1">
@@ -109,7 +111,7 @@ export function TemplateEditorForm({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size={touch ? 'touch' : 'sm'}
           data-testid="add-template-time-block-button"
           onClick={onAddBlock}
         >

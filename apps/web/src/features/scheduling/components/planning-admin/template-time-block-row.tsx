@@ -5,6 +5,7 @@ import { describeTemplateTimeBlockSpan } from './planning-admin.utils';
 import { TimeBlockPlacePicker } from './time-block-place-picker';
 import { TimeOfDayField } from '@/components/time-of-day-field';
 import { Button } from '@/components/ui/button';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -74,6 +75,7 @@ export function TemplateTimeBlockRow({
 }: TemplateTimeBlockRowProps) {
   // Público and place are a ChurchAdmin decision (ADR 0009); leaders edit the rest.
   const { isChurchAdmin } = useCallerCapabilities();
+  const touch = useFormControlSize() === 'touch';
   return (
     <div
       className="@container surface-subtle workspace-panel space-y-2"
@@ -86,7 +88,7 @@ export function TemplateTimeBlockRow({
         {totalBlocks > 1 ? (
           <Button
             type="button"
-            size="xs"
+            size={touch ? 'touch' : 'xs'}
             variant="ghost"
             onClick={() => onRemoveBlock({ blockKey: block.key })}
           >

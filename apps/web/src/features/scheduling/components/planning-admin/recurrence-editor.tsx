@@ -5,6 +5,7 @@ import { PlusIcon, Trash2Icon } from 'lucide-react';
 import { useState } from 'react';
 import type { TemplateRecurrence } from './planning-admin.types';
 import { Button } from '@/components/ui/button';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -90,6 +91,7 @@ function EntryRow({
   onRemove,
 }: EntryRowProps) {
   const testId = `template-recurrence-entry-${index}`;
+  const touch = useFormControlSize() === 'touch';
 
   return (
     <div className="flex flex-wrap items-end gap-2" data-testid={testId}>
@@ -217,7 +219,7 @@ function EntryRow({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size={touch ? 'icon-touch' : 'icon'}
         disabled={!canRemove}
         aria-label={m.event_templates_recurrence_remove_entry()}
         data-testid={`${testId}-remove`}
@@ -235,6 +237,8 @@ export function RecurrenceEditor({
 }: RecurrenceEditorProps) {
   // The lone picked weekday stays enabled; deselecting it explains itself instead.
   const [keptLastWeekday, setKeptLastWeekday] = useState(false);
+  // An explicit size opts out of the drawer's touch promotion, so pick it here.
+  const compactSize = useFormControlSize() === 'touch' ? 'touch' : 'sm';
   const kindLabels = {
     weekly: m.event_templates_recurrence_kind_weekly(),
     monthly: m.event_templates_recurrence_kind_monthly(),
@@ -300,7 +304,7 @@ export function RecurrenceEditor({
                 <Button
                   key={weekday}
                   type="button"
-                  size="sm"
+                  size={compactSize}
                   variant={picked ? 'default' : 'outline'}
                   aria-pressed={picked}
                   aria-describedby={
@@ -372,7 +376,7 @@ export function RecurrenceEditor({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size={compactSize}
             data-testid="template-recurrence-add-entry"
             onClick={() =>
               onChange({

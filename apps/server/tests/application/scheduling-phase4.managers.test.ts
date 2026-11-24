@@ -319,7 +319,7 @@ it('flags an eligible volunteer with an overlapping active assignment', async ()
       volunteerId,
       roleId: RoleId.from('role'),
       shiftRequirementId: ShiftRequirementId.from({ raw: 'requirement' }),
-      status: 'confirmed',
+      status: 'pending',
     },
   });
   vi.mocked(repositories.shiftRepository.getById).mockImplementation(
@@ -476,7 +476,7 @@ it('counts only active assignments towards each required place', async () => {
       peopleNeeded: 2,
     },
   });
-  const assignment = (status: 'confirmed' | 'cancelled') =>
+  const assignment = (status: 'pending' | 'cancelled') =>
     new Assignment({
       props: {
         churchId,
@@ -494,7 +494,7 @@ it('counts only active assignments towards each required place', async () => {
   ).mockResolvedValue([requirement]);
   vi.mocked(
     repositories.assignmentRepository.listByParticipation,
-  ).mockResolvedValue([assignment('confirmed'), assignment('cancelled')]);
+  ).mockResolvedValue([assignment('pending'), assignment('cancelled')]);
   await expect(
     manager.getCompletion({ churchId, participationId }),
   ).resolves.toEqual({

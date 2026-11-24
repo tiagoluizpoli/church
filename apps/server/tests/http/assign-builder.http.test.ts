@@ -419,7 +419,7 @@ it('keeps builder and eligible read query counts bounded as assignment history g
       volunteerId: holder.volunteer.id,
       roleId: role.id,
       shiftRequirementId: requirement.id,
-      status: 'confirmed',
+      status: 'pending',
     });
   };
   await addHistory(0);

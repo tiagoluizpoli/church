@@ -33,7 +33,7 @@ describe('swap-request E2E journey recipe', () => {
     expect(rows[0]).toMatchObject({
       id: journey.assignmentId,
       volunteerId: journey.personas.volunteer.volunteerId,
-      status: 'confirmed',
+      status: 'pending',
     });
     expect(journey.personas.replacement.volunteerId).not.toBe(
       journey.personas.volunteer.volunteerId,

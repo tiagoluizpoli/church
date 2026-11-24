@@ -69,7 +69,7 @@ async function seedAssignment(input: {
     shiftRequirementId: requirement.id,
     volunteerId: input.volunteerId,
     roleId: roleRow.id,
-    status: 'confirmed',
+    status: 'pending',
   });
 
   return {

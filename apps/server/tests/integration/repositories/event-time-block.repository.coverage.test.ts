@@ -236,7 +236,7 @@ describe('DrizzleEventTimeBlockRepository (extra coverage)', () => {
       shiftRequirementId: requirement.id,
       volunteerId: seed.adminVolunteerId,
       roleId: roleRow.id,
-      status: 'confirmed',
+      status: 'pending',
     });
 
     expect(

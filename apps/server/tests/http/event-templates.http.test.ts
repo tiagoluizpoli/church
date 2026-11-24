@@ -836,7 +836,7 @@ async function seedEditGraph(): Promise<EditGraph> {
       volunteerId: seed.adminVolunteerId,
       roleId: role.id,
       shiftRequirementId: requirement.id,
-      status: 'confirmed',
+      status: 'pending',
     });
   }
   return { seed, sectorId: sector.id, roleId: role.id };

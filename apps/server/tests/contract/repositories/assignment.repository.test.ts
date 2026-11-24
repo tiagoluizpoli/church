@@ -42,7 +42,7 @@ class MockAssignmentRepository implements AssignmentRepository {
         volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
-        status: 'confirmed',
+        status: 'pending',
       },
       id: '99999999-9999-9999-9999-999999999991' as AssignmentId,
     });
@@ -67,7 +67,7 @@ class MockAssignmentRepository implements AssignmentRepository {
         volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
         roleId: '55555555-5555-5555-5555-555555555551' as RoleId,
         shiftRequirementId: '00000000-0000-0000-0000-000000000021' as never,
-        status: 'confirmed',
+        status: 'pending',
       },
       id: '99999999-9999-9999-9999-999999999993' as AssignmentId,
     });

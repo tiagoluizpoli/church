@@ -33,7 +33,7 @@ describe('admin-cancel E2E journey recipe', () => {
     expect(rows[0]).toMatchObject({
       id: journey.assignmentId,
       volunteerId: journey.personas.volunteer.volunteerId,
-      status: 'confirmed',
+      status: 'pending',
     });
     const [open] = await testDb
       .select()

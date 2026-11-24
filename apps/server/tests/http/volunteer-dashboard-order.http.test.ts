@@ -296,7 +296,7 @@ interface ArrangedItem {
   id: string;
   eventId: string;
   start: string;
-  status: 'pending' | 'confirmed';
+  status: 'pending';
   ministry?: string;
 }
 
@@ -466,7 +466,7 @@ describe('volunteer dashboard upcoming cap and order', () => {
           id: `long-${index}`,
           eventId: 'long',
           start: `2026-08-0${3 + index}T15:00:00Z`,
-          status: 'confirmed' as const,
+          status: 'pending' as const,
         })),
         {
           id: 'short-0',
@@ -491,21 +491,21 @@ describe('volunteer dashboard upcoming cap and order', () => {
           id: 'z-b',
           eventId: 'e',
           start: '2026-08-02T09:00:00Z',
-          status: 'confirmed',
+          status: 'pending',
           ministry: 'Worship',
         },
         {
           id: 'k-b',
           eventId: 'e',
           start: '2026-08-02T09:00:00Z',
-          status: 'confirmed',
+          status: 'pending',
           ministry: 'Kids',
         },
         {
           id: 'k-a',
           eventId: 'e',
           start: '2026-08-02T09:00:00Z',
-          status: 'confirmed',
+          status: 'pending',
           ministry: 'Kids',
         },
       ],
@@ -540,7 +540,7 @@ describe('volunteer dashboard serving history', () => {
           id: 'feb-edge',
           eventId: 'e',
           start: '2026-03-01T01:00:00Z',
-          status: 'confirmed',
+          status: 'pending',
         },
         {
           id: 'mar',
@@ -552,20 +552,20 @@ describe('volunteer dashboard serving history', () => {
           id: 'jul',
           eventId: 'e',
           start: '2026-07-05T12:00:00Z',
-          status: 'confirmed',
+          status: 'pending',
         },
         // 31 July 22:00 in São Paulo: this month, but not served yet.
         {
           id: 'jul-future',
           eventId: 'e',
           start: '2026-08-01T01:00:00Z',
-          status: 'confirmed',
+          status: 'pending',
         },
         {
           id: 'jun-cancelled-event',
           eventId: 'gone',
           start: '2026-06-07T12:00:00Z',
-          status: 'confirmed',
+          status: 'pending',
         },
         {
           id: 'aug-outside',
@@ -577,13 +577,13 @@ describe('volunteer dashboard serving history', () => {
           id: 'jan-outside',
           eventId: 'e',
           start: '2026-01-10T12:00:00Z',
-          status: 'confirmed',
+          status: 'pending',
         },
         {
           id: 'sep-outside',
           eventId: 'e',
           start: '2026-09-06T12:00:00Z',
-          status: 'confirmed',
+          status: 'pending',
         },
       ],
     });

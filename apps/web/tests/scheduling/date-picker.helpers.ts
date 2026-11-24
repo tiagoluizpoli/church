@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 // App defaults to pt-BR (appConfig.defaultLocale); these names match that locale.
 const WEEKDAY_NAMES = [
@@ -58,4 +58,7 @@ export async function fillDatePickerField({
   await popover
     .getByRole('button', { name: new RegExp(`${dayLabel}$`) })
     .click();
+  // The picker closes on select, but base-ui keeps the popup mounted through its
+  // exit animation; a next picker opened before then would make `popover` match two.
+  await expect(popover).toHaveCount(0);
 }

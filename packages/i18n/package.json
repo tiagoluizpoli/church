@@ -16,6 +16,7 @@
   "scripts": {
     "postinstall": "bun run compile",
     "compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy cookie custom-app-default-locale baseLocale --emit-ts-declarations --output-structure locale-modules --silent",
+    "dev": "bun run compile --watch",
     "typecheck": "bun run compile",
     "test:unit": "bun run compile",
     "build": "bun run compile"

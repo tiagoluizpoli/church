@@ -4,7 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { builderErrorMessage } from '../utils/builder/cycle-builder-error.utils';
-import { countCoveredPlaces } from '../utils/builder/cycle-builder-staffing.utils';
+import {
+  type CountedEventTimeBlock,
+  countCoveredPlaces,
+  isStaffedEventTimeBlock,
+} from '../utils/builder/cycle-builder-staffing.utils';
 import { isCancelledEventTimeBlock } from '../utils/event-time-block-cancellation';
 import {
   addOptimisticAssignment,
@@ -105,19 +109,6 @@ interface PeopleNeededEventTimeBlock extends CountedEventTimeBlock {
 
 interface AssignedCountEventTimeBlock extends CountedEventTimeBlock {
   shifts: AssignedCountShift[];
-}
-
-interface CountedEventTimeBlock {
-  included: boolean;
-  cancelled: boolean;
-}
-
-/** A time block asks for people only when this Ministry serves it and neither it nor its Event was cancelled. */
-export function isStaffedEventTimeBlock({
-  included,
-  cancelled,
-}: CountedEventTimeBlock): boolean {
-  return included && !cancelled;
 }
 
 export interface CycleBuilderShiftSummary {

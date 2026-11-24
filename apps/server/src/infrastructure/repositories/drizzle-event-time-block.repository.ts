@@ -263,7 +263,7 @@ export class DrizzleEventTimeBlockRepository
           withChurchIsolation({ table: assignment, churchId }),
           eq(shift.eventTimeBlockId, eventTimeBlockId),
           eq(assignment.roleId, roleId),
-          inArray(assignment.status, ['pending', 'confirmed']),
+          inArray(assignment.status, ['pending']),
         ),
       );
     return result?.cnt ?? 0;

@@ -162,10 +162,8 @@ function servingMonths({
   );
 }
 
-function isPublishedStatus(
-  status: AssignmentStatus,
-): status is 'pending' | 'confirmed' {
-  return status === 'pending' || status === 'confirmed';
+function isPublishedStatus(status: AssignmentStatus): status is 'pending' {
+  return status === 'pending';
 }
 
 interface RequirementCoverageStatusInput {
@@ -175,7 +173,7 @@ interface RequirementCoverageStatusInput {
 function countsTowardRequirementCoverage({
   status,
 }: RequirementCoverageStatusInput): boolean {
-  return status === 'draft' || status === 'pending' || status === 'confirmed';
+  return status === 'draft' || status === 'pending';
 }
 
 interface RequirementCoverageInput {

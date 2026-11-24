@@ -20,7 +20,7 @@ export const ASSIGNMENT_STATUS_OPTIONS = [
 ] as const;
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUS_OPTIONS)[number];
 /** The active statuses that put a Volunteer on the published Schedule. */
-export const PUBLISHED_ASSIGNMENT_STATUSES = ['pending', 'confirmed'] as const;
+export const PUBLISHED_ASSIGNMENT_STATUSES = ['pending'] as const;
 
 export interface AssignmentProps {
   churchId: ChurchId;

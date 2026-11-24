@@ -66,7 +66,7 @@ export interface GetCycleParticipationInput {
 
 export interface ParticipationRequirementView {
   requirement: ShiftRequirement;
-  /** Active Assignments on this requirement; cancelled and declined are excluded. */
+  /** Active Assignments on this requirement; cancelled ones are excluded. */
   assignedCount: number;
 }
 
@@ -75,7 +75,7 @@ export interface ParticipationShiftView {
   shift: Shift;
   requirements: ParticipationRequirementView[];
   unavailableMarkCount: number;
-  /** Active Assignments on the Shift; cancelled and declined are excluded. */
+  /** Active Assignments on the Shift; cancelled ones are excluded. */
   assignmentCount: number;
   /** The Shift has no ShiftRequirement. */
   flagged: boolean;

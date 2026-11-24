@@ -151,11 +151,7 @@ function assignmentCount({ statuses }: AssignmentCountInput): SQL<number> {
 }
 
 /** A seat counts as filled while an assignment holds it, as the Schedule gap count does. */
-const LIVE_ASSIGNMENT_STATUSES: AssignmentStatus[] = [
-  'draft',
-  'pending',
-  'confirmed',
-];
+const LIVE_ASSIGNMENT_STATUSES: AssignmentStatus[] = ['draft', 'pending'];
 
 /** Requirement headcount and seats held, summed over the grouped rows. */
 function staffingTotals() {
@@ -1090,7 +1086,7 @@ export class DrizzleMinistryParticipationRepository
           isNull(availabilityCheck.withdrawnAt),
           eq(ministryMembership.status, 'active'),
           gt(unavailableShift.createdAt, assignment.assignedAt),
-          inArray(assignment.status, ['draft', 'pending', 'confirmed']),
+          inArray(assignment.status, ['draft', 'pending']),
           inArray(ministryParticipation.ministryId, ministryIds),
           inArray(event.cycleId, cycleIds),
         ),
@@ -1155,7 +1151,7 @@ export class DrizzleMinistryParticipationRepository
     tx,
   }: ListSchedulesFactsInput): Promise<ScheduleCountRow[]> {
     // Per-requirement shortfall via a correlated count: one batched query, no fan-out.
-    const assigned = sql<number>`(select count(*) from ${assignment} where ${assignment.shiftRequirementId} = ${shiftRequirement.id} and ${assignment.status} in ('draft', 'pending', 'confirmed'))`;
+    const assigned = sql<number>`(select count(*) from ${assignment} where ${assignment.shiftRequirementId} = ${shiftRequirement.id} and ${assignment.status} in ('draft', 'pending'))`;
     return getClient({ db: this.db, tx })
       .select({
         ministryId: ministryParticipation.ministryId,

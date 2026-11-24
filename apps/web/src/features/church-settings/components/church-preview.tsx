@@ -1,11 +1,3 @@
-import {
-  EMAIL_INK,
-  EMAIL_LOGO_RADIUS,
-  EMAIL_RULE_WIDTH,
-  emailAccentRule,
-  emailAccentTint,
-  PLATFORM_ACCENT,
-} from '@church/domain-rules/email-accent';
 import { SOCIAL_NETWORKS } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
 import { ArrowDown, ArrowUp } from 'lucide-react';
@@ -19,8 +11,8 @@ import type {
 import {
   type ChurchSettingsForm,
   formatCnpj,
-  paintableAccent,
 } from '@/features/church-settings/church-settings-form';
+import { EmailHeaderPreview } from '@/features/church-settings/components/email-header-preview';
 import { detectedNetwork } from '@/features/church-settings/components/social-section';
 import {
   groupOrder,
@@ -50,14 +42,6 @@ export function ChurchPreview({
   titleId,
   onChange,
 }: ChurchPreviewProps) {
-  const accent = paintableAccent({ value: form.accentColor });
-  // The same header as the real email: the accent as tint and top rule, ink text.
-  const bandAccent = accent ?? PLATFORM_ACCENT;
-  const band = {
-    background: emailAccentTint(bandAccent),
-    borderTop: `${EMAIL_RULE_WIDTH}px solid ${emailAccentRule(bandAccent)}`,
-    color: EMAIL_INK,
-  };
   const website = form.website.trim().replace(/^https?:\/\//i, '');
   const name = form.name.trim();
   // The Main Address leads; private addresses are never shown to visitors.
@@ -74,33 +58,16 @@ export function ChurchPreview({
       <p className="px-4 pt-3 font-medium text-muted-foreground text-xs">
         {m.church_settings_preview_email()}
       </p>
-      <div
-        data-testid="church-preview-email-band"
-        className="flex flex-col items-center gap-3 px-6 py-7 text-center"
-        style={band}
-      >
-        {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt={m.church_settings_logo_alt()}
-            className="max-h-14 max-w-48 object-contain"
-            style={{ borderRadius: EMAIL_LOGO_RADIUS }}
-          />
-        ) : null}
-        <div className="min-w-0 max-w-full">
-          {name ? (
-            <p
-              className={cn(
-                'truncate',
-                logoUrl ? 'font-semibold text-sm' : 'font-bold text-xl',
-              )}
-            >
-              {name}
-            </p>
-          ) : null}
-          {website ? <p className="truncate text-sm">{website}</p> : null}
-        </div>
-      </div>
+      <EmailHeaderPreview
+        name={name}
+        logoUrl={logoUrl}
+        accentColor={form.accentColor}
+      />
+      {website ? (
+        <p className="truncate px-4 pt-3 text-muted-foreground text-sm">
+          {website}
+        </p>
+      ) : null}
       {publicAddresses.length > 0 ? (
         <div className="space-y-2 border-t p-4">
           <p className="font-medium text-muted-foreground text-xs">

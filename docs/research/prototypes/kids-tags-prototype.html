@@ -2,7 +2,7 @@
 <!--
   PROTOTYPE, throwaway (wayfinder ticket #1084). Never merged.
   Question: how should the Child tag and the Guardian tag look?
-  Three layouts (A/B/C) x two stocks (29x90 DK-1201, 62x100 DK-1202) x three Care stamp styles x three cases.
+  Layouts A/B/C and C1-C3 x two stocks (29x90 DK-1201, 62x100 DK-1202) x three Care stamp icon families x a growing stamp catalogue x three cases.
   Tags render at real mm size; Ctrl+P / "Imprimir" prints one tag per page at the label size (the printer emulator).
   QR codes are fake placeholders at the real size, not scannable. Thermal stock is black only, so no colour.
 -->
@@ -18,8 +18,17 @@
   .controls fieldset { border: 0; padding: 0; margin: 0; display: flex; gap: 8px; align-items: center; }
   .controls legend { float: left; font-weight: 600; margin-right: 6px; }
   .state { font: 12px ui-monospace, monospace; color: #555; padding: 6px 14px; }
-  .legend { font-size: 13px; padding: 0 14px; display: flex; gap: 16px; align-items: center; }
-  .legend .stamp { width: 6mm; height: 6mm; }
+  .legend { font-size: 13px; padding: 0 14px; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+  .legend span { display: inline-flex; gap: 5px; align-items: center; }
+  .legend .stamp { width: 7mm; height: 7mm; }
+  /* icon contact sheet (screen only): every family, large and at the two smallest printed sizes */
+  .cs { background: #000; color: #fff; padding: 14px; width: 100%; box-sizing: border-box; }
+  .cs h3 { font-size: 15px; margin: 0 0 10px; }
+  .cs .big { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px 10px; }
+  .cs figure { margin: 0; text-align: center; font-size: 12px; }
+  .cs .big .stamp { width: 22mm; height: 22mm; display: block; margin: 0 auto 4px; }
+  .cs .real { display: flex; gap: 1mm; align-items: center; margin-top: 10px; zoom: var(--zoom, 2.5); font-size: 2.4mm; }
+  .cs .real .stamp { width: var(--sz); height: var(--sz); }
   .sheet { padding: 18px 14px 80px; display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
   .slot h3 { font-size: 12px; font-weight: 600; color: #555; margin: 0 0 4px; }
 
@@ -91,7 +100,9 @@
   .cx .name, .cx .first, .cx .rest { font-weight: 700; white-space: nowrap; overflow: hidden; line-height: 1.1; letter-spacing: -0.01em; }
   .cx .fit.two { white-space: normal; text-wrap: balance; max-height: 2.25em; }
   .cx .band, .cx .block { background: #000; color: #fff; }
-  .cx .slots { display: flex; align-items: center; justify-content: space-around; }
+  /* Stamp area: only the stamps the child has, in catalogue order; pack() picks --cols and --sz so they fill the area. */
+  .cx .slots { display: grid; grid-template-columns: repeat(var(--cols), var(--sz)); gap: var(--g); justify-content: center; align-content: center; }
+  .cx .slots .stamp { width: var(--sz); height: var(--sz); }
   .cx .q { aspect-ratio: 1; flex: none; }
   .cx .q svg { display: block; width: 100%; height: 100%; }
   .cx .who, .cx .kp { font-size: var(--ts); }
@@ -124,8 +135,6 @@
   .s62 .vC1.kid { grid-template: "band name name" auto "band who who" auto "band note side" 1fr / 14mm 1fr 21mm; padding-left: 0; column-gap: 3.5mm; }
   .vC1 .band { grid-area: band; margin: calc(-1 * var(--m)) 0; display: flex; align-items: center; justify-content: space-around; }
   .vC1.kid .band { flex-direction: column; padding: var(--m) 0 var(--m) var(--m); }
-  .s29 .vC1 .band .stamp { width: 5mm; height: 5mm; }
-  .s62 .vC1 .band .stamp { width: 9mm; height: 9mm; }
   .vC1.kid .who { grid-area: who; }
   .vC1.kid .note { grid-area: note; align-self: end; }
   .vC1 .side { grid-area: side; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
@@ -147,9 +156,6 @@
     padding: calc(var(--m) + .9mm) calc(var(--m) + .5mm) .9mm; }
   .vC2.kid .band .lock { font-size: 3.6mm; } .s62 .vC2.kid .band .lock { font-size: 5mm; }
   .vC2.kid .band .lock b { font-size: 1.7em; line-height: .8; }
-  .vC2.kid .slots { gap: 1.6mm; } .s62 .vC2.kid .slots { gap: 2mm; }
-  .s29 .vC2 .band .stamp { width: 4.8mm; height: 4.8mm; }
-  .s62 .vC2 .band .stamp { width: 9mm; height: 9mm; }
   .cx .foot { grid-area: foot; display: flex; flex-direction: column; justify-content: space-between; gap: .6mm; overflow: hidden; }
   .cx.kid > .q { grid-area: qr; align-self: end; }
   .s29 .vC2.kid > .q { width: 10mm; } .s62 .vC2.kid > .q { width: 22mm; }
@@ -171,10 +177,6 @@
   .vC3 .block { grid-area: block; margin: calc(-1 * var(--m)) 0; display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
   .vC3.kid .block { padding: var(--m) var(--m) var(--m) calc(var(--m) + .5mm); }
   .vC3 .block .num { width: 100%; text-align: center; overflow: hidden; line-height: 1.16; margin: -.08em 0; }
-  .vC3 .block .slots { display: grid; grid-template-columns: auto auto; gap: 1mm; }
-  .s62 .vC3 .block .slots { gap: 1.5mm; }
-  .s29 .vC3 .block .stamp { width: 5.6mm; height: 5.6mm; }
-  .s62 .vC3 .block .stamp { width: 10.5mm; height: 10.5mm; }
   .vC3 .first { grid-area: first; line-height: 1.16; margin: -.08em 0 -.04em; }
   .s62 .vC3 .note { -webkit-line-clamp: 5; }
   .vC3 .rest { grid-area: rest; }
@@ -216,14 +218,24 @@
     <label><input type="radio" name="stock" value="62"> 62 x 100 mm</label>
   </fieldset>
   <fieldset><legend>Selos</legend>
-    <label><input type="radio" name="stamps" value="shapes"> Formas</label>
-    <label><input type="radio" name="stamps" value="letters"> Letras</label>
-    <label><input type="radio" name="stamps" value="pictos"> Pictogramas</label>
+    <label><input type="radio" name="stamps" value="bonecos"> Bonequinhos</label>
+    <label><input type="radio" name="stamps" value="camisa"> Bonequinho + símbolo</label>
+    <label><input type="radio" name="stamps" value="simbolos"> Símbolos</label>
+  </fieldset>
+  <fieldset><legend>Selos no catálogo</legend>
+    <label><input type="radio" name="cat" value="4"> 4</label>
+    <label><input type="radio" name="cat" value="6"> 6</label>
+    <label><input type="radio" name="cat" value="8"> 8</label>
+    <label><input type="radio" name="cat" value="all"> Todos</label>
+  </fieldset>
+  <fieldset><legend>Ver</legend>
+    <label><input type="radio" name="view" value="tags"> Etiquetas</label>
+    <label><input type="radio" name="view" value="icons"> Folha de ícones</label>
   </fieldset>
   <fieldset><legend>Caso</legend>
     <select name="case">
       <option value="tipico">Típico: 1 criança, 1 selo</option>
-      <option value="irmaos">Pior caso: 4 irmãos, nome longo, todos os selos</option>
+      <option value="irmaos">Pior caso: 4 irmãos, nome longo, todos os selos do catálogo</option>
       <option value="visitante">Visitante da mesa (contato, QR de cadastro)</option>
     </select>
   </fieldset>
@@ -237,46 +249,102 @@
 
 <script>
 const VARIANTS = { A: 'Nome primeiro', B: 'Número primeiro', C: 'Faixa de cuidado', C1: 'Faixa e coluna', C2: 'Faixa no topo', C3: 'Bloco de chamada' };
-const STAMPS = ['neuro', 'allergy', 'medical', 'mobility'];
-const STAMP_NAMES = { neuro: 'Neurodivergência', allergy: 'Alergia / restrição alimentar', medical: 'Condição médica', mobility: 'Mobilidade / apoio físico' };
 const CASES = {
   tipico: { date: '24/11', call: 47, guardian: 'Ana', pickup: 'K7P4', contact: false,
     kids: [{ name: 'Laura Souza', stamps: ['allergy'], note: 'Alergia a amendoim: nada de lanche da sala' }] },
   irmaos: { date: '24/11', call: 247, guardian: 'Ana', pickup: 'X3M9', contact: false,
     kids: [
-      { name: 'Maria Eduarda Vasconcelos de Albuquerque', stamps: STAMPS, note: 'Chame pelo nome, não responde a comandos de grupo; evite barulho alto' },
+      { name: 'Maria Eduarda Vasconcelos de Albuquerque', stamps: 'all', note: 'Chame pelo nome, não responde a comandos de grupo; evite barulho alto' },
       { name: 'João Pedro Vasconcelos', stamps: [], note: '' },
       { name: 'Davi Vasconcelos', stamps: ['neuro'], note: 'Se chorar, leve ao cantinho calmo' },
-      { name: 'Sofia Vasconcelos', stamps: [], note: '' },
+      { name: 'Sofia Vasconcelos', stamps: ['allergy', 'seizure', 'photo'], note: '' },
     ] },
   // A Guardian contact gives no consent, so no Care stamps or Tag note; its Guardian tag carries the claim QR.
   visitante: { date: '24/11', call: 12, guardian: 'Pedro', pickup: 'R8T2', contact: true,
     kids: [{ name: 'Lucas Lima', stamps: [], note: '' }] },
 };
 
-const params = new URLSearchParams(location.search);
-const state = { v: params.get('v') || 'A', stock: params.get('stock') || '29', stamps: params.get('stamps') || 'shapes',
-  case: params.get('case') || 'tipico', zoom: params.get('zoom') || '2.5' };
+// ---- Care stamp catalogue. Icons are 20x20 inline SVG
+// in currentColor on var(--bg), so the same drawing works black-on-white (tile) and white-on-black (the shirt family).
+const BG = 'var(--bg)';
+const st = (d, w = 2.2, c = 'currentColor') => `<path d="${d}" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke:${c};stroke-width:calc(var(--k,1)*${w}px)"/>`;
+const fl = (d, c = 'currentColor') => `<path d="${d}" style="fill:${c}"/>`;
+const dot = (x, y, r, c = 'currentColor') => `<circle cx="${x}" cy="${y}" r="${r}" style="fill:${c}"/>`;
+const slash = (d = 'M3 17.5L17 2.5', w = 2) => st(d, w * 2.4, BG) + st(d, w);
+const SYM = {
+  neuro: st('M10 10C7.6 5.4 2.4 5.4 2.4 10C2.4 14.6 7.6 14.6 10 10C12.4 5.4 17.6 5.4 17.6 10C17.6 14.6 12.4 14.6 10 10Z', 2.8),
+  // an apple with "!": mind the food. Not a slash, which would read "do not feed".
+  allergy: fl('M10 6.2C8.2 4.4 2.6 4.6 2.6 10.6C2.6 15.2 5.8 18.6 7.8 18.6C8.8 18.6 9.2 18.1 10 18.1C10.8 18.1 11.2 18.6 12.2 18.6C14.2 18.6 17.4 15.2 17.4 10.6C17.4 4.6 11.8 4.4 10 6.2Z')
+    + fl('M10.2 5.2C10.2 3 11.8 1.4 14.4 1.4C14.4 3.6 12.8 5.2 10.2 5.2Z') + st('M10 8.6V12.6', 2.4, BG) + dot(10, 15.6, 1.3, BG),
+  medical: fl('M7 2H13V7H18V13H13V18H7V13H2V7H7Z'),
+  mobility: dot(8.5, 3.4, 2.3) + st('M8.5 7.2V12.2H13.5L15.8 17.6') + st('M8.5 9.6H13') + st('M5.6 10.2A5 5 0 1 0 12.6 16.8', 2),
+  seizure: fl('M12.2 1.5L4 11.4H8.8L7.2 18.5L16 8.4H11.2Z'),
+  diabetes: fl('M10 1.6C8 4.6 3.8 9.4 3.8 12.6A6.2 6.2 0 0 0 16.2 12.6C16.2 9.4 12 4.6 10 1.6Z') + st('M10 9.6V15.6M7 12.6H13', 1.8, BG),
+  photo: fl('M2 6.5H6.3L7.8 4H12.2L13.7 6.5H18V16.5H2Z') + dot(10, 11.2, 3.3, BG) + dot(10, 11.2, 1.5) + slash(),
+  toilet: fl('M3.5 2H7.5V10.2H3.5Z') + fl('M3.5 11.5H17C17 14.8 14.6 16.6 12 17L12.5 19H6L6.5 16.6C4.6 15.6 3.5 13.8 3.5 11.5Z') + st('M9.6 9.4H16.4', 1.6),
+  flight: st('M10.5 2.6H4V17.4H10.5') + st('M9 10H18M14.6 6.4L18 10L14.6 13.6'),
+  hearing: fl('M10.5 1.8C6.6 1.8 4 4.8 4 8.4C4 11 5.4 12.4 6.2 14C6.9 15.4 6.8 18.2 9.8 18.2C12.6 18.2 13.2 16 13.6 14.6C14.2 12.6 16.4 11.6 16.4 8C16.4 4.8 14 1.8 10.5 1.8Z')
+    + st('M7.4 8.2A3 3 0 0 1 13.4 8.2C13.4 10 11.4 10.4 10.8 12.2', 1.7, BG) + slash('M2.6 17.8L17.6 2.4', 1.5),
+  vision: st('M1.8 10C5 4.5 15 4.5 18.2 10C15 15.5 5 15.5 1.8 10Z', 2) + dot(10, 10, 2.7) + slash(),
+  nonverbal: fl('M2.5 3H17.5V13.4H10.5L6 17.8V13.4H2.5Z') + st('M7.2 5.4L12.8 11M12.8 5.4L7.2 11', 2, BG),
+};
+// Bonequinhos with a pose of their own; every other stamp is the little person standing next to its symbol.
+const fig = dot(4.6, 5, 2.8) + fl('M1 19V13A3.6 3.6 0 0 1 8.2 13V19Z');
+const POSE = {
+  neuro: dot(10, 4, 3.1) + st('M10 13.6C7.8 9.6 2.4 9.6 2.4 13.6C2.4 17.6 7.8 17.6 10 13.6C12.2 9.6 17.6 9.6 17.6 13.6C17.6 17.6 12.2 17.6 10 13.6Z', 2.4),
+  mobility: SYM.mobility,
+  flight: dot(12.6, 3.6, 2.5) + st('M11.4 7.4L9.6 12.2L13.2 14.6L12.2 18.6M9.6 12.2L6.8 15.2L3 15.2M7 9.4L11.4 7.6L15.4 10.4', 2),
+  vision: dot(7.5, 3.6, 2.6) + st('M7.5 7.2V13L5 18.6M7.5 13L10 18.6M7.5 9L11.4 11.2') + st('M11.4 11.2L17.6 18.6', 1.6),
+};
+const FAMILIES = { bonecos: 'Bonequinhos', camisa: 'Bonequinho + símbolo', simbolos: 'Símbolos' };
+// The catalogue, in print-priority order. Growing it is one line here plus one drawing in SYM.
+const CAT = Object.entries({ neuro: 'Neurodivergência', allergy: 'Alergia / restrição alimentar', medical: 'Condição médica', mobility: 'Mobilidade / apoio físico',
+  seizure: 'Epilepsia / convulsões', diabetes: 'Diabetes', photo: 'Sem fotos', toilet: 'Ajuda no banheiro / fralda',
+  flight: 'Tende a sair da sala', hearing: 'Deficiência auditiva', vision: 'Deficiência visual', nonverbal: 'Comunicação não verbal',
+}).map(([key, name]) => ({ key, name, simbolos: SYM[key],
+  bonecos: POSE[key] || fig + `<g transform="translate(8.3 3.6) scale(.58)" style="--k:1.3">${SYM[key]}</g>`,
+  // the same little person wearing the symbol on its shirt, knocked out in white
+  camisa: dot(10, 2.7, 2.3) + fl('M1.2 9.2A3 3 0 0 1 4.2 6.2H15.8A3 3 0 0 1 18.8 9.2V19.8H1.2Z') + `<g transform="translate(3.8 6.8) scale(.62)" style="color:#fff;--bg:#000;--k:1.5">${SYM[key]}</g>` }));
+const OLD4 = CAT.slice(0, 4);   // layouts A, B and C stay on the first four
+const active = () => CAT.slice(0, state.cat === 'all' ? CAT.length : +state.cat);
+const has = (kid, s) => kid.stamps === 'all' || kid.stamps.includes(s.key);
 
-function stamp(kind, style, empty) {
-  const W = 'stroke="#000" stroke-width="1.4" fill="none"';
-  // C1-C3: a solid white dot, because a dithered grey is not reliable on thermal stock.
-  if (empty && state.v !== 'C') return `<svg class="stamp" viewBox="0 0 20 20"><circle cx="10" cy="10" r="1.6" fill="#fff"/></svg>`;
-  if (empty) return `<svg class="stamp" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2" fill="#fff" opacity=".35"/></svg>`;
-  const inner = {
-    shapes: { neuro: '<circle cx="10" cy="10" r="8" fill="#000"/>', allergy: '<path d="M10 2 L18.5 17.5 H1.5Z" fill="#000"/>',
-      medical: '<rect x="2.5" y="2.5" width="15" height="15" fill="#000"/>', mobility: '<path d="M10 1 L19 10 L10 19 L1 10Z" fill="#000"/>' },
-    letters: Object.fromEntries(STAMPS.map(k => [k, `<rect x="1" y="1" width="18" height="18" rx="3" fill="#000"/><text x="10" y="15" text-anchor="middle" font-family="Arial" font-weight="700" font-size="14" fill="#fff">${{ neuro: 'N', allergy: 'A', medical: 'S', mobility: 'M' }[k]}</text>`])),
-    pictos: {
-      neuro: `<path ${W} stroke-width="2" d="M10 10 C7 5 2 5 2 10 C2 15 7 15 10 10 C13 5 18 5 18 10 C18 15 13 15 10 10Z"/>`,
-      allergy: `<circle cx="10" cy="10" r="8" ${W} stroke-width="2"/><path d="M4.5 4.5 L15.5 15.5" ${W} stroke-width="2"/>`,
-      medical: '<path d="M7 2 H13 V7 H18 V13 H13 V18 H7 V13 H2 V7 H7Z" fill="#000"/>',
-      mobility: `<circle cx="10" cy="3.5" r="2" fill="#000"/><path ${W} stroke-width="2" d="M10 6 V12 H15 L16.5 17 M10 9 H14"/><path ${W} stroke-width="2" d="M7 9.5 A5 5 0 1 0 13 16.5"/>`,
-    },
-  }[style][kind];
-  const inBand = state.v[0] === 'C';
-  const svg = inBand ? `<rect width="20" height="20" rx="3" fill="#fff"/>${inner}` : inner;
-  return `<svg class="stamp" viewBox="0 0 20 20"><title>${STAMP_NAMES[kind]}</title>${svg}</svg>`;
+const params = new URLSearchParams(location.search);
+const state = { v: params.get('v') || 'A', stock: params.get('stock') || '29', stamps: params.get('stamps') in FAMILIES ? params.get('stamps') : 'bonecos',
+  cat: params.get('cat') || '4', case: params.get('case') || 'tipico', view: params.get('view') || 'tags', zoom: params.get('zoom') || '2.5' };
+
+// tile = a white rounded tile for the black band or block; without it the icon prints black on the label.
+function stamp(s, tile, fam = state.stamps) {
+  const inner = tile ? `<rect width="20" height="20" rx="3" fill="#fff"/><g transform="translate(1.4 1.4) scale(.86)">${s[fam]}</g>` : s[fam];
+  return `<svg class="stamp" viewBox="0 0 20 20" style="color:#000;--bg:#fff"><title>${s.name}</title>${inner}</svg>`;
+}
+const emptyDot = `<svg class="stamp" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2" fill="#fff" opacity=".35"/></svg>`;
+// "+N": more stamps than the area holds at the smallest readable size. Outline only, so it never reads as a stamp.
+const plus = n => `<svg class="stamp" viewBox="0 0 20 20"><title>mais ${n}: abra o app</title><rect x="1" y="1" width="18" height="18" rx="3" fill="none" stroke="#fff" stroke-width="1.6"/><text x="10" y="14.2" text-anchor="middle" font-family="Arial" font-weight="700" font-size="${n > 9 ? 9 : 11.5}" fill="#fff">+${n}</text></svg>`;
+
+// Stamp area per layout and stock, in mm: [width, height, biggest stamp, gap].
+const AREA = { C1: { 29: [7, 26, 7, .8], 62: [11.5, 57, 10, 1.2] }, C2: { 29: [44, 4.8, 4.8, .8], 62: [42, 10, 9, 1.2] }, C3: { 29: [17, 15, 8, .8], 62: [22.5, 41, 11, 1.2] } };
+const MIN_STAMP = 4.2;   // mm; below this the icons stop reading at arm's length
+// Biggest square cell that fits n stamps in the area; past the minimum size, the last cell becomes "+N".
+function pack(n) {
+  const [W, H, max, g] = AREA[state.v][state.stock];
+  const best = n => { let b = { size: 0 };
+    for (let cols = 1; cols <= n; cols++) { const rows = Math.ceil(n / cols), size = Math.min(max, (W - (cols - 1) * g) / cols, (H - (rows - 1) * g) / rows); if (size > b.size) b = { size, cols }; }
+    return b; };
+  let cells = n, b = best(n);
+  while (cells > 1 && b.size < MIN_STAMP) b = best(--cells);
+  return { size: Math.floor(b.size * 10) / 10, cols: b.cols, g, shown: cells < n ? cells - 1 : n };
+}
+function slots(kid) {
+  const mine = active().filter(s => has(kid, s));
+  if (!mine.length) return '';
+  const p = pack(mine.length), more = mine.length - p.shown;
+  return `<div class="slots" data-shown="${p.shown}/${mine.length}@${p.size}" style="--sz:${p.size}mm;--cols:${p.cols};--g:${p.g}mm">${mine.slice(0, p.shown).map(s => stamp(s, true)).join('')}${more ? plus(more) : ''}</div>`;
+}
+function iconSheet() {
+  const real = (f, sz) => `<div class="real" style="--sz:${sz}mm">${CAT.map(s => stamp(s, true, f)).join('')}${plus(4)}<span>&nbsp;${String(sz).replace('.', ',')} mm</span></div>`;
+  return Object.entries(FAMILIES).map(([f, label]) => `<div class="cs"><h3>${label} (stamps=${f})</h3>
+    <div class="big">${CAT.map(s => `<figure>${stamp(s, true, f)}<figcaption>${s.name}</figcaption></figure>`).join('')}</div>${real(f, 5.6)}${real(f, 4.3)}</div>`).join('');
 }
 
 // Fake QR at the real size: finder squares plus seeded noise. Layout only, not scannable.
@@ -299,8 +367,8 @@ function childTag(c, kid) {
   if (state.v.length > 1) return childTagX(c, kid);
   const v = state.v;
   const meta = v === 'C' ? `<b class="num">${c.call}</b>${c.guardian} · ${c.date}` : `Responsável: ${c.guardian} · ${c.date}`;
-  const stampsInline = v === 'C' ? '' : kid.stamps.map(s => stamp(s, state.stamps)).join('');
-  const band = v === 'C' ? `<div class="band">${STAMPS.map(s => stamp(s, state.stamps, !kid.stamps.includes(s))).join('')}</div>` : '';
+  const stampsInline = v === 'C' ? '' : OLD4.filter(s => has(kid, s)).map(s => stamp(s)).join('');
+  const band = v === 'C' ? `<div class="band">${OLD4.map(s => has(kid, s) ? stamp(s, true) : emptyDot).join('')}</div>` : '';
   return `<div class="tag v${v}">${band}
     <div class="name fit" data-max="${nameMax()}" data-min="3.2">${kid.name}</div>
     ${v === 'C' ? '' : call(c.call)}
@@ -328,7 +396,6 @@ function guardianTag(c) {
 
 
 // ---- C1 / C2 / C3 ----
-const slots = kid => STAMPS.map(s => stamp(s, state.stamps, !kid.stamps.includes(s))).join('');
 const Q = seed => `<div class="q">${qr(seed)}</div>`;
 const lock = (c, tail = '') => `<span class="lock"><b>${c.call}</b> · ${c.guardian}${tail}</span>`;
 const sz = (a, b) => state.stock === '62' ? b : a;
@@ -339,11 +406,11 @@ function childTagX(c, kid) {
     <div class="name fit" data-rule="two" data-max="${sz(7.5, 12)}" data-floor="${sz(5, 8)}" data-min="3.4">${kid.name}</div>
     <div class="who">Resp. ${c.guardian} · ${c.date}</div>${note}
     <div class="side chk"><div class="num"><small>Nº</small>${c.call}</div>${code}</div></div>`;
-  if (v === 'C2') return `<div class="tag cx vC2 kid"><div class="band">${lock(c, ' · ' + c.date)}<span class="slots">${slots(kid)}</span></div>
+  if (v === 'C2') return `<div class="tag cx vC2 kid"><div class="band">${lock(c, ' · ' + c.date)}${slots(kid)}</div>
     <div class="name fit" data-rule="drop" data-max="${sz(7, 15)}" data-floor="${sz(5, 6)}" data-min="3.4">${kid.name}</div>
     <div class="foot chk">${note}</div>${code}</div>`;
   const [f, ...rest] = kid.name.split(' ');
-  return `<div class="tag cx vC3 kid"><div class="block chk"><div class="num fit" data-max="${sz(9.5, 13.5)}" data-min="5">${c.call}</div><div class="slots">${slots(kid)}</div></div>
+  return `<div class="tag cx vC3 kid"><div class="block chk"><div class="num fit" data-max="${sz(9.5, 13.5)}" data-min="5">${c.call}</div>${slots(kid)}</div>
     <div class="first fit" data-max="${sz(10, 17)}" data-min="5">${f}</div>
     <div class="rest fit" data-max="${sz(4.2, 7)}" data-min="2.6">${rest.join(' ')}</div>
     <div class="foot chk">${note}<div class="who">Resp. ${c.guardian} · ${c.date}</div></div>${code}</div>`;
@@ -427,15 +494,16 @@ function render() {
   const sheet = document.getElementById('sheet');
   sheet.className = 'sheet s' + state.stock;
   sheet.style.setProperty('--zoom', state.zoom);
-  sheet.innerHTML = c.kids.map((k, i) => `<div class="slot"><h3>Etiqueta da criança ${i + 1}/${c.kids.length}</h3>${childTag(c, k)}</div>`).join('')
+  sheet.innerHTML = state.view === 'icons' ? iconSheet() : c.kids.map((k, i) => `<div class="slot"><h3>Etiqueta da criança ${i + 1}/${c.kids.length}</h3>${childTag(c, k)}</div>`).join('')
     + `<div class="slot"><h3>Etiqueta do responsável</h3>${guardianTag(c)}</div>`;
   document.getElementById('page-size').textContent = `@page { size: ${state.stock === '29' ? '90mm 29mm' : '100mm 62mm'}; margin: 0; }`;
-  document.getElementById('legend').innerHTML = STAMPS.map(s => `<span>${stamp(s, state.stamps).replace('class="stamp"', 'class="stamp" style="width:6mm;height:6mm"')} ${STAMP_NAMES[s]}</span>`).join('');
+  document.getElementById('legend').innerHTML = (state.v.length > 1 ? active() : OLD4).map(s => `<span>${stamp(s)} ${s.name}</span>`).join('');
   document.getElementById('vlabel').textContent = `${state.v} (${VARIANTS[state.v]})`;
   const over = fit();
+  const shown = [...document.querySelectorAll('.slots')].map(e => e.dataset.shown + 'mm').join(', ');
   const sizes = [...document.querySelectorAll('.fit')].map(e => e.dataset.size + 'mm').join(', ');
   document.getElementById('state').textContent =
-    `layout=${state.v} stock=${state.stock === '29' ? '90x29mm' : '100x62mm'} stamps=${state.stamps} case=${state.case} · tags=${c.kids.length + 1} · name sizes=[${sizes}] · overflowing boxes=${over}`;
+    `layout=${state.v} stock=${state.stock === '29' ? '90x29mm' : '100x62mm'} stamps=${state.stamps} cat=${state.cat} case=${state.case} · stamps shown=[${shown}] · tags=${c.kids.length + 1} · name sizes=[${sizes}] · overflowing boxes=${over}`;
 }
 
 document.querySelector('.controls').addEventListener('input', e => { if (e.target.name) { state[e.target.name] = e.target.value; render(); } });

@@ -209,7 +209,7 @@ export function personaUserKind({ key }: PlanKeyInput): string {
   return `persona-user:${key}`;
 }
 
-function poolUserKind({ key }: PlanKeyInput): string {
+export function poolUserKind({ key }: PlanKeyInput): string {
   return `pool-user:${key}`;
 }
 

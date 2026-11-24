@@ -13,6 +13,10 @@ import type {
   ReleaseVerificationCodeDeliveryClaimInput,
 } from '../../domain/contracts/infrastructure/invitation-verification-code.repository';
 import type { VerificationCodeState } from '../../domain/entities/invitation-verification-code';
+import {
+  type StoredRedemption,
+  storedRedemptionSchema,
+} from '../../domain/stored-redemption';
 import { getClient } from './helpers';
 import type { AnyDrizzleDb } from './types';
 
@@ -157,7 +161,7 @@ export class DrizzleInvitationVerificationCodeRepository
   async findRedemptionOutcome({
     churchInvitationId,
     redemptionIdempotencyKey,
-  }: FindRedemptionOutcomeInput): Promise<unknown> {
+  }: FindRedemptionOutcomeInput): Promise<StoredRedemption | null> {
     const [row] = await this.db
       .select({ outcome: invitationVerificationCode.redemptionOutcome })
       .from(invitationVerificationCode)
@@ -171,7 +175,7 @@ export class DrizzleInvitationVerificationCodeRepository
         ),
       )
       .limit(1);
-    return row?.outcome ?? null;
+    return row?.outcome ? storedRedemptionSchema.parse(row.outcome) : null;
   }
 
   async recordFailedAttemptIfAllowed({

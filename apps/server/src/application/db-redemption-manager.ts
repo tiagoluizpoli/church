@@ -55,6 +55,7 @@ import { PendingMinistryInvitationNotFoundError } from '../domain/errors/pending
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 import { maskEmail } from '../domain/services/mask-email';
 import { reviewTokenFor } from '../domain/services/redemption-review-token';
+import type { StoredRedemption } from '../domain/stored-redemption';
 
 interface DbRedemptionManagerDependencies {
   churchRepository: ChurchRepository;
@@ -95,14 +96,6 @@ interface ReplayCommittedInput {
   code: string;
   idempotencyKey: string;
   now: Date;
-}
-
-/** What a committed redeem persists (never the session) to replay on a same-key retry. */
-interface StoredRedemption {
-  email: string;
-  outcome:
-    | Omit<FullRedemptionSuccess, 'sessionCookie'>
-    | ChurchOnlyRedemptionOutcome;
 }
 
 interface ClassifyIdentityFailureInput {
@@ -371,7 +364,7 @@ export class DbRedemptionManager implements RedemptionManager {
           outcome: stored,
           tx,
         });
-        return { ...outcome, sessionCookie } as RedeemNewUserOutcome;
+        return { ...outcome, sessionCookie };
       });
     } catch (error) {
       if (error instanceof InvitationNotPendingError) {
@@ -422,12 +415,10 @@ export class DbRedemptionManager implements RedemptionManager {
     idempotencyKey,
     now,
   }: ReplayCommittedInput): Promise<RedeemNewUserOutcome | null> {
-    const stored = (await this.verificationCodeRepository.findRedemptionOutcome(
-      {
-        churchInvitationId,
-        redemptionIdempotencyKey: idempotencyKey,
-      },
-    )) as StoredRedemption | null;
+    const stored = await this.verificationCodeRepository.findRedemptionOutcome({
+      churchInvitationId,
+      redemptionIdempotencyKey: idempotencyKey,
+    });
     if (!stored) return null;
     try {
       await this.invitationVerificationCodeManager.verify({
@@ -447,7 +438,7 @@ export class DbRedemptionManager implements RedemptionManager {
     });
     if (!sessionCookie)
       return { kind: 'terminal-failure', reason: 'VERIFICATION_FAILED' };
-    return { ...stored.outcome, sessionCookie } as RedeemNewUserOutcome;
+    return { ...stored.outcome, sessionCookie };
   }
 
   /**

@@ -133,7 +133,11 @@ export const invitationVerificationCode = pgTable(
     consumedAt: timestamp('consumed_at', { withTimezone: true, mode: 'date' }),
     redemptionIdempotencyKey: text('redemption_idempotency_key'),
     /** The committed redeem result (sans session), replayed to a same-key retry. */
-    redemptionOutcome: jsonb('redemption_outcome').$type<unknown>(),
+    /** apps/server parses it on read (storedRedemptionSchema). */
+    redemptionOutcome: jsonb('redemption_outcome').$type<{
+      email: string;
+      outcome: Record<string, unknown>;
+    }>(),
     lastSentAt: timestamp('last_sent_at', {
       withTimezone: true,
       mode: 'date',

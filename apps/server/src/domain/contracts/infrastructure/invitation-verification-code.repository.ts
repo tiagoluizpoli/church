@@ -1,5 +1,6 @@
 import type { ChurchInvitationId } from '../../branded-ids';
 import type { VerificationCodeState } from '../../entities/invitation-verification-code';
+import type { StoredRedemption } from '../../stored-redemption';
 import type { TransactionContext } from './transaction-context';
 export interface ClaimVerificationCodeDeliveryInput {
   churchInvitationId: ChurchInvitationId;
@@ -35,7 +36,7 @@ export interface RecordFailedVerificationAttemptIfAllowedInput {
 export interface RecordRedemptionOutcomeInput {
   churchInvitationId: ChurchInvitationId;
   redemptionIdempotencyKey: string;
-  outcome: unknown;
+  outcome: StoredRedemption;
   tx: TransactionContext;
 }
 
@@ -48,7 +49,9 @@ export interface InvitationVerificationCodeRepository {
   /** Written in the redeem transaction, so it exists only if the redeem committed. */
   recordRedemptionOutcome(input: RecordRedemptionOutcomeInput): Promise<void>;
   /** The outcome stored under this exact key, else null. */
-  findRedemptionOutcome(input: FindRedemptionOutcomeInput): Promise<unknown>;
+  findRedemptionOutcome(
+    input: FindRedemptionOutcomeInput,
+  ): Promise<StoredRedemption | null>;
   find(input: FindVerificationCodeInput): Promise<VerificationCodeState | null>;
   claimDelivery(input: ClaimVerificationCodeDeliveryInput): Promise<boolean>;
   releaseDeliveryClaim(

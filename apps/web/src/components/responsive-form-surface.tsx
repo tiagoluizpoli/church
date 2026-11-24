@@ -32,8 +32,13 @@ export interface ResponsiveFormSurfaceProps {
   /** Optional bounded review layout with a fixed summary and actions. */
   reviewSummary?: ReactNode;
   reviewBodyLabel?: string;
+  /** With `reviewSummary`, a near-full-width review. Without it, a wide
+   * form dialog whose body scrolls between a fixed header and footer. */
   wide?: boolean;
   closeDisabled?: boolean;
+  /** The close (×) button's name; defaults to the shell's "Close". */
+  closeLabel?: string;
+  'data-testid'?: string;
   children: ReactNode;
 }
 
@@ -51,11 +56,14 @@ export function ResponsiveFormSurface({
   reviewBodyLabel,
   wide = false,
   closeDisabled = false,
+  closeLabel,
+  'data-testid': dataTestId,
   children,
 }: ResponsiveFormSurfaceProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)');
   // A review opens on its title, not with a focus ring on its first control.
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const wideForm = wide && !reviewSummary;
 
   if (isDesktop) {
     return (
@@ -63,18 +71,26 @@ export function ResponsiveFormSurface({
         <DialogContent
           initialFocus={reviewSummary ? titleRef : undefined}
           closeDisabled={closeDisabled}
+          closeLabel={closeLabel}
+          data-testid={dataTestId}
           className={
             reviewSummary
               ? wide
                 ? // Top-anchored with a lane below for toasts (bottom-right).
                   'top-6 flex h-[calc(100dvh-8rem)] max-h-[calc(100dvh-8rem)] translate-y-0 flex-col gap-0 p-0 sm:max-w-[min(96vw,1600px)]'
                 : 'flex max-h-[85dvh] flex-col gap-0 p-0 sm:max-w-4xl'
-              : undefined
+              : wideForm
+                ? 'flex max-h-[85dvh] flex-col gap-0 p-0 sm:max-w-[min(64rem,calc(100%-2rem))]'
+                : undefined
           }
         >
           <DialogHeader
             className={
-              reviewSummary ? 'shrink-0 px-6 pt-5 pr-14 pb-0' : undefined
+              reviewSummary
+                ? 'shrink-0 px-6 pt-5 pr-14 pb-0'
+                : wideForm
+                  ? 'shrink-0 px-6 pt-5 pr-14 pb-4'
+                  : undefined
             }
           >
             {/* A review shares one line between title and description. */}
@@ -115,12 +131,18 @@ export function ResponsiveFormSurface({
             >
               {children}
             </section>
+          ) : wideForm ? (
+            <div className="min-h-0 flex-1 overflow-y-auto border-y px-6 py-4">
+              {children}
+            </div>
           ) : (
             children
           )}
           {footer ? (
             <DialogFooter
-              className={reviewSummary ? 'shrink-0 px-6 py-4' : undefined}
+              className={
+                reviewSummary || wideForm ? 'shrink-0 px-6 py-4' : undefined
+              }
             >
               {footer}
             </DialogFooter>
@@ -133,6 +155,7 @@ export function ResponsiveFormSurface({
   return (
     <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
       <DrawerContent
+        data-testid={dataTestId}
         className={
           reviewSummary
             ? // Stops below the toast band (top: 80px), so toasts never cover it.
@@ -142,7 +165,7 @@ export function ResponsiveFormSurface({
       >
         <DrawerClose
           disabled={closeDisabled}
-          aria-label={m.shell_close()}
+          aria-label={closeLabel ?? m.shell_close()}
           className="radius-icon absolute top-2 right-2 flex h-11 w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >
           <X className="h-5 w-5" />

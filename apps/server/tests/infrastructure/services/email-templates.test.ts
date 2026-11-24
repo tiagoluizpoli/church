@@ -1,3 +1,4 @@
+import { contrastOnWhite } from '@church/domain-rules/email-accent';
 import { m } from '@church/i18n/messages';
 import type { CalendarDay, Instant } from '@church/time';
 import { describe, expect, it } from 'vitest';
@@ -12,7 +13,6 @@ import type {
   TransferDigestEmail,
   TransferMinistryDigestEmail,
 } from '@/domain/contracts/infrastructure/email-sender';
-import { contrastOnWhite } from '@/domain/services/email-accent';
 import { escapeHtml } from '@/infrastructure/services/email-layout';
 import { formatShiftLine } from '@/infrastructure/services/email-shift-line';
 import {
@@ -1034,7 +1034,7 @@ describe('prepareEmail — platform layout (Faixa)', () => {
     const { html } = prepareWith({ ...digest, churchLogoUrl: logo });
 
     expect(html).toContain(
-      `<img src="${logo}" alt="Grace" style="display:block;margin:0 auto 12px;border:0;max-height:56px;max-width:200px">`,
+      `<img src="${logo}" alt="Grace" style="display:block;margin:0 auto 12px;border:0;max-height:56px;max-width:200px;border-radius:8px">`,
     );
     expect(html).not.toContain(platform.logoUrl);
   });

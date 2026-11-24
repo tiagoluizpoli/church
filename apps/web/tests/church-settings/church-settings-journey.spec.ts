@@ -69,10 +69,10 @@ test.describe('Church Settings', () => {
       mimeType: 'image/png',
       buffer: await logoPng({ page }),
     });
-    // Already 4:3: the framing dialog offers to send it as it is.
+    // Already 4:3: the framing dialog's default frame is the whole image.
     await page
       .getByRole('button', {
-        name: m.church_settings_logo_crop_original({}, PT),
+        name: m.church_settings_logo_crop_confirm({}, PT),
       })
       .click();
     await expect(

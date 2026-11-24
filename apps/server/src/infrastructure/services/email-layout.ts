@@ -1,12 +1,17 @@
+import {
+  EMAIL_INK,
+  EMAIL_LOGO_MAX_HEIGHT,
+  EMAIL_LOGO_MAX_WIDTH,
+  EMAIL_LOGO_RADIUS,
+  EMAIL_RULE_WIDTH,
+  emailAccentRule,
+  emailAccentTint,
+} from '@church/domain-rules/email-accent';
 import { m } from '@church/i18n/messages';
 import type {
   EmailDuration,
   EmailLocale,
 } from '../../domain/contracts/infrastructure/email-sender';
-import {
-  emailAccentRule,
-  emailAccentTint,
-} from '../../domain/services/email-accent';
 
 /** One button; the layout also prints `url` as visible text. Callers compose
  * `url` from the configured web origin (escaping is not URL construction). */
@@ -75,14 +80,12 @@ export interface RenderEmailLayoutInput {
 
 const FONT_STACK =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
-const INK = '#18181b';
+const INK = EMAIL_INK;
 const BODY = '#3f3f46';
 const MUTED = '#71717a';
 const LINE = '#e4e4e7';
 const CANVAS = '#f8f8f7';
 const PANEL = '#fafafa';
-const LOGO_MAX_HEIGHT = 56;
-const LOGO_MAX_WIDTH = 200;
 
 /**
  * HTML and plain text from the same content (variant C · Faixa); the text
@@ -100,7 +103,7 @@ export function renderEmailLayout({
   const paragraph = (value: string) =>
     `<p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:${BODY}">${escapeHtml(value)}</p>`;
   const logo = logoUrl
-    ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(displayName)}" style="display:block;margin:0 auto 12px;border:0;max-height:${LOGO_MAX_HEIGHT}px;max-width:${LOGO_MAX_WIDTH}px">`
+    ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(displayName)}" style="display:block;margin:0 auto 12px;border:0;max-height:${EMAIL_LOGO_MAX_HEIGHT}px;max-width:${EMAIL_LOGO_MAX_WIDTH}px;border-radius:${EMAIL_LOGO_RADIUS}px">`
     : '';
   const nameStyle = logoUrl
     ? 'font-size:14px;font-weight:600'
@@ -133,7 +136,7 @@ export function renderEmailLayout({
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${CANVAS}" style="background:${CANVAS}"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;font-family:${FONT_STACK}">
-<tr><td align="center" bgcolor="${tint}" style="background:${tint};border-top:6px solid ${rule};border-radius:10px 10px 0 0;padding:28px 24px;text-align:center">${logo}<div style="${nameStyle};color:${INK};line-height:1.3">${escapeHtml(displayName)}</div></td></tr>
+<tr><td align="center" bgcolor="${tint}" style="background:${tint};border-top:${EMAIL_RULE_WIDTH}px solid ${rule};border-radius:10px 10px 0 0;padding:28px 24px;text-align:center">${logo}<div style="${nameStyle};color:${INK};line-height:1.3">${escapeHtml(displayName)}</div></td></tr>
 <tr><td bgcolor="#ffffff" style="background:#ffffff;border:1px solid ${LINE};border-top:0;border-radius:0 0 10px 10px;padding:32px 32px 28px">
 <p style="margin:0 0 6px;font-size:14px;line-height:1.5;color:${MUTED};text-align:center">${escapeHtml(greeting)}</p>
 <h1 style="margin:0 0 24px;font-size:24px;line-height:1.3;font-weight:800;color:${INK};text-align:center">${escapeHtml(heading)}</h1>

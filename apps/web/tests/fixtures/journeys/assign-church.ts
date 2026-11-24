@@ -35,12 +35,12 @@ export const ASSIGN_NAMED_ROW_SCHEMA = z.object({
 
 export const ASSIGN_POOL_VOLUNTEER_SCHEMA = z.object({
   userId: z.string().min(1),
+  email: z.string().min(1),
   name: z.string().min(1),
   volunteerId: z.string().min(1),
 });
 
 export const ASSIGN_PERSONA_SCHEMA = ASSIGN_POOL_VOLUNTEER_SCHEMA.extend({
-  email: z.string().min(1),
   password: z.string().min(1),
 });
 

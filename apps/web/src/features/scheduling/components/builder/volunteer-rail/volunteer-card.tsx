@@ -135,6 +135,8 @@ function useIsTruncated(): UseIsTruncatedResult {
 
 interface TruncatedLineProps {
   text: string;
+  /** What the tooltip shows when `text` is not the whole story. */
+  tooltip?: string;
   className: string;
   testId?: string;
 }
@@ -144,7 +146,12 @@ interface TruncatedLineProps {
  * not draggable — so hovering or focusing a clipped line is how a leader reads
  * the full text without leaving the page.
  */
-function TruncatedLine({ text, className, testId }: TruncatedLineProps) {
+function TruncatedLine({
+  text,
+  tooltip = text,
+  className,
+  testId,
+}: TruncatedLineProps) {
   const { measureRef, truncated } = useIsTruncated();
   if (!truncated) {
     return (
@@ -178,7 +185,7 @@ function TruncatedLine({ text, className, testId }: TruncatedLineProps) {
           </button>
         }
       />
-      <TooltipContent className={tooltipClassName}>{text}</TooltipContent>
+      <TooltipContent className={tooltipClassName}>{tooltip}</TooltipContent>
     </Tooltip>
   );
 }
@@ -215,6 +222,8 @@ function WorkloadLine({ workloadCount }: WorkloadLineProps) {
  */
 interface VolunteerCardProps {
   volunteer: VolunteerPoolItem;
+  /** The name to show when the full one would read like a neighbour's once clipped. */
+  displayName?: string;
   dragId?: string;
   isSelected?: boolean;
   isIdeal?: boolean;
@@ -266,6 +275,7 @@ interface VolunteerCardPresentationProps extends VolunteerCardProps {
 
 const VolunteerCardPresentation = memo(function VolunteerCardPresentation({
   volunteer,
+  displayName,
   isSelected = false,
   isIdeal = false,
   isOverlay = false,
@@ -372,7 +382,8 @@ const VolunteerCardPresentation = memo(function VolunteerCardPresentation({
         <div className="flex items-center gap-1.5">
           <div className="min-w-0">
             <TruncatedLine
-              text={volunteer.volunteerName}
+              text={displayName ?? volunteer.volunteerName}
+              tooltip={volunteer.volunteerName}
               className="font-medium text-sm"
             />
           </div>

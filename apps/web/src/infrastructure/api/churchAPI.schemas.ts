@@ -9136,15 +9136,6 @@ export type ListPublicChurchEvents429 = {
   message: string;
 };
 
-export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState];
-
-
-export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = {
-  pending: 'pending',
-  confirmed: 'confirmed',
-  mixed: 'mixed',
-} as const;
-
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus];
 
 
@@ -9184,7 +9175,6 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItem = {
   ministryName: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   eventStart: string;
-  aggregateResponseState: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState;
   hasPendingResponse: boolean;
   assignments: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem[];
 };

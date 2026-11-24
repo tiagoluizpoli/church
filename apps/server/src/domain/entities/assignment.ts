@@ -15,7 +15,6 @@ import type {
 export const ASSIGNMENT_STATUS_OPTIONS = [
   'draft',
   'pending',
-  'confirmed',
   'cancelled',
 ] as const;
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUS_OPTIONS)[number];

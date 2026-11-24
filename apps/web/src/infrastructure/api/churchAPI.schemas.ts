@@ -4212,7 +4212,6 @@ export type GetScheduleBuilderData200AssignmentsItemStatus = typeof GetScheduleB
 export const GetScheduleBuilderData200AssignmentsItemStatus = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -6553,7 +6552,6 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignm
 export const GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItemStatus = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -6978,7 +6976,6 @@ export type CreateParticipationAssignment201AssignmentStatus = typeof CreatePart
 export const CreateParticipationAssignment201AssignmentStatus = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -7056,7 +7053,6 @@ export type MoveParticipationAssignment200Status = typeof MoveParticipationAssig
 export const MoveParticipationAssignment200Status = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -7096,7 +7092,6 @@ export type ReassignParticipationAssignment200Status = typeof ReassignParticipat
 export const ReassignParticipationAssignment200Status = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -9141,7 +9136,6 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemS
 
 export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = {
   pending: 'pending',
-  confirmed: 'confirmed',
 } as const;
 
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState];
@@ -9184,7 +9178,6 @@ export type GetVolunteerDashboard200NextAssignmentStatus = typeof GetVolunteerDa
 
 export const GetVolunteerDashboard200NextAssignmentStatus = {
   pending: 'pending',
-  confirmed: 'confirmed',
 } as const;
 
 export type GetVolunteerDashboard200NextAssignmentTimingState = typeof GetVolunteerDashboard200NextAssignmentTimingState[keyof typeof GetVolunteerDashboard200NextAssignmentTimingState];
@@ -9944,7 +9937,6 @@ export type GetPublishedVolunteerSchedule200AssignmentsItemStatus = typeof GetPu
 
 export const GetPublishedVolunteerSchedule200AssignmentsItemStatus = {
   pending: 'pending',
-  confirmed: 'confirmed',
 } as const;
 
 export type GetPublishedVolunteerSchedule200AssignmentsItem = {
@@ -9995,7 +9987,6 @@ export type GetPublishedVolunteerSchedule200NextStatus = typeof GetPublishedVolu
 
 export const GetPublishedVolunteerSchedule200NextStatus = {
   pending: 'pending',
-  confirmed: 'confirmed',
 } as const;
 
 /**

@@ -117,7 +117,7 @@ const dashboardAssignmentItemSchema = z.object({
   sectorName: z.string(),
   startTime: instantSchema,
   endTime: instantSchema,
-  status: z.enum(['pending', 'confirmed']),
+  status: z.enum(['pending']),
   timingState: z.enum(['in_progress', 'upcoming']),
 });
 type DashboardAssignmentItemResponse = z.infer<
@@ -183,7 +183,7 @@ const volunteerScheduleAssignmentSchema = z.object({
   sectorName: z.string(),
   roleId: z.string(),
   roleName: z.string(),
-  status: z.enum(['pending', 'confirmed']),
+  status: z.enum(['pending']),
   swapRequested: z.boolean(),
 });
 

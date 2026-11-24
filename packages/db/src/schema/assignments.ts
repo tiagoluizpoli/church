@@ -64,10 +64,10 @@ export const assignment = pgTable(
     // (or substituted in) after the same Shift was cancelled for them.
     uniqueIndex('assignment_shift_volunteer_idx')
       .on(table.shiftId, table.volunteerId)
-      .where(sql`${table.status} IN ('draft', 'pending', 'confirmed')`),
+      .where(sql`${table.status} IN ('draft', 'pending')`),
     check(
       'assignment_status_check',
-      sql`${table.status} IN ('draft', 'pending', 'confirmed', 'cancelled')`,
+      sql`${table.status} IN ('draft', 'pending', 'cancelled')`,
     ),
   ],
 );

@@ -49,6 +49,7 @@ import {
 import {
   type ChurchSettingsForm,
   clearEditedErrors,
+  paintableAccent,
   toChurchSettingsForm,
   toSaveBody,
 } from '@/features/church-settings/church-settings-form';
@@ -533,7 +534,12 @@ function ChurchSettingsEditor({ saved }: ChurchSettingsEditorProps) {
               onToggle={() => toggle('info')}
             >
               <div className="grid gap-6 md:grid-cols-[13rem_minmax(0,1fr)]">
-                <LogoCard logoUrl={saved.logoUrl} logoKey={saved.logoKey} />
+                <LogoCard
+                  logoUrl={saved.logoUrl}
+                  logoKey={saved.logoKey}
+                  churchName={form.name.trim()}
+                  accentColor={paintableAccent({ value: form.accentColor })}
+                />
                 <div className="min-w-0 space-y-4">
                   <div className="grid gap-4 2xl:grid-cols-2">
                     <IconInputField

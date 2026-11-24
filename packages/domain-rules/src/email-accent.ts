@@ -1,5 +1,16 @@
 /** Accent colours for email, as `#rrggbb`. Pure; the layout draws with them. */
 
+/** The app's primary navy (`--primary`, apps/web/src/index.css): the platform band and an unset Church accent. */
+export const PLATFORM_ACCENT = '#1d4270';
+/** The header's text colour, drawn on the accent tint. */
+export const EMAIL_INK = '#18181b';
+/** The header band's top rule, in px. */
+export const EMAIL_RULE_WIDTH = 6;
+/** The Church logo's corner radius in the header, in px (Outlook ignores it). */
+export const EMAIL_LOGO_RADIUS = 8;
+export const EMAIL_LOGO_MAX_HEIGHT = 56;
+export const EMAIL_LOGO_MAX_WIDTH = 200;
+
 const MIN_RULE_CONTRAST = 3;
 const TINT_SHARE = 0.1;
 const DARKEN_FACTOR = 0.9;
@@ -28,9 +39,25 @@ function luminance(rgb: Rgb): number {
   return 0.2126 * (red ?? 0) + 0.7152 * (green ?? 0) + 0.0722 * (blue ?? 0);
 }
 
+interface ContrastBetweenInput {
+  first: string;
+  second: string;
+}
+
+/** WCAG contrast ratio of two `#rrggbb` colours. */
+export function contrastBetween({
+  first,
+  second,
+}: ContrastBetweenInput): number {
+  const [light, dark] = [first, second]
+    .map((hex) => luminance(toRgb(hex)))
+    .sort((a, b) => b - a);
+  return ((light ?? 0) + 0.05) / ((dark ?? 0) + 0.05);
+}
+
 /** WCAG contrast ratio of a colour against white. */
 export function contrastOnWhite(hex: string): number {
-  return 1.05 / (luminance(toRgb(hex)) + 0.05);
+  return contrastBetween({ first: hex, second: '#ffffff' });
 }
 
 /** The accent as a line on white: darkened until it reaches 3:1. */

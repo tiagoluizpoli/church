@@ -282,14 +282,15 @@ describe('AppShell flat nav per persona (F7)', () => {
     ).toEqual(['https://files.test/a.png', 'https://files.test/a.png']);
   });
 
-  it('shows the platform logo on the same tile when the Active Church has no logo', async () => {
+  it("shows the Church's initials, not a logo image, when the Active Church has no logo", async () => {
     renderShell();
 
     await screen.findAllByText('Igreja Esperança');
     const tiles = screen.getAllByTestId('church-logo-tile');
     expect(tiles.length).toBeGreaterThanOrEqual(2);
     for (const tile of tiles) {
-      expect(tile.querySelector('img')).toHaveAttribute('src', '/logo.png');
+      expect(tile.querySelector('img')).toBeNull();
+      expect(tile).toHaveTextContent('IE');
     }
   });
 

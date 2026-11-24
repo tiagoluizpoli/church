@@ -360,7 +360,8 @@ export const PrepareEventTimeBlockList = memo(
           search={(previous) => previous}
           aria-current={selected ? 'page' : undefined}
           className={cn(
-            'surface-subtle radius-control flex items-center gap-3 p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            // Returning scrolls the card in clear of the sticky mobile top bar.
+            'surface-subtle radius-control flex scroll-mt-(--app-topbar-h) items-center gap-3 p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring',
             selected && 'bg-accent/60',
             isPast(leaf) && 'text-muted-foreground',
           )}

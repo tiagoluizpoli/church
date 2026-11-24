@@ -2150,7 +2150,7 @@
   "church_settings_logo_crop_square": "Quadrado",
   "church_settings_logo_crop_shape": "Formato",
   "church_settings_logo_crop_area": "Área do recorte: arraste ou use as setas para mover; + e − para o zoom",
-  "church_settings_logo_crop_description": "Escolha o formato e enquadre o logo. A parte escurecida fica de fora.",
+  "church_settings_logo_crop_description": "Escolha o formato e enquadre o logo. A parte esmaecida fica de fora.",
   "church_settings_logo_crop_title": "Enquadrar o logo",
   "church_settings_logo_crop_hint": "Arraste para mover. Use a roda do mouse ou dois dedos para aproximar. No teclado: as setas movem, + e − aproximam.",
   "church_settings_logo_crop_reset": "Redefinir",

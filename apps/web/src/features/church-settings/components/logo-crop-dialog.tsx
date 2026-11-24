@@ -416,10 +416,11 @@ function CropEditor({
               />
             ) : null}
             {layout ? (
-              // The cut-away part stays visible, dimmed by the frame's spread shadow.
+              // The cut-away part stays visible, washed toward the page by the frame's spread
+              // shadow; a foreground outline on a background ring reads over any image.
               <div
                 data-testid="logo-crop-frame"
-                className="pointer-events-none absolute shadow-[0_0_0_9999px_rgb(0_0_0/0.55)] outline-2 outline-white ring-1 ring-black/40"
+                className="pointer-events-none absolute shadow-[0_0_0_9999px_var(--color-background)] shadow-background/70 outline-2 outline-foreground ring-1 ring-background"
                 style={placed(layout.frame)}
               />
             ) : null}

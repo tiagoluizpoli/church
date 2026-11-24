@@ -220,6 +220,7 @@ function PrepareWorkspaceRoute() {
     panel,
     open: Boolean(selectedBlockId && ready),
   });
+  usePanelCloseAnimation({ panel, open: Boolean(selectedBlockId && ready) });
   const rowsReady = Boolean(ready);
   const selectedDay = selectedDate
     ? parseCalendarDay({ value: selectedDate })
@@ -243,7 +244,8 @@ function PrepareWorkspaceRoute() {
     if (!rowsReady || !hash || selectedBlockId) return;
     // Router hash scrolling runs before query-loaded rows are mounted.
     const row = document.getElementById(hash);
-    row?.scrollIntoView?.({ block: 'center' });
+    // 'nearest' honours the row's scroll margin, so the sticky mobile bar never covers it.
+    row?.scrollIntoView?.({ block: 'nearest' });
     // Closing or saving a block returns focus to its row (its trigger).
     row?.focus({ preventScroll: true });
   }, [hash, rowsReady, selectedBlockId]);
@@ -467,6 +469,7 @@ function PrepareWorkspaceRoute() {
           </div>
           <div
             className={cn(
+              'relative',
               selectedBlockId &&
                 // The list stays dominant; the editor gets a bounded column beside it.
                 'xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)] xl:items-start xl:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]',
@@ -657,5 +660,45 @@ function usePanelStickyWhileItFits({ panel, open }: PanelStickyInput) {
     observer.observe(element);
     if (scroller) observer.observe(scroller);
     return () => observer.disconnect();
+  }, [panel, open]);
+}
+
+/** The panel's route content is gone the moment the block closes, so the closing animation
+ * plays on the detached panel node (React has already removed it), re-attached for the
+ * length of the mirrored slide-out. Only where the open animation runs: beside the list,
+ * and not under reduced motion. */
+function usePanelCloseAnimation({ panel, open }: PanelStickyInput) {
+  const last = useRef<{ node: HTMLDivElement; parent: HTMLElement } | null>(
+    null,
+  );
+  useEffect(() => {
+    const node = panel.current;
+    if (open && node?.parentElement) {
+      last.current = { node, parent: node.parentElement };
+      return;
+    }
+    const closed = last.current;
+    last.current = null;
+    if (
+      !closed ||
+      closed.node.isConnected ||
+      !closed.parent.isConnected ||
+      !window.matchMedia?.('(min-width: 1280px)').matches ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    )
+      return;
+    const { node: ghost, parent } = closed;
+    ghost.style.position = 'absolute';
+    ghost.style.top = '0';
+    ghost.style.right = '0';
+    ghost.style.width = '26rem';
+    ghost.inert = true;
+    ghost.className = `${ghost.className} pointer-events-none animate-out fade-out slide-out-to-right-8 fill-mode-forwards duration-200`;
+    parent.append(ghost);
+    const timer = window.setTimeout(() => ghost.remove(), 200);
+    return () => {
+      window.clearTimeout(timer);
+      ghost.remove();
+    };
   }, [panel, open]);
 }

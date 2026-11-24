@@ -766,7 +766,7 @@ describe('CycleBuilderMatrix', () => {
     expect(viewport.querySelector('section[class*="snap"]')).toBeNull();
   });
 
-  it('brings a focused control into view without leaving the column half-cut', () => {
+  it('brings a keyboard-focused control into view without leaving the column half-cut', () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
     renderWithProviders(
@@ -780,8 +780,19 @@ describe('CycleBuilderMatrix', () => {
       />,
     );
 
-    act(() => screen.getByRole('button', { name: 'Add' }).focus());
+    const add = screen.getByRole('button', { name: 'Add' });
+    const matches = vi.spyOn(add, 'matches');
 
+    // A mouse-click focus must not scroll: it would move the click target.
+    matches.mockReturnValue(false);
+    act(() => add.focus());
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    matches.mockReturnValue(true);
+    act(() => {
+      add.blur();
+      add.focus();
+    });
     expect(scrollIntoView).toHaveBeenCalledWith({
       inline: 'nearest',
       block: 'nearest',

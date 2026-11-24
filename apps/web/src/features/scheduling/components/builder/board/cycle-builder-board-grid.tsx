@@ -205,13 +205,16 @@ export function CycleBuilderBoardGrid({
               {columns.map((date) => (
                 <section
                   key={date}
-                  // Without snap, keyboard focus must still not leave a column half-cut.
-                  onFocus={(event) =>
-                    event.currentTarget.scrollIntoView({
-                      inline: 'nearest',
-                      block: 'nearest',
-                    })
-                  }
+                  // Without snap, keyboard focus must still not leave a column
+                  // half-cut. Keyboard only: scrolling on a mouse-click focus
+                  // moves the target mid-click and drops the click.
+                  onFocus={(event) => {
+                    if (event.target.matches(':focus-visible'))
+                      event.currentTarget.scrollIntoView({
+                        inline: 'nearest',
+                        block: 'nearest',
+                      });
+                  }}
                   className="min-w-0 self-start rounded-md border bg-card"
                 >
                   <header className="border-b px-3 py-2">

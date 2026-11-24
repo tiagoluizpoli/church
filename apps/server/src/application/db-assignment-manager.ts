@@ -23,7 +23,10 @@ import type { TransactionContext } from '../domain/contracts/infrastructure/tran
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type { Assignment } from '../domain/entities/assignment';
+import {
+  type Assignment,
+  isActiveAssignmentStatus,
+} from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
@@ -528,10 +531,6 @@ export class DbAssignmentManager implements IAssignmentManager {
       warnings,
     };
   }
-}
-
-function isActiveAssignmentStatus(status: Assignment['status']): boolean {
-  return status === 'draft' || status === 'pending';
 }
 
 interface RequirementRoomInput {

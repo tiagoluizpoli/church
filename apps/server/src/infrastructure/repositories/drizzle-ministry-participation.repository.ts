@@ -74,7 +74,10 @@ import type {
   UpdateParticipationStateInput,
 } from '../../domain/contracts/infrastructure/ministry-participation.repository';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import type { AssignmentStatus } from '../../domain/entities/assignment';
+import {
+  ACTIVE_ASSIGNMENT_STATUSES,
+  type AssignmentStatus,
+} from '../../domain/entities/assignment';
 import type { CycleState } from '../../domain/entities/cycle';
 import type { MinistryParticipation } from '../../domain/entities/ministry-participation';
 import {
@@ -142,16 +145,13 @@ function caseOfStep({ step, literalOf }: StepCaseInput): SQL {
 }
 
 interface AssignmentCountInput {
-  statuses: AssignmentStatus[];
+  statuses: readonly AssignmentStatus[];
 }
 
 /** Assignments of one requirement row in the given statuses; correlated, so a grouped query sums it. */
 function assignmentCount({ statuses }: AssignmentCountInput): SQL<number> {
   return sql<number>`(select count(*) from ${assignment} where ${assignment.shiftRequirementId} = ${shiftRequirement.id} and ${inArray(assignment.status, statuses)})`;
 }
-
-/** A seat counts as filled while an assignment holds it, as the Schedule gap count does. */
-const LIVE_ASSIGNMENT_STATUSES: AssignmentStatus[] = ['draft', 'pending'];
 
 /** Requirement headcount and seats held, summed over the grouped rows. */
 function staffingTotals() {
@@ -160,7 +160,7 @@ function staffingTotals() {
   return {
     needed: sum(sql`${shiftRequirement.peopleNeeded}`).as('needed'),
     filled: sum(
-      sql`least(${shiftRequirement.peopleNeeded}, ${assignmentCount({ statuses: LIVE_ASSIGNMENT_STATUSES })})`,
+      sql`least(${shiftRequirement.peopleNeeded}, ${assignmentCount({ statuses: ACTIVE_ASSIGNMENT_STATUSES })})`,
     ).as('filled'),
   };
 }
@@ -1086,7 +1086,7 @@ export class DrizzleMinistryParticipationRepository
           isNull(availabilityCheck.withdrawnAt),
           eq(ministryMembership.status, 'active'),
           gt(unavailableShift.createdAt, assignment.assignedAt),
-          inArray(assignment.status, ['draft', 'pending']),
+          inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
           inArray(ministryParticipation.ministryId, ministryIds),
           inArray(event.cycleId, cycleIds),
         ),
@@ -1151,7 +1151,7 @@ export class DrizzleMinistryParticipationRepository
     tx,
   }: ListSchedulesFactsInput): Promise<ScheduleCountRow[]> {
     // Per-requirement shortfall via a correlated count: one batched query, no fan-out.
-    const assigned = sql<number>`(select count(*) from ${assignment} where ${assignment.shiftRequirementId} = ${shiftRequirement.id} and ${assignment.status} in ('draft', 'pending'))`;
+    const assigned = sql<number>`(select count(*) from ${assignment} where ${assignment.shiftRequirementId} = ${shiftRequirement.id} and ${inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES)})`;
     return getClient({ db: this.db, tx })
       .select({
         ministryId: ministryParticipation.ministryId,
@@ -1354,7 +1354,7 @@ export class DrizzleMinistryParticipationRepository
       )
       .groupBy(ministry.id, ministry.name)
       .orderBy(
-        sql`sum(least(${shiftRequirement.peopleNeeded}, ${assignmentCount({ statuses: LIVE_ASSIGNMENT_STATUSES })}))::float / nullif(sum(${shiftRequirement.peopleNeeded}), 0) asc nulls last`,
+        sql`sum(least(${shiftRequirement.peopleNeeded}, ${assignmentCount({ statuses: ACTIVE_ASSIGNMENT_STATUSES })}))::float / nullif(sum(${shiftRequirement.peopleNeeded}), 0) asc nulls last`,
         asc(ministry.name),
         asc(ministry.id),
       );

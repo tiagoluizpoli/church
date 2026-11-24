@@ -18,6 +18,19 @@ export const ASSIGNMENT_STATUS_OPTIONS = [
   'cancelled',
 ] as const;
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUS_OPTIONS)[number];
+/** Statuses that hold a seat: the Assignment is live, not cancelled. */
+export const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending'] as const;
+export type ActiveAssignmentStatus =
+  (typeof ACTIVE_ASSIGNMENT_STATUSES)[number];
+
+export function isActiveAssignmentStatus(
+  status: AssignmentStatus,
+): status is ActiveAssignmentStatus {
+  return (ACTIVE_ASSIGNMENT_STATUSES as readonly AssignmentStatus[]).includes(
+    status,
+  );
+}
+
 /** The active statuses that put a Volunteer on the published Schedule. */
 export const PUBLISHED_ASSIGNMENT_STATUSES = ['pending'] as const;
 

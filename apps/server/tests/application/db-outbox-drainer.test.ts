@@ -393,7 +393,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
     expect(result).toEqual({ claimed: 2, sent: 1, failed: 1 });
   });
 
-  it('fails only the row whose delivery throws an unexpected error, keeping the batch going', async () => {
+  it('retries only the row whose delivery throws an unexpected error, keeping the batch going', async () => {
     const broken = buildMessage({ id: 'outbox_broken' });
     const healthy = buildMessage({ id: 'outbox_healthy' });
     outboxRepository.claimPending.mockResolvedValue([broken, healthy]);
@@ -408,12 +408,57 @@ describe('DbOutboxDrainer.drainOnce', () => {
     expect(outboxRepository.markFailed).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'outbox_broken',
-        status: 'failed',
+        attempts: 1,
+        status: 'pending',
         lastError: 'TypeError',
+        scheduledFor: expect.any(Date),
       }),
     );
     expect(outboxRepository.markSent).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'outbox_healthy' }),
+    );
+  });
+
+  it('leaves a row retryable, sending nothing, when a read before the send fails', async () => {
+    outboxRepository.claimPending.mockResolvedValue([buildMessage()]);
+    invitationRepository.findById.mockRejectedValue(
+      new Error('connection terminated'),
+    );
+
+    const result = await createDrainer().drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
+    expect(emailSender.deliver).not.toHaveBeenCalled();
+    expect(outboxRepository.markFailed).toHaveBeenCalledTimes(1);
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'outbox_1',
+        attempts: 1,
+        status: 'pending',
+        lastError: 'Error',
+        scheduledFor: expect.any(Date),
+      }),
+    );
+    expect(await reports.settle()).toEqual([]);
+  });
+
+  it('fails a row terminally once unexpected errors exhaust the attempt cap', async () => {
+    const { maxAttempts } = appConfig.outbox;
+    outboxRepository.claimPending.mockResolvedValue([
+      buildMessage({ attempts: maxAttempts - 1 }),
+    ]);
+    invitationRepository.findById.mockRejectedValue(
+      new Error('connection terminated'),
+    );
+
+    await createDrainer().drainOnce({ limit: 10 });
+
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attempts: maxAttempts,
+        status: 'failed',
+        lastError: 'Error',
+      }),
     );
   });
 

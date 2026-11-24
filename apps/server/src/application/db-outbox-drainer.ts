@@ -148,7 +148,11 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     return { claimed: claimed.length, sent, failed };
   }
 
-  /** One message never aborts the batch: an unexpected error fails only its row. */
+  /**
+   * One message never aborts the batch. An unexpected error (a read before
+   * the send, bookkeeping after it) is retried like a retryable send: only a
+   * provider refusal or an exhausted attempt cap fails the row for good.
+   */
   private async processIsolated({
     message,
   }: ProcessOneInput): Promise<'sent' | 'failed'> {
@@ -171,7 +175,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       // Name only: a raw message can echo recipient data.
       const reason = error instanceof Error ? error.name : 'UnknownError';
       try {
-        await this.failTerminally({ message, reason });
+        await this.retryOrFail({ message, reason, retryable: true });
       } catch {
         // Bookkeeping is down too: the row stays processing and the lease reclaims it.
       }
@@ -743,7 +747,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       return 'sent';
     } catch (error) {
       if (!(error instanceof EmailSendError)) throw error;
-      await this.handleSendFailure({ message, error });
+      // The code, not the message: provider text can echo the recipient.
+      await this.retryOrFail({
+        message,
+        reason: error.code,
+        retryable: error.retryable,
+      });
       return 'failed';
     }
   }
@@ -759,21 +768,21 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     );
   }
 
-  private async handleSendFailure({
+  private async retryOrFail({
     message,
-    error,
-  }: HandleSendFailureInput): Promise<void> {
+    reason,
+    retryable,
+  }: RetryOrFailInput): Promise<void> {
     const attempts = message.attempts + 1;
-    // The code, not the message: provider text can echo the recipient.
     if (
-      error.retryable &&
+      retryable &&
       !hasExhaustedRetries({ attempts, policy: this.outboxPolicy })
     ) {
       const retryAt = nextRetryAt({ attempts, policy: this.outboxPolicy });
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.markFailed({
           id: message.id,
-          lastError: error.code,
+          lastError: reason,
           attempts,
           status: 'pending',
           scheduledFor: toDate({ instant: retryAt }),
@@ -784,7 +793,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     }
     await this.failTerminally({
       message,
-      reason: error.code,
+      reason,
       attempts,
     });
   }
@@ -931,9 +940,10 @@ function firstNameOf(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
 }
 
-interface HandleSendFailureInput {
+interface RetryOrFailInput {
   message: OutboxMessage;
-  error: EmailSendError;
+  reason: string;
+  retryable: boolean;
 }
 
 interface FailTerminallyInput {

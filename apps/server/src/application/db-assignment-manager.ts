@@ -30,7 +30,10 @@ import {
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
-import { IllegalStateTransitionError } from '../domain/errors/illegal-state-transition';
+import {
+  EventCancelledError,
+  EventTimeBlockCancelledError,
+} from '../domain/errors/event-cancelled';
 import { ShiftRequirementFullError } from '../domain/errors/shift-requirement-full';
 import { removeAssignment } from './remove-assignment';
 
@@ -382,12 +385,8 @@ export class DbAssignmentManager implements IAssignmentManager {
       eventTimeBlockId: shift.eventTimeBlockId,
       tx,
     });
-    if (event.status === 'cancelled' || block.status === 'cancelled') {
-      throw new IllegalStateTransitionError({
-        from: 'cancelled',
-        to: 'assign',
-      });
-    }
+    if (event.status === 'cancelled') throw new EventCancelledError();
+    if (block.status === 'cancelled') throw new EventTimeBlockCancelledError();
     const requirement = await this.shiftRepository.getRequirementForShift({
       churchId: input.churchId,
       shiftId: shift.id,

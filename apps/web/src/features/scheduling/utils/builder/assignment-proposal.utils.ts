@@ -2,6 +2,7 @@ import {
   type CycleBuilderData,
   type CycleBuilderShiftSummary,
   isActiveAssignment,
+  isStaffedEventTimeBlock,
 } from '../../hooks/use-cycle-builder';
 import { churchDayOf } from './cycle-builder-date.utils';
 import { countCoveredPlaces } from './cycle-builder-staffing.utils';
@@ -48,7 +49,7 @@ export interface ProposalShift {
 export interface ProposalDay {
   /** CalendarDay in the Church Timezone. */
   day: string;
-  /** Every included Shift of the day: the coverage denominator. */
+  /** Every staffed Shift of the day: the coverage denominator. */
   dayShifts: CycleBuilderShiftSummary[];
   /** Shifts the proposal touches: additions or places still open. */
   shifts: ProposalShift[];
@@ -61,7 +62,7 @@ interface GroupProposalByDayInput {
 }
 
 /** Board order (Event → time block → Shift, as the server sends it), folded
- * into church days. Only included time blocks: the rest ask for nobody. */
+ * into church days. Only staffed time blocks: the rest ask for nobody. */
 export function groupProposalByDay({
   data,
   proposal,
@@ -85,7 +86,7 @@ export function groupProposalByDay({
   const days = new Map<string, ProposalDay>();
   for (const event of data.events) {
     for (const block of event.eventTimeBlocks) {
-      if (!block.included) continue;
+      if (!isStaffedEventTimeBlock(block)) continue;
       for (const shift of block.shifts) {
         const day = churchDayOf({ value: shift.startTime, timeZone });
         const entry = days.get(day) ?? { day, dayShifts: [], shifts: [] };
@@ -191,7 +192,7 @@ export function includedShifts({
 }: IncludedShiftsInput): CycleBuilderShiftSummary[] {
   return data.events.flatMap((event) =>
     event.eventTimeBlocks.flatMap((block) =>
-      block.included ? block.shifts : [],
+      isStaffedEventTimeBlock(block) ? block.shifts : [],
     ),
   );
 }

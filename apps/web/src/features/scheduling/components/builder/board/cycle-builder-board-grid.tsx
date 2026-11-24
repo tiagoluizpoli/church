@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import type { now } from '@church/time';
 import { CalendarDays } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import type { useBoardDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
 import {
   type CycleBuilderData,
@@ -23,6 +24,7 @@ import {
   countCoveredPlaces,
   staffingStatusClasses,
 } from '../../../utils/builder/cycle-builder-staffing.utils';
+import { useBoardDragIdentity } from './board-drag-identity';
 import {
   CycleBuilderCell,
   type CycleBuilderCellSelectInput,
@@ -125,6 +127,29 @@ export function CycleBuilderBoardGrid({
   onClearFilters,
   dragScroll,
 }: CycleBuilderBoardGridProps) {
+  const isDragging = Boolean(useBoardDragIdentity());
+  // Which sides still hide columns, so the fade only shows where there is more.
+  const [edge, setEdge] = useState({ start: false, end: false });
+  useEffect(() => {
+    const viewport = dragScroll.viewportRef.current;
+    if (!viewport) return;
+    const update = () =>
+      setEdge({
+        start: viewport.scrollLeft > 1,
+        end:
+          viewport.scrollLeft + viewport.clientWidth < viewport.scrollWidth - 1,
+      });
+    update();
+    viewport.addEventListener('scroll', update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    if (viewport.firstElementChild)
+      observer.observe(viewport.firstElementChild);
+    return () => {
+      viewport.removeEventListener('scroll', update);
+      observer.disconnect();
+    };
+  }, [dragScroll.viewportRef]);
   const gridStyle = {
     gridTemplateColumns: `repeat(${Math.max(columns.length, 1)}, minmax(320px, 1fr))`,
   };
@@ -145,9 +170,22 @@ export function CycleBuilderBoardGrid({
       onLostPointerCapture={dragScroll.onLostPointerCapture}
       onClickCapture={dragScroll.onClickCapture}
     >
-      <CardContent className="workspace-panel">
+      <CardContent className="workspace-panel min-w-0">
         <ScrollArea
           className="min-w-0 pb-3"
+          viewportClassName={cn(
+            // Proximity, not mandatory: drag-to-scroll writes scrollLeft
+            // directly and mandatory would fight it. Snap is off while a
+            // card is dragged so DnD auto-scroll is not pulled back.
+            !isDragging && 'snap-x snap-proximity scroll-px-2',
+            edge.start && edge.end
+              ? '[mask-image:linear-gradient(to_right,transparent,black_2rem,black_calc(100%-2rem),transparent)]'
+              : edge.start
+                ? '[mask-image:linear-gradient(to_right,transparent,black_2rem)]'
+                : edge.end
+                  ? '[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]'
+                  : '',
+          )}
           data-testid="cycle-board-scroll"
           viewportRef={dragScroll.viewportRef}
           viewportTestId="cycle-board-viewport"
@@ -164,7 +202,7 @@ export function CycleBuilderBoardGrid({
               {columns.map((date) => (
                 <section
                   key={date}
-                  className="min-w-0 self-start rounded-md border bg-card"
+                  className="min-w-0 snap-start self-start rounded-md border bg-card"
                 >
                   <header className="border-b px-3 py-2">
                     <p className="font-semibold text-foreground text-sm">
@@ -182,22 +220,32 @@ export function CycleBuilderBoardGrid({
                     {(eventsForDate.get(date) ?? []).map((event) => (
                       <section key={event.eventId} className="space-y-2">
                         <div className="flex items-center justify-between gap-2 px-1">
-                          <h2 className="truncate font-semibold text-foreground text-sm">
-                            {event.title}
-                          </h2>
-                          <Badge
-                            variant="outline"
-                            data-testid={`cycle-event-staffing-percent-${event.eventId}`}
+                          <h2
                             className={cn(
-                              'shrink-0',
-                              staffingStatusClasses({
-                                percent: Math.round(event.fillRatio * 100),
-                                hasRequirement: event.peopleNeeded > 0,
-                              }).text,
+                              'truncate font-semibold text-foreground text-sm',
+                              event.status === 'cancelled' &&
+                                'text-muted-foreground line-through',
                             )}
                           >
-                            {Math.round(event.fillRatio * 100)}%
-                          </Badge>
+                            {event.title}
+                          </h2>
+                          {event.status === 'cancelled' ? (
+                            <CancelledBadge />
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              data-testid={`cycle-event-staffing-percent-${event.eventId}`}
+                              className={cn(
+                                'shrink-0',
+                                staffingStatusClasses({
+                                  percent: Math.round(event.fillRatio * 100),
+                                  hasRequirement: event.peopleNeeded > 0,
+                                }).text,
+                              )}
+                            >
+                              {Math.round(event.fillRatio * 100)}%
+                            </Badge>
+                          )}
                         </div>
                         {eventTimeBlocksOnDay({ event, day: date, timeZone })
                           .filter((eventTimeBlock) => eventTimeBlock.included)
@@ -205,11 +253,26 @@ export function CycleBuilderBoardGrid({
                             <section
                               key={eventTimeBlock.eventTimeBlockId}
                               className="space-y-2 rounded-md border border-dashed p-2"
+                              data-cancelled={
+                                eventTimeBlock.cancelled || undefined
+                              }
                             >
-                              <h3 className="font-medium text-foreground text-xs">
-                                {eventTimeBlock.label ??
-                                  m.builder_ui_time_block()}
-                              </h3>
+                              <div className="flex items-center justify-between gap-2">
+                                <h3
+                                  className={cn(
+                                    'font-medium text-foreground text-xs',
+                                    eventTimeBlock.cancelled &&
+                                      'text-muted-foreground line-through',
+                                  )}
+                                >
+                                  {eventTimeBlock.label ??
+                                    m.builder_ui_time_block()}
+                                </h3>
+                                {eventTimeBlock.cancelled &&
+                                event.status !== 'cancelled' ? (
+                                  <CancelledBadge />
+                                ) : null}
+                              </div>
                               <div className="space-y-2">
                                 {eventTimeBlock.shifts.map((shift) => (
                                   <section
@@ -373,28 +436,31 @@ export function CycleBuilderBoardGrid({
                                         </fieldset>
                                       ))}
                                     </div>
-                                    <p
-                                      className="border-t pt-2 text-right font-medium text-muted-foreground"
-                                      data-testid={`cycle-shift-footer-${shift.shiftId}`}
-                                    >
-                                      {(() => {
-                                        const needed =
-                                          shift.requirements.reduce(
-                                            (total, requirement) =>
-                                              total + requirement.peopleNeeded,
-                                            0,
-                                          );
-                                        const empty =
-                                          needed - countCoveredPlaces(shift);
-                                        return empty === 0
-                                          ? m.builder_ui_full()
-                                          : empty === 1
-                                            ? m.builder_ui_empty_one()
-                                            : m.builder_ui_empty_many({
-                                                count: empty,
-                                              });
-                                      })()}
-                                    </p>
+                                    {shift.cancelled ? null : (
+                                      <p
+                                        className="border-t pt-2 text-right font-medium text-muted-foreground"
+                                        data-testid={`cycle-shift-footer-${shift.shiftId}`}
+                                      >
+                                        {(() => {
+                                          const needed =
+                                            shift.requirements.reduce(
+                                              (total, requirement) =>
+                                                total +
+                                                requirement.peopleNeeded,
+                                              0,
+                                            );
+                                          const empty =
+                                            needed - countCoveredPlaces(shift);
+                                          return empty === 0
+                                            ? m.builder_ui_full()
+                                            : empty === 1
+                                              ? m.builder_ui_empty_one()
+                                              : m.builder_ui_empty_many({
+                                                  count: empty,
+                                                });
+                                        })()}
+                                      </p>
+                                    )}
                                   </section>
                                 ))}
                               </div>
@@ -415,5 +481,14 @@ export function CycleBuilderBoardGrid({
         </ScrollArea>
       </CardContent>
     </Card>
+  );
+}
+
+/** Same label and variant as Planning's cancelled Event status. */
+function CancelledBadge() {
+  return (
+    <Badge variant="destructive" className="shrink-0">
+      {m.event_status_cancelled()}
+    </Badge>
   );
 }

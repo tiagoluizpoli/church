@@ -34,6 +34,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useMediaQuery, XL_MEDIA_QUERY } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 
@@ -136,13 +137,16 @@ export function CycleBuilderCell({
       left: parseInstant({ value: shift.startTime }),
       right: currentInstant,
     }) <= 0;
-  const isEditable = editable && !isStarted;
+  const isEditable = editable && !isStarted && !shift.cancelled;
   const isTouch = useFormControlSize() === 'touch';
   const { churchTimezone } = useTimezone();
   const shiftLabel =
     shift.label ??
     `${eventTimeBlockLabel} · ${timeLabel({ instant: shift.startTime, timeZone: churchTimezone })} – ${timeLabel({ instant: shift.endTime, timeZone: churchTimezone })}`;
   const [addPickerOpen, setAddPickerOpen] = useState(false);
+  // Below xl the volunteer rail is stacked far under the board, so focusing a
+  // role there would change nothing in view: open this slot's picker instead.
+  const railIsBeside = useMediaQuery(XL_MEDIA_QUERY);
   const canAdd = assignments.length < peopleNeeded;
   const hasRoleHolder = shift.eligibleVolunteers.some((volunteer) =>
     volunteer.qualifiedRoleIds.includes(roleId),
@@ -292,14 +296,24 @@ export function CycleBuilderCell({
           roleLabel={displayRoleLabel ?? roleLabel}
           shiftRequirementId={shiftRequirementId}
           isFocused={isFocused ?? false}
-          onToggleFocus={onToggleFocus}
+          onToggleFocus={() => {
+            if (!railIsBeside && !isFocused && isEditable && canAdd) {
+              onFocus();
+              setAddPickerOpen(true);
+            } else onToggleFocus();
+          }}
         />
-        <span className="shrink-0 text-muted-foreground text-xs">
+        <span
+          className={cn(
+            'shrink-0 text-muted-foreground text-xs',
+            shift.cancelled && 'line-through',
+          )}
+        >
           {assignments.length}/{peopleNeeded}
         </span>
       </div>
 
-      {isStarted ? (
+      {isStarted && !shift.cancelled ? (
         <p className="mt-2 text-muted-foreground text-xs">
           {m.builder_shift_started({
             shift: shiftLabel,
@@ -310,7 +324,7 @@ export function CycleBuilderCell({
           })}
         </p>
       ) : null}
-      {!hasRoleHolder ? (
+      {!hasRoleHolder && !shift.cancelled ? (
         <p className="mt-2 text-muted-foreground text-xs">
           <span>
             {m.builder_no_role_holders({ role: displayRoleLabel ?? roleLabel })}

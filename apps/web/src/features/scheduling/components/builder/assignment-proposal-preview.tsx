@@ -8,7 +8,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
+import {
+  type CycleBuilderData,
+  isStaffedEventTimeBlock,
+} from '../../hooks/use-cycle-builder';
 import {
   coverageOf,
   groupProposalByDay,
@@ -344,7 +347,7 @@ export function AssignmentProposalPreview({
         servedByDay.set(
           day,
           (servedByDay.get(day) ?? false) ||
-            (block.included && block.shifts.length > 0),
+            (isStaffedEventTimeBlock(block) && block.shifts.length > 0),
         );
       }
     return [...servedByDay].map(([day, served]) => ({

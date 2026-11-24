@@ -18,6 +18,7 @@ function makeShift(
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
+    cancelled: false,
     peopleNeeded: 1,
     assignedCount: 0,
     requirements: [],

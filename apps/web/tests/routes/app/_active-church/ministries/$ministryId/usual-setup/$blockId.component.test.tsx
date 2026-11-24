@@ -246,7 +246,7 @@ describe('/app/ministries/$ministryId/usual-setup/$blockId', () => {
         },
       ],
     });
-    const list = await screen.findByTestId('data-table-mobile-list');
+    const list = (await screen.findAllByTestId('data-table-mobile-list'))[0];
     expect(
       within(list).getByRole('link', { name: 'Welcome' }),
     ).toHaveTextContent(m.usual_setup_people_count_other({ count: 2 }));
@@ -288,7 +288,9 @@ describe('/app/ministries/$ministryId/usual-setup/$blockId', () => {
     expect(cell('Stage')).toHaveValue(4);
     expect(cell('Door')).toHaveValue(1);
     await user.click(saveButton());
-    expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
+    expect(
+      (await screen.findAllByTestId('data-table-mobile-list'))[0],
+    ).toBeVisible();
     expect(saveUsualSetupBlock).toHaveBeenCalledTimes(2);
   });
 
@@ -318,7 +320,9 @@ describe('/app/ministries/$ministryId/usual-setup/$blockId', () => {
       screen.getByRole('button', { name: m.usual_setup_cancel() }),
     );
 
-    expect(await screen.findByTestId('data-table-mobile-list')).toBeVisible();
+    expect(
+      (await screen.findAllByTestId('data-table-mobile-list'))[0],
+    ).toBeVisible();
     expect(saveUsualSetupBlock).not.toHaveBeenCalled();
   });
 
@@ -430,7 +434,7 @@ describe('/app/ministries/$ministryId/usual-setup/$blockId', () => {
   });
 
   it('shows a retryable error rather than an empty form when a read fails', async () => {
-    listSectors.mockRejectedValueOnce(new Error('offline'));
+    listSectors.mockRejectedValue(new Error('offline'));
     renderEditor(WELCOME_ID);
 
     const alert = await screen.findByRole('alert');

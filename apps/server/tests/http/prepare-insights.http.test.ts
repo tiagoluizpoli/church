@@ -321,16 +321,16 @@ describe('GET /prepare/insights', () => {
       cycleId: august.id,
       ministryId: seed.ministryAId,
       month: '2026-08',
-      requirements: [{ peopleNeeded: 2, assignments: ['confirmed'] }],
+      requirements: [{ peopleNeeded: 2, assignments: ['pending'] }],
     });
-    // Over-assigned seats cap at the headcount; a declined one holds nothing.
+    // Over-assigned seats cap at the headcount; a cancelled one holds nothing.
     await seedStaffing({
       churchId,
       cycleId: september.id,
       ministryId: seed.ministryAId,
       month: '2026-09',
       requirements: [
-        { peopleNeeded: 3, assignments: ['confirmed', 'cancelled'] },
+        { peopleNeeded: 3, assignments: ['pending', 'cancelled'] },
         { peopleNeeded: 1, assignments: ['pending', 'draft'] },
       ],
     });
@@ -339,7 +339,7 @@ describe('GET /prepare/insights', () => {
       cycleId: september.id,
       ministryId: alpha.id,
       month: '2026-09',
-      requirements: [{ peopleNeeded: 1, assignments: ['confirmed'] }],
+      requirements: [{ peopleNeeded: 1, assignments: ['pending'] }],
     });
     await seedStaffing({
       churchId,

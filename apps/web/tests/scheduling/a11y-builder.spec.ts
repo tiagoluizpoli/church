@@ -10,8 +10,8 @@ import {
 // T124 — Accessibility smoke. The journey's own cycle board (assign-board
 // recipe): opening the builder can write (it creates any missing
 // Participation), so the scan runs on journey-owned data. Its assigned
-// service holds a pending, a confirmed and a declined Host; the board shows
-// the two active ones as chips, which the scan then covers.
+// service holds two pending and a cancelled Host; the board shows
+// the two pending ones as chips, which the scan then covers.
 test('schedule builder has no critical or serious WCAG violations', async ({
   page,
 }, testInfo) => {

@@ -169,8 +169,7 @@ export class DbSwapRequestManager implements ISwapRequestManager {
         ownerVolunteerId: volunteerId,
         tx,
       });
-      const published =
-        assignment.status === 'pending' || assignment.status === 'confirmed';
+      const published = assignment.status === 'pending';
       if (!published || !shiftId || !participationId) {
         throw new SwapRequestUnpublishedError();
       }

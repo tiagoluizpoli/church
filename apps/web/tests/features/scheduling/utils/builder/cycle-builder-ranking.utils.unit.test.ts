@@ -51,7 +51,7 @@ function makeAssignment(
     shiftId: 'shift-1',
     roleId: 'role-1',
     shiftRequirementId: 'requirement-role-1',
-    status: 'confirmed',
+    status: 'pending',
     assignedAt: '2027-01-01T12:00:00.000Z',
     lateMark: false,
     ...overrides,
@@ -279,12 +279,12 @@ describe('rankVolunteersForShiftRole', () => {
 });
 
 describe('countWorkload', () => {
-  it('counts only draft, pending and confirmed assignments (FR-017)', () => {
+  it('counts only draft and pending assignments (FR-017)', () => {
     const workload = countWorkload({
       assignments: [
         makeAssignment({ id: 'a-1', volunteerId: 'ana', status: 'draft' }),
         makeAssignment({ id: 'a-2', volunteerId: 'ana', status: 'pending' }),
-        makeAssignment({ id: 'a-3', volunteerId: 'ana', status: 'confirmed' }),
+        makeAssignment({ id: 'a-3', volunteerId: 'ana', status: 'pending' }),
         makeAssignment({ id: 'a-4', volunteerId: 'ana', status: 'cancelled' }),
         makeAssignment({ id: 'a-5', volunteerId: 'ana', status: 'cancelled' }),
       ],

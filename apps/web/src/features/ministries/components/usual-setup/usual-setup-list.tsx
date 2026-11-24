@@ -10,18 +10,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
-import {
-  GROUP_INDENT,
-  type GroupedRow,
-  GroupRowLabel,
-  groupedRowProps,
-  groupLeaves,
-  MobileGroupHeading,
-} from '@/components/ui/data-table-groups';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUsualSetup } from '@/features/ministries/usual-setup-queries';
-import { cn } from '@/lib/utils';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
 interface UsualSetupListProps {
@@ -58,12 +49,14 @@ function TemplateLabel({ block }: TemplateLabelProps) {
 export function UsualSetupList({ ministryId }: UsualSetupListProps) {
   const { isChurchAdmin } = useCallerCapabilities();
   const setup = useUsualSetup({ ministryId });
-  // The server orders blocks by template name, then block.
-  const rows = groupLeaves({
-    leaves: setup.data?.blocks ?? [],
-    levels: [(block) => block.templateId],
-    leafKey: (block) => block.sourceTemplateTimeBlockId,
-  });
+  // One group per template, in the server's order of first appearance.
+  const byTemplate = new Map<string, UsualSetupBlock[]>();
+  for (const block of setup.data?.blocks ?? []) {
+    const group = byTemplate.get(block.templateId);
+    if (group) group.push(block);
+    else byTemplate.set(block.templateId, [block]);
+  }
+  const groups = [...byTemplate.values()];
 
   return (
     <section className="space-y-4" aria-label={m.usual_setup_list_label()}>
@@ -87,7 +80,7 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
             {m.usual_setup_retry()}
           </Button>
         </div>
-      ) : rows.length === 0 ? (
+      ) : groups.length === 0 ? (
         <div className="space-y-2" role="status">
           <p className="text-muted-foreground">
             {m.usual_setup_no_templates()}
@@ -106,129 +99,111 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
           )}
         </div>
       ) : (
-        <DataTable<GroupedRow<UsualSetupBlock>>
-          aria-label={m.usual_setup_list_label()}
-          columns={USUAL_SETUP_COLUMNS}
-          items={rows}
-          rowId={({ item }) => item.key}
-          // Group rows span every column; each underline starts with its row's text.
-          {...groupedRowProps<UsualSetupBlock>()}
-          renderCell={({ item, column }) => {
-            if (item.kind === 'group')
-              return (
-                <GroupRowLabel
-                  item={item}
-                  label={<TemplateLabel block={item.leaf} />}
-                  name={item.leaf.templateName}
-                  collapsible={false}
-                />
-              );
-            const block = item.leaf;
-            if (column.id === 'name') {
-              return (
-                <span
-                  className={cn(
-                    'flex items-center gap-2',
-                    GROUP_INDENT[item.depth],
-                  )}
-                >
-                  {block.label}
-                  {block.needsReview ? (
-                    <Badge
-                      variant="outline"
-                      className="border-amber-600/40 text-amber-700 dark:text-amber-500"
-                    >
-                      {m.usual_setup_needs_review()}
-                      <span className="sr-only">
-                        {' '}
-                        {m.usual_setup_review_fallback()}
+        <div className="space-y-6">
+          {groups.map((group) => (
+            <section key={group[0].templateId} className="space-y-2">
+              <h3 className="border-b pb-1 font-semibold text-sm">
+                <TemplateLabel block={group[0]} />
+              </h3>
+              <DataTable<UsualSetupBlock>
+                aria-label={`${m.usual_setup_list_label()}: ${group[0].templateName}`}
+                columns={USUAL_SETUP_COLUMNS}
+                items={group}
+                rowId={({ item }) => item.sourceTemplateTimeBlockId}
+                renderCell={({ item: block, column }) => {
+                  if (column.id === 'name') {
+                    return (
+                      <span className="flex items-center gap-2">
+                        {block.label}
+                        {block.needsReview ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-600/40 text-amber-700 dark:text-amber-500"
+                          >
+                            {m.usual_setup_needs_review()}
+                            <span className="sr-only">
+                              {' '}
+                              {m.usual_setup_review_fallback()}
+                            </span>
+                          </Badge>
+                        ) : null}
                       </span>
-                    </Badge>
-                  ) : null}
-                </span>
-              );
-            }
-            if (column.id === 'time') return formatTimeRange(block);
-            if (column.id === 'assignment') {
-              return (
-                <span data-testid="usual-setup-summary">
-                  {describeUsualSetupEntry(block)}
-                </span>
-              );
-            }
-            return null;
-          }}
-          renderMobileCard={({ item }) => {
-            if (item.kind === 'group')
-              return (
-                <MobileGroupHeading
-                  item={item}
-                  label={<TemplateLabel block={item.leaf} />}
-                  collapsible={false}
-                  rails={false}
-                  // Keeps this list's divider heading: one level, nothing to fold.
-                  className="border-b pb-1 font-semibold text-sm"
-                />
-              );
-            const block = item.leaf;
-            return (
-              <Link
-                to="/app/ministries/$ministryId/usual-setup/$blockId"
-                params={{
-                  ministryId,
-                  blockId: block.sourceTemplateTimeBlockId,
+                    );
+                  }
+                  if (column.id === 'time') return formatTimeRange(block);
+                  if (column.id === 'assignment') {
+                    return (
+                      <span data-testid="usual-setup-summary">
+                        {describeUsualSetupEntry(block)}
+                      </span>
+                    );
+                  }
+                  return null;
                 }}
-                aria-label={block.label}
-                className="surface-subtle flex items-center gap-3 p-3"
-              >
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <span className="block font-medium text-sm">
-                    {block.label}
-                  </span>
-                  <span className="block text-muted-foreground text-xs">
-                    {formatTimeRange(block)}
-                  </span>
-                  <span
-                    className="block text-sm"
-                    data-testid="usual-setup-summary"
-                  >
-                    {describeUsualSetupEntry(block)}
-                  </span>
-                  {block.needsReview ? (
-                    <span className="block text-amber-700 text-xs dark:text-amber-500">
-                      <strong>{m.usual_setup_needs_review()}</strong>{' '}
-                      {m.usual_setup_review_fallback()}
-                    </span>
-                  ) : null}
-                </div>
-                <ChevronRightIcon
-                  aria-hidden="true"
-                  className="size-4 shrink-0 text-muted-foreground"
-                />
-              </Link>
-            );
-          }}
-          rowActions={({ item }) => {
-            if (item.kind === 'group') return null;
-            return (
-              <div className="flex w-full justify-end gap-2 max-md:hidden">
-                <Link
-                  to="/app/ministries/$ministryId/usual-setup/$blockId"
-                  params={{
-                    ministryId,
-                    blockId: item.leaf.sourceTemplateTimeBlockId,
-                  }}
-                  aria-label={m.ministries_open_label({
-                    name: item.leaf.label,
-                  })}
-                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                >
-                  {m.ministries_open()}
-                </Link>
-              </div>
-            );
-          }}
-        />
+                renderMobileCard={({ item: block }) => {
+                  return (
+                    <Link
+                      to="/app/ministries/$ministryId/usual-setup/$blockId"
+                      params={{
+                        ministryId,
+                        blockId: block.sourceTemplateTimeBlockId,
+                      }}
+                      aria-label={block.label}
+                      className="surface-subtle flex items-center gap-3 p-3"
+                    >
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <span className="block font-medium text-sm">
+                          {block.label}
+                        </span>
+                        <span className="block text-muted-foreground text-xs">
+                          {formatTimeRange(block)}
+                        </span>
+                        <span
+                          className="block text-sm"
+                          data-testid="usual-setup-summary"
+                        >
+                          {describeUsualSetupEntry(block)}
+                        </span>
+                        {block.needsReview ? (
+                          <span className="block text-amber-700 text-xs dark:text-amber-500">
+                            <strong>{m.usual_setup_needs_review()}</strong>{' '}
+                            {m.usual_setup_review_fallback()}
+                          </span>
+                        ) : null}
+                      </div>
+                      <ChevronRightIcon
+                        aria-hidden="true"
+                        className="size-4 shrink-0 text-muted-foreground"
+                      />
+                    </Link>
+                  );
+                }}
+                rowActions={({ item }) => {
+                  return (
+                    <div className="flex w-full justify-end gap-2 max-md:hidden">
+                      <Link
+                        to="/app/ministries/$ministryId/usual-setup/$blockId"
+                        params={{
+                          ministryId,
+                          blockId: item.sourceTemplateTimeBlockId,
+                        }}
+                        aria-label={m.ministries_open_label({
+                          name: item.label,
+                        })}
+                        className={buttonVariants({
+                          variant: 'outline',
+                          size: 'sm',
+                        })}
+                      >
+                        {m.ministries_open()}
+                      </Link>
+                    </div>
+                  );
+                }}
+              />
+            </section>
+          ))}
+        </div>
       )}
     </section>
   );

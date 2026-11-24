@@ -61,9 +61,10 @@ import type { TransactionContext } from '../domain/contracts/infrastructure/tran
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type {
-  Assignment,
-  AssignmentStatus,
+import {
+  type Assignment,
+  type AssignmentStatus,
+  isActiveAssignmentStatus,
 } from '../domain/entities/assignment';
 import type { EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
@@ -162,10 +163,8 @@ function servingMonths({
   );
 }
 
-function isPublishedStatus(
-  status: AssignmentStatus,
-): status is 'pending' | 'confirmed' {
-  return status === 'pending' || status === 'confirmed';
+function isPublishedStatus(status: AssignmentStatus): status is 'pending' {
+  return status === 'pending';
 }
 
 interface RequirementCoverageStatusInput {
@@ -175,7 +174,7 @@ interface RequirementCoverageStatusInput {
 function countsTowardRequirementCoverage({
   status,
 }: RequirementCoverageStatusInput): boolean {
-  return status === 'draft' || status === 'pending' || status === 'confirmed';
+  return isActiveAssignmentStatus(status);
 }
 
 interface RequirementCoverageInput {
@@ -195,14 +194,6 @@ function projectRequirementCoverage({
     countsTowardRequirementCoverage({ status: assignment.status }),
   ).length;
   return { bound, openCount: Math.max(0, requirement.peopleNeeded - filled) };
-}
-
-function aggregateState(
-  statuses: Array<'pending' | 'confirmed'>,
-): 'pending' | 'confirmed' | 'mixed' {
-  const unique = new Set(statuses);
-  if (unique.size === 1) return statuses[0] ?? 'mixed';
-  return 'mixed';
 }
 
 interface ScheduleShiftLabelInput {
@@ -499,7 +490,6 @@ export class DbVolunteerManager implements IVolunteerManager {
           ministryId: group.ministryId,
           ministryName: group.ministryName,
           eventStart: group.eventStart,
-          aggregateResponseState: aggregateState(sorted.map((i) => i.status)),
           hasPendingResponse: sorted.some((i) => i.status === 'pending'),
           assignments: sorted,
         };

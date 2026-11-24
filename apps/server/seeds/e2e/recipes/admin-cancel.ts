@@ -26,7 +26,7 @@ import { type AssignCycleSummary, buildAssignEvent } from './assign-event';
 /**
  * The starting graph of the admin cancellation journey (J10, #826): a sent
  * Cycle whose one future Worship Event is published, with the Volunteer
- * confirmed on its single Usher seat, told of it, and an open SwapRequest on
+ * assigned to its single Usher seat, told of it, and an open SwapRequest on
  * that Assignment. A distinct ChurchAdmin cancels; the Worship leader is told.
  */
 const RECIPE_NAME = E2E_JOURNEY_RECIPE_NAMES.adminCancel;
@@ -125,7 +125,7 @@ export function createAdminCancelRecipe({
       volunteerId: base.personas.volunteer.volunteerId,
       roleId: worship.roles.usher.id,
       id: idOf({ kind: 'assignment' }),
-      status: 'confirmed',
+      status: 'pending',
     });
     // Publish told the Volunteer; Send updates later diffs against this.
     await db.insert(scheduleLastTold).values({

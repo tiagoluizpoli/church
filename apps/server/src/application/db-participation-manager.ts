@@ -86,7 +86,10 @@ import type { UnavailableShiftRepository } from '../domain/contracts/infrastruct
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type { Assignment } from '../domain/entities/assignment';
+import {
+  type Assignment,
+  isActiveAssignmentStatus,
+} from '../domain/entities/assignment';
 import type { Cycle, CycleState } from '../domain/entities/cycle';
 import type { Event, EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { EventTemplate } from '../domain/entities/event-template';
@@ -1424,6 +1427,7 @@ export class DbParticipationManager implements IParticipationManager {
       additions: reviewed,
       excludedAdditions,
     } = input;
+    // 404 short-circuits only; the Ministry is re-read, locked, in the transaction.
     await this.ministryRepository.getById({ churchId, id: ministryId });
     await this.cycleRepository.getById({ churchId, cycleId });
 
@@ -1478,6 +1482,14 @@ export class DbParticipationManager implements IParticipationManager {
         churchId,
         ministryId,
         cycleId,
+        tx,
+      });
+      // Adding Assignments is new use: archive waits for this to commit, or
+      // commits first and this refuses the archived Ministry.
+      await this.ministryRepository.lockActive({
+        churchId,
+        ministryId,
+        strength: 'share',
         tx,
       });
       const { facts, shifts, proposable } = await this.loadProposalFacts({
@@ -3252,10 +3264,6 @@ function rangesOverlap({
     compareInstants({ left: startTime, right: otherEndTime }) < 0 &&
     compareInstants({ left: endTime, right: otherStartTime }) > 0
   );
-}
-
-function isActiveAssignmentStatus(status: string): boolean {
-  return status === 'draft' || status === 'pending' || status === 'confirmed';
 }
 
 function buildEligibleVolunteerView({

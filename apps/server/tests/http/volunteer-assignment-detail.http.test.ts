@@ -173,7 +173,7 @@ async function seedGraph() {
       volunteerId,
       roleId: role.id,
       shiftRequirementId: requirement.id,
-      status: 'confirmed',
+      status: 'pending',
     });
   const mine = await assign(me.volunteer.id);
   const theirs = await assign(other.volunteer.id);
@@ -261,7 +261,7 @@ describe('Volunteer Assignment detail', () => {
     expect((await get(mine.id)).statusCode).toBe(404);
     await db
       .update(assignment)
-      .set({ status: 'confirmed' })
+      .set({ status: 'pending' })
       .where(eq(assignment.id, mine.id));
     expect((await get(mine.id)).statusCode).toBe(200);
 

@@ -173,9 +173,9 @@ Restrained by default: tinted cool-blue neutrals carry almost the entire surface
 - **Sidebar Fog** (`sidebar`): the desktop sidebar and the mobile top header and bottom tab bar. One step cooler than the content area, so the wayfinding chrome reads as its own layer.
 
 ### Status (outside the brand palette, by design)
-- **Confirmed Green** (`status-success`, Tailwind `green-600`): confirmed-assignment icon, positive suggestion markers. Its text form is `green-700` in light mode and `green-400` in dark mode.
-- **Pending Amber** (`status-warning`, Tailwind `yellow-500`): pending-confirmation icon. Its text form is `yellow-700` / `yellow-300`. A sibling `amber` family (`amber-500/8` fill, `amber-600`/`amber-700` text) carries needs-attention notices such as "removed from this church" and a usual setup that needs review.
-- **Conflict Red** (`destructive`): staffing under 50%, declined assignments, destructive actions, unavailable/double-booked conflict chips. Lightness was lowered to 0.56 so it measures 5.1:1 on `card` and 4.85:1 on `background`, passing AA as small text on every surface; at 0.614 it measured 4.05:1 on `card`, and at 0.58 4.46:1 on `background`.
+- **Confirmed Green** (`status-success`, Tailwind `green-600`): published-assignment icon, positive suggestion markers. Its text form is `green-700` in light mode and `green-400` in dark mode.
+- **Pending Amber** (`status-warning`, Tailwind `yellow-500`): partial or unanswered availability on a suggestion, an assignee who is unavailable or unqualified for the slot. Its text form is `yellow-700` / `yellow-300`. A sibling `amber` family (`amber-500/8` fill, `amber-600`/`amber-700` text) carries needs-attention notices such as "removed from this church" and a usual setup that needs review.
+- **Conflict Red** (`destructive`): staffing under 50%, failed assignment writes, destructive actions, unavailable/double-booked conflict chips. Lightness was lowered to 0.56 so it measures 5.1:1 on `card` and 4.85:1 on `background`, passing AA as small text on every surface; at 0.614 it measured 4.05:1 on `card`, and at 0.58 4.46:1 on `background`.
 
 ### Dark Mode
 Dark mode is a deliberate re-tuning, not a straight invert. `background` drops to a near-black cool slate (`oklch(0.205 0.018 252)`) rather than pure black. `primary` lightens and desaturates to `oklch(0.72 0.066 238)`, because Deep Chapel Blue would fail contrast as a fill on a dark surface, and `primary-foreground` stays dark (`oklch(0.226 0.022 254)`) instead of flipping to white. `card` sits one step lighter than `background` (`oklch(0.24 0.018 252)`) and `sidebar` one step darker (`oklch(0.186 0.016 252)`), so the chrome still reads as its own layer. `destructive` lightens to `oklch(0.682 0.183 24)`. The Staffing Meter fills come from their own `--meter-*` tokens and re-tune per theme (see Staffing Meter), so a fill keeps 3:1 against its track and surface in both.
@@ -183,7 +183,7 @@ Dark mode is a deliberate re-tuning, not a straight invert. `background` drops t
 ### Named Rules
 **The One Voice Rule.** Deep Chapel Blue is the only saturated brand color and it never exceeds roughly 10% of a screen's surface. Reach for a neutral tint (`/8`–`/15` opacity) before reaching for a stronger blue.
 
-**The Traffic-Light Exception.** Green and amber are the one place the system intentionally steps outside the OKLCH brand ramp and uses literal Tailwind palette colors. This is deliberate: staffing and confirmation state must read instantly to an anxious admin or an older volunteer, and a brand-tinted "success" would blunt that. Use them only for staffing meters, assignment confirmation and needs-attention notices; red always comes from the `destructive` token, never a raw `red-*`.
+**The Traffic-Light Exception.** Green and amber are the one place the system intentionally steps outside the OKLCH brand ramp and uses literal Tailwind palette colors. This is deliberate: staffing and confirmation state must read instantly to an anxious admin or an older volunteer, and a brand-tinted "success" would blunt that. Use them only for staffing meters, availability confirmation and needs-attention notices; red always comes from the `destructive` token, never a raw `red-*`.
 
 ## Typography
 
@@ -339,7 +339,7 @@ A dedicated component with two renderings: a compact percentage `Badge` per even
 - **Do** carry every UI surface in Atkinson Hyperlegible; it's the accessibility commitment the whole system is built on.
 - **Do** keep `primary` to ≤10% of any screen; reach for opacity tints (`/8`–`/15`) before a solid fill.
 - **Do** keep cards, panels and list rows flat with `ring-1 ring-foreground/10` or a `border`; reserve shadow for popovers, dropdowns, dialogs and the command palette.
-- **Do** use green and amber only for staffing, assignment confirmation and needs-attention notices, and take red from the `destructive` token.
+- **Do** use green and amber only for staffing, availability confirmation and needs-attention notices, and take red from the `destructive` token.
 - **Do** size touch targets at 44px+ on mobile and volunteer-facing controls, even when the desktop control is 32px. Use the `touch`/`icon-touch` size, wrap the region in `FormControlSizeProvider`, or extend the hit area the way `Switch` does.
 - **Do** pick corners from the `.radius-*` role utilities.
 - **Do** give `DropdownMenu` a higher z-index (`z-60`) than any dialog, drawer, popover, select or tooltip (`z-50`) it might be triggered from, per the Escalation Rule.

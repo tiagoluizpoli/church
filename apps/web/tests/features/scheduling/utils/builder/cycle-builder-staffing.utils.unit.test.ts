@@ -39,7 +39,7 @@ function makeShift(
         volunteerId: `volunteer-${index}`,
         roleId: 'role-1',
         shiftRequirementId: 'requirement-1',
-        status: 'confirmed' as const,
+        status: 'pending' as const,
         assignedAt: '2027-01-01T10:00:00Z',
         lateMark: false,
       }),

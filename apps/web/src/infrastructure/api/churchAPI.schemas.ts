@@ -4212,7 +4212,6 @@ export type GetScheduleBuilderData200AssignmentsItemStatus = typeof GetScheduleB
 export const GetScheduleBuilderData200AssignmentsItemStatus = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -6553,7 +6552,6 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignm
 export const GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItemStatus = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -6978,7 +6976,6 @@ export type CreateParticipationAssignment201AssignmentStatus = typeof CreatePart
 export const CreateParticipationAssignment201AssignmentStatus = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -7056,7 +7053,6 @@ export type MoveParticipationAssignment200Status = typeof MoveParticipationAssig
 export const MoveParticipationAssignment200Status = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -7096,7 +7092,6 @@ export type ReassignParticipationAssignment200Status = typeof ReassignParticipat
 export const ReassignParticipationAssignment200Status = {
   draft: 'draft',
   pending: 'pending',
-  confirmed: 'confirmed',
   cancelled: 'cancelled',
 } as const;
 
@@ -9136,21 +9131,11 @@ export type ListPublicChurchEvents429 = {
   message: string;
 };
 
-export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState];
-
-
-export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState = {
-  pending: 'pending',
-  confirmed: 'confirmed',
-  mixed: 'mixed',
-} as const;
-
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus];
 
 
 export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = {
   pending: 'pending',
-  confirmed: 'confirmed',
 } as const;
 
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState];
@@ -9184,7 +9169,6 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItem = {
   ministryName: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   eventStart: string;
-  aggregateResponseState: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateResponseState;
   hasPendingResponse: boolean;
   assignments: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem[];
 };
@@ -9194,7 +9178,6 @@ export type GetVolunteerDashboard200NextAssignmentStatus = typeof GetVolunteerDa
 
 export const GetVolunteerDashboard200NextAssignmentStatus = {
   pending: 'pending',
-  confirmed: 'confirmed',
 } as const;
 
 export type GetVolunteerDashboard200NextAssignmentTimingState = typeof GetVolunteerDashboard200NextAssignmentTimingState[keyof typeof GetVolunteerDashboard200NextAssignmentTimingState];
@@ -9954,7 +9937,6 @@ export type GetPublishedVolunteerSchedule200AssignmentsItemStatus = typeof GetPu
 
 export const GetPublishedVolunteerSchedule200AssignmentsItemStatus = {
   pending: 'pending',
-  confirmed: 'confirmed',
 } as const;
 
 export type GetPublishedVolunteerSchedule200AssignmentsItem = {
@@ -10005,7 +9987,6 @@ export type GetPublishedVolunteerSchedule200NextStatus = typeof GetPublishedVolu
 
 export const GetPublishedVolunteerSchedule200NextStatus = {
   pending: 'pending',
-  confirmed: 'confirmed',
 } as const;
 
 /**

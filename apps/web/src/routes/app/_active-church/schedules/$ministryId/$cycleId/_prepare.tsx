@@ -18,7 +18,9 @@ import {
   useParams,
 } from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
+import { AnimatePresence, motion, usePresence } from 'framer-motion';
 import {
+  type ReactNode,
   type RefObject,
   useCallback,
   useEffect,
@@ -47,6 +49,7 @@ import { ScheduleAsk } from '@/features/scheduling/components/prepare/schedule-a
 import { SchedulePublish } from '@/features/scheduling/components/prepare/schedule-publish';
 import { scheduleStageLabel } from '@/features/scheduling/components/prepare/schedule-rows';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
+import { useMediaQuery, XL_MEDIA_QUERY } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
@@ -220,6 +223,14 @@ function PrepareWorkspaceRoute() {
     panel,
     open: Boolean(selectedBlockId && ready),
   });
+  const wide = useMediaQuery(XL_MEDIA_QUERY);
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const animateClose = wide && !reducedMotion;
+  const blockPanel = selectedBlockId ? (
+    <PreparePanel key="panel" panel={panel}>
+      <Outlet />
+    </PreparePanel>
+  ) : null;
   const rowsReady = Boolean(ready);
   const selectedDay = selectedDate
     ? parseCalendarDay({ value: selectedDate })
@@ -243,7 +254,8 @@ function PrepareWorkspaceRoute() {
     if (!rowsReady || !hash || selectedBlockId) return;
     // Router hash scrolling runs before query-loaded rows are mounted.
     const row = document.getElementById(hash);
-    row?.scrollIntoView?.({ block: 'center' });
+    // 'nearest' honours the row's scroll margin, so the sticky mobile bar never covers it.
+    row?.scrollIntoView?.({ block: 'nearest' });
     // Closing or saving a block returns focus to its row (its trigger).
     row?.focus({ preventScroll: true });
   }, [hash, rowsReady, selectedBlockId]);
@@ -467,6 +479,7 @@ function PrepareWorkspaceRoute() {
           </div>
           <div
             className={cn(
+              'relative',
               selectedBlockId &&
                 // The list stays dominant; the editor gets a bounded column beside it.
                 'xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(22rem,26rem)] xl:items-start xl:gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]',
@@ -613,21 +626,12 @@ function PrepareWorkspaceRoute() {
                 </p>
               )}
             </div>
-            {selectedBlockId ? (
-              <div
-                ref={panel}
-                data-testid="prepare-block-panel"
-                className={cn(
-                  // The house card from tablet up, as the table beside it; a phone gets the bare screen.
-                  'surface-panel max-md:rounded-none max-md:border-0 max-md:bg-none max-md:bg-transparent md:p-5 md:max-xl:max-w-2xl',
-                  // Beside the list it grows with its content, so only the page scrolls; it stays in view
-                  // while it fits the screen (usePanelStickyWhileItFits), and its footer sticks to the page's bottom.
-                  'fade-in slide-in-from-right-8 xl:sticky xl:top-0 xl:duration-300 xl:motion-safe:animate-in',
-                )}
-              >
-                <Outlet />
-              </div>
-            ) : null}
+            {/* Reduced motion, or a narrow screen: no exit, so no presence either (it unmounts at once). */}
+            {animateClose ? (
+              <AnimatePresence>{blockPanel}</AnimatePresence>
+            ) : (
+              blockPanel
+            )}
           </div>
         </>
       )}
@@ -658,4 +662,61 @@ function usePanelStickyWhileItFits({ panel, open }: PanelStickyInput) {
     if (scroller) observer.observe(scroller);
     return () => observer.disconnect();
   }, [panel, open]);
+}
+
+interface PreparePanelProps {
+  panel: RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}
+
+/** The panel's slide, in and out alike. */
+const PANEL_SLIDE_MS = 300;
+
+/** The block panel. Inside AnimatePresence (beside the list, motion allowed) it is kept, empty
+ * and inert, at its last size once its route is gone, while it slides out: the mirror of the
+ * open animation. Outside it, presence is always true, so it unmounts at once. */
+function PreparePanel({ panel, children }: PreparePanelProps) {
+  const [present, safeToRemove] = usePresence();
+  const size = useRef({ width: 0, height: 0 });
+  useEffect(() => {
+    if (present && panel.current)
+      size.current = {
+        width: panel.current.offsetWidth,
+        height: panel.current.offsetHeight,
+      };
+  });
+  return (
+    <motion.div
+      ref={panel}
+      data-testid="prepare-block-panel"
+      inert={!present}
+      initial={false}
+      exit={{
+        opacity: 0,
+        x: 32,
+        transition: { duration: PANEL_SLIDE_MS / 1000 },
+      }}
+      onAnimationComplete={() => {
+        if (!present) safeToRemove?.();
+      }}
+      style={{
+        animationDuration: `${PANEL_SLIDE_MS}ms`,
+        ...(!present && {
+          width: size.current.width,
+          minHeight: size.current.height,
+        }),
+      }}
+      className={cn(
+        // The house card from tablet up, as the table beside it; a phone gets the bare screen.
+        'surface-panel max-md:rounded-none max-md:border-0 max-md:bg-none max-md:bg-transparent md:p-5 md:max-xl:max-w-2xl',
+        // Beside the list it grows with its content, so only the page scrolls; it stays in view
+        // while it fits the screen (usePanelStickyWhileItFits), and its footer sticks to the page's bottom.
+        'fade-in slide-in-from-right-8 xl:sticky xl:top-0 xl:motion-safe:animate-in',
+        // Leaving, its column is gone: it floats over where it was, at its measured size.
+        !present && 'pointer-events-none absolute top-0 right-0',
+      )}
+    >
+      {children}
+    </motion.div>
+  );
 }

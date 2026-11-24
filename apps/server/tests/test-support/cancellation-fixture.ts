@@ -41,7 +41,7 @@ import {
 
 /**
  * The Sent-Cycle cancellation board shared by the cancellation suites: one
- * Sunday with published, unpublished, declined, swap-requested, marked and
+ * Sunday with published, unpublished, cancelled, swap-requested, marked and
  * last-told work.
  */
 
@@ -95,7 +95,7 @@ interface StaffInput {
   volunteerId: string;
   start: string;
   end: string;
-  status: 'draft' | 'pending' | 'confirmed' | 'cancelled';
+  status: 'draft' | 'pending' | 'cancelled';
 }
 
 /** One Shift on an existing block with one Assignment on it. */
@@ -142,9 +142,9 @@ export async function staff({
 
 /**
  * A Sent Cycle with Sunday 09:00–12:00 (Welcome 09–10, Service 10–12).
- * Ministry A is published: Ana (Welcome, confirmed, open SwapRequest), Bia
- * (Service, pending) and Dani (Service, declined). Media is unpublished:
- * Caio (Service, confirmed). Edu only marked both Shifts unavailable. Ana's
+ * Ministry A is published: Ana (Welcome, pending, open SwapRequest), Bia
+ * (Service, pending) and Dani (Service, cancelled). Media is unpublished:
+ * Caio (Service, pending). Edu only marked both Shifts unavailable. Ana's
  * last-told snapshot also holds an unrelated entry.
  */
 export async function seedSentSunday() {
@@ -258,7 +258,7 @@ export async function seedSentSunday() {
     volunteerId: ana.volunteer.id,
     start: '09:00',
     end: '10:00',
-    status: 'confirmed',
+    status: 'pending',
   });
   const biaService = await staff({
     churchId,
@@ -289,7 +289,7 @@ export async function seedSentSunday() {
     volunteerId: caio.volunteer.id,
     start: '10:00',
     end: '12:00',
-    status: 'confirmed',
+    status: 'pending',
   });
   await db.insert(swapRequest).values({
     churchId,

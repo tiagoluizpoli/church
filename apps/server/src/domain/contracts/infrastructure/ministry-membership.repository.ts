@@ -98,7 +98,7 @@ export interface MinistryMembershipRepository {
     input: LockMembershipTargetInput,
   ): Promise<MembershipTarget | undefined>;
   /**
-   * Active (`draft`/`pending`/`confirmed`) Assignments of the Volunteer in the
+   * Active (`draft`/`pending`) Assignments of the Volunteer in the
    * Ministry on non-cancelled Events whose end is after `at`, unique and
    * ordered by Shift start then Assignment id.
    */

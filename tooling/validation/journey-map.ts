@@ -89,6 +89,15 @@ const MINISTRIES_JOURNEY_SPEC_PATHS = [
   'tests/ministries/ministries-directory.spec.ts',
 ];
 
+// #948: the Ministry tab bar at 320px.
+const MINISTRY_TABS_SPEC_PATHS = [
+  'tests/ministries/ministry-tabs-narrow.spec.ts',
+];
+
+// #949: the preparation side panel (close animation, X guard, narrow h1,
+// return scroll under the sticky mobile bar).
+const PREPARE_PANEL_SPEC_PATHS = ['tests/scheduling/prepare-panel.spec.ts'];
+
 // #905: an unreachable API, the reconnecting banner and recovery.
 const RECONNECTING_SPEC_PATHS = [
   'tests/resilience/reconnecting-banner.spec.ts',
@@ -357,6 +366,19 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       ...CHURCH_SETTINGS_JOURNEY_SPEC_PATHS,
       ...PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
     ],
+  })),
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/ministries/components/ministry-workspace.tsx',
+    specPaths: MINISTRY_TABS_SPEC_PATHS,
+  },
+  ...[
+    'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare.tsx',
+    'apps/web/src/features/scheduling/components/prepare/preparation-block-editor.tsx',
+    'apps/web/src/features/scheduling/components/prepare/prepare-event-time-block-list.tsx',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: PREPARE_PANEL_SPEC_PATHS,
   })),
   // #900: the server-side list filtering, counts and paging of #899.
   ...[

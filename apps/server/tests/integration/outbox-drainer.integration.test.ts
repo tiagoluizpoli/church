@@ -828,7 +828,7 @@ describe('Volunteer Transfer digests through the Notifier (ticket #623, integrat
       roleId: fixture.roleInMinistryInB,
       start,
       end,
-      status: 'confirmed',
+      status: 'pending',
     });
     // The Shift is 13:15–13:45 UTC inside its 13:00–14:00 EventTimeBlock.
     await testDb

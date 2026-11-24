@@ -25,7 +25,7 @@ const EXISTING_ASSIGNMENT: RawAssignment = {
   volunteerId: 'ana',
   roleId: 'role-1',
   shiftRequirementId: 'requirement-role-1',
-  status: 'confirmed',
+  status: 'pending',
   assignedAt: '2026-07-01T10:00:00.000Z',
   lateMark: false,
 };

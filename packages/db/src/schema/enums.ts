@@ -61,7 +61,6 @@ export const defaultDirectionEnum = pgEnum('default_direction', [
 export const assignmentStatusEnum = pgEnum('assignment_status', [
   'draft',
   'pending',
-  'confirmed',
   'cancelled',
 ]);
 

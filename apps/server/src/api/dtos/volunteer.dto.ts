@@ -117,7 +117,7 @@ const dashboardAssignmentItemSchema = z.object({
   sectorName: z.string(),
   startTime: instantSchema,
   endTime: instantSchema,
-  status: z.enum(['pending', 'confirmed']),
+  status: z.enum(['pending']),
   timingState: z.enum(['in_progress', 'upcoming']),
 });
 type DashboardAssignmentItemResponse = z.infer<
@@ -130,7 +130,6 @@ const dashboardAssignmentGroupSchema = z.object({
   ministryId: z.string(),
   ministryName: z.string(),
   eventStart: instantSchema,
-  aggregateResponseState: z.enum(['pending', 'confirmed', 'mixed']),
   hasPendingResponse: z.boolean(),
   assignments: z.array(dashboardAssignmentItemSchema),
 });
@@ -184,7 +183,7 @@ const volunteerScheduleAssignmentSchema = z.object({
   sectorName: z.string(),
   roleId: z.string(),
   roleName: z.string(),
-  status: z.enum(['pending', 'confirmed']),
+  status: z.enum(['pending']),
   swapRequested: z.boolean(),
 });
 
@@ -358,7 +357,6 @@ function dashboardAssignmentGroupToResponse(
     ministryId: group.ministryId,
     ministryName: group.ministryName,
     eventStart: parseInstant({ value: group.eventStart }),
-    aggregateResponseState: group.aggregateResponseState,
     hasPendingResponse: group.hasPendingResponse,
     assignments: group.assignments.map(dashboardAssignmentItemToResponse),
   };

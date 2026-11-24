@@ -517,12 +517,10 @@ interface PlacementTarget {
 }
 
 /**
- * What became of an Assignment: still serving, withdrawn by its Volunteer, or
- * reassigned away (the product deletes that row, so it is never written).
+ * What became of an Assignment: still serving, or reassigned away (the
+ * product deletes that row, so it is never written).
  */
-type AssignmentOutcome =
-  | Extract<AssignmentStatus, 'confirmed' | 'cancelled'>
-  | 'reassigned';
+type AssignmentOutcome = Extract<AssignmentStatus, 'pending'> | 'reassigned';
 
 interface AssignmentWrite {
   target: PlacementTarget;
@@ -531,7 +529,7 @@ interface AssignmentWrite {
   assignedAt: Instant;
   /** The leader who made it; every Assignment here is its Ministry leader's. */
   assignedByEmail: string;
-  /** The row's reason: a decline's, or the override a reassignment carried. */
+  /** The row's reason: the override a reassignment carried. */
   reason?: string;
   /** The override reason, also written on its `created` audit. */
   createdReason?: string;
@@ -547,7 +545,7 @@ interface PlaceInput {
 interface WithdrawInput {
   target: PlacementTarget;
   email: string;
-  outcome: Exclude<AssignmentOutcome, 'confirmed'>;
+  outcome: Exclude<AssignmentOutcome, 'pending'>;
   assignedAt: Instant;
   reason?: string;
 }
@@ -559,7 +557,7 @@ interface StaffingLedgerInput {
 
 /**
  * Who serves where: refuses any placement the product would flag, so the
- * history never holds an unqualified, double-booked, unavailable, declined or
+ * history never holds an unqualified, double-booked, unavailable or
  * over-filled Assignment.
  */
 class StaffingLedger {
@@ -620,7 +618,7 @@ class StaffingLedger {
       return `is not qualified as ${requirement.roleName}`;
     }
     if (this.excludedByShift.get(shift.id)?.has(email)) {
-      return 'already declined or was withdrawn';
+      return 'was already withdrawn';
     }
     const range = { start: shift.start, end: shift.end };
     if (
@@ -660,7 +658,7 @@ class StaffingLedger {
     const write: AssignmentWrite = {
       target,
       email,
-      outcome: 'confirmed',
+      outcome: 'pending',
       assignedAt,
       assignedByEmail: this.leaderOf({ shift: target.shift }),
       reason: createdReason,
@@ -670,7 +668,7 @@ class StaffingLedger {
     return write;
   }
 
-  /** An Assignment its Volunteer declined or its leader reassigned away. */
+  /** An Assignment its leader reassigned away. */
   withdraw({
     target,
     email,
@@ -832,10 +830,6 @@ function scriptedServiceKeys({
       { email: incident.email, servicePost: incident.kept },
       { email: incident.replacementEmail, servicePost: incident.withdrawn },
     ]),
-    ...history.declines.map((incident) => ({
-      email: incident.replacementEmail,
-      servicePost: incident.post,
-    })),
   ];
   return new Set(
     served.map(
@@ -1019,8 +1013,7 @@ interface TrailRecords {
 
 /**
  * The blueprint's trail placed before rotation: cross-Ministry service, the
- * overlap a leader resolved by reassignment, and the decline with its
- * replacement, each as the product records it.
+ * overlap a leader resolved by reassignment, each as the product records it.
  */
 function applyHistoryTrail({
   ledger,
@@ -1069,24 +1062,6 @@ function applyHistoryTrail({
       action: 'updated',
       reason: incident.reason,
       occurredAt: reassignedAt,
-    });
-  }
-
-  // respondToAssignment only sets the status and reason; the leader then
-  // assigns a replacement like any other Assignment.
-  for (const incident of history.declines) {
-    const target = findTarget({ shifts, post: incident.post });
-    ledger.withdraw({
-      target,
-      email: incident.email,
-      outcome: 'cancelled',
-      assignedAt,
-      reason: incident.reason,
-    });
-    ledger.place({
-      target,
-      email: incident.replacementEmail,
-      assignedAt: replacedAt({ shift: target.shift }),
     });
   }
 
@@ -1154,7 +1129,7 @@ function staffByRotation({
  * The previous complete calendar month as a sent historical Cycle:
  * every gathering materialized, every Ministry's slice published, mostly
  * fully staffed by rotation, plus the blueprint's trail of unavailability,
- * declines, replacements and cross-Ministry service. Nothing reaches the
+ * replacements and cross-Ministry service. Nothing reaches the
  * anchor's month, so current and future planning stays empty.
  */
 export async function loadDevelopmentHistory({
@@ -1510,7 +1485,6 @@ export async function loadDevelopmentUpcomingCycle({
     directory,
     history: {
       unavailability: [],
-      declines: [],
       resolvedOverlaps: [],
       crossMinistryService: [],
       shortfalls: [],

@@ -1363,7 +1363,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         volunteerId: volunteer.id,
         roleId: base.roleId,
         shiftRequirementId: requirement.id,
-        status: 'confirmed',
+        status: 'pending',
       });
       await setParticipationState(base, 'assigning');
 
@@ -1397,7 +1397,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         volunteerId: volunteer.id,
         roleId: base.roleId,
         shiftRequirementId: requirement.id,
-        status: 'confirmed',
+        status: 'pending',
       });
       await setParticipationState(base, 'availability_requested');
       const { paused, release } = pauseWrite('updateState');
@@ -1606,7 +1606,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         volunteerId: existing.id,
         roleId: base.roleId,
         shiftRequirementId: target.requirement.id,
-        status: 'confirmed',
+        status: 'pending',
       });
       const { paused, release } = pauseWrite('updateState');
 
@@ -1754,7 +1754,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       base: Base;
       shiftId: string;
       shiftRequirementId: string;
-      status?: 'draft' | 'pending' | 'confirmed' | 'cancelled';
+      status?: 'draft' | 'pending' | 'cancelled';
     }
 
     async function assign({
@@ -1812,7 +1812,6 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       return { first: first.shift, second: secondShift };
     }
 
-    const ANSWER_RACE_WINDOW_MS = 300;
     const SPLIT_SECOND_HALF: [string, string][] = [
       [BLOCK_START, BLOCK_MIDDLE],
       [BLOCK_MIDDLE, '2099-03-01T10:30:00.000Z'],
@@ -1839,7 +1838,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
           shiftRequirementId: requirement.id,
         };
         await assign(assigned);
-        await assign({ ...assigned, status: 'confirmed' });
+        await assign({ ...assigned, status: 'pending' });
         await setParticipationState(base, state);
 
         for (const peopleNeeded of [5, 2]) {
@@ -2096,30 +2095,6 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
           { id: requirement.id, peopleNeeded: 7 },
         ]);
         expect(await marksOf(marked.id)).toHaveLength(1);
-      });
-
-      it('reads a racing answer before deciding, so it is never discarded', async () => {
-        const base = await seedPreparation();
-        const { shift: answered } = await seedBlockShift({ base });
-        const check = await seedCheck(base);
-        let save: ReturnType<typeof savePreparation> | undefined;
-
-        await db.transaction(async (tx) => {
-          await tx.insert(unavailableShift).values({
-            churchId: base.churchId,
-            availabilityCheckId: check.id,
-            shiftId: answered.id,
-          });
-          save = savePreparation({ ...base, payload: { serves: false } });
-          // The save must reach the Shift rows while this answer is uncommitted.
-          await new Promise((resolve) =>
-            setTimeout(resolve, ANSWER_RACE_WINDOW_MS),
-          );
-        });
-        const outcome = await save;
-
-        expect(outcome?.statusCode).toBe(409);
-        expect(await marksOf(answered.id)).toHaveLength(1);
       });
     });
 

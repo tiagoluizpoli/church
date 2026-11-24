@@ -13,8 +13,8 @@ import { renderRoute } from '@/tests/setup/render-route';
 const getCallerCapabilities = vi.fn();
 const listMinistries = vi.fn();
 const getMinistry = vi.fn();
-const listSectors = vi.fn(async () => ({ sectors: [] }));
-const listMinistryRoles = vi.fn(async () => ({ roles: [] }));
+const listSectors = vi.fn();
+const listMinistryRoles = vi.fn();
 const renameMinistry = vi.fn();
 const archiveMinistry = vi.fn();
 
@@ -86,6 +86,8 @@ const asLeader = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  listSectors.mockResolvedValue({ sectors: [] });
+  listMinistryRoles.mockResolvedValue({ roles: [] });
   getMinistry.mockResolvedValue(ministry('Worship'));
   listMinistries.mockResolvedValue({ ministries: [ministry('Worship')] });
 });
@@ -228,6 +230,99 @@ describe('/app/ministries/$ministryId workspace', () => {
     renderWorkspace('/operational');
 
     expect(await screen.findByText(m.shell_no_access())).toBeVisible();
+  });
+});
+
+describe('Ministry setup guide and tab bar', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('shows the guide for a new Ministry until it is dismissed', async () => {
+    asAdmin();
+    const user = userEvent.setup();
+    renderWorkspace('/operational');
+
+    expect(
+      await screen.findByText(m.ministry_setup_guide_title()),
+    ).toBeVisible();
+    await user.click(
+      screen.getByRole('button', { name: m.ministry_setup_guide_dismiss() }),
+    );
+    expect(screen.queryByText(m.ministry_setup_guide_title())).toBeNull();
+  });
+
+  it('hides the guide once the Ministry has a Sector and a Role', async () => {
+    asAdmin();
+    listSectors.mockResolvedValue({ sectors: [{ id: 's1', name: 'Stage' }] });
+    listMinistryRoles.mockResolvedValue({
+      roles: [{ id: 'r1', name: 'Singer' }],
+    });
+    renderWorkspace('/operational');
+
+    await screen.findByRole('heading', { name: 'Worship' });
+    await waitFor(() =>
+      expect(screen.queryByText(m.ministry_setup_guide_title())).toBeNull(),
+    );
+    expect(
+      screen.queryByRole('button', { name: m.ministry_setup_guide_open() }),
+    ).toBeNull();
+  });
+
+  it('shows neither the guide nor its reopen button while the Sector and Role reads are pending', async () => {
+    asAdmin();
+    listSectors.mockReturnValue(new Promise(() => undefined));
+    listMinistryRoles.mockReturnValue(new Promise(() => undefined));
+    renderWorkspace('/operational');
+
+    await screen.findByRole('heading', { name: 'Worship' });
+    expect(screen.queryByText(m.ministry_setup_guide_title())).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: m.ministry_setup_guide_open() }),
+    ).toBeNull();
+  });
+
+  it('falls back to the dismissal flag alone when a read fails', async () => {
+    asAdmin();
+    listSectors.mockRejectedValue(new Error('offline'));
+    renderWorkspace('/operational');
+
+    expect(
+      await screen.findByText(m.ministry_setup_guide_title()),
+    ).toBeVisible();
+  });
+
+  it('scrolls the active tab into view on mount', async () => {
+    asAdmin();
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderWorkspace('/settings');
+
+    await screen.findByRole('heading', { name: 'Worship' });
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        block: 'nearest',
+        inline: 'nearest',
+      }),
+    );
+  });
+
+  it('keeps the guide with only a Sector and no Role', async () => {
+    asAdmin();
+    listSectors.mockResolvedValue({ sectors: [{ id: 's1', name: 'Stage' }] });
+    renderWorkspace('/operational');
+
+    expect(
+      await screen.findByText(m.ministry_setup_guide_title()),
+    ).toBeVisible();
+  });
+
+  it('scrolls the tab bar sideways instead of clipping tabs', async () => {
+    asAdmin();
+    renderWorkspace('/operational');
+
+    const nav = await screen.findByRole('navigation', {
+      name: m.ministry_tabs_label(),
+    });
+    expect(within(nav).getByRole('list')).toHaveClass('overflow-x-auto');
   });
 });
 

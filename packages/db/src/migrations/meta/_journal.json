@@ -526,6 +526,13 @@
       "when": 1795473259772,
       "tag": "0074_drop-declined-assignment-status",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795515229475,
+      "tag": "0075_drop-confirmed-assignment-status",
+      "breakpoints": true
     }
   ]
 }

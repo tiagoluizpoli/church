@@ -33,6 +33,7 @@ import type {
   SaveMembershipAccessInput,
   SaveMembershipRolesInput,
 } from '../../domain/contracts/infrastructure/ministry-membership.repository';
+import { ACTIVE_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
 import type { PersonDetailRole } from '../../domain/entities/people-list-item';
 import type { UpcomingMembershipAssignment } from '../../domain/upcoming-membership-assignments';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
@@ -41,8 +42,6 @@ import type { AnyDrizzleDb } from './types';
 interface DrizzleMinistryMembershipRepositoryInput {
   db: AnyDrizzleDb;
 }
-
-const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
 
 /** The ids every Ministry Membership audit starts with. */
 function membershipFacts({ target }: Pick<SaveMembershipRolesInput, 'target'>) {
@@ -194,7 +193,7 @@ export class DrizzleMinistryMembershipRepository
           withChurchIsolation({ table: assignment, churchId }),
           eq(assignment.volunteerId, volunteerId),
           eq(ministryParticipation.ministryId, ministryId),
-          inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+          inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
           ne(event.status, 'cancelled'),
           // The Event end, not the Shift's: a running Event protects its ended Shifts.
           gt(event.end, toDate({ instant: at })),

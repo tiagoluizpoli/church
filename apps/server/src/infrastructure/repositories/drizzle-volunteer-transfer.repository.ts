@@ -42,14 +42,13 @@ import type {
   VolunteerTransferRepository,
   VolunteerTransferResult,
 } from '../../domain/contracts/infrastructure/volunteer-transfer.repository';
+import { ACTIVE_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
 import { getClient, withChurchIsolation } from './helpers';
 import {
   grantMinistryMembershipRoles,
   insertMinistryMembership,
 } from './ministry-grant';
 import type { AnyDrizzleDb } from './types';
-
-const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
 
 interface DrizzleVolunteerTransferRepositoryInput {
   db: AnyDrizzleDb;
@@ -121,7 +120,7 @@ export class DrizzleVolunteerTransferRepository
       .where(
         and(
           eq(assignment.volunteerId, activeProfile.id),
-          inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+          inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
           gt(eventTimeBlock.startTime, now),
         ),
       )
@@ -314,7 +313,7 @@ export class DrizzleVolunteerTransferRepository
       .where(
         and(
           eq(assignment.volunteerId, activeProfile.id),
-          inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+          inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
           gt(eventTimeBlock.startTime, confirmedAt),
         ),
       );

@@ -4,6 +4,7 @@ import {
   assignment,
   assignmentProposalApplication,
   availabilityCheck,
+  ministry,
   ministryMembership,
   ministryMembershipRole,
   ministryParticipation,
@@ -30,6 +31,8 @@ import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
+import { DbCycleManager } from '@/application/db-cycle-manager';
+import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DbMinistryMembershipManager } from '@/application/db-ministry-membership-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import {
@@ -45,6 +48,7 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import { MinistryInUseError } from '@/domain/errors/ministry-in-use';
 import { UpcomingAssignmentsError } from '@/domain/errors/upcoming-assignments';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
@@ -58,6 +62,7 @@ import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-ev
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryInvitationRepository } from '@/infrastructure/repositories/drizzle-ministry-invitation.repository';
 import { DrizzleMinistryMembershipRepository } from '@/infrastructure/repositories/drizzle-ministry-membership.repository';
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
@@ -94,6 +99,7 @@ import { testLocale } from '@/tests/test-support/fastify-locale';
 let app: FastifyTypedInstance;
 let managers: SchedulingManagers;
 let membershipManager: DbMinistryMembershipManager;
+let ministryManager: DbMinistryManager;
 
 beforeAll(async () => {
   app = await createFastify({
@@ -124,6 +130,20 @@ beforeAll(async () => {
     roleRepository: new DrizzleRoleRepository({ db }),
     unitOfWork,
   });
+  // Archives the Ministry while Apply races it.
+  ministryManager = new DbMinistryManager({
+    ministryRepo: ministryRepository,
+    volunteerRepo: new DrizzleVolunteerRepository({ db }),
+    invitationRepo: new DrizzleMinistryInvitationRepository({
+      db,
+      config: appConfig,
+    }),
+    unitOfWork,
+    sectorRepo: {} as never,
+    roleRepo: {} as never,
+    usualSetupRepo: {} as never,
+    templateRepo: {} as never,
+  });
   const activeChurchResolver = new DbActiveChurchResolver({
     actorRepository,
     membershipRepository: new DrizzleChurchMembershipRepository({ db }),
@@ -132,7 +152,17 @@ beforeAll(async () => {
   });
   // Move confirm races Assignment creation through the real routes.
   const adminController = new ChurchAdminController({
-    cycleManager: {} as never,
+    // Edits a Cycle while Apply races it; Send is never called.
+    cycleManager: new DbCycleManager({
+      cycleRepository: new DrizzleCycleRepository({ db }),
+      eventRepository: new DrizzlePlanningEventRepository({ db }),
+      churchRepository: new DrizzleChurchRepository({ db }),
+      unitOfWork,
+      participationRepository: {} as never,
+      staffingSeeder: {} as never,
+      volunteerRepository: {} as never,
+      notifications,
+    }),
     eventTemplateManager: {} as never,
     ministryManager: {} as never,
     planningEventManager: new DbPlanningEventManager({
@@ -1452,5 +1482,266 @@ for (const [writerName, writer] of Object.entries(mixedWriters)) {
     );
     expect(await applicationRows(key)).toHaveLength(1);
     await writer.afterApply({ seed, written });
+  });
+}
+
+// ── Apply against Ministry archive and the Church-lock writers (#946) ───────
+
+function archiveMinistry(seed: MixedSeed) {
+  return ministryManager.archive({
+    churchId: ChurchId.from(seed.churchAId),
+    ministryId: MinistryId.from(seed.ministryAId),
+    callerId: UserId.from(seed.adminUserId),
+  });
+}
+
+async function ministryArchivedAt(ministryId: string) {
+  const [row] = await db
+    .select({ deletedAt: ministry.deletedAt })
+    .from(ministry)
+    .where(eq(ministry.id, ministryId));
+  return row?.deletedAt;
+}
+
+it('Apply queued behind Ministry archive refuses the archived Ministry and writes nothing', async () => {
+  const seed = await seedMixedWriters();
+  const key = randomUUID();
+  // Every Event has ended, so archive passes its un-ended participation guard.
+  setTestClock({ instant: parseInstant({ value: '2026-08-02T11:00:01Z' }) });
+
+  const [archived, applied] = await raceBehindOwner({
+    // Archive waits for the Ministry row; Apply then queues behind archive.
+    hold: (blocker) =>
+      blocker.query('SELECT id FROM ministry WHERE id = $1 FOR UPDATE', [
+        seed.ministryAId,
+      ]),
+    first: () => settle(archiveMinistry(seed)),
+    second: () => seed.apply(key),
+  });
+
+  expect(archived).toMatchObject({ ok: true });
+  expect(await ministryArchivedAt(seed.ministryAId)).not.toBeNull();
+  expect(applied.statusCode).toBe(404);
+  expect(await activeShiftVolunteers(seed.shift.id)).toEqual([
+    seed.current.volunteerId,
+  ]);
+  expect(await applicationRows(key)).toEqual([]);
+});
+
+it('Ministry archive queued behind Apply sees its participation and refuses', async () => {
+  const seed = await seedMixedWriters();
+  const key = randomUUID();
+
+  const [applied, archived] = await raceBehindOwner({
+    // Apply waits at its Assignment insert, the Ministry share-locked. Its
+    // outcome row cannot be held: that insert key-share locks the Ministry.
+    hold: (blocker) =>
+      blocker.query(
+        'SELECT id FROM shift_requirement WHERE id = $1 FOR UPDATE',
+        [seed.pair.shiftRequirementId],
+      ),
+    first: () => seed.apply(key),
+    second: () => settle(archiveMinistry(seed)),
+  });
+
+  expect(applied.statusCode).toBe(200);
+  expect(applied.json()).toMatchObject({ replayed: false });
+  expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
+    [seed.current.volunteerId, seed.replacementId].sort(),
+  );
+  expect(archived.ok).toBe(false);
+  if (!archived.ok) expect(archived.error).toBeInstanceOf(MinistryInUseError);
+  expect(await ministryArchivedAt(seed.ministryAId)).toBeNull();
+});
+
+/** The Replacement already serves 9 August 09:00–11:00, where the reviewed Shift can move. */
+async function seedChurchLockWriters() {
+  const seed = await seedMixedWriters();
+  const later = await createSchedulingPhase3EventGraph({
+    churchId: seed.churchAId,
+    cycleId: seed.cycle.id,
+    ministryId: seed.ministryAId,
+    title: 'Next Sunday',
+    start: new Date('2026-08-09T09:00:00Z'),
+    end: new Date('2026-08-09T11:00:00Z'),
+    status: 'scheduled',
+  });
+  const laterShift = await seedShift({
+    churchId: seed.churchAId,
+    participationId: later.participation.id,
+    eventTimeBlockId: later.eventTimeBlock.id,
+    label: 'Morning',
+    startTime: later.eventTimeBlock.startTime,
+    endTime: later.eventTimeBlock.endTime,
+  });
+  const laterRequirement = await seedRequirement({
+    churchId: seed.churchAId,
+    participationId: later.participation.id,
+    shiftId: laterShift.id,
+    roleId: seed.source.roleId,
+    peopleNeeded: 1,
+  });
+  await buildAssignment({
+    db,
+    churchId: seed.churchAId,
+    participationId: later.participation.id,
+    shiftId: laterShift.id,
+    roleId: seed.source.roleId,
+    volunteerId: seed.replacementId,
+    shiftRequirementId: laterRequirement.id,
+    status: 'confirmed',
+  });
+  return seed;
+}
+
+type InjectResult = Awaited<ReturnType<typeof createReplacement>>;
+
+interface ChurchLockOutcome {
+  seed: MixedSeed;
+  applied: InjectResult;
+  written: InjectResult;
+}
+
+interface ChurchLockWriter {
+  run: (seed: MixedSeed) => Promise<InjectResult>;
+  /** Both outcomes once the writer committed before Apply. */
+  writerFirst: (outcome: ChurchLockOutcome) => Promise<void>;
+  /** Both outcomes once Apply committed before the writer. */
+  applyFirst: (outcome: ChurchLockOutcome) => Promise<void>;
+}
+
+async function sortedShiftAssignmentRows(shiftId: string) {
+  return (await shiftAssignmentRows(shiftId)).sort((left, right) =>
+    left.volunteerId.localeCompare(right.volunteerId),
+  );
+}
+
+const churchLockWriters: Record<string, ChurchLockWriter> = {
+  "a move confirm onto the Volunteer's other Shift": {
+    run: (seed) =>
+      app
+        .inject({
+          method: 'POST',
+          url: `/api/v1/admin/cycles/${seed.cycle.id}/events/${seed.graph.event.id}/move`,
+          headers: seed.headers,
+          payload: { start: '2026-08-09T09:00:00.000Z' },
+        })
+        .then((result) => result),
+    // The moved Shift now overlaps the Replacement's booking: Apply is stale.
+    writerFirst: async ({ seed, applied, written }) => {
+      expect(written.statusCode).toBe(200);
+      expect(written.json().withdrawn).toEqual([]);
+      expect(applied.statusCode).toBe(409);
+      expect(applied.json()).toMatchObject({
+        error: 'ASSIGNMENT_PROPOSAL_STALE',
+      });
+      expect(await activeShiftVolunteers(seed.shift.id)).toEqual([
+        seed.current.volunteerId,
+      ]);
+    },
+    // The move withdraws the Assignment Apply added, now double-booked.
+    applyFirst: async ({ seed, applied, written }) => {
+      expect(written.statusCode).toBe(200);
+      expect(written.json().withdrawn).toEqual([
+        expect.objectContaining({
+          assignmentId: applied.json().additions[0].assignmentId,
+        }),
+      ]);
+      expect(await activeShiftVolunteers(seed.shift.id)).toEqual([
+        seed.current.volunteerId,
+      ]);
+    },
+  },
+  "a cancellation of the reviewed Shift's Event": {
+    run: (seed) => confirmCancel({ seed, scope: 'event' }),
+    writerFirst: async ({ seed, applied, written }) => {
+      expect(written.statusCode).toBe(200);
+      expect(applied.statusCode).toBe(409);
+      expect(applied.json()).toMatchObject({
+        error: 'ILLEGAL_STATE_TRANSITION',
+      });
+      expect(await shiftAssignmentRows(seed.shift.id)).toEqual([
+        { volunteerId: seed.current.volunteerId, status: 'cancelled' },
+      ]);
+    },
+    // The cancellation cancels the Assignment Apply added too.
+    applyFirst: async ({ seed, written }) => {
+      expect(written.statusCode).toBe(200);
+      expect(await sortedShiftAssignmentRows(seed.shift.id)).toEqual(
+        [
+          { volunteerId: seed.current.volunteerId, status: 'cancelled' },
+          { volunteerId: seed.replacementId, status: 'cancelled' },
+        ].sort((left, right) =>
+          left.volunteerId.localeCompare(right.volunteerId),
+        ),
+      );
+    },
+  },
+  'an edit of the Sent Cycle': {
+    run: (seed) =>
+      app
+        .inject({
+          method: 'PATCH',
+          url: `/api/v1/admin/cycles/${seed.cycle.id}`,
+          headers: seed.headers,
+          payload: {
+            name: 'August',
+            startDate: '2026-08-01',
+            endDate: '2026-08-31',
+          },
+        })
+        .then((result) => result),
+    // A Sent Cycle refuses the edit whichever goes first; Apply adds.
+    writerFirst: async ({ seed, applied, written }) => {
+      expect(written.statusCode).toBe(409);
+      expect(written.json()).toMatchObject({
+        error: 'ILLEGAL_STATE_TRANSITION',
+      });
+      expect(applied.statusCode).toBe(200);
+      expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
+        [seed.current.volunteerId, seed.replacementId].sort(),
+      );
+    },
+    applyFirst: async ({ seed, written }) => {
+      expect(written.statusCode).toBe(409);
+      expect(written.json()).toMatchObject({
+        error: 'ILLEGAL_STATE_TRANSITION',
+      });
+      expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
+        [seed.current.volunteerId, seed.replacementId].sort(),
+      );
+    },
+  },
+};
+
+for (const [writerName, writer] of Object.entries(churchLockWriters)) {
+  it(`Apply queued behind ${writerName} on the Church lock sees it`, async () => {
+    const seed = await seedChurchLockWriters();
+    const key = randomUUID();
+
+    const [written, applied] = await raceBehindChurchLock({
+      churchId: seed.churchAId,
+      requests: [() => writer.run(seed), () => seed.apply(key)],
+    });
+    if (!written || !applied) throw new Error('Missing race outcome');
+
+    await writer.writerFirst({ seed, applied, written });
+    expect(await overlappingActivePairs()).toEqual([]);
+  });
+
+  it(`${writerName} queued behind Apply on the Church lock sees its Assignments`, async () => {
+    const seed = await seedChurchLockWriters();
+    const key = randomUUID();
+
+    const [applied, written] = await raceBehindChurchLock({
+      churchId: seed.churchAId,
+      requests: [() => seed.apply(key), () => writer.run(seed)],
+    });
+    if (!written || !applied) throw new Error('Missing race outcome');
+
+    expect(applied.statusCode).toBe(200);
+    expect(applied.json()).toMatchObject({ replayed: false });
+    await writer.applyFirst({ seed, applied, written });
+    expect(await overlappingActivePairs()).toEqual([]);
   });
 }

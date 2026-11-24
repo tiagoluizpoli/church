@@ -31,6 +31,7 @@ function shift({
     eventTimeBlockId: 'block',
     startTime,
     endTime: startTime,
+    cancelled: false,
     peopleNeeded: 3,
     assignedCount: volunteerIds.length,
     requirements: [

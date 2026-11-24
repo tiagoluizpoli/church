@@ -51,6 +51,8 @@ export type MappedDomainCode =
   | 'ILLEGAL_STATE_TRANSITION'
   | 'DRAFT_STAFFING_RECONCILIATION_REQUIRED'
   | 'EVENT_OUTSIDE_CYCLE'
+  | 'EVENT_CANCELLED'
+  | 'EVENT_TIME_BLOCK_CANCELLED'
   | 'MOVE_WINDOW_CLOSED'
   | 'EDIT_WINDOW_CLOSED'
   | 'STAFFED_EVENT_TIME_BLOCK_DROP'
@@ -162,6 +164,11 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     message: m.error_draft_staffing_reconciliation_required,
   },
   EVENT_OUTSIDE_CYCLE: { status: 409, message: m.error_event_outside_cycle },
+  EVENT_CANCELLED: { status: 409, message: m.error_event_cancelled },
+  EVENT_TIME_BLOCK_CANCELLED: {
+    status: 409,
+    message: m.error_event_time_block_cancelled,
+  },
   MOVE_WINDOW_CLOSED: { status: 409, message: m.error_move_window_closed },
   EDIT_WINDOW_CLOSED: { status: 409, message: m.error_edit_window_closed },
   STAFFED_EVENT_TIME_BLOCK_DROP: {

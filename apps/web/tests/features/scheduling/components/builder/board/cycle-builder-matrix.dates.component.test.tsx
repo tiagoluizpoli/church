@@ -44,6 +44,7 @@ const janeiroData: CycleBuilderData = {
           label: 'manhã',
           startTime: '2027-01-04T12:00:00.000Z',
           endTime: '2027-01-04T13:00:00.000Z',
+          cancelled: false,
           included: true,
           peopleNeeded: 1,
           assignedCount: 0,
@@ -54,6 +55,7 @@ const janeiroData: CycleBuilderData = {
               eventTimeBlockId: 'event-time-block-manha',
               startTime: '2027-01-04T12:00:00.000Z',
               endTime: '2027-01-04T13:00:00.000Z',
+              cancelled: false,
               peopleNeeded: 1,
               assignedCount: 0,
               requirements: [
@@ -75,6 +77,7 @@ const janeiroData: CycleBuilderData = {
           label: 'tarde',
           startTime: '2027-01-04T19:00:00.000Z',
           endTime: '2027-01-04T21:00:00.000Z',
+          cancelled: false,
           included: true,
           peopleNeeded: 1,
           assignedCount: 0,
@@ -85,6 +88,7 @@ const janeiroData: CycleBuilderData = {
               eventTimeBlockId: 'event-time-block-tarde',
               startTime: '2027-01-04T19:00:00.000Z',
               endTime: '2027-01-04T21:00:00.000Z',
+              cancelled: false,
               peopleNeeded: 1,
               assignedCount: 0,
               requirements: [
@@ -122,6 +126,7 @@ const janeiroData: CycleBuilderData = {
           label: 'manhã',
           startTime: '2027-01-11T12:00:00.000Z',
           endTime: '2027-01-11T15:00:00.000Z',
+          cancelled: false,
           included: true,
           peopleNeeded: 1,
           assignedCount: 0,
@@ -132,6 +137,7 @@ const janeiroData: CycleBuilderData = {
               eventTimeBlockId: 'event-time-block-manha-2',
               startTime: '2027-01-11T12:00:00.000Z',
               endTime: '2027-01-11T15:00:00.000Z',
+              cancelled: false,
               peopleNeeded: 1,
               assignedCount: 0,
               requirements: [
@@ -240,6 +246,7 @@ describe.each([
               label: 'vigília',
               startTime: '2027-01-09T01:00:00.000Z',
               endTime: '2027-01-09T04:00:00.000Z',
+              cancelled: false,
               included: true,
               peopleNeeded: 1,
               assignedCount: 0,
@@ -250,6 +257,7 @@ describe.each([
                   eventTimeBlockId: 'event-time-block-vigilia',
                   startTime: '2027-01-09T01:00:00.000Z',
                   endTime: '2027-01-09T04:00:00.000Z',
+                  cancelled: false,
                   peopleNeeded: 1,
                   assignedCount: 0,
                   requirements: [

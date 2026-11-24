@@ -10,6 +10,7 @@ export * from './draft-staffing-reconciliation-required';
 export * from './duplicate-headcount';
 export * from './edit-window-closed';
 export * from './empty-cycle';
+export * from './event-cancelled';
 export * from './event-graph-rule';
 export * from './event-outside-cycle';
 export * from './headcount-below-assigned';

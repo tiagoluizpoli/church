@@ -373,7 +373,7 @@ async function cycleProblems({
       sum(sr.people_needed)::int as required,
       (select count(*) from ${assignment} a
         where a.shift_requirement_id = sr.id
-          and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
+          and a.status in ('draft', 'pending'))::int as assigned
     from ${shiftRequirement} sr
     join ${shift} sh on sh.id = sr.shift_id
     join ${ministryParticipation} p on p.id = sr.participation_id
@@ -432,7 +432,7 @@ async function assignmentProblems({
   directory,
 }: AssignmentProblemsInput): Promise<string[]> {
   const problems: string[] = [];
-  const active = sql.raw(`('draft', 'pending', 'confirmed')`);
+  const active = sql.raw(`('draft', 'pending')`);
 
   const unqualified = await countOf({
     db,
@@ -545,18 +545,11 @@ async function assignmentProblems({
         }),
         expected: 0,
       },
-    'withdrawn (cancelled) Assignments; a reassignment deletes the old one': {
-      actual: await countOf({
-        db,
-        query: sql`select count(*) as value from ${assignment} where status = 'cancelled'`,
-      }),
-      expected: history.declines.length,
-    },
     'Assignments carrying a reassignment reason': {
       actual: await countOf({
         db,
         query: sql`select count(*) as value from ${assignment}
-          where status = 'confirmed' and reason is not null`,
+          where status = 'pending' and reason is not null`,
       }),
       expected: history.resolvedOverlaps.length,
     },

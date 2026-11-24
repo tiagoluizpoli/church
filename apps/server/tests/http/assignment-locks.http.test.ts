@@ -298,7 +298,7 @@ async function seedLockedAssignment() {
     roleId: role.id,
     volunteerId: original.volunteer.id,
     shiftRequirementId: source.id,
-    status: 'confirmed',
+    status: 'pending',
   });
   setTestClock({ instant: parseInstant({ value: '2026-08-02T08:59:59Z' }) });
   return {
@@ -557,7 +557,7 @@ it('reassign keeps the Sector committed by a concurrent successful move', async 
 async function overlappingActivePairs() {
   const other = alias(assignment, 'other_assignment');
   const otherShift = alias(shift, 'other_shift');
-  const active = ['draft', 'pending', 'confirmed'] as const;
+  const active = ['draft', 'pending'] as const;
   return db
     .select({ left: assignment.id, right: other.id })
     .from(assignment)
@@ -619,7 +619,7 @@ async function seedMoveRace() {
     roleId: seed.source.roleId,
     volunteerId: seed.replacementId,
     shiftRequirementId: seed.source.id,
-    status: 'confirmed',
+    status: 'pending',
   });
   return { ...seed, laterShift, laterRequirement, moving };
 }
@@ -928,7 +928,7 @@ async function activeShiftVolunteers(shiftId: string) {
     .where(
       and(
         eq(assignment.shiftId, shiftId),
-        inArray(assignment.status, ['draft', 'pending', 'confirmed']),
+        inArray(assignment.status, ['draft', 'pending']),
       ),
     );
   return rows.map(({ volunteerId }) => volunteerId).sort();

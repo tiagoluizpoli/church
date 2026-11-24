@@ -266,10 +266,10 @@ describe('DrizzleAssignmentRepository (extra coverage)', () => {
     await repo.updateStatus({
       churchId,
       assignmentId: created.id,
-      input: { status: 'confirmed' },
+      input: { status: 'cancelled' },
     });
     const updated = await repo.getById({ churchId, assignmentId: created.id });
-    expect(updated.status).toBe('confirmed');
+    expect(updated.status).toBe('cancelled');
     expect(updated.reason).toBeUndefined();
   });
 

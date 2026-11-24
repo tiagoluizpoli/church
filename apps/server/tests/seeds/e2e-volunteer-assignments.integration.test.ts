@@ -143,7 +143,7 @@ describe('volunteer-assignments E2E journey recipe', () => {
     expect(rows).toMatchObject({
       churchId: journey.church.id,
       volunteerId: journey.volunteer.volunteerId,
-      status: 'confirmed',
+      status: 'pending',
     });
 
     const [eventRow] = await testDb

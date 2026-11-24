@@ -333,7 +333,7 @@ export async function seed(): Promise<void> {
     peopleNeeded: 1,
   });
 
-  // Assignments (assignment-1 confirmed, assignment-2 declined for event-time-block-1)
+  // Assignments (assignment-1 pending, assignment-2 cancelled for event-time-block-1)
   await buildAssignment({
     db: testDb,
     churchId,
@@ -343,7 +343,7 @@ export async function seed(): Promise<void> {
     volunteerId: volunteerOneId,
     roleId: usherRoleId,
     id: confirmedAssignmentId,
-    status: 'confirmed',
+    status: 'pending',
     assignedAt: jun1At10,
     assignedBy: aliceId,
   });
@@ -368,7 +368,7 @@ export async function seed(): Promise<void> {
     volunteerId: volunteerOneId,
     roleId: usherRoleId,
     id: '99999999-9999-9999-9999-999999999993',
-    status: 'confirmed',
+    status: 'pending',
     assignedAt: parseInstant({ value: '2024-06-01T10:10:00Z' }),
     assignedBy: aliceId,
   });

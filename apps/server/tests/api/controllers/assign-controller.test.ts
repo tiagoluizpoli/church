@@ -455,7 +455,7 @@ describe('Assign routes', () => {
 
     const response = await app.inject({
       method: 'DELETE',
-      url: '/api/v1/assign/assignments/forged',
+      url: '/api/v1/assign/assignments/99999999-9999-4999-8999-999999999999',
     });
 
     expect(response.statusCode).toBe(404);
@@ -527,7 +527,7 @@ describe('Assign routes', () => {
 
     const response = await app.inject({
       method: 'PATCH',
-      url: '/api/v1/assign/assignments/assign-1/reassign',
+      url: `/api/v1/assign/assignments/${ASSIGN_ASSIGNMENT}/reassign`,
       payload: {
         volunteerId: 'vol-2',
       },
@@ -553,7 +553,7 @@ describe('Assign routes', () => {
 
     const response = await app.inject({
       method: 'PATCH',
-      url: '/api/v1/assign/assignments/assign-1/reassign',
+      url: `/api/v1/assign/assignments/${ASSIGN_ASSIGNMENT}/reassign`,
       payload: {
         volunteerId: 'vol-2',
       },
@@ -596,7 +596,7 @@ describe('Assign routes', () => {
 
     const response = await app.inject({
       method: 'PATCH',
-      url: '/api/v1/assign/assignments/assign-1/reassign',
+      url: `/api/v1/assign/assignments/${ASSIGN_ASSIGNMENT}/reassign`,
       payload: {
         volunteerId: 'vol-2',
       },
@@ -681,7 +681,7 @@ describe('Assign routes', () => {
     );
     const missingAssignment = await app.inject({
       method: 'DELETE',
-      url: '/api/v1/assign/assignments/forged',
+      url: '/api/v1/assign/assignments/99999999-9999-4999-8999-999999999999',
     });
 
     expect(hiddenShift.statusCode).toBe(404);

@@ -47,10 +47,10 @@ import {
 } from '../dtos/cycle-builder.dto';
 import { refuse } from '../utils/refuse';
 
-const cycleParamsSchema = z.object({ cycleId: z.uuid() });
-const shiftParamsSchema = z.object({ shiftId: z.uuid() });
-const assignmentParamsSchema = z.object({ assignmentId: z.uuid() });
-const participationParamsSchema = z.object({ participationId: z.uuid() });
+const cycleParamsSchema = z.object({ cycleId: z.guid() });
+const shiftParamsSchema = z.object({ shiftId: z.guid() });
+const assignmentParamsSchema = z.object({ assignmentId: z.guid() });
+const participationParamsSchema = z.object({ participationId: z.guid() });
 
 interface CycleMinistryQuery {
   ministryId: string;

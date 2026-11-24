@@ -92,22 +92,22 @@ import {
   optionalDateFromInstantString,
 } from '../utils/request-time';
 
-const cycleParamsSchema = z.object({ cycleId: z.uuid() });
+const cycleParamsSchema = z.object({ cycleId: z.guid() });
 const cycleEventParamsSchema = z.object({
-  cycleId: z.uuid(),
-  eventId: z.uuid(),
+  cycleId: z.guid(),
+  eventId: z.guid(),
 });
-const templateParamsSchema = z.object({ templateId: z.uuid() });
+const templateParamsSchema = z.object({ templateId: z.guid() });
 const templatePrecedenceParamsSchema = z.object({
-  templateId: z.uuid(),
-  otherTemplateId: z.uuid(),
+  templateId: z.guid(),
+  otherTemplateId: z.guid(),
 });
 const cycleEventTimeBlockParamsSchema = z.object({
-  cycleId: z.uuid(),
-  eventId: z.uuid(),
-  eventTimeBlockId: z.uuid(),
+  cycleId: z.guid(),
+  eventId: z.guid(),
+  eventTimeBlockId: z.guid(),
 });
-const ministryParamsSchema = z.object({ ministryId: z.uuid() });
+const ministryParamsSchema = z.object({ ministryId: z.guid() });
 
 type PrecedenceBody = z.infer<
   typeof createEventTemplateBodySchema

@@ -39,8 +39,16 @@ function luminance(rgb: Rgb): number {
   return 0.2126 * (red ?? 0) + 0.7152 * (green ?? 0) + 0.0722 * (blue ?? 0);
 }
 
+interface ContrastBetweenInput {
+  first: string;
+  second: string;
+}
+
 /** WCAG contrast ratio of two `#rrggbb` colours. */
-export function contrastBetween(first: string, second: string): number {
+export function contrastBetween({
+  first,
+  second,
+}: ContrastBetweenInput): number {
   const [light, dark] = [first, second]
     .map((hex) => luminance(toRgb(hex)))
     .sort((a, b) => b - a);
@@ -49,7 +57,7 @@ export function contrastBetween(first: string, second: string): number {
 
 /** WCAG contrast ratio of a colour against white. */
 export function contrastOnWhite(hex: string): number {
-  return contrastBetween(hex, '#ffffff');
+  return contrastBetween({ first: hex, second: '#ffffff' });
 }
 
 /** The accent as a line on white: darkened until it reaches 3:1. */

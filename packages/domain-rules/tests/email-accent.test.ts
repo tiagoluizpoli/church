@@ -47,7 +47,7 @@ describe('emailAccentTint', () => {
       '#ffffff',
     ]) {
       expect(
-        contrastBetween(EMAIL_INK, emailAccentTint(accent)),
+        contrastBetween({ first: EMAIL_INK, second: emailAccentTint(accent) }),
       ).toBeGreaterThanOrEqual(4.5);
     }
   });

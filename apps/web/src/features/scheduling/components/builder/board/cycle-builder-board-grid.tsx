@@ -134,12 +134,17 @@ export function CycleBuilderBoardGrid({
   useEffect(() => {
     const viewport = dragScroll.viewportRef.current;
     if (!viewport) return;
-    const update = () =>
-      setEdge({
-        start: viewport.scrollLeft > 1,
-        end:
-          viewport.scrollLeft + viewport.clientWidth < viewport.scrollWidth - 1,
-      });
+    // Same object while the edges hold, so scrolling re-renders the board only when one flips.
+    const update = () => {
+      const start = viewport.scrollLeft > 1;
+      const end =
+        viewport.scrollLeft + viewport.clientWidth < viewport.scrollWidth - 1;
+      setEdge((current) =>
+        current.start === start && current.end === end
+          ? current
+          : { start, end },
+      );
+    };
     update();
     viewport.addEventListener('scroll', update, { passive: true });
     const observer = new ResizeObserver(update);

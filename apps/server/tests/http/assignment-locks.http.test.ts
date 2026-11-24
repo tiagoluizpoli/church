@@ -1589,7 +1589,7 @@ async function seedChurchLockWriters() {
     roleId: seed.source.roleId,
     volunteerId: seed.replacementId,
     shiftRequirementId: laterRequirement.id,
-    status: 'confirmed',
+    status: 'pending',
   });
   return seed;
 }

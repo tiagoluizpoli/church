@@ -1202,7 +1202,7 @@ describe('GET /prepare/schedules filters, counts and pages', () => {
       roleId: role.id,
       shiftRequirementId: requirement.id,
       volunteerId: person.volunteer.id,
-      status: 'confirmed',
+      status: 'pending',
     });
     await db.insert(swapRequest).values({
       churchId,
@@ -1368,7 +1368,7 @@ describe('GET /prepare/schedules order, attention and scope', () => {
       roleId: role.id,
       shiftRequirementId: requirement.id,
       volunteerId: person.volunteer.id,
-      status: 'confirmed',
+      status: 'pending',
     });
     await db.insert(swapRequest).values({
       churchId,

@@ -16,7 +16,7 @@ const RECIPE_NAME = 'assign-board';
 const ASSIGNED_ASSIGNMENT_SCHEMA = z.object({
   id: z.string().min(1),
   volunteerId: z.string().min(1),
-  status: z.enum(['pending', 'confirmed', 'cancelled']),
+  status: z.enum(['pending', 'cancelled']),
 });
 
 export const ASSIGN_BOARD_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({

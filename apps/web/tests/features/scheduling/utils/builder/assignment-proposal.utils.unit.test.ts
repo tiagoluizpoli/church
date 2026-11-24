@@ -46,7 +46,7 @@ function shift({
       volunteerId,
       roleId: 'role',
       shiftRequirementId: `${shiftId}-a`,
-      status: 'confirmed',
+      status: 'pending',
       assignedAt: startTime,
       lateMark: false,
     })),

@@ -66,8 +66,6 @@ export function createAssignmentRepositoryFake() {
       vi.fn<AssignmentRepository['countByVolunteerInRange']>(),
     deleteByEvent: vi.fn<AssignmentRepository['deleteByEvent']>(),
     deleteById: vi.fn<AssignmentRepository['deleteById']>(),
-    listDeclinedByEventTimeBlock:
-      vi.fn<AssignmentRepository['listDeclinedByEventTimeBlock']>(),
   } satisfies AssignmentRepository;
 }
 

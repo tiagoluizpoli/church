@@ -44,7 +44,6 @@ export type MappedDomainCode =
   | 'ASSIGNMENT_ACCESS_DENIED'
   | 'ASSIGN_ACTION_NOT_AVAILABLE'
   | 'INSUFFICIENT_INVITATION_AUTHORITY'
-  | 'CANCEL_WINDOW_CLOSED'
   | 'ISOLATION_BREACH'
   | 'CROSS_MINISTRY_SCOPE'
   | 'OVERLAPPING_CYCLE'
@@ -147,7 +146,6 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     status: 403,
     message: m.error_insufficient_invitation_authority,
   },
-  CANCEL_WINDOW_CLOSED: { status: 409, message: m.error_cancel_window_closed },
   ISOLATION_BREACH: { status: 409, message: m.error_isolation_breach },
   CROSS_MINISTRY_SCOPE: { status: 409, message: m.error_cross_ministry_scope },
   OVERLAPPING_CYCLE: { status: 409, message: m.error_overlapping_cycle },

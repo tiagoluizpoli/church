@@ -128,9 +128,8 @@ export type CycleBuilderAssignment =
 
 /**
  * The only assignment statuses that count toward fairness and workload
- * (FR-017). Stated as an allowlist rather than "everything except cancelled and
- * declined": the two are equivalent only while the domain enum has exactly
- * these five members, and a status added later must not silently start
+ * (FR-017). Stated as an allowlist rather than "everything except cancelled": the two are equivalent only while the domain enum has exactly
+ * these four members, and a status added later must not silently start
  * counting.
  */
 const ACTIVE_ASSIGNMENT_STATUSES: ReadonlySet<string> = new Set([
@@ -221,9 +220,7 @@ function sumAssignedCount(
         (eventTimeBlockTotal, shift) =>
           eventTimeBlockTotal +
           shift.assignments.filter(
-            (assignment) =>
-              assignment.status !== 'declined' &&
-              assignment.status !== 'cancelled',
+            (assignment) => assignment.status !== 'cancelled',
           ).length,
         0,
       )
@@ -268,9 +265,7 @@ function mapCycleBuilderData(
           0,
         );
         const assignedCount = shiftItem.assignments.filter(
-          (assignment) =>
-            assignment.status !== 'declined' &&
-            assignment.status !== 'cancelled',
+          (assignment) => assignment.status !== 'cancelled',
         ).length;
 
         return {

@@ -5,7 +5,7 @@ import {
   LEGACY_APP_ROUTE_SLUGS,
   RESERVED_CHURCH_SLUGS,
   slugFromName,
-} from '../src/church-slug';
+} from '@/church-slug';
 
 describe('BaseChurchSlugSchema', () => {
   it('lists the platform reserved words', () => {

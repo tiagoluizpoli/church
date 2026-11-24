@@ -9130,7 +9130,6 @@ export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAggregateRespon
   pending: 'pending',
   confirmed: 'confirmed',
   mixed: 'mixed',
-  declined: 'declined',
 } as const;
 
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus];
@@ -9139,7 +9138,6 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemS
 export const GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus = {
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
 } as const;
 
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState = typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState[keyof typeof GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState];
@@ -9164,7 +9162,6 @@ export type GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItem 
   endTime: string;
   status: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemStatus;
   timingState: GetVolunteerDashboard200UpcomingAssignmentGroupsItemAssignmentsItemTimingState;
-  canRespond: boolean;
 };
 
 export type GetVolunteerDashboard200UpcomingAssignmentGroupsItem = {
@@ -9185,7 +9182,6 @@ export type GetVolunteerDashboard200NextAssignmentStatus = typeof GetVolunteerDa
 export const GetVolunteerDashboard200NextAssignmentStatus = {
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
 } as const;
 
 export type GetVolunteerDashboard200NextAssignmentTimingState = typeof GetVolunteerDashboard200NextAssignmentTimingState[keyof typeof GetVolunteerDashboard200NextAssignmentTimingState];
@@ -9213,7 +9209,6 @@ export type GetVolunteerDashboard200NextAssignment = {
   endTime: string;
   status: GetVolunteerDashboard200NextAssignmentStatus;
   timingState: GetVolunteerDashboard200NextAssignmentTimingState;
-  canRespond: boolean;
   eventId: string;
   eventTitle: string;
   ministryId: string;
@@ -9670,51 +9665,6 @@ export type GetAssignmentDetail404 = {
   message: string;
 };
 
-export type RespondToAssignmentBodyResponse = typeof RespondToAssignmentBodyResponse[keyof typeof RespondToAssignmentBodyResponse];
-
-
-export const RespondToAssignmentBodyResponse = {
-  accepted: 'accepted',
-  declined: 'declined',
-} as const;
-
-export type RespondToAssignmentBody = {
-  response: RespondToAssignmentBodyResponse;
-  reason?: string;
-};
-
-export type RespondToAssignment200Status = typeof RespondToAssignment200Status[keyof typeof RespondToAssignment200Status];
-
-
-export const RespondToAssignment200Status = {
-  draft: 'draft',
-  pending: 'pending',
-  confirmed: 'confirmed',
-  declined: 'declined',
-  cancelled: 'cancelled',
-} as const;
-
-export type RespondToAssignment200 = {
-  id: string;
-  churchId: string;
-  eventTimeBlockId: string;
-  participationId?: string;
-  shiftId?: string;
-  volunteerId: string;
-  roleId: string;
-  shiftRequirementId: string;
-  status: RespondToAssignment200Status;
-  reason?: string;
-  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
-  assignedAt: string;
-  assignedBy?: string;
-};
-
-export type RespondToAssignment404 = {
-  error: string;
-  message: string;
-};
-
 export type GetMinistryScheduleParams = {
 /**
  * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
@@ -9970,20 +9920,6 @@ export type AnswerAvailabilityCheck409 = {
   shiftIds?: string[];
 };
 
-/**
- * @nullable
- */
-export type CancelOwnAssignment204 = typeof CancelOwnAssignment204[keyof typeof CancelOwnAssignment204] | null;
-
-
-export const CancelOwnAssignment204 = {
-} as const;
-
-export type CancelOwnAssignment404 = {
-  error: string;
-  message: string;
-};
-
 export type GetPublishedVolunteerScheduleParams = {
 /**
  * @minLength 1
@@ -10006,7 +9942,6 @@ export type GetPublishedVolunteerSchedule200AssignmentsItemStatus = typeof GetPu
 export const GetPublishedVolunteerSchedule200AssignmentsItemStatus = {
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
 } as const;
 
 export type GetPublishedVolunteerSchedule200AssignmentsItem = {
@@ -10058,7 +9993,6 @@ export type GetPublishedVolunteerSchedule200NextStatus = typeof GetPublishedVolu
 export const GetPublishedVolunteerSchedule200NextStatus = {
   pending: 'pending',
   confirmed: 'confirmed',
-  declined: 'declined',
 } as const;
 
 /**

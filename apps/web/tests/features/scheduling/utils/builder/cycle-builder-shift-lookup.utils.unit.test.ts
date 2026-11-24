@@ -141,7 +141,11 @@ describe('roleHasRoom', () => {
       ],
       assignments: [
         makeAssignment({ id: 'a-1', volunteerId: 'ana', status: 'cancelled' }),
-        makeAssignment({ id: 'a-2', volunteerId: 'bruno', status: 'declined' }),
+        makeAssignment({
+          id: 'a-2',
+          volunteerId: 'bruno',
+          status: 'cancelled',
+        }),
       ],
     });
 

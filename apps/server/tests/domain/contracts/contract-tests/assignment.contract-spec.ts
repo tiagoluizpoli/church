@@ -153,17 +153,6 @@ export function runAssignmentRepositoryContractTests(
       expect(count).toBeGreaterThanOrEqual(1);
     });
 
-    it('should list declined assignments by event time block', async () => {
-      const list = await repo.listDeclinedByEventTimeBlock({
-        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
-        eventTimeBlockId:
-          '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
-      });
-      expect(list.length).toBe(1);
-      expect(list[0]?.id).toBe('99999999-9999-9999-9999-999999999992');
-      expect(list[0]?.status).toBe('declined');
-    });
-
     it('should delete assignments by event', async () => {
       await repo.deleteByEvent({
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,

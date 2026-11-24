@@ -69,7 +69,7 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
         and(
           withChurchIsolation({ table: event, churchId }),
           eq(cycle.hasBeenSent, true),
-          // An Event reopened inside a Sent Cycle is a draft again.
+          // A draft Event is never shown publicly.
           ne(event.status, 'draft'),
           eq(eventTimeBlock.isPublic, true),
         ),

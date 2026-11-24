@@ -1,4 +1,3 @@
-import { appConfig } from '@church/app-config';
 import {
   availabilityAsk,
   availabilityCheck,
@@ -75,7 +74,6 @@ beforeAll(async () => {
       actorRepository: new DrizzleAuthorityActorResolver({ db }),
       membershipRepository: new DrizzleChurchMembershipRepository({ db }),
     }),
-    config: appConfig,
   });
   await app.register(
     async (instance) => {

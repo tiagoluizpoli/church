@@ -169,7 +169,7 @@ describe('volunteer-dashboard E2E journey recipe', () => {
       .where(eq(notificationTable.id, journey.notification.id));
     await testDb
       .update(assignment)
-      .set({ status: 'declined' })
+      .set({ status: 'cancelled' })
       .where(eq(assignment.churchId, journey.church.id));
 
     const reloaded = await load({ anchor: ANCHOR });

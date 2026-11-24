@@ -39,7 +39,6 @@ const ROUTES = [
   ['GET', '/api/v1/admin/cycles/not-a-uuid'],
   ['PATCH', '/api/v1/admin/cycles/not-a-uuid'],
   ['DELETE', '/api/v1/admin/cycles/not-a-uuid'],
-  ['POST', '/api/v1/admin/cycles/not-a-uuid/events/not-a-uuid/reopen'],
   ['GET', '/api/v1/admin/event-templates/not-a-uuid'],
   ['PUT', '/api/v1/admin/event-templates/not-a-uuid/precedences/not-a-uuid'],
   ['POST', '/api/v1/admin/cycles/not-a-uuid/events/not-a-uuid/edit/preview'],

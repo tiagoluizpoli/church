@@ -519,6 +519,13 @@
       "when": 1795471247001,
       "tag": "0073_verification_code_redemption_outcome",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1795473259772,
+      "tag": "0074_drop-declined-assignment-status",
+      "breakpoints": true
     }
   ]
 }

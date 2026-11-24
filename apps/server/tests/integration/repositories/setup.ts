@@ -356,7 +356,7 @@ export async function seed(): Promise<void> {
     volunteerId: volunteerTwoId,
     roleId: usherRoleId,
     id: '99999999-9999-9999-9999-999999999992',
-    status: 'declined',
+    status: 'cancelled',
     assignedAt: parseInstant({ value: '2024-06-01T10:05:00Z' }),
   });
   await buildAssignment({

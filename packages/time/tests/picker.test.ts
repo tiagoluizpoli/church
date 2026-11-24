@@ -5,7 +5,7 @@ import {
   parseCalendarDay,
   pickerLocale,
   toPickerDate,
-} from '../src';
+} from '@/index';
 
 const day = (value: string) => parseCalendarDay({ value });
 

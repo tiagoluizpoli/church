@@ -734,6 +734,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -956,6 +958,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -1076,6 +1080,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -1096,6 +1102,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -1173,6 +1181,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -1224,27 +1234,6 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/admin/cycles/{cycleId}/events/{eventId}/reopen:
-    post:
-      operationId: reopenPlanningEvent
-      summary: Reopen an Event for editing
-      tags:
-        - planning
-      description: Move a scheduled Event in a sent Cycle back to draft so it can be edited.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
   /api/v1/admin/event-templates:
     post:
       operationId: createEventTemplate
@@ -1948,6 +1937,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: templateId
           required: true
@@ -2363,6 +2354,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: templateId
           required: true
@@ -2648,6 +2641,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: templateId
           required: true
@@ -2665,6 +2660,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: templateId
           required: true
@@ -2709,6 +2706,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: templateId
           required: true
@@ -2770,11 +2769,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: templateId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: otherTemplateId
           required: true
@@ -2870,6 +2873,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -2997,6 +3002,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -3247,11 +3254,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -3438,11 +3449,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -3504,11 +3519,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -3701,11 +3720,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -3864,11 +3887,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -4029,11 +4056,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -4256,11 +4287,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -4555,11 +4590,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -4838,11 +4877,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -5118,11 +5161,15 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
@@ -5284,16 +5331,22 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventTimeBlockId
           required: true
@@ -5527,16 +5580,22 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventTimeBlockId
           required: true
@@ -5794,16 +5853,22 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventTimeBlockId
           required: true
@@ -5973,16 +6038,22 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventTimeBlockId
           required: true
@@ -6155,16 +6226,22 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventTimeBlockId
           required: true
@@ -6305,16 +6382,22 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventId
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: eventTimeBlockId
           required: true
@@ -6371,6 +6454,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: ministryId
           required: true
@@ -13703,6 +13788,8 @@ paths:
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -14146,6 +14233,8 @@ paths:
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -14239,6 +14328,8 @@ paths:
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -14432,6 +14523,8 @@ paths:
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -14558,6 +14651,8 @@ paths:
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -14661,6 +14756,8 @@ paths:
           required: true
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: cycleId
           required: true
@@ -14733,6 +14830,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: shiftId
           required: true
@@ -14864,6 +14963,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: shiftId
           required: true
@@ -14982,6 +15083,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: assignmentId
           required: true
@@ -15046,6 +15149,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: assignmentId
           required: true
@@ -15151,6 +15256,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: assignmentId
           required: true
@@ -15245,6 +15352,8 @@ paths:
       parameters:
         - schema:
             type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
           in: path
           name: participationId
           required: true
@@ -20353,7 +20462,6 @@ paths:
                             - pending
                             - confirmed
                             - mixed
-                            - declined
                         hasPendingResponse:
                           type: boolean
                         assignments:
@@ -20388,14 +20496,11 @@ paths:
                                 enum:
                                   - pending
                                   - confirmed
-                                  - declined
                               timingState:
                                 type: string
                                 enum:
                                   - in_progress
                                   - upcoming
-                              canRespond:
-                                type: boolean
                             required:
                               - assignmentId
                               - eventTimeBlockId
@@ -20408,7 +20513,6 @@ paths:
                               - endTime
                               - status
                               - timingState
-                              - canRespond
                             additionalProperties: false
                       required:
                         - eventId
@@ -20451,14 +20555,11 @@ paths:
                         enum:
                           - pending
                           - confirmed
-                          - declined
                       timingState:
                         type: string
                         enum:
                           - in_progress
                           - upcoming
-                      canRespond:
-                        type: boolean
                       eventId:
                         type: string
                       eventTitle:
@@ -20479,7 +20580,6 @@ paths:
                       - endTime
                       - status
                       - timingState
-                      - canRespond
                       - eventId
                       - eventTitle
                       - ministryId
@@ -21630,100 +21730,6 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-    patch:
-      operationId: respondToAssignment
-      summary: Respond to an Assignment
-      tags:
-        - volunteer
-      description: Record the current Volunteer's accept/decline response to one of
-        their own Assignments.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                response:
-                  type: string
-                  enum:
-                    - accepted
-                    - declined
-                reason:
-                  type: string
-              required:
-                - response
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: assignmentId
-          required: true
-      responses:
-        "200":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  churchId:
-                    type: string
-                  eventTimeBlockId:
-                    type: string
-                  participationId:
-                    type: string
-                  shiftId:
-                    type: string
-                  volunteerId:
-                    type: string
-                  roleId:
-                    type: string
-                  shiftRequirementId:
-                    type: string
-                  status:
-                    type: string
-                    enum:
-                      - draft
-                      - pending
-                      - confirmed
-                      - declined
-                      - cancelled
-                  reason:
-                    type: string
-                  assignedAt:
-                    type: string
-                    format: date-time
-                    pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
-                  assignedBy:
-                    type: string
-                required:
-                  - id
-                  - churchId
-                  - eventTimeBlockId
-                  - volunteerId
-                  - roleId
-                  - shiftRequirementId
-                  - status
-                  - assignedAt
-                additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
   /api/v1/volunteer/ministries/{ministryId}/schedule:
     get:
       operationId: getMinistrySchedule
@@ -22274,44 +22280,6 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/volunteer/assignments/{assignmentId}/cancel:
-    post:
-      operationId: cancelOwnAssignment
-      summary: Cancel one of the caller's Assignments
-      tags:
-        - volunteer
-      description: Cancel one of the current Volunteer's own Assignments.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: assignmentId
-          required: true
-      responses:
-        "204":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: string
-                nullable: true
-                enum:
-                  - null
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
   /api/v1/volunteer/schedule:
     get:
       operationId: getPublishedVolunteerSchedule
@@ -22389,7 +22357,6 @@ paths:
                           enum:
                             - pending
                             - confirmed
-                            - declined
                         swapRequested:
                           type: boolean
                       required:
@@ -22481,7 +22448,6 @@ paths:
                         enum:
                           - pending
                           - confirmed
-                          - declined
                       swapRequested:
                         type: boolean
                     required:

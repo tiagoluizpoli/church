@@ -396,7 +396,7 @@ interface BookInput {
   volunteerId: string;
   start: string;
   end: string;
-  status: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
+  status: 'draft' | 'pending' | 'confirmed' | 'cancelled';
 }
 
 function book({ start, end, ...rest }: BookInput) {
@@ -541,7 +541,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
       participationId: otherParticipation.id,
       roleId: role.id,
       volunteerId: people.declined?.id as string,
-      status: 'declined',
+      status: 'cancelled',
       ...elsewhere,
     });
     // Touching: ends exactly when the moved Shift starts (14:00).
@@ -822,7 +822,7 @@ async function seedClashBoard({ bookedBeforePreview }: ClashBoardInput) {
     eventTimeBlockIds: [],
   });
   const day20 = (time: string) => local({ day: '2026-10-20', time });
-  const names = ['draft', 'pending', 'confirmed', 'declined', 'touching'];
+  const names = ['draft', 'pending', 'confirmed', 'cancelled', 'touching'];
   const moved: Record<string, string> = {};
   const volunteers: Record<string, string> = {};
   for (const name of names) {
@@ -1031,7 +1031,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
       .from(assignment)
       .where(inArray(assignment.id, Object.values(board.moved) as string[]));
     expect(remaining.map(({ id }) => id).sort()).toEqual(
-      [board.moved.declined, board.moved.touching].sort(),
+      [board.moved.cancelled, board.moved.touching].sort(),
     );
     const [swap] = await db.select().from(swapRequest);
     expect(swap).toMatchObject({

@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DATABASE_PURPOSES,
   type DatabasePurpose,
-} from '../src/database-target-resolver';
-import { getDevelopmentDatabaseUrl } from '../src/development-database-url';
-import { getE2eDatabaseUrl } from '../src/e2e-database-url';
-import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
+} from '@/database-target-resolver';
+import { getDevelopmentDatabaseUrl } from '@/development-database-url';
+import { getE2eDatabaseUrl } from '@/e2e-database-url';
+import { getIntegrationDatabaseUrl } from '@/integration-database-url';
 
 /**
  * One target matrix for every purpose getter (ADR-0005): each accepts

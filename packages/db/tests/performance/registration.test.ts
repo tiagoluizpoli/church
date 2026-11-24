@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import * as schema from '../../src/schema';
-import { createChurch } from '../../src/tenancy';
-import { clearDatabase, testDb } from '../schema/setup';
+import * as schema from '@/schema';
+import { createChurch } from '@/tenancy';
+import { clearDatabase, testDb } from '@/tests/schema/setup';
 
 describe('Performance: Soft Registration (SC-003)', () => {
   it('should complete soft registration in less than 500ms', async () => {

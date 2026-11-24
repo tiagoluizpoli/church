@@ -1,4 +1,3 @@
-import { appConfig } from '@church/app-config';
 import {
   addCalendarDays,
   type CalendarDay,
@@ -57,15 +56,14 @@ function daysBetween({ from, to }: DaysBetweenInput): number {
 describe('cycleWindow', () => {
   it.each(
     WEEK_ANCHORS.map((day) => ({ day })),
-  )('puts the first Sunday beyond the cancel lead time for anchor $day', ({
+  )('puts the first Sunday at least five days out for anchor $day', ({
     day,
   }) => {
     const sundays = sundaysIn({ day });
     const first = sundays[0];
     if (first === undefined) throw new Error('window holds no Sunday');
-    const { cancelLeadTimeDays } = appConfig.assignment;
     const daysToFirstSunday = daysBetween({ from: day, to: first });
-    expect(daysToFirstSunday).toBeGreaterThan(cancelLeadTimeDays);
+    expect(daysToFirstSunday).toBeGreaterThanOrEqual(5);
     expect(sundays).toHaveLength(SUNDAYS_IN_FOUR_WEEKS);
   });
 

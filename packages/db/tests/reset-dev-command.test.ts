@@ -3,8 +3,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
-import { scratchDatabaseName } from '../src/scratch-database-name';
+import { getIntegrationDatabaseUrl } from '@/integration-database-url';
+import { scratchDatabaseName } from '@/scratch-database-name';
 
 const RESET_SCRIPT = join(
   dirname(fileURLToPath(import.meta.url)),

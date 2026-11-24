@@ -7,7 +7,6 @@
 import type {
   AnswerAvailabilityCheck200,
   AnswerAvailabilityCheckBody,
-  CancelOwnAssignment204,
   GetAssignmentDetail200,
   GetAvailabilityCheck200,
   GetMinistrySchedule200,
@@ -18,8 +17,6 @@ import type {
   ListAvailabilityChecks200,
   RaiseSwapRequest201,
   RaiseSwapRequestBody,
-  RespondToAssignment200,
-  RespondToAssignmentBody,
   WithdrawSwapRequest204
 } from './churchAPI.schemas';
 
@@ -50,21 +47,6 @@ const getAssignmentDetail = (
  ) => {
       return apiClient<GetAssignmentDetail200>(
       {url: `/api/v1/volunteer/assignments/${assignmentId}`, method: 'GET'
-    },
-      );
-    }
-  /**
- * Record the current Volunteer's accept/decline response to one of their own Assignments.
- * @summary Respond to an Assignment
- */
-const respondToAssignment = (
-    assignmentId: string,
-    respondToAssignmentBody: RespondToAssignmentBody,
- ) => {
-      return apiClient<RespondToAssignment200>(
-      {url: `/api/v1/volunteer/assignments/${assignmentId}`, method: 'PATCH',
-      headers: {'Content-Type': 'application/json', },
-      data: respondToAssignmentBody
     },
       );
     }
@@ -122,18 +104,6 @@ const answerAvailabilityCheck = (
       );
     }
   /**
- * Cancel one of the current Volunteer's own Assignments.
- * @summary Cancel one of the caller's Assignments
- */
-const cancelOwnAssignment = (
-    assignmentId: string,
- ) => {
-      return apiClient<CancelOwnAssignment204>(
-      {url: `/api/v1/volunteer/assignments/${assignmentId}/cancel`, method: 'POST'
-    },
-      );
-    }
-  /**
  * List the current Volunteer's upcoming and in-progress Assignments from published MinistryParticipations, with the published Schedules of every Ministry they serve in. Search (trimmed, case-insensitive literal Event-title substring), `month` (`yyyy-MM` of the Shift start in the Church Timezone) and `ministryId` narrow `assignments` only: `counts`, `next` and `options` cover the whole list.
  * @summary Get the caller's published schedule
  */
@@ -173,15 +143,13 @@ const withdrawSwapRequest = (
     },
       );
     }
-  return {getVolunteerDashboard,getAssignmentDetail,respondToAssignment,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,cancelOwnAssignment,getPublishedVolunteerSchedule,raiseSwapRequest,withdrawSwapRequest}};
+  return {getVolunteerDashboard,getAssignmentDetail,getMinistrySchedule,listAvailabilityChecks,getAvailabilityCheck,answerAvailabilityCheck,getPublishedVolunteerSchedule,raiseSwapRequest,withdrawSwapRequest}};
 export type GetVolunteerDashboardResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getVolunteerDashboard']>>>
 export type GetAssignmentDetailResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAssignmentDetail']>>>
-export type RespondToAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['respondToAssignment']>>>
 export type GetMinistryScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getMinistrySchedule']>>>
 export type ListAvailabilityChecksResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['listAvailabilityChecks']>>>
 export type GetAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getAvailabilityCheck']>>>
 export type AnswerAvailabilityCheckResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['answerAvailabilityCheck']>>>
-export type CancelOwnAssignmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['cancelOwnAssignment']>>>
 export type GetPublishedVolunteerScheduleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['getPublishedVolunteerSchedule']>>>
 export type RaiseSwapRequestResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['raiseSwapRequest']>>>
 export type WithdrawSwapRequestResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getVolunteer>['withdrawSwapRequest']>>>

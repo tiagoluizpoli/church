@@ -1,4 +1,3 @@
-import { appConfig, withAllParkedOn } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import { m } from '@church/i18n/messages';
 import {
@@ -11,7 +10,6 @@ import {
   vi,
 } from 'vitest';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
-import { AssignmentAccessDeniedError } from '@/domain/errors/assignment-access-denied';
 import { CheckAccessDeniedError } from '@/domain/errors/check-access-denied';
 import { IsolationBreachError } from '@/domain/errors/isolation-breach-error';
 import { createFastify } from '@/main/fastify/setup';
@@ -37,8 +35,6 @@ const volunteerManager = {
   getMinistrySchedule: vi.fn(),
   listAvailabilityChecks: vi.fn(),
   getAvailabilityCheck: vi.fn(),
-  respondToAssignment: vi.fn(),
-  cancelOwnAssignment: vi.fn(),
 };
 
 const activeChurchResolver = {
@@ -60,7 +56,6 @@ beforeAll(async () => {
   const controller = new VolunteerController({
     volunteerManager: volunteerManager as never,
     activeChurchResolver: activeChurchResolver as never,
-    config: appConfig,
   });
   await app.register(
     async (instance) => {
@@ -305,87 +300,5 @@ describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
     expect(volunteerManager.getMinistrySchedule).toHaveBeenCalledWith(
       expect.objectContaining({ cycleId: CYCLE_ID }),
     );
-  });
-});
-
-describe('PATCH /api/v1/volunteer/assignments/:assignmentId (parked)', () => {
-  const url =
-    '/api/v1/volunteer/assignments/66666666-6666-4666-8666-666666666666';
-  const body = { response: 'accepted' };
-
-  async function buildApp(config: typeof appConfig) {
-    const instance = await createFastify({
-      locale: testLocale,
-      errorReporter: testErrorReporter,
-    });
-    const controller = new VolunteerController({
-      volunteerManager: volunteerManager as never,
-      activeChurchResolver: activeChurchResolver as never,
-      config,
-    });
-    await instance.register(
-      async (scope) => {
-        scope.register(controller.registerRoutes.bind(controller), {
-          prefix: controller.prefix,
-        });
-      },
-      { prefix: '/api/v1' },
-    );
-    await instance.ready();
-    return instance;
-  }
-
-  it('gets 404 with the real config', async () => {
-    const response = await app.inject({ method: 'PATCH', url, payload: body });
-
-    expect(response.statusCode).toBe(404);
-    expect(volunteerManager.respondToAssignment).not.toHaveBeenCalled();
-  });
-
-  it('reaches the manager with the switch on', async () => {
-    const parkedOn = await buildApp(withAllParkedOn(appConfig) as never);
-    volunteerManager.respondToAssignment.mockRejectedValue(new Error('stop'));
-
-    await parkedOn.inject({ method: 'PATCH', url, payload: body });
-
-    expect(volunteerManager.respondToAssignment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        response: 'accepted',
-        volunteerId: VOLUNTEER_ID,
-      }),
-    );
-    await parkedOn.close();
-  });
-
-  it('returns generic 404 for another Volunteer when the switch is on', async () => {
-    const parkedOn = await buildApp(withAllParkedOn(appConfig) as never);
-    volunteerManager.respondToAssignment.mockRejectedValue(
-      new AssignmentAccessDeniedError(),
-    );
-
-    const response = await parkedOn.inject({
-      method: 'PATCH',
-      url,
-      payload: body,
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({
-      error: 'NOT_FOUND',
-      message: m.error_not_found(),
-    });
-    await parkedOn.close();
-  });
-});
-
-describe('POST /api/v1/volunteer/assignments/:assignmentId/cancel (parked)', () => {
-  const url =
-    '/api/v1/volunteer/assignments/66666666-6666-4666-8666-666666666666/cancel';
-
-  it('gets 404 with the real config', async () => {
-    const response = await app.inject({ method: 'POST', url });
-
-    expect(response.statusCode).toBe(404);
-    expect(volunteerManager.cancelOwnAssignment).not.toHaveBeenCalled();
   });
 });

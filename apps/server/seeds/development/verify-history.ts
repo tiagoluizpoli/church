@@ -545,19 +545,12 @@ async function assignmentProblems({
         }),
         expected: 0,
       },
-    'declined Assignments': {
-      actual: await countOf({
-        db,
-        query: sql`select count(*) as value from ${assignment} where status = 'declined'`,
-      }),
-      expected: history.declines.length,
-    },
-    'cancelled Assignments (a reassignment deletes the old one)': {
+    'withdrawn (cancelled) Assignments; a reassignment deletes the old one': {
       actual: await countOf({
         db,
         query: sql`select count(*) as value from ${assignment} where status = 'cancelled'`,
       }),
-      expected: 0,
+      expected: history.declines.length,
     },
     'Assignments carrying a reassignment reason': {
       actual: await countOf({

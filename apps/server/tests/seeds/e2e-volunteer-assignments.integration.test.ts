@@ -62,7 +62,7 @@ async function mutateLikeTheJourney({
 }: DeclineWithNotificationInput): Promise<void> {
   await testDb
     .update(assignment)
-    .set({ status: 'declined' })
+    .set({ status: 'cancelled' })
     .where(eq(assignment.id, journey.assignment.id));
 }
 
@@ -174,7 +174,7 @@ describe('volunteer-assignments E2E journey recipe', () => {
     await mutateLikeTheJourney({ journey });
     expect(
       await assignmentStatus({ assignmentId: journey.assignment.id }),
-    ).toBe('declined');
+    ).toBe('cancelled');
 
     const reloaded = await loadJourney({ journeyKey: 'alpha' });
 

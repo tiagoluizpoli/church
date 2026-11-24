@@ -23,7 +23,7 @@ import { pluralMessage } from '@/shared/utils/plural';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
-interface BoundsRange {
+export interface BoundsRange {
   start: string;
   end: string;
 }
@@ -39,7 +39,7 @@ export interface EventMovePreviewProps {
   size?: 'touch' | 'icon-xs';
 }
 
-interface MoveClashRow {
+export interface MoveClashRow {
   assignmentId: string;
   volunteer: { name: string };
   ministry: { name: string };
@@ -277,12 +277,12 @@ export function EventMovePreview({
   );
 }
 
-interface ClashListProps {
+export interface ClashListProps {
   clashes: MoveClashRow[];
   range: (value: BoundsRange) => string;
 }
 
-function ClashList({ clashes, range }: ClashListProps) {
+export function ClashList({ clashes, range }: ClashListProps) {
   return (
     <ul className="text-xs">
       {clashes.map(

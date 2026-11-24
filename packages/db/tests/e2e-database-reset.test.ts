@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resetE2eDatabase } from '../src/e2e-database-reset';
+import { resetE2eDatabase } from '@/e2e-database-reset';
 
 const DEVELOPMENT_URL = 'postgresql://postgres:postgres@localhost:5444/church';
 

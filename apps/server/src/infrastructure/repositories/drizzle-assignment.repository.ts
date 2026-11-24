@@ -435,19 +435,4 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
         ),
       );
   }
-
-  listDeclinedByEventTimeBlock({
-    churchId,
-    eventTimeBlockId,
-    tx,
-  }: AssignmentsByEventTimeBlockInput): Promise<Assignment[]> {
-    return this.rows({
-      churchId,
-      conditions: [
-        eq(shift.eventTimeBlockId, eventTimeBlockId),
-        eq(assignment.status, 'declined'),
-      ],
-      tx,
-    });
-  }
 }

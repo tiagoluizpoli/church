@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appConfig, appConfigSchema, withAllParkedOn } from '../src';
+import { appConfig, appConfigSchema, withAllParkedOn } from '@/index';
 
 describe('appConfig', () => {
   it('ships with every parked switch off', () => {

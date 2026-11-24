@@ -1168,7 +1168,7 @@ describe('development seed recipe', () => {
       .orderBy(assignment.status);
     expect(statuses).toEqual([
       { status: 'confirmed', value: 364 },
-      { status: 'declined', value: 1 },
+      { status: 'cancelled', value: 1 },
     ]);
 
     // Every Assignment staffs its named requirement, including same-Role Sectors.
@@ -1375,7 +1375,7 @@ describe('development seed recipe', () => {
           ministryName: 'Intercessão',
           starts: '2026-02-18 20:00',
         }),
-        status: 'declined',
+        status: 'cancelled',
         reason: 'Viagem a trabalho',
       },
       {
@@ -1704,7 +1704,7 @@ describe('development seed recipe', () => {
       problem: 'trail',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(
-          sql`update ${assignment} set status = 'cancelled' where status = 'declined'`,
+          sql`update ${assignment} set status = 'confirmed' where status = 'cancelled'`,
         );
       },
     },

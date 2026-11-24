@@ -3,6 +3,7 @@ import type { Instant } from '@church/time';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { EventCancelDialog } from './event-cancel-dialog';
+import { EventEditPreview } from './event-edit-preview';
 import { EventMovePreview } from './event-move-preview';
 import type {
   CycleCalendarTableRow,
@@ -229,6 +230,8 @@ export interface RenderCalendarCellInput {
   isExpanded: boolean;
   isReadOnly: boolean;
   canPreviewMove?: boolean;
+  /** A scheduled Event of a Sent Cycle can be edited until it ends. */
+  canEdit?: boolean;
   /** A future scheduled Event of a Sent Cycle can be cancelled. */
   canCancel?: boolean;
   /** The Event's blocks can be cancelled (Sent Cycle, scheduled Event). */
@@ -256,6 +259,7 @@ export function renderCalendarCell({
   isExpanded,
   isReadOnly,
   canPreviewMove = false,
+  canEdit = false,
   canCancel = false,
   canCancelBlocks = false,
   isConfirmingDeleteEventTimeBlock,
@@ -279,6 +283,7 @@ export function renderCalendarCell({
       isExpanded={isExpanded}
       isReadOnly={isReadOnly}
       canPreviewMove={canPreviewMove}
+      canEdit={canEdit}
       canCancel={canCancel}
       timeZone={timeZone}
       onToggleExpand={onToggleExpand}
@@ -311,6 +316,7 @@ interface ParentRowCellProps {
   isExpanded: boolean;
   isReadOnly: boolean;
   canPreviewMove: boolean;
+  canEdit: boolean;
   canCancel: boolean;
   timeZone: string;
   onToggleExpand: (input: ToggleEventExpandedInput) => void;
@@ -323,6 +329,7 @@ function ParentRowCell({
   isExpanded,
   isReadOnly,
   canPreviewMove,
+  canEdit,
   canCancel,
   timeZone,
   onToggleExpand,
@@ -391,6 +398,17 @@ function ParentRowCell({
           eventId={row.eventId}
           title={row.title}
           start={row.start as Instant}
+          size="icon-xs"
+        />
+      ) : null}
+      {column.id === 'actions' && canEdit ? (
+        <EventEditPreview
+          cycleId={cycleId}
+          eventId={row.eventId}
+          title={row.title}
+          start={row.start as Instant}
+          end={row.end as Instant}
+          eventTimeBlocks={row.eventTimeBlocks}
           size="icon-xs"
         />
       ) : null}

@@ -158,6 +158,10 @@ const SWAP_REQUEST_SPEC_PATHS = ['tests/scheduling/j9-swap-request.spec.ts'];
 // J10 (#826): a ChurchAdmin cancels a whole future Event after Send.
 const ADMIN_CANCEL_SPEC_PATHS = ['tests/scheduling/j10-admin-cancel.spec.ts'];
 
+// J11 (#1056): a ChurchAdmin edits a sent Event; the Assignment stays and
+// Send updates tells the Volunteer.
+const ADMIN_EDIT_SPEC_PATHS = ['tests/scheduling/j11-admin-edit-event.spec.ts'];
+
 const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/active-church-switching.spec.ts',
   'tests/identity/cross-tenant-invitation-isolation.spec.ts',
@@ -193,6 +197,7 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   ...VOLUNTEER_AVAILABILITY_SPEC_PATHS,
   ...SWAP_REQUEST_SPEC_PATHS,
   ...ADMIN_CANCEL_SPEC_PATHS,
+  ...ADMIN_EDIT_SPEC_PATHS,
   'tests/scheduling/us4-schedule-publish.spec.ts',
   'tests/scheduling/us5-leader-reassign.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
@@ -947,6 +952,16 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   ].map((sourcePathPrefix) => ({
     sourcePathPrefix,
     specPaths: ADMIN_CANCEL_SPEC_PATHS,
+  })),
+  // J11 (#1056) — the sent-Event edit dialog and its entry points.
+  ...[
+    'apps/web/src/features/scheduling/components/planning-admin/event-edit-preview.tsx',
+    'apps/web/src/features/scheduling/components/planning-admin/calendar-row.tsx',
+    'apps/web/src/features/scheduling/components/planning-admin/planning-event-card.tsx',
+    'apps/web/src/features/scheduling/components/planning-admin/cycle-review-card.tsx',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: ADMIN_EDIT_SPEC_PATHS,
   })),
   // #217 — the church-admin-controller owns every cycle and event
   // endpoint these specs drive: list/detail isolation and the lock edge

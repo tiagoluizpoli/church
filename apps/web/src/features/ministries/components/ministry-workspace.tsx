@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { Link, Outlet } from '@tanstack/react-router';
+import { Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 import {
   MinistrySetupGuide,
   useMinistrySetupGuide,
@@ -10,7 +11,11 @@ import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
 import { classifyMinistryReadError } from '@/features/ministries/ministry-name';
-import { useMinistry } from '@/features/ministries/ministry-queries';
+import {
+  useMinistry,
+  useSectorList,
+} from '@/features/ministries/ministry-queries';
+import { useMinistryRoles } from '@/features/ministries/role-queries';
 import { cn } from '@/lib/utils';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
@@ -50,7 +55,25 @@ interface MinistryWorkspaceProps {
 export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
   const { isChurchAdmin } = useCallerCapabilities();
   const ministryQuery = useMinistry({ ministryId });
-  const [guideOpen, setGuideOpen, dismissGuide] = useMinistrySetupGuide();
+  const [dismissedOpen, setGuideOpen, dismissGuide] = useMinistrySetupGuide();
+  const sectors = useSectorList({ ministryId });
+  const roles = useMinistryRoles({ ministryId });
+  // A Ministry with a Sector and a Role is already set up: nothing to guide.
+  const isConfigured =
+    (sectors.data?.sectors.length ?? 0) > 0 &&
+    (roles.data?.roles.length ?? 0) > 0;
+  // Until both reads settle we cannot tell; a failed read falls back to dismissal alone.
+  const isUndecided = sectors.isPending || roles.isPending;
+  const guideOpen = dismissedOpen && !isConfigured && !isUndecided;
+  const tabList = useRef<HTMLUListElement>(null);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Keeps the active tab on screen in a narrow, scrolling bar. Instant, never smooth.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run on navigation
+  useEffect(() => {
+    tabList.current
+      ?.querySelector('[data-status="active"]')
+      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [pathname, ministryQuery.isSuccess]);
 
   function reopenGuide() {
     try {
@@ -110,7 +133,7 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
         <h1 className="font-semibold text-2xl tracking-[-0.02em] md:text-3xl">
           {ministryQuery.data?.name}
         </h1>
-        {!guideOpen && (
+        {!guideOpen && !isConfigured && !isUndecided && (
           <Button
             type="button"
             variant="ghost"
@@ -124,14 +147,19 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
       </div>
       <MinistrySetupGuide open={guideOpen} onDismiss={dismissGuide} />
       <nav aria-label={m.ministry_tabs_label()}>
-        <ul className="flex gap-1 border-border border-b">
+        <ul
+          ref={tabList}
+          className="flex gap-1 overflow-x-auto border-border border-b pb-px"
+        >
           {tabs.map((tab) => (
             <li key={tab.to}>
               <Link
                 to={tab.to}
                 params={{ ministryId }}
                 className={cn(
-                  '-mb-px inline-block border-transparent border-b-2 px-3 py-2 font-medium text-muted-foreground text-sm hover:text-foreground',
+                  '-mb-px inline-block whitespace-nowrap border-transparent border-b-2 px-3 py-2 font-medium text-muted-foreground text-sm hover:text-foreground',
+                  // Inset: the scroll container would clip an outer ring.
+                  'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                   'data-[status=active]:border-primary data-[status=active]:text-foreground',
                 )}
               >

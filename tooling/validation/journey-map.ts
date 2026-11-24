@@ -89,6 +89,11 @@ const MINISTRIES_JOURNEY_SPEC_PATHS = [
   'tests/ministries/ministries-directory.spec.ts',
 ];
 
+// #948: the Ministry tab bar at 320px.
+const MINISTRY_TABS_SPEC_PATHS = [
+  'tests/ministries/ministry-tabs-narrow.spec.ts',
+];
+
 // #905: an unreachable API, the reconnecting banner and recovery.
 const RECONNECTING_SPEC_PATHS = [
   'tests/resilience/reconnecting-banner.spec.ts',
@@ -358,6 +363,11 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       ...PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
     ],
   })),
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/ministries/components/ministry-workspace.tsx',
+    specPaths: MINISTRY_TABS_SPEC_PATHS,
+  },
   // #900: the server-side list filtering, counts and paging of #899.
   ...[
     'apps/web/src/features/ministries/components/ministry-list-page.tsx',

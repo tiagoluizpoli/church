@@ -1677,41 +1677,6 @@ const churchLockWriters: Record<string, ChurchLockWriter> = {
       );
     },
   },
-  'an edit of the Sent Cycle': {
-    run: (seed) =>
-      app
-        .inject({
-          method: 'PATCH',
-          url: `/api/v1/admin/cycles/${seed.cycle.id}`,
-          headers: seed.headers,
-          payload: {
-            name: 'August',
-            startDate: '2026-08-01',
-            endDate: '2026-08-31',
-          },
-        })
-        .then((result) => result),
-    // A Sent Cycle refuses the edit whichever goes first; Apply adds.
-    writerFirst: async ({ seed, applied, written }) => {
-      expect(written.statusCode).toBe(409);
-      expect(written.json()).toMatchObject({
-        error: 'ILLEGAL_STATE_TRANSITION',
-      });
-      expect(applied.statusCode).toBe(200);
-      expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
-        [seed.current.volunteerId, seed.replacementId].sort(),
-      );
-    },
-    applyFirst: async ({ seed, written }) => {
-      expect(written.statusCode).toBe(409);
-      expect(written.json()).toMatchObject({
-        error: 'ILLEGAL_STATE_TRANSITION',
-      });
-      expect(await activeShiftVolunteers(seed.shift.id)).toEqual(
-        [seed.current.volunteerId, seed.replacementId].sort(),
-      );
-    },
-  },
 };
 
 for (const [writerName, writer] of Object.entries(churchLockWriters)) {

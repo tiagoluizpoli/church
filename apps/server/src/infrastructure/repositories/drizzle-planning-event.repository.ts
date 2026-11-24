@@ -66,7 +66,10 @@ import type {
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
 } from '../../domain/contracts/infrastructure/planning-event.repository';
-import { PUBLISHED_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
+import {
+  ACTIVE_ASSIGNMENT_STATUSES,
+  PUBLISHED_ASSIGNMENT_STATUSES,
+} from '../../domain/entities/assignment';
 import type {
   Event,
   EventWithEventTimeBlocks,
@@ -87,8 +90,6 @@ import {
   withChurchIsolation,
 } from './helpers';
 import type { AnyDrizzleDb } from './types';
-
-const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending'] as const;
 
 interface DrizzlePlanningEventRepositoryInput {
   db: AnyDrizzleDb;
@@ -384,7 +385,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     const conditions: SQL[] = [
       withChurchIsolation({ table: assignment, churchId }),
       eq(eventTimeBlock.eventId, eventId),
-      inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+      inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
     ];
     if (eventTimeBlockId) {
       conditions.push(eq(eventTimeBlock.id, eventTimeBlockId));
@@ -439,7 +440,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     const conditions: SQL[] = [
       withChurchIsolation({ table: assignment, churchId }),
       inArray(assignment.volunteerId, volunteerIds),
-      inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+      inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
       // Strict overlap: back-to-back Shifts are compatible.
       lt(shift.startTime, endTime),
       gt(shift.endTime, startTime),
@@ -723,7 +724,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     const conditions: SQL[] = [
       withChurchIsolation({ table: assignment, churchId }),
       eq(eventTimeBlock.eventId, eventId),
-      inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+      inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
     ];
     if (eventTimeBlockId) {
       conditions.push(eq(eventTimeBlock.id, eventTimeBlockId));

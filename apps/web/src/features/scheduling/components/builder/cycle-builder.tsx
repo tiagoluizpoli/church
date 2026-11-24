@@ -2,7 +2,14 @@ import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import {
   CYCLE_BUILDER_QUERY_KEY,
@@ -117,6 +124,7 @@ export function CycleBuilder({
       event.status !== 'cancelled' &&
       (event.state === 'assigning' || event.state === 'availability_requested'),
   );
+  const proposalDisabledReasonId = useId();
   let proposalDisabledReason: string | null = null;
   if (publishableEvents.length === 0) {
     proposalDisabledReason = data.events.some(
@@ -316,8 +324,8 @@ export function CycleBuilder({
                 size={isMobile ? 'touch' : 'sm'}
                 variant="outline"
                 aria-disabled="true"
-                aria-describedby="proposal-disabled-reason"
-                className="opacity-50"
+                aria-describedby={proposalDisabledReasonId}
+                className="aria-disabled:opacity-50"
                 onClick={() => toast.info(proposalDisabledReason)}
               >
                 {m.builder_proposal_open()}
@@ -325,7 +333,7 @@ export function CycleBuilder({
             }
           />
           <TooltipContent>{proposalDisabledReason}</TooltipContent>
-          <span className="sr-only" id="proposal-disabled-reason">
+          <span className="sr-only" id={proposalDisabledReasonId}>
             {proposalDisabledReason}
           </span>
         </Tooltip>

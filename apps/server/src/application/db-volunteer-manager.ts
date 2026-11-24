@@ -61,9 +61,10 @@ import type { TransactionContext } from '../domain/contracts/infrastructure/tran
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type {
-  Assignment,
-  AssignmentStatus,
+import {
+  type Assignment,
+  type AssignmentStatus,
+  isActiveAssignmentStatus,
 } from '../domain/entities/assignment';
 import type { EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
@@ -173,7 +174,7 @@ interface RequirementCoverageStatusInput {
 function countsTowardRequirementCoverage({
   status,
 }: RequirementCoverageStatusInput): boolean {
-  return status === 'draft' || status === 'pending';
+  return isActiveAssignmentStatus(status);
 }
 
 interface RequirementCoverageInput {

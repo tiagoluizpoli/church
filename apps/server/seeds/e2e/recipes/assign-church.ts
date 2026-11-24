@@ -120,12 +120,12 @@ export type AssignMinistries<TPlan extends AssignChurchPlan> = {
 
 export interface AssignPoolVolunteer {
   userId: string;
+  email: string;
   name: string;
   volunteerId: string;
 }
 
 export interface AssignPersona extends AssignPoolVolunteer {
-  email: string;
   password: string;
 }
 
@@ -553,13 +553,13 @@ export async function buildAssignChurch<const TPlan extends AssignChurchPlan>({
 
   const pool: Record<string, AssignPoolVolunteer> = {};
   for (const [key, volunteerPlan] of Object.entries(plan.pool)) {
-    const { userId, name, volunteerId } = await buildPlanVolunteer({
+    const { userId, email, name, volunteerId } = await buildPlanVolunteer({
       emailLocalPart: poolEmailLocalPart({ key }),
       userKind: poolUserKind({ key }),
       volunteerPlan,
       churchAccessLevel: 'member',
     });
-    pool[key] = { userId, name, volunteerId };
+    pool[key] = { userId, email, name, volunteerId };
   }
 
   return {

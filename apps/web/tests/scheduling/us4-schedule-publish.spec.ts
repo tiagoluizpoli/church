@@ -219,10 +219,15 @@ test('DL4-US4 leader applies a proposal over realistic availability, publishes b
   await expect(
     page.getByText(m.builder_logic_cycle_published({}, { locale: 'pt-BR' })),
   ).toBeVisible();
-  // Assistance is not offered for an already-published Schedule.
-  await expect(
-    page.getByRole('button', { name: m.builder_proposal_open({}, ptBR) }),
-  ).toHaveCount(0);
+  // Assistance is not offered for an already-published Schedule: it stays
+  // in place, disabled, and says why (#947).
+  const proposalButton = page.getByRole('button', {
+    name: m.builder_proposal_open({}, ptBR),
+  });
+  await expect(proposalButton).toHaveAttribute('aria-disabled', 'true');
+  await expect(proposalButton).toHaveAccessibleDescription(
+    m.builder_proposal_disabled_published({}, ptBR),
+  );
 
   const [worshipStateResponse, careStateResponse] = await Promise.all([
     page.request.get(
@@ -265,11 +270,12 @@ test('DL4-US4 leader applies a proposal over realistic availability, publishes b
   await expect(
     volunteerPage.getByText(journey.worshipSecond.event.title),
   ).toBeVisible();
+  // Once per Event's team.
   await expect(
-    volunteerPage
-      .getByText(shortVolunteerName({ name: volunteerName }), { exact: true })
-      .first(),
-  ).toBeVisible();
+    volunteerPage.getByText(shortVolunteerName({ name: volunteerName }), {
+      exact: true,
+    }),
+  ).toHaveCount(2);
 
   // Replace, undo, then replace again: only the final net change is sent.
   const choose = async ({ from, name }: { from: string; name: string }) => {
@@ -368,14 +374,13 @@ test('DL4-US4 leader applies a proposal over realistic availability, publishes b
         const updates = emails.filter(
           (email) => email.payload.kind === 'schedule.updated',
         );
-        // Published to each assigned Volunteer: Rafael and Elisa.
-        if (
-          published.length !== 2 ||
-          !published.some(
-            ({ payload }) => payload.to === journey.personas.volunteer.email,
-          ) ||
-          updates.length !== 2
-        )
+        // Published to each assigned Volunteer: Rafael and Elisa, once each.
+        const publishedTo = published.map(({ payload }) => payload.to).sort();
+        const expectedTo = [
+          journey.personas.volunteer.email,
+          journey.pool.elisa.email,
+        ].sort();
+        if (publishedTo.join() !== expectedTo.join() || updates.length !== 2)
           return false;
         const removed = updates.find(
           (email) => email.payload.to === journey.personas.volunteer.email,

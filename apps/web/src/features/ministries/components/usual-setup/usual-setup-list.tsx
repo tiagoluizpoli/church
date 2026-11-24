@@ -49,16 +49,14 @@ function TemplateLabel({ block }: TemplateLabelProps) {
 export function UsualSetupList({ ministryId }: UsualSetupListProps) {
   const { isChurchAdmin } = useCallerCapabilities();
   const setup = useUsualSetup({ ministryId });
-  // The server orders blocks by template name, then block: a template's blocks are adjacent.
-  const groups = (setup.data?.blocks ?? []).reduce<UsualSetupBlock[][]>(
-    (acc, block) => {
-      const last = acc.at(-1);
-      if (last?.[0].templateId === block.templateId) last.push(block);
-      else acc.push([block]);
-      return acc;
-    },
-    [],
-  );
+  // One group per template, in the server's order of first appearance.
+  const byTemplate = new Map<string, UsualSetupBlock[]>();
+  for (const block of setup.data?.blocks ?? []) {
+    const group = byTemplate.get(block.templateId);
+    if (group) group.push(block);
+    else byTemplate.set(block.templateId, [block]);
+  }
+  const groups = [...byTemplate.values()];
 
   return (
     <section className="space-y-4" aria-label={m.usual_setup_list_label()}>

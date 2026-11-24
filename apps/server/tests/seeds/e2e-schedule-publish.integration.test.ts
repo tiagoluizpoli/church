@@ -100,6 +100,7 @@ describe('schedule-publish E2E journey recipe', () => {
     const checks = await testDb
       .select({
         state: availabilityCheck.state,
+        cycleId: availabilityCheck.cycleId,
         volunteerId: ministryMembership.volunteerId,
         unavailable: sql<string[]>`coalesce(
           array_agg(${unavailableShift.shiftId} order by ${unavailableShift.shiftId})
@@ -120,23 +121,26 @@ describe('schedule-publish E2E journey recipe', () => {
     const byVolunteer = new Map(
       checks.map(({ volunteerId, ...rest }) => [volunteerId, rest]),
     );
-    const { first, second } = {
-      first: journey.worship.shiftId,
-      second: journey.worshipSecond.shiftId,
-    };
+    const first = journey.worship.shiftId;
+    const second = journey.worshipSecond.shiftId;
+    const cycleId = journey.cycle.id;
     expect(byVolunteer.get(journey.personas.volunteer.volunteerId)).toEqual({
+      cycleId,
       state: 'confirmed',
       unavailable: [],
     });
     expect(byVolunteer.get(journey.pool.elisa.volunteerId)).toEqual({
+      cycleId,
       state: 'confirmed',
       unavailable: [second],
     });
     expect(byVolunteer.get(journey.pool.davi.volunteerId)).toEqual({
+      cycleId,
       state: 'confirmed',
       unavailable: [first, second].sort(),
     });
     expect(byVolunteer.get(journey.pool.caio.volunteerId)).toEqual({
+      cycleId,
       state: 'pending',
       unavailable: [],
     });

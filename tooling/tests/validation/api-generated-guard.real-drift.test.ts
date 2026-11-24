@@ -7,13 +7,20 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { dirname, join, resolve } from 'node:path';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'bun:test';
 
 /**
  * Proves the guard against the real generator (#953): a disposable worktree of
  * HEAD with this checkout's dependencies linked in, so regeneration never
- * touches this working tree.
+ * touches this working tree. Each test starts from HEAD again.
  */
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..');
@@ -25,10 +32,26 @@ const STRAY = 'apps/web/src/infrastructure/api/removed-tag.ts';
 const GENERATION_TIMEOUT_MS = 180_000;
 
 let worktree: string;
+let base: string;
 
 function git(args: string[], cwd = worktree) {
   const result = Bun.spawnSync(['git', ...args], { cwd });
   if (result.exitCode !== 0) throw new Error(result.stderr.toString());
+  return result.stdout.toString().trim();
+}
+
+function commitAll(message: string) {
+  git(['add', '-A']);
+  git([
+    '-c',
+    'user.email=t@e.st',
+    '-c',
+    'user.name=T',
+    'commit',
+    '--no-verify',
+    '-qm',
+    message,
+  ]);
 }
 
 function runGuard() {
@@ -42,26 +65,24 @@ function runGuard() {
 beforeAll(() => {
   worktree = mkdtempSync(join(tmpdir(), 'api-guard-real-'));
   git(['worktree', 'add', '--detach', worktree, 'HEAD'], REPO_ROOT);
-  const link = (path: string) => {
-    if (existsSync(join(REPO_ROOT, path)))
+  base = git(['rev-parse', 'HEAD']);
+  const workspaceDeps = new Bun.Glob('{apps,packages}/*/node_modules').scanSync(
+    { cwd: REPO_ROOT, onlyFiles: false },
+  );
+  for (const path of ['node_modules', '.env.local', ...workspaceDeps]) {
+    // A workspace HEAD no longer has (an untracked leftover here) gets no link.
+    if (
+      existsSync(join(REPO_ROOT, path)) &&
+      existsSync(dirname(join(worktree, path)))
+    )
       symlinkSync(join(REPO_ROOT, path), join(worktree, path));
-  };
-  for (const path of [
-    'node_modules',
-    '.env.local',
-    ...['apps/server', 'apps/web'].map((d) => `${d}/node_modules`),
-    ...[
-      'core',
-      'env',
-      'auth',
-      'db',
-      'app-config',
-      'time',
-      'i18n',
-      'domain-rules',
-    ].map((p) => `packages/${p}/node_modules`),
-  ])
-    link(path);
+  }
+});
+
+beforeEach(() => {
+  // Ignored files (the dependency links, .env.local) survive the reset.
+  git(['reset', '--hard', '-q', base]);
+  git(['clean', '-fdq']);
 });
 
 afterAll(() => {
@@ -88,17 +109,7 @@ describe('api-generated-guard against the real generator', () => {
       expect(drifted.stderr).toContain(WEB_CLIENT);
 
       // The developer's fix: commit the regenerated output the failed run left.
-      git(['add', '-A']);
-      git([
-        '-c',
-        'user.email=t@e.st',
-        '-c',
-        'user.name=T',
-        'commit',
-        '--no-verify',
-        '-qm',
-        'regen',
-      ]);
+      commitAll('regen');
       expect(runGuard().exitCode).toBe(0);
     },
     GENERATION_TIMEOUT_MS,
@@ -108,17 +119,7 @@ describe('api-generated-guard against the real generator', () => {
     'fails on a committed client file the server no longer generates',
     () => {
       writeFileSync(join(worktree, STRAY), 'export {};\n');
-      git(['add', '-A']);
-      git([
-        '-c',
-        'user.email=t@e.st',
-        '-c',
-        'user.name=T',
-        'commit',
-        '--no-verify',
-        '-qm',
-        'stray',
-      ]);
+      commitAll('stray');
 
       const { exitCode, stderr } = runGuard();
       expect(exitCode).toBe(1);

@@ -353,6 +353,7 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/j6-leader-availability.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
+      'tests/scheduling/prepare-panel.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       'tests/scheduling/us2-leader-prepare.spec.ts',
     ]);

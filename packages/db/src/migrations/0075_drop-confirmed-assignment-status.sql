@@ -1,4 +1,3 @@
--- rollback-compatible: the previous release writes 'confirmed' only through the parked respondToAssignment route (parked.assignmentResponse off), so it never stores a status this enum lacks.
 UPDATE "assignment" SET "status" = 'pending' WHERE "status" = 'confirmed';--> statement-breakpoint
 DROP INDEX "assignment_shift_volunteer_idx";--> statement-breakpoint
 ALTER TABLE "assignment" DROP CONSTRAINT "assignment_status_check";--> statement-breakpoint

@@ -86,7 +86,10 @@ import type { UnavailableShiftRepository } from '../domain/contracts/infrastruct
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type { Assignment } from '../domain/entities/assignment';
+import {
+  type Assignment,
+  isActiveAssignmentStatus,
+} from '../domain/entities/assignment';
 import type { Cycle, CycleState } from '../domain/entities/cycle';
 import type { Event, EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { EventTemplate } from '../domain/entities/event-template';
@@ -3261,10 +3264,6 @@ function rangesOverlap({
     compareInstants({ left: startTime, right: otherEndTime }) < 0 &&
     compareInstants({ left: endTime, right: otherStartTime }) > 0
   );
-}
-
-function isActiveAssignmentStatus(status: string): boolean {
-  return status === 'draft' || status === 'pending';
 }
 
 function buildEligibleVolunteerView({

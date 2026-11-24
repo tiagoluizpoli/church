@@ -832,6 +832,12 @@ export class DbRedemptionManager implements RedemptionManager {
         acceptedAt,
         tx,
       });
+      // Church half granted: join the Church, same as the Church-only path.
+      await this.identityGateway.setActiveChurch({
+        churchId,
+        sessionCookie,
+        tx,
+      });
     }
     const grant = { churchId, userId, acceptedAt, correlationId, tx };
     let volunteerId: VolunteerId | null = null;

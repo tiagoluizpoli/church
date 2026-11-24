@@ -23,6 +23,14 @@ import { formatAssigneeRoleLabel } from '@/utils/format-assignee-role-label';
 import { formatLastServed } from '@/utils/format-last-served';
 import { formatVolunteerInitials } from '@/utils/format-volunteer-initials';
 
+/**
+ * The card's tooltips all sit within a few pixels of each other, and keyboard
+ * focus moves between them faster than the default exit fade, so two showed at
+ * once mid-cross-fade. Hiding on close (no exit animation to wait for) leaves
+ * exactly one tooltip on screen as focus moves on.
+ */
+const tooltipClassName = 'data-closed:hidden';
+
 interface SquareGripIconProps {
   className?: string;
 }
@@ -167,7 +175,7 @@ function TruncatedLine({ text, className, testId }: TruncatedLineProps) {
           </button>
         }
       />
-      <TooltipContent>{text}</TooltipContent>
+      <TooltipContent className={tooltipClassName}>{text}</TooltipContent>
     </Tooltip>
   );
 }
@@ -189,7 +197,7 @@ function WorkloadLine({ workloadCount }: WorkloadLineProps) {
           </button>
         }
       />
-      <TooltipContent>
+      <TooltipContent className={tooltipClassName}>
         {workloadCount === 1
           ? m.builder_ui_workload_one()
           : m.builder_ui_workload_many({ count: workloadCount })}
@@ -384,7 +392,9 @@ const VolunteerCardPresentation = memo(function VolunteerCardPresentation({
                   </Badge>
                 }
               />
-              <TooltipContent>{m.builder_ui_ideal_help()}</TooltipContent>
+              <TooltipContent className={tooltipClassName}>
+                {m.builder_ui_ideal_help()}
+              </TooltipContent>
             </Tooltip>
           ) : null}
           <AssigneeRoleBadge
@@ -443,7 +453,9 @@ const VolunteerCardPresentation = memo(function VolunteerCardPresentation({
                 </button>
               }
             />
-            <TooltipContent>{volunteer.conflictReason}</TooltipContent>
+            <TooltipContent className={tooltipClassName}>
+              {volunteer.conflictReason}
+            </TooltipContent>
           </Tooltip>
         ) : (
           statusLine

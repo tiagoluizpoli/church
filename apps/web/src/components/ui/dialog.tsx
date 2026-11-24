@@ -42,6 +42,8 @@ function DialogOverlay({
 type DialogContentProps = DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean;
   closeDisabled?: boolean;
+  /** The × button's name, when the footer already has a "Close" of its own. */
+  closeLabel?: string;
 };
 
 function DialogContent({
@@ -49,6 +51,7 @@ function DialogContent({
   children,
   showCloseButton = true,
   closeDisabled = false,
+  closeLabel = m.shell_close(),
   ...props
 }: DialogContentProps) {
   return (
@@ -76,7 +79,7 @@ function DialogContent({
             }
           >
             <XIcon />
-            <span className="sr-only">{m.shell_close()}</span>
+            <span className="sr-only">{closeLabel}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>

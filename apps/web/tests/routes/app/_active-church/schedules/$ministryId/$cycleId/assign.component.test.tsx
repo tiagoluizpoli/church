@@ -304,6 +304,28 @@ describe('date strip selection in the URL', () => {
     expect(pressed()).toEqual([]);
   });
 
+  it('drops a well-formed day outside the cycle and keeps the board full', async () => {
+    renderRoute({
+      initialPath: `${path}?days=2099-01-01`,
+      churchTimezone: 'UTC',
+    });
+    await screen.findByRole('group', { name: m.builder_ui_cycle_dates() });
+    expect(pressed()).toEqual([]);
+    expect(screen.queryByText(m.builder_ui_no_dates())).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(m.builder_ui_no_dates_match()),
+    ).not.toBeInTheDocument();
+  });
+
+  it('dedupes, sorts and drops unknown days from ?days=', async () => {
+    renderRoute({
+      initialPath: `${path}?days=2026-07-11,2099-01-01,2026-07-10,2026-07-11`,
+      churchTimezone: 'UTC',
+    });
+    await screen.findByRole('group', { name: m.builder_ui_cycle_dates() });
+    expect(pressed()).toEqual(['2026-07-10', '2026-07-11']);
+  });
+
   it('keeps ?days= when it consumes a swap request link', async () => {
     const { router } = renderRoute({
       initialPath: `${path}?swapRequest=gone&days=2026-07-12`,

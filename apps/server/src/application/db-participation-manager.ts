@@ -3240,6 +3240,9 @@ function buildEventView({
           ),
         ),
       );
+      const cancelled =
+        eventGroup.event.status === 'cancelled' ||
+        eventTimeBlock.status === 'cancelled';
       const headcounts = shiftViews.map(({ requirements: shiftRequirements }) =>
         shiftRequirements.reduce(
           (sum, { requirement }) => sum + requirement.peopleNeeded,
@@ -3250,12 +3253,13 @@ function buildEventView({
       return {
         eventTimeBlock,
         included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
+        cancelled,
         answerCoverage: {
           available: [...confirmedVolunteerIds].filter(
             (id) => !unavailable.has(id),
           ).length,
           needed:
-            headcounts.length === 0 || headcounts.includes(0)
+            cancelled || headcounts.length === 0 || headcounts.includes(0)
               ? null
               : Math.max(...headcounts),
         },

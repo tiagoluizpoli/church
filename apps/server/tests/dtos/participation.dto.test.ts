@@ -194,6 +194,7 @@ describe('participationMapper', () => {
       const populatedEventTimeBlockView: ParticipationEventTimeBlockView = {
         eventTimeBlock,
         included: true,
+        cancelled: false,
         answerCoverage: { available: 3, needed: 4 },
         shifts: [
           {
@@ -218,6 +219,7 @@ describe('participationMapper', () => {
       const emptyEventTimeBlockView: ParticipationEventTimeBlockView = {
         eventTimeBlock: buildEventTimeBlock(),
         included: false,
+        cancelled: false,
         answerCoverage: { available: 0, needed: null },
         shifts: [],
         requirements: [],

@@ -43,6 +43,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { WorkspacePage } from '@/components/workspace-page';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import type { ApplyAssignmentProposalBodyExcludedAdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
@@ -112,6 +117,14 @@ export function CycleBuilder({
       event.status !== 'cancelled' &&
       (event.state === 'assigning' || event.state === 'availability_requested'),
   );
+  let proposalDisabledReason: string | null = null;
+  if (publishableEvents.length === 0) {
+    proposalDisabledReason = data.events.some(
+      (event) => event.state === 'published',
+    )
+      ? m.builder_proposal_disabled_published()
+      : m.builder_proposal_disabled_no_availability();
+  }
   const publishStaffing = summarizeCycleStaffing({
     data: { ...data, events: publishableEvents },
   });
@@ -292,7 +305,31 @@ export function CycleBuilder({
           {m.builder_send_updates({ count: data.affectedVolunteerCount ?? 0 })}
         </Button>
       ) : null}
-      {publishableEvents.length > 0 ? (
+      {proposalDisabledReason ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              // aria-disabled (not disabled) keeps the button focusable and
+              // tappable, so the reason reaches keyboard and touch users too.
+              <Button
+                type="button"
+                size={isMobile ? 'touch' : 'sm'}
+                variant="outline"
+                aria-disabled="true"
+                aria-describedby="proposal-disabled-reason"
+                className="opacity-50"
+                onClick={() => toast.info(proposalDisabledReason)}
+              >
+                {m.builder_proposal_open()}
+              </Button>
+            }
+          />
+          <TooltipContent>{proposalDisabledReason}</TooltipContent>
+          <span className="sr-only" id="proposal-disabled-reason">
+            {proposalDisabledReason}
+          </span>
+        </Tooltip>
+      ) : (
         <Button
           type="button"
           size={isMobile ? 'touch' : 'sm'}
@@ -305,7 +342,7 @@ export function CycleBuilder({
             ? m.builder_proposal_loading()
             : m.builder_proposal_open()}
         </Button>
-      ) : null}
+      )}
       {publishableEvents.length > 0 ? (
         <Button
           type="button"

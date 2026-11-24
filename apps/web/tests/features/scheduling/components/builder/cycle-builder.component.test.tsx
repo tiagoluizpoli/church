@@ -74,7 +74,7 @@ vi.mock(
 );
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
 const builderData: CycleBuilderData = {
@@ -1680,12 +1680,46 @@ describe('Assignment proposal preview', () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it('is not offered once the Schedule is published', () => {
+  it('is disabled with the published reason once the Schedule is published', async () => {
     renderBuilder({ data: boardData({ state: 'published' }) });
 
+    const button = screen.getByRole('button', {
+      name: m.builder_proposal_open(),
+    });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).toHaveAccessibleDescription(
+      m.builder_proposal_disabled_published(),
+    );
+    await userEvent.click(button);
+    expect(toast.info).toHaveBeenCalledWith(
+      m.builder_proposal_disabled_published(),
+    );
+  });
+
+  it('is disabled with the availability reason before availability is requested', async () => {
+    const getProposal = vi.spyOn(adminApi, 'getAssignmentProposal');
+    renderBuilder({ data: boardData({ state: 'preparing' }) });
+
+    const button = screen.getByRole('button', {
+      name: m.builder_proposal_open(),
+    });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).toHaveAccessibleDescription(
+      m.builder_proposal_disabled_no_availability(),
+    );
+    await userEvent.click(button);
+    expect(toast.info).toHaveBeenCalledWith(
+      m.builder_proposal_disabled_no_availability(),
+    );
+    expect(getProposal).not.toHaveBeenCalled();
+  });
+
+  it('stays enabled while an event can be published', () => {
+    renderBuilder({ data: boardData({}) });
+
     expect(
-      screen.queryByRole('button', { name: m.builder_proposal_open() }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('button', { name: m.builder_proposal_open() }),
+    ).not.toHaveAttribute('aria-disabled');
   });
 });
 

@@ -38,6 +38,7 @@ import {
   validationReason,
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
+import { refuse } from '../../api/utils/refuse';
 import { requestLocale } from '../../api/utils/request-locale';
 import { HardConstraintError } from '../../domain/conflict/errors/hard-constraint-error';
 import type { ErrorReporter } from '../../domain/contracts/infrastructure/error-reporter';
@@ -159,19 +160,6 @@ export async function createFastify({
     maxAge: 86400,
   });
 
-  // Non-browser clients send neither header and pass. A browser sends Origin
-  // on every non-GET; an allowed one may be cross-site (CORS), any other
-  // Origin, or a cross-site request without one, is refused.
-  app.addHook('onRequest', async (request, reply) => {
-    if (SAFE_METHODS.has(request.method)) return;
-    const { origin, 'sec-fetch-site': fetchSite } = request.headers;
-    const allowed = origin !== undefined && allowedOrigins.includes(origin);
-    if (allowed || (origin === undefined && fetchSite !== 'cross-site')) return;
-    return reply.code(403).send({
-      message: m.error_forbidden({}, { locale: request.locale }),
-    });
-  });
-
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
@@ -185,6 +173,18 @@ export async function createFastify({
       cookieHeader: request.headers.cookie,
       ...localeSettings,
     });
+  });
+
+  // Non-browser clients send neither header and pass. A browser sends Origin
+  // on every non-GET; an allowed one may be cross-site (CORS), any other
+  // Origin, or a cross-site request without one, is refused. After the
+  // locale hook, so the refusal reads in the request locale.
+  app.addHook('onRequest', async (request, reply) => {
+    if (SAFE_METHODS.has(request.method)) return;
+    const { origin, 'sec-fetch-site': fetchSite } = request.headers;
+    const allowed = origin !== undefined && allowedOrigins.includes(origin);
+    if (allowed || (origin === undefined && fetchSite !== 'cross-site')) return;
+    return refuse({ reply, request, code: 'FORBIDDEN' });
   });
 
   await app.register(swagger, {

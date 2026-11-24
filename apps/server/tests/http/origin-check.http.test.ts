@@ -1,4 +1,5 @@
 import { env } from '@church/env/server';
+import { m } from '@church/i18n/messages';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createFastify, DESKTOP_ORIGIN } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -28,9 +29,16 @@ const signIn = (headers: Record<string, string>) =>
   });
 
 describe('Global Origin check', () => {
-  it('refuses a mutating request from another Origin', async () => {
-    const res = await signIn({ origin: 'https://evil.example' });
+  it('refuses a mutating request from another Origin with the standard error body, in the request locale', async () => {
+    const res = await signIn({
+      origin: 'https://evil.example',
+      cookie: `${testLocale.localeCookieName}=en`,
+    });
     expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({
+      error: 'FORBIDDEN',
+      message: m.error_forbidden({}, { locale: 'en' }),
+    });
   });
 
   it('refuses a cross-site mutating request without an allowed Origin', async () => {

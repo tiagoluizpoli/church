@@ -49,7 +49,7 @@ import { ScheduleAsk } from '@/features/scheduling/components/prepare/schedule-a
 import { SchedulePublish } from '@/features/scheduling/components/prepare/schedule-publish';
 import { scheduleStageLabel } from '@/features/scheduling/components/prepare/schedule-rows';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
-import { useMediaQuery } from '@/hooks/use-media-query';
+import { useMediaQuery, XL_MEDIA_QUERY } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
@@ -223,11 +223,11 @@ function PrepareWorkspaceRoute() {
     panel,
     open: Boolean(selectedBlockId && ready),
   });
-  const wide = useMediaQuery('(min-width: 1280px)');
+  const wide = useMediaQuery(XL_MEDIA_QUERY);
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const animateClose = wide && !reducedMotion;
   const blockPanel = selectedBlockId ? (
-    <PreparePanel key="panel" panel={panel} animated={animateClose}>
+    <PreparePanel key="panel" panel={panel}>
       <Outlet />
     </PreparePanel>
   ) : null;
@@ -666,18 +666,24 @@ function usePanelStickyWhileItFits({ panel, open }: PanelStickyInput) {
 
 interface PreparePanelProps {
   panel: RefObject<HTMLDivElement | null>;
-  /** Slide out on close (beside the list, motion allowed); otherwise unmount at once. */
-  animated: boolean;
   children: ReactNode;
 }
 
-/** The block panel. Once its route is gone it is kept, empty and inert, at its last height
- * while it slides out beside the list: the mirror of the open animation (duration-300). */
-function PreparePanel({ panel, animated, children }: PreparePanelProps) {
+/** The panel's slide, in and out alike. */
+const PANEL_SLIDE_MS = 300;
+
+/** The block panel. Inside AnimatePresence (beside the list, motion allowed) it is kept, empty
+ * and inert, at its last size once its route is gone, while it slides out: the mirror of the
+ * open animation. Outside it, presence is always true, so it unmounts at once. */
+function PreparePanel({ panel, children }: PreparePanelProps) {
   const [present, safeToRemove] = usePresence();
-  const height = useRef(0);
+  const size = useRef({ width: 0, height: 0 });
   useEffect(() => {
-    if (present && panel.current) height.current = panel.current.offsetHeight;
+    if (present && panel.current)
+      size.current = {
+        width: panel.current.offsetWidth,
+        height: panel.current.offsetHeight,
+      };
   });
   return (
     <motion.div
@@ -685,24 +691,29 @@ function PreparePanel({ panel, animated, children }: PreparePanelProps) {
       data-testid="prepare-block-panel"
       inert={!present}
       initial={false}
-      exit={
-        animated
-          ? { opacity: 0, x: 32, transition: { duration: 0.3 } }
-          : undefined
-      }
+      exit={{
+        opacity: 0,
+        x: 32,
+        transition: { duration: PANEL_SLIDE_MS / 1000 },
+      }}
       onAnimationComplete={() => {
         if (!present) safeToRemove?.();
       }}
-      style={!present ? { minHeight: height.current } : undefined}
+      style={{
+        animationDuration: `${PANEL_SLIDE_MS}ms`,
+        ...(!present && {
+          width: size.current.width,
+          minHeight: size.current.height,
+        }),
+      }}
       className={cn(
         // The house card from tablet up, as the table beside it; a phone gets the bare screen.
         'surface-panel max-md:rounded-none max-md:border-0 max-md:bg-none max-md:bg-transparent md:p-5 md:max-xl:max-w-2xl',
         // Beside the list it grows with its content, so only the page scrolls; it stays in view
         // while it fits the screen (usePanelStickyWhileItFits), and its footer sticks to the page's bottom.
-        'fade-in slide-in-from-right-8 xl:sticky xl:top-0 xl:duration-300 xl:motion-safe:animate-in',
-        // Leaving, its column is gone: it floats over where it was (the grid's panel column widths).
-        !present &&
-          'pointer-events-none absolute top-0 right-0 w-[26rem] 2xl:w-[28rem]',
+        'fade-in slide-in-from-right-8 xl:sticky xl:top-0 xl:motion-safe:animate-in',
+        // Leaving, its column is gone: it floats over where it was, at its measured size.
+        !present && 'pointer-events-none absolute top-0 right-0',
       )}
     >
       {children}

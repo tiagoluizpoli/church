@@ -19,13 +19,14 @@ interface AnimatedNumberInput {
 export function useAnimatedNumber({ value, format }: AnimatedNumberInput) {
   const textRef = useRef<HTMLSpanElement>(null);
   const motionRef = useRef<HTMLSpanElement>(null);
-  const previous = useRef(value);
+  // The number on screen, so an interrupted count continues from where it is.
+  const shown = useRef(value);
   const formatRef = useRef(format);
   formatRef.current = format;
 
   useEffect(() => {
-    const from = previous.current;
-    previous.current = value;
+    const from = shown.current;
+    shown.current = value;
     const text = textRef.current;
     const twin = motionRef.current;
     if (
@@ -42,16 +43,18 @@ export function useAnimatedNumber({ value, format }: AnimatedNumberInput) {
       easing: EASE_OUT,
     });
     let frame = 0;
+    let cancelled = false;
     const tick = () => {
       const progress = animation.effect?.getComputedTiming().progress ?? 1;
-      twin.textContent = formatRef.current(
-        Math.round(from + (value - from) * progress),
-      );
+      shown.current = Math.round(from + (value - from) * progress);
+      twin.textContent = formatRef.current(shown.current);
       if (animation.playState === 'running')
         frame = requestAnimationFrame(tick);
     };
     const settle = () => {
       cancelAnimationFrame(frame);
+      // A newer count owns the twin by the time a cancelled one settles.
+      if (cancelled) return;
       twin.textContent = '';
       twin.hidden = true;
       text.style.opacity = '';
@@ -60,7 +63,11 @@ export function useAnimatedNumber({ value, format }: AnimatedNumberInput) {
     twin.hidden = false;
     tick();
     animation.finished.then(settle, settle);
-    return () => animation.cancel();
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      animation.cancel();
+    };
   }, [value]);
 
   return { textRef, motionRef };

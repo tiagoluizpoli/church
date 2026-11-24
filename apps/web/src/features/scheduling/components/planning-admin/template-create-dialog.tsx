@@ -5,14 +5,15 @@ import {
   TemplateEditorFooter,
   TemplateEditorForm,
 } from './template-editor-form';
+import { TemplateLeaveDialog } from './template-leave-dialog';
 import { useCreateTemplate } from './use-create-template';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 
 /** Route-driven: open while `/app/event-templates/new` is, closing returns to the list. */
 export function TemplateCreateDialog() {
-  const { collisionDialog, ...editor } = useCreateTemplate();
+  const { collisionDialog, leaveBlocker, ...editor } = useCreateTemplate();
   const navigate = useNavigate();
-  const close = () => navigate({ to: '/app/event-templates' });
+  const close = () => navigate({ to: '/app/event-templates', replace: true });
 
   return (
     <ResponsiveFormSurface
@@ -29,6 +30,7 @@ export function TemplateCreateDialog() {
     >
       <TemplateEditorForm {...editor} />
       <TemplateCollisionDialog {...collisionDialog} />
+      <TemplateLeaveDialog blocker={leaveBlocker} pending={editor.pending} />
     </ResponsiveFormSurface>
   );
 }

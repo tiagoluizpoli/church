@@ -317,7 +317,7 @@ describe('Cycle band timeline', () => {
           end: '30/11/2026',
         }),
       ),
-    ).toBeInTheDocument();
+    ).toBeVisible();
     expect(
       screen.getByText(m.home_cycle_progress({ day: 10, total: 30 })),
     ).toBeVisible();

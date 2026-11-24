@@ -12,6 +12,7 @@ import {
   TemplateEditorFooter,
   TemplateEditorForm,
 } from './template-editor-form';
+import { TemplateLeaveDialog } from './template-leave-dialog';
 import { templateDetailQueryKey } from './template-query-keys';
 import { useEditTemplate } from './use-edit-template';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
@@ -64,7 +65,7 @@ function EditSurface({
  */
 export function TemplateEditDialog({ templateId }: TemplateEditDialogProps) {
   const navigate = useNavigate();
-  const close = () => navigate({ to: '/app/event-templates' });
+  const close = () => navigate({ to: '/app/event-templates', replace: true });
   const templateQuery = useQuery({
     queryKey: templateDetailQueryKey({ templateId }),
     queryFn: () => adminApi.getEventTemplate(templateId),
@@ -145,6 +146,7 @@ function TemplateEditForm({
     onConfirmRemoval,
     onCancelRemoval,
     collisionDialog,
+    leaveBlocker,
     ...editor
   } = useEditTemplate({ template });
 
@@ -171,6 +173,7 @@ function TemplateEditForm({
           )
         : null}
       <TemplateCollisionDialog {...collisionDialog} />
+      <TemplateLeaveDialog blocker={leaveBlocker} pending={editor.pending} />
       <TemplateBlockRemovalDialog
         blocks={confirmation ?? []}
         open={confirmation !== null}

@@ -53,7 +53,10 @@ function EventBuilderRoute() {
       : undefined;
   const navigate = Route.useNavigate();
   const { swapRequest: linkedSwapRequestId, days } = Route.useSearch();
-  const selectedDates = useMemo(() => days?.split(',') ?? [], [days]);
+  const selectedDates = useMemo(
+    () => [...new Set(days?.split(','))].sort(),
+    [days],
+  );
   const swapRequestList = useQuery({
     queryKey: ['ministry-swap-requests', ministryId, cycleId],
     queryFn: () => adminApi.listMinistrySwapRequests(ministryId, { cycleId }),

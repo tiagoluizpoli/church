@@ -21,9 +21,11 @@ beforeEach(() => {
   );
   HTMLElement.prototype.animate = vi.fn(() => {
     let finish = () => {};
+    let abandon = () => {};
     const fake: FakeAnimation = { progress: 0.5, finish: () => finish() };
     animations.push(fake);
-    const finished = new Promise<void>((resolve) => {
+    const finished = new Promise<void>((resolve, reject) => {
+      abandon = () => reject(new DOMException('cancelled', 'AbortError'));
       finish = () => {
         fake.progress = 1;
         resolve();
@@ -33,7 +35,7 @@ beforeEach(() => {
       effect: { getComputedTiming: () => ({ progress: fake.progress }) },
       playState: 'running',
       finished,
-      cancel: vi.fn(),
+      cancel: vi.fn(() => abandon()),
     } as unknown as Animation;
   });
 });
@@ -70,6 +72,29 @@ describe('AnimatedNumber', () => {
 
     expect(overlay(container)).toBeEmptyDOMElement();
     expect(screen.getByText('80%')).toBeVisible();
+  });
+
+  it('continues from the number on screen when the value changes mid-count', async () => {
+    const { container, rerender } = render(
+      <AnimatedNumber value={40} format={percent} />,
+    );
+    rerender(<AnimatedNumber value={80} format={percent} />);
+    expect(overlay(container)).toHaveTextContent('60%');
+
+    rerender(<AnimatedNumber value={100} format={percent} />);
+    // Cancelling the first count rejects its `finished`; let that settle run.
+    await act(async () => {});
+
+    // From the displayed 60, halfway to 100, and the twin is still counting.
+    expect(HTMLElement.prototype.animate).toHaveBeenCalledTimes(2);
+    expect(overlay(container)).toHaveTextContent('80%');
+    expect(overlay(container)).toBeVisible();
+    expect(screen.getByText('100%')).toHaveStyle({ opacity: '0' });
+
+    await act(async () => animations[1].finish());
+
+    expect(overlay(container)).toBeEmptyDOMElement();
+    expect(screen.getByText('100%')).toBeVisible();
   });
 
   it('does not animate a re-render with the same value', () => {

@@ -11,6 +11,8 @@ import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 const createEventTemplate = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
+const blocker = { status: 'idle', reset: vi.fn(), proceed: vi.fn() };
+let shouldBlock: () => boolean = () => false;
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -38,10 +40,15 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => navigate,
+  useBlocker: (options: { shouldBlockFn: () => boolean }) => {
+    shouldBlock = options.shouldBlockFn;
+    return blocker;
+  },
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  blocker.status = 'idle';
 });
 
 function refusal({ data }: { data: unknown }) {
@@ -93,7 +100,10 @@ describe('TemplateCreateDialog', () => {
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByTestId('cancel-template-button'));
-    expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' });
+    expect(navigate).toHaveBeenCalledWith({
+      to: '/app/event-templates',
+      replace: true,
+    });
     expect(createEventTemplate).not.toHaveBeenCalled();
   });
 
@@ -191,7 +201,10 @@ describe('TemplateCreateDialog', () => {
     await user.click(screen.getByTestId('create-template-button'));
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
     expect(createEventTemplate).toHaveBeenCalledTimes(1);
     expect(createEventTemplate).toHaveBeenCalledWith({
@@ -321,7 +334,10 @@ describe('TemplateCreateDialog', () => {
       'precedences',
     );
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
   });
 
@@ -356,5 +372,45 @@ describe('TemplateCreateDialog', () => {
     expect(createEventTemplate).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('template-name-input')).toHaveValue('  Vigil ');
     expect(screen.queryByTestId('template-form-error')).not.toBeInTheDocument();
+  });
+
+  it('holds navigation only once the draft is dirty', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+    expect(shouldBlock()).toBe(false);
+
+    await user.type(screen.getByTestId('template-name-input'), 'V');
+    expect(shouldBlock()).toBe(true);
+  });
+
+  it('asks before discarding: Keep editing resets, Discard proceeds', async () => {
+    blocker.status = 'blocked';
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+
+    const leave = await screen.findByTestId('template-leave-dialog');
+    await user.click(
+      within(leave).getByRole('button', { name: 'Continuar editando' }),
+    );
+    expect(blocker.reset).toHaveBeenCalledTimes(1);
+    await user.click(
+      within(leave).getByRole('button', { name: 'Descartar e sair' }),
+    );
+    expect(blocker.proceed).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores Escape while saving and holds navigation', async () => {
+    createEventTemplate.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+
+    await fillValidForm({ user });
+    await user.click(screen.getByTestId('create-template-button'));
+    await waitFor(() => expect(createEventTemplate).toHaveBeenCalled());
+    await user.keyboard('{Escape}');
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(shouldBlock()).toBe(true);
+    expect(screen.getByTestId('template-create-dialog')).toBeInTheDocument();
   });
 });

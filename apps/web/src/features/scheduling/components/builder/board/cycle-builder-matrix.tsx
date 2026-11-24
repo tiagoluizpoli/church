@@ -240,8 +240,16 @@ export function CycleBuilderMatrix(props: Props) {
   ]);
   // A selected day the filters hide stays selected (the strip notes it) but
   // earns no column; with nothing selected every filtered date shows.
-  const columns = props.selectedDates.length
-    ? dates.filter((date) => props.selectedDates.includes(date))
+  // The URL is untrusted: a stale or foreign day is dropped, and a selection
+  // that resolves to nothing falls back to every date.
+  const selectedDates = useMemo(() => {
+    const known = new Set<string>(eventsForDate.keys());
+    return [...new Set(props.selectedDates)]
+      .filter((date) => known.has(date))
+      .sort();
+  }, [eventsForDate, props.selectedDates]);
+  const columns = selectedDates.length
+    ? dates.filter((date) => selectedDates.includes(date))
     : dates;
   const filtersAreDefault =
     dateMode === 'event_dates' &&
@@ -444,7 +452,7 @@ export function CycleBuilderMatrix(props: Props) {
           actions={props.actions}
         />
         <CycleBuilderDateStrip
-          selectedDates={props.selectedDates}
+          selectedDates={selectedDates}
           onSelectedDatesChange={props.onSelectedDatesChange}
           dates={dates}
           eventsForDate={eventsForDate}

@@ -391,40 +391,36 @@ export function UpcomingAssignmentsWidget(props: HomeSectionProps) {
         </Link>
       }
     >
-      {dashboard.isError ? (
-        // The next-assignment and history widgets already offer the retry for this shared read.
-        <p className="text-muted-foreground">{m.my_schedule_load_error()}</p>
-      ) : (
-        <ul className="grid gap-1">
-          {rows.map(({ group, assignment }) => {
-            const day = dayOf({ value: assignment.startTime, timeZone });
-            return (
-              <li key={assignment.assignmentId}>
-                <Link
-                  to="/app/my-schedule/$assignmentId"
-                  params={{ assignmentId: assignment.assignmentId }}
-                  className="radius-control -mx-2 flex min-h-11 items-center gap-4 px-2 py-2 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-                >
-                  <DateTile day={day} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">
-                      {group.eventTitle}
-                    </span>
-                    <span className="block text-muted-foreground text-sm">
-                      {formatInstantRangeOf({
-                        start: assignment.startTime,
-                        end: assignment.endTime,
-                        timeZone,
-                      })}{' '}
-                      · {assignment.sectorName} · {assignment.roleName}
-                    </span>
+      {/* A failed read leaves no rows, so the slot is dropped; the other widgets own the retry. */}
+      <ul className="grid gap-1">
+        {rows.map(({ group, assignment }) => {
+          const day = dayOf({ value: assignment.startTime, timeZone });
+          return (
+            <li key={assignment.assignmentId}>
+              <Link
+                to="/app/my-schedule/$assignmentId"
+                params={{ assignmentId: assignment.assignmentId }}
+                className="radius-control -mx-2 flex min-h-11 items-center gap-4 px-2 py-2 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <DateTile day={day} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">
+                    {group.eventTitle}
                   </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                  <span className="block text-muted-foreground text-sm">
+                    {formatInstantRangeOf({
+                      start: assignment.startTime,
+                      end: assignment.endTime,
+                      timeZone,
+                    })}{' '}
+                    · {assignment.sectorName} · {assignment.roleName}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </HomeWidget>
   );
 }

@@ -81,8 +81,9 @@ interface Props {
   data: CycleBuilderData;
   cycleStartDate?: string;
   cycleEndDate?: string;
-  selectedDate: string | null;
-  onSelectedDateChange: (date: string | null) => void;
+  /** The days picked on the date strip; empty shows every date. */
+  selectedDates: string[];
+  onSelectedDatesChange: (dates: string[]) => void;
   selectedVolunteerId?: string;
   onSelectVolunteer: (id: string | undefined) => void;
   onSelectAssignment: (input: CycleBuilderCellSelectInput) => void;
@@ -237,7 +238,11 @@ export function CycleBuilderMatrix(props: Props) {
     rangeStart,
     weekday,
   ]);
-  const columns = props.selectedDate ? [props.selectedDate] : dates;
+  // A selected day the filters hide stays selected (the strip notes it) but
+  // earns no column; with nothing selected every filtered date shows.
+  const columns = props.selectedDates.length
+    ? dates.filter((date) => props.selectedDates.includes(date))
+    : dates;
   const filtersAreDefault =
     dateMode === 'event_dates' &&
     dateSpanMode === 'starts' &&
@@ -439,8 +444,8 @@ export function CycleBuilderMatrix(props: Props) {
           actions={props.actions}
         />
         <CycleBuilderDateStrip
-          selectedDate={props.selectedDate}
-          onSelectedDateChange={props.onSelectedDateChange}
+          selectedDates={props.selectedDates}
+          onSelectedDatesChange={props.onSelectedDatesChange}
           dates={dates}
           eventsForDate={eventsForDate}
           dragScroll={dateStripDragScroll}

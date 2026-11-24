@@ -238,6 +238,8 @@ function renderBuilder({
   renderWithProviders(
     <CycleBuilder
       data={data}
+      selectedDates={[]}
+      onSelectedDatesChange={vi.fn()}
       onPublish={onPublish}
       isPublishing={false}
       cycleId="cycle-1"
@@ -387,6 +389,8 @@ describe('moving assignments', () => {
       return (
         <CycleBuilder
           data={board}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onPublish={vi.fn()}
           isPublishing={false}
           cycleId="cycle-1"
@@ -1749,6 +1753,8 @@ describe('Swap requests on the board', () => {
     const renderTree = (swapRequests: LeaderSwapRequest[]) => (
       <CycleBuilder
         data={data}
+        selectedDates={[]}
+        onSelectedDatesChange={vi.fn()}
         onPublish={vi.fn()}
         isPublishing={false}
         cycleId="cycle-1"

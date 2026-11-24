@@ -138,6 +138,32 @@ _Avoid_: Volunteer reassignment, Church-approved transfer
 A scheduled gathering owned by the Church (e.g., "Sunday Service" or a multi-day retreat). An Event belongs to exactly one Cycle and may span one day or several. Its start and end are always Instants, given to it rather than implied by any kind of Event, and it holds at least one EventTimeBlock, every one within its bounds; a manually added Event starts with one EventTimeBlock covering the whole Event, which may be kept or replaced by finer ones (a retreat may be one block or one per session). It belongs to the CalendarDay its start falls on, so a gathering running from 22:00 Friday to 01:00 Saturday is a Friday Event. Many Ministries participate in a single Event; the Event itself is not owned by any one Ministry. Its lifecycle is `draft → scheduled` (its Cycle sent) `→ cancelled` (pt-BR: Cancelado) / `→ past`. Once its Cycle is sent, a ChurchAdmin may still **move** it (a new start, same duration, its EventTimeBlocks and Shifts moving with it) or **cancel** it, until it starts; a cancellation is final (no reopening), and the Event stays visible as cancelled. An Event is never "published" — publishing is per Schedule, not per Event.
 _Avoid_: Gathering, service
 
+## Kids
+
+**Family** (pt-BR: Família):
+The Guardians and the Children they share. Each Child belongs to exactly one Family, and every Guardian in it may check in and manage every Child in it. A Guardian may belong to several Families, and separated parents stay Guardians of the same Family.
+_Avoid_: Household, family group, grupo familiar, casa
+
+**Family Link** (pt-BR: Vínculo da família):
+A Guardian's act of making their Family known to one Church, so it may check the Children in there. A Family belongs to its Guardians, not to any Church, and needs no Church Membership to be linked; only Churches it is linked to see its Children. Unlinking ends that Church's access, but the attendance that Church already recorded stays with it.
+_Avoid_: Family registration (per Church), church family, family membership
+
+**Child** (pt-BR: Criança):
+A child a Family brings to Kids. A Child is not a Person: it has no User, no Church Membership and no login, and holds only what check-in needs.
+_Avoid_: Kid, minor, dependent, member (for a Child)
+
+**Care notes** (pt-BR: Cuidados):
+Short instructions a Guardian gives the room about how to look after a Child, such as autism or a food restriction, in free text plus a few standard flags. They are health data, given under their own consent, and seen only by the volunteers of the room the Child is in.
+_Avoid_: Medical record, medical registry, health profile
+
+**Guardian** (pt-BR: Responsável):
+An adult in a Family who answers for its Children: either a Person, or a Guardian contact until that adult has an account.
+_Avoid_: Parent (when meaning any Guardian), responsible, tutor
+
+**Guardian contact** (pt-BR: Contato do responsável):
+A Guardian known only by name and phone, with no login, as registered at the desk for a visitor. It lets the Church reach the Guardian by hand and show a call on the big screen, but it can never be paged in the app. It gives way to the real Person once that adult has an account.
+_Avoid_: Visitor account, guest user
+
 ## Time
 
 Three kinds of time exist in this context, and every date bug so far has come from confusing them. They meet in one direction only: **TimeOfDay + CalendarDay + Church Timezone → Instant**. An Instant may be read back as a CalendarDay, but only through the Church Timezone.

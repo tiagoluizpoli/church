@@ -37,6 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useMediaQuery, XL_MEDIA_QUERY } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 
 interface BoardEmptyStateProps {
@@ -130,6 +131,8 @@ export function CycleBuilderBoardGrid({
   dragScroll,
 }: CycleBuilderBoardGridProps) {
   const isDragging = Boolean(useBoardDragIdentity());
+  // Read once for every cell: below xl the rail is stacked under the board.
+  const railIsBeside = useMediaQuery(XL_MEDIA_QUERY);
   // Which sides still hide columns, so the fade only shows where there is more.
   const [edge, setEdge] = useState({ start: false, end: false });
   useEffect(() => {
@@ -418,6 +421,7 @@ export function CycleBuilderBoardGrid({
                                                     focusedKey ===
                                                     requirementFocusKey
                                                   }
+                                                  railIsBeside={railIsBeside}
                                                   onFocus={focusOnRequirement}
                                                   onToggleFocus={() => {
                                                     if (

@@ -123,6 +123,7 @@ function renderCell(
         ]}
         needsResponseSuggestions={[]}
         eventTimeBlockLabel="Morning service"
+        railIsBeside
         onFocus={vi.fn()}
         onToggleFocus={vi.fn()}
         onSelect={vi.fn()}
@@ -555,16 +556,10 @@ describe('CycleBuilderCell', () => {
   });
 
   it('opens its own picker instead when the rail is stacked below xl', async () => {
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: false,
-      media: query,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    }));
     const user = userEvent.setup();
     const onFocus = vi.fn();
     const onToggleFocus = vi.fn();
-    renderCell({ onFocus, onToggleFocus });
+    renderCell({ onFocus, onToggleFocus, railIsBeside: false });
 
     await user.click(
       screen.getByRole('button', { name: 'Show volunteers for Greeter first' }),
@@ -573,7 +568,6 @@ describe('CycleBuilderCell', () => {
     expect(onFocus).toHaveBeenCalled();
     expect(onToggleFocus).not.toHaveBeenCalled();
     expect(screen.getByTestId('assignment-picker')).toBeInTheDocument();
-    vi.unstubAllGlobals();
   });
 
   it('marks the focus control as pressed while its own cell is focused', () => {

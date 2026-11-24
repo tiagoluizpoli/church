@@ -87,7 +87,10 @@ const TEMPLATE_PRECEDENCE_SPEC_PATHS = [
 // Usual setup.
 const MINISTRIES_JOURNEY_SPEC_PATHS = [
   'tests/ministries/ministries-directory.spec.ts',
-  // #948: the Ministry tab bar at 320px.
+];
+
+// #948: the Ministry tab bar at 320px.
+const MINISTRY_TABS_SPEC_PATHS = [
   'tests/ministries/ministry-tabs-narrow.spec.ts',
 ];
 
@@ -360,10 +363,14 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       ...PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
     ],
   })),
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/ministries/components/ministry-workspace.tsx',
+    specPaths: MINISTRY_TABS_SPEC_PATHS,
+  },
   // #900: the server-side list filtering, counts and paging of #899.
   ...[
     'apps/web/src/features/ministries/components/ministry-list-page.tsx',
-    'apps/web/src/features/ministries/components/ministry-workspace.tsx',
     'apps/web/src/features/ministries/components/usual-setup/usual-setup-list.tsx',
     'apps/web/src/features/ministries/ministry-queries.ts',
     'apps/web/src/routes/app/_active-church/ministries/index.tsx',

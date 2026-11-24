@@ -1263,7 +1263,7 @@ export type UpdatePlanningEventBodyEventTimeBlocksItem = {
      * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
      */
   placeAddressId?: string | null;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id?: string;
 };
 
@@ -1393,7 +1393,7 @@ export const DeletePlanningEvent204 = {
 } as const;
 
 export type UpdatePlanningEventDetailsBodyEventTimeBlocksItem = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   isPublic: boolean;
   /** @maxLength 120 */
@@ -1923,7 +1923,7 @@ export type MovePlanningEvent422 = {
 };
 
 export type PreviewPlanningEventEditBodyEventTimeBlocksItem = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id?: string;
   /** @minLength 1 */
   label: string;
@@ -2070,7 +2070,7 @@ export type PreviewPlanningEventEdit422 = {
 };
 
 export type EditPlanningEventBodyEventTimeBlocksItem = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id?: string;
   /** @minLength 1 */
   label: string;
@@ -6428,6 +6428,9 @@ export type GetCycleAvailabilityStatus404 = {
 };
 
 export type GetCycleBuilderDataParams = {
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+ */
 ministryId: string;
 };
 
@@ -6656,6 +6659,9 @@ export type GetCycleBuilderData404 = {
 };
 
 export type GetCycleAuditLogParams = {
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+ */
 ministryId: string;
 };
 
@@ -6696,6 +6702,9 @@ export type GetCycleAuditLog404 = {
 };
 
 export type GetAssignmentProposalParams = {
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+ */
 ministryId: string;
 };
 
@@ -6766,6 +6775,9 @@ export type GetAssignmentProposal409 = {
 };
 
 export type ApplyAssignmentProposalParams = {
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+ */
 ministryId: string;
 };
 
@@ -6824,6 +6836,9 @@ export type ApplyAssignmentProposal422 = {
 };
 
 export type PublishCycleParams = {
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+ */
 ministryId: string;
 };
 
@@ -6870,6 +6885,9 @@ export type PublishCycle409 = {
 };
 
 export type SendScheduleUpdatesParams = {
+/**
+ * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+ */
 ministryId: string;
 };
 

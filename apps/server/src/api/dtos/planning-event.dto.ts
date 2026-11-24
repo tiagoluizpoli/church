@@ -45,7 +45,7 @@ export const updatePlanningEventBodySchema = createPlanningEventBodySchema
     eventTimeBlocks: z.array(
       withOnePlace(
         planningEventTimeBlockFieldsSchema.extend({
-          id: z.string().uuid().optional(),
+          id: z.guid().optional(),
         }),
       ),
     ),
@@ -63,7 +63,7 @@ export const updatePlanningEventDetailsBodySchema = z.object({
     .array(
       withOnePlace(
         z.object({
-          id: z.string().uuid(),
+          id: z.guid(),
           isPublic: z.boolean(),
           ...timeBlockPlaceFields,
         }),
@@ -192,7 +192,7 @@ export const editPlanningEventBodySchema = z.object({
   end: z.string().datetime(),
   eventTimeBlocks: z.array(
     z.object({
-      id: z.string().uuid().optional(),
+      id: z.guid().optional(),
       label: z.string().trim().min(1),
       startTime: z.string().datetime(),
       endTime: z.string().datetime(),

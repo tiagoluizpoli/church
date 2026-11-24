@@ -52,13 +52,8 @@ const shiftParamsSchema = z.object({ shiftId: z.guid() });
 const assignmentParamsSchema = z.object({ assignmentId: z.guid() });
 const participationParamsSchema = z.object({ participationId: z.guid() });
 
-interface CycleMinistryQuery {
-  ministryId: string;
-}
-
-const cycleMinistryQuerySchema = z.object({
-  ministryId: z.string(),
-});
+const cycleMinistryQuerySchema = z.object({ ministryId: z.guid() });
+type CycleMinistryQuery = z.infer<typeof cycleMinistryQuerySchema>;
 
 const errorResponseSchema = z.object({
   error: z.string(),

@@ -4,7 +4,6 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { ChurchLogoTile } from '@/components/church-logo-tile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { accentTextColor } from '@/features/church-settings/accent-text-color';
 import type {
   ContactForm,
   SocialLinkDraft,
@@ -12,9 +11,8 @@ import type {
 import {
   type ChurchSettingsForm,
   formatCnpj,
-  paintableAccent,
 } from '@/features/church-settings/church-settings-form';
-import { LogoImage } from '@/features/church-settings/components/logo-image';
+import { EmailHeaderPreview } from '@/features/church-settings/components/email-header-preview';
 import { detectedNetwork } from '@/features/church-settings/components/social-section';
 import {
   groupOrder,
@@ -44,10 +42,6 @@ export function ChurchPreview({
   titleId,
   onChange,
 }: ChurchPreviewProps) {
-  const accent = paintableAccent({ value: form.accentColor });
-  const band = accent
-    ? { background: accent, color: accentTextColor({ accentColor: accent }) }
-    : undefined;
   const website = form.website.trim().replace(/^https?:\/\//i, '');
   const name = form.name.trim();
   // The Main Address leads; private addresses are never shown to visitors.
@@ -64,28 +58,16 @@ export function ChurchPreview({
       <p className="px-4 pt-3 font-medium text-muted-foreground text-xs">
         {m.church_settings_preview_email()}
       </p>
-      <div
-        data-testid="church-preview-email-band"
-        className={
-          accent
-            ? 'flex items-center gap-3 p-4'
-            : 'flex items-center gap-3 bg-primary p-4 text-primary-foreground'
-        }
-        style={band}
-      >
-        {/* 4:3, the widest logo allowed: square to 4:3 logos fill it. */}
-        {logoUrl ? (
-          <span className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-white p-1">
-            <LogoImage logoUrl={logoUrl} className="h-full w-full" />
-          </span>
-        ) : null}
-        <div className="min-w-0">
-          {name ? <p className="truncate font-semibold">{name}</p> : null}
-          {website ? (
-            <p className="truncate text-sm opacity-90">{website}</p>
-          ) : null}
-        </div>
-      </div>
+      <EmailHeaderPreview
+        name={name}
+        logoUrl={logoUrl}
+        accentColor={form.accentColor}
+      />
+      {website ? (
+        <p className="truncate px-4 pt-3 text-muted-foreground text-sm">
+          {website}
+        </p>
+      ) : null}
       {publicAddresses.length > 0 ? (
         <div className="space-y-2 border-t p-4">
           <p className="font-medium text-muted-foreground text-xs">

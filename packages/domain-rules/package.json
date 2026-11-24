@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "exports": {
+    "./email-accent": {
+      "types": "./src/email-accent.ts",
+      "default": "./src/email-accent.ts"
+    },
     "./church-slug": {
       "types": "./src/church-slug.ts",
       "default": "./src/church-slug.ts"

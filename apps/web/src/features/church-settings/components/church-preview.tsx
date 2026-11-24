@@ -1,10 +1,17 @@
+import {
+  EMAIL_INK,
+  EMAIL_LOGO_RADIUS,
+  EMAIL_RULE_WIDTH,
+  emailAccentRule,
+  emailAccentTint,
+  PLATFORM_ACCENT,
+} from '@church/domain-rules/email-accent';
 import { SOCIAL_NETWORKS } from '@church/domain-rules/social-networks';
 import { m } from '@church/i18n/messages';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { ChurchLogoTile } from '@/components/church-logo-tile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { accentTextColor } from '@/features/church-settings/accent-text-color';
 import type {
   ContactForm,
   SocialLinkDraft,
@@ -14,7 +21,6 @@ import {
   formatCnpj,
   paintableAccent,
 } from '@/features/church-settings/church-settings-form';
-import { LogoImage } from '@/features/church-settings/components/logo-image';
 import { detectedNetwork } from '@/features/church-settings/components/social-section';
 import {
   groupOrder,
@@ -45,9 +51,13 @@ export function ChurchPreview({
   onChange,
 }: ChurchPreviewProps) {
   const accent = paintableAccent({ value: form.accentColor });
-  const band = accent
-    ? { background: accent, color: accentTextColor({ accentColor: accent }) }
-    : undefined;
+  // The same header as the real email: the accent as tint and top rule, ink text.
+  const bandAccent = accent ?? PLATFORM_ACCENT;
+  const band = {
+    background: emailAccentTint(bandAccent),
+    borderTop: `${EMAIL_RULE_WIDTH}px solid ${emailAccentRule(bandAccent)}`,
+    color: EMAIL_INK,
+  };
   const website = form.website.trim().replace(/^https?:\/\//i, '');
   const name = form.name.trim();
   // The Main Address leads; private addresses are never shown to visitors.
@@ -66,24 +76,29 @@ export function ChurchPreview({
       </p>
       <div
         data-testid="church-preview-email-band"
-        className={
-          accent
-            ? 'flex items-center gap-3 p-4'
-            : 'flex items-center gap-3 bg-primary p-4 text-primary-foreground'
-        }
+        className="flex flex-col items-center gap-3 px-6 py-7 text-center"
         style={band}
       >
-        {/* 4:3, the widest logo allowed: square to 4:3 logos fill it. */}
         {logoUrl ? (
-          <span className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md bg-white p-1">
-            <LogoImage logoUrl={logoUrl} className="h-full w-full" />
-          </span>
+          <img
+            src={logoUrl}
+            alt={m.church_settings_logo_alt()}
+            className="max-h-14 max-w-48 object-contain"
+            style={{ borderRadius: EMAIL_LOGO_RADIUS }}
+          />
         ) : null}
-        <div className="min-w-0">
-          {name ? <p className="truncate font-semibold">{name}</p> : null}
-          {website ? (
-            <p className="truncate text-sm opacity-90">{website}</p>
+        <div className="min-w-0 max-w-full">
+          {name ? (
+            <p
+              className={cn(
+                'truncate',
+                logoUrl ? 'font-semibold text-sm' : 'font-bold text-xl',
+              )}
+            >
+              {name}
+            </p>
           ) : null}
+          {website ? <p className="truncate text-sm">{website}</p> : null}
         </div>
       </div>
       {publicAddresses.length > 0 ? (

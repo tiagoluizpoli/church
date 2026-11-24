@@ -508,15 +508,21 @@ describe('Church Settings screen', () => {
           name: 'Igreja Semente Viva',
         });
         expect(logo).toHaveAttribute('src', LOGO_URL);
-        expect(within(frame).getByTestId('church-logo-tile')).toHaveClass(
-          'bg-white',
-        );
+        expect(
+          within(frame).getByTestId('church-logo-tile').className,
+        ).not.toMatch(/bg-white|border/);
       }
       const bandLogo = within(
         screen.getByTestId('church-preview-email-band'),
       ).getByRole('img', { name: m.church_settings_logo_alt() });
       expect(bandLogo).toHaveAttribute('src', LOGO_URL);
-      expect(bandLogo).toHaveClass('object-contain');
+      expect(bandLogo).toHaveStyle({ borderRadius: '8px' });
+      // Centred, logo above the name, on the accent tint with its top rule.
+      const band = screen.getByTestId('church-preview-email-band');
+      expect(band).toHaveClass('flex-col', 'items-center', 'text-center');
+      expect(band.firstElementChild).toBe(bandLogo);
+      expect(band).toHaveStyle({ color: '#18181b' });
+      expect(band.style.borderTop).toMatch(/^6px solid/);
       expect(
         screen.getByRole('button', { name: m.church_settings_logo_replace() }),
       ).toBeInTheDocument();

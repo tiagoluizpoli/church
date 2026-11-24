@@ -81,12 +81,14 @@ export function ShiftSplitEditor({
   const blockRange = formatTimeRange(block);
 
   return (
+    // The fieldset disables the native controls; base-ui radios and react-aria segments need it passed.
     <fieldset className="space-y-3" disabled={disabled}>
       <legend className="font-semibold text-sm">
         {m.shift_split_legend()}
       </legend>
       <RadioGroup
         className="gap-0"
+        disabled={disabled}
         value={draft.mode}
         onValueChange={(value) => {
           const option = MODES.find(({ mode }) => mode === value);
@@ -184,6 +186,7 @@ export function ShiftSplitEditor({
                       id={`${span.key}-start`}
                       aria-label={m.shift_split_start_of({ number })}
                       data-testid={`shift-split-start-${number}`}
+                      disabled={disabled}
                       value={span.startTime}
                       onChange={(startTime) =>
                         updateSpan({ key: span.key, patch: { startTime } })
@@ -198,6 +201,7 @@ export function ShiftSplitEditor({
                       id={`${span.key}-end`}
                       aria-label={m.shift_split_end_of({ number })}
                       data-testid={`shift-split-end-${number}`}
+                      disabled={disabled}
                       value={span.endTime}
                       onChange={(endTime) =>
                         updateSpan({ key: span.key, patch: { endTime } })

@@ -1224,27 +1224,6 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-  /api/v1/admin/cycles/{cycleId}/events/{eventId}/reopen:
-    post:
-      operationId: reopenPlanningEvent
-      summary: Reopen an Event for editing
-      tags:
-        - planning
-      description: Move a scheduled Event in a sent Cycle back to draft so it can be edited.
-      parameters:
-        - schema:
-            type: string
-          in: path
-          name: cycleId
-          required: true
-        - schema:
-            type: string
-          in: path
-          name: eventId
-          required: true
-      responses:
-        "200":
-          description: Default Response
   /api/v1/admin/event-templates:
     post:
       operationId: createEventTemplate

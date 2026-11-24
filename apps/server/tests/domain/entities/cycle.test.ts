@@ -109,39 +109,6 @@ describe('Cycle', () => {
     expect(() => past.markPast()).toThrow(IllegalStateTransitionError);
   });
 
-  it('only allows reopening events while the cycle is sent', () => {
-    const draft = createCycle();
-    expect(() =>
-      draft.assertCanReopenEvent({ eventState: 'scheduled' }),
-    ).toThrow(IllegalStateTransitionError);
-
-    const past = createCycle();
-    past.markPast();
-    expect(() =>
-      past.assertCanReopenEvent({ eventState: 'scheduled' }),
-    ).toThrow(IllegalStateTransitionError);
-
-    const sent = createCycle();
-    sent.send();
-    expect(() =>
-      sent.assertCanReopenEvent({ eventState: 'scheduled' }),
-    ).not.toThrow();
-  });
-
-  it('rejects reopening events that are cancelled or past even while sent', () => {
-    const sentForCancelled = createCycle();
-    sentForCancelled.send();
-    expect(() =>
-      sentForCancelled.assertCanReopenEvent({ eventState: 'cancelled' }),
-    ).toThrow(IllegalStateTransitionError);
-
-    const sentForPast = createCycle();
-    sentForPast.send();
-    expect(() =>
-      sentForPast.assertCanReopenEvent({ eventState: 'past' }),
-    ).toThrow(IllegalStateTransitionError);
-  });
-
   it('contains both boundary days by church-local date', () => {
     const cycle = createCycle();
 

@@ -32,10 +32,6 @@ export interface CycleInput {
   updatedAt?: Date;
 }
 
-export interface CycleCanReopenEventInput {
-  eventState: 'draft' | 'scheduled' | 'cancelled' | 'past';
-}
-
 export interface CycleContainsDateInput {
   instant: Instant;
   timeZone: string;
@@ -102,19 +98,6 @@ export class Cycle extends Entity<CycleProps, CycleId> {
 
     this._props.state = 'past';
     this._updatedAt = toDate({ instant: now() });
-  }
-
-  assertCanReopenEvent({ eventState }: CycleCanReopenEventInput): void {
-    if (this.state !== 'sent') {
-      throw new IllegalStateTransitionError({
-        from: this.state,
-        to: 'reopen_event',
-      });
-    }
-
-    if (eventState === 'cancelled' || eventState === 'past') {
-      throw new IllegalStateTransitionError({ from: eventState, to: 'draft' });
-    }
   }
 
   containsDate({ instant, timeZone }: CycleContainsDateInput): boolean {

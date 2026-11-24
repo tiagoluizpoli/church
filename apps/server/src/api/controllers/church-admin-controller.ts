@@ -425,28 +425,6 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.post(
-      '/cycles/:cycleId/events/:eventId/reopen',
-      {
-        schema: {
-          tags: ['planning'],
-          operationId: 'reopenPlanningEvent',
-          summary: 'Reopen an Event for editing',
-          description:
-            'Move a scheduled Event in a sent Cycle back to draft so it can be edited.',
-        },
-      },
-      async (request, reply) => {
-        const { cycleId, eventId } = request.params as PlanningEventRouteParams;
-        await this.cycleManager.reopenEvent({
-          churchId: ChurchId.from(request.churchId),
-          cycleId: CycleId.from(cycleId),
-          eventId: EventId.from(eventId),
-        });
-        return reply.status(204).send();
-      },
-    );
-
-    app.post(
       '/event-templates',
       {
         schema: {

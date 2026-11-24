@@ -1186,6 +1186,7 @@
   "prepare_block_saved": "Preparação do horário salva.",
   "prepare_block_load_failed": "Não foi possível carregar este horário. Tente novamente.",
   "prepare_block_read_only": "Este ciclo foi encerrado. A preparação está disponível apenas para consulta.",
+  "prepare_block_cancelled": "Este horário foi cancelado. A preparação está disponível apenas para consulta.",
   "prepare_block_confirm_title": "Deixar de servir neste horário?",
   "prepare_block_confirm_counts": "Descarta {shifts} e {people}.",
   "prepare_block_confirm_action": "Deixar de servir",

@@ -1186,6 +1186,7 @@
   "prepare_block_saved": "Time block preparation saved.",
   "prepare_block_load_failed": "Could not load this Time block. Try again.",
   "prepare_block_read_only": "This cycle has ended. Preparation is available for viewing only.",
+  "prepare_block_cancelled": "This Time block was cancelled. Preparation is available for viewing only.",
   "prepare_block_confirm_title": "Stop serving this Time block?",
   "prepare_block_confirm_counts": "Discards {shifts} and {people}.",
   "prepare_block_confirm_action": "Stop serving",

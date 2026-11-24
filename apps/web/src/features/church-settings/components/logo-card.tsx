@@ -18,10 +18,19 @@ const MAX_BYTES = 5 * 1024 * 1024;
 interface LogoCardProps {
   logoUrl: string | null;
   logoKey: string | null;
+  /** The Church's name as the form stands, for the crop dialog's previews. */
+  churchName: string;
+  /** The Church's accent (`#rrggbb`) or null, for the crop dialog's fill and email preview. */
+  accentColor: string | null;
 }
 
 /** The vertical logo card: applies at once ("Salvo na hora"), outside the form's save. */
-export function LogoCard({ logoUrl, logoKey }: LogoCardProps) {
+export function LogoCard({
+  logoUrl,
+  logoKey,
+  churchName,
+  accentColor,
+}: LogoCardProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [error, setError] = React.useState<string | null>(null);
   /** The picked image, being framed before upload. */
@@ -128,6 +137,8 @@ export function LogoCard({ logoUrl, logoKey }: LogoCardProps) {
       ) : null}
       <LogoCropDialog
         file={picked}
+        churchName={churchName}
+        accentColor={accentColor}
         onConfirm={onFramed}
         onCancel={() => setPicked(null)}
       />

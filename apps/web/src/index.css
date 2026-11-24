@@ -430,3 +430,10 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
 }
+
+/* The crop dialog's dark sidebar preview: a nested `.dark`, so the sidebar colours are restated as above. */
+.sidebar-preview.dark {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+}

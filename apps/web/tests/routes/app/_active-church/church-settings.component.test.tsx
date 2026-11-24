@@ -455,17 +455,32 @@ describe('Church Settings screen', () => {
     beforeEach(() => {
       URL.createObjectURL = vi.fn(() => 'blob:logo');
       URL.revokeObjectURL = vi.fn();
+      // jsdom has no canvas: the crop dialog draws through these.
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+        drawImage: vi.fn(),
+        fillRect: vi.fn(),
+        getImageData: () => ({ data: new Uint8ClampedArray([0, 0, 0, 255]) }),
+      } as never);
+      vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(
+        'data:image/png;base64,',
+      );
+      vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(
+        (callback: BlobCallback) =>
+          callback(new Blob(['png'], { type: 'image/png' })),
+      );
     });
 
-    /** The pick opens the crop dialog; a 4:3 image is sent as it is. */
-    async function sendUncropped(user: ReturnType<typeof userEvent.setup>) {
+    afterEach(() => vi.restoreAllMocks());
+
+    /** The pick opens the crop dialog; the framed PNG is sent. */
+    async function sendFramed(user: ReturnType<typeof userEvent.setup>) {
       const image = await screen.findByTestId('logo-crop-image');
       Object.defineProperty(image, 'naturalWidth', { value: 400 });
       Object.defineProperty(image, 'naturalHeight', { value: 300 });
       fireEvent.load(image);
       await user.click(
         screen.getByRole('button', {
-          name: m.church_settings_logo_crop_original(),
+          name: m.church_settings_logo_crop_confirm(),
         }),
       );
     }
@@ -485,13 +500,16 @@ describe('Church Settings screen', () => {
       uploadChurchLogo.mockResolvedValue({ ...WITH_LOGO, name: 'Ignorado' });
       renderSettings();
       await user.type(await nameField(), ' Viva');
-      const file = logoFile();
-
-      await user.upload(fileInput(), file);
-      await sendUncropped(user);
+      await user.upload(fileInput(), logoFile());
+      await sendFramed(user);
 
       await waitFor(() =>
-        expect(uploadChurchLogo).toHaveBeenCalledWith({ file }),
+        expect(uploadChurchLogo).toHaveBeenCalledWith({
+          file: expect.objectContaining({
+            name: 'logo.png',
+            type: 'image/png',
+          }),
+        }),
       );
       expect(toastSuccess).toHaveBeenCalledWith(
         m.church_settings_logo_updated(),
@@ -542,7 +560,7 @@ describe('Church Settings screen', () => {
       queryClient.setQueryData(['active-church', 'options'], { churches: [] });
 
       await user.upload(fileInput(), logoFile());
-      await sendUncropped(user);
+      await sendFramed(user);
 
       await waitFor(() =>
         expect(
@@ -580,7 +598,7 @@ describe('Church Settings screen', () => {
       await nameField();
 
       await user.upload(fileInput(), logoFile());
-      await sendUncropped(user);
+      await sendFramed(user);
 
       expect(await screen.findByRole('alert')).toHaveTextContent(message);
     });

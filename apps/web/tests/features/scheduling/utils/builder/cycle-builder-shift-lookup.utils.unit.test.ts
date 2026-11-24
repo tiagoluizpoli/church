@@ -77,7 +77,7 @@ function makeAssignment(
     shiftId: 'shift-1',
     roleId: 'role-1',
     shiftRequirementId: 'requirement-role-1',
-    status: 'confirmed',
+    status: 'pending',
     assignedAt: '2027-01-01T12:00:00.000Z',
     lateMark: false,
     ...overrides,
@@ -129,7 +129,7 @@ describe('roleHasRoom', () => {
     ).toBe(false);
   });
 
-  it('ignores cancelled and declined assignments against the ceiling', () => {
+  it('ignores cancelled assignments against the ceiling', () => {
     const shift = makeShift({
       requirements: [
         {

@@ -51,7 +51,7 @@ const ANA_ASSIGNMENT: RawAssignment = {
   volunteerId: 'ana',
   roleId: 'role-1',
   shiftRequirementId: 'requirement-1',
-  status: 'confirmed',
+  status: 'pending',
   assignedAt: '2026-07-01T10:00:00.000Z',
   lateMark: false,
 };
@@ -252,7 +252,7 @@ describe('useCycleBuilder optimistic assignments', () => {
       {
         ...ANA_ASSIGNMENT,
         id: 'assignment-3',
-        volunteerId: 'declined',
+        volunteerId: 'withdrawn',
         shiftRequirementId: 'requirement-2',
         status: 'cancelled',
       },

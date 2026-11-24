@@ -34,7 +34,7 @@ export interface VolunteerDashboardAssignmentFixture {
   roleName: string;
   startTime: string;
   endTime: string;
-  status: 'pending' | 'confirmed';
+  status: 'pending';
   timingState: 'in_progress' | 'upcoming';
 }
 

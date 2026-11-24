@@ -23,7 +23,7 @@ function assignment(
     shiftId: 'shift-1',
     roleId: 'role-1',
     shiftRequirementId: 'requirement-role-1',
-    status: 'confirmed',
+    status: 'pending',
     assignedAt: '2027-01-01T12:00:00.000Z',
     lateMark: false,
     ...overrides,

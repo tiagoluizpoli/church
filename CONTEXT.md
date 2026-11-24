@@ -165,12 +165,28 @@ A Guardian known only by name and phone, with no login, as registered at the des
 _Avoid_: Visitor account, guest user
 
 **Check-in** (pt-BR: Check-in):
-A Child's stay in Kids at one Church, from the moment it is checked in until a volunteer releases it at check-out. A Guardian starts it by scanning a Check-in point with their own phone, or a desk volunteer starts it for them; it is never started before the Child is there. One scan may check in several Children of the same Family. A Child has at most one open Check-in, but once checked out it may be checked in again at once, as many times a day as needed, each time with a new Pickup code. A Check-in still open when the day ends is an anomaly for the Kids leaders, never taken as picked up.
+A Child's stay in Kids at one Church, from the moment it is checked in until a volunteer releases it at check-out. A Guardian starts it by scanning a Check-in point with their own phone, or a desk volunteer starts it for them; it is never started before the Child is there. One scan may check in several Children of the same Family. A Child has at most one open Check-in, but once checked out it may be checked in again at once, as many times a day as needed, each time with a new Pickup code. A Check-in belongs to the EventTimeBlock it starts in; one still open when that block's last Shift in its Room ends is an anomaly for the Kids leaders, never taken as picked up.
 _Avoid_: Attendance (for the open stay), session, drop-off
 
 **Check-in point** (pt-BR: Ponto de check-in):
-A place at the venue where Guardians check Children in, shown as a printed QR code and served by one printer. It names a place, not a room, and the code alone lets nobody in without a Guardian's own login.
+A place at the venue where Guardians check Children in, shown as a printed QR code and served by one printer. It names a place, not a room, and serves one or more Rooms; Children whose Room it does not serve are Awaiting drop-off. The code alone lets nobody in without a Guardian's own login.
 _Avoid_: Station, kiosk, totem, room QR
+
+**Room** (pt-BR: Sala):
+A Sector where Children are checked in, in a Ministry that has check-in turned on, such as "Berçário" or "Sala sensorial". It is a Sector, so the Volunteers placed there are the room's people; other Sectors of the same Ministry stay duties. A Room is open for check-in while its Ministry serves that Sector in a Shift, from a lead time the Room sets until the last such Shift of the EventTimeBlock ends, or when a Kids leader opens it by hand. It may name an age range, which lets the app place Children there by age; a Room without one, such as a sensory room, is reached only by a move. It may also name a maximum number of Children and a number of Children per volunteer, which only show leaders how well the room is covered and never turn a Child away.
+_Avoid_: Classroom, area, check-in point
+
+**Room placement** (pt-BR: Sala fixa):
+A Kids leader's standing choice of the Room one Child goes to at their Church, whatever the Child's age, such as a five-year-old who stays in the nursery. It belongs to the Church, never to the Family, and lasts until a leader removes it. Without one, the app places the Child by age in an open Room; a Child that fits no open Room is still checked in, but as an anomaly the room's people must resolve at once.
+_Avoid_: Room override, exception, preferred room
+
+**Move** (pt-BR: Mudança de sala):
+A volunteer's or Kids leader's transfer of a checked-in Child to another Room. The Child keeps the same Check-in and Pickup code, the Guardian who made the Check-in is told, and the move is kept.
+_Avoid_: Transfer, re-check-in
+
+**Awaiting drop-off** (pt-BR: A caminho):
+A Child included in a Check-in made at a Check-in point that does not serve the Child's Room. The Child is not yet checked in: that happens when a Guardian scans a point serving the Room, where its Child tag prints. A Child still awaiting when the Church's **drop-off window** runs out leaves the Check-in, and the Guardian is told.
+_Avoid_: Pending check-in, reserved
 
 **Pickup code** (pt-BR: Código de retirada):
 The secret that releases the Children of one Check-in, new for every Check-in and shared by all the Children it covers. It is shown as a QR code on the Guardian tag and in the app of every Guardian of the Family, whoever made the Check-in, so any Guardian may pick up. Scanning it shows the volunteer the Children and the Family's Guardians, so the volunteer can check the adult in front of them by face or by name before releasing; typing it is a last resort.
@@ -288,7 +304,7 @@ The staffing need for one Role at one Sector within a **Shift**, owned by one Mi
 _Avoid_: SlotRequirement, staffing need, requirement
 
 **Assignment** (pt-BR: Escala):
-The placement of a Volunteer into exactly one ShiftRequirement — a Role at a Sector within a **Shift** — scoped to a MinistryParticipation. In pt-BR it shares *escala* with Schedule, so it is always qualified by its day and time (*Escala de dom 12 out · 10:30*); the verb is *escalar*, a placed Volunteer is *escalado*, and *Minha escala* (UI: My schedule) gathers a Volunteer's Assignments. One Assignment per Volunteer per Shift, and never two Assignments for one Volunteer whose Shifts overlap, in any Ministry (no double-booking): the first Ministry to assign someone holds them for that time. When a ChurchAdmin moves an Event or EventTimeBlock so that someone would be double-booked, that person's Assignment on the moved one is withdrawn. Cancelling an Event or EventTimeBlock cancels its Assignments. A Volunteer sees their Assignments only once the Schedule is published, and does not confirm or decline them: a published Assignment means they serve. Assignments can be added, moved or removed, before or after publishing, until their Shift starts; from then on they are fixed.
+The placement of a Volunteer into exactly one ShiftRequirement — a Role at a Sector within a **Shift** — scoped to a MinistryParticipation. In pt-BR it shares *escala* with Schedule, so it is always qualified by its day and time (*Escala de dom 12 out · 10:30*); the verb is *escalar*, a placed Volunteer is *escalado*, and *Minha escala* (UI: My schedule) gathers a Volunteer's Assignments. One Assignment per Volunteer per Shift, and never two Assignments for one Volunteer whose Shifts overlap, in any Ministry (no double-booking): the first Ministry to assign someone holds them for that time. When a ChurchAdmin moves an Event or EventTimeBlock so that someone would be double-booked, that person's Assignment on the moved one is withdrawn. Cancelling an Event or EventTimeBlock cancels its Assignments. A Volunteer sees their Assignments only once the Schedule is published, and does not confirm or decline them: a published Assignment means they serve. Assignments can be added, moved or removed, before or after publishing, until their Shift starts; from then on they are fixed, except that a Kids leader may add or remove people on a running Shift of a Ministry with check-in, so whoever really stands in a Room sees it.
 _Avoid_: Booking, scheduling, escalação (pt-BR)
 
 **Swap request** (pt-BR: Pedido de troca):

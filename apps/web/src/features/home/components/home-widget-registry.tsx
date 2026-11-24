@@ -1,23 +1,26 @@
 import type { ComponentType } from 'react';
 import { ChurchSection } from '@/features/home/components/church-section';
+import { CycleBand } from '@/features/home/components/cycle-band';
 import {
   CoverageWidget,
   TrendWidget,
 } from '@/features/home/components/home-insights';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { LeadershipSection } from '@/features/home/components/leadership-section';
-import { ServingActionsWidget } from '@/features/home/components/my-serving-section';
-import { NextCycleCard } from '@/features/home/components/next-cycle-card';
+import {
+  ServingActionsWidget,
+  ServingHistoryWidget,
+} from '@/features/home/components/my-serving-section';
 import {
   AdminSummary,
   NotificationSummary,
-  ScheduleSummary,
 } from '@/features/home/components/summary-widgets';
 import type { HomeCapacities } from '@/features/home/hooks/use-home-capacities';
 import type { HomeSection } from '@/features/home/lib/home-query-keys';
 
 interface WidgetProps extends HomeSectionProps {
   scope: string;
+  capacities: HomeCapacities;
 }
 export type WidgetSpan = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
@@ -39,8 +42,7 @@ export const widgetSpanClass: Record<WidgetSpan, string> = {
 interface WidgetBase {
   id: string;
   capacity: (caps: HomeCapacities) => boolean;
-  /** A function when the widget shares its row only with a widget the same viewer may lack. */
-  span: WidgetSpan | ((caps: HomeCapacities) => WidgetSpan);
+  span: WidgetSpan;
   Component: ComponentType<WidgetProps>;
 }
 
@@ -68,19 +70,22 @@ export const homeWidgets: WidgetDefinition[] = [
     Component: ServingActionsWidget,
     cacheSection: 'serving',
   },
+  // What needs the leader comes before the statistics, on every screen size.
   {
-    id: 'schedule-summary',
+    id: 'leadership',
     capacity: (caps) => caps.leadership,
-    span: (caps) => (caps.church ? 7 : 12),
-    Component: ScheduleSummary,
+    span: 12,
+    Component: LeadershipSection,
     cacheSection: 'leadership',
   },
   {
-    id: 'cycles',
-    capacity: (caps) => caps.church,
-    span: (caps) => (caps.leadership ? 5 : 12),
-    Component: NextCycleCard,
-    cacheSection: 'church',
+    id: 'cycle-band',
+    capacity: (caps) => caps.leadership,
+    span: 12,
+    Component: ({ capacities, ...props }) => (
+      <CycleBand {...props} showCycles={capacities.church} />
+    ),
+    cacheSection: 'leadership',
   },
   {
     id: 'coverage',
@@ -97,6 +102,13 @@ export const homeWidgets: WidgetDefinition[] = [
     cacheSection: 'leadership',
   },
   {
+    id: 'serving-history',
+    capacity: (caps) => caps.serving,
+    span: 12,
+    Component: ServingHistoryWidget,
+    cacheSection: 'serving',
+  },
+  {
     id: 'admin-summary',
     capacity: (caps) => caps.church,
     span: 12,
@@ -109,12 +121,5 @@ export const homeWidgets: WidgetDefinition[] = [
     span: 12,
     Component: ChurchSection,
     cacheSection: 'church',
-  },
-  {
-    id: 'leadership',
-    capacity: (caps) => caps.leadership,
-    span: 12,
-    Component: LeadershipSection,
-    cacheSection: 'leadership',
   },
 ];

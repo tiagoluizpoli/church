@@ -12,15 +12,7 @@ import {
 } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-  CalendarCheck,
-  CalendarClock,
-  CalendarDays,
-  ChevronRight,
-  CircleCheck,
-  Clock,
-  type LucideIcon,
-} from 'lucide-react';
+import { CalendarCheck, ChevronRight, CircleCheck, Clock } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, XAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
@@ -32,7 +24,10 @@ import {
 } from '@/components/ui/chart';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { HomeSectionProps } from '@/features/home/components/home-section-props';
+import type {
+  HomeReadProps,
+  HomeSectionProps,
+} from '@/features/home/components/home-section-props';
 import { HomeWidget } from '@/features/home/components/home-widget';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
 import type { ListAvailabilityChecks200ChecksItem } from '@/infrastructure/api/churchAPI.schemas';
@@ -60,7 +55,11 @@ function useVolunteerDashboard({ churchId, userId }: HomeSectionProps) {
   });
 }
 
-function usePendingChecks({ churchId, userId }: HomeSectionProps) {
+export function usePendingChecks({
+  churchId,
+  userId,
+  enabled = true,
+}: HomeReadProps) {
   const query = useQuery({
     queryKey: homeSectionQueryKey({
       section: 'serving',
@@ -69,6 +68,7 @@ function usePendingChecks({ churchId, userId }: HomeSectionProps) {
       parts: ['availability-checks'],
     }),
     queryFn: () => volunteerApi.listAvailabilityChecks(),
+    enabled,
   });
   // shortcut: listAvailabilityChecks has no state filter, filtered client-side; move to a server param when the endpoint gets one
   const pending = (query.data?.checks ?? []).filter(
@@ -95,29 +95,6 @@ function formatLongRange({ start, end, timeZone }: LongRangeInput): string {
   return `${formatLongCalendarDay({ day: startDay, locale })} · ${formatTimeOf({ value: start, timeZone })}–${endLabel}`;
 }
 
-interface EmptySlotProps {
-  icon: LucideIcon;
-  title: string;
-  hint: string;
-  children?: React.ReactNode;
-}
-
-/** The slot keeps its place when it has nothing to show, so the dashboard never reshuffles. */
-function EmptySlot({ icon: Icon, title, hint, children }: EmptySlotProps) {
-  return (
-    <div className="radius-control flex min-h-36 flex-1 flex-col items-start justify-center gap-3 border border-dashed p-4">
-      <span className="radius-icon flex size-9 items-center justify-center bg-primary/8 text-primary">
-        <Icon aria-hidden className="size-4.5" />
-      </span>
-      <div className="space-y-1">
-        <p className="font-semibold">{title}</p>
-        <p className="text-muted-foreground text-sm">{hint}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
-
 interface CountdownInput {
   start: string;
   timeZone: string;
@@ -136,7 +113,6 @@ function countdown({ start, timeZone }: CountdownInput): string {
 export function NextAssignmentWidget(props: HomeSectionProps) {
   const { churchTimezone: timeZone } = useTimezone();
   const dashboard = useVolunteerDashboard(props);
-  const { pending } = usePendingChecks(props);
   const next = dashboard.data?.nextAssignment;
   return (
     <HomeWidget
@@ -194,24 +170,7 @@ export function NextAssignmentWidget(props: HomeSectionProps) {
             </Link>
           </div>
         </div>
-      ) : (
-        <EmptySlot
-          icon={CalendarClock}
-          title={m.home_next_assignment_none()}
-          hint={
-            pending.length
-              ? m.home_next_assignment_none_checks()
-              : m.home_next_assignment_none_hint()
-          }
-        >
-          <Link
-            to="/app/my-schedule"
-            className={buttonVariants({ variant: 'outline', size: 'sm' })}
-          >
-            {m.nav_my_schedule()}
-          </Link>
-        </EmptySlot>
-      )}
+      ) : null}
     </HomeWidget>
   );
 }
@@ -274,7 +233,7 @@ export function PendingChecksWidget(props: HomeSectionProps) {
         <Pending label={m.availability_list_loading()}>
           <Skeleton className="h-28 w-full" />
         </Pending>
-      ) : pending.length ? (
+      ) : (
         <ul className="space-y-2">
           {pending.map((check) => (
             <li key={check.id}>
@@ -301,32 +260,84 @@ export function PendingChecksWidget(props: HomeSectionProps) {
             </li>
           ))}
         </ul>
-      ) : (
-        <EmptySlot
-          icon={CircleCheck}
-          title={m.home_pending_checks_none()}
-          hint={m.home_pending_checks_none_hint()}
-        />
       )}
     </HomeWidget>
   );
 }
 
-/** Fixed slots: next and availability on top, history and upcoming below. */
+interface UpcomingRowsInput {
+  data: ReturnType<typeof useVolunteerDashboard>['data'];
+}
+
+/** Upcoming assignments other than the next one, which has its own widget; server order is kept. */
+function upcomingRows({ data }: UpcomingRowsInput) {
+  const nextId = data?.nextAssignment?.assignmentId;
+  return (data?.upcomingAssignmentGroups ?? []).flatMap((group) =>
+    group.assignments
+      .filter((assignment) => assignment.assignmentId !== nextId)
+      .map((assignment) => ({ group, assignment })),
+  );
+}
+
+/** Widgets pair up in rows, 7 + 5 columns; an unpaired last one takes the row. */
+const PAIR_SPANS = ['lg:col-span-7', 'lg:col-span-5'];
+
+/**
+ * What the volunteer needs, in attention order: the next assignment as the
+ * hero, availability to answer, then the rest of the upcoming assignments
+ * (their serving history is its own widget, after any leader statistics). A
+ * widget with nothing to show is left out, and when nothing waits one quiet
+ * line says so instead of a row of empty boxes.
+ */
 export function ServingActionsWidget(props: HomeSectionProps) {
+  const dashboard = useVolunteerDashboard(props);
+  const { query: checks, pending } = usePendingChecks(props);
+  const next = dashboard.data?.nextAssignment;
+  // Each widget shows its own loading and error, so one slow read never hides the other.
+  // Keyed by identity, not position: a slot leaving must not remount (and refetch) the others.
+  const slots = [
+    dashboard.isPending || dashboard.isError || next
+      ? { key: 'next', Widget: NextAssignmentWidget }
+      : null,
+    checks.isPending || checks.isError || pending.length > 0
+      ? { key: 'checks', Widget: PendingChecksWidget }
+      : null,
+    upcomingRows({ data: dashboard.data }).length > 0
+      ? { key: 'upcoming', Widget: UpcomingAssignmentsWidget }
+      : null,
+  ].filter((slot) => slot !== null);
+  const nothingWaits =
+    dashboard.isSuccess && checks.isSuccess && !next && pending.length === 0;
   return (
-    <div className="grid gap-4 lg:grid-cols-12">
-      <div className="min-w-0 lg:col-span-7">
-        <NextAssignmentWidget {...props} />
-      </div>
-      <div className="min-w-0 lg:col-span-5">
-        <PendingChecksWidget {...props} />
-      </div>
-      <div className="min-w-0 lg:col-span-5">
-        <ServingHistoryWidget {...props} />
-      </div>
-      <div className="min-w-0 lg:col-span-7">
-        <UpcomingAssignmentsWidget {...props} />
+    <div className="space-y-4">
+      {nothingWaits ? (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <CircleCheck aria-hidden className="size-4 shrink-0" />
+            {m.home_serving_all_clear()}
+          </span>
+          <Link
+            to="/app/my-schedule"
+            className="inline-flex min-h-11 items-center text-foreground underline underline-offset-4"
+          >
+            {m.nav_my_schedule()}
+          </Link>
+        </p>
+      ) : null}
+      <div className="grid gap-4 empty:hidden lg:grid-cols-12">
+        {slots.map(({ key, Widget }, index) => (
+          <div
+            key={key}
+            className={cn(
+              'min-w-0',
+              index === slots.length - 1 && index % 2 === 0
+                ? 'lg:col-span-12'
+                : PAIR_SPANS[index % 2],
+            )}
+          >
+            <Widget {...props} />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -366,14 +377,7 @@ function DateTile({ day, large }: DateTileProps) {
 export function UpcomingAssignmentsWidget(props: HomeSectionProps) {
   const { churchTimezone: timeZone } = useTimezone();
   const dashboard = useVolunteerDashboard(props);
-  const nextId = dashboard.data?.nextAssignment?.assignmentId;
-  // Presentation dedupe only: the next assignment already has its own widget; server order is kept.
-  const rows = (dashboard.data?.upcomingAssignmentGroups ?? []).flatMap(
-    (group) =>
-      group.assignments
-        .filter((assignment) => assignment.assignmentId !== nextId)
-        .map((assignment) => ({ group, assignment })),
-  );
+  const rows = upcomingRows({ data: dashboard.data });
   return (
     <HomeWidget
       title={m.home_upcoming_assignments()}
@@ -390,12 +394,6 @@ export function UpcomingAssignmentsWidget(props: HomeSectionProps) {
       {dashboard.isError ? (
         // The next-assignment and history widgets already offer the retry for this shared read.
         <p className="text-muted-foreground">{m.my_schedule_load_error()}</p>
-      ) : rows.length === 0 ? (
-        <EmptySlot
-          icon={CalendarDays}
-          title={m.home_upcoming_none()}
-          hint={m.home_next_assignment_none_hint()}
-        />
       ) : (
         <ul className="grid gap-1">
           {rows.map(({ group, assignment }) => {
@@ -471,7 +469,7 @@ export function ServingHistoryWidget(props: HomeSectionProps) {
           </span>
         </p>
         {total === 0 ? (
-          <p className="radius-control flex h-36 items-center justify-center border border-dashed px-4 text-center text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm">
             {m.home_serving_empty()}
           </p>
         ) : (

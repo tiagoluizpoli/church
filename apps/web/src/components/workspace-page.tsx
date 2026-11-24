@@ -11,6 +11,8 @@ interface WorkspaceIntroPanelProps {
   description?: string;
   title: string;
   titleTestId?: string;
+  /** Lets another page's element morph into this title (same-document View Transition). */
+  titleViewTransitionName?: string;
 }
 
 export function WorkspacePage({
@@ -33,6 +35,7 @@ export function WorkspaceIntroPanel({
   description,
   title,
   titleTestId,
+  titleViewTransitionName,
 }: WorkspaceIntroPanelProps) {
   const titleRef = React.useRef<HTMLHeadingElement>(null);
 
@@ -55,6 +58,7 @@ export function WorkspaceIntroPanel({
             tabIndex={autoFocusTitle ? -1 : undefined}
             className="max-w-3xl text-balance font-semibold text-3xl tracking-[-0.02em] outline-none md:text-4xl"
             data-testid={titleTestId}
+            style={{ viewTransitionName: titleViewTransitionName }}
           >
             {title}
           </h1>

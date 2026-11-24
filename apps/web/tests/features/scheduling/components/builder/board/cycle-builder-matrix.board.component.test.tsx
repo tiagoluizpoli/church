@@ -749,6 +749,56 @@ describe('CycleBuilderMatrix', () => {
     expect(viewport.scrollLeft).toBe(0);
   });
 
+  it('scrolls the date columns freely, with no snap lanes', () => {
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={boardData}
+        selectedDate={null}
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+
+    const viewport = screen.getByTestId('cycle-board-viewport');
+    expect(viewport.className).not.toMatch(/snap|scroll-px/);
+    expect(viewport.querySelector('section[class*="snap"]')).toBeNull();
+  });
+
+  it('brings a keyboard-focused control into view without leaving the column half-cut', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={boardData}
+        selectedDate={null}
+        onSelectedDateChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+
+    const add = screen.getByRole('button', { name: 'Add' });
+    const matches = vi.spyOn(add, 'matches');
+
+    // A mouse-click focus must not scroll: it would move the click target.
+    matches.mockReturnValue(false);
+    act(() => add.focus());
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    matches.mockReturnValue(true);
+    act(() => {
+      add.blur();
+      add.focus();
+    });
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      inline: 'nearest',
+      block: 'nearest',
+    });
+  });
+
   describe('filter row', () => {
     /** Opens the "Date filters" disclosure that holds the range + weekday controls. */
     const openDateFilters = async () => {

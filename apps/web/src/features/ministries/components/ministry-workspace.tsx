@@ -64,7 +64,8 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
     (roles.data?.roles.length ?? 0) > 0;
   // Until both reads settle we cannot tell; a failed read falls back to dismissal alone.
   const isUndecided = sectors.isPending || roles.isPending;
-  const guideOpen = dismissedOpen && !isConfigured && !isUndecided;
+  const canGuide = !isConfigured && !isUndecided;
+  const guideOpen = dismissedOpen && canGuide;
   const tabList = useRef<HTMLUListElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Keeps the active tab on screen in a narrow, scrolling bar. Instant, never smooth.
@@ -133,7 +134,7 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
         <h1 className="font-semibold text-2xl tracking-[-0.02em] md:text-3xl">
           {ministryQuery.data?.name}
         </h1>
-        {!guideOpen && !isConfigured && !isUndecided && (
+        {canGuide && !guideOpen && (
           <Button
             type="button"
             variant="ghost"

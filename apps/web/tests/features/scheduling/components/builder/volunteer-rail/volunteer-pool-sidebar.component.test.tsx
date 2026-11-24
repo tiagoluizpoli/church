@@ -118,6 +118,30 @@ describe('VolunteerPoolSidebar (T102)', () => {
       screen.queryByTestId('volunteer-select-shift'),
     ).not.toBeInTheDocument();
   });
+  it('shows first and last name for volunteers whose clipped names would read the same', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={[
+          {
+            volunteerId: 'a',
+            volunteerName: 'Maria Aparecida da Silva Souza',
+            status: 'available',
+          },
+          {
+            volunteerId: 'b',
+            volunteerName: 'Maria Aparecida da Silva Santos',
+            status: 'available',
+          },
+          { volunteerId: 'c', volunteerName: 'Bob Jones', status: 'available' },
+        ]}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+    expect(screen.getByText('Maria Souza')).toBeVisible();
+    expect(screen.getByText('Maria Santos')).toBeVisible();
+    expect(screen.getByText('Bob Jones')).toBeVisible();
+  });
   it('renders all volunteers initially', () => {
     renderSidebar(
       <VolunteerPoolSidebar

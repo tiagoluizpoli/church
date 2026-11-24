@@ -332,8 +332,9 @@ export interface ShortVolunteerNameInput {
 }
 
 /**
- * How the rail and dashboard abbreviate a Volunteer (`formatVolunteerName`,
- * FR-013): first name plus the last name's initial.
+ * How a teammate is abbreviated on the volunteer's own My schedule roster
+ * (the server's `scheduleVolunteerName`): first name plus the last name's
+ * initial. The builder's volunteer rail shows full names.
  */
 export function shortVolunteerName({ name }: ShortVolunteerNameInput): string {
   const tokens = name.trim().split(/\s+/);

@@ -8,6 +8,7 @@ import {
 import { type ReactNode, useMemo, useState } from 'react';
 import type { VolunteerPoolItem } from '../../../hooks/use-volunteer-pool';
 import type { AssignableFitTier } from '../../../utils/builder/cycle-builder-fit.utils';
+import { volunteerDisplayNames } from '../../../utils/builder/volunteer-display-names';
 import type { GroupMode } from '../../../utils/builder/volunteer-pool-groups';
 import {
   flattenPoolRows,
@@ -85,6 +86,16 @@ export function VolunteerPoolList({
     [groupMode, focusedVolunteers, otherVolunteers, unavailableOpen],
   );
 
+  const displayNames = useMemo(
+    () =>
+      volunteerDisplayNames({
+        names: [...(focusedVolunteers ?? []), ...otherVolunteers].map(
+          (volunteer) => volunteer.volunteerName,
+        ),
+      }),
+    [focusedVolunteers, otherVolunteers],
+  );
+
   const renderRow = (row: PoolRow): ReactNode => {
     switch (row.kind) {
       case 'header':
@@ -106,6 +117,7 @@ export function VolunteerPoolList({
         return (
           <VolunteerCard
             volunteer={row.volunteer}
+            displayName={displayNames.get(row.volunteer.volunteerName)}
             isSelected={selectedVolunteerId === row.volunteer.volunteerId}
             isIdeal={idealVolunteerId === row.volunteer.volunteerId}
             onSelect={onSelectVolunteer}

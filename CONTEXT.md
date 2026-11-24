@@ -161,7 +161,7 @@ An adult in a Family who answers for its Children: either a Person, or a Guardia
 _Avoid_: Parent (when meaning any Guardian), responsible, tutor
 
 **Guardian contact** (pt-BR: Contato do responsável):
-A Guardian known only by name and phone, with no login, as registered at the desk for a visitor. It lets the Church reach the Guardian by hand and show a call on the big screen, but it can never be paged in the app. It gives way to the real Person once that adult has an account.
+A Guardian known only by name and phone, with no login, as registered at the desk for a visitor. It lets the Church reach the Guardian by hand and show its Call number on the big screen, but it can never receive a Call in the app. It gives way to the real Person once that adult has an account.
 _Avoid_: Visitor account, guest user
 
 **Check-in** (pt-BR: Check-in):

@@ -1072,8 +1072,8 @@ function applyHistoryTrail({
     });
   }
 
-  // respondToAssignment only sets the status and reason; the leader then
-  // assigns a replacement like any other Assignment.
+  // A decline withdraws the original Assignment; the leader then assigns a
+  // replacement like any other Assignment.
   for (const incident of history.declines) {
     const target = findTarget({ shifts, post: incident.post });
     ledger.withdraw({

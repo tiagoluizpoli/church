@@ -50,7 +50,6 @@ describe('volunteerMapper', () => {
             ministryId: 'ministry-1',
             ministryName: 'Worship',
             eventStart: '2026-05-15T09:00:00.000Z',
-            aggregateResponseState: 'pending' as const,
             hasPendingResponse: true,
             assignments: [
               {

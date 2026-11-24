@@ -23,7 +23,6 @@ export interface VolunteerDashboardAssignmentGroupFixture {
   ministryId: string;
   ministryName: string;
   eventStart: string;
-  aggregateResponseState: 'pending' | 'confirmed' | 'mixed';
   hasPendingResponse: boolean;
   assignments: VolunteerDashboardAssignmentFixture[];
 }
@@ -67,7 +66,6 @@ export function createVolunteerDashboardSnapshotFixture(): VolunteerDashboardSna
         ministryId: volunteerDashboardFixtureIds.ministryId,
         ministryName: 'Adult Ministry',
         eventStart: '2026-07-06T09:00:00.000Z',
-        aggregateResponseState: 'pending',
         hasPendingResponse: true,
         assignments: [
           {

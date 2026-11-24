@@ -45,7 +45,7 @@ const item = (id: string, startTime: string, endTime: string) => ({
   sectorName: 'Babies Room',
   roleId: 'r',
   roleName: 'Teacher',
-  status: 'confirmed' as const,
+  status: 'pending' as const,
   swapRequested: false,
 });
 

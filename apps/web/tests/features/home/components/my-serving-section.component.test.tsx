@@ -94,7 +94,7 @@ const assignment = (id: string, day: number, swapRequested = false) => ({
   sectorName: 'Room',
   roleId: 'r',
   roleName: 'Teacher',
-  status: 'confirmed' as const,
+  status: 'pending' as const,
   timingState: 'upcoming' as const,
   swapRequested,
 });

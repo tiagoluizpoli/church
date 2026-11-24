@@ -37,7 +37,7 @@ describe('useVolunteerPool (T098)', () => {
       // Amy has 2 active assignments, others 0 → Amy sinks below Bob/Zoe;
       // Bob and Zoe tie on workload → alphabetical (Bob before Zoe).
       const assignments = [
-        { volunteerId: '2', roleId: 'r1', status: 'confirmed' },
+        { volunteerId: '2', roleId: 'r1', status: 'pending' },
         { volunteerId: '2', roleId: 'r2', status: 'pending' },
       ];
       const { result } = renderHook(() =>
@@ -48,12 +48,12 @@ describe('useVolunteerPool (T098)', () => {
       ).toEqual(['Bob', 'Zoe', 'Amy']);
     });
 
-    it('ignores cancelled and declined assignments in workload', () => {
+    it('ignores cancelled assignments in workload', () => {
       const volunteers = [vol('1', 'A', 'available')];
       const assignments = [
         { volunteerId: '1', roleId: 'r1', status: 'cancelled' },
         { volunteerId: '1', roleId: 'r2', status: 'cancelled' },
-        { volunteerId: '1', roleId: 'r3', status: 'confirmed' },
+        { volunteerId: '1', roleId: 'r3', status: 'pending' },
       ];
       const { result } = renderHook(() =>
         useVolunteerPool({ volunteers, assignments }),

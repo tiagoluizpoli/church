@@ -97,7 +97,7 @@ const sameShiftAssignment: CycleBuilderAssignment = {
   volunteerId: 'volunteer-1',
   roleId: 'role-support',
   shiftRequirementId: 'requirement-role-support',
-  status: 'confirmed',
+  status: 'pending',
   assignedAt: '2026-08-01T09:00:00.000Z',
   lateMark: false,
   volunteerName: 'Local Volunteer',

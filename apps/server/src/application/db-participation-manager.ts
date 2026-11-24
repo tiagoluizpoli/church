@@ -112,7 +112,11 @@ import {
   type UsualSetup,
   type UsualSetupHeadcount,
 } from '../domain/entities/usual-setup';
-import { IllegalStateTransitionError } from '../domain/errors';
+import {
+  EventCancelledError,
+  EventTimeBlockCancelledError,
+  IllegalStateTransitionError,
+} from '../domain/errors';
 import { HeadcountBelowAssignedError } from '../domain/errors/headcount-below-assigned';
 import { InvalidShiftIndexError } from '../domain/errors/invalid-shift-index';
 import { InvalidShiftSplitError } from '../domain/errors/invalid-shift-split';
@@ -472,6 +476,13 @@ interface ScheduleListFacts {
 interface ToScheduleViewInput extends ScheduleListRow {
   churchId: ChurchId;
   facts: ScheduleListFacts;
+}
+
+interface RefuseCancelledAdditionsInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  additions: ReviewedAddition[];
+  tx: TransactionContext;
 }
 
 interface LoadProposalFactsInput {
@@ -1492,6 +1503,12 @@ export class DbParticipationManager implements IParticipationManager {
         strength: 'share',
         tx,
       });
+      await this.refuseCancelledAdditions({
+        churchId,
+        cycleId,
+        additions,
+        tx,
+      });
       const { facts, shifts, proposable } = await this.loadProposalFacts({
         churchId,
         cycleId,
@@ -1576,6 +1593,48 @@ export class DbParticipationManager implements IParticipationManager {
       const { appliedAt } = application;
       return { applicationKey, appliedAt, replayed: false, additions: applied };
     });
+  }
+
+  /** Names the cancellation an addition targets, as manual assign does, before staleness. */
+  private async refuseCancelledAdditions({
+    churchId,
+    cycleId,
+    additions,
+    tx,
+  }: RefuseCancelledAdditionsInput): Promise<void> {
+    const requirements = await this.shiftRepository.listRequirementsByIds({
+      churchId,
+      shiftRequirementIds: additions.map(
+        ({ shiftRequirementId }) => shiftRequirementId,
+      ),
+      tx,
+    });
+    const shifts = await Promise.all(
+      [
+        ...new Set(
+          requirements.flatMap(({ shiftId }) => (shiftId ? [shiftId] : [])),
+        ),
+      ].map((shiftId) =>
+        this.shiftRepository.getById({ churchId, shiftId, tx }),
+      ),
+    );
+    const targetBlockIds = new Set(
+      shifts.map(({ eventTimeBlockId }) => eventTimeBlockId as string),
+    );
+    const eventGroups = await this.eventRepository.listCycleEvents({
+      churchId,
+      cycleId,
+      tx,
+    });
+    for (const { event, eventTimeBlocks } of eventGroups) {
+      const targeted = eventTimeBlocks.filter(({ id }) =>
+        targetBlockIds.has(id as string),
+      );
+      if (targeted.length === 0) continue;
+      if (event.status === 'cancelled') throw new EventCancelledError();
+      if (targeted.some(({ status }) => status === 'cancelled'))
+        throw new EventTimeBlockCancelledError();
+    }
   }
 
   /** The Schedule's proposal facts; refuses outside availability requested/assigning. */
@@ -3181,6 +3240,9 @@ function buildEventView({
           ),
         ),
       );
+      const cancelled =
+        eventGroup.event.status === 'cancelled' ||
+        eventTimeBlock.status === 'cancelled';
       const headcounts = shiftViews.map(({ requirements: shiftRequirements }) =>
         shiftRequirements.reduce(
           (sum, { requirement }) => sum + requirement.peopleNeeded,
@@ -3191,12 +3253,13 @@ function buildEventView({
       return {
         eventTimeBlock,
         included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
+        cancelled,
         answerCoverage: {
           available: [...confirmedVolunteerIds].filter(
             (id) => !unavailable.has(id),
           ).length,
           needed:
-            headcounts.length === 0 || headcounts.includes(0)
+            cancelled || headcounts.length === 0 || headcounts.includes(0)
               ? null
               : Math.max(...headcounts),
         },

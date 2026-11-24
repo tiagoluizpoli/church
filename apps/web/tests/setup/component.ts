@@ -82,3 +82,6 @@ if (!Element.prototype.getAnimations) {
   Element.prototype.getAnimations = () => [];
   globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 }
+
+// jsdom has no layout engine, so it never implements `scrollIntoView`.
+Element.prototype.scrollIntoView ??= () => undefined;

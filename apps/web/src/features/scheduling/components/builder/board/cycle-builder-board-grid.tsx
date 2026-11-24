@@ -26,7 +26,6 @@ import {
 } from '../../../utils/builder/cycle-builder-staffing.utils';
 import { isCancelledEvent } from '../../../utils/event-time-block-cancellation';
 import { CancelledBadge } from '../../cancelled-badge';
-import { useBoardDragIdentity } from './board-drag-identity';
 import {
   CycleBuilderCell,
   type CycleBuilderCellSelectInput,
@@ -103,8 +102,7 @@ interface CycleBuilderBoardGridProps {
 /**
  * The board's own scroll surface: a grid of date columns, each holding its
  * events → included time blocks → shifts → role cells. Drag-to-scroll comes from
- * `useBoardDragScroll` (see that hook's doc comment for why it isn't shared
- * with the date strip's). Rendered inside the parent's `DndContext` — cells
+ * `useBoardDragScroll`, the same mechanism as the date strip's. Rendered inside the parent's `DndContext` — cells
  * register their own droppables via `useDroppable`, which works anywhere in
  * the same DnD tree regardless of this component boundary.
  */
@@ -130,7 +128,6 @@ export function CycleBuilderBoardGrid({
   onClearFilters,
   dragScroll,
 }: CycleBuilderBoardGridProps) {
-  const isDragging = Boolean(useBoardDragIdentity());
   // Read once for every cell: below xl the rail is stacked under the board.
   const railIsBeside = useMediaQuery(XL_MEDIA_QUERY);
   // Which sides still hide columns, so the fade only shows where there is more.
@@ -184,10 +181,6 @@ export function CycleBuilderBoardGrid({
         <ScrollArea
           className="min-w-0 pb-3"
           viewportClassName={cn(
-            // Proximity, not mandatory: drag-to-scroll writes scrollLeft
-            // directly and mandatory would fight it. Snap is off while a
-            // card is dragged so DnD auto-scroll is not pulled back.
-            !isDragging && 'snap-x snap-proximity scroll-px-2',
             edge.start && edge.end
               ? '[mask-image:linear-gradient(to_right,transparent,black_2rem,black_calc(100%-2rem),transparent)]'
               : edge.start
@@ -212,7 +205,17 @@ export function CycleBuilderBoardGrid({
               {columns.map((date) => (
                 <section
                   key={date}
-                  className="min-w-0 snap-start self-start rounded-md border bg-card"
+                  // Without snap, keyboard focus must still not leave a column
+                  // half-cut. Keyboard only: scrolling on a mouse-click focus
+                  // moves the target mid-click and drops the click.
+                  onFocus={(event) => {
+                    if (event.target.matches(':focus-visible'))
+                      event.currentTarget.scrollIntoView({
+                        inline: 'nearest',
+                        block: 'nearest',
+                      });
+                  }}
+                  className="min-w-0 self-start rounded-md border bg-card"
                 >
                   <header className="border-b px-3 py-2">
                     <p className="font-semibold text-foreground text-sm">

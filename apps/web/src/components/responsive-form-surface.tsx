@@ -107,7 +107,9 @@ export function ResponsiveFormSurface({
                 className={
                   reviewSummary
                     ? 'font-semibold text-base outline-none'
-                    : undefined
+                    : wideForm
+                      ? 'font-semibold text-base'
+                      : undefined
                 }
               >
                 {title}

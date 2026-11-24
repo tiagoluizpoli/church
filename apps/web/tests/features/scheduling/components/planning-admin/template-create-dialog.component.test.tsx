@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TemplateCreatePage } from '@/features/scheduling/components/planning-admin/template-create-page';
+import { TemplateCreateDialog } from '@/features/scheduling/components/planning-admin/template-create-dialog';
 import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
@@ -73,22 +73,67 @@ async function fillValidForm({
   });
 }
 
-describe('TemplateCreatePage', () => {
-  it('starts with one block row and a disabled Save, with Cancel back to the list', () => {
-    renderWithProviders(<TemplateCreatePage />);
+describe('TemplateCreateDialog', () => {
+  it('opens as a titled dialog with one block row, a disabled Save that says why, and Cancel back to the list', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
 
+    const dialog = screen.getByRole('dialog', { name: 'Novo modelo' });
+    expect(
+      within(dialog).getByRole('heading', { level: 2, name: 'Novo modelo' }),
+    ).toBeVisible();
     expect(screen.getAllByTestId('template-time-block-row')).toHaveLength(1);
-    expect(screen.getByTestId('create-template-button')).toBeDisabled();
-    expect(screen.getByTestId('cancel-template-button')).toHaveAttribute(
-      'href',
-      '/app/event-templates',
+    const save = screen.getByTestId('create-template-button');
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription(
+      'Preencha o nome do modelo e o nome, o início e o término de cada bloco.',
     );
+    expect(
+      within(dialog).queryByTestId('delete-template-button'),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('cancel-template-button'));
+    expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' });
     expect(createEventTemplate).not.toHaveBeenCalled();
+  });
+
+  it('drops the blocked-save hint once the form is complete', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+
+    await fillValidForm({ user });
+
+    expect(screen.getByTestId('create-template-button')).toBeEnabled();
+    expect(
+      screen.queryByTestId('template-save-blocked-hint'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the lone picked weekday enabled and explains why it stays picked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+
+    const sunday = screen.getByTestId('template-weekday-toggle-0');
+    expect(sunday).toBeEnabled();
+    expect(sunday).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(sunday);
+
+    expect(sunday).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('template-weekdays-hint')).toHaveTextContent(
+      'Escolha ao menos um dia.',
+    );
+    expect(sunday).toHaveAccessibleDescription('Escolha ao menos um dia.');
+
+    await user.click(screen.getByTestId('template-weekday-toggle-1'));
+    expect(screen.getByTestId('template-weekdays-hint')).toBeEmptyDOMElement();
+    await user.click(sunday);
+    expect(sunday).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('adds and removes block rows', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await user.click(screen.getByTestId('add-template-time-block-button'));
     expect(screen.getAllByTestId('template-time-block-row')).toHaveLength(2);
@@ -101,7 +146,7 @@ describe('TemplateCreatePage', () => {
 
   it('flags equal endpoints and duplicate labels inline and keeps Save disabled', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await user.type(screen.getByTestId('template-name-input'), 'Vigil');
     await user.type(
@@ -137,7 +182,7 @@ describe('TemplateCreatePage', () => {
   it('creates an overnight template without persisted ids or order, then toasts and returns to the list', async () => {
     createEventTemplate.mockResolvedValue({ id: 'new-1' });
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     expect(screen.getByTestId('template-time-block-span')).toHaveTextContent(
@@ -169,7 +214,7 @@ describe('TemplateCreatePage', () => {
   it('prevents repeat submission while a save is pending', async () => {
     createEventTemplate.mockReturnValue(new Promise(() => undefined));
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -192,7 +237,7 @@ describe('TemplateCreatePage', () => {
       }),
     );
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -215,7 +260,7 @@ describe('TemplateCreatePage', () => {
       }),
     );
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -245,7 +290,7 @@ describe('TemplateCreatePage', () => {
       )
       .mockResolvedValueOnce({ id: 'new-1' });
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -292,7 +337,7 @@ describe('TemplateCreatePage', () => {
       } as AxiosResponse),
     );
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));

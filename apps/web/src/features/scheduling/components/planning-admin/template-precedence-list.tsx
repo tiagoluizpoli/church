@@ -20,7 +20,7 @@ interface ChangeInput {
   answer: PrecedenceAnswer;
 }
 
-/** The template's stored precedences; each answer changes on its own, without editing either template. */
+/** The template's stored precedences; each answer changes on its own, without editing either template. The surrounding dialog carries the title. */
 export function TemplatePrecedenceList({
   templateId,
 }: TemplatePrecedenceListProps) {
@@ -43,19 +43,7 @@ export function TemplatePrecedenceList({
   });
 
   return (
-    <section
-      className="mt-8 space-y-3"
-      aria-labelledby="template-precedences-title"
-      data-testid="template-precedences"
-    >
-      <div>
-        <h3 id="template-precedences-title" className="font-semibold text-base">
-          {m.event_templates_precedences_title()}
-        </h3>
-        <p className="text-muted-foreground text-sm">
-          {m.event_templates_precedences_description()}
-        </p>
-      </div>
+    <div className="space-y-3" data-testid="template-precedences">
       {query.data ? (
         query.data.precedences.length === 0 ? (
           <p
@@ -103,6 +91,6 @@ export function TemplatePrecedenceList({
           <Skeleton className="h-10 w-full" />
         </Pending>
       )}
-    </section>
+    </div>
   );
 }

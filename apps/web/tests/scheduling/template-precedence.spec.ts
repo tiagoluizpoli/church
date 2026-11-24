@@ -37,7 +37,10 @@ test('a ChurchAdmin lets a 1st-Sunday template win over the weekly Sunday one an
 
   // The weekly Sunday template runs 09:00-11:00 in three blocks; this one
   // covers all of it, so on the 1st Sunday the weekly Event has nothing left.
+  // The deep link opens the create dialog over the list; the collision
+  // confirmation below stacks over it.
   await page.goto('/app/event-templates/new');
+  await expect(page.getByTestId('template-create-dialog')).toBeVisible();
   await page.getByTestId('template-name-input').fill(monthlyName);
   await page.getByTestId('template-recurrence-kind').click();
   await page.getByTestId('template-recurrence-kind-monthly').click();
@@ -65,6 +68,7 @@ test('a ChurchAdmin lets a 1st-Sunday template win over the weekly Sunday one an
     .check();
   await collision.getByTestId('confirm-template-collision-button').click();
   await expect(page).toHaveURL(/\/event-templates$/);
+  await expect(page.getByTestId('template-create-dialog')).toBeHidden();
 
   await page.goto('/app/cycles');
   await page.getByTestId('open-create-cycle-dialog-button').click();

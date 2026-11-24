@@ -72,11 +72,11 @@ export function TemplateTimeBlockRow({
   onBlockChange,
   onRemoveBlock,
 }: TemplateTimeBlockRowProps) {
-  // Publico and place are a ChurchAdmin decision (ADR 0009); leaders edit the rest.
+  // Público and place are a ChurchAdmin decision (ADR 0009); leaders edit the rest.
   const { isChurchAdmin } = useCallerCapabilities();
   return (
     <div
-      className="surface-subtle workspace-panel space-y-2"
+      className="@container surface-subtle workspace-panel space-y-2"
       data-testid="template-time-block-row"
     >
       <div className="flex items-center justify-between gap-3">
@@ -94,36 +94,45 @@ export function TemplateTimeBlockRow({
           </Button>
         ) : null}
       </div>
-      <div className="space-y-1">
-        <Label htmlFor={`${block.key}-label`}>
-          {m.event_templates_block_label()}
-        </Label>
-        <Input
-          id={`${block.key}-label`}
-          aria-invalid={labelError ? true : undefined}
-          aria-describedby={labelError ? `${block.key}-label-error` : undefined}
-          data-testid="template-time-block-label-input"
-          value={block.label}
-          onChange={(event) =>
-            onBlockChange({
-              blockKey: block.key,
-              field: 'label',
-              value: event.target.value,
-            })
-          }
-          placeholder={m.event_templates_block_label_placeholder()}
-        />
-        {labelError ? (
-          <p
-            id={`${block.key}-label-error`}
-            className="text-destructive text-xs"
-            data-testid="template-time-block-label-error"
-          >
-            {labelError}
-          </p>
-        ) : null}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      {/* One row per block on a wide surface (Nome · Início · Término · Local · Público), stacked when narrow. */}
+      <div
+        className={
+          isChurchAdmin
+            ? 'grid @3xl:grid-cols-[minmax(12rem,1fr)_8rem_8rem_minmax(10rem,14rem)_auto] gap-3 sm:grid-cols-2'
+            : 'grid @3xl:grid-cols-[minmax(12rem,1fr)_8rem_8rem] gap-3 sm:grid-cols-2'
+        }
+      >
+        <div className="@3xl:col-span-1 space-y-1 sm:col-span-2">
+          <Label htmlFor={`${block.key}-label`}>
+            {m.event_templates_block_label()}
+          </Label>
+          <Input
+            id={`${block.key}-label`}
+            aria-invalid={labelError ? true : undefined}
+            aria-describedby={
+              labelError ? `${block.key}-label-error` : undefined
+            }
+            data-testid="template-time-block-label-input"
+            value={block.label}
+            onChange={(event) =>
+              onBlockChange({
+                blockKey: block.key,
+                field: 'label',
+                value: event.target.value,
+              })
+            }
+            placeholder={m.event_templates_block_label_placeholder()}
+          />
+          {labelError ? (
+            <p
+              id={`${block.key}-label-error`}
+              className="text-destructive text-xs"
+              data-testid="template-time-block-label-error"
+            >
+              {labelError}
+            </p>
+          ) : null}
+        </div>
         <div className="space-y-1">
           <Label id={`${block.key}-start-time-label`}>
             {m.event_templates_block_start()}
@@ -158,52 +167,61 @@ export function TemplateTimeBlockRow({
             }
           />
         </div>
-      </div>
-      {isChurchAdmin ? (
-        <div
-          className="grid gap-3 sm:grid-cols-2"
-          data-testid="template-time-block-public-fields"
-        >
-          <div className="flex items-center gap-2">
-            <Switch
-              id={`${block.key}-public`}
-              aria-labelledby={`${block.key}-public-label`}
-              data-testid="template-time-block-public-switch"
-              checked={block.isPublic}
-              onCheckedChange={(checked) =>
+        {isChurchAdmin ? (
+          <>
+            <TimeBlockPlacePicker
+              id={`${block.key}-place`}
+              testIdPrefix="template-time-block"
+              label={m.event_templates_block_place()}
+              placeholder={m.event_templates_block_place_placeholder()}
+              place={block.place}
+              placeAddressId={block.placeAddressId}
+              onChange={({ place, placeAddressId }) => {
                 onBlockChange({
                   blockKey: block.key,
-                  field: 'isPublic',
-                  value: checked,
-                })
-              }
+                  field: 'place',
+                  value: place,
+                });
+                onBlockChange({
+                  blockKey: block.key,
+                  field: 'placeAddressId',
+                  value: placeAddressId,
+                });
+              }}
             />
-            <Label id={`${block.key}-public-label`}>
-              {m.event_templates_block_public()}
-            </Label>
-          </div>
-          <TimeBlockPlacePicker
-            id={`${block.key}-place`}
-            testIdPrefix="template-time-block"
-            label={m.event_templates_block_place()}
-            placeholder={m.event_templates_block_place_placeholder()}
-            place={block.place}
-            placeAddressId={block.placeAddressId}
-            onChange={({ place, placeAddressId }) => {
-              onBlockChange({
-                blockKey: block.key,
-                field: 'place',
-                value: place,
-              });
-              onBlockChange({
-                blockKey: block.key,
-                field: 'placeAddressId',
-                value: placeAddressId,
-              });
-            }}
-          />
-        </div>
-      ) : null}
+            <div
+              className="space-y-1"
+              data-testid="template-time-block-public-fields"
+            >
+              <Label id={`${block.key}-public-label`}>
+                {m.event_templates_block_public()}
+              </Label>
+              <div className="flex min-h-8 items-center gap-2">
+                <Switch
+                  id={`${block.key}-public`}
+                  aria-labelledby={`${block.key}-public-label`}
+                  aria-describedby={`${block.key}-public-hint`}
+                  data-testid="template-time-block-public-switch"
+                  checked={block.isPublic}
+                  onCheckedChange={(checked) =>
+                    onBlockChange({
+                      blockKey: block.key,
+                      field: 'isPublic',
+                      value: checked,
+                    })
+                  }
+                />
+                <span
+                  id={`${block.key}-public-hint`}
+                  className="text-muted-foreground text-xs"
+                >
+                  {m.event_templates_block_public_hint()}
+                </span>
+              </div>
+            </div>
+          </>
+        ) : null}
+      </div>
       {timeError ? (
         <p
           className="text-destructive text-xs"

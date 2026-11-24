@@ -182,7 +182,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
     expect(document.querySelector('h1')).toHaveTextContent(m.cycles_title());
   });
 
-  it('keeps the template library as a saved-list view and opens creation on a nested page without loading a cycle', async () => {
+  it('keeps the template library as a saved-list view and opens creation in a dialog over it without loading a cycle', async () => {
     listCycles.mockResolvedValue({ cycles: [] });
 
     const user = userEvent.setup();
@@ -196,13 +196,20 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
 
     await user.click(screen.getByTestId('new-template-button'));
 
-    expect(await screen.findByTestId('template-create-page')).toBeVisible();
-    expect(screen.getByTestId('template-name-input')).toBeVisible();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', { name: 'Novo modelo' });
+    expect(within(dialog).getByTestId('template-name-input')).toBeVisible();
+    // The list stays mounted under the dialog.
+    expect(screen.getByText('Modelos salvos')).toBeInTheDocument();
     expect(getCycle).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByTestId('cancel-template-button'));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('Modelos salvos')).toBeInTheDocument();
   });
 
-  it('opens a saved template on its nested edit page from the library list', async () => {
+  it('opens a saved template in an edit dialog over the library list', async () => {
     const template = {
       id: 'template-1',
       name: 'Sunday Service',
@@ -226,14 +233,16 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
 
     await user.click(await screen.findByTestId('edit-template-button'));
 
-    expect(await screen.findByTestId('template-edit-page')).toBeVisible();
-    expect(await screen.findByTestId('template-name-input')).toHaveValue(
-      'Sunday Service',
-    );
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Editar modelo',
+    });
+    expect(
+      await within(dialog).findByTestId('template-name-input'),
+    ).toHaveValue('Sunday Service');
+    expect(screen.getByText('Modelos salvos')).toBeInTheDocument();
   });
 
-  it('opens the nested edit page directly, without list state', async () => {
+  it('deep-links to the edit dialog over the list, without list state', async () => {
     listCycles.mockResolvedValue({ cycles: [] });
     listEventTemplates.mockClear();
     getEventTemplate.mockResolvedValue({
@@ -253,10 +262,14 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
 
     renderCycles('/app/event-templates/template-9');
 
-    expect(await screen.findByTestId('template-name-input')).toHaveValue(
-      'Vigil',
-    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Editar modelo',
+    });
+    expect(
+      await within(dialog).findByTestId('template-name-input'),
+    ).toHaveValue('Vigil');
     expect(getEventTemplate).toHaveBeenCalledWith('template-9');
+    expect(await screen.findByText('Modelos salvos')).toBeInTheDocument();
   });
 
   it('keeps the apply-templates dialog open and displays an inline error when template application fails', async () => {

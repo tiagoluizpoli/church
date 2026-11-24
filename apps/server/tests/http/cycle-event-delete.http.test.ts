@@ -408,7 +408,7 @@ describe('DELETE /admin/cycles/:cycleId/events/:eventId', () => {
     expect(await counts()).toEqual(before);
   });
 
-  it('returns 409 for a Sent Cycle with a reopened draft Event and for a Past Cycle', async () => {
+  it('returns 409 for a Sent Cycle with a draft Event and for a Past Cycle', async () => {
     const seed = await signIn();
     for (const state of ['sent', 'past-from-sent'] as const) {
       const target = await seedCycle({

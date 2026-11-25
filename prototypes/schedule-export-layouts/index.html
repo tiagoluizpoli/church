@@ -33,7 +33,7 @@
   .head h1 { margin: 0; font-size: 24px; line-height: 1.15; color: var(--brand); }
   .head .range { font-size: 16px; color: var(--muted); margin-top: 2px; }
   .single { font-size: 16px; color: var(--muted); margin: 8px 0 0; }
-  .stamp { position: absolute; top: 22px; right: 20px; transform: rotate(6deg); border: 3px solid var(--cancel); color: var(--cancel); font-weight: 700; font-size: 18px; letter-spacing: .08em; padding: 2px 10px; border-radius: 6px; text-transform: uppercase; background: #fff; }
+  .stamp { margin-left: auto; align-self: flex-start; border: 3px solid var(--cancel); color: var(--cancel); font-weight: 700; font-size: 18px; letter-spacing: .08em; padding: 2px 10px; border-radius: 6px; text-transform: uppercase; background: #fff; }
   .group { margin-top: 22px; }
   .group > h2 { margin: 0 0 8px; font-size: 20px; color: #fff; background: var(--brand); padding: 6px 12px; border-radius: 6px; }
   .vaga { color: var(--muted); font-style: italic; }
@@ -87,6 +87,70 @@
   .D .list td { width: auto; }
   .D .head h1 { font-size: 20px; }
 
+  /* E: D's layout restyled with the app identity (apps/web/DESIGN.md tokens) */
+  .E, .F { --fg: oklch(0.286 0.032 254); --mfg: oklch(0.48 0.024 250); --bd: oklch(0.885 0.012 242); --mut: oklch(0.955 0.008 236);
+       --acc: oklch(0.948 0.018 247); --pri: oklch(0.378 0.09 255); --des: oklch(0.56 0.207 26);
+       --s0: oklch(0.45 0.13 255); --s1: oklch(0.5 0.1 190); --s2: oklch(0.5 0.12 145); --s3: oklch(0.5 0.13 300);
+       color: var(--fg); background: oklch(0.992 0.002 220); padding: 11mm 12mm 10mm; }
+  :is(.E,.F) .ehd { display: flex; align-items: center; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--bd); }
+  :is(.E,.F) .ehd img { width: 44px; height: 44px; border-radius: 10px; }
+  :is(.E,.F) .ehd .t { flex: 1; }
+  :is(.E,.F) .ehd .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--mfg); }
+  :is(.E,.F) .ehd h1 { margin: 1px 0 0; font-size: 22px; line-height: 1.15; color: var(--fg); }
+  :is(.E,.F) .ehd .range { font-size: 13px; color: var(--mfg); text-align: right; }
+  :is(.E,.F) .ehd .range b { display: block; color: var(--fg); font-size: 15px; }
+  :is(.E,.F) .stamp { position: static; transform: none; display: inline-block; margin-top: 4px; font-size: 11px; padding: 1px 8px; border-width: 1.5px; border-color: var(--des); color: var(--des); }
+  .E .grp { margin-top: 14px; border: 1px solid var(--bd); border-radius: 10px; overflow: hidden; background: #fff; }
+  .E .grp > header { display: flex; align-items: baseline; gap: 10px; padding: 7px 12px; background: var(--pri); color: #fff; }
+  .E .grp > header h2 { margin: 0; font-size: 15px; }
+  .E .grp > header span { font-size: 12px; opacity: .8; }
+  .E table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+  .E th, .E td { padding: 4px 8px; vertical-align: top; line-height: 1.35; text-align: left; }
+  .E thead th { background: var(--acc); border-bottom: 1px solid var(--bd); padding: 5px 8px; }
+  .E thead .wd { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--mfg); }
+  .E thead .dn { display: block; font-size: 14px; font-weight: 700; }
+  .E td + td, .E thead th + th, .E .sec + td { border-left: 1px solid var(--bd); }
+  .E tr.row td, .E tr.row th.sec { border-top: 1px solid var(--mut); }
+  .E tr.bstart > * { border-top: 2px solid var(--pri) !important; }
+  .E tbody tr:first-child > * { border-top: 0 !important; }
+  .E th.time { width: 30px; padding: 0; background: var(--pri); color: #fff; text-align: center; vertical-align: middle; border-top-color: #fff !important; }
+  .E tr.bstart th.time { border-top: 2px solid #fff !important; }
+  .E th.time span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 13px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; padding: 6px 0; }
+  .E th.sec { width: 92px; font-size: 11.5px; font-weight: 700; color: var(--sc); background: #fff; }
+  .E th.sec::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--sc); margin-right: 6px; vertical-align: 1px; }
+  .E th.htime { background: var(--acc); color: var(--pri); font-weight: 700; font-size: 12.5px; border-left: 3px solid var(--pri); vertical-align: middle; }
+  .E td.cx { background: oklch(0.97 0.015 26); color: var(--des); font-weight: 700; text-align: center; vertical-align: middle; }
+  .E .vaga { color: var(--mfg); }
+  .E .evt b { display: block; }
+  .E .evt small { color: var(--mfg); font-size: 11px; }
+
+  .F { padding: 22px 18px 24px; }
+  .F .ehd h1 { font-size: 21px; }
+  .F .grp { margin-top: 16px; }
+  .F .grp > header { display: flex; align-items: baseline; gap: 8px; padding: 7px 12px; background: var(--pri); color: #fff; border-radius: 10px; }
+  .F .grp > header h2 { margin: 0; font-size: 16px; } .F .grp > header span { font-size: 12.5px; opacity: .8; }
+  .F .card { margin-top: 8px; border: 1px solid var(--bd); border-radius: 10px; overflow: hidden; background: #fff; }
+  .F .ch { display: flex; align-items: baseline; gap: 8px; padding: 6px 12px; background: var(--acc); border-bottom: 1px solid var(--bd); }
+  .F .ch .wd { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--mfg); }
+  .F .ch .dn { font-size: 17px; font-weight: 700; }
+  .F .ch .tt { margin-left: auto; font-size: 12.5px; color: var(--mfg); text-align: right; }
+  .F .blk { display: flex; }
+  .F .blk + .blk { border-top: 2px solid var(--pri); }
+  .F .band { width: 30px; flex: none; background: var(--pri); color: #fff; display: flex; align-items: center; justify-content: center; }
+  .F .blk + .blk .band { box-shadow: 0 -2px 0 #fff; }
+  .F .band span { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; font-size: 13.5px; white-space: nowrap; padding: 8px 0; }
+  .F .band.wide { width: 58px; }
+  .F .band em { font-style: normal; font-weight: 700; font-size: 13px; line-height: 1.2; text-align: center; padding: 8px 0; }
+  .F .body { flex: 1; display: grid; grid-template-columns: 1fr 1fr; }
+  .F .sec { padding: 7px 10px 8px; border-left: 1px solid var(--mut); border-top: 1px solid var(--mut); }
+  .F .sec:nth-child(-n+2) { border-top: 0; }
+  .F .sec:nth-child(odd) { border-left: 0; }
+  .F .sec b { display: block; font-size: 12px; color: var(--sc); margin-bottom: 2px; }
+  .F .sec b::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--sc); margin-right: 6px; vertical-align: 1px; }
+  .F .sec div { font-size: 14.5px; line-height: 1.35; }
+  .F .cx { flex: 1; padding: 12px; background: oklch(0.97 0.015 26); color: var(--des); font-weight: 700; text-align: center; }
+  .F .vaga { color: var(--mfg); }
+
   #switcher { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; background: #111827; color: #fff; padding: 8px 14px; border-radius: 999px; box-shadow: 0 6px 20px rgb(0 0 0 / .35); font: 14px system-ui; z-index: 10; }
   #switcher button { background: #374151; color: #fff; border: 0; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; }
   .nochrome #controls, .nochrome #switcher { display: none; }
@@ -106,7 +170,7 @@
 <div id="stage"></div>
 <div id="switcher"><button id="prev" aria-label="Anterior">←</button><span id="vlabel"></span><button id="next" aria-label="Próxima">→</button></div>
 <script>
-const VARIANTS = { A: "Agenda, um nome por linha", B: "Cartão por culto, setores lado a lado", C: "Linha por setor, nomes corridos", D: "Grade A4 paisagem (papel)" };
+const VARIANTS = { A: "Agenda, um nome por linha", B: "Cartão por culto, setores lado a lado", C: "Linha por setor, nomes corridos", D: "Grade A4 paisagem (papel)", E: "Grade com identidade do sistema", F: "Cartão por culto com identidade do sistema" };
 const KEYS = Object.keys(VARIANTS);
 const q = new URLSearchParams(location.search);
 const state = { variant: q.get("variant") ?? "A", data: q.get("data") ?? "kids", draft: q.get("draft") === "1", split: q.get("split") ?? "all", part: Number(q.get("part") ?? 0) };
@@ -165,9 +229,8 @@ const live = (sectors) => sectors.map((s) => ({ ...s, names: s.names.filter((n) 
 const hideSector = (d) => !!d.single;
 
 function header(d) {
-  return `<div class="head"><img src="logo.png" alt=""><div><h1>${d.ministry} · Novembro 2026</h1><div class="range">1 – 30 nov 2026</div></div></div>`
-    + (d.single ? `<p class="single">${d.single}</p>` : "")
-    + (state.draft ? `<div class="stamp">Rascunho</div>` : "");
+  return `<div class="head"><img src="logo.png" alt=""><div><h1>${d.ministry} · Novembro 2026</h1><div class="range">1 – 30 nov 2026</div></div>${state.draft ? `<div class="stamp">Rascunho</div>` : ""}</div>`
+    + (d.single ? `<p class="single">${d.single}</p>` : "");
 }
 
 const R = {
@@ -223,6 +286,58 @@ function gridD(g, d) {
   return `<table><thead><tr><th class="row"></th>${cols}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+const dateParts = (s) => { const [wd, rest] = s.split(", "); return rest ? [wd, rest] : ["", s]; };
+function gridE(g, d) {
+  const evs = g.events;
+  const shape = (ev) => blocksOf(ev).map((b) => b.label).join("|");
+  const sameTitle = new Set(evs.map((e) => e.title)).size === 1;
+  const secTh = (s) => hideSector(d) ? "" : `<th class="sec sec-${secIdx(s)}">${s}</th>`;
+  const names = (sec) => live([sec])[0].names.map(nm).join("<br>") || "—";
+  let html = `<div class="grp"><header><h2>${g.name}</h2>${sameTitle ? `<span>${evs[0].title}</span>` : ""}</header>`;
+  if (evs.some((e) => blocksOf(e).some((b) => b.parent)) || new Set(evs.map(shape)).size > 1) {
+    // mixed events: one row per Sector, the event and its time spanning them
+    const secs = [...new Set(evs.flatMap((e) => blocksOf(e).flatMap((b) => b.sectors.map((x) => x.sector))))];
+    html += `<table><thead><tr><th style="width:118px">Data</th><th style="width:150px">Evento</th><th style="width:120px">Horário</th><th class="sec" style="color:var(--fg)">Setor</th><th>Quem serve</th></tr></thead><tbody>`;
+    evs.forEach((ev) => {
+      const bl = blocksOf(ev);
+      const span = bl.reduce((a, b) => a + (b.cancelled ? 1 : b.sectors.length), 0);
+      bl.forEach((b, bi) => (b.cancelled ? [null] : b.sectors).forEach((sec, si) => {
+        html += `<tr class="${si === 0 ? (bi === 0 ? "bstart" : "row bstart") : "row"} ${sec ? `sec-${secIdx(sec.sector)}` : ""}">`;
+        if (bi === 0 && si === 0) html += `<td rowspan="${span}"><span class="dn" style="font-weight:700">${ev.date}</span></td><td rowspan="${span}" class="evt"><b>${ev.title}</b>${bl[0].parent ? `<small>${bl[0].parent}</small>` : ""}</td>`;
+        if (si === 0) html += `<th class="htime" rowspan="${b.cancelled ? 1 : b.sectors.length}">${b.label.replace(" · ", " ")}</th>`;
+        html += sec ? `${secTh(sec.sector)}<td>${live([sec])[0].names.map(nm).join(" · ")}</td>` : `<td class="cx" colspan="2">Cancelado</td>`;
+        html += `</tr>`;
+      }));
+    });
+    return html + `</tbody></table></div>`;
+  }
+  const tmpl = blocksOf(evs.find((e) => !e.cancelledEvent));
+  const total = tmpl.reduce((a, b) => a + b.sectors.length, 0);
+  html += `<table><thead><tr><th class="time" style="background:var(--acc)"></th>${hideSector(d) ? "" : `<th class="sec"></th>`}${evs.map((e) => { const [wd, dn] = dateParts(e.date); return `<th><span class="wd">${wd}</span><span class="dn">${dn}</span>${sameTitle ? "" : `<small>${e.title}</small>`}</th>`; }).join("")}</tr></thead><tbody>`;
+  tmpl.forEach((tb, bi) => tb.sectors.forEach((sec, si) => {
+    html += `<tr class="${si === 0 ? "bstart" : "row"} sec-${secIdx(sec.sector)}">${si === 0 ? `<th class="time" rowspan="${tb.sectors.length}"><span>${tb.label}</span></th>` : ""}${secTh(sec.sector)}`;
+    evs.forEach((ev) => {
+      if (ev.cancelledEvent) { if (bi === 0 && si === 0) html += `<td class="cx" rowspan="${total}">Não haverá culto</td>`; return; }
+      const b = blocksOf(ev)[bi];
+      if (b.cancelled) { if (si === 0) html += `<td class="cx" rowspan="${b.sectors.length}">Cancelado</td>`; return; }
+      html += `<td>${names(b.sectors[si])}</td>`;
+    });
+    html += `</tr>`;
+  }));
+  return html + `</tbody></table></div>`;
+}
+function cardF(ev, sameTitle) {
+  const [wd, dn] = dateParts(ev.date);
+  const bl = blocksOf(ev);
+  const tt = [sameTitle ? "" : ev.title, bl[0].parent ?? ""].filter(Boolean).join(" · ");
+  let h = `<div class="card"><div class="ch">${wd ? `<span class="wd">${wd}</span>` : ""}<span class="dn">${dn}</span>${tt ? `<span class="tt">${tt}</span>` : ""}</div>`;
+  if (ev.cancelledEvent) return h + `<div class="blk"><div class="cx">Não haverá culto</div></div></div>`;
+  return h + bl.map((b) => `<div class="blk">${b.label.length <= 5 ? `<div class="band"><span>${b.label}</span></div>` : `<div class="band wide"><em>${b.label.replace(" · ", " ").replace("–", " – ").split(" ").filter(Boolean).join("<br>")}</em></div>`}` +
+    (b.cancelled ? `<div class="cx">Cancelado</div>` : `<div class="body">` + live(b.sectors).map((x) =>
+      `<div class="sec sec-${secIdx(x.sector)}"><b>${x.sector}</b>${x.names.map((n) => `<div>${nm(n)}</div>`).join("") || "<div>—</div>"}</div>`).join("") + `</div>`) + `</div>`).join("") + `</div>`;
+}
+const headerE = (d) => `<div class="ehd"><img src="logo.png" alt=""><div class="t"><div class="k">Escala</div><h1>${d.ministry}</h1>${state.draft ? `<span class="stamp">Rascunho</span>` : ""}</div><div class="range"><b>Novembro 2026</b>1 – 30 nov 2026</div></div>`;
+
 function parts(d) {
   if (state.split === "group") return d.groups.map((g) => ({ name: g.name, groups: [g] }));
   if (state.split === "week") {
@@ -238,8 +353,8 @@ function render() {
   state.part = Math.min(state.part, ps.length - 1);
   const p = ps[state.part];
   const v = state.variant;
-  const body = p.groups.map((g) => `<section class="group"><h2>${g.name}</h2>${v === "D" ? gridD(g, d) : g.events.map((e) => R[v](e, d)).join("")}</section>`).join("");
-  document.getElementById("stage").innerHTML = `<div id="sheet" class="sheet ${v} ${v === "D" ? "a4" : ""}">${header(d)}${body}</div>`;
+  const body = v === "F" ? p.groups.map((g) => { const same = new Set(g.events.map((e) => e.title)).size === 1; return `<section class="grp"><header><h2>${g.name}</h2>${same ? `<span>${g.events[0].title}</span>` : ""}</header>${g.events.map((e) => cardF(e, same)).join("")}</section>`; }).join("") : v === "E" ? p.groups.map((g) => gridE(g, d)).join("") : p.groups.map((g) => `<section class="group"><h2>${g.name}</h2>${v === "D" ? gridD(g, d) : g.events.map((e) => R[v](e, d)).join("")}</section>`).join("");
+  document.getElementById("stage").innerHTML = `<div id="sheet" class="sheet ${v} ${["D", "E"].includes(v) ? "a4" : ""}">${["E", "F"].includes(v) ? headerE(d) : header(d)}${body}</div>`;
   document.getElementById("vlabel").textContent = `${v} (${VARIANTS[v]})`;
   for (const k of ["data", "split"]) document.getElementById(k).value = state[k];
   document.getElementById("draft").checked = state.draft;
@@ -247,7 +362,7 @@ function render() {
   const url = new URL(location.href);
   for (const [k, val] of Object.entries(state)) url.searchParams.set(k, k === "draft" ? (val ? "1" : "0") : val);
   history.replaceState(null, "", url);
-  requestAnimationFrame(() => { const s = document.getElementById("sheet"); const r = s.getBoundingClientRect(); document.getElementById("dims").textContent = v === "D" ? "" : `imagem ${r.width * 2}×${Math.round(r.height * 2)} px · 1:${(r.height / r.width).toFixed(1)}`; });
+  requestAnimationFrame(() => { const s = document.getElementById("sheet"); const r = s.getBoundingClientRect(); document.getElementById("dims").textContent = ["D", "E"].includes(v) ? "" : `imagem ${r.width * 2}×${Math.round(r.height * 2)} px · 1:${(r.height / r.width).toFixed(1)}`; });
 }
 const cycle = (dir) => { state.variant = KEYS[(KEYS.indexOf(state.variant) + dir + KEYS.length) % KEYS.length]; render(); };
 document.getElementById("prev").onclick = () => cycle(-1);

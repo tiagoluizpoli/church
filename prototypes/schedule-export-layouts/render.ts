@@ -14,7 +14,7 @@ const open = async (qs: string) => {
 };
 const report: string[] = [];
 for (const data of ["kids", "proj"]) {
-  for (const variant of ["A", "B", "C"]) {
+  for (const variant of ["A", "B", "C", "F"]) {
     for (const [split, n] of [["all", 1], ["group", 3], ["week", 4]] as const) {
       for (let part = 0; part < n; part++) {
         await open(`variant=${variant}&data=${data}&split=${split}&part=${part}`);
@@ -27,10 +27,10 @@ for (const data of ["kids", "proj"]) {
   }
   await open(`variant=D&data=${data}`);
   await page.setViewportSize({ width: 1200, height: 900 });
-  for (const [split, n] of [["all", 1], ["group", 3]] as const) {
+  for (const g of ["D", "E"]) for (const [split, n] of [["all", 1], ["group", 3]] as const) {
     for (let part = 0; part < n; part++) {
-      await open(`variant=D&data=${data}&split=${split}&part=${part}`);
-      const file = `${data}-D-${split}${n > 1 ? part + 1 : ""}.png`;
+      await open(`variant=${g}&data=${data}&split=${split}&part=${part}`);
+      const file = `${data}-${g}-${split}${n > 1 ? part + 1 : ""}.png`;
       const box = (await page.locator("#sheet").boundingBox())!;
       await page.locator("#sheet").screenshot({ path: `${out}/${file}` });
       report.push(`${file}\t${Math.round(box.width * 2)}x${Math.round(box.height * 2)}\t1:${(box.height / box.width).toFixed(1)}`);
@@ -40,9 +40,14 @@ for (const data of ["kids", "proj"]) {
   await open(`variant=D&data=${data}`);
   await page.emulateMedia({ media: "print" });
   await page.pdf({ path: `${out}/${data}-D.pdf`, format: "A4", landscape: true, printBackground: true, margin: { top: "0", bottom: "0", left: "0", right: "0" } });
+  await open(`variant=E&data=${data}`);
+  await page.pdf({ path: `${out}/${data}-E.pdf`, format: "A4", landscape: true, printBackground: true, margin: { top: "0", bottom: "0", left: "0", right: "0" } });
   await page.emulateMedia({ media: "screen" });
 }
-await open("variant=A&data=kids&draft=1");
-await page.locator("#sheet").screenshot({ path: `${out}/kids-A-all-draft.png` });
+for (const v of ["A", "E", "F"]) {
+  if (v === "E") await page.setViewportSize({ width: 1200, height: 900 });
+  await open(`variant=${v}&data=kids&draft=1&split=group&part=0`);
+  await page.locator("#sheet").screenshot({ path: `${out}/kids-${v}-draft.png` });
+}
 await browser.close();
 console.log(report.join("\n"));

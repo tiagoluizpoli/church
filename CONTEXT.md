@@ -240,6 +240,22 @@ _Avoid_: Call, alert
 A short number given to each Check-in, counted from 1 in each EventTimeBlock of a Church and shared by the Children it covers. It is not secret: it is printed on the Child tag and Guardian tag, shown in every Guardian's app, and shown on the big screen with the Child's first name when the room cannot reach a Guardian through a Call. It never releases a Child.
 _Avoid_: Code, pickup number, ticket number
 
+**Room list** (pt-BR: Lista da sala):
+The Children checked in to one Room right now, with those still Awaiting drop-off for it, as the room's people and the Kids leaders see it during the service.
+_Avoid_: Roster, attendance list, chamada
+
+**Kids leader** (pt-BR: Líder do Kids):
+A Person who leads a Ministry with check-in turned on, or any ChurchAdmin of that Church. Only a Kids leader gives a Release override, sets a Pickup restriction or a Room placement, adds or removes people on a running Shift, and resolves Kids alerts.
+_Avoid_: Kids admin, coordinator, supervisor
+
+**Kids team on duty** (pt-BR: Equipe do Kids em serviço):
+Everyone with an Assignment in the running Shift of a Ministry with check-in turned on, at any of its Sectors, plus the Kids leaders. They do the desk work: checking in a Family that cannot scan, registering a visitor Family and producing tags. Those assigned to a Room are also that Room's people.
+_Avoid_: Desk volunteer (as a separate role), staff
+
+**Kids alert** (pt-BR: Alerta do Kids):
+Something on a service day that needs a Kids leader now, such as a Child no open Room fits, a Check-in still open after the service, or a volunteer asking for the leadership at the door. It reaches the Kids leaders with an Assignment in the running Shift, or every Kids leader when none has one, and stays listed until one of them resolves it with a note.
+_Avoid_: Anomaly, error, notification (for an alert), Call
+
 ## Time
 
 Three kinds of time exist in this context, and every date bug so far has come from confusing them. They meet in one direction only: **TimeOfDay + CalendarDay + Church Timezone → Instant**. An Instant may be read back as a CalendarDay, but only through the Church Timezone.
@@ -318,6 +334,10 @@ _Avoid_: TimeSlot, slot, period
 **Shift** (pt-BR: Turno):
 A Ministry's subdivision of an EventTimeBlock inside its MinistryParticipation — the actual piece it staffs, bounded by Instants. Two Ministries may split the same EventTimeBlock differently (projection 2×4h, kids 4×2h). Default is one Shift equal to the whole EventTimeBlock (no split). A Shift must lie entirely within its parent EventTimeBlock's bounds — enforced as a domain invariant and by the creation form. Shifts are created either by dividing the EventTimeBlock into N equal parts or by setting times manually (unequal parts allowed). ShiftRequirements, Assignments, and UnavailableShifts all attach to a Shift, not the EventTimeBlock. A Shift with no ShiftRequirement is an anomaly, not a way to say "nobody needed": it is flagged, and the Ministry cannot ask for availability until it is fixed. A Ministry that needs nobody for a Shift removes the Shift or opts out of the EventTimeBlock.
 _Avoid_: Sub-slot, slot, block, period
+
+**Wrap-up time** (pt-BR: Tempo de encerramento):
+How long a Ministry's people keep working after its last Shift of an EventTimeBlock ends, handing Children over, tidying or putting things away. Each Ministry sets its own. A Shift is completely done only when its wrap-up time is over. Assigning someone whose wrap-up time runs into another Assignment of theirs only warns the leader doing the assigning; it never blocks.
+_Avoid_: Pickup time, buffer, overtime
 
 **ShiftRequirement** (UI: People needed · pt-BR: Pessoas necessárias):
 The staffing need for one Role at one Sector within a **Shift**, owned by one MinistryParticipation (e.g., Babies Room: Teacher ×1, Helper ×3). The Sector is always present. Its headcount is **people needed**, shown against progress as "3 of 5 assigned" (pt-BR: "3 de 5 escalados"). It is at least one: a Role not needed at a Sector has no ShiftRequirement, which the screens show as 0. It cannot drop below the Volunteers already assigned to it.

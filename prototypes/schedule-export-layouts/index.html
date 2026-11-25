@@ -1,0 +1,261 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway. Wayfinder ticket "Prototype: export layouts at real size" (#1106, map #1101).
+  Question: which layout makes an exported Ministry Schedule clear on a phone (PNG) and on paper (PDF)?
+  Four structurally different layouts of the same fake November Cycle, switchable via ?variant=A|B|C|D.
+  Other params: ?data=kids|proj  ?draft=1  ?split=all|group|week&part=N  ?chrome=0 (hide controls, used by render.ts)
+  Open the file directly in a browser, or run `bun prototypes/schedule-export-layouts/render.ts` for PNG/PDF output.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PROTOTYPE · schedule export layouts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #1b2230; --muted: #5d6677; --line: #d9dee7; --paper: #ffffff; --bg: #e9ecf1;
+    --brand: oklch(0.378 0.09 255); --brand-soft: oklch(0.948 0.018 247);
+    --s0: #b4235a; --s1: #1f6fb2; --s2: #2f7d32; --s3: #a35a00; /* sector repeat colours; label carries meaning */
+    --cancel: #b42318;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); font-family: "Atkinson Hyperlegible", system-ui, sans-serif; color: var(--ink); }
+  #controls { position: sticky; top: 0; z-index: 5; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 8px 12px; background: #111827; color: #fff; font: 13px system-ui; }
+  #controls select, #controls label { font: inherit; }
+  #stage { padding: 24px; display: flex; justify-content: center; }
+  /* phone image: 540 CSS px rendered at 2x = 1080 px wide */
+  .sheet { width: 540px; background: var(--paper); padding: 28px 24px 32px; box-shadow: 0 2px 12px rgb(0 0 0 / .12); position: relative; }
+  .sheet.a4 { width: 297mm; min-height: 210mm; padding: 12mm 12mm; }
+  .head { display: flex; gap: 14px; align-items: center; border-bottom: 3px solid var(--brand); padding-bottom: 14px; margin-bottom: 6px; }
+  .head img { width: 56px; height: 56px; }
+  .head h1 { margin: 0; font-size: 24px; line-height: 1.15; color: var(--brand); }
+  .head .range { font-size: 16px; color: var(--muted); margin-top: 2px; }
+  .single { font-size: 16px; color: var(--muted); margin: 8px 0 0; }
+  .stamp { position: absolute; top: 22px; right: 20px; transform: rotate(6deg); border: 3px solid var(--cancel); color: var(--cancel); font-weight: 700; font-size: 18px; letter-spacing: .08em; padding: 2px 10px; border-radius: 6px; text-transform: uppercase; background: #fff; }
+  .group { margin-top: 22px; }
+  .group > h2 { margin: 0 0 8px; font-size: 20px; color: #fff; background: var(--brand); padding: 6px 12px; border-radius: 6px; }
+  .vaga { color: var(--muted); font-style: italic; }
+  .cancelled { color: var(--cancel); font-weight: 700; }
+  .sec-0 { --sc: var(--s0); } .sec-1 { --sc: var(--s1); } .sec-2 { --sc: var(--s2); } .sec-3 { --sc: var(--s3); }
+
+  /* A: agenda, one name per line */
+  .A .event { border-bottom: 1px solid var(--line); padding: 12px 0; }
+  .A .date { font-size: 19px; font-weight: 700; }
+  .A .title { font-size: 15px; color: var(--muted); }
+  .A .block { margin-top: 10px; }
+  .A .blabel { font-size: 17px; font-weight: 700; color: var(--brand); }
+  .A .sector { margin: 6px 0 0 0; padding-left: 10px; border-left: 4px solid var(--sc); }
+  .A .sector b { display: block; font-size: 14px; color: var(--sc); text-transform: uppercase; letter-spacing: .04em; }
+  .A .sector div { font-size: 17px; line-height: 1.35; }
+
+  /* B: per service card, sectors side by side (2 columns) */
+  .B .event { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .B .ehead { background: var(--brand-soft); padding: 8px 12px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .B .date { font-weight: 700; font-size: 18px; }
+  .B .title { color: var(--muted); font-size: 14px; text-align: right; }
+  .B .block { padding: 8px 12px 10px; border-top: 1px solid var(--line); }
+  .B .blabel { font-weight: 700; font-size: 16px; color: var(--brand); margin-bottom: 4px; }
+  .B .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+  .B .sector b { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--sc); border-bottom: 2px solid var(--sc); margin-bottom: 2px; }
+  .B .sector div { font-size: 15px; line-height: 1.3; }
+
+  /* C: rows per sector, names inline */
+  .C .event { margin-top: 14px; }
+  .C .ehead { display: flex; gap: 10px; align-items: baseline; border-bottom: 2px solid var(--ink); padding-bottom: 3px; }
+  .C .date { font-weight: 700; font-size: 19px; }
+  .C .title { color: var(--muted); font-size: 15px; }
+  .C .blabel { font-weight: 700; font-size: 16px; color: var(--brand); margin-top: 6px; }
+  .C table { width: 100%; border-collapse: collapse; margin-top: 2px; }
+  .C td { padding: 5px 0; vertical-align: top; border-bottom: 1px solid var(--line); font-size: 16px; line-height: 1.3; }
+  .C td.sl { width: 112px; padding-right: 8px; font-weight: 700; font-size: 14px; color: var(--sc); }
+  .C td.sl::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--sc); margin-right: 5px; }
+  .C .n + .n::before { content: " · "; color: var(--muted); }
+
+  /* D: A4 landscape grid, dates as columns, block x sector as rows */
+  .D h2 { font-size: 15px !important; }
+  .D table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11.5px; }
+  .D th, .D td { border: 1px solid var(--line); padding: 3px 5px; vertical-align: top; line-height: 1.25; }
+  .D thead th { background: var(--brand-soft); font-size: 12.5px; }
+  .D thead th small { display: block; font-weight: 400; color: var(--muted); }
+  .D th.row { text-align: left; width: 120px; background: #fafbfc; }
+  .D th.row .bl { color: var(--brand); display: block; }
+  .D th.row .sn { color: var(--sc); display: block; }
+  .D tr.firstsec td, .D tr.firstsec th { border-top: 2px solid var(--ink); }
+  .D td.cx { color: var(--cancel); font-weight: 700; text-align: center; vertical-align: middle; }
+  .D .list td { width: auto; }
+  .D .head h1 { font-size: 20px; }
+
+  #switcher { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; background: #111827; color: #fff; padding: 8px 14px; border-radius: 999px; box-shadow: 0 6px 20px rgb(0 0 0 / .35); font: 14px system-ui; z-index: 10; }
+  #switcher button { background: #374151; color: #fff; border: 0; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; }
+  .nochrome #controls, .nochrome #switcher { display: none; }
+  .nochrome #stage { padding: 0; }
+  .nochrome .sheet { box-shadow: none; }
+</style>
+</head>
+<body>
+<div id="controls">
+  <strong>PROTOTYPE</strong>
+  <label>Dados <select id="data"><option value="kids">Infantil (10–13/culto)</option><option value="proj">Projeção (2/culto)</option></select></label>
+  <label><input type="checkbox" id="draft" /> Rascunho</label>
+  <label>Dividir <select id="split"><option value="all">Tudo numa imagem</option><option value="group">Por grupo</option><option value="week">Por semana</option></select></label>
+  <label>Parte <select id="part"></select></label>
+  <span id="dims"></span>
+</div>
+<div id="stage"></div>
+<div id="switcher"><button id="prev" aria-label="Anterior">←</button><span id="vlabel"></span><button id="next" aria-label="Próxima">→</button></div>
+<script>
+const VARIANTS = { A: "Agenda, um nome por linha", B: "Cartão por culto, setores lado a lado", C: "Linha por setor, nomes corridos", D: "Grade A4 paisagem (papel)" };
+const KEYS = Object.keys(VARIANTS);
+const q = new URLSearchParams(location.search);
+const state = { variant: q.get("variant") ?? "A", data: q.get("data") ?? "kids", draft: q.get("draft") === "1", split: q.get("split") ?? "all", part: Number(q.get("part") ?? 0) };
+if (q.get("chrome") === "0") document.body.classList.add("nochrome");
+
+// ---- fake data: November 2026 Cycle ----
+const POOL = ["Ana Beatriz Carvalho Souza","Maria Eduarda Albuquerque Nogueira","João Pedro Santos","Lucas Gabriel Ferreira Lima","Juliana Ribeiro","Fernanda Cristina de Oliveira Martins","Rafael Almeida","Camila Rodrigues Pereira","Gabriela Monteiro Castro","Pedro Henrique Barbosa","Larissa Teixeira","Thiago Moreira Cardoso","Beatriz Lopes","Mateus Vieira da Silva","Isabela Duarte Fonseca","Carlos Eduardo Pinto","Letícia Ramos","Daniel Araújo Mendes","Vitória Cavalcanti","Felipe Rocha","Mariana Gomes de Azevedo","Bruno Correia","Aline Batista Freitas","Gustavo Nascimento","Patrícia Cunha","Rodrigo Dias Moura","Tatiane Farias","André Luiz Machado","Priscila Campos","Eduardo Sales","Natália Antunes Brandão","Samuel Coelho","Raquel Medeiros","Leonardo Prado","Débora Siqueira Bastos","Vinícius Tavares","Sabrina Lacerda","Marcos Paulo Guimarães","Helena Viana","Otávio Rezende"];
+let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+const pick = (n) => { const out = []; while (out.length < n) { const x = POOL[Math.floor(rnd() * POOL.length)]; if (!out.includes(x)) out.push(x); } return out; };
+
+function people(kind, sizeBias) {
+  if (kind === "proj") return [{ sector: "Projeção", names: pick(2) }];
+  const secs = ["Berçário", "Maternal", "Primários", "Juniores"];
+  const total = 10 + Math.floor(rnd() * 4) - sizeBias;
+  const per = secs.map((_, i) => Math.floor(total / 4) + (i < total % 4 ? 1 : 0));
+  const all = pick(total); let at = 0; // one person per service, never in two Sectors
+  return secs.map((s, i) => ({ sector: s, names: [...all.slice(at, (at += per[i])), ...(i === 1 && rnd() < .5 ? [null] : [])] }));
+}
+function build(kind) {
+  seed = kind === "kids" ? 7 : 11;
+  const sun = [1, 8, 15, 22, 29].map((d) => ({
+    day: d, date: `dom, ${d} nov`, title: "Culto de domingo",
+    blocks: [
+      { label: "Manhã · 9h00–10h30", sectors: people(kind, 0) },
+      { label: "Noite · 18h00–19h30", sectors: people(kind, 0), cancelled: d === 22 },
+    ],
+  }));
+  const wed = [4, 11, 18, 25].map((d) => ({
+    day: d, date: `qua, ${d} nov`, title: "Culto de quarta", cancelledEvent: d === 18,
+    blocks: [{ label: "19h30–21h00", sectors: people(kind, 2) }],
+  }));
+  const other = [
+    { day: 13, date: "sex 13 – dom 15 nov", title: "Retiro das famílias", blocks: [
+      { label: "Programação infantil", shifts: true, sectors: null, shiftList: [
+        { label: "sex · 19h00–22h00", sectors: people(kind, 3) },
+        { label: "sáb · 9h00–12h00", sectors: people(kind, 3) },
+        { label: "sáb · 14h00–17h00", sectors: people(kind, 3) },
+      ] },
+    ] },
+    { day: 27, date: "sex, 27 nov", title: "Vigília de oração", blocks: [{ label: "22h00–01h00", sectors: people(kind, 4) }] },
+  ];
+  return {
+    ministry: kind === "kids" ? "Ministério Infantil" : "Projeção",
+    single: kind === "proj" ? "Todos servem em Projeção" : null,
+    groups: [{ name: "Domingos", events: sun }, { name: "Quartas", events: wed }, { name: "Outros", events: other }],
+  };
+}
+
+// flatten shifts into blocks so every renderer handles them the same way
+const blocksOf = (ev) => ev.blocks.flatMap((b) => b.shiftList ? b.shiftList.map((s, i) => ({ ...s, parent: i === 0 ? b.label : null })) : [b]);
+const secIdx = (name) => ["Berçário", "Maternal", "Primários", "Juniores", "Projeção"].indexOf(name) % 4;
+const nm = (n) => n ?? `<span class="vaga">Vaga</span>`;
+const live = (sectors) => sectors.map((s) => ({ ...s, names: s.names.filter((n) => state.draft || n) }));
+const hideSector = (d) => !!d.single;
+
+function header(d) {
+  return `<div class="head"><img src="logo.png" alt=""><div><h1>${d.ministry} · Novembro 2026</h1><div class="range">1 – 30 nov 2026</div></div></div>`
+    + (d.single ? `<p class="single">${d.single}</p>` : "")
+    + (state.draft ? `<div class="stamp">Rascunho</div>` : "");
+}
+
+const R = {
+  A(ev, d) {
+    if (ev.cancelledEvent) return `<div class="event"><div class="date">${ev.date}</div><div class="title">${ev.title}</div><div class="cancelled">Não haverá culto</div></div>`;
+    return `<div class="event"><div class="date">${ev.date}</div><div class="title">${ev.title}</div>` + blocksOf(ev).map((b) =>
+      `<div class="block">${b.parent ? `<div class="title">${b.parent}</div>` : ""}<div class="blabel">${b.label}</div>` +
+      (b.cancelled ? `<div class="cancelled">Cancelado</div>` : live(b.sectors).map((s) =>
+        `<div class="sector sec-${secIdx(s.sector)}">${hideSector(d) ? "" : `<b>${s.sector}</b>`}${s.names.map((n) => `<div>${nm(n)}</div>`).join("")}</div>`).join("")) + `</div>`).join("") + `</div>`;
+  },
+  B(ev, d) {
+    const head = `<div class="ehead"><span class="date">${ev.date}</span><span class="title">${ev.title}</span></div>`;
+    if (ev.cancelledEvent) return `<div class="event">${head}<div class="block cancelled">Não haverá culto</div></div>`;
+    return `<div class="event">${head}` + blocksOf(ev).map((b) =>
+      `<div class="block">${b.parent ? `<div class="title" style="text-align:left">${b.parent}</div>` : ""}<div class="blabel">${b.label}</div>` +
+      (b.cancelled ? `<div class="cancelled">Cancelado</div>` : `<div class="grid" ${hideSector(d) ? 'style="grid-template-columns:1fr"' : ""}>` + live(b.sectors).map((s) =>
+        `<div class="sector sec-${secIdx(s.sector)}">${hideSector(d) ? "" : `<b>${s.sector}</b>`}${s.names.map((n) => `<div>${nm(n)}</div>`).join("")}</div>`).join("") + `</div>`) + `</div>`).join("") + `</div>`;
+  },
+  C(ev, d) {
+    const head = `<div class="ehead"><span class="date">${ev.date}</span><span class="title">${ev.title}</span></div>`;
+    if (ev.cancelledEvent) return `<div class="event">${head}<div class="cancelled" style="margin-top:6px">Não haverá culto</div></div>`;
+    return `<div class="event">${head}` + blocksOf(ev).map((b) =>
+      `${b.parent ? `<div class="title" style="color:var(--muted);margin-top:6px">${b.parent}</div>` : ""}<div class="blabel">${b.label}</div>` +
+      (b.cancelled ? `<div class="cancelled">Cancelado</div>` : `<table>` + live(b.sectors).map((s) =>
+        `<tr class="sec-${secIdx(s.sector)}">${hideSector(d) ? "" : `<td class="sl">${s.sector}</td>`}<td>${s.names.map((n) => `<span class="n">${nm(n)}</span>`).join("")}</td></tr>`).join("") + `</table>`)).join("") + `</div>`;
+  },
+};
+
+// D: per group, a grid when every event has the same blocks (Domingos, Quartas), else a list table (Outros)
+function gridD(g, d) {
+  const evs = g.events;
+  const shape = (ev) => blocksOf(ev).map((b) => b.label).join("|");
+  if (evs.some((e) => blocksOf(e).some((b) => b.parent)) || new Set(evs.map(shape)).size > 1) {
+    return `<table class="list"><thead><tr><th style="width:150px">Data</th><th style="width:170px">Evento · horário</th><th>Quem serve</th></tr></thead><tbody>` +
+      evs.flatMap((ev) => ev.cancelledEvent ? [`<tr><td>${ev.date}</td><td>${ev.title}</td><td class="cx">Não haverá culto</td></tr>`] : blocksOf(ev).map((b, i) =>
+        `<tr><td>${i ? "" : ev.date}</td><td>${i ? "" : ev.title + "<br>"}<b>${b.label}</b></td><td>${b.cancelled ? '<span class="cancelled">Cancelado</span>' : live(b.sectors).map((s) => `<span class="sec-${secIdx(s.sector)}">${hideSector(d) ? "" : `<b style="color:var(--sc)">${s.sector}:</b> `}${s.names.map(nm).join(", ")}</span>`).join("<br>")}</td></tr>`)).join("") + `</tbody></table>`;
+  }
+  const tmpl = blocksOf(evs.find((e) => !e.cancelledEvent));
+  const cols = evs.map((e) => `<th>${e.date}<small>${e.title}</small></th>`).join("");
+  let rows = "";
+  tmpl.forEach((tb, bi) => {
+    tb.sectors.forEach((sec, si) => {
+      rows += `<tr class="${si === 0 ? "firstsec" : ""} sec-${secIdx(sec.sector)}"><th class="row">${si === 0 ? `<span class="bl">${tb.label}</span>` : ""}${hideSector(d) ? "" : `<span class="sn">${sec.sector}</span>`}</th>`;
+      evs.forEach((ev) => {
+        if (ev.cancelledEvent) { if (bi === 0 && si === 0) rows += `<td class="cx" rowspan="${tmpl.reduce((a, b) => a + b.sectors.length, 0)}">Não haverá culto</td>`; return; }
+        const b = blocksOf(ev)[bi];
+        if (b.cancelled) { if (si === 0) rows += `<td class="cx" rowspan="${b.sectors.length}">Cancelado</td>`; return; }
+        rows += `<td>${live([b.sectors[si]])[0].names.map(nm).join("<br>")}</td>`;
+      });
+      rows += `</tr>`;
+    });
+  });
+  return `<table><thead><tr><th class="row"></th>${cols}</tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function parts(d) {
+  if (state.split === "group") return d.groups.map((g) => ({ name: g.name, groups: [g] }));
+  if (state.split === "week") {
+    const weeks = [[1, 7], [8, 14], [15, 21], [22, 30]];
+    return weeks.map(([a, b]) => ({ name: `${a}–${b} nov`, groups: d.groups.map((g) => ({ ...g, events: g.events.filter((e) => e.day >= a && e.day <= b) })).filter((g) => g.events.length) }));
+  }
+  return [{ name: "Tudo", groups: d.groups }];
+}
+
+function render() {
+  const d = build(state.data);
+  const ps = parts(d);
+  state.part = Math.min(state.part, ps.length - 1);
+  const p = ps[state.part];
+  const v = state.variant;
+  const body = p.groups.map((g) => `<section class="group"><h2>${g.name}</h2>${v === "D" ? gridD(g, d) : g.events.map((e) => R[v](e, d)).join("")}</section>`).join("");
+  document.getElementById("stage").innerHTML = `<div id="sheet" class="sheet ${v} ${v === "D" ? "a4" : ""}">${header(d)}${body}</div>`;
+  document.getElementById("vlabel").textContent = `${v} (${VARIANTS[v]})`;
+  for (const k of ["data", "split"]) document.getElementById(k).value = state[k];
+  document.getElementById("draft").checked = state.draft;
+  document.getElementById("part").innerHTML = ps.map((x, i) => `<option value="${i}" ${i === state.part ? "selected" : ""}>${x.name}</option>`).join("");
+  const url = new URL(location.href);
+  for (const [k, val] of Object.entries(state)) url.searchParams.set(k, k === "draft" ? (val ? "1" : "0") : val);
+  history.replaceState(null, "", url);
+  requestAnimationFrame(() => { const s = document.getElementById("sheet"); const r = s.getBoundingClientRect(); document.getElementById("dims").textContent = v === "D" ? "" : `imagem ${r.width * 2}×${Math.round(r.height * 2)} px · 1:${(r.height / r.width).toFixed(1)}`; });
+}
+const cycle = (dir) => { state.variant = KEYS[(KEYS.indexOf(state.variant) + dir + KEYS.length) % KEYS.length]; render(); };
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", (e) => { if (e.target.closest("input,select,textarea,[contenteditable]")) return; if (e.key === "ArrowLeft") cycle(-1); if (e.key === "ArrowRight") cycle(1); });
+document.getElementById("data").onchange = (e) => { state.data = e.target.value; render(); };
+document.getElementById("draft").onchange = (e) => { state.draft = e.target.checked; render(); };
+document.getElementById("split").onchange = (e) => { state.split = e.target.value; state.part = 0; render(); };
+document.getElementById("part").onchange = (e) => { state.part = Number(e.target.value); render(); };
+render();
+</script>
+</body>
+</html>

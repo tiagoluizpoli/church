@@ -274,6 +274,36 @@ describe('useCycleBuilder optimistic assignments', () => {
     });
   });
 
+  it.each([
+    ['time block', 'eventTimeBlock'],
+    ['Event', 'event'],
+  ] as const)('marks a cancelled %s read-only and drops it from the Event totals', async (_, scope) => {
+    const data = makeCycleBuilderData();
+    const item = data.events[0];
+    const block = item?.eventTimeBlocks[0];
+    if (!item || !block) throw new Error('Missing Event fixture');
+    if (scope === 'event') item.event.status = 'cancelled';
+    else block.eventTimeBlock.status = 'cancelled';
+    adminApiMock.getCycleBuilderData.mockResolvedValue(data);
+    const { result } = renderCycleBuilder();
+    await waitFor(() => expect(result.current.data).toBeDefined());
+    const event = result.current.data?.events[0];
+    expect(event).toMatchObject({
+      assignedCount: 0,
+      peopleNeeded: 0,
+      fillRatio: 0,
+      eventTimeBlockCount: 0,
+    });
+    expect(event?.eventTimeBlocks[0]?.cancelled).toBe(true);
+    expect(event?.eventTimeBlocks[0]?.shifts[0]?.cancelled).toBe(true);
+    // The Assignment already on it stays visible.
+    expect(
+      assignedVolunteerIds(
+        event?.eventTimeBlocks[0]?.shifts[0]?.assignments ?? [],
+      ),
+    ).toEqual(['ana']);
+  });
+
   it('shows a created assignment before the server answers', async () => {
     const pendingCreate = defer<unknown>();
     adminApiMock.createParticipationAssignment.mockReturnValue(

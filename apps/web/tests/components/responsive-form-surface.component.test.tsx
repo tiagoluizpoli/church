@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
@@ -148,5 +149,35 @@ describe('ResponsiveFormSurface', () => {
     expect(screen.getByRole('button', { name: 'Save' }).className).toContain(
       'h-11',
     );
+  });
+
+  it.each([
+    true,
+    false,
+  ])('closeDisabled holds Escape on every shell; otherwise Escape closes (desktop=%s)', async (desktop) => {
+    mockUseMediaQuery.mockReturnValue(desktop);
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ResponsiveFormSurface
+        open
+        closeDisabled
+        onOpenChange={onOpenChange}
+        title="T"
+      >
+        <div>Body</div>
+      </ResponsiveFormSurface>,
+    );
+
+    await user.keyboard('{Escape}');
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    rerender(
+      <ResponsiveFormSurface open onOpenChange={onOpenChange} title="T">
+        <div>Body</div>
+      </ResponsiveFormSurface>,
+    );
+    await user.keyboard('{Escape}');
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TemplateEditPage } from '@/features/scheduling/components/planning-admin/template-edit-page';
+import { TemplateEditDialog } from '@/features/scheduling/components/planning-admin/template-edit-dialog';
 import { USUAL_SETUP_QUERY_KEY } from '@/features/scheduling/components/planning-admin/template-query-keys';
 import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderWithProviders } from '@/tests/setup/render';
@@ -13,11 +13,10 @@ import { renderWithProviders } from '@/tests/setup/render';
 const getEventTemplate = vi.fn();
 const getEventTemplateUsage = vi.fn();
 const updateEventTemplate = vi.fn();
-const listTemplatePrecedences = vi.fn();
-const changeTemplatePrecedence = vi.fn();
-const deleteEventTemplate = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
+const blocker = { status: 'idle', reset: vi.fn(), proceed: vi.fn() };
+let shouldBlock: () => boolean = () => false;
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -25,11 +24,6 @@ vi.mock('@/utils/api-instances', () => ({
     getEventTemplateUsage: (...args: unknown[]) =>
       getEventTemplateUsage(...args),
     updateEventTemplate: (...args: unknown[]) => updateEventTemplate(...args),
-    listTemplatePrecedences: (...args: unknown[]) =>
-      listTemplatePrecedences(...args),
-    changeTemplatePrecedence: (...args: unknown[]) =>
-      changeTemplatePrecedence(...args),
-    deleteEventTemplate: (...args: unknown[]) => deleteEventTemplate(...args),
   },
 }));
 vi.mock('sonner', () => ({
@@ -53,6 +47,10 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => navigate,
+  useBlocker: (options: { shouldBlockFn: () => boolean }) => {
+    shouldBlock = options.shouldBlockFn;
+    return blocker;
+  },
 }));
 
 const template = {
@@ -97,11 +95,9 @@ function httpError(status: number) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  blocker.status = 'idle';
   getEventTemplate.mockResolvedValue(template);
   updateEventTemplate.mockResolvedValue(template);
-  listTemplatePrecedences.mockResolvedValue({ precedences: [] });
-  changeTemplatePrecedence.mockResolvedValue({});
-  deleteEventTemplate.mockResolvedValue(undefined);
   getEventTemplateUsage.mockResolvedValue({
     templateId: 'template-1',
     ministryCount: 2,
@@ -111,7 +107,7 @@ beforeEach(() => {
 
 async function renderLoaded(queryClient?: QueryClient) {
   const user = userEvent.setup();
-  renderWithProviders(<TemplateEditPage templateId="template-1" />, {
+  renderWithProviders(<TemplateEditDialog templateId="template-1" />, {
     queryClient,
   });
   await screen.findByDisplayValue('Sunday');
@@ -125,39 +121,36 @@ async function removeVigil(user: ReturnType<typeof userEvent.setup>) {
   );
 }
 
-describe('TemplateEditPage delete', () => {
-  it('confirms from the edit page keeping the draft on cancel, then deletes and returns to the list', async () => {
+describe('TemplateEditDialog surface', () => {
+  it('opens as a titled dialog whose footer is Cancel then Save, leaving Delete and Precedences to the list', async () => {
     const user = await renderLoaded();
-    await user.type(screen.getByTestId('template-name-input'), ' 2');
 
-    await user.click(screen.getByTestId('delete-template-button'));
-    const dialog = await screen.findByRole('alertdialog');
-    expect(deleteEventTemplate).not.toHaveBeenCalled();
+    const dialog = screen.getByRole('dialog', { name: 'Editar modelo' });
     expect(
-      await within(dialog).findByText(
-        'A configuração padrão de 2 ministérios será removida.',
-      ),
-    ).toBeInTheDocument();
+      within(dialog).getByRole('heading', { level: 2, name: 'Editar modelo' }),
+    ).toBeVisible();
+    const cancel = within(dialog).getByTestId('cancel-template-button');
+    const save = within(dialog).getByTestId('create-template-button');
+    expect(
+      cancel.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      within(dialog).queryByTestId('delete-template-button'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByTestId('template-precedences'),
+    ).not.toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-    expect(deleteEventTemplate).not.toHaveBeenCalled();
-    expect(screen.getByTestId('template-name-input')).toHaveValue('Sunday 2');
-
-    await user.click(screen.getByTestId('delete-template-button'));
-    await user.click(
-      await screen.findByTestId('confirm-template-delete-button'),
-    );
-
-    await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
-    );
-    expect(deleteEventTemplate).toHaveBeenCalledWith('template-1');
-    expect(toastSuccess).toHaveBeenCalledWith('Modelo excluído');
+    await user.click(cancel);
+    expect(navigate).toHaveBeenCalledWith({
+      to: '/app/event-templates',
+      replace: true,
+    });
+    expect(updateEventTemplate).not.toHaveBeenCalled();
   });
 });
 
-describe('TemplateEditPage', () => {
+describe('TemplateEditDialog', () => {
   it('prefills from its own detail read and saves a rename without a usage read, keeping block ids', async () => {
     const user = await renderLoaded();
 
@@ -170,7 +163,10 @@ describe('TemplateEditPage', () => {
     await user.click(screen.getByTestId('create-template-button'));
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
     expect(getEventTemplateUsage).not.toHaveBeenCalled();
     expect(updateEventTemplate).toHaveBeenCalledWith('template-1', {
@@ -208,7 +204,10 @@ describe('TemplateEditPage', () => {
     await user.click(screen.getByTestId('create-template-button'));
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: USUAL_SETUP_QUERY_KEY,
@@ -218,7 +217,7 @@ describe('TemplateEditPage', () => {
   it('shows not found for a missing or foreign template', async () => {
     getEventTemplate.mockRejectedValue(httpError(404));
 
-    renderWithProviders(<TemplateEditPage templateId="missing" />);
+    renderWithProviders(<TemplateEditDialog templateId="missing" />);
 
     expect(await screen.findByTestId('template-not-found')).toHaveTextContent(
       'Este modelo de evento não existe ou não está mais disponível.',
@@ -228,7 +227,7 @@ describe('TemplateEditPage', () => {
   it('offers retry when the detail read fails', async () => {
     getEventTemplate.mockRejectedValueOnce(httpError(500));
     const user = userEvent.setup();
-    renderWithProviders(<TemplateEditPage templateId="template-1" />);
+    renderWithProviders(<TemplateEditDialog templateId="template-1" />);
 
     const alert = await screen.findByTestId('template-load-error');
     await user.click(
@@ -256,6 +255,8 @@ describe('TemplateEditPage', () => {
       'Vigil: a configuração padrão de 2 ministérios será removida',
     );
     expect(dialog).not.toHaveTextContent('Welcome');
+    // The confirmation stacks over the edit dialog, which stays open beneath it.
+    expect(screen.getByTestId('template-edit-dialog')).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
 
     await waitFor(() =>
@@ -383,10 +384,10 @@ describe('TemplateEditPage', () => {
   });
 });
 
-describe('TemplateEditPage loading', () => {
+describe('TemplateEditDialog loading', () => {
   it('shows a busy skeleton on first load', async () => {
     getEventTemplate.mockReturnValue(new Promise(() => undefined));
-    renderWithProviders(<TemplateEditPage templateId="template-1" />);
+    renderWithProviders(<TemplateEditDialog templateId="template-1" />);
     const loading = await screen.findByRole('status', {
       name: m.event_templates_detail_loading(),
     });
@@ -408,56 +409,6 @@ describe('TemplateEditPage loading', () => {
         name: m.event_templates_detail_loading(),
       }),
     ).toBeNull();
-  });
-
-  it('lists the precedences and changes one on its own without saving the template', async () => {
-    listTemplatePrecedences.mockResolvedValue({
-      precedences: [
-        {
-          otherTemplateId: 'other-1',
-          otherTemplateName: 'Culto',
-          answer: 'both',
-        },
-        {
-          otherTemplateId: 'other-2',
-          otherTemplateName: 'Jovens',
-          answer: 'otherWins',
-        },
-      ],
-    });
-    const user = await renderLoaded();
-
-    expect(listTemplatePrecedences).toHaveBeenCalledWith('template-1');
-    const rows = await screen.findAllByTestId('template-precedence-row');
-    expect(rows).toHaveLength(2);
-    expect(
-      within(rows[0]).getByRole('radio', { name: 'Manter os dois' }),
-    ).toBeChecked();
-    expect(
-      within(rows[1]).getByRole('radio', { name: 'O outro vence' }),
-    ).toBeChecked();
-
-    await user.click(
-      within(rows[0]).getByRole('radio', { name: 'Este vence' }),
-    );
-
-    await waitFor(() =>
-      expect(changeTemplatePrecedence).toHaveBeenCalledWith(
-        'template-1',
-        'other-1',
-        { answer: 'thisWins' },
-      ),
-    );
-    expect(updateEventTemplate).not.toHaveBeenCalled();
-    expect(toastSuccess).toHaveBeenCalledWith('Precedência atualizada');
-  });
-
-  it('shows an empty state when there are no precedences', async () => {
-    await renderLoaded();
-
-    expect(
-      await screen.findByTestId('template-precedences-empty'),
-    ).toBeInTheDocument();
   });
 
   it('asks the unanswered pair on save and resubmits the update with the answer', async () => {
@@ -489,7 +440,48 @@ describe('TemplateEditPage loading', () => {
       { otherTemplateId: 'other-1', answer: 'both' },
     ]);
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
+  });
+});
+
+describe('TemplateEditDialog leave guard', () => {
+  it('holds navigation only once the draft differs from the saved template', async () => {
+    const user = await renderLoaded();
+    expect(shouldBlock()).toBe(false);
+
+    await user.type(screen.getByTestId('template-name-input'), 'X');
+    expect(shouldBlock()).toBe(true);
+  });
+
+  it('asks before discarding: Keep editing resets, Discard proceeds', async () => {
+    blocker.status = 'blocked';
+    const user = await renderLoaded();
+
+    const leave = await screen.findByTestId('template-leave-dialog');
+    await user.click(
+      within(leave).getByRole('button', { name: 'Continuar editando' }),
+    );
+    expect(blocker.reset).toHaveBeenCalledTimes(1);
+    await user.click(
+      within(leave).getByRole('button', { name: 'Descartar e sair' }),
+    );
+    expect(blocker.proceed).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores Escape while saving and holds navigation', async () => {
+    updateEventTemplate.mockReturnValue(new Promise(() => undefined));
+    const user = await renderLoaded();
+
+    await user.type(screen.getByTestId('template-name-input'), 'X');
+    await user.click(screen.getByTestId('create-template-button'));
+    await waitFor(() => expect(updateEventTemplate).toHaveBeenCalled());
+    await user.keyboard('{Escape}');
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(shouldBlock()).toBe(true);
   });
 });

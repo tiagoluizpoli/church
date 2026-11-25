@@ -107,6 +107,17 @@ const MORNING = {
   shifts: [],
 };
 const LIST_PATH = `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`;
+const CANCELLED_ID = '77777777-7777-4777-8777-777777777777';
+const CANCELLED = {
+  ...BLOCK,
+  cancelled: true,
+  eventTimeBlock: {
+    ...BLOCK.eventTimeBlock,
+    id: CANCELLED_ID,
+    label: 'Cancelled',
+    status: 'cancelled' as const,
+  },
+};
 
 describe('preparing beside the retained Schedule list', () => {
   // jsdom has no scrolling; the router and the list both scroll to a row hash.
@@ -207,6 +218,92 @@ describe('preparing beside the retained Schedule list', () => {
     expect(
       screen.queryByTestId(`prepare-event-time-block-row-${MORNING_ID}`),
     ).not.toBeInTheDocument();
+  });
+
+  it('steps over a cancelled block, which the list offers no Abrir for', async () => {
+    const user = userEvent.setup();
+    api.getCycleParticipation.mockResolvedValue({
+      dayMarkers: ['2027-01-03'],
+      totals: { blocks: 3, needsAttention: 0 },
+      events: [
+        {
+          ...EVENT,
+          eventTimeBlocks: [BLOCK, CANCELLED, MORNING],
+        },
+      ],
+    });
+    const { router } = renderRoute({
+      initialPath: EDITOR_PATH,
+      churchTimezone: 'America/Sao_Paulo',
+    });
+    await screen.findByRole('heading', { name: 'Sunday · Night' });
+    await user.click(
+      await screen.findByRole('button', {
+        name: new RegExp(`^${m.prepare_next_block_named({ target: '' })}`),
+      }),
+    );
+    await screen.findByRole('heading', { name: 'Sunday · Morning' });
+    expect(router.state.location.pathname).toBe(
+      `${LIST_PATH}/slots/${MORNING_ID}`,
+    );
+  });
+
+  it.each([
+    ['time block', 'block'],
+    ['Event', 'event'],
+  ] as const)('shows a cancelled %s opened by URL read-only, with the badge and a way back', async (_, scope) => {
+    const user = userEvent.setup();
+    api.getCycleParticipation.mockResolvedValue({
+      dayMarkers: ['2027-01-03'],
+      totals: { blocks: 2, needsAttention: 0 },
+      events: [
+        {
+          ...EVENT,
+          event: {
+            ...EVENT.event,
+            status: scope === 'event' ? 'cancelled' : EVENT.event.status,
+          },
+          eventTimeBlocks: [
+            scope === 'event'
+              ? {
+                  ...CANCELLED,
+                  eventTimeBlock: {
+                    ...CANCELLED.eventTimeBlock,
+                    status: 'active',
+                  },
+                }
+              : CANCELLED,
+          ],
+        },
+        {
+          ...EVENT,
+          event: { ...EVENT.event, id: 'event-2' },
+          eventTimeBlocks: [BLOCK],
+        },
+      ],
+    });
+    const { router } = renderRoute({
+      initialPath: `${LIST_PATH}/slots/${CANCELLED_ID}`,
+      churchTimezone: 'America/Sao_Paulo',
+    });
+    const panel = await screen.findByTestId('prepare-block-panel');
+    expect(
+      await within(panel).findByText(m.prepare_block_cancelled()),
+    ).toBeVisible();
+    expect(within(panel).getByText(m.event_status_cancelled())).toBeVisible();
+    expect(
+      within(panel).getByRole('checkbox', {
+        name: m.usual_setup_serves_label(),
+      }),
+    ).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      within(panel).queryByRole('button', { name: m.usual_setup_save() }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      within(panel).getByRole('button', { name: m.prepare_close_block() }),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe(LIST_PATH));
+    expect(api.saveEventTimeBlockPreparation).not.toHaveBeenCalled();
   });
 
   it('opens a block from its row’s Abrir action, the row itself being no click target', async () => {

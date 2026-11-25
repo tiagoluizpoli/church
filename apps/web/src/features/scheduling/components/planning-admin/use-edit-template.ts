@@ -18,6 +18,7 @@ import {
 } from './template-query-keys';
 import { useTemplateCollisions } from './use-template-collisions';
 import { toSaveRefusal, useTemplateForm } from './use-template-form';
+import { useTemplateLeaveGuard } from './use-template-leave-guard';
 import { adminApi } from '@/utils/api-instances';
 
 export interface RemovedBlockUsage {
@@ -38,6 +39,7 @@ export interface UseEditTemplateResult extends TemplateEditorState {
   onConfirmRemoval: () => void;
   onCancelRemoval: () => void;
   collisionDialog: TemplateCollisionDialogProps;
+  leaveBlocker: ReturnType<typeof useTemplateLeaveGuard>['blocker'];
 }
 
 /**
@@ -52,7 +54,7 @@ export function useEditTemplate({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const templateId = template.id;
-  const { form, setRefusal, fields } = useTemplateForm({
+  const { form, dirty, setRefusal, fields } = useTemplateForm({
     initialForm: () => createTemplateFormFromTemplate({ template }),
   });
   const [confirmation, setConfirmation] = useState<RemovedBlockUsage[] | null>(
@@ -82,7 +84,8 @@ export function useEditTemplate({
         ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
       toast.success(m.event_templates_updated_toast());
-      await navigate({ to: '/app/event-templates' });
+      leaveGuard.markSaved();
+      await navigate({ to: '/app/event-templates', replace: true });
     },
     onError: (error) => {
       setConfirmation(null);
@@ -119,6 +122,7 @@ export function useEditTemplate({
   });
 
   const pending = save.isPending || usageCheck.isPending;
+  const leaveGuard = useTemplateLeaveGuard({ dirty, pending });
 
   function onSave() {
     if (pending) return;
@@ -133,6 +137,7 @@ export function useEditTemplate({
   return {
     ...fields,
     mode: 'edit',
+    leaveBlocker: leaveGuard.blocker,
     pending,
     onSave,
     usageFailed: usageCheck.isError,

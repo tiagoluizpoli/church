@@ -23,7 +23,7 @@ import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-bui
 import { dateLabel } from '@/features/scheduling/utils/builder/cycle-builder-date.utils';
 import { renderWithProviders } from '@/tests/setup/render';
 import { adminApi } from '@/utils/api-instances';
-import * as volunteerName from '@/utils/format-volunteer-name';
+import * as volunteerInitials from '@/utils/format-volunteer-initials';
 
 beforeEachLocale(() => overwriteGetLocale(() => 'en'));
 
@@ -99,6 +99,7 @@ const builderData: CycleBuilderData = {
           label: 'Morning service',
           startTime: '2026-08-02T09:00:00.000Z',
           endTime: '2026-08-02T11:00:00.000Z',
+          cancelled: false,
           included: true,
           peopleNeeded: 1,
           assignedCount: 0,
@@ -110,6 +111,7 @@ const builderData: CycleBuilderData = {
               eventTimeBlockId: 'event-time-block-1',
               startTime: '2026-08-02T09:00:00.000Z',
               endTime: '2026-08-02T11:00:00.000Z',
+              cancelled: false,
               peopleNeeded: 1,
               assignedCount: 0,
               requirements: [
@@ -236,6 +238,8 @@ function renderBuilder({
   renderWithProviders(
     <CycleBuilder
       data={data}
+      selectedDates={[]}
+      onSelectedDatesChange={vi.fn()}
       onPublish={onPublish}
       isPublishing={false}
       cycleId="cycle-1"
@@ -315,7 +319,7 @@ describe('moving assignments', () => {
       sectorName: 'Side',
       peopleNeeded: 1,
     });
-    const formatName = vi.spyOn(volunteerName, 'formatVolunteerName');
+    const formatName = vi.spyOn(volunteerInitials, 'formatVolunteerInitials');
     renderBuilder({ data });
     const grip = screen.getByTestId('volunteer-card-grip');
     fireEvent.pointerDown(grip, { button: 0, clientX: 10, clientY: 10 });
@@ -385,6 +389,8 @@ describe('moving assignments', () => {
       return (
         <CycleBuilder
           data={board}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onPublish={vi.fn()}
           isPublishing={false}
           cycleId="cycle-1"
@@ -1747,6 +1753,8 @@ describe('Swap requests on the board', () => {
     const renderTree = (swapRequests: LeaderSwapRequest[]) => (
       <CycleBuilder
         data={data}
+        selectedDates={[]}
+        onSelectedDatesChange={vi.fn()}
         onPublish={vi.fn()}
         isPublishing={false}
         cycleId="cycle-1"

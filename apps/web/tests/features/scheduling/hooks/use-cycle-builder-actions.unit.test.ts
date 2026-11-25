@@ -55,6 +55,7 @@ function dataWithAssignments(
             label: 'Morning',
             startTime: '2027-01-04T12:00:00.000Z',
             endTime: '2027-01-04T13:00:00.000Z',
+            cancelled: false,
             included: true,
             peopleNeeded: 1,
             assignedCount: assignments.length,
@@ -66,6 +67,7 @@ function dataWithAssignments(
                 label: 'Morning',
                 startTime: '2027-01-04T12:00:00.000Z',
                 endTime: '2027-01-04T13:00:00.000Z',
+                cancelled: false,
                 peopleNeeded: 1,
                 assignedCount: assignments.length,
                 requirements: [

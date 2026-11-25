@@ -1,4 +1,6 @@
 import { appConfig } from '@church/app-config';
+import { event, eventTimeBlock } from '@church/db';
+import { eq, inArray } from 'drizzle-orm';
 import {
   afterAll,
   beforeAll,
@@ -255,6 +257,33 @@ describe('GET /prepare/cycles/:cycleId/participation filters', () => {
     const view = await getView({ scope, query: '&needsAttention=true' });
     expect(titles(view)).toEqual(['Sunday Worship']);
     expect(view.totals).toEqual(TOTALS);
+  });
+
+  it('leaves cancelled Events and time blocks out of needs attention and coverage', async () => {
+    const scope = await seedCycle();
+    await schedulingTestDb
+      .update(event)
+      .set({ status: 'cancelled' })
+      .where(eq(event.title, 'Sunday Worship'));
+    const vigil = schedulingTestDb
+      .select({ id: event.id })
+      .from(event)
+      .where(eq(event.title, 'Night Vigil'));
+    await schedulingTestDb
+      .update(eventTimeBlock)
+      .set({ status: 'cancelled' })
+      .where(inArray(eventTimeBlock.eventId, vigil));
+
+    const view = await getView({ scope });
+    expect(view.totals).toEqual({ blocks: 3, needsAttention: 0 });
+    expect(
+      titles(await getView({ scope, query: '&needsAttention=true' })),
+    ).toEqual([]);
+    const vigilBlock = view.events.find(
+      ({ event: { title } }: { event: { title: string } }) =>
+        title === 'Night Vigil',
+    )?.eventTimeBlocks[0];
+    expect(vigilBlock?.answerCoverage).toEqual({ available: 0, needed: null });
   });
 
   it('combines filters', async () => {

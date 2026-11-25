@@ -126,6 +126,10 @@ import {
   ScheduleHasNoAssignmentsError,
 } from '../domain/errors/schedule-publish';
 import { ShiftHasResponsesError } from '../domain/errors/shift-has-responses';
+import {
+  assertEventTimeBlockNotCancelled,
+  isEventTimeBlockCancelled,
+} from '../domain/event-time-block-cancellation';
 import { scheduleChanges } from '../domain/schedule-changes';
 import type { ScheduleAssignmentSnapshot } from '../domain/schedule-last-told';
 import {
@@ -474,10 +478,19 @@ interface ToScheduleViewInput extends ScheduleListRow {
   facts: ScheduleListFacts;
 }
 
+interface RefuseCancelledAdditionsInput {
+  churchId: ChurchId;
+  eventGroups: EventWithEventTimeBlocks[];
+  additions: ReviewedAddition[];
+  tx: TransactionContext;
+}
+
 interface LoadProposalFactsInput {
   churchId: ChurchId;
   cycleId: CycleId;
   ministryId: MinistryId;
+  /** Already read in this transaction; read here when absent. */
+  eventGroups?: EventWithEventTimeBlocks[];
   tx: TransactionContext;
 }
 
@@ -926,6 +939,7 @@ export class DbParticipationManager implements IParticipationManager {
         tx,
       });
       ensurePreparationEditable({ cycle, timeZone });
+      assertEventTimeBlockNotCancelled({ event, eventTimeBlock });
 
       const target = { churchId, participation, eventTimeBlock, tx };
       // Locked so a racing answer or Assignment is counted below, never cascaded away.
@@ -1492,10 +1506,22 @@ export class DbParticipationManager implements IParticipationManager {
         strength: 'share',
         tx,
       });
+      const eventGroups = await this.eventRepository.listCycleEvents({
+        churchId,
+        cycleId,
+        tx,
+      });
+      await this.refuseCancelledAdditions({
+        churchId,
+        eventGroups,
+        additions,
+        tx,
+      });
       const { facts, shifts, proposable } = await this.loadProposalFacts({
         churchId,
         cycleId,
         ministryId,
+        eventGroups,
         tx,
       });
       const stale = findStaleAdditions({ facts, additions });
@@ -1578,18 +1604,49 @@ export class DbParticipationManager implements IParticipationManager {
     });
   }
 
+  /** Names the cancellation an addition targets, as manual assign does, before staleness. */
+  private async refuseCancelledAdditions({
+    churchId,
+    eventGroups,
+    additions,
+    tx,
+  }: RefuseCancelledAdditionsInput): Promise<void> {
+    const requirements = await this.shiftRepository.listRequirementsByIds({
+      churchId,
+      shiftRequirementIds: additions.map(
+        ({ shiftRequirementId }) => shiftRequirementId,
+      ),
+      tx,
+    });
+    const targets = await this.shiftRepository.listConflictFacts({
+      churchId,
+      shiftIds: [
+        ...new Set(
+          requirements.flatMap(({ shiftId }) => (shiftId ? [shiftId] : [])),
+        ),
+      ],
+      tx,
+    });
+    const targetBlockIds = new Set(
+      targets.map(({ shift }) => shift.eventTimeBlockId as string),
+    );
+    for (const { event, eventTimeBlocks } of eventGroups)
+      for (const eventTimeBlock of eventTimeBlocks)
+        if (targetBlockIds.has(eventTimeBlock.id as string))
+          assertEventTimeBlockNotCancelled({ event, eventTimeBlock });
+  }
+
   /** The Schedule's proposal facts; refuses outside availability requested/assigning. */
   private async loadProposalFacts({
     churchId,
     cycleId,
     ministryId,
+    eventGroups: loadedEventGroups,
     tx,
   }: LoadProposalFactsInput): Promise<ProposalFacts> {
-    const eventGroups = await this.eventRepository.listCycleEvents({
-      churchId,
-      cycleId,
-      tx,
-    });
+    const eventGroups =
+      loadedEventGroups ??
+      (await this.eventRepository.listCycleEvents({ churchId, cycleId, tx }));
     const cycleBlockIds = new Set<string>(
       eventGroups.flatMap(({ eventTimeBlocks }) =>
         eventTimeBlocks.map(({ id }) => id as string),
@@ -3181,6 +3238,10 @@ function buildEventView({
           ),
         ),
       );
+      const cancelled = isEventTimeBlockCancelled({
+        event: eventGroup.event,
+        eventTimeBlock,
+      });
       const headcounts = shiftViews.map(({ requirements: shiftRequirements }) =>
         shiftRequirements.reduce(
           (sum, { requirement }) => sum + requirement.peopleNeeded,
@@ -3191,12 +3252,13 @@ function buildEventView({
       return {
         eventTimeBlock,
         included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
+        cancelled,
         answerCoverage: {
           available: [...confirmedVolunteerIds].filter(
             (id) => !unavailable.has(id),
           ).length,
           needed:
-            headcounts.length === 0 || headcounts.includes(0)
+            cancelled || headcounts.length === 0 || headcounts.includes(0)
               ? null
               : Math.max(...headcounts),
         },

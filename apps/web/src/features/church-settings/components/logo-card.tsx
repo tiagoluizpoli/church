@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import { ImageUp, Trash2, Zap } from 'lucide-react';
 import * as React from 'react';
 import { toast } from 'sonner';
+import { ChurchLogoTile } from '@/components/church-logo-tile';
 import { Button } from '@/components/ui/button';
 import {
   logoErrorOf,
@@ -10,7 +11,6 @@ import {
   useUploadChurchLogo,
 } from '@/features/church-settings/church-settings-queries';
 import { LogoCropDialog } from '@/features/church-settings/components/logo-crop-dialog';
-import { LogoImage } from '@/features/church-settings/components/logo-image';
 
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -18,10 +18,19 @@ const MAX_BYTES = 5 * 1024 * 1024;
 interface LogoCardProps {
   logoUrl: string | null;
   logoKey: string | null;
+  /** The Church's name as the form stands, for the crop dialog's previews. */
+  churchName: string;
+  /** The Church's accent (`#rrggbb`) or null, for the crop dialog's fill and email preview. */
+  accentColor: string | null;
 }
 
 /** The vertical logo card: applies at once ("Salvo na hora"), outside the form's save. */
-export function LogoCard({ logoUrl, logoKey }: LogoCardProps) {
+export function LogoCard({
+  logoUrl,
+  logoKey,
+  churchName,
+  accentColor,
+}: LogoCardProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [error, setError] = React.useState<string | null>(null);
   /** The picked image, being framed before upload. */
@@ -81,8 +90,18 @@ export function LogoCard({ logoUrl, logoKey }: LogoCardProps) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex h-32 items-center justify-center rounded-lg border bg-muted/40 p-3">
-        <LogoImage logoUrl={logoUrl} className="h-full w-full" />
+      <div className="flex h-32 items-center justify-center">
+        {logoUrl ? (
+          <ChurchLogoTile
+            name={m.church_settings_logo_alt()}
+            logoUrl={logoUrl}
+            size="card"
+          />
+        ) : (
+          <span className="radius-control flex size-full items-center justify-center border border-dashed text-muted-foreground text-xs">
+            {m.church_settings_logo_none()}
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Button
@@ -128,6 +147,8 @@ export function LogoCard({ logoUrl, logoKey }: LogoCardProps) {
       ) : null}
       <LogoCropDialog
         file={picked}
+        churchName={churchName}
+        accentColor={accentColor}
         onConfirm={onFramed}
         onCancel={() => setPicked(null)}
       />

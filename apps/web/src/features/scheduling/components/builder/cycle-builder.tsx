@@ -83,6 +83,9 @@ interface CycleBuilderProps {
   swapRequests?: LeaderSwapRequest[];
   selectedSwapRequestId?: string;
   onSelectSwapRequest?: (swapRequestId: string | undefined) => void;
+  /** The date strip's selected days, kept in the route's `?days=`. */
+  selectedDates: string[];
+  onSelectedDatesChange: (dates: string[]) => void;
 }
 
 const EMPTY_SWAP_REQUESTS: LeaderSwapRequest[] = [];
@@ -107,10 +110,11 @@ export function CycleBuilder({
   swapRequests = EMPTY_SWAP_REQUESTS,
   selectedSwapRequestId,
   onSelectSwapRequest,
+  selectedDates,
+  onSelectedDatesChange,
 }: CycleBuilderProps) {
   const { auditPanel } = appConfig.parked;
   const isMobile = useMediaQuery('(max-width: 767px)');
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedVolunteerId, setSelectedVolunteerId] = useState<
     string | undefined
   >();
@@ -389,8 +393,8 @@ export function CycleBuilder({
             data={data}
             cycleStartDate={cycleStartDate}
             cycleEndDate={cycleEndDate}
-            selectedDate={selectedDate}
-            onSelectedDateChange={setSelectedDate}
+            selectedDates={selectedDates}
+            onSelectedDatesChange={onSelectedDatesChange}
             selectedVolunteerId={selectedVolunteerId}
             onSelectVolunteer={(volunteerId) =>
               setSelectedVolunteerId((current) =>

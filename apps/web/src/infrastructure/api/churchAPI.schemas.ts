@@ -5815,6 +5815,7 @@ export type GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsIte
 export type GetCycleParticipation200EventsItemEventTimeBlocksItem = {
   eventTimeBlock: GetCycleParticipation200EventsItemEventTimeBlocksItemEventTimeBlock;
   included: boolean;
+  cancelled: boolean;
   answerCoverage: GetCycleParticipation200EventsItemEventTimeBlocksItemAnswerCoverage;
   shifts: GetCycleParticipation200EventsItemEventTimeBlocksItemShiftsItem[];
   requirements: GetCycleParticipation200EventsItemEventTimeBlocksItemRequirementsItem[];
@@ -6065,6 +6066,7 @@ export type SaveEventTimeBlockPreparation200RequirementsItem = {
 export type SaveEventTimeBlockPreparation200 = {
   eventTimeBlock: SaveEventTimeBlockPreparation200EventTimeBlock;
   included: boolean;
+  cancelled: boolean;
   answerCoverage: SaveEventTimeBlockPreparation200AnswerCoverage;
   shifts: SaveEventTimeBlockPreparation200ShiftsItem[];
   requirements: SaveEventTimeBlockPreparation200RequirementsItem[];

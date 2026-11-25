@@ -475,6 +475,43 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
     });
   });
 
+  it.each([
+    ['time block', 'eventTimeBlock', 'EVENT_TIME_BLOCK_CANCELLED'],
+    ['Event', 'event', 'EVENT_CANCELLED'],
+  ] as const)('refuses to prepare a cancelled %s, writing nothing', async (_, scope, error) => {
+    const base = await seedPreparation();
+    if (scope === 'event')
+      await db
+        .update(eventTable)
+        .set({ status: 'cancelled' })
+        .where(eq(eventTable.id, base.eventId));
+    else
+      await db
+        .update(eventTimeBlock)
+        .set({ status: 'cancelled' })
+        .where(eq(eventTimeBlock.id, base.eventTimeBlockId));
+
+    const response = await savePreparation({
+      ...base,
+      payload: {
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 2 },
+        headcounts: [headcountOf(base, { shiftIndex: 1, peopleNeeded: 3 })],
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error,
+      message:
+        scope === 'event'
+          ? m.error_event_cancelled()
+          : m.error_event_time_block_cancelled(),
+    });
+    expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
+    expect(await blockInclusions(base.eventTimeBlockId)).toEqual([]);
+  });
+
   describe('a served save', () => {
     it('replaces the Shifts when the split changes, leaving other blocks untouched', async () => {
       const base = await seedPreparation();

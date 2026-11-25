@@ -118,6 +118,30 @@ describe('VolunteerPoolSidebar (T102)', () => {
       screen.queryByTestId('volunteer-select-shift'),
     ).not.toBeInTheDocument();
   });
+  it('shows first and last name for volunteers whose clipped names would read the same', () => {
+    renderSidebar(
+      <VolunteerPoolSidebar
+        volunteers={[
+          {
+            volunteerId: 'a',
+            volunteerName: 'Maria Aparecida da Silva Souza',
+            status: 'available',
+          },
+          {
+            volunteerId: 'b',
+            volunteerName: 'Maria Aparecida da Silva Santos',
+            status: 'available',
+          },
+          { volunteerId: 'c', volunteerName: 'Bob Jones', status: 'available' },
+        ]}
+        assignments={[]}
+        roles={roles}
+      />,
+    );
+    expect(screen.getByText('Maria Souza')).toBeVisible();
+    expect(screen.getByText('Maria Santos')).toBeVisible();
+    expect(screen.getByText('Bob Jones')).toBeVisible();
+  });
   it('renders all volunteers initially', () => {
     renderSidebar(
       <VolunteerPoolSidebar
@@ -126,8 +150,8 @@ describe('VolunteerPoolSidebar (T102)', () => {
         roles={roles}
       />,
     );
-    expect(screen.getByText('Alice S.')).toBeVisible();
-    expect(screen.getByText('Bob J.')).toBeVisible();
+    expect(screen.getByText('Alice Smith')).toBeVisible();
+    expect(screen.getByText('Bob Jones')).toBeVisible();
   });
 
   it('filters by name (case-insensitive)', async () => {
@@ -140,8 +164,8 @@ describe('VolunteerPoolSidebar (T102)', () => {
       />,
     );
     await user.type(screen.getByPlaceholderText(/search by name/i), 'alice');
-    expect(screen.getByText('Alice S.')).toBeVisible();
-    expect(screen.queryByText('Bob J.')).not.toBeInTheDocument();
+    expect(screen.getByText('Alice Smith')).toBeVisible();
+    expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument();
   });
 
   it('shows the empty state when no volunteer matches', async () => {
@@ -206,8 +230,8 @@ describe('VolunteerPoolSidebar (T102)', () => {
     // Bob is ranked for the focused shift×role, so he is promoted over the
     // pool's own alphabetical order instead of Alice being filtered out.
     const [firstCard] = screen.getAllByTestId('volunteer-card');
-    expect(firstCard).toHaveTextContent('Bob J.');
-    expect(screen.queryByText('Alice S.')).not.toBeInTheDocument();
+    expect(firstCard).toHaveTextContent('Bob Jones');
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'All volunteers' }));
     expect(onClearFocus).toHaveBeenCalledOnce();
@@ -303,8 +327,8 @@ describe('VolunteerPoolSidebar (T102)', () => {
     );
 
     expect(screen.getByText('No candidates for this role')).toBeVisible();
-    expect(screen.queryByText('Alice S.')).not.toBeInTheDocument();
-    expect(screen.queryByText('Bob J.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument();
   });
 
   it('keeps the focus ranking inside a grouped rail', async () => {
@@ -329,8 +353,8 @@ describe('VolunteerPoolSidebar (T102)', () => {
     // Ready first (Alice), then Awaiting — where the focus ranking puts Dana
     // ahead of Bob even though the pool sorts partial above no_response.
     const cards = screen.getAllByTestId('volunteer-card');
-    expect(cards[0]).toHaveTextContent('Dana B.');
-    expect(cards[1]).toHaveTextContent('Bob J.');
+    expect(cards[0]).toHaveTextContent('Dana Brown');
+    expect(cards[1]).toHaveTextContent('Bob Jones');
   });
 
   it('groups volunteers by status and keeps unavailable volunteers expandable', async () => {
@@ -356,15 +380,15 @@ describe('VolunteerPoolSidebar (T102)', () => {
     expect(
       screen.getAllByText(m.builder_state_unanswered()).length,
     ).toBeGreaterThan(0);
-    expect(screen.getByText('Dana B.')).toBeVisible();
-    expect(screen.queryByText('Carol W.')).not.toBeInTheDocument();
+    expect(screen.getByText('Dana Brown')).toBeVisible();
+    expect(screen.queryByText('Carol White')).not.toBeInTheDocument();
 
     await user.click(
       screen.getByRole('button', {
         name: `${m.builder_state_unavailable()} (1)`,
       }),
     );
-    expect(screen.getByText('Carol W.')).toBeVisible();
+    expect(screen.getByText('Carol White')).toBeVisible();
   });
 
   it('filters by qualification and shows a removable filter chip', async () => {
@@ -392,9 +416,9 @@ describe('VolunteerPoolSidebar (T102)', () => {
     // Carol + Bob are Usher-qualified; Alice + Dana (Greeter only) drop out.
     const chip = screen.getByTestId('volunteer-role-filter-chip');
     expect(chip).toHaveTextContent('Usher');
-    expect(screen.getByText('Carol W.')).toBeVisible();
-    expect(screen.getByText('Bob J.')).toBeVisible();
-    expect(screen.queryByText('Alice S.')).not.toBeInTheDocument();
+    expect(screen.getByText('Carol White')).toBeVisible();
+    expect(screen.getByText('Bob Jones')).toBeVisible();
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
 
     await user.click(
       screen.getByRole('button', { name: 'Clear Usher filter' }),
@@ -402,7 +426,7 @@ describe('VolunteerPoolSidebar (T102)', () => {
     expect(
       screen.queryByTestId('volunteer-role-filter-chip'),
     ).not.toBeInTheDocument();
-    expect(screen.getByText('Alice S.')).toBeVisible();
+    expect(screen.getByText('Alice Smith')).toBeVisible();
   });
 
   it('groups volunteers by their qualified roles', async () => {
@@ -424,7 +448,7 @@ describe('VolunteerPoolSidebar (T102)', () => {
 
     expect(screen.getByRole('heading', { name: /^Greeter/ })).toBeVisible();
     expect(screen.getByRole('heading', { name: /^Usher/ })).toBeVisible();
-    expect(screen.getAllByText('Bob J.')).toHaveLength(2);
+    expect(screen.getAllByText('Bob Jones')).toHaveLength(2);
   });
 });
 
@@ -504,7 +528,7 @@ describe('VolunteerPoolSidebar qualified roles line (023 phase 6)', () => {
       );
 
       await user.click(screen.getByRole('button', { name: 'Clear filters' }));
-      expect(screen.getByText('Alice S.')).toBeVisible();
+      expect(screen.getByText('Alice Smith')).toBeVisible();
     });
   });
 });

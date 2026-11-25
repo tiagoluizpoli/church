@@ -88,6 +88,8 @@ export const participationShiftViewSchema = shiftResponseSchema.extend({
 export const participationEventTimeBlockViewSchema = z.object({
   eventTimeBlock: eventTimeBlockResponseSchema,
   included: z.boolean(),
+  /** The block or its Event was cancelled. */
+  cancelled: z.boolean(),
   answerCoverage: z.object({
     available: z.number().int(),
     needed: z.number().int().nullable(),
@@ -461,6 +463,7 @@ function toEventTimeBlockView(view: ParticipationEventTimeBlockView) {
   return {
     eventTimeBlock: eventTimeBlockMapper.toResponse(view.eventTimeBlock),
     included: view.included,
+    cancelled: view.cancelled,
     answerCoverage: view.answerCoverage,
     shifts: view.shifts.map(toShiftView),
     requirements: view.requirements.map(toRequirementView),

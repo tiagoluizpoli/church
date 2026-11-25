@@ -1,36 +1,47 @@
 import { m } from '@church/i18n/messages';
 import {
   addMilliseconds,
+  compareInstants,
   type Instant,
   millisecondsBetween,
 } from '@church/time';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import {
+  ArrowRight,
+  CircleCheck,
+  Pencil,
+  Plus,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import {
+  type EventSaveRefusal,
+  toEventSaveRefusal,
+} from './event-editor.utils';
 import { type BoundsRange, ClashList } from './event-move-preview';
 import type { CycleCalendarEventTimeBlockRow } from './planning-admin.types';
 import { refreshPlanning } from './refresh-planning';
 import { InstantField } from '@/components/instant-field';
+import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { useTimezone } from '@/shared/hooks/use-timezone';
-import { formatInstantRangeOf } from '@/shared/utils/church-time';
+import {
+  dayOf,
+  formatInstantOf,
+  formatInstantRangeOf,
+  formatTimeOf,
+} from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
-import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
 const NEW_BLOCK_LENGTH_MS = 60 * 60 * 1000;
+const EVENT_PAIR = 'event';
 
 export interface EventEditPreviewProps {
   cycleId: string;
@@ -95,6 +106,84 @@ function bodyOf({ start, end, blocks }: Draft) {
   };
 }
 
+type EditBody = ReturnType<typeof bodyOf>;
+
+interface SameBodyInput {
+  left: EditBody | undefined;
+  right: EditBody;
+}
+
+function sameBody({ left, right }: SameBodyInput): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+interface PairDatesInput {
+  key: string;
+  values: Instant[];
+}
+
+interface ShowDatesInput {
+  key: string;
+  /** The date field that takes focus once shown. */
+  focusId: string;
+}
+
+interface MarkInput {
+  text: string;
+  moved: boolean;
+}
+
+interface PairMessages {
+  /** Time-pair messages by pair key (`event` or a block key). */
+  times: Map<string, string>;
+  /** Label messages by block key. */
+  labels: Map<string, string>;
+  /** A refusal that names no field here. */
+  form: string | undefined;
+  /** A pair ends at or before its start: nothing to preview yet. */
+  invalid: boolean;
+}
+
+interface PairMessagesInput {
+  draft: Draft;
+  refusal: EventSaveRefusal | null;
+}
+
+/** The client end-after-start rule per pair, else the server refusal placed on
+ * the pair (or label) it names. */
+function pairMessagesOf({ draft, refusal }: PairMessagesInput): PairMessages {
+  const times = new Map<string, string>();
+  const labels = new Map<string, string>();
+  let form: string | undefined;
+  const target = refusal?.target;
+  const targetBlock =
+    target?.kind === 'block' ? draft.blocks[target.index] : undefined;
+  if (refusal && target) {
+    if (target.kind === 'start' || target.kind === 'end') {
+      times.set(EVENT_PAIR, refusal.message);
+    } else if (target.kind === 'block' && targetBlock) {
+      (target.part === 'label' ? labels : times).set(
+        targetBlock.key,
+        refusal.message,
+      );
+    } else {
+      form = refusal.message;
+    }
+  }
+  const pairs = [
+    { key: EVENT_PAIR, start: draft.start, end: draft.end },
+    ...draft.blocks,
+  ];
+  let invalid = false;
+  for (const { key, start, end } of pairs) {
+    if (compareInstants({ left: end, right: start }) <= 0) {
+      times.set(key, m.error_validation_invalid_event_bounds());
+      invalid = true;
+    }
+  }
+  return { times, labels, form, invalid };
+}
+
 /**
  * Edits a scheduled Event of a Sent Cycle until it ends: new Event bounds and
  * block times, an added block. The preview is write-free and lists the typed
@@ -117,29 +206,53 @@ export function EventEditPreview({
     draftOf({ start, end, eventTimeBlocks }),
   );
   const [addedCount, setAddedCount] = useState(0);
+  // Pairs whose dates the admin asked to see although they sit on the Event's day.
+  const [datesShown, setDatesShown] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const resultRef = useRef<HTMLElement>(null);
   const queryClient = useQueryClient();
   const preview = useMutation({
-    mutationFn: (body: ReturnType<typeof bodyOf>) =>
+    mutationFn: (body: EditBody) =>
       adminApi.previewPlanningEventEdit(cycleId, eventId, body),
   });
   const apply = useMutation({
-    mutationFn: (body: ReturnType<typeof bodyOf>) =>
+    mutationFn: (body: EditBody) =>
       adminApi.editPlanningEvent(cycleId, eventId, body),
     onSuccess: () => refreshPlanning({ queryClient, cycleId }),
   });
   const body = bodyOf(draft);
+  const storedBody = bodyOf(draftOf({ start, end, eventTimeBlocks }));
   const result = preview.data;
   const edited = apply.data;
+  // The preview ran on the stored times: there is nothing to apply.
+  const previewUnchanged =
+    result !== undefined &&
+    sameBody({ left: preview.variables, right: storedBody });
   // Only the body just previewed is confirmable; any change needs a new preview.
   const canConfirm =
     result !== undefined &&
-    JSON.stringify(preview.variables) === JSON.stringify(body) &&
+    !previewUnchanged &&
+    sameBody({ left: preview.variables, right: body }) &&
     !edited;
   const error = apply.error ?? preview.error;
+  const messages = pairMessagesOf({
+    draft,
+    refusal: error ? toEventSaveRefusal({ error }) : null,
+  });
+
+  // Stacked (narrow) layouts show the outcome above the fields: bring it into view.
+  useEffect(() => {
+    if (result || edited)
+      resultRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [result, edited]);
 
   const changeOpen = (next: boolean) => {
     setOpen(next);
-    if (next) setDraft(draftOf({ start, end, eventTimeBlocks }));
+    if (next) {
+      setDraft(draftOf({ start, end, eventTimeBlocks }));
+      setDatesShown(new Set());
+    }
     if (!next) {
       preview.reset();
       apply.reset();
@@ -180,11 +293,29 @@ export function EventEditPreview({
       blocks: current.blocks.filter((block) => block.key !== key),
     }));
 
+  const eventDay = dayOf({ value: draft.start, timeZone: churchTimezone });
+  const onEventDay = (...values: Instant[]) =>
+    values.every(
+      (value) => dayOf({ value, timeZone: churchTimezone }) === eventDay,
+    );
+  const datesHidden = ({ key, values }: PairDatesInput) =>
+    !datesShown.has(key) && onEventDay(...values);
+  /** Reveals a pair's dates and moves focus to the first one shown. */
+  const showDates = ({ key, focusId }: ShowDatesInput) => {
+    flushSync(() => setDatesShown((current) => new Set(current).add(key)));
+    document.getElementById(focusId)?.focus();
+  };
+
   const range = (value: BoundsRange) =>
     formatInstantRangeOf({ ...value, timeZone: churchTimezone });
-  const editedRange = edited && range(edited.event);
-  const previousRange = result && range(result.event.previous);
-  const proposedRange = result && range(result.event.proposed);
+  const storedLabels = new Map(
+    eventTimeBlocks.map(({ eventTimeBlockId, label }) => [
+      eventTimeBlockId,
+      label,
+    ]),
+  );
+  const endHidden = datesHidden({ key: EVENT_PAIR, values: [draft.end] });
+  const eventError = messages.times.get(EVENT_PAIR);
 
   return (
     <>
@@ -198,232 +329,30 @@ export function EventEditPreview({
         <Pencil className="size-3.5" />
         {size === 'touch' ? m.event_edit_preview_action() : null}
       </Button>
-      <Dialog open={open} onOpenChange={changeOpen}>
-        <DialogContent
-          data-testid="event-edit-preview"
-          className="max-h-[90vh] overflow-y-auto"
-        >
-          <DialogHeader>
-            <DialogTitle>{m.event_edit_preview_title({ title })}</DialogTitle>
-            <DialogDescription>
-              {m.event_edit_preview_description()}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label
-                id="event-edit-start-label"
-                htmlFor="event-edit-start-date"
-              >
-                {m.event_edit_preview_start_label()}
-              </Label>
-              <InstantField
-                idPrefix="event-edit-start"
-                value={draft.start}
-                timeZone={churchTimezone}
-                aria-labelledby="event-edit-start-label"
-                onChange={(next) =>
-                  setDraft((current) => ({ ...current, start: next }))
-                }
-              />
-            </div>
-            <div className="space-y-1">
-              <Label id="event-edit-end-label" htmlFor="event-edit-end-date">
-                {m.event_edit_preview_end_label()}
-              </Label>
-              <InstantField
-                idPrefix="event-edit-end"
-                value={draft.end}
-                timeZone={churchTimezone}
-                aria-labelledby="event-edit-end-label"
-                data-testid="event-edit-end"
-                onChange={(next) =>
-                  setDraft((current) => ({ ...current, end: next }))
-                }
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm">
-              {m.event_edit_preview_blocks_title()}
-            </h4>
-            {draft.blocks.map((block, index) => {
-              const position = index + 1;
-              return (
-                <div
-                  key={block.key}
-                  className="space-y-2 rounded-md border p-3"
-                  data-testid="event-edit-block"
-                >
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={block.label}
-                      aria-label={m.event_edit_preview_block_label({
-                        position,
-                      })}
-                      onChange={({ target }) =>
-                        patchBlock({
-                          key: block.key,
-                          patch: { label: target.value },
-                        })
-                      }
-                    />
-                    {block.id ? null : (
-                      <Button
-                        type="button"
-                        size="icon-xs"
-                        variant="ghost"
-                        aria-label={m.event_edit_preview_block_remove({
-                          position,
-                        })}
-                        onClick={() => removeBlock(block.key)}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(['start', 'end'] as const).map((edge) => {
-                      const labelId = `event-edit-${block.key}-${edge}-label`;
-                      return (
-                        <div key={edge} className="space-y-1">
-                          <Label
-                            id={labelId}
-                            htmlFor={`event-edit-${block.key}-${edge}-date`}
-                            className="text-xs"
-                          >
-                            {edge === 'start'
-                              ? m.event_edit_preview_block_start_label({
-                                  position,
-                                })
-                              : m.event_edit_preview_block_end_label({
-                                  position,
-                                })}
-                          </Label>
-                          <InstantField
-                            idPrefix={`event-edit-${block.key}-${edge}`}
-                            value={block[edge]}
-                            timeZone={churchTimezone}
-                            aria-labelledby={labelId}
-                            data-testid={`event-edit-block-${position}-${edge}`}
-                            onChange={(next) =>
-                              patchBlock({
-                                key: block.key,
-                                patch: { [edge]: next },
-                              })
-                            }
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+      <ResponsiveFormSurface
+        open={open}
+        onOpenChange={changeOpen}
+        title={m.event_edit_preview_title({ title })}
+        description={m.event_edit_preview_description()}
+        closeLabel={m.event_edit_preview_dismiss({ title })}
+        data-testid="event-edit-preview"
+        wide
+        footer={
+          <>
             <Button
               type="button"
-              size="sm"
               variant="outline"
-              onClick={addBlock}
+              onClick={() => changeOpen(false)}
             >
-              <Plus className="size-3.5" />
-              {m.event_edit_preview_block_add()}
-            </Button>
-          </div>
-          {error ? (
-            <p role="alert" className="text-destructive text-sm">
-              {requestErrorMessage(error)}
-            </p>
-          ) : null}
-          {edited ? (
-            <div className="space-y-2 text-sm" data-testid="edit-result">
-              <p className="font-medium">
-                {m.event_edit_done({ range: editedRange ?? '' })}
-              </p>
-              {edited.withdrawn.length === 0 ? (
-                <p>{m.event_move_withdrawn_none()}</p>
-              ) : (
-                <div>
-                  <h4 className="font-medium text-destructive">
-                    {pluralMessage({
-                      count: edited.withdrawn.length,
-                      one: () => m.event_move_withdrawn_title_one(),
-                      other: () =>
-                        m.event_move_withdrawn_title_other({
-                          count: edited.withdrawn.length,
-                        }),
-                    })}
-                  </h4>
-                  <ClashList clashes={edited.withdrawn} range={range} />
-                </div>
-              )}
-            </div>
-          ) : result ? (
-            <div
-              className="space-y-3 text-sm"
-              data-testid="edit-preview-result"
-            >
-              <p className="text-muted-foreground">
-                {m.event_edit_preview_current({ range: previousRange ?? '' })}
-              </p>
-              <p className="font-medium">
-                {m.event_edit_preview_proposed({ range: proposedRange ?? '' })}
-              </p>
-              <ul className="text-muted-foreground text-xs">
-                {result.eventTimeBlocks.map((block) => {
-                  const { id, label, change, proposed } = block;
-                  if (!proposed) return null;
-                  const blockRange = range(proposed);
-                  return (
-                    <li key={id ?? `${label}-${blockRange}`}>
-                      {change === 'added'
-                        ? m.event_edit_preview_block_added({
-                            label: label ?? '',
-                            range: blockRange,
-                          })
-                        : m.event_move_preview_block({
-                            label: label ?? '',
-                            range: blockRange,
-                          })}
-                    </li>
-                  );
-                })}
-              </ul>
-              {result.clashes.length === 0 ? (
-                <p data-testid="move-preview-no-clashes">
-                  {m.event_move_preview_no_clashes()}
-                </p>
-              ) : (
-                <div data-testid="move-preview-clashes">
-                  <h4 className="font-medium text-destructive">
-                    {pluralMessage({
-                      count: result.clashes.length,
-                      one: () => m.event_move_preview_clashes_title_one(),
-                      other: () =>
-                        m.event_move_preview_clashes_title_other({
-                          count: result.clashes.length,
-                        }),
-                    })}
-                  </h4>
-                  <ClashList clashes={result.clashes} range={range} />
-                </div>
-              )}
-              {canConfirm ? (
-                <p className="text-muted-foreground text-xs">
-                  {m.event_edit_confirm_hint()}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
               {m.event_edit_preview_close()}
-            </DialogClose>
+            </Button>
             {edited ? null : (
               <Button
                 type="button"
                 variant={canConfirm ? 'outline' : 'default'}
-                disabled={preview.isPending || apply.isPending}
+                disabled={
+                  messages.invalid || preview.isPending || apply.isPending
+                }
                 onClick={() => {
                   apply.reset();
                   preview.mutate(body);
@@ -447,9 +376,484 @@ export function EventEditPreview({
                   : m.event_edit_confirm()}
               </Button>
             ) : null}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="@container">
+          <div className="grid @[52rem]:grid-cols-[minmax(0,1fr)_19rem] gap-6">
+            <div className="@container min-w-0 space-y-5">
+              <TimePair
+                id="event-edit"
+                startLabel={m.event_edit_preview_start_label()}
+                endLabel={m.event_edit_preview_end_label()}
+                start={draft.start}
+                end={draft.end}
+                timeZone={churchTimezone}
+                startDateHidden={false}
+                endDateHidden={endHidden}
+                error={eventError}
+                otherDayLabel={m.event_edit_preview_other_day_end()}
+                onShowDates={() =>
+                  showDates({ key: EVENT_PAIR, focusId: 'event-edit-end-date' })
+                }
+                onChange={(patch) =>
+                  setDraft((current) => ({ ...current, ...patch }))
+                }
+              />
+              <section
+                className="space-y-2"
+                aria-labelledby="event-edit-blocks-title"
+              >
+                <h3
+                  id="event-edit-blocks-title"
+                  className="font-medium text-sm"
+                >
+                  {m.event_edit_preview_blocks_title()}
+                </h3>
+                {draft.blocks.map((block, index) => (
+                  <BlockRow
+                    key={block.key}
+                    block={block}
+                    position={index + 1}
+                    timeZone={churchTimezone}
+                    datesHidden={datesHidden({
+                      key: block.key,
+                      values: [block.start, block.end],
+                    })}
+                    timeError={messages.times.get(block.key)}
+                    labelError={messages.labels.get(block.key)}
+                    onShowDates={() =>
+                      showDates({
+                        key: block.key,
+                        focusId: `event-edit-${block.key}-start-date`,
+                      })
+                    }
+                    onPatch={(patch) => patchBlock({ key: block.key, patch })}
+                    onRemove={() => removeBlock(block.key)}
+                  />
+                ))}
+                <Button type="button" variant="outline" onClick={addBlock}>
+                  <Plus className="size-3.5" />
+                  {m.event_edit_preview_block_add()}
+                </Button>
+              </section>
+            </div>
+            <section
+              ref={resultRef}
+              aria-labelledby="event-edit-result-title"
+              aria-live="polite"
+              className={
+                result || edited || messages.form
+                  ? 'surface-subtle @[52rem]:sticky @[52rem]:top-0 @[52rem]:order-none order-first space-y-3 self-start p-4 text-sm'
+                  : // Before a preview the panel only holds the beside slot.
+                    'surface-subtle @[52rem]:sticky @[52rem]:top-0 @[52rem]:block hidden self-start p-4 text-sm'
+              }
+            >
+              <h3 id="event-edit-result-title" className="font-medium text-sm">
+                {m.event_edit_preview_result_title()}
+              </h3>
+              {messages.form ? (
+                <p role="alert" className="text-destructive text-sm">
+                  {messages.form}
+                </p>
+              ) : null}
+              {edited ? (
+                <div className="space-y-2" data-testid="edit-result">
+                  <StatusLine tone="success">
+                    {m.event_edit_done({ range: range(edited.event) })}
+                  </StatusLine>
+                  {edited.withdrawn.length === 0 ? (
+                    <p>{m.event_move_withdrawn_none()}</p>
+                  ) : (
+                    <div>
+                      <StatusLine tone="destructive" heading>
+                        {pluralMessage({
+                          count: edited.withdrawn.length,
+                          one: () => m.event_move_withdrawn_title_one(),
+                          other: () =>
+                            m.event_move_withdrawn_title_other({
+                              count: edited.withdrawn.length,
+                            }),
+                        })}
+                      </StatusLine>
+                      <ClashList clashes={edited.withdrawn} range={range} />
+                    </div>
+                  )}
+                </div>
+              ) : result ? (
+                <div className="space-y-3" data-testid="edit-preview-result">
+                  {previewUnchanged ? (
+                    <p className="text-muted-foreground">
+                      {m.event_edit_preview_unchanged()}
+                    </p>
+                  ) : (
+                    <>
+                      <dl className="space-y-2">
+                        <DiffLine
+                          label={title}
+                          previous={result.event.previous}
+                          proposed={result.event.proposed}
+                          timeZone={churchTimezone}
+                        />
+                        {result.eventTimeBlocks.map((block) => {
+                          const { id, label, change, previous, proposed } =
+                            block;
+                          if (!proposed) return null;
+                          const storedLabel = id
+                            ? storedLabels.get(id)
+                            : undefined;
+                          return (
+                            <DiffLine
+                              key={id ?? `${label}-${range(proposed)}`}
+                              label={label ?? ''}
+                              previousLabel={storedLabel}
+                              previous={change === 'added' ? null : previous}
+                              proposed={proposed}
+                              timeZone={churchTimezone}
+                            />
+                          );
+                        })}
+                      </dl>
+                      {result.clashes.length === 0 ? (
+                        <div data-testid="move-preview-no-clashes">
+                          <StatusLine tone="success">
+                            {m.event_move_preview_no_clashes()}
+                          </StatusLine>
+                        </div>
+                      ) : (
+                        <div data-testid="move-preview-clashes">
+                          <StatusLine tone="destructive" heading>
+                            {pluralMessage({
+                              count: result.clashes.length,
+                              one: () =>
+                                m.event_move_preview_clashes_title_one(),
+                              other: () =>
+                                m.event_move_preview_clashes_title_other({
+                                  count: result.clashes.length,
+                                }),
+                            })}
+                          </StatusLine>
+                          <ClashList clashes={result.clashes} range={range} />
+                        </div>
+                      )}
+                      {canConfirm ? (
+                        <p className="text-muted-foreground text-xs">
+                          {m.event_edit_confirm_hint()}
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              ) : messages.form ? null : (
+                <p className="text-muted-foreground">
+                  {m.event_edit_preview_empty()}
+                </p>
+              )}
+            </section>
+          </div>
+        </div>
+      </ResponsiveFormSurface>
     </>
+  );
+}
+
+interface StatusLineProps {
+  tone: 'success' | 'destructive';
+  /** A title over a list (h4) rather than a sentence. */
+  heading?: boolean;
+  children: ReactNode;
+}
+
+function StatusLine({ tone, heading = false, children }: StatusLineProps) {
+  const Tag = heading ? 'h4' : 'p';
+  return (
+    <Tag
+      className={
+        tone === 'success'
+          ? 'flex items-start gap-1.5 font-medium text-green-700 dark:text-green-400'
+          : 'flex items-start gap-1.5 font-medium text-destructive'
+      }
+    >
+      {tone === 'success' ? (
+        <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0" />
+      ) : (
+        <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+      )}
+      <span>{children}</span>
+    </Tag>
+  );
+}
+
+interface DiffLineProps {
+  label: string;
+  /** The stored name, when it differs from `label` it is shown struck out. */
+  previousLabel?: string;
+  /** `null` for a block this edit adds. */
+  previous: BoundsRange | null;
+  proposed: BoundsRange;
+  timeZone: string;
+}
+
+/** One preview line: unchanged reads plainly; a change reads before → after
+ * with only the moved start or end marked as new. */
+function DiffLine({
+  label,
+  previousLabel,
+  previous,
+  proposed,
+  timeZone,
+}: DiffLineProps) {
+  const renamed = previousLabel !== undefined && previousLabel !== label;
+  const name = renamed ? (
+    <>
+      <del className="text-muted-foreground">{previousLabel}</del>{' '}
+      <ArrowRight aria-hidden className="inline size-3.5" />{' '}
+      <ins className="font-bold no-underline">{label}</ins>
+    </>
+  ) : (
+    label
+  );
+  if (!previous) {
+    return (
+      <div>
+        <dt className="font-medium">{name}</dt>
+        <dd>
+          <ins className="font-bold no-underline">
+            {m.event_edit_preview_block_added({
+              label,
+              range: formatInstantRangeOf({ ...proposed, timeZone }),
+            })}
+          </ins>
+        </dd>
+      </div>
+    );
+  }
+  const startMoved = previous.start !== proposed.start;
+  const endMoved = previous.end !== proposed.end;
+  if (!startMoved && !endMoved) {
+    return (
+      <div>
+        <dt className="font-medium">{name}</dt>
+        <dd className="text-muted-foreground">
+          {formatInstantRangeOf({ ...proposed, timeZone })}
+        </dd>
+      </div>
+    );
+  }
+  const startText = formatInstantOf({ value: proposed.start, timeZone });
+  const endText =
+    dayOf({ value: proposed.start, timeZone }) ===
+    dayOf({ value: proposed.end, timeZone })
+      ? formatTimeOf({ value: proposed.end, timeZone })
+      : formatInstantOf({ value: proposed.end, timeZone });
+  const mark = ({ text, moved }: MarkInput) =>
+    moved ? <ins className="font-bold no-underline">{text}</ins> : text;
+  return (
+    <div>
+      <dt className="font-medium">{name}</dt>
+      <dd className="text-muted-foreground">
+        <del>{formatInstantRangeOf({ ...previous, timeZone })}</del>
+      </dd>
+      <dd className="flex items-center gap-1.5">
+        <ArrowRight aria-hidden className="size-3.5 shrink-0" />
+        <span>
+          {mark({ text: startText, moved: startMoved })} –{' '}
+          {mark({ text: endText, moved: endMoved })}
+        </span>
+      </dd>
+    </div>
+  );
+}
+
+interface PairPatch {
+  start?: Instant;
+  end?: Instant;
+}
+
+interface TimePairProps {
+  /** Prefix for ids and test ids: `<id>-start`, `<id>-end`, `<id>-error`. */
+  id: string;
+  startLabel: string;
+  endLabel: string;
+  start: Instant;
+  end: Instant;
+  timeZone: string;
+  startDateHidden: boolean;
+  endDateHidden: boolean;
+  error: string | undefined;
+  otherDayLabel: string;
+  /** `data-testid` prefix for the start/end fields, when not `id`. */
+  testId?: string;
+  onShowDates: () => void;
+  onChange: (patch: PairPatch) => void;
+}
+
+/** A start/end pair: side by side when each has room, stacked otherwise, its
+ * error under it. With its dates hidden it shows times and an "Other day"
+ * control to reveal them. */
+function TimePair({
+  id,
+  startLabel,
+  endLabel,
+  start,
+  end,
+  timeZone,
+  startDateHidden,
+  endDateHidden,
+  error,
+  otherDayLabel,
+  testId = id,
+  onShowDates,
+  onChange,
+}: TimePairProps) {
+  const errorId = `${id}-error`;
+  const anyHidden = startDateHidden || endDateHidden;
+  const field = (edge: 'start' | 'end') => {
+    const labelId = `${id}-${edge}-label`;
+    const dateHidden = edge === 'start' ? startDateHidden : endDateHidden;
+    return (
+      <div
+        className={
+          // In the inline row a dated field takes a full line until it fits beside.
+          anyHidden && !dateHidden
+            ? '@[34rem]:w-80 w-full min-w-0 space-y-1'
+            : 'min-w-0 space-y-1'
+        }
+      >
+        <Label
+          id={labelId}
+          htmlFor={`${id}-${edge}-${dateHidden ? 'time' : 'date'}`}
+        >
+          {edge === 'start' ? startLabel : endLabel}
+        </Label>
+        <InstantField
+          idPrefix={`${id}-${edge}`}
+          value={edge === 'start' ? start : end}
+          timeZone={timeZone}
+          dateHidden={dateHidden}
+          aria-labelledby={labelId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          data-testid={`${testId}-${edge}`}
+          onChange={(next) => onChange({ [edge]: next })}
+        />
+      </div>
+    );
+  };
+  return (
+    <div className="space-y-1.5">
+      <div
+        className={
+          anyHidden
+            ? 'flex flex-wrap items-end gap-x-3 gap-y-2'
+            : // Two columns only when each gets ~260px; a pair needs 1fr + 7rem.
+              'grid @[34rem]:grid-cols-2 items-end gap-3'
+        }
+      >
+        {field('start')}
+        {field('end')}
+        {anyHidden ? (
+          <Button
+            type="button"
+            variant="ghost"
+            // Beside the fields when they fit; below the error when they wrap.
+            className="@[34rem]:order-1 order-2 text-muted-foreground"
+            aria-label={otherDayLabel}
+            onClick={onShowDates}
+          >
+            {m.event_edit_preview_other_day()}
+          </Button>
+        ) : null}
+        {anyHidden && error ? (
+          <p
+            id={errorId}
+            className="@[34rem]:order-2 order-1 basis-full text-destructive text-xs"
+          >
+            {error}
+          </p>
+        ) : null}
+      </div>
+      {!anyHidden && error ? (
+        <p id={errorId} className="text-destructive text-xs">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+interface BlockRowProps {
+  block: DraftBlock;
+  position: number;
+  timeZone: string;
+  datesHidden: boolean;
+  timeError: string | undefined;
+  labelError: string | undefined;
+  onShowDates: () => void;
+  onPatch: (patch: Partial<DraftBlock>) => void;
+  onRemove: () => void;
+}
+
+function BlockRow({
+  block,
+  position,
+  timeZone,
+  datesHidden,
+  timeError,
+  labelError,
+  onShowDates,
+  onPatch,
+  onRemove,
+}: BlockRowProps) {
+  const touch = useFormControlSize() === 'touch';
+  const labelErrorId = `event-edit-${block.key}-label-error`;
+  return (
+    <div
+      className="surface-subtle space-y-3 p-3"
+      data-testid="event-edit-block"
+    >
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Input
+            value={block.label}
+            aria-label={m.event_edit_preview_block_label({ position })}
+            aria-invalid={labelError ? true : undefined}
+            aria-describedby={labelError ? labelErrorId : undefined}
+            onChange={({ target }) => onPatch({ label: target.value })}
+          />
+          {block.id ? null : (
+            <Button
+              type="button"
+              size={touch ? 'icon-touch' : 'icon'}
+              variant="ghost"
+              aria-label={m.event_edit_preview_block_remove({ position })}
+              onClick={onRemove}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          )}
+        </div>
+        {labelError ? (
+          <p id={labelErrorId} className="text-destructive text-xs">
+            {labelError}
+          </p>
+        ) : null}
+      </div>
+      <TimePair
+        id={`event-edit-${block.key}`}
+        testId={`event-edit-block-${position}`}
+        startLabel={m.event_edit_preview_block_start_label({ position })}
+        endLabel={m.event_edit_preview_block_end_label({ position })}
+        start={block.start}
+        end={block.end}
+        timeZone={timeZone}
+        startDateHidden={datesHidden}
+        endDateHidden={datesHidden}
+        error={timeError}
+        otherDayLabel={m.event_edit_preview_other_day_block({ position })}
+        onShowDates={onShowDates}
+        onChange={onPatch}
+      />
+    </div>
   );
 }

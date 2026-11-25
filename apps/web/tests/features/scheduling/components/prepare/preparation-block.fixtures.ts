@@ -67,6 +67,7 @@ export const BLOCK: PreparationBlock = {
     requirements: [],
   },
   included: true,
+  cancelled: false,
   shiftsChangedAfterAsk: false,
   answerCoverage: { available: 0, needed: null },
   shifts: [SHIFT],

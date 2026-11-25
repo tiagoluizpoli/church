@@ -430,3 +430,24 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
 }
+
+/* The crop dialog's dark sidebar preview: a nested `.dark`, so the sidebar colours are restated as above. */
+.sidebar-preview.dark {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+}
+
+/* Home's coverage row title morphs into the schedule page header (router `viewTransition`). */
+::view-transition-group(schedule-title) {
+  animation-duration: 360ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}

@@ -250,12 +250,13 @@ export interface DayFilterNameInput {
 }
 
 /**
- * The cycle builder's "Mostrar apenas <day>" control for one date column. Its
- * label ends in the day as `dd/MM`; the weekday before it is not matched.
+ * The cycle builder's date-strip chip for one day (a toggle that adds the day
+ * to the board's selection). Its name is `<weekday>, dd/MM, <staffing>,
+ * <events>`; only the `dd/MM` part is matched.
  */
 export function dayFilterName({ day }: DayFilterNameInput): RegExp {
   const [, month, dayOfMonth] = day.split('-');
-  return new RegExp(`^Mostrar apenas .*, ${dayOfMonth}/${month}$`);
+  return new RegExp(`^[^,]+, ${dayOfMonth}/${month}, `);
 }
 
 export interface SignInPersonaPageInput {
@@ -332,8 +333,9 @@ export interface ShortVolunteerNameInput {
 }
 
 /**
- * How the rail and dashboard abbreviate a Volunteer (`formatVolunteerName`,
- * FR-013): first name plus the last name's initial.
+ * How a teammate is abbreviated on the volunteer's own My schedule roster
+ * (the server's `scheduleVolunteerName`): first name plus the last name's
+ * initial. The builder's volunteer rail shows full names.
  */
 export function shortVolunteerName({ name }: ShortVolunteerNameInput): string {
   const tokens = name.trim().split(/\s+/);

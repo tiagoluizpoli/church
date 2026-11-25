@@ -31,6 +31,7 @@ const shift: CycleBuilderShiftSummary = {
   eventTimeBlockId: 'event-time-block-1',
   startTime: '2026-08-02T09:00:00.000Z',
   endTime: '2026-08-02T10:00:00.000Z',
+  cancelled: false,
   peopleNeeded: 2,
   assignedCount: 0,
   requirements: [
@@ -122,6 +123,7 @@ function renderCell(
         ]}
         needsResponseSuggestions={[]}
         eventTimeBlockLabel="Morning service"
+        railIsBeside
         onFocus={vi.fn()}
         onToggleFocus={vi.fn()}
         onSelect={vi.fn()}
@@ -160,6 +162,31 @@ describe('CycleBuilderCell', () => {
       screen.getByTestId('cycle-assignment-assignment-1'),
     ).not.toHaveAttribute('data-drop-target');
   });
+  it('renders a cancelled shift read-only, keeping its assignment visible', () => {
+    renderCell({
+      shift: { ...shift, cancelled: true },
+      assignments: [assignments[0]],
+      selectedVolunteerId: 'volunteer-2',
+      selectedVolunteerName: 'Ada Lovelace',
+    });
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Grace Hopper/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: m.builder_ui_add() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: m.builder_ui_assign_name({ name: 'Ada Lovelace' }),
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('cycle-requirement-requirement-role-1'),
+    ).not.toHaveAttribute('data-drop-target');
+    expect(screen.getByText('1/2')).toHaveClass('line-through');
+  });
+
   it('renders the read-only message in Portuguese', () => {
     overwriteGetLocale(() => 'pt-BR');
     setTestClock({
@@ -526,6 +553,21 @@ describe('CycleBuilderCell', () => {
 
     expect(onToggleFocus).toHaveBeenCalledOnce();
     expect(screen.queryByTestId('assignment-picker')).not.toBeInTheDocument();
+  });
+
+  it('opens its own picker instead when the rail is stacked below xl', async () => {
+    const user = userEvent.setup();
+    const onFocus = vi.fn();
+    const onToggleFocus = vi.fn();
+    renderCell({ onFocus, onToggleFocus, railIsBeside: false });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Show volunteers for Greeter first' }),
+    );
+
+    expect(onFocus).toHaveBeenCalled();
+    expect(onToggleFocus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('assignment-picker')).toBeInTheDocument();
   });
 
   it('marks the focus control as pressed while its own cell is focused', () => {

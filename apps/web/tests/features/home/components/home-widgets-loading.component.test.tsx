@@ -3,12 +3,11 @@ import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChurchSection } from '@/features/home/components/church-section';
+import { CycleBand } from '@/features/home/components/cycle-band';
 import { LeadershipSection } from '@/features/home/components/leadership-section';
-import { NextCycleCard } from '@/features/home/components/next-cycle-card';
 import {
   AdminSummary,
   NotificationSummary,
-  ScheduleSummary,
 } from '@/features/home/components/summary-widgets';
 import { renderWithProviders } from '@/tests/setup/render';
 
@@ -61,14 +60,6 @@ const surfaces: Surface[] = [
     data: { hasEverSentCycle: false },
   },
   {
-    name: 'NextCycleCard',
-    given: (v) => api.getCycleAnchors.mockReturnValue(v),
-    ui: <NextCycleCard {...props} />,
-    label: () => m.home_cycles(),
-    loaded: () => m.home_current_cycle(),
-    data: { current: null, next: null },
-  },
-  {
     name: 'LeadershipSection',
     given: (v) => api.listSchedules.mockReturnValue(v),
     ui: <LeadershipSection {...props} scope="leader" />,
@@ -77,12 +68,21 @@ const surfaces: Surface[] = [
     data: counts,
   },
   {
-    name: 'ScheduleSummary',
-    given: (v) => api.listSchedules.mockReturnValue(v),
-    ui: <ScheduleSummary {...props} scope="leader" />,
-    label: () => m.home_summary(),
+    name: 'CycleBand',
+    // One mocked value answers both its reads (schedules and Cycle anchors).
+    given: (v) => {
+      api.listSchedules.mockReturnValue(v);
+      api.getCycleAnchors.mockReturnValue(v);
+    },
+    ui: <CycleBand {...props} scope="admin:" showCycles />,
+    label: () => m.home_cycle_band(),
     loaded: () => m.schedules_to_prepare(),
-    data: { schedules: [], counts: { toPrepare: 0 } },
+    data: {
+      schedules: [],
+      counts: { toPrepare: 0 },
+      current: null,
+      next: null,
+    },
   },
   {
     name: 'AdminSummary',

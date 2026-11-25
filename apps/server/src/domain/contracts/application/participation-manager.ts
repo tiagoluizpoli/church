@@ -84,6 +84,8 @@ export interface ParticipationShiftView {
 export interface ParticipationEventTimeBlockView {
   eventTimeBlock: EventTimeBlock;
   included: boolean;
+  /** The block or its Event was cancelled: it asks for nobody. */
+  cancelled: boolean;
   /**
    * Of the volunteers asked, those who confirmed and marked no Shift of this
    * block unavailable, against the block's busiest Shift headcount (null while

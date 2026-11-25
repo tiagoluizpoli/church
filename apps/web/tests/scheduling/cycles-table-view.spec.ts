@@ -12,7 +12,7 @@ import {
   nonSundayDay,
   planningMonth,
 } from './planning-month.helpers';
-import { createTemplateOnNestedPage } from './template-create.helpers';
+import { createTemplateInDialog } from './template-create.helpers';
 import {
   newPersonaContext,
   signInPersonaPage,
@@ -129,7 +129,7 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
       templatesTable.getByRole('columnheader', { name: 'Nome' }),
     ).toBeVisible();
     await expect(
-      templatesTable.getByRole('columnheader', { name: 'Dia da semana' }),
+      templatesTable.getByRole('columnheader', { name: 'Quando' }),
     ).toBeVisible();
     await expect(
       templatesTable.getByRole('columnheader', { name: 'Blocos' }),
@@ -141,6 +141,9 @@ test.describe('Cycles table view — desktop (US1/US2)', () => {
     await expect(templateRow).toBeVisible();
     await expect(
       templateRow.getByRole('link', { name: 'Editar' }),
+    ).toBeVisible();
+    await expect(
+      templateRow.getByRole('button', { name: 'Precedências' }),
     ).toBeVisible();
     await expect(
       templateRow.getByRole('button', { name: 'Excluir' }),
@@ -304,7 +307,7 @@ test.describe('Cycles day/time block edit and delete (US3)', () => {
 
     const cycleReviewUrl = page.url();
     await page.goto('/app/event-templates');
-    await createTemplateOnNestedPage({
+    await createTemplateInDialog({
       page,
       name: templateName,
       weekday: 0,

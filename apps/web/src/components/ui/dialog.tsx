@@ -39,9 +39,40 @@ function DialogOverlay({
   );
 }
 
+const TABBABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
+
+/**
+ * Wraps Tab from the last control to the first (and Shift+Tab back) at once.
+ * base-ui's focus guards redirect on the next animation frame, so a fast
+ * second Tab left the open dialog for the page behind it.
+ */
+function wrapTab(event: React.KeyboardEvent<HTMLDivElement>) {
+  if (event.key !== 'Tab' || event.defaultPrevented) return;
+  const tabbable = [
+    ...event.currentTarget.querySelectorAll<HTMLElement>(TABBABLE),
+  ].filter(
+    (element) =>
+      element.tabIndex >= 0 &&
+      !element.hasAttribute('data-base-ui-focus-guard') &&
+      (element.checkVisibility?.() ?? true),
+  );
+  const first = tabbable[0];
+  const last = tabbable.at(-1);
+  const active = document.activeElement;
+  const wrapTo = event.shiftKey
+    ? active === first && last
+    : active === last && first;
+  if (!wrapTo) return;
+  event.preventDefault();
+  wrapTo.focus();
+}
+
 type DialogContentProps = DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean;
   closeDisabled?: boolean;
+  /** The × button's name, when the footer already has a "Close" of its own. */
+  closeLabel?: string;
 };
 
 function DialogContent({
@@ -49,6 +80,8 @@ function DialogContent({
   children,
   showCloseButton = true,
   closeDisabled = false,
+  closeLabel = m.shell_close(),
+  onKeyDown,
   ...props
 }: DialogContentProps) {
   return (
@@ -60,6 +93,10 @@ function DialogContent({
           'radius-floating data-open:fade-in-0 data-open:zoom-in-95 data-closed:fade-out-0 data-closed:zoom-out-95 fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 bg-popover p-4 text-popover-foreground text-xs/relaxed outline-none ring-1 ring-foreground/10 duration-100 data-closed:animate-out data-open:animate-in sm:max-w-sm',
           className,
         )}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          wrapTab(event);
+        }}
         {...props}
       >
         {children}
@@ -76,7 +113,7 @@ function DialogContent({
             }
           >
             <XIcon />
-            <span className="sr-only">{m.shell_close()}</span>
+            <span className="sr-only">{closeLabel}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>

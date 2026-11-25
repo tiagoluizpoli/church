@@ -4,13 +4,15 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TemplateCreatePage } from '@/features/scheduling/components/planning-admin/template-create-page';
+import { TemplateCreateDialog } from '@/features/scheduling/components/planning-admin/template-create-dialog';
 import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
 const createEventTemplate = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
+const blocker = { status: 'idle', reset: vi.fn(), proceed: vi.fn() };
+let shouldBlock: () => boolean = () => false;
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -38,10 +40,15 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => navigate,
+  useBlocker: (options: { shouldBlockFn: () => boolean }) => {
+    shouldBlock = options.shouldBlockFn;
+    return blocker;
+  },
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  blocker.status = 'idle';
 });
 
 function refusal({ data }: { data: unknown }) {
@@ -73,22 +80,70 @@ async function fillValidForm({
   });
 }
 
-describe('TemplateCreatePage', () => {
-  it('starts with one block row and a disabled Save, with Cancel back to the list', () => {
-    renderWithProviders(<TemplateCreatePage />);
+describe('TemplateCreateDialog', () => {
+  it('opens as a titled dialog with one block row, a disabled Save that says why, and Cancel back to the list', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
 
+    const dialog = screen.getByRole('dialog', { name: 'Novo modelo' });
+    expect(
+      within(dialog).getByRole('heading', { level: 2, name: 'Novo modelo' }),
+    ).toBeVisible();
     expect(screen.getAllByTestId('template-time-block-row')).toHaveLength(1);
-    expect(screen.getByTestId('create-template-button')).toBeDisabled();
-    expect(screen.getByTestId('cancel-template-button')).toHaveAttribute(
-      'href',
-      '/app/event-templates',
+    const save = screen.getByTestId('create-template-button');
+    expect(save).toBeDisabled();
+    expect(save).toHaveAccessibleDescription(
+      'Preencha o nome do modelo e o nome, o início e o término de cada bloco.',
     );
+    expect(
+      within(dialog).queryByTestId('delete-template-button'),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('cancel-template-button'));
+    expect(navigate).toHaveBeenCalledWith({
+      to: '/app/event-templates',
+      replace: true,
+    });
     expect(createEventTemplate).not.toHaveBeenCalled();
+  });
+
+  it('drops the blocked-save hint once the form is complete', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+
+    await fillValidForm({ user });
+
+    expect(screen.getByTestId('create-template-button')).toBeEnabled();
+    expect(
+      screen.queryByTestId('template-save-blocked-hint'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the lone picked weekday enabled and explains why it stays picked', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+
+    const sunday = screen.getByTestId('template-weekday-toggle-0');
+    expect(sunday).toBeEnabled();
+    expect(sunday).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(sunday);
+
+    expect(sunday).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('template-weekdays-hint')).toHaveTextContent(
+      'Escolha ao menos um dia.',
+    );
+    expect(sunday).toHaveAccessibleDescription('Escolha ao menos um dia.');
+
+    await user.click(screen.getByTestId('template-weekday-toggle-1'));
+    expect(screen.getByTestId('template-weekdays-hint')).toBeEmptyDOMElement();
+    await user.click(sunday);
+    expect(sunday).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('adds and removes block rows', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await user.click(screen.getByTestId('add-template-time-block-button'));
     expect(screen.getAllByTestId('template-time-block-row')).toHaveLength(2);
@@ -101,7 +156,7 @@ describe('TemplateCreatePage', () => {
 
   it('flags equal endpoints and duplicate labels inline and keeps Save disabled', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await user.type(screen.getByTestId('template-name-input'), 'Vigil');
     await user.type(
@@ -137,7 +192,7 @@ describe('TemplateCreatePage', () => {
   it('creates an overnight template without persisted ids or order, then toasts and returns to the list', async () => {
     createEventTemplate.mockResolvedValue({ id: 'new-1' });
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     expect(screen.getByTestId('template-time-block-span')).toHaveTextContent(
@@ -146,7 +201,10 @@ describe('TemplateCreatePage', () => {
     await user.click(screen.getByTestId('create-template-button'));
 
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
     expect(createEventTemplate).toHaveBeenCalledTimes(1);
     expect(createEventTemplate).toHaveBeenCalledWith({
@@ -169,7 +227,7 @@ describe('TemplateCreatePage', () => {
   it('prevents repeat submission while a save is pending', async () => {
     createEventTemplate.mockReturnValue(new Promise(() => undefined));
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -192,7 +250,7 @@ describe('TemplateCreatePage', () => {
       }),
     );
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -215,7 +273,7 @@ describe('TemplateCreatePage', () => {
       }),
     );
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -245,7 +303,7 @@ describe('TemplateCreatePage', () => {
       )
       .mockResolvedValueOnce({ id: 'new-1' });
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -276,7 +334,10 @@ describe('TemplateCreatePage', () => {
       'precedences',
     );
     await waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith({ to: '/app/event-templates' }),
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/app/event-templates',
+        replace: true,
+      }),
     );
   });
 
@@ -292,7 +353,7 @@ describe('TemplateCreatePage', () => {
       } as AxiosResponse),
     );
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreatePage />);
+    renderWithProviders(<TemplateCreateDialog />);
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -311,5 +372,45 @@ describe('TemplateCreatePage', () => {
     expect(createEventTemplate).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('template-name-input')).toHaveValue('  Vigil ');
     expect(screen.queryByTestId('template-form-error')).not.toBeInTheDocument();
+  });
+
+  it('holds navigation only once the draft is dirty', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+    expect(shouldBlock()).toBe(false);
+
+    await user.type(screen.getByTestId('template-name-input'), 'V');
+    expect(shouldBlock()).toBe(true);
+  });
+
+  it('asks before discarding: Keep editing resets, Discard proceeds', async () => {
+    blocker.status = 'blocked';
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+
+    const leave = await screen.findByTestId('template-leave-dialog');
+    await user.click(
+      within(leave).getByRole('button', { name: 'Continuar editando' }),
+    );
+    expect(blocker.reset).toHaveBeenCalledTimes(1);
+    await user.click(
+      within(leave).getByRole('button', { name: 'Descartar e sair' }),
+    );
+    expect(blocker.proceed).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores Escape while saving and holds navigation', async () => {
+    createEventTemplate.mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    renderWithProviders(<TemplateCreateDialog />);
+
+    await fillValidForm({ user });
+    await user.click(screen.getByTestId('create-template-button'));
+    await waitFor(() => expect(createEventTemplate).toHaveBeenCalled());
+    await user.keyboard('{Escape}');
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(shouldBlock()).toBe(true);
+    expect(screen.getByTestId('template-create-dialog')).toBeInTheDocument();
   });
 });

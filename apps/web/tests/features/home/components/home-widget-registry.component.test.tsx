@@ -15,64 +15,40 @@ function widgets(capacities: Partial<HomeCapacities>) {
     .map((widget) => widget.id);
 }
 
-interface SpanOfInput {
-  id: string;
-  capacities: Partial<HomeCapacities>;
-}
-
 describe('Home widget registry', () => {
-  it('selects widgets by additive capacity', () => {
+  it('selects widgets by additive capacity, attention before statistics', () => {
     expect(widgets({})).toEqual(['notifications']);
     expect(widgets({ serving: true })).toEqual([
       'notifications',
       'serving-actions',
+      'serving-history',
     ]);
     expect(widgets({ leadership: true })).toEqual([
       'notifications',
-      'schedule-summary',
+      'leadership',
+      'cycle-band',
       'coverage',
       'trend',
-      'leadership',
     ]);
     expect(widgets({ church: true, leadership: true })).toEqual([
       'notifications',
-      'schedule-summary',
-      'cycles',
+      'leadership',
+      'cycle-band',
       'coverage',
       'trend',
       'admin-summary',
       'setup',
-      'leadership',
     ]);
-    expect(
-      widgets({ church: true, leadership: true, serving: true }).slice(1, 3),
-    ).toEqual(['serving-actions', 'schedule-summary']);
-  });
-
-  it('widens the schedule summary and cycles to a full row when the other is absent', () => {
-    const spanOf = ({ id, capacities }: SpanOfInput) => {
-      const span = homeWidgets.find((widget) => widget.id === id)?.span;
-      const caps: HomeCapacities = {
-        church: false,
-        leadership: false,
-        serving: false,
-        leadershipScope: '',
-        ...capacities,
-      };
-      return typeof span === 'function' ? span(caps) : span;
-    };
-    expect(
-      spanOf({
-        id: 'schedule-summary',
-        capacities: { church: true, leadership: true },
-      }),
-    ).toBe(7);
-    expect(
-      spanOf({ id: 'cycles', capacities: { church: true, leadership: true } }),
-    ).toBe(5);
-    expect(
-      spanOf({ id: 'schedule-summary', capacities: { leadership: true } }),
-    ).toBe(12);
-    expect(spanOf({ id: 'cycles', capacities: { church: true } })).toBe(12);
+    expect(widgets({ church: true, leadership: true, serving: true })).toEqual([
+      'notifications',
+      'serving-actions',
+      'leadership',
+      'cycle-band',
+      'coverage',
+      'trend',
+      'serving-history',
+      'admin-summary',
+      'setup',
+    ]);
   });
 });

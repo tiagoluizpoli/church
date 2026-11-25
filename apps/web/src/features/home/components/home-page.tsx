@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
+import { AgoraLine } from '@/features/home/components/agora-line';
 import { HomeError } from '@/features/home/components/home-error';
 import {
   homeWidgets,
@@ -133,9 +134,10 @@ function useClearStaleLeadershipScope(capacities: HomeCapacities | null) {
 }
 
 /**
- * Home (`/app`): the common entry. Sections mount by additive capacity in the
- * order Church → Ministries I lead → My serving; a plain Church Member sees a
- * neutral welcome only after the capability read succeeded.
+ * Home (`/app`): the common entry. The Agora line comes first, then sections
+ * mount by additive capacity in registry order (attention before statistics);
+ * a plain Church Member sees a neutral welcome only after the capability read
+ * succeeded.
  */
 export function HomePage({ search }: HomePageProps) {
   const scope = useCallerCapabilitiesScope();
@@ -176,6 +178,12 @@ export function HomePage({ search }: HomePageProps) {
       }
     : null;
 
+  const holdsSection = capacities
+    ? homeWidgets.some(
+        (widget) => !widget.universal && widget.capacity(capacities),
+      )
+    : false;
+
   return (
     <WorkspacePage>
       <header>
@@ -193,26 +201,21 @@ export function HomePage({ search }: HomePageProps) {
         </Pending>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
-          {!homeWidgets.some(
-            (widget) => !widget.universal && widget.capacity(capacities),
-          ) ? (
-            <div className="md:col-span-12">
+          <div className="empty:hidden md:col-span-12">
+            {holdsSection ? (
+              <AgoraLine {...sectionProps} capacities={capacities} />
+            ) : (
               <PlainWelcome churchId={sectionProps.churchId} />
-            </div>
-          ) : null}
+            )}
+          </div>
           {homeWidgets
             .filter((widget) => widget.capacity(capacities))
             .map(({ id, span, Component }) => (
               <div
                 key={id}
-                className={cn(
-                  widgetSpanClass[
-                    typeof span === 'function' ? span(capacities) : span
-                  ],
-                  'empty:hidden',
-                )}
+                className={cn(widgetSpanClass[span], 'empty:hidden')}
               >
-                <Component {...sectionProps} />
+                <Component {...sectionProps} capacities={capacities} />
               </div>
             ))}
         </div>

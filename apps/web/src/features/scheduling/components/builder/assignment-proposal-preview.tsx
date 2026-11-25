@@ -17,6 +17,7 @@ import {
   scheduleOrdinals,
 } from '../../utils/builder/assignment-proposal.utils';
 import { churchDayOf } from '../../utils/builder/cycle-builder-date.utils';
+import { isStaffedEventTimeBlock } from '../../utils/builder/cycle-builder-staffing.utils';
 import {
   type AttentionPerson,
   ProposalAttention,
@@ -344,7 +345,7 @@ export function AssignmentProposalPreview({
         servedByDay.set(
           day,
           (servedByDay.get(day) ?? false) ||
-            (block.included && block.shifts.length > 0),
+            (isStaffedEventTimeBlock(block) && block.shifts.length > 0),
         );
       }
     return [...servedByDay].map(([day, served]) => ({

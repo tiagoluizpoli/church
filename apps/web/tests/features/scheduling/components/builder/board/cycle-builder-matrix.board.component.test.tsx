@@ -3,6 +3,7 @@ import { overwriteGetLocale } from '@church/i18n/runtime';
 import { parseInstant, setTestClock } from '@church/time';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import {
   beforeEach as beforeEachLocale,
   describe,
@@ -49,6 +50,7 @@ const boardData: CycleBuilderData = {
           label: 'Morning service',
           startTime: '2026-08-02T09:00:00.000Z',
           endTime: '2026-08-02T11:00:00.000Z',
+          cancelled: false,
           included: true,
           peopleNeeded: 2,
           assignedCount: 0,
@@ -59,6 +61,7 @@ const boardData: CycleBuilderData = {
               eventTimeBlockId: 'event-time-block-1',
               startTime: '2026-08-02T09:00:00.000Z',
               endTime: '2026-08-02T11:00:00.000Z',
+              cancelled: false,
               peopleNeeded: 2,
               assignedCount: 0,
               requirements: [
@@ -303,8 +306,8 @@ describe('CycleBuilderMatrix', () => {
     renderWithProviders(
       <CycleBuilderMatrix
         data={data}
-        selectedDate="2026-08-02"
-        onSelectedDateChange={vi.fn()}
+        selectedDates={['2026-08-02']}
+        onSelectedDatesChange={vi.fn()}
         onSelectVolunteer={vi.fn()}
         onSelectAssignment={onSelectAssignment}
         onRemoveAssignment={onRemoveAssignment}
@@ -332,7 +335,11 @@ describe('CycleBuilderMatrix', () => {
     );
 
     await user.click(within(kidsCell).getByRole('button', { name: 'Add' }));
-    await user.click(await screen.findByText('Available Volunteer'));
+    await user.click(
+      within(await screen.findByTestId('assignment-picker')).getByText(
+        'Available Volunteer',
+      ),
+    );
     expect(onSelectAssignment).toHaveBeenCalledWith(
       expect.objectContaining({
         shiftId: 'shift-1',
@@ -348,7 +355,11 @@ describe('CycleBuilderMatrix', () => {
       screen.getByTestId('cycle-requirement-focus-babies-requirement'),
     ).toHaveAttribute('aria-pressed', 'false');
     await user.click(within(babiesCell).getByText('Local Volunteer'));
-    await user.click(await screen.findByText('Available Volunteer'));
+    await user.click(
+      within(await screen.findByTestId('assignment-picker')).getByText(
+        'Available Volunteer',
+      ),
+    );
     expect(onSelectAssignment).toHaveBeenLastCalledWith(
       expect.objectContaining({
         assignmentId: assigned.id,
@@ -384,8 +395,8 @@ describe('CycleBuilderMatrix', () => {
             },
           ],
         }}
-        selectedDate="2026-08-02"
-        onSelectedDateChange={vi.fn()}
+        selectedDates={['2026-08-02']}
+        onSelectedDatesChange={vi.fn()}
         onSelectVolunteer={vi.fn()}
         onSelectAssignment={vi.fn()}
         onRemoveAssignment={vi.fn()}
@@ -417,8 +428,8 @@ describe('CycleBuilderMatrix', () => {
             },
           ],
         }}
-        selectedDate="2026-08-02"
-        onSelectedDateChange={vi.fn()}
+        selectedDates={['2026-08-02']}
+        onSelectedDatesChange={vi.fn()}
         onSelectVolunteer={vi.fn()}
         onSelectAssignment={vi.fn()}
         onRemoveAssignment={vi.fn()}
@@ -462,13 +473,67 @@ describe('CycleBuilderMatrix', () => {
     }
   });
 
+  it.each([
+    ['time block', 'block'],
+    ['Event', 'event'],
+  ] as const)('shows a cancelled %s as Cancelled with no way to staff it', async (_, scope) => {
+    const user = userEvent.setup();
+    const event = boardData.events[0];
+    const block = event.eventTimeBlocks[0];
+    const cancelledShifts = block.shifts.map((shift) => ({
+      ...shift,
+      cancelled: true,
+    }));
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={{
+          ...boardData,
+          events: [
+            {
+              ...event,
+              status: scope === 'event' ? 'cancelled' : event.status,
+              eventTimeBlocks: [
+                { ...block, cancelled: true, shifts: cancelledShifts },
+              ],
+            },
+          ],
+        }}
+        selectedDates={['2026-08-02']}
+        onSelectedDatesChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText(m.event_status_cancelled())).toHaveLength(1);
+    const percent = screen.queryByTestId(
+      'cycle-event-staffing-percent-event-1',
+    );
+    if (scope === 'event') expect(percent).not.toBeInTheDocument();
+    else expect(percent).toHaveTextContent('0%');
+    expect(
+      screen.queryByTestId('cycle-shift-footer-shift-1'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: m.builder_ui_add() }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByTestId('cycle-requirement-focus-requirement-role-1'),
+    );
+    expect(
+      screen.queryByRole('button', {
+        name: new RegExp(m.builder_ui_pick_me()),
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it('excludes same-shift assignees and warns when they serve in another shift', async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <CycleBuilderMatrix
         data={boardDataWithShiftAssignments()}
-        selectedDate="2026-08-02"
-        onSelectedDateChange={vi.fn()}
+        selectedDates={['2026-08-02']}
+        onSelectedDatesChange={vi.fn()}
         onSelectVolunteer={vi.fn()}
         onSelectAssignment={vi.fn()}
         onRemoveAssignment={vi.fn()}
@@ -507,8 +572,8 @@ describe('CycleBuilderMatrix', () => {
     renderWithProviders(
       <CycleBuilderMatrix
         data={boardData}
-        selectedDate="2026-08-02"
-        onSelectedDateChange={vi.fn()}
+        selectedDates={['2026-08-02']}
+        onSelectedDatesChange={vi.fn()}
         onSelectVolunteer={vi.fn()}
         onSelectAssignment={vi.fn()}
         onRemoveAssignment={vi.fn()}
@@ -550,8 +615,8 @@ describe('CycleBuilderMatrix', () => {
             },
           ],
         }}
-        selectedDate={null}
-        onSelectedDateChange={vi.fn()}
+        selectedDates={[]}
+        onSelectedDatesChange={vi.fn()}
         onSelectVolunteer={vi.fn()}
         onSelectAssignment={vi.fn()}
         onRemoveAssignment={vi.fn()}
@@ -599,8 +664,8 @@ describe('CycleBuilderMatrix', () => {
     renderWithProviders(
       <CycleBuilderMatrix
         data={boardData}
-        selectedDate={null}
-        onSelectedDateChange={vi.fn()}
+        selectedDates={[]}
+        onSelectedDatesChange={vi.fn()}
         onSelectVolunteer={vi.fn()}
         onSelectAssignment={vi.fn()}
         onRemoveAssignment={vi.fn()}
@@ -631,8 +696,8 @@ describe('CycleBuilderMatrix', () => {
     renderWithProviders(
       <CycleBuilderMatrix
         data={boardData}
-        selectedDate={null}
-        onSelectedDateChange={vi.fn()}
+        selectedDates={[]}
+        onSelectedDatesChange={vi.fn()}
         onSelectVolunteer={vi.fn()}
         onSelectAssignment={vi.fn()}
         onRemoveAssignment={vi.fn()}
@@ -661,8 +726,8 @@ describe('CycleBuilderMatrix', () => {
     renderWithProviders(
       <CycleBuilderMatrix
         data={boardData}
-        selectedDate={null}
-        onSelectedDateChange={vi.fn()}
+        selectedDates={[]}
+        onSelectedDatesChange={vi.fn()}
         onSelectVolunteer={vi.fn()}
         onSelectAssignment={vi.fn()}
         onRemoveAssignment={vi.fn()}
@@ -685,6 +750,56 @@ describe('CycleBuilderMatrix', () => {
     expect(viewport.scrollLeft).toBe(0);
   });
 
+  it('scrolls the date columns freely, with no snap lanes', () => {
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={boardData}
+        selectedDates={[]}
+        onSelectedDatesChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+
+    const viewport = screen.getByTestId('cycle-board-viewport');
+    expect(viewport.className).not.toMatch(/snap|scroll-px/);
+    expect(viewport.querySelector('section[class*="snap"]')).toBeNull();
+  });
+
+  it('brings a keyboard-focused control into view without leaving the column half-cut', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderWithProviders(
+      <CycleBuilderMatrix
+        data={boardData}
+        selectedDates={[]}
+        onSelectedDatesChange={vi.fn()}
+        onSelectVolunteer={vi.fn()}
+        onSelectAssignment={vi.fn()}
+        onRemoveAssignment={vi.fn()}
+      />,
+    );
+
+    const add = screen.getByRole('button', { name: 'Add' });
+    const matches = vi.spyOn(add, 'matches');
+
+    // A mouse-click focus must not scroll: it would move the click target.
+    matches.mockReturnValue(false);
+    act(() => add.focus());
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    matches.mockReturnValue(true);
+    act(() => {
+      add.blur();
+      add.focus();
+    });
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      inline: 'nearest',
+      block: 'nearest',
+    });
+  });
+
   describe('filter row', () => {
     /** Opens the "Date filters" disclosure that holds the range + weekday controls. */
     const openDateFilters = async () => {
@@ -705,8 +820,8 @@ describe('CycleBuilderMatrix', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={{ ...boardData, events: [boardData.events[0], secondSunday] }}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -751,8 +866,8 @@ describe('CycleBuilderMatrix', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={{ ...boardData, events: [boardData.events[0], secondSunday] }}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -786,8 +901,8 @@ describe('CycleBuilderMatrix', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -817,8 +932,8 @@ describe('CycleBuilderMatrix', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={{ ...boardData, events: [boardData.events[0], secondSunday] }}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -845,8 +960,8 @@ describe('CycleBuilderMatrix', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -862,8 +977,8 @@ describe('CycleBuilderMatrix', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -882,57 +997,54 @@ describe('CycleBuilderMatrix', () => {
       expect(modeButton).toHaveClass('h-11');
     });
 
-    it('pins "All dates" outside the draggable date strip, disabled until a date column is selected', () => {
+    it('pins the clear chip outside the draggable date rail: inert "All" until a day is selected', () => {
       const { rerender } = renderWithProviders(
         <CycleBuilderMatrix
           data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
         />,
       );
 
-      const allDatesButton = screen.getByTestId('cycle-date-strip-focus');
-      // Informational while nothing is focused — and not a control at all.
-      // It used to be a `disabled` button with `disabled:opacity-100`, which
-      // looks live, cannot be reached, and carried an `aria-pressed` state it
-      // had no way to change (B-3).
-      expect(allDatesButton.tagName).toBe('DIV');
-      expect(allDatesButton).not.toHaveAttribute('aria-pressed');
-      expect(allDatesButton).toHaveTextContent('All dates');
-      expect(allDatesButton).toHaveTextContent('Select a day');
-      // The date strip's pointer-drag handlers live on the
-      // `aria-label="Cycle dates"` section — the pinned control must sit
-      // outside it so it can never be swallowed by the pan gesture.
-      expect(allDatesButton.closest('[aria-label="Cycle dates"]')).toBeNull();
+      // Inert but still a focusable button announcing the current state.
+      const clearChip = screen.getByTestId('cycle-date-strip-clear');
+      expect(clearChip.tagName).toBe('BUTTON');
+      expect(clearChip).toHaveAttribute('aria-disabled', 'true');
+      expect(clearChip).toHaveAccessibleName('Showing all dates');
+      expect(clearChip).toHaveTextContent('All');
+      // The pan handlers live on the "Cycle dates" group; the clear chip
+      // sits outside it so a pan gesture can never swallow it.
+      expect(
+        clearChip.closest('[role="group"][aria-label="Cycle dates"]'),
+      ).toBeNull();
 
       rerender(
         <CycleBuilderMatrix
           data={boardData}
-          selectedDate="2026-08-02"
-          onSelectedDateChange={vi.fn()}
+          selectedDates={['2026-08-02']}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
         />,
       );
 
-      // Once a date is focused it names that date and becomes an active
-      // clear control.
-      const focusedButton = screen.getByTestId('cycle-date-strip-focus');
-      expect(focusedButton.tagName).toBe('BUTTON');
-      expect(focusedButton).not.toBeDisabled();
-      expect(focusedButton).toHaveTextContent('Show all dates');
+      // The same element, so focus never falls to the page when it clears.
+      expect(screen.getByTestId('cycle-date-strip-clear')).toBe(clearChip);
+      expect(clearChip).toHaveAttribute('aria-disabled', 'false');
+      expect(clearChip).toHaveAccessibleName('Clear 1 selected day');
+      expect(clearChip).toHaveTextContent('1 day');
     });
 
     it('no longer renders "All dates" inside the filter row itself', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={boardData}
-          selectedDate="2026-08-02"
-          onSelectedDateChange={vi.fn()}
+          selectedDates={['2026-08-02']}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -942,7 +1054,7 @@ describe('CycleBuilderMatrix', () => {
       const clearFiltersButton = screen.getByRole('button', {
         name: 'Clear filters',
       });
-      const allDatesButton = screen.getByTestId('cycle-date-strip-focus');
+      const allDatesButton = screen.getByTestId('cycle-date-strip-clear');
       expect(clearFiltersButton.closest('section')).not.toBe(
         allDatesButton.closest('section'),
       );
@@ -953,8 +1065,8 @@ describe('CycleBuilderMatrix', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -995,8 +1107,8 @@ describe('CycleBuilderMatrix', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={{ ...boardData, events: [earlyEvent, lateEvent] }}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -1039,192 +1151,232 @@ describe('CycleBuilderMatrix', () => {
   });
 
   describe('date strip', () => {
-    it('reserves clearance below the date-strip and board scrollbars so they do not overlap clickable content', () => {
-      renderWithProviders(
+    const SUNDAYS = ['2026-08-02', '2026-08-09', '2026-08-16', '2026-08-23'];
+
+    /** One single-block event per Sunday in August, each its own column. */
+    function sundaysData(): CycleBuilderData {
+      return {
+        ...boardData,
+        events: SUNDAYS.map((day, index) => ({
+          ...boardData.events[0],
+          eventId: `event-${day}`,
+          participationId: `participation-${day}`,
+          title: `Service ${index + 1}`,
+          start: `${day}T09:00:00.000Z`,
+          end: `${day}T11:00:00.000Z`,
+          eventTimeBlockCount: 0,
+          eventTimeBlocks: [],
+        })),
+      };
+    }
+
+    interface HarnessProps {
+      initial?: string[];
+      onChange?: (dates: string[]) => void;
+    }
+
+    /** Owns the selection like the route's `?days=` does. */
+    function Harness({ initial = [], onChange }: HarnessProps) {
+      const [selectedDates, setSelectedDates] = useState(initial);
+      return (
         <CycleBuilderMatrix
-          data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          data={sundaysData()}
+          selectedDates={selectedDates}
+          onSelectedDatesChange={(next) => {
+            onChange?.(next);
+            setSelectedDates(next);
+          }}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
-        />,
+        />
       );
+    }
 
-      // The horizontal `ScrollBar` overlays the bottom of its `ScrollArea`
-      // root — without bottom padding on the root itself, that overlay sat
-      // directly on top of the date cards' lower edge and silently ate
-      // clicks there. `pb-3` reserves real, empty space for it instead.
-      expect(screen.getByTestId('cycle-date-strip-scroll')).toHaveClass('pb-3');
+    const rail = () =>
+      within(screen.getByRole('group', { name: 'Cycle dates' }));
+    const chip = (dayMonth: string) =>
+      rail().getByRole('button', { name: new RegExp(`, ${dayMonth},`) });
+    const pressedDays = () =>
+      rail()
+        .getAllByTestId('cycle-date-chip')
+        .filter((button) => button.getAttribute('aria-pressed') === 'true')
+        .map((button) => button.dataset.date);
+    const boardColumns = () =>
+      within(screen.getByTestId('cycle-board-scroll'))
+        .queryAllByText(/^Sun, \d{2}\/08$/)
+        .filter((element) => element.tagName === 'P')
+        .map((element) => element.textContent);
+
+    it('keeps the rail within 48px: chips over a thin scrollbar lane', () => {
+      renderWithProviders(<Harness />);
+
+      // The horizontal ScrollBar overlays the root's bottom edge; the
+      // padding is its lane, so it never sits on a chip and eats clicks.
+      // jsdom renders the touch size: a 4px lane under 44px chips.
+      expect(screen.getByTestId('cycle-date-strip-scroll')).toHaveClass('pb-1');
       expect(screen.getByTestId('cycle-board-scroll')).toHaveClass('pb-3');
+      for (const button of rail().getAllByTestId('cycle-date-chip')) {
+        expect(button).toHaveClass('h-11'); // jsdom renders the touch size
+      }
+      expect(screen.getByTestId('cycle-date-strip-clear')).toHaveClass('w-24');
     });
 
-    it('selects a date by clicking its focus button, reliably and without arming a drag', async () => {
+    it('toggles a day with a plain click under a stable accessible name', async () => {
       const user = userEvent.setup();
-      const onSelectedDateChange = vi.fn();
-      renderWithProviders(
-        <CycleBuilderMatrix
-          data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={onSelectedDateChange}
-          onSelectVolunteer={vi.fn()}
-          onSelectAssignment={vi.fn()}
-          onRemoveAssignment={vi.fn()}
-        />,
-      );
+      renderWithProviders(<Harness />);
+      const sunday = chip('09/08');
+      expect(sunday).toHaveAccessibleName('Sun, 09/08, 0% staffed, 1 event');
+      expect(sunday).toHaveAttribute('aria-pressed', 'false');
 
-      const dateStrip = within(
-        screen.getByRole('region', { name: 'Cycle dates' }),
-      );
-      const focusButton = dateStrip.getByRole('button', {
-        name: /Show only.*02\/08/,
-      });
-      const viewport = screen.getByTestId('cycle-date-strip-viewport');
+      await user.click(sunday);
+      expect(sunday).toHaveAttribute('aria-pressed', 'true');
+      expect(sunday).toHaveAccessibleName('Sun, 09/08, 0% staffed, 1 event');
+      expect(boardColumns()).toEqual(['Sun, 09/08']);
 
-      await user.click(focusButton);
+      await user.click(chip('23/08'));
+      // Date order, not click order.
+      expect(boardColumns()).toEqual(['Sun, 09/08', 'Sun, 23/08']);
+      expect(screen.getByText('2 of 4 dates visible')).toBeVisible();
 
-      expect(onSelectedDateChange).toHaveBeenCalledTimes(1);
-      expect(onSelectedDateChange).toHaveBeenCalledWith('2026-08-02');
-      // The focus button is a real, isolated interactive element excluded
-      // from drag-arming entirely — clicking it never touches the pan
-      // gesture, unlike when the whole card used to be one giant button.
-      expect(viewport.scrollLeft).toBe(0);
+      await user.click(sunday);
+      expect(sunday).toHaveAttribute('aria-pressed', 'false');
+      expect(boardColumns()).toEqual(['Sun, 23/08']);
     });
 
-    it('swaps the focus-button label once a date is selected', () => {
-      const { rerender } = renderWithProviders(
-        <CycleBuilderMatrix
-          data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
-          onSelectVolunteer={vi.fn()}
-          onSelectAssignment={vi.fn()}
-          onRemoveAssignment={vi.fn()}
-        />,
-      );
+    it('selects a range from the last toggled chip with Shift+click', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Harness />);
 
+      await user.click(chip('23/08'));
+      await user.keyboard('{Shift>}');
+      await user.click(chip('09/08'));
+      await user.keyboard('{/Shift}');
+
+      expect(pressedDays()).toEqual(['2026-08-09', '2026-08-16', '2026-08-23']);
+      expect(boardColumns()).toEqual([
+        'Sun, 09/08',
+        'Sun, 16/08',
+        'Sun, 23/08',
+      ]);
+    });
+
+    it('treats Shift+click with nothing toggled yet as a plain toggle', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Harness />);
+
+      await user.keyboard('{Shift>}');
+      await user.click(chip('16/08'));
+      await user.keyboard('{/Shift}');
+
+      expect(pressedDays()).toEqual(['2026-08-16']);
+    });
+
+    it('is one tab stop moved by arrows, Home and End; Space toggles and Shift+Space ranges', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Harness />);
+      const chips = rail().getAllByTestId('cycle-date-chip');
+      expect(chips.map((button) => button.tabIndex)).toEqual([0, -1, -1, -1]);
+
+      chips[0].focus();
+      await user.keyboard('{ArrowRight}');
+      expect(chips[1]).toHaveFocus();
+      await user.keyboard('{End}');
+      expect(chips[3]).toHaveFocus();
+      await user.keyboard('{ArrowRight}');
+      expect(chips[3]).toHaveFocus();
+      await user.keyboard('{Home}');
+      expect(chips[0]).toHaveFocus();
+      expect(chips.map((button) => button.tabIndex)).toEqual([0, -1, -1, -1]);
+
+      await user.keyboard(' ');
+      expect(pressedDays()).toEqual(['2026-08-02']);
+      await user.keyboard('{ArrowRight}{ArrowRight}');
+      expect(chips[2]).toHaveFocus();
+      expect(chips.map((button) => button.tabIndex)).toEqual([-1, -1, 0, -1]);
+      await user.keyboard('{Shift>} {/Shift}');
+      expect(pressedDays()).toEqual(['2026-08-02', '2026-08-09', '2026-08-16']);
+      await user.keyboard(' ');
+      expect(pressedDays()).toEqual(['2026-08-02', '2026-08-09']);
+    });
+
+    it('clears with Escape and with the clear chip, keeping focus on it and announcing the count', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      renderWithProviders(<Harness onChange={onChange} />);
+      const clearChip = screen.getByTestId('cycle-date-strip-clear');
+      const status = () =>
+        screen.getByText(/selected$|^Showing all dates$/, {
+          selector: '[aria-live="polite"]',
+        });
+      expect(status()).toHaveTextContent('Showing all dates');
+
+      await user.click(chip('02/08'));
+      await user.click(chip('16/08'));
+      expect(status()).toHaveTextContent('2 days selected');
+      expect(clearChip).toHaveTextContent('2 days');
+      expect(clearChip).toHaveAccessibleName('Clear 2 selected days');
+
+      chip('16/08').focus();
+      await user.keyboard('{Escape}');
+      expect(pressedDays()).toEqual([]);
+      expect(boardColumns()).toHaveLength(4);
+      expect(chip('16/08')).toHaveFocus();
+
+      await user.click(chip('09/08'));
+      await user.click(clearChip);
+      expect(onChange).toHaveBeenLastCalledWith([]);
+      expect(clearChip).toHaveFocus();
+      expect(clearChip).toHaveAttribute('aria-disabled', 'true');
+      expect(status()).toHaveTextContent('Showing all dates');
+
+      // Inert while nothing is selected: no redundant write.
+      onChange.mockClear();
+      await user.click(clearChip);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('drops a filtered-out selected day from the board and says so', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Harness initial={['2026-08-09', '2026-08-16']} />);
+      expect(boardColumns()).toEqual(['Sun, 09/08', 'Sun, 16/08']);
       expect(
-        within(screen.getByRole('region', { name: 'Cycle dates' })).getByRole(
-          'button',
-          { name: /Show only.*02\/08/ },
-        ),
-      ).toBeVisible();
+        screen.queryByTestId('cycle-date-strip-hidden'),
+      ).not.toBeInTheDocument();
 
-      rerender(
-        <CycleBuilderMatrix
-          data={boardData}
-          selectedDate="2026-08-02"
-          onSelectedDateChange={vi.fn()}
-          onSelectVolunteer={vi.fn()}
-          onSelectAssignment={vi.fn()}
-          onRemoveAssignment={vi.fn()}
-        />,
+      // The search narrows the chips to Aug 9; Aug 16 stays selected.
+      await user.type(screen.getByLabelText('Search events'), 'Service 2');
+
+      expect(rail().getAllByTestId('cycle-date-chip')).toHaveLength(1);
+      expect(boardColumns()).toEqual(['Sun, 09/08']);
+      expect(screen.getByTestId('cycle-date-strip-hidden')).toHaveTextContent(
+        '1 selected day hidden by the filters',
+      );
+      expect(screen.getByTestId('cycle-date-strip-clear')).toHaveTextContent(
+        '2 days',
       );
 
+      // Clearing the filters brings the hidden day back as a column.
+      await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+      expect(boardColumns()).toEqual(['Sun, 09/08', 'Sun, 16/08']);
       expect(
-        within(screen.getByRole('region', { name: 'Cycle dates' })).getByRole(
-          'button',
-          { name: 'Show all dates' },
-        ),
-      ).toBeVisible();
+        screen.queryByTestId('cycle-date-strip-hidden'),
+      ).not.toBeInTheDocument();
     });
 
-    it('does not pan when pressing and moving on the focus button', () => {
-      renderWithProviders(
-        <CycleBuilderMatrix
-          data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
-          onSelectVolunteer={vi.fn()}
-          onSelectAssignment={vi.fn()}
-          onRemoveAssignment={vi.fn()}
-        />,
-      );
-
-      const dateStrip = within(
-        screen.getByRole('region', { name: 'Cycle dates' }),
-      );
-      const focusButton = dateStrip.getByRole('button', {
-        name: /Show only.*02\/08/,
-      });
+    it('pans the rail when a drag starts on a chip, without toggling it', () => {
+      const onChange = vi.fn();
+      renderWithProviders(<Harness onChange={onChange} />);
+      const sunday = chip('09/08');
       const viewport = screen.getByTestId('cycle-date-strip-viewport');
 
-      fireEvent.pointerDown(focusButton, {
-        pointerId: 1,
-        clientX: 200,
-        buttons: 1,
-      });
-      fireEvent.pointerMove(focusButton, {
-        pointerId: 1,
-        clientX: 100,
-        buttons: 1,
-      });
-
-      expect(viewport.scrollLeft).toBe(0);
-    });
-
-    it('pans the strip when the drag starts directly on a date card (not its focus button)', () => {
-      renderWithProviders(
-        <CycleBuilderMatrix
-          data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
-          onSelectVolunteer={vi.fn()}
-          onSelectAssignment={vi.fn()}
-          onRemoveAssignment={vi.fn()}
-        />,
-      );
-
-      const dateStrip = within(
-        screen.getByRole('region', { name: 'Cycle dates' }),
-      );
-      // The event-count text is part of the card body, not the focus
-      // button — pressing and dragging from there must still pan, since
-      // almost the entire card is now plain drag surface.
-      const cardBody = dateStrip.getByText('1 event');
-      const viewport = screen.getByTestId('cycle-date-strip-viewport');
-
-      fireEvent.pointerDown(cardBody, {
-        pointerId: 1,
-        clientX: 200,
-        buttons: 1,
-      });
-      fireEvent.pointerMove(cardBody, {
-        pointerId: 1,
-        clientX: 100,
-        buttons: 1,
-      });
+      fireEvent.pointerDown(sunday, { pointerId: 1, clientX: 200, buttons: 1 });
+      fireEvent.pointerMove(sunday, { pointerId: 1, clientX: 100, buttons: 1 });
+      fireEvent.pointerUp(sunday, { pointerId: 1 });
+      fireEvent.click(sunday);
 
       expect(viewport.scrollLeft).toBe(100);
-    });
-
-    it('still pans the strip when the drag starts on empty space between cards', () => {
-      renderWithProviders(
-        <CycleBuilderMatrix
-          data={boardData}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
-          onSelectVolunteer={vi.fn()}
-          onSelectAssignment={vi.fn()}
-          onRemoveAssignment={vi.fn()}
-        />,
-      );
-
-      const dragSurface = screen.getByRole('region', { name: 'Cycle dates' });
-      const viewport = screen.getByTestId('cycle-date-strip-viewport');
-
-      fireEvent.pointerDown(dragSurface, {
-        pointerId: 1,
-        clientX: 200,
-        buttons: 1,
-      });
-      fireEvent.pointerMove(dragSurface, {
-        pointerId: 1,
-        clientX: 100,
-        buttons: 1,
-      });
-
-      expect(viewport.scrollLeft).toBe(100);
+      expect(onChange).not.toHaveBeenCalled();
     });
 
     it('colors a fully staffed date green, a partially staffed date amber, and an understaffed date red', () => {
@@ -1275,8 +1427,8 @@ describe('CycleBuilderMatrix', () => {
             ...boardData,
             events: [staffedEvent, partialEvent, emptyEvent],
           }}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
@@ -1287,7 +1439,7 @@ describe('CycleBuilderMatrix', () => {
       // also render a `fillRatio`-derived percentage and would otherwise
       // collide with these queries.
       const dateStrip = within(
-        screen.getByRole('region', { name: 'Cycle dates' }),
+        screen.getByRole('group', { name: 'Cycle dates' }),
       );
 
       const fullCard = dateStrip.getByText('100%');
@@ -1300,7 +1452,7 @@ describe('CycleBuilderMatrix', () => {
       expect(emptyCard).toHaveClass('text-destructive');
     });
 
-    it('leaves a date with no requirements neutral instead of flagging it red', () => {
+    it('shows a dash, not a red 0%, for a date with no requirements', () => {
       const noRequirementEvent: CycleBuilderData['events'][number] = {
         ...boardData.events[0],
         eventId: 'event-none',
@@ -1320,26 +1472,34 @@ describe('CycleBuilderMatrix', () => {
       renderWithProviders(
         <CycleBuilderMatrix
           data={{ ...boardData, events: [noRequirementEvent] }}
-          selectedDate={null}
-          onSelectedDateChange={vi.fn()}
+          selectedDates={[]}
+          onSelectedDatesChange={vi.fn()}
           onSelectVolunteer={vi.fn()}
           onSelectAssignment={vi.fn()}
           onRemoveAssignment={vi.fn()}
         />,
       );
 
-      const percentLabel = within(
-        screen.getByRole('region', { name: 'Cycle dates' }),
-      ).getByText('0%');
+      // A day that needs nobody reads "—", never a red "0%" (A-report P3).
+      const dateStrip = within(
+        screen.getByRole('group', { name: 'Cycle dates' }),
+      );
+      expect(dateStrip.queryByText('0%')).not.toBeInTheDocument();
+      const percentLabel = dateStrip.getByText('—');
       expect(percentLabel).not.toHaveClass('text-destructive');
       expect(percentLabel).toHaveClass('text-muted-foreground');
+      expect(
+        dateStrip.getByRole('button', {
+          name: 'Sun, 23/08, no places needed, 1 event',
+        }),
+      ).toBeVisible();
     });
   });
 });
 
 const refreshProps = {
-  selectedDate: null,
-  onSelectedDateChange: vi.fn(),
+  selectedDates: [],
+  onSelectedDatesChange: vi.fn(),
   onSelectVolunteer: vi.fn(),
   onSelectAssignment: vi.fn(),
   onRemoveAssignment: vi.fn(),
@@ -1374,7 +1534,7 @@ describe('focused candidates after a refreshed payload', () => {
     expect(focus).toHaveAttribute('aria-pressed', 'true');
     expect(
       within(screen.getByTestId('volunteer-pool')).getByRole('button', {
-        name: m.builder_ui_assign_role({ name: 'New Role Holder' }),
+        name: m.builder_ui_pick_me_person({ name: 'New Role Holder' }),
       }),
     ).toBeVisible();
   });
@@ -1459,7 +1619,7 @@ for (const locale of ['en', 'pt-BR'] as const) {
       ).toHaveAttribute('aria-pressed', 'true');
       expect(
         rail.queryByRole('button', {
-          name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+          name: m.builder_ui_pick_me_person({ name: 'Grace Hopper' }),
         }),
       ).not.toBeInTheDocument();
     });
@@ -1473,7 +1633,7 @@ for (const locale of ['en', 'pt-BR'] as const) {
         const { rail } = renderFocusedRail();
         expect(
           rail.getByRole('button', {
-            name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+            name: m.builder_ui_pick_me_person({ name: 'Grace Hopper' }),
           }),
         ).toBeVisible();
         setTestClock({
@@ -1485,7 +1645,7 @@ for (const locale of ['en', 'pt-BR'] as const) {
         ).toHaveAttribute('aria-pressed', 'true');
         expect(
           rail.queryByRole('button', {
-            name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+            name: m.builder_ui_pick_me_person({ name: 'Grace Hopper' }),
           }),
         ).not.toBeInTheDocument();
       } finally {
@@ -1499,7 +1659,7 @@ for (const locale of ['en', 'pt-BR'] as const) {
       });
       const { rail, onSelectAssignment } = renderFocusedRail();
       const assign = rail.getByRole('button', {
-        name: m.builder_ui_assign_role({ name: 'Grace Hopper' }),
+        name: m.builder_ui_pick_me_person({ name: 'Grace Hopper' }),
       });
       setTestClock({
         instant: parseInstant({ value: '2026-08-02T09:00:00Z' }),

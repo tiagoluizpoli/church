@@ -12254,6 +12254,8 @@ paths:
                                 additionalProperties: false
                               included:
                                 type: boolean
+                              cancelled:
+                                type: boolean
                               answerCoverage:
                                 type: object
                                 properties:
@@ -12379,6 +12381,7 @@ paths:
                             required:
                               - eventTimeBlock
                               - included
+                              - cancelled
                               - answerCoverage
                               - shifts
                               - requirements
@@ -12675,7 +12678,9 @@ paths:
         split nor headcounts opts a block with no Shifts in from the Usual
         setup. A headcount cannot drop below its active Assignments.
         Re-splitting, deleting a Shift or opting out is refused while an
-        affected Shift carries UnavailableShift marks or active Assignments.
+        affected Shift carries UnavailableShift marks or active Assignments. A
+        block under a cancelled Event or EventTimeBlock is refused as
+        EVENT_CANCELLED or EVENT_TIME_BLOCK_CANCELLED.
       requestBody:
         required: true
         content:
@@ -12840,6 +12845,8 @@ paths:
                     additionalProperties: false
                   included:
                     type: boolean
+                  cancelled:
+                    type: boolean
                   answerCoverage:
                     type: object
                     properties:
@@ -12965,6 +12972,7 @@ paths:
                 required:
                   - eventTimeBlock
                   - included
+                  - cancelled
                   - answerCoverage
                   - shifts
                   - requirements

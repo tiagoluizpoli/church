@@ -1,0 +1,344 @@
+<!doctype html>
+<!--
+  PROTOTYPE, throwaway. Wayfinder ticket "Prototype: export screen with Event group setup and live preview" (#1107, map #1101).
+  Question: how does a leader set up Event groups, pick Cycle and dates, preview, then share or download, on phone and computer?
+  Three structurally different screens, switchable via ?variant=A|B|C (bottom bar, or ← →):
+    A  One page: settings beside the preview, Event groups edited in a drawer.
+    B  Step by step: dates → groups → format → share.
+    C  Preview first: the preview fills the screen, a slim toolbar, Event groups live on the Ministry's page.
+  The previews are the chosen layouts (grid E, cards F) from ../schedule-export-layouts, loaded in iframes.
+  Run from the repo root: python3 -m http.server 8787 -d prototypes   then open http://localhost:8787/schedule-export-screen/
+  Nothing is saved; reload resets everything except the URL params.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PROTOTYPE · tela de exportar escala</title>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg: oklch(0.978 0.004 236); --fg: oklch(0.286 0.032 254); --card: oklch(0.992 0.002 220); --pri: oklch(0.378 0.09 255);
+    --sec: oklch(0.962 0.01 240); --mut: oklch(0.955 0.008 236); --mfg: oklch(0.48 0.024 250); --acc: oklch(0.948 0.018 247);
+    --des: oklch(0.56 0.207 26); --bd: oklch(0.885 0.012 242); --side: oklch(0.968 0.01 242); --warn: oklch(0.96 0.05 85); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #2b303b; font-family: "Atkinson Hyperlegible", system-ui, sans-serif; color: var(--fg); font-size: 14px; }
+  button, select, input { font: inherit; color: inherit; }
+  #bar { position: sticky; top: 0; z-index: 50; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; padding: 6px 12px; background: #111827; color: #fff; font: 12.5px system-ui; }
+  #bar label { display: flex; gap: 4px; align-items: center; }
+  #bar select { color: #111; }
+  #stateview { opacity: .7; font-family: ui-monospace, monospace; font-size: 11px; }
+  #frame { margin: 14px auto 70px; background: var(--bg); overflow: hidden; position: relative; }
+  #frame.desktop { width: min(1360px, calc(100vw - 28px)); height: calc(100vh - 110px); }
+  #frame.phone { width: 390px; height: 800px; border-radius: 28px; border: 10px solid #000; }
+  .app { display: flex; height: 100%; }
+  .side { width: 220px; flex: none; background: var(--side); border-right: 1px solid var(--bd); padding: 14px 10px; }
+  .side .church { display: flex; gap: 8px; align-items: center; font-weight: 700; margin-bottom: 18px; }
+  .side .church img { width: 28px; height: 28px; border-radius: 7px; }
+  .side a { display: block; padding: 7px 10px; border-radius: 8px; color: var(--fg); text-decoration: none; }
+  .side a.on { background: oklch(0.942 0.018 246); font-weight: 700; }
+  .phone > .main { height: 100%; }
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .crumbs { padding: 12px 24px 0; color: var(--mfg); font-size: 13px; }
+  .mtop { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--bd); background: var(--card); font-weight: 700; }
+  .mtop .back { border: 0; background: none; font-size: 18px; }
+  .scroll { flex: 1; overflow: auto; }
+  .intro { margin: 12px 24px 0; padding: 16px 20px; background: var(--card); border: 1px solid var(--bd); border-radius: 12px; }
+  .phone .intro { margin: 12px 12px 0; padding: 12px 14px; }
+  .intro h1 { margin: 0; font-size: 22px; } .phone .intro h1 { font-size: 18px; }
+  .intro p { margin: 4px 0 0; color: var(--mfg); }
+  .panel { background: var(--card); border: 1px solid var(--bd); border-radius: 12px; padding: 14px 16px; }
+  .panel h3 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--mfg); }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .field > span { font-weight: 700; font-size: 13px; }
+  select, input[type=text] { border: 1px solid var(--bd); border-radius: 8px; padding: 7px 9px; background: #fff; width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .seg { display: inline-flex; background: var(--mut); border-radius: 9px; padding: 3px; gap: 2px; width: 100%; }
+  .seg button { flex: 1; border: 0; background: none; padding: 6px 8px; border-radius: 7px; cursor: pointer; }
+  .seg button.on { background: #fff; font-weight: 700; box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+  .hint { color: var(--mfg); font-size: 12.5px; margin: 4px 0 0; }
+  .btn { border: 1px solid var(--bd); background: #fff; border-radius: 9px; padding: 8px 14px; cursor: pointer; font-weight: 700; }
+  .btn.pri { background: var(--pri); color: #fff; border-color: var(--pri); }
+  .btn.sm { padding: 4px 10px; font-size: 13px; }
+  .btn.ghost { border-color: transparent; background: none; }
+  .link { color: var(--pri); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; font-weight: 700; }
+  .draft { margin: 10px 0 0; padding: 8px 12px; border-radius: 9px; background: var(--warn); font-size: 13px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; gap: 4px; align-items: center; background: var(--acc); border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+  .chip button { border: 0; background: none; cursor: pointer; padding: 0 0 0 2px; color: var(--mfg); }
+  /* groups editor */
+  .ge .g { border: 1px solid var(--bd); border-radius: 10px; padding: 10px; margin-bottom: 8px; background: #fff; }
+  .ge .g .row input { font-weight: 700; }
+  .ge .g .tools button { border: 0; background: none; cursor: pointer; color: var(--mfg); font-size: 15px; padding: 2px 4px; }
+  .ge .g.other { background: var(--mut); }
+  .ge .g .chips { margin-top: 8px; }
+  .ge select.add { width: auto; padding: 3px 6px; font-size: 13px; border-style: dashed; }
+  .radiocards { display: grid; gap: 8px; }
+  .rc { border: 1.5px solid var(--bd); border-radius: 10px; padding: 10px 12px; background: #fff; cursor: pointer; text-align: left; }
+  .rc.on { border-color: var(--pri); background: var(--acc); }
+  .rc b { display: block; } .rc span { color: var(--mfg); font-size: 13px; }
+  /* preview */
+  .pv { background: var(--mut); border-radius: 12px; padding: 14px; }
+  .pv .meta { display: flex; justify-content: space-between; color: var(--mfg); font-size: 12.5px; margin-bottom: 8px; gap: 8px; }
+  .pv .part { margin-bottom: 14px; }
+  .pv .part > small { display: block; color: var(--mfg); margin-bottom: 4px; font-size: 12px; }
+  .pv .fit { overflow: hidden; box-shadow: 0 1px 6px rgb(0 0 0 / .15); background: #fff; margin: 0 auto; }
+  .pv iframe { border: 0; transform-origin: 0 0; display: block; }
+  .xl { background: #fff; border: 1px solid var(--bd); border-radius: 6px; overflow: hidden; font-size: 12px; }
+  .xl table { border-collapse: collapse; width: 100%; } .xl td, .xl th { border: 1px solid #e3e6ea; padding: 3px 6px; text-align: left; }
+  .xl th { background: #f3f5f7; } .xl .tabs { display: flex; gap: 2px; background: #f3f5f7; padding: 4px 4px 0; }
+  .xl .tabs span { padding: 4px 12px; background: #e6e9ed; border-radius: 4px 4px 0 0; } .xl .tabs span.on { background: #fff; font-weight: 700; }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding: 10px 16px; border-top: 1px solid var(--bd); background: var(--card); }
+  .phone .actions .btn { flex: 1; }
+  /* drawer / sheet */
+  .scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .35); z-index: 20; }
+  .drawer { position: absolute; z-index: 21; background: var(--card); display: flex; flex-direction: column; }
+  .desktop .drawer { top: 0; right: 0; bottom: 0; width: 420px; box-shadow: -4px 0 20px rgb(0 0 0 / .15); }
+  .phone .drawer { left: 0; right: 0; bottom: 0; max-height: 88%; border-radius: 16px 16px 0 0; }
+  .drawer header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--bd); }
+  .drawer header h2 { margin: 0; font-size: 17px; }
+  .drawer .body { padding: 14px 16px; overflow: auto; flex: 1; }
+  /* stepper */
+  .steps { display: flex; gap: 6px; padding: 12px 24px 0; }
+  .phone .steps { padding: 10px 12px 0; }
+  .steps div { flex: 1; border-top: 3px solid var(--bd); padding-top: 6px; color: var(--mfg); font-size: 12.5px; }
+  .steps div.on { border-color: var(--pri); color: var(--fg); font-weight: 700; } .steps div.done { border-color: var(--pri); }
+  .phone .steps div span { display: none; } .phone .steps div.on span { display: inline; }
+  /* toolbar chips (C) */
+  .tb { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 24px; border-bottom: 1px solid var(--bd); background: var(--card); position: relative; }
+  .phone .tb { padding: 8px 10px; flex-wrap: nowrap; overflow-x: auto; }
+  .tbc { border: 1px solid var(--bd); background: #fff; border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; font-size: 13px; }
+  .tbc b { font-weight: 700; } .tbc.open { border-color: var(--pri); background: var(--acc); }
+  .pop { position: absolute; top: 100%; z-index: 30; background: #fff; border: 1px solid var(--bd); border-radius: 12px; box-shadow: 0 8px 24px rgb(0 0 0 / .15); padding: 14px; width: 320px; }
+  .phone .pop { left: 8px !important; right: 8px; width: auto; }
+  .fab { position: absolute; right: 24px; bottom: 20px; display: flex; gap: 8px; z-index: 10; }
+  .fab .btn { box-shadow: 0 4px 14px rgb(0 0 0 / .2); }
+  .tabsm { display: flex; gap: 2px; border-bottom: 1px solid var(--bd); margin: 12px 24px 0; overflow-x: auto; }
+  .tabsm span { padding: 8px 12px; color: var(--mfg); white-space: nowrap; } .tabsm span.on { color: var(--fg); font-weight: 700; border-bottom: 2px solid var(--pri); }
+  .phone .tabsm { margin: 10px 12px 0; }
+  #toast { position: fixed; left: 50%; bottom: 74px; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 16px; border-radius: 10px; font: 13px system-ui; z-index: 60; max-width: 90vw; display: none; }
+  #switcher { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; background: #111827; color: #fff; padding: 8px 14px; border-radius: 999px; box-shadow: 0 6px 20px rgb(0 0 0 / .35); font: 14px system-ui; z-index: 60; }
+  #switcher button { background: #374151; color: #fff; border: 0; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <strong>PROTOTYPE</strong>
+  <label>Tela <select id="device"><option value="phone">Celular</option><option value="desktop">Computador</option></select></label>
+  <label>Ministério <select id="data"><option value="kids">Infantil (10–13/culto)</option><option value="proj">Projeção (2/culto)</option></select></label>
+  <label><input type="checkbox" id="draft" /> Escala ainda não publicada</label>
+  <span id="stateview"></span>
+</div>
+<div id="frame"></div>
+<div id="toast"></div>
+<div id="switcher"><button id="prev" aria-label="Anterior">←</button><span id="vlabel"></span><button id="next" aria-label="Próxima">→</button></div>
+<script>
+const VARIANTS = { A: "Uma página, grupos numa gaveta", B: "Passo a passo", C: "Prévia primeiro, grupos na página do ministério" };
+const KEYS = Object.keys(VARIANTS);
+const q = new URLSearchParams(location.search);
+const TEMPLATES = ["Culto de domingo", "Culto de quarta", "Vigília de oração"]; // the Retiro was added by hand: no template
+const CYCLES = ["Novembro 2026", "Outubro 2026", "Dezembro 2026"];
+const S = {
+  variant: q.get("variant") ?? "A", device: q.get("device") ?? "phone", data: q.get("data") ?? "kids", draft: q.get("draft") === "1",
+  cyc: "Novembro 2026", whole: true, from: 1, to: 30,
+  format: "png", layout: "cards", split: "all",
+  useGroups: true, groups: [{ name: "Domingos", templates: ["Culto de domingo"] }, { name: "Quartas", templates: ["Culto de quarta"] }],
+  drawer: false, step: 1, pop: null, page: "export",
+};
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const phone = () => S.device === "phone";
+const groupNames = () => S.useGroups ? [...S.groups.map((g) => g.name), "Outros"] : [];
+const range = () => S.whole ? "Ciclo inteiro (1 – 30 nov)" : `${S.from} – ${S.to} nov`;
+const fmtLabel = () => S.format === "pdf" ? "PDF para imprimir" : S.format === "xlsx" ? "Planilha Excel" : S.layout === "grid" ? "Imagem em tabela" : "Imagens em cartões";
+
+// ---------- shared pieces ----------
+function seg(key, opts) { return `<div class="seg">${opts.map(([v, l]) => `<button data-set="${key}" data-val="${v}" class="${S[key] === v ? "on" : ""}">${l}</button>`).join("")}</div>`; }
+function periodFields() {
+  const days = Array.from({ length: 30 }, (_, i) => i + 1);
+  return `<label class="field"><span>Ciclo</span><select data-input="cyc">${CYCLES.map((c) => `<option ${c === S.cyc ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+  <div class="field"><span>Datas</span>${seg("whole", [[true, "Ciclo inteiro"], [false, "Escolher datas"]])}
+  ${S.whole ? "" : `<div class="row" style="margin-top:6px"><select data-input="from">${days.map((d) => `<option value="${d}" ${d === S.from ? "selected" : ""}>${d} nov</option>`).join("")}</select>até<select data-input="to">${days.map((d) => `<option value="${d}" ${d === S.to ? "selected" : ""}>${d} nov</option>`).join("")}</select></div>`}</div>`;
+}
+function formatFields() {
+  return `<div class="field"><span>Formato</span>${seg("format", [["png", "Imagem"], ["pdf", "PDF"], ["xlsx", "Excel"]])}</div>
+  ${S.format === "png" ? `<div class="field"><span>Como mostrar</span>${seg("layout", [["cards", "Cartões"], ["grid", "Tabela"]])}
+    <p class="hint">${S.layout === "cards" ? "Um cartão por culto. Melhor para ler no celular." : "O mês inteiro numa tabela. Dá para ver tudo de uma vez, aproximando a imagem."}</p></div>
+  <label class="field"><span>Separar em várias imagens</span><select data-input="split"><option value="all" ${S.split === "all" ? "selected" : ""}>Não, uma imagem só</option>${S.useGroups ? `<option value="group" ${S.split === "group" ? "selected" : ""}>Uma imagem por grupo</option>` : ""}<option value="week" ${S.split === "week" ? "selected" : ""}>Uma imagem por semana</option></select></label>` : ""}
+  ${S.format === "pdf" ? `<p class="hint">Folha A4 deitada, em tabela. O texto pode ser copiado.</p>` : ""}
+  ${S.format === "xlsx" ? `<p class="hint">Uma aba para cada grupo. Só dá para baixar, não compartilhar.</p>` : ""}`;
+}
+function draftNote() { return S.draft ? `<div class="draft"><b>Esta escala ainda não foi publicada.</b> O arquivo sai marcado como <i>Rascunho</i> e mostra as vagas em aberto.</div>` : ""; }
+function groupsEditor() {
+  const used = S.groups.flatMap((g) => g.templates);
+  const free = TEMPLATES.filter((t) => !used.includes(t));
+  return `<div class="ge">
+  <div class="radiocards" style="margin-bottom:12px">
+    <button class="rc ${S.useGroups ? "" : "on"}" data-set="useGroups" data-val="false"><b>Uma lista só</b><span>Todos os cultos e eventos em ordem de data.</span></button>
+    <button class="rc ${S.useGroups ? "on" : ""}" data-set="useGroups" data-val="true"><b>Separar em grupos</b><span>Ex.: Domingos, Quartas e o resto em Outros.</span></button>
+  </div>
+  ${S.useGroups ? S.groups.map((g, i) => `<div class="g"><div class="row"><input type="text" value="${esc(g.name)}" data-gname="${i}" aria-label="Nome do grupo" />
+    <span class="tools"><button data-gmove="${i}:-1" title="Subir">↑</button><button data-gmove="${i}:1" title="Descer">↓</button><button data-gdel="${i}" title="Apagar grupo">🗑</button></span></div>
+    <div class="chips">${g.templates.map((t) => `<span class="chip">${t}<button data-gremove="${i}:${esc(t)}" aria-label="Tirar">×</button></span>`).join("")}
+    ${free.length ? `<select class="add" data-gadd="${i}"><option value="">+ Adicionar evento</option>${free.map((t) => `<option>${t}</option>`).join("")}</select>` : ""}</div></div>`).join("")
+  + `<div class="g other"><b>Outros</b><p class="hint">Todo o resto: ${free.length ? free.join(", ") + " e os" : "os"} eventos criados à mão (ex.: Retiro das famílias). Sempre por último.</p></div>
+  <button class="btn sm" data-gnew>+ Novo grupo</button>
+  <p class="hint">Fica salvo para as próximas exportações deste ministério.</p>` : ""}</div>`;
+}
+function rendererUrl(variant, split, part) {
+  const p = new URLSearchParams({ chrome: "0", variant, data: S.data, draft: S.draft ? "1" : "0", split, part, cyc: S.cyc, from: S.whole ? 1 : S.from, to: S.whole ? 30 : S.to,
+    groups: JSON.stringify(S.useGroups ? S.groups.filter((g) => g.templates.length) : []) });
+  return `../schedule-export-layouts/index.html?${p}`;
+}
+function imageParts() {
+  if (S.format !== "png" || S.split === "all") return [null];
+  if (S.split === "group") return groupNames();
+  const weeks = [[1, 7], [8, 14], [15, 21], [22, 30]].filter(([a, b]) => S.whole || (b >= S.from && a <= S.to));
+  return weeks.map(([a, b]) => `${a}–${b} nov`);
+}
+function preview() {
+  if (S.format === "xlsx") {
+    const tabs = S.useGroups ? groupNames() : ["Escala"];
+    return `<div class="pv"><div class="meta"><span>escala-infantil-novembro-2026.xlsx</span><span>${tabs.length} aba${tabs.length > 1 ? "s" : ""}</span></div>
+    <div class="xl"><table><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr>
+    <tr><th>1</th><td><b>Data</b></td><td><b>Evento</b></td><td><b>Horário</b></td><td><b>Setor</b></td><td><b>Quem serve</b></td></tr>
+    ${[["dom, 1 nov", "Culto de domingo", "10h30", "Berçário", "Ana Beatriz Carvalho Souza"], ["", "", "", "Maternal", "João Pedro Santos"], ["", "", "18h30", "Berçário", "Rafael Almeida"], ["dom, 8 nov", "Culto de domingo", "10h30", "Berçário", "Juliana Ribeiro"]].map((r, i) => `<tr><th>${i + 2}</th>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}
+    <tr><th>…</th><td colspan="5" style="color:#999">(forma da planilha é decidida em outro ticket)</td></tr></table>
+    <div class="tabs">${tabs.map((t, i) => `<span class="${i ? "" : "on"}">${t}</span>`).join("")}</div></div></div>`;
+  }
+  const v = S.format === "pdf" || S.layout === "grid" ? "E" : "F";
+  const parts = imageParts();
+  const what = S.format === "pdf" ? "PDF · A4 deitado" : `${parts.length} imagem${parts.length > 1 ? "ns" : ""} PNG`;
+  return `<div class="pv"><div class="meta"><span>${what}</span><span>${fmtLabel()}</span></div>
+  ${parts.map((name, i) => `<div class="part">${parts.length > 1 ? `<small>Imagem ${i + 1} de ${parts.length} · ${name}</small>` : ""}<div class="fit"><iframe src="${rendererUrl(v, S.split === "all" || S.format === "pdf" ? "all" : S.split, i)}" scrolling="no"></iframe></div></div>`).join("")}</div>`;
+}
+function actions() {
+  const many = imageParts().length;
+  const canShare = phone() && S.format !== "xlsx";
+  return `<div class="actions">${phone() ? "" : `<span class="hint" style="margin-right:auto">${fmtLabel()} · ${range()}</span>`}
+  ${canShare ? `<button class="btn" data-act="download">Baixar</button><button class="btn pri" data-act="share">Compartilhar${many > 1 ? ` (${many})` : ""}</button>` : `<button class="btn pri" data-act="download">Baixar${many > 1 ? ` ${many} imagens` : ""}</button>`}</div>`;
+}
+function shell(inner, title) {
+  if (phone()) return `<div class="main"><div class="mtop"><button class="back">←</button>${title}</div>${inner}</div>`;
+  return `<div class="app"><nav class="side"><div class="church"><img src="../schedule-export-layouts/logo.png" alt="">Igreja Central</div>
+    <a>Início</a><a>Minha escala</a><a class="${S.page === "export" ? "on" : ""}">Escalas</a><a class="${S.page === "ministry" ? "on" : ""}">Ministérios</a><a>Pessoas</a></nav>
+    <div class="main">${inner}</div></div>`;
+}
+const ministry = () => S.data === "kids" ? "Ministério Infantil" : "Projeção";
+const intro = (extra = "") => `<div class="intro"><h1>Exportar escala</h1><p>${ministry()} · ${S.cyc}</p>${extra}</div>`;
+const crumbs = () => phone() ? "" : `<div class="crumbs">Escalas › ${ministry()} · ${S.cyc} › Exportar</div>`;
+
+// ---------- A: one page ----------
+function VariantA() {
+  const groupsPanel = `<div class="panel"><h3>Grupos de eventos</h3>
+    ${S.useGroups ? `<div class="chips">${groupNames().map((n) => `<span class="chip">${esc(n)}</span>`).join("")}</div>` : `<p class="hint" style="margin:0">Sem grupos: uma lista só, em ordem de data.</p>`}
+    <button class="btn sm" style="margin-top:10px" data-set="drawer" data-val="true">Organizar grupos</button></div>`;
+  const settings = `<div class="panel"><h3>O que exportar</h3>${periodFields()}</div><div class="panel"><h3>Formato</h3>${formatFields()}</div>${groupsPanel}`;
+  const drawer = S.drawer ? `<div class="scrim" data-set="drawer" data-val="false"></div><div class="drawer"><header><h2>Grupos de eventos</h2><button class="btn ghost" data-set="drawer" data-val="false">✕</button></header><div class="body">${groupsEditor()}</div><div class="actions"><button class="btn pri" data-set="drawer" data-val="false">Pronto</button></div></div>` : "";
+  const body = phone()
+    ? `<div class="scroll">${intro(draftNote())}<div style="padding:12px;display:grid;gap:10px">${settings}<h3 style="margin:8px 0 0;font-size:15px">Prévia</h3>${preview()}</div></div>${actions()}`
+    : `${crumbs()}<div class="scroll">${intro(draftNote())}<div style="display:grid;grid-template-columns:330px 1fr;gap:16px;padding:16px 24px;align-items:start"><div style="display:grid;gap:12px;position:sticky;top:0">${settings}</div>${preview()}</div></div>${actions()}`;
+  return shell(body + drawer, "Exportar escala");
+}
+
+// ---------- B: step by step ----------
+function VariantB() {
+  const names = ["Datas", "Grupos", "Formato", "Enviar"];
+  const steps = `<div class="steps">${names.map((n, i) => `<div class="${i + 1 === S.step ? "on" : i + 1 < S.step ? "done" : ""}">${i + 1}<span>. ${n}</span></div>`).join("")}</div>`;
+  const formatCards = [["png", "cards", "Imagens em cartões", "Um cartão por culto. Melhor para mandar no WhatsApp e ler no celular."], ["png", "grid", "Imagem em tabela", "O mês inteiro numa imagem; aproxime para ler."], ["pdf", "grid", "PDF para imprimir", "Folha A4 deitada, em tabela."], ["xlsx", "grid", "Planilha Excel", "Para conferir ou mexer no computador. Só baixar."]];
+  const content = {
+    1: `<h2 style="margin:0 0 12px;font-size:17px">Quais datas?</h2>${periodFields()}${draftNote()}`,
+    2: `<h2 style="margin:0 0 12px;font-size:17px">Como separar a escala?</h2>${groupsEditor()}`,
+    3: `<h2 style="margin:0 0 12px;font-size:17px">Em que formato?</h2><div class="radiocards">${formatCards.map(([f, l, t, d]) => `<button class="rc ${S.format === f && (f !== "png" || S.layout === l) ? "on" : ""}" data-fmt="${f}:${l}"><b>${t}</b><span>${d}</span></button>`).join("")}</div>
+       ${S.format === "png" ? `<label class="field" style="margin-top:12px"><span>Separar em várias imagens</span><select data-input="split"><option value="all" ${S.split === "all" ? "selected" : ""}>Não, uma imagem só</option>${S.useGroups ? `<option value="group" ${S.split === "group" ? "selected" : ""}>Uma imagem por grupo</option>` : ""}<option value="week" ${S.split === "week" ? "selected" : ""}>Uma imagem por semana</option></select></label>` : ""}`,
+    4: `<h2 style="margin:0 0 4px;font-size:17px">Pronto para enviar</h2><p class="hint" style="margin:0 0 12px">${fmtLabel()} · ${range()} · ${S.useGroups ? groupNames().join(", ") : "uma lista só"}</p>${preview()}`,
+  }[S.step];
+  const nav = `<div class="actions">${S.step > 1 ? `<button class="btn" data-step="-1">Voltar</button>` : ""}${S.step < 4 ? `<button class="btn pri" data-step="1">Continuar</button>` : ""}</div>`;
+  const bottom = S.step === 4 ? actions().replace('<div class="actions">', `<div class="actions"><button class="btn" data-step="-1">Voltar</button>`) : nav;
+  const body = phone() || S.step === 4
+    ? `${crumbs()}${steps}<div class="scroll"><div style="padding:${phone() ? "12px" : "16px 24px"}"><div class="panel">${content}</div></div></div>${bottom}`
+    : `${crumbs()}${steps}<div class="scroll"><div style="display:grid;grid-template-columns:420px 1fr;gap:16px;padding:16px 24px;align-items:start"><div class="panel">${content}</div><div><h3 style="margin:0 0 6px;font-size:13px;color:var(--mfg)">PRÉVIA</h3>${preview()}</div></div></div>${bottom}`;
+  return shell(body, "Exportar escala");
+}
+
+// ---------- C: preview first, groups on the Ministry's page ----------
+function VariantC() {
+  if (S.page === "ministry") {
+    const tabs = `<div class="tabsm">${["Visão geral", "Setores", "Funções", "Configuração usual", "Grupos de eventos"].map((t) => `<span class="${t === "Grupos de eventos" ? "on" : ""}">${t}</span>`).join("")}</div>`;
+    const inner = `${phone() ? "" : `<div class="crumbs">Ministérios › ${ministry()} › Grupos de eventos</div>`}<div class="scroll"><div class="intro"><h1>${ministry()}</h1><p>Como os cultos e eventos aparecem separados quando você exporta a escala.</p></div>${tabs}
+      <div style="padding:${phone() ? "12px" : "16px 24px"};max-width:640px"><div class="panel">${groupsEditor()}</div><p style="margin-top:14px"><button class="link" data-page="export">← Voltar para exportar a escala</button></p></div></div>`;
+    return shell(inner, ministry());
+  }
+  const chip = (key, label) => `<button class="tbc ${S.pop === key ? "open" : ""}" data-pop="${key}">${label} ▾</button>`;
+  const pops = {
+    period: `<div class="pop" style="left:24px">${periodFields()}</div>`,
+    format: `<div class="pop" style="left:200px">${formatFields()}</div>`,
+    groups: `<div class="pop" style="left:380px"><b>Grupos de eventos</b>${S.useGroups ? `<div class="chips" style="margin:8px 0">${groupNames().map((n) => `<span class="chip">${esc(n)}</span>`).join("")}</div>` : `<p class="hint">Sem grupos: uma lista só.</p>`}
+      <p class="hint">Os grupos são do ministério e valem para toda exportação.</p><button class="link" data-page="ministry">Alterar na página do ministério →</button></div>`,
+  };
+  const tb = `<div class="tb">${chip("period", `<b>${S.cyc}</b> · ${S.whole ? "todas as datas" : `${S.from}–${S.to} nov`}`)}${chip("format", `<b>${fmtLabel()}</b>${S.format === "png" && S.split !== "all" ? ` · ${imageParts().length} imagens` : ""}`)}${chip("groups", S.useGroups ? `Grupos: <b>${groupNames().length}</b>` : "Sem grupos")}
+    ${S.pop ? pops[S.pop] : ""}</div>`;
+  const many = imageParts().length;
+  const btns = phone() ? actions() : `<div class="fab">${S.format === "xlsx" ? "" : ""}<button class="btn pri" data-act="download">Baixar${many > 1 ? ` ${many} imagens` : ""}</button></div>`;
+  const inner = `${phone() ? "" : `<div class="crumbs">Escalas › ${ministry()} · ${S.cyc} › Exportar</div>`}${tb}${S.draft ? `<div style="padding:0 ${phone() ? "12px" : "24px"}">${draftNote()}</div>` : ""}<div class="scroll" data-pop-close><div style="padding:${phone() ? "10px" : "16px 24px 80px"};max-width:${S.format === "png" && S.layout === "cards" && !phone() ? "640px" : "none"};margin:0 auto">${preview()}</div></div>${btns}`;
+  return shell(inner, "Exportar escala");
+}
+
+// ---------- wiring ----------
+const VIEWS = { A: VariantA, B: VariantB, C: VariantC };
+function fitFrames() {
+  document.querySelectorAll(".pv iframe").forEach((f) => {
+    const fit = () => { const sh = f.contentDocument?.getElementById("sheet"); if (!sh) return;
+      const w = sh.offsetWidth, h = sh.offsetHeight, box = f.parentElement, avail = box.parentElement.clientWidth, k = Math.min(1, avail / w);
+      f.style.width = w + "px"; f.style.height = h + "px"; f.style.transform = `scale(${k})`; box.style.width = w * k + "px"; box.style.height = h * k + "px"; };
+    f.addEventListener("load", () => { fit(); f.contentWindow.document.fonts.ready.then(fit); setTimeout(fit, 400); });
+  });
+}
+let lastPreview = "";
+function render() {
+  const fr = document.getElementById("frame");
+  const scroll = fr.querySelector(".scroll")?.scrollTop ?? 0;
+  fr.className = S.device;
+  fr.innerHTML = VIEWS[S.variant]();
+  fr.querySelector(".scroll")?.scrollTo(0, scroll);
+  fitFrames();
+  document.getElementById("vlabel").textContent = `${S.variant} (${VARIANTS[S.variant]})`;
+  for (const k of ["device", "data"]) document.getElementById(k).value = S[k];
+  document.getElementById("draft").checked = S.draft;
+  document.getElementById("stateview").textContent = `ciclo=${S.cyc} datas=${S.whole ? "todas" : S.from + "-" + S.to} formato=${S.format}/${S.layout}/${S.split} grupos=${S.useGroups ? groupNames().join("|") : "nenhum"}${S.variant === "B" ? " passo=" + S.step : ""}`;
+  const url = new URL(location.href); for (const k of ["variant", "device", "data"]) url.searchParams.set(k, S[k]); url.searchParams.set("draft", S.draft ? "1" : "0"); history.replaceState(null, "", url);
+}
+const toast = (t) => { const el = document.getElementById("toast"); el.textContent = t; el.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(() => (el.style.display = "none"), 3500); };
+const parse = (v) => v === "true" ? true : v === "false" ? false : v;
+document.getElementById("frame").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-set],[data-step],[data-fmt],[data-pop],[data-page],[data-act],[data-gmove],[data-gdel],[data-gremove],[data-gnew]");
+  if (!t) { if (S.pop && !e.target.closest(".pop")) { S.pop = null; render(); } return; }
+  const d = t.dataset;
+  if (d.set) { S[d.set] = parse(d.val); if (d.set === "useGroups" && !S.useGroups && S.split === "group") S.split = "all"; }
+  if (d.step) S.step += Number(d.step);
+  if (d.fmt) { const [f, l] = d.fmt.split(":"); S.format = f; S.layout = l; }
+  if (d.pop) S.pop = S.pop === d.pop ? null : d.pop;
+  if (d.page) { S.page = d.page; S.pop = null; }
+  if (d.gmove) { const [i, dir] = d.gmove.split(":").map(Number); const j = i + dir; if (j >= 0 && j < S.groups.length) [S.groups[i], S.groups[j]] = [S.groups[j], S.groups[i]]; }
+  if (d.gdel) S.groups.splice(Number(d.gdel), 1);
+  if (d.gremove) { const [i, tpl] = [Number(d.gremove.split(":")[0]), d.gremove.slice(d.gremove.indexOf(":") + 1)]; S.groups[i].templates = S.groups[i].templates.filter((x) => x !== tpl); }
+  if ("gnew" in d) S.groups.push({ name: "Novo grupo", templates: [] });
+  if (d.act) { const n = imageParts().length; const what = S.format === "xlsx" ? "1 planilha .xlsx" : S.format === "pdf" ? "1 PDF" : `${n} imagem(ns) PNG`;
+    toast(d.act === "share" ? `Abriria o menu de compartilhar do celular com ${what} (WhatsApp, etc.)` : `Baixaria ${what}`); return; }
+  render();
+});
+document.getElementById("frame").addEventListener("change", (e) => {
+  const d = e.target.dataset;
+  if (d.input) { S[d.input] = ["from", "to"].includes(d.input) ? Number(e.target.value) : e.target.value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; }
+  if (d.gname) S.groups[Number(d.gname)].name = e.target.value;
+  if (d.gadd && e.target.value) S.groups[Number(d.gadd)].templates.push(e.target.value);
+  render();
+});
+const cycle = (dir) => { S.variant = KEYS[(KEYS.indexOf(S.variant) + dir + KEYS.length) % KEYS.length]; S.page = "export"; S.pop = null; S.drawer = false; render(); };
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+document.addEventListener("keydown", (e) => { if (e.target.closest("input,select,textarea,[contenteditable]")) return; if (e.key === "ArrowLeft") cycle(-1); if (e.key === "ArrowRight") cycle(1); });
+for (const k of ["device", "data"]) document.getElementById(k).onchange = (e) => { S[k] = e.target.value; render(); };
+document.getElementById("draft").onchange = (e) => { S.draft = e.target.checked; render(); };
+render();
+</script>
+</body>
+</html>

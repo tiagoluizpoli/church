@@ -173,7 +173,9 @@
 const VARIANTS = { A: "Agenda, um nome por linha", B: "Cartão por culto, setores lado a lado", C: "Linha por setor, nomes corridos", D: "Grade A4 paisagem (papel)", E: "Grade com identidade do sistema", F: "Cartão por culto com identidade do sistema" };
 const KEYS = Object.keys(VARIANTS);
 const q = new URLSearchParams(location.search);
-const state = { variant: q.get("variant") ?? "A", data: q.get("data") ?? "kids", draft: q.get("draft") === "1", split: q.get("split") ?? "all", part: Number(q.get("part") ?? 0) };
+const state = { variant: q.get("variant") ?? "A", data: q.get("data") ?? "kids", draft: q.get("draft") === "1", split: q.get("split") ?? "all", part: Number(q.get("part") ?? 0),
+  // used by the export-screen prototype: ?groups=<json [{name,templates}]> ([] = one plain list)  ?from=&to= (days)  ?cyc=
+  groups: q.get("groups"), from: Number(q.get("from") ?? 1), to: Number(q.get("to") ?? 30), cyc: q.get("cyc") ?? "Novembro 2026" };
 if (q.get("chrome") === "0") document.body.classList.add("nochrome");
 
 // ---- fake data: November 2026 Cycle ----
@@ -293,7 +295,7 @@ function gridE(g, d) {
   const sameTitle = new Set(evs.map((e) => e.title)).size === 1;
   const secTh = (s) => hideSector(d) ? "" : `<th class="sec sec-${secIdx(s)}">${s}</th>`;
   const names = (sec) => live([sec])[0].names.map(nm).join("<br>") || "—";
-  let html = `<div class="grp"><header><h2>${g.name}</h2>${sameTitle ? `<span>${evs[0].title}</span>` : ""}</header>`;
+  let html = `<div class="grp">${g.name ? "" : "<!--"}<header><h2>${g.name}</h2>${sameTitle ? `<span>${evs[0].title}</span>` : ""}</header>${g.name ? "" : "-->"}`;
   if (evs.some((e) => blocksOf(e).some((b) => b.parent)) || new Set(evs.map(shape)).size > 1) {
     // mixed events: one row per Sector, the event and its time spanning them
     const secs = [...new Set(evs.flatMap((e) => blocksOf(e).flatMap((b) => b.sectors.map((x) => x.sector))))];
@@ -336,7 +338,7 @@ function cardF(ev, sameTitle) {
     (b.cancelled ? `<div class="cx">Cancelado</div>` : `<div class="body">` + live(b.sectors).map((x) =>
       `<div class="sec sec-${secIdx(x.sector)}"><b>${x.sector}</b>${x.names.map((n) => `<div>${nm(n)}</div>`).join("") || "<div>—</div>"}</div>`).join("") + `</div>`) + `</div>`).join("") + `</div>`;
 }
-const headerE = (d) => `<div class="ehd"><img src="logo.png" alt=""><div class="t"><div class="k">Escala</div><h1>${d.ministry}</h1>${state.draft ? `<span class="stamp">Rascunho</span>` : ""}</div><div class="range"><b>Novembro 2026</b>1 – 30 nov 2026</div></div>`;
+const headerE = (d) => `<div class="ehd"><img src="logo.png" alt=""><div class="t"><div class="k">Escala</div><h1>${d.ministry}</h1>${state.draft ? `<span class="stamp">Rascunho</span>` : ""}</div><div class="range"><b>${state.cyc}</b>${state.from} – ${state.to} nov 2026</div></div>`;
 
 function parts(d) {
   if (state.split === "group") return d.groups.map((g) => ({ name: g.name, groups: [g] }));
@@ -349,18 +351,22 @@ function parts(d) {
 
 function render() {
   const d = build(state.data);
+  const all = d.groups.flatMap((g) => g.events);
+  if (state.groups) { const cfg = JSON.parse(state.groups); const has = (e) => cfg.some((c) => c.templates.includes(e.title));
+    d.groups = cfg.length ? [...cfg.map((c) => ({ name: c.name, events: all.filter((e) => c.templates.includes(e.title)) })), { name: "Outros", events: all.filter((e) => !has(e)) }] : [{ name: "", events: [...all].sort((a, b) => a.day - b.day) }]; }
+  d.groups = d.groups.map((g) => ({ ...g, events: g.events.filter((e) => e.day >= state.from && e.day <= state.to) })).filter((g) => g.events.length);
   const ps = parts(d);
   state.part = Math.min(state.part, ps.length - 1);
   const p = ps[state.part];
   const v = state.variant;
-  const body = v === "F" ? p.groups.map((g) => { const same = new Set(g.events.map((e) => e.title)).size === 1; return `<section class="grp"><header><h2>${g.name}</h2>${same ? `<span>${g.events[0].title}</span>` : ""}</header>${g.events.map((e) => cardF(e, same)).join("")}</section>`; }).join("") : v === "E" ? p.groups.map((g) => gridE(g, d)).join("") : p.groups.map((g) => `<section class="group"><h2>${g.name}</h2>${v === "D" ? gridD(g, d) : g.events.map((e) => R[v](e, d)).join("")}</section>`).join("");
+  const body = v === "F" ? p.groups.map((g) => { const same = new Set(g.events.map((e) => e.title)).size === 1; return `<section class="grp">${g.name ? "" : "<!--"}<header><h2>${g.name}</h2>${same ? `<span>${g.events[0].title}</span>` : ""}</header>${g.name ? "" : "-->"}${g.events.map((e) => cardF(e, same)).join("")}</section>`; }).join("") : v === "E" ? p.groups.map((g) => gridE(g, d)).join("") : p.groups.map((g) => `<section class="group"><h2>${g.name}</h2>${v === "D" ? gridD(g, d) : g.events.map((e) => R[v](e, d)).join("")}</section>`).join("");
   document.getElementById("stage").innerHTML = `<div id="sheet" class="sheet ${v} ${["D", "E"].includes(v) ? "a4" : ""}">${["E", "F"].includes(v) ? headerE(d) : header(d)}${body}</div>`;
   document.getElementById("vlabel").textContent = `${v} (${VARIANTS[v]})`;
   for (const k of ["data", "split"]) document.getElementById(k).value = state[k];
   document.getElementById("draft").checked = state.draft;
   document.getElementById("part").innerHTML = ps.map((x, i) => `<option value="${i}" ${i === state.part ? "selected" : ""}>${x.name}</option>`).join("");
   const url = new URL(location.href);
-  for (const [k, val] of Object.entries(state)) url.searchParams.set(k, k === "draft" ? (val ? "1" : "0") : val);
+  for (const [k, val] of Object.entries(state)) if (val !== null) url.searchParams.set(k, k === "draft" ? (val ? "1" : "0") : val);
   history.replaceState(null, "", url);
   requestAnimationFrame(() => { const s = document.getElementById("sheet"); const r = s.getBoundingClientRect(); document.getElementById("dims").textContent = ["D", "E"].includes(v) ? "" : `imagem ${r.width * 2}×${Math.round(r.height * 2)} px · 1:${(r.height / r.width).toFixed(1)}`; });
 }

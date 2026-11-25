@@ -26,6 +26,18 @@ for (const data of ["kids", "proj"]) {
     }
   }
   await open(`variant=D&data=${data}`);
+  await page.setViewportSize({ width: 1200, height: 900 });
+  for (const [split, n] of [["all", 1], ["group", 3]] as const) {
+    for (let part = 0; part < n; part++) {
+      await open(`variant=D&data=${data}&split=${split}&part=${part}`);
+      const file = `${data}-D-${split}${n > 1 ? part + 1 : ""}.png`;
+      const box = (await page.locator("#sheet").boundingBox())!;
+      await page.locator("#sheet").screenshot({ path: `${out}/${file}` });
+      report.push(`${file}\t${Math.round(box.width * 2)}x${Math.round(box.height * 2)}\t1:${(box.height / box.width).toFixed(1)}`);
+    }
+  }
+  await page.setViewportSize({ width: 700, height: 900 });
+  await open(`variant=D&data=${data}`);
   await page.emulateMedia({ media: "print" });
   await page.pdf({ path: `${out}/${data}-D.pdf`, format: "A4", landscape: true, printBackground: true, margin: { top: "0", bottom: "0", left: "0", right: "0" } });
   await page.emulateMedia({ media: "screen" });

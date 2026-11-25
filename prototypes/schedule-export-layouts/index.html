@@ -117,8 +117,8 @@ const POOL = ["Ana Beatriz Carvalho Souza","Maria Eduarda Albuquerque Nogueira",
 let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
 const pick = (n) => { const out = []; while (out.length < n) { const x = POOL[Math.floor(rnd() * POOL.length)]; if (!out.includes(x)) out.push(x); } return out; };
 
-function people(kind, sizeBias) {
-  if (kind === "proj") return [{ sector: "Projeção", names: pick(2) }];
+function people(kind, sizeBias, projSecs = ["Templo", "Kids"]) {
+  if (kind === "proj") { const all = pick(projSecs.length); return projSecs.map((s, i) => ({ sector: s, names: [all[i]] })); }
   const secs = ["Berçário", "Maternal", "Primários", "Juniores"];
   const total = 10 + Math.floor(rnd() * 4) - sizeBias;
   const per = secs.map((_, i) => Math.floor(total / 4) + (i < total % 4 ? 1 : 0));
@@ -130,8 +130,10 @@ function build(kind) {
   const sun = [1, 8, 15, 22, 29].map((d) => ({
     day: d, date: `dom, ${d} nov`, title: "Culto de domingo",
     blocks: [
-      { label: "Manhã · 9h00–10h30", sectors: people(kind, 0) },
-      { label: "Noite · 18h00–19h30", sectors: people(kind, 0), cancelled: d === 22 },
+      // no kids at 8h00: only Projeção serves it, in the Templo
+      ...(kind === "proj" ? [{ label: "8h00", sectors: people(kind, 0, ["Templo"]) }] : []),
+      { label: "10h30", sectors: people(kind, 0) },
+      { label: "18h30", sectors: people(kind, 0), cancelled: d === 22 },
     ],
   }));
   const wed = [4, 11, 18, 25].map((d) => ({
@@ -150,14 +152,14 @@ function build(kind) {
   ];
   return {
     ministry: kind === "kids" ? "Ministério Infantil" : "Projeção",
-    single: kind === "proj" ? "Todos servem em Projeção" : null,
+    single: null,
     groups: [{ name: "Domingos", events: sun }, { name: "Quartas", events: wed }, { name: "Outros", events: other }],
   };
 }
 
 // flatten shifts into blocks so every renderer handles them the same way
 const blocksOf = (ev) => ev.blocks.flatMap((b) => b.shiftList ? b.shiftList.map((s, i) => ({ ...s, parent: i === 0 ? b.label : null })) : [b]);
-const secIdx = (name) => ["Berçário", "Maternal", "Primários", "Juniores", "Projeção"].indexOf(name) % 4;
+const secIdx = (name) => ["Berçário", "Maternal", "Primários", "Juniores", "Templo", "Kids"].indexOf(name) % 4;
 const nm = (n) => n ?? `<span class="vaga">Vaga</span>`;
 const live = (sectors) => sectors.map((s) => ({ ...s, names: s.names.filter((n) => state.draft || n) }));
 const hideSector = (d) => !!d.single;

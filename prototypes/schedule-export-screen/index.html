@@ -105,7 +105,7 @@
   .phone .steps div span { display: none; } .phone .steps div.on span { display: inline; }
   /* toolbar chips (C) */
   .tb { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 24px; border-bottom: 1px solid var(--bd); background: var(--card); position: relative; }
-  .phone .tb { padding: 8px 10px; flex-wrap: nowrap; overflow-x: auto; }
+  .phone .tb { padding: 8px 10px; }
   .tbc { border: 1px solid var(--bd); background: #fff; border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; font-size: 13px; }
   .tbc b { font-weight: 700; } .tbc.open { border-color: var(--pri); background: var(--acc); }
   .pop { position: absolute; top: 100%; z-index: 30; background: #fff; border: 1px solid var(--bd); border-radius: 12px; box-shadow: 0 8px 24px rgb(0 0 0 / .15); padding: 14px; width: 320px; }
@@ -208,7 +208,7 @@ function preview() {
   const parts = imageParts();
   const what = S.format === "pdf" ? "PDF · A4 deitado" : `${parts.length} imagem${parts.length > 1 ? "ns" : ""} PNG`;
   return `<div class="pv"><div class="meta"><span>${what}</span><span>${fmtLabel()}</span></div>
-  ${parts.map((name, i) => `<div class="part">${parts.length > 1 ? `<small>Imagem ${i + 1} de ${parts.length} · ${name}</small>` : ""}<div class="fit"><iframe src="${rendererUrl(v, S.split === "all" || S.format === "pdf" ? "all" : S.split, i)}" scrolling="no"></iframe></div></div>`).join("")}</div>`;
+  ${parts.map((name, i) => `<div class="part"><small>${parts.length > 1 ? `Imagem ${i + 1} de ${parts.length} · ${name} · ` : ""}<a href="${rendererUrl(v, S.split === "all" || S.format === "pdf" ? "all" : S.split, i)}" target="_blank">ver em tamanho real ↗</a></small><div class="fit"><iframe src="${rendererUrl(v, S.split === "all" || S.format === "pdf" ? "all" : S.split, i)}" scrolling="no"></iframe></div></div>`).join("")}</div>`;
 }
 function actions() {
   const many = imageParts().length;

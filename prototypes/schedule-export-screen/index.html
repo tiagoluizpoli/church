@@ -2,7 +2,9 @@
 <!--
   PROTOTYPE, throwaway. Wayfinder ticket "Prototype: export screen with Event group setup and live preview" (#1107, map #1101).
   Question: how does a leader set up Event groups, pick Cycle and dates, preview, then share or download, on phone and computer?
-  Three structurally different screens, switchable via ?variant=A|B|C (bottom bar, or ← →):
+  Round 2 (owner feedback on A): export is a dialog over the Schedule page, settings in one compact horizontal strip,
+  preview closed until asked for. D = preview expands inside the dialog; E = preview opens in a full-screen viewer.
+  Round 1 screens, kept for comparison, switchable via ?variant=D|E|A|B|C (bottom bar, or ← →):
     A  One page: settings beside the preview, Event groups edited in a drawer.
     B  Step by step: dates → groups → format → share.
     C  Preview first: the preview fills the screen, a slim toolbar, Event groups live on the Ministry's page.
@@ -118,6 +120,30 @@
   #toast { position: fixed; left: 50%; bottom: 74px; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 16px; border-radius: 10px; font: 13px system-ui; z-index: 60; max-width: 90vw; display: none; }
   #switcher { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; background: #111827; color: #fff; padding: 8px 14px; border-radius: 999px; box-shadow: 0 6px 20px rgb(0 0 0 / .35); font: 14px system-ui; z-index: 60; }
   #switcher button { background: #374151; color: #fff; border: 0; border-radius: 999px; width: 30px; height: 30px; cursor: pointer; }
+  /* D/E: dialog over the Schedule page */
+  .modal { position: absolute; z-index: 21; background: var(--card); display: flex; flex-direction: column; box-shadow: 0 12px 40px rgb(0 0 0 / .25); }
+  .desktop .modal { left: 50%; top: 56px; transform: translateX(-50%); width: min(1000px, 92%); max-height: calc(100% - 90px); border-radius: 14px; }
+  .phone .modal { left: 0; right: 0; bottom: 0; max-height: 94%; border-radius: 16px 16px 0 0; }
+  .modal > header { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px 10px; }
+  .modal > header h2 { margin: 0; font-size: 18px; } .modal > header .x { margin-left: auto; }
+  .mbody { overflow: auto; padding: 4px 18px 14px; flex: 1; }
+  .phone .mbody { padding: 4px 14px 12px; }
+  .strip { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
+  .phone .strip { display: grid; grid-template-columns: 1fr 1fr; }
+  .cf { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .cf > span { font-size: 11.5px; font-weight: 700; color: var(--mfg); }
+  .cf select { width: auto; padding: 6px 8px; } .phone .cf select { width: 100%; }
+  .cf .row select { width: auto; }
+  .cf .gs { display: flex; gap: 6px; align-items: center; min-height: 34px; flex-wrap: wrap; }
+  .phone .cf.wide { grid-column: 1 / -1; }
+  .mfoot { display: flex; gap: 8px; align-items: center; padding: 10px 18px; border-top: 1px solid var(--bd); }
+  .mfoot .sum { margin-right: auto; color: var(--mfg); font-size: 13px; }
+  .phone .mfoot { flex-wrap: wrap; padding: 10px 14px; } .phone .mfoot .sum { width: 100%; } .phone .mfoot .btn { flex: 1; }
+  .viewer { position: absolute; inset: 0; z-index: 25; background: var(--bg); display: flex; flex-direction: column; }
+  .viewer > header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--bd); }
+  .viewer .vb { flex: 1; overflow: auto; padding: 16px; }
+  .sched td, .sched th { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--bd); white-space: nowrap; }
+  .sched { width: 100%; border-collapse: collapse; font-size: 13.5px; } .sched th { color: var(--mfg); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -132,17 +158,17 @@
 <div id="toast"></div>
 <div id="switcher"><button id="prev" aria-label="Anterior">←</button><span id="vlabel"></span><button id="next" aria-label="Próxima">→</button></div>
 <script>
-const VARIANTS = { A: "Uma página, grupos numa gaveta", B: "Passo a passo", C: "Prévia primeiro, grupos na página do ministério" };
+const VARIANTS = { D: "Diálogo, prévia abre dentro", E: "Diálogo, prévia abre em tela cheia", A: "Uma página, grupos numa gaveta", B: "Passo a passo", C: "Prévia primeiro, grupos na página do ministério" };
 const KEYS = Object.keys(VARIANTS);
 const q = new URLSearchParams(location.search);
 const TEMPLATES = ["Culto de domingo", "Culto de quarta", "Vigília de oração"]; // the Retiro was added by hand: no template
 const CYCLES = ["Novembro 2026", "Outubro 2026", "Dezembro 2026"];
 const S = {
-  variant: q.get("variant") ?? "A", device: q.get("device") ?? "phone", data: q.get("data") ?? "kids", draft: q.get("draft") === "1",
+  variant: q.get("variant") ?? "D", device: q.get("device") ?? "phone", data: q.get("data") ?? "kids", draft: q.get("draft") === "1",
   cyc: "Novembro 2026", whole: true, from: 1, to: 30,
   format: "png", layout: "cards", split: "all",
   useGroups: true, groups: [{ name: "Domingos", templates: ["Culto de domingo"] }, { name: "Quartas", templates: ["Culto de quarta"] }],
-  drawer: false, step: 1, pop: null, page: "export",
+  drawer: false, step: 1, pop: null, page: "export", modal: true, sub: "main", pv: false,
 };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const phone = () => S.device === "phone";
@@ -282,8 +308,44 @@ function VariantC() {
   return shell(inner, "Exportar escala");
 }
 
+// ---------- D / E: dialog over the Schedule page ----------
+function schedulePage() {
+  const rows = [["dom, 1 nov", "Culto de domingo", "10h30 · 18h30", "26 de 26"], ["qua, 4 nov", "Culto de quarta", "19h30–21h00", "10 de 10"], ["dom, 8 nov", "Culto de domingo", "10h30 · 18h30", "25 de 26"], ["sex, 13 nov", "Retiro das famílias", "3 turnos", "30 de 33"], ["dom, 15 nov", "Culto de domingo", "10h30 · 18h30", "26 de 26"]];
+  return `${crumbs().replace(" › Exportar", "")}<div class="scroll"><div class="intro" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:180px"><h1>Escala do ${ministry()}</h1><p>${S.cyc} · ${S.draft ? "Ainda não publicada" : "Publicada"}</p></div>
+    <button class="btn" data-set="modal" data-val="true">Exportar</button></div>
+    <div class="panel" style="margin:12px ${phone() ? "12px" : "24px"};padding:0;overflow:auto"><table class="sched"><tr><th>Data</th><th>Evento</th><th>Horários</th><th>Escalados</th></tr>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</table></div></div>`;
+}
+function stripFields() {
+  const days = Array.from({ length: 30 }, (_, i) => i + 1);
+  const opt = (v, l, cur) => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${l}</option>`;
+  const fmt = `${S.format}:${S.format === "png" ? S.layout : "grid"}`;
+  return `<div class="strip">
+    <label class="cf"><span>Ciclo</span><select data-input="cyc">${CYCLES.map((c) => opt(c, c, S.cyc)).join("")}</select></label>
+    <div class="cf ${S.whole ? "" : "wide"}"><span>Datas</span><div class="row"><select data-input="whole">${opt(true, "Ciclo inteiro", S.whole)}${opt(false, "Escolher datas…", S.whole)}</select>
+      ${S.whole ? "" : `<select data-input="from">${days.map((d) => opt(d, d + " nov", S.from)).join("")}</select>até<select data-input="to">${days.map((d) => opt(d, d + " nov", S.to)).join("")}</select>`}</div></div>
+    <label class="cf"><span>Formato</span><select data-input="fmt">${opt("png:cards", "Imagem em cartões", fmt)}${opt("png:grid", "Imagem em tabela", fmt)}${opt("pdf:grid", "PDF para imprimir", fmt)}${opt("xlsx:grid", "Planilha Excel", fmt)}</select></label>
+    ${S.format === "png" ? `<label class="cf"><span>Imagens</span><select data-input="split">${opt("all", "Uma só", S.split)}${S.useGroups ? opt("group", "Uma por grupo", S.split) : ""}${opt("week", "Uma por semana", S.split)}</select></label>` : ""}
+    <div class="cf wide"><span>Grupos</span><div class="gs">${S.useGroups ? groupNames().map((n) => `<span class="chip">${esc(n)}</span>`).join("") : `<span class="hint" style="margin:0">Uma lista só</span>`}<button class="link" data-set="sub" data-val="groups">Organizar</button></div></div>
+  </div>`;
+}
+function exportDialog(inline) {
+  const n = imageParts().length;
+  const what = S.format === "xlsx" ? "1 planilha" : S.format === "pdf" ? "1 PDF" : `${n} imagem${n > 1 ? "ns" : ""}`;
+  const groupsView = `<p style="margin:0 0 12px"><button class="link" data-set="sub" data-val="main">← Voltar</button></p>${groupsEditor()}`;
+  const body = S.sub === "groups" ? groupsView : `${stripFields()}${S.draft ? `<div class="draft">Ainda não publicada: sai marcada como <i>Rascunho</i>, com as vagas em aberto.</div>` : ""}${inline && S.pv ? `<div style="margin-top:14px">${preview()}</div>` : ""}`;
+  const share = phone() && S.format !== "xlsx";
+  const foot = S.sub === "groups" ? `<div class="mfoot"><span class="sum"></span><button class="btn pri" data-set="sub" data-val="main">Pronto</button></div>`
+    : `<div class="mfoot"><span class="sum">${what} · ${fmtLabel()} · ${range()}</span><button class="btn ghost" data-set="pv" data-val="${!S.pv}">${phone() ? "Prévia" : S.pv && inline ? "Esconder prévia" : "Ver prévia"}</button>
+      ${share ? `<button class="btn" data-act="download">Baixar</button><button class="btn pri" data-act="share">Compartilhar</button>` : `<button class="btn pri" data-act="download">Baixar</button>`}</div>`;
+  const dlg = `<div class="scrim" data-set="modal" data-val="false"></div><div class="modal" role="dialog"><header><h2>${S.sub === "groups" ? "Grupos de eventos" : "Exportar escala"}</h2>${phone() ? "" : `<span class="hint" style="margin:0">${ministry()} · ${S.cyc}</span>`}<button class="btn ghost x" data-set="modal" data-val="false">✕</button></header><div class="mbody">${body}</div>${foot}</div>`;
+  const viewer = !inline && S.pv ? `<div class="viewer"><header><b style="flex:1">Prévia · ${what}</b>${share ? `<button class="btn pri sm" data-act="share">Compartilhar</button>` : `<button class="btn pri sm" data-act="download">Baixar</button>`}<button class="btn ghost" data-set="pv" data-val="false">✕</button></header><div class="vb"><div style="max-width:${S.format === "png" && S.layout === "cards" ? "600px" : "none"};margin:0 auto">${preview()}</div></div></div>` : "";
+  return S.modal ? dlg + viewer : "";
+}
+const VariantD = () => shell(schedulePage() + exportDialog(true), "Escala");
+const VariantE = () => shell(schedulePage() + exportDialog(false), "Escala");
+
 // ---------- wiring ----------
-const VIEWS = { A: VariantA, B: VariantB, C: VariantC };
+const VIEWS = { D: VariantD, E: VariantE, A: VariantA, B: VariantB, C: VariantC };
 function fitFrames() {
   document.querySelectorAll(".pv iframe").forEach((f) => {
     const fit = () => { const sh = f.contentDocument?.getElementById("sheet"); if (!sh) return;
@@ -327,12 +389,13 @@ document.getElementById("frame").addEventListener("click", (e) => {
 });
 document.getElementById("frame").addEventListener("change", (e) => {
   const d = e.target.dataset;
-  if (d.input) { S[d.input] = ["from", "to"].includes(d.input) ? Number(e.target.value) : e.target.value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; }
+  if (d.input === "fmt") { [S.format, S.layout] = e.target.value.split(":"); }
+  else if (d.input) { S[d.input] = ["from", "to"].includes(d.input) ? Number(e.target.value) : parse(e.target.value); if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; }
   if (d.gname) S.groups[Number(d.gname)].name = e.target.value;
   if (d.gadd && e.target.value) S.groups[Number(d.gadd)].templates.push(e.target.value);
   render();
 });
-const cycle = (dir) => { S.variant = KEYS[(KEYS.indexOf(S.variant) + dir + KEYS.length) % KEYS.length]; S.page = "export"; S.pop = null; S.drawer = false; render(); };
+const cycle = (dir) => { S.variant = KEYS[(KEYS.indexOf(S.variant) + dir + KEYS.length) % KEYS.length]; S.page = "export"; S.pop = null; S.drawer = false; S.modal = true; S.sub = "main"; S.pv = false; render(); };
 document.getElementById("prev").onclick = () => cycle(-1);
 document.getElementById("next").onclick = () => cycle(1);
 document.addEventListener("keydown", (e) => { if (e.target.closest("input,select,textarea,[contenteditable]")) return; if (e.key === "ArrowLeft") cycle(-1); if (e.key === "ArrowRight") cycle(1); });

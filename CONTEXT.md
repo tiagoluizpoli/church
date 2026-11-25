@@ -180,6 +180,14 @@ _Avoid_: Attendance (for the open stay), session, drop-off
 A place at the venue where Guardians check Children in, shown as a printed QR code and served by one printer. It names a place, not a room, and serves one or more Rooms; Children whose Room it does not serve are Awaiting drop-off. The code alone lets nobody in without a Guardian's own login.
 _Avoid_: Station, kiosk, totem, room QR
 
+**Tag output** (pt-BR: Saída de etiquetas):
+How one Check-in point produces its Child tags and Guardian tags. A point with none still checks Children in, and they wait "sem etiqueta" until a tag is produced. Each point chooses its own, so a Church never depends on one kind of printer.
+_Avoid_: Printer setting, print config
+
+**Virtual printer** (pt-BR: Impressora virtual):
+A Tag output that shows each tag on a page opened at the Check-in point, at label size, where the team may print it themselves. It needs no installed printer, and a real printer later replaces it at the same point.
+_Avoid_: Print preview, printer emulator (an emulator is a test tool, not this)
+
 **Room** (pt-BR: Sala):
 A Sector where Children are checked in, in a Ministry that has check-in turned on, such as "Berçário" or "Sala sensorial". It is a Sector, so the Volunteers placed there are the room's people; other Sectors of the same Ministry stay duties. A Room is open for check-in while its Ministry serves that Sector in a Shift, from a lead time the Room sets until the last such Shift of the EventTimeBlock ends, or when a Kids leader opens it by hand. It may name an age range, which lets the app place Children there by age; a Room without one, such as a sensory room, is reached only by a move. It may also name a maximum number of Children and a number of Children per volunteer, which only show leaders how well the room is covered and never turn a Child away.
 _Avoid_: Classroom, area, check-in point
@@ -245,7 +253,7 @@ The Children checked in to one Room right now, with those still Awaiting drop-of
 _Avoid_: Roster, attendance list, chamada
 
 **Kids leader** (pt-BR: Líder do Kids):
-A Person who leads a Ministry with check-in turned on, or any ChurchAdmin of that Church. Only a Kids leader gives a Release override, sets a Pickup restriction or a Room placement, adds or removes people on a running Shift, and resolves Kids alerts.
+A Person who leads a Ministry with check-in turned on, or any ChurchAdmin of that Church. A Church may turn check-in on for several Ministries; their Rooms form one pool, and a Kids leader of any of them acts across all of the Church's check-in. Only a Kids leader gives a Release override, sets a Pickup restriction or a Room placement, adds or removes people on a running Shift, and resolves Kids alerts.
 _Avoid_: Kids admin, coordinator, supervisor
 
 **Kids team on duty** (pt-BR: Equipe do Kids em serviço):

@@ -194,3 +194,32 @@ describe('Shift entity (DL1-SH)', () => {
     expect(shift.label).toBeUndefined();
   });
 });
+
+describe('Shift overlap and start (#1122)', () => {
+  const at = (time: string) =>
+    parseInstant({ value: `2026-08-02T${time}:00.000Z` });
+  const nine = buildShift({ startTime: at('09:00'), endTime: at('10:00') });
+
+  it('overlaps a Shift that shares any time, either way round', () => {
+    const later = buildShift({ startTime: at('09:30'), endTime: at('10:30') });
+    const inside = buildShift({ startTime: at('09:15'), endTime: at('09:45') });
+    expect(nine.overlaps({ other: later })).toBe(true);
+    expect(later.overlaps({ other: nine })).toBe(true);
+    expect(nine.overlaps({ other: inside })).toBe(true);
+    expect(nine.overlaps({ other: nine })).toBe(true);
+  });
+
+  it('does not overlap a back-to-back or separate Shift', () => {
+    const after = buildShift({ startTime: at('10:00'), endTime: at('11:00') });
+    const apart = buildShift({ startTime: at('11:00'), endTime: at('12:00') });
+    expect(nine.overlaps({ other: after })).toBe(false);
+    expect(after.overlaps({ other: nine })).toBe(false);
+    expect(nine.overlaps({ other: apart })).toBe(false);
+  });
+
+  it('has started from its start instant on', () => {
+    expect(nine.hasStarted({ now: at('08:59') })).toBe(false);
+    expect(nine.hasStarted({ now: at('09:00') })).toBe(true);
+    expect(nine.hasStarted({ now: at('11:00') })).toBe(true);
+  });
+});

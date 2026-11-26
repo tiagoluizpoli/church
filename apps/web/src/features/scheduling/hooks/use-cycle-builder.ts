@@ -4,12 +4,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { builderErrorMessage } from '../utils/builder/cycle-builder-error.utils';
+import { countCoveredPlaces } from '../utils/builder/cycle-builder-staffing.utils';
+import {
+  isActiveAssignment,
+  isCancelledEventTimeBlock,
+} from '../utils/scheduling-rules';
 import {
   type CountedEventTimeBlock,
-  countCoveredPlaces,
   isStaffedEventTimeBlock,
-} from '../utils/builder/cycle-builder-staffing.utils';
-import { isCancelledEventTimeBlock } from '../utils/event-time-block-cancellation';
+} from '../utils/shift-verdict';
 import {
   addOptimisticAssignment,
   type CycleBuilderQueryData,
@@ -131,27 +134,6 @@ export type CycleBuilderAssignment =
   GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItemAssignmentsItem &
     CycleBuilderAssignmentDetails;
 
-/**
- * The only assignment statuses that count toward fairness and workload
- * (FR-017). Stated as an allowlist rather than "everything except cancelled": the two are equivalent only while the domain enum has exactly
- * these members, and a status added later must not silently start
- * counting.
- */
-const ACTIVE_ASSIGNMENT_STATUSES: ReadonlySet<string> = new Set([
-  'draft',
-  'pending',
-]);
-
-interface IsActiveAssignmentInput {
-  status: string;
-}
-
-export function isActiveAssignment({
-  status,
-}: IsActiveAssignmentInput): boolean {
-  return ACTIVE_ASSIGNMENT_STATUSES.has(status);
-}
-
 export interface CycleBuilderEventTimeBlockSummary {
   eventTimeBlockId: string;
   label?: string;
@@ -225,9 +207,7 @@ function sumAssignedCount(
       eventTimeBlock.shifts.reduce(
         (eventTimeBlockTotal, shift) =>
           eventTimeBlockTotal +
-          shift.assignments.filter(
-            (assignment) => assignment.status !== 'cancelled',
-          ).length,
+          shift.assignments.filter(isActiveAssignment).length,
         0,
       )
     );
@@ -274,9 +254,8 @@ function mapCycleBuilderData(
           (total, requirement) => total + requirement.peopleNeeded,
           0,
         );
-        const assignedCount = shiftItem.assignments.filter(
-          (assignment) => assignment.status !== 'cancelled',
-        ).length;
+        const assignedCount =
+          shiftItem.assignments.filter(isActiveAssignment).length;
 
         return {
           shiftId: shiftItem.shift.id,

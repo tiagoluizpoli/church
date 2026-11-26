@@ -33,7 +33,6 @@ import { SwapRequestUnpublishedError } from '@/domain/errors/swap-request';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
@@ -54,6 +53,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import {
   at,
   CHURCH_OCTOBER_1_NOON,
@@ -73,9 +73,8 @@ const managerDependencies = {
   churchRepository,
   unitOfWork,
   eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
-  assignmentRepository: new DrizzleAssignmentRepository({ db }),
-  auditRepository: new DrizzleAssignmentAuditRepository({ db }),
-  swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+  assignmentLifecycle: buildDrizzleAssignmentLifecycle({ db })
+    .assignmentLifecycle,
   recipients: new ChurchRecipients({
     churchRepository,
     volunteerRepository: new DrizzleVolunteerRepository({ db }),
@@ -573,7 +572,10 @@ describe('a SwapRequest raised while confirm runs', () => {
     }
     const pausedManager = new DbPlanningEventManager({
       ...managerDependencies,
-      swapRequestRepository: new PausedClose({ db }),
+      assignmentLifecycle: buildDrizzleAssignmentLifecycle({
+        db,
+        overrides: { swapRequestRepository: new PausedClose({ db }) },
+      }).assignmentLifecycle,
     });
     const confirming = pausedManager.confirmCancellation(confirm);
     await reached.opened;

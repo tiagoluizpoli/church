@@ -33,6 +33,7 @@ import { Shift } from '@/domain/entities/shift';
 import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { Volunteer } from '@/domain/entities/volunteer';
+import { buildAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 import {
   createAssignmentAuditRepositoryFake,
@@ -220,7 +221,7 @@ function createHarness() {
     shiftRepository,
     eventRepository: planningEventRepository,
     assignmentRepository,
-    auditRepository: {} as never,
+    assignmentLifecycle: {} as never,
     proposalApplicationRepository: {} as never,
     unavailableShiftRepository,
     eventTimeBlockRepository,
@@ -242,12 +243,18 @@ function createHarness() {
     auditRepo: assignmentAuditRepository,
     shiftRepository,
     participationRepository: ministryParticipationRepository,
-    volunteerRepository,
-    unavailableShiftRepository,
     cycleRepository,
-    eventRepository: eventRepository,
-    eventTimeBlockRepository,
-    swapRequestRepo: createSwapRequestRepositoryFake(),
+    ...buildAssignmentLifecycle({
+      assignmentRepository,
+      auditRepository: assignmentAuditRepository,
+      swapRequestRepository: createSwapRequestRepositoryFake(),
+      participationRepository: ministryParticipationRepository,
+      shiftRepository,
+      eventRepository,
+      eventTimeBlockRepository,
+      volunteerRepository,
+      unavailableShiftRepository,
+    }),
     unitOfWork,
   });
   const volunteerManager = new DbVolunteerManager({

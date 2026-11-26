@@ -179,20 +179,17 @@ describe('SignInForm sign-up switch', () => {
 });
 
 describe('SignInForm session check', () => {
-  it('shows a labelled form skeleton after the delay while the session check is pending', async () => {
-    mockUseSession.mockReturnValue({ isPending: true });
+  // The /login route checks the session before it renders; a second check here
+  // cost a round trip and a skeleton before the form on slow networks.
+  it('renders the form at once, without checking the session again', () => {
     renderWithProviders(<SignInForm />);
 
-    const loading = screen.getByRole('status', {
-      name: m.auth_session_loading(),
-    });
-    expect(loading).toHaveAttribute('aria-busy', 'true');
-    expect(loading.querySelector('[data-slot="skeleton"]')).toBeNull();
-    await waitFor(() => {
-      expect(loading.querySelector('[data-slot="skeleton"]')).not.toBeNull();
-    });
     expect(
-      screen.queryByRole('heading', { name: m.auth_sign_in_title() }),
+      screen.getByRole('heading', { name: m.auth_sign_in_title() }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('status', { name: m.auth_session_loading() }),
     ).toBeNull();
+    expect(mockUseSession).not.toHaveBeenCalled();
   });
 });

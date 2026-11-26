@@ -7,8 +7,6 @@ import z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Pending } from '@/components/ui/pending';
-import { Skeleton } from '@/components/ui/skeleton';
 import { authClient } from '@/lib/auth-client';
 import { authErrorMessage } from '@/lib/auth-error-message';
 
@@ -27,7 +25,6 @@ export default function SignInForm({
   const navigate = useNavigate({
     from: '/',
   });
-  const { isPending } = authClient.useSession();
   const [authError, setAuthError] = useState<string>();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -63,26 +60,6 @@ export default function SignInForm({
       }),
     },
   });
-
-  if (isPending) {
-    return (
-      <Pending label={m.auth_session_loading()} className="w-full">
-        <Skeleton className="mb-3 h-8 w-56" />
-        <Skeleton className="mb-8 h-4 w-full" />
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-11 w-full" />
-          </div>
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-11 w-full" />
-          </div>
-          <Skeleton className="h-11 w-full" />
-        </div>
-      </Pending>
-    );
-  }
 
   return (
     <div className="w-full">

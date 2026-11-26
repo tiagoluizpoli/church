@@ -152,6 +152,7 @@ This is not a generic AI-SaaS-cream tool (no tinted-cream backgrounds, no gradie
 - Surfaces are flat and ring-bordered at rest; shadow is reserved for anything that floats above the page.
 - Density flexes by device: compact on desktop admin screens, deliberately larger touch targets on mobile volunteer screens.
 - Status color (green/amber plus the `destructive` red) is a separate, literal vocabulary reserved for state: staffing, confirmation and needs-attention notices. It is never brand decoration.
+- Motion is rare and informative: data that changes (a count, a bar, a band) eases to its new value over 700ms on one exponential ease-out (`cubic-bezier(0.16, 1, 0.3, 1)`), the Home coverage title morphs into the schedule header on navigation, and all of it drops to instant under `prefers-reduced-motion`.
 - Forms don't get a mobile-specific redesign; they get a shell swap. `ResponsiveFormSurface` renders the identical form inside a desktop `Dialog` or a mobile `Drawer`, and context promotes every descendant `Button`/`Input` to the 44px `touch` size with no per-screen sizing decisions.
 
 ## Colors
@@ -197,6 +198,7 @@ Dark mode is a deliberate re-tuning, not a straight invert. `background` drops t
 - **Title** (500, 0.875rem/14px, 1.3 line-height): card titles, dialog titles, the "Church CRM" wordmark.
 - **Body** (400, 0.75rem/12px, 1.625 line-height): default UI copy, card content, table content. Section descriptions step up to 0.875rem at 1.6 line-height and cap at 72ch.
 - **Label** (500, 0.75rem/12px, 1 line-height): nav links, badges, tabs, buttons. Touch-size buttons and inputs step up to 0.875rem.
+- **Lead** (400, 1.125rem/18px, snug): the one place type steps above Headline, on Home only: the attention line's sentence, and the stage counts in the cycle band (at 600, tabular figures).
 - **Mono** (400, 0.75rem/12px): audit log entries, timestamps, the `⌘K` hint chip (0.65rem).
 
 Only 400 and 700 of Atkinson Hyperlegible are loaded, so the browser renders the authored 500 as 400 and the authored 600 as 700. Labels and titles therefore read regular in practice, and headlines read bold. Treat this as the real rendered hierarchy until a 500/600 cut is added. The family on Google Fonts ships only 400 and 700.
@@ -273,6 +275,7 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 ### Badges
 - **Style:** 20px tall, control radius, `text-xs` medium. Used for counts (unread tabs), staffing percentages and conflict labels.
 - **Variants:** default (primary fill), secondary, destructive, outline, ghost: the same vocabulary as buttons. Focus uses a wider 3px `ring/50` ring than buttons.
+- **Cancelled:** a cancelled Event or time block always carries the `destructive` badge with Planning's "cancelled" label (`CancelledBadge`), so the builder, Prepare and Planning say it the same way.
 
 ### Avatars
 - **Shape:** square at the control radius.
@@ -310,8 +313,9 @@ Sourced from shadcn/ui, ported onto `@base-ui/react` primitives (not Radix), wit
 - **DataTable:** renders as a `listbox` only when a selection mode is set; otherwise it is a plain `list` with `listitem` rows and an `aria-label`. Loading and empty states default to localized one-line messages. The actions column (`actionsColumnId`, default `actions`) keeps its title for screen readers only; pass `hideName: false` to show it. A focused cell shows an inset 2px `ring` and a focused row an inset 2px `primary` outline, never color alone.
 
 ### Sheets & Overlays
+- **Dialog:** floating radius, `popover` fill, `ring-1 ring-foreground/10`, a 100ms fade-and-zoom in and out. Tab wraps from the last control to the first (and Shift+Tab back) immediately, so a fast second Tab can't escape to the page behind. When the footer already has its own "Close", the × takes a different accessible name (`closeLabel`).
 - **Drawer (base-ui):** the mobile counterpart to `Dialog`, used directly and via `ResponsiveFormSurface`. Bottom sheet by default (`swipeDirection="down"`), sheet-top corners, a pill grab handle, and no shadow (see Elevation & Depth).
-- **ResponsiveFormSurface:** the standard shell for any form that must work on both a desktop admin screen and a mobile volunteer screen. It renders `Dialog` at `≥768px` and `Drawer` below it for the same `children`. The footer (Save/Cancel) renders outside the mobile scroll region so the primary action stays in thumb reach, and the mobile branch wraps its content in `FormControlSizeProvider size="touch"`. The drawer's close affordance is a dedicated 44px ghost icon button, top-right, not the swipe handle alone.
+- **ResponsiveFormSurface:** the standard shell for any form that must work on both a desktop admin screen and a mobile volunteer screen. It renders `Dialog` at `≥768px` and `Drawer` below it for the same `children`. The footer (Save/Cancel) renders outside the mobile scroll region so the primary action stays in thumb reach, and the mobile branch wraps its content in `FormControlSizeProvider size="touch"`. The drawer's close affordance is a dedicated 44px ghost icon button, top-right, not the swipe handle alone. While a save is in flight, `closeDisabled` holds every way out (×, Escape, overlay click, swipe), so an edit can't be discarded mid-save. The template editor dialog also asks before leaving with unsaved changes.
 - **Toasts (Sonner):** `bottom-right` on desktop, `top-center` on mobile, with the mobile offset pinned at 80px so a toast never lands under the sticky header.
 
 ### Signed-out frame (`AuthShell`)
@@ -330,6 +334,15 @@ It is built to be light on any hardware: the scene and its light shafts are bake
 - **Sub-navigation (for example Scheduling tabs):** an underline indicator that scales from `scale-x-0` to `scale-x-100` under the active label, not a filled pill.
 - **Breadcrumbs:** desktop-only, derived from the route path. Opaque IDs (UUIDs) are dropped from the trail unless the segment resolves to a real name through live data, such as a cycle ID rendering as the cycle's name once fetched.
 
+### Home: attention line and cycle band
+Home is ordered by what needs attention, not by widget type.
+
+- **Attention line ("Agora"):** the one thing Home asks for first, as a sentence and a single `touch` action. When there is something to do, it sits on a surface-radius band with a `primary/8` fill and a `ring-1 ring-primary/15` stroke, the heading beside a Lead-size sentence. It is the only primary-tinted panel on the page. When nothing is pending it collapses to a flat line: the heading and a muted check icon with a calm sentence, no fill, no ring. A volunteer who serves never sees the calm line, because their serving section already says it.
+- **Cycle band:** a 10px `muted` timeline track at the control radius. The current cycle sits on it as a `primary/25` span filled to today in `primary/70`, the next cycle as a `primary/12` span with an inset `ring-primary/35` stroke, and today as a 2px `foreground` tick with a small "today" label above it. Below the track, one bar per schedule stage (to prepare, asking, assigning, published) stepping up in blue strength (`primary/25`, `/50`, `/75`, solid) as a schedule nears publication; an empty stage's bar is `muted`. Each bar's width grows with its count, each with its label and a Lead-size count, the whole row a link into Schedules filtered to that stage.
+- **Counting numbers (`AnimatedNumber`):** a Home number that changes after first paint counts from the value on screen to the new one over 700ms. The count runs in an `aria-hidden` twin; the real text is always the final value, so a screen reader never hears an in-between number. Never animates on first load, never under reduced motion.
+
+**The Final-Text Rule.** Animation decorates a value, it never stands in for it. The DOM text a reader or test sees is the settled value from the first frame; any counting, growing or morphing happens on an `aria-hidden` twin or on layout alone.
+
 ### Staffing Meter (signature component)
 A dedicated component with two renderings: a compact percentage `Badge` per event-time-block and a full `Progress` bar per event, both colored by the status vocabulary. The bar fills from `--meter-danger` under 50%, `--meter-warning` from 50–99% and `--meter-success` at 100% (`bg-meter-*`): `destructive`, `yellow-700` and `green-700` in light mode, `destructive`, `yellow-400` and `green-500` in dark, chosen so each fill measures at least 3:1 against the `muted` track and the `card`/`popover` surface (the lighter `yellow-500`/`green-600` fell to about 2:1 and 2.8:1 in light mode). A slot with no requirement shows a neutral `muted-foreground/30` bar. In the proposal review, the meter shows a change: it fills to the result, with a 2px notch where the board stands today. This is the main home of the Traffic-Light Exception. On the Home dashboard the meter runs softened: the same three hues at 60–70% opacity (bar and coverage ring alike), with the open-spot count as plain muted text, so a page of meters reads calm rather than loud.
 
@@ -347,6 +360,7 @@ A dedicated component with two renderings: a compact percentage `Badge` per even
 - **Do** build every new component on shadcn/ui, re-skinned onto this system's tokens and swapped to `@base-ui/react`.
 - **Do** re-tune colors for dark mode rather than inverting them, and re-check AA contrast for any token you change (the `destructive` lightness change is the precedent).
 - **Do** source every built-in label, including screen-reader-only text, from the i18n message catalogue.
+- **Do** animate only value changes, with the shared 700ms `cubic-bezier(0.16, 1, 0.3, 1)` ease-out, and drop to instant under `prefers-reduced-motion`.
 
 ### Don't:
 - **Don't** introduce a cream, sand or warm-tinted body background; the app background is a cool near-white.

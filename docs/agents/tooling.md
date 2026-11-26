@@ -603,6 +603,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | V. Biome lints and formats; it passes before every commit | Constitution | Mechanical | Biome rule | Enforced: Lefthook `pre-commit` runs Biome on staged files; `lint` in CI |
 | V. Conventional commits | Constitution | Mechanical | Validation guard | Enforced: commitlint in Lefthook `commit-msg` |
 | Commits run the Lefthook hooks (no `core.hooksPath` override, no `git commit --no-verify`) | Tooling | Mechanical | Claude hook | Enforced for agents: `tooling/claude/block-hook-bypass.sh`, a PreToolUse hook in `.claude/settings.json` |
+| develop is PR-only: no tracked edits left uncommitted on a develop checkout | Tooling | Mechanical | Claude hook | Enforced for agents: `tooling/claude/flag-dirty-develop.sh`, a Stop hook in `.claude/settings.json` that stops the agent once to branch and PR them |
 | Atomic commits are small and focused | Constitution | Judgement | — | Review: "focused" is a judgement about intent |
 | VI. Specifications traverse `specifications-list.md` | Constitution | Judgement | — | Review: a planning process, not repository content |
 | VII. Named object parameters: at most one parameter, named `interface`/`type` shapes, no inline object types | Constitution, backend, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:named-parameters`, part of `lint` ([#539](https://github.com/tiagoluizpoli/church/issues/539), turned on by [#547](https://github.com/tiagoluizpoli/church/issues/547)) |

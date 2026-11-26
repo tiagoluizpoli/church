@@ -308,7 +308,7 @@
                 "patterns": [
                   {
                     "group": ["**/infrastructure/**", "!**/domain/**"],
-                    "message": "domain/ → packages/* only. Infrastructure layer import forbidden from domain."
+                    "message": "domain/ → packages/* only. Infrastructure layer import forbidden from domain. Import a contract by its full alias, e.g. @/domain/contracts/infrastructure/transaction-context."
                   },
                   {
                     "group": ["**/application/**", "!**/domain/**"],

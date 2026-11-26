@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   ChurchId,
   CycleId,
@@ -6,19 +7,41 @@ import type {
   EventTimeBlockId,
   UserId,
 } from '../../branded-ids';
+import type { Church } from '../../entities/church';
+import type { Cycle } from '../../entities/cycle';
 import type { Event } from '../../entities/event';
+import type { EventTemplate } from '../../entities/event-template';
 import type { EventTimeBlock } from '../../entities/event-time-block';
 import type {
   CancellationImpact,
   CancellationScope,
+  CancellationScopeAssignment,
+  ResolvedCancellationScope,
 } from '../../services/event-cancellation';
 import type { EditProposal } from '../../services/event-edit';
+import type { EventGraphTimeBlock } from '../../services/event-graph';
 import type {
+  InstantBounds,
   MoveClash,
   MoveProposal,
   MoveScope,
+  MoveScopeAssignment,
 } from '../../services/event-move';
 import type { LosingEventTimeBlock } from '../../services/template-precedence-application';
+import type { IAssignmentLifecycle } from './assignment-lifecycle';
+import type { IChurchNotifications } from './church-notifications';
+import type { IChurchRecipients } from './church-recipients';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { CycleRepository } from '@/domain/contracts/infrastructure/cycle.repository';
+import type { EventTemplateRepository } from '@/domain/contracts/infrastructure/event-template.repository';
+import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
+import type {
+  PlanningEventRepository,
+  SeededMinistry,
+} from '@/domain/contracts/infrastructure/planning-event.repository';
+import type { TemplatePrecedenceRepository } from '@/domain/contracts/infrastructure/template-precedence.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 export interface GeneratePlanningTemplatesInput {
   churchId: ChurchId;
@@ -278,4 +301,180 @@ export interface IPlanningEventManager {
   confirmCancellation(
     input: ConfirmPlanningCancellationManagerInput,
   ): Promise<CancellationImpact>;
+}
+
+export interface ComputeMoveInput {
+  input: PlanningMoveManagerInput;
+  church: Church;
+  tx: TransactionContext;
+}
+
+/** The move computation with the facts confirm and N10 also need. */
+export interface ComputedMove extends PlanningMovePreview {
+  cycle: Cycle;
+  event: Event;
+  scopeAssignments: MoveScopeAssignment[];
+}
+
+export interface ComputeEditInput {
+  input: PreviewPlanningEditManagerInput;
+  church: Church;
+  tx: TransactionContext;
+}
+
+export interface ComputedEdit extends PlanningEditPreview {
+  cycle: Cycle;
+  event: Event;
+  eventTimeBlocks: EventTimeBlock[];
+  scopeAssignments: MoveScopeAssignment[];
+  /** The one instant preview and apply judge started Shifts by. */
+  now: Instant;
+}
+
+export interface ComputeCancellationInput {
+  input: PlanningCancellationManagerInput;
+  church: Church;
+  tx: TransactionContext;
+}
+
+/** The cancellation computation with the facts confirm (and N9/N10) need. */
+export interface ComputedCancellation {
+  impact: CancellationImpact;
+  cycle: Cycle;
+  event: Event;
+  resolved: ResolvedCancellationScope;
+  scopeAssignments: CancellationScopeAssignment[];
+}
+
+export interface EnqueueEventCancelledInput {
+  actingUserId: UserId;
+  church: Church;
+  computed: ComputedCancellation;
+  tx: TransactionContext;
+}
+
+export interface EnqueueEventMovedInput {
+  actingUserId: UserId;
+  church: Church;
+  cycle: Cycle;
+  event: Event;
+  /** The scope's active Assignments before any withdrawal. */
+  scopeAssignments: MoveScopeAssignment[];
+  /** The changed blocks: their Ministries are told. */
+  eventTimeBlockIds: EventTimeBlockId[];
+  previous: InstantBounds;
+  proposed: InstantBounds;
+  tx: TransactionContext;
+}
+
+export interface EnsureCycleWritableInput {
+  cycle: Cycle;
+  churchTimeZone: string;
+  /** The write's open transaction, so its rollback undoes the Past flip. */
+  tx: TransactionContext;
+}
+
+/**
+ * Actions that can be attempted against an event/event time block while checking
+ * whether the owning cycle still allows writes. Used only inside
+ * `DbPlanningEventManager`; `IPlanningEventManager` has no concept of it.
+ */
+export type WritableEntityAction = 'update' | 'delete';
+
+export interface EnsureWritableEventInput {
+  input:
+    | CreatePlanningEventTimeBlockManagerInput
+    | UpdatePlanningEventTimeBlockManagerInput
+    | DeletePlanningEventTimeBlockManagerInput;
+  church: Church;
+  action: WritableEntityAction;
+  tx: TransactionContext;
+}
+
+export interface GetCycleEventInput {
+  input:
+    | EnsureWritableEventInput['input']
+    | UpdatePlanningEventManagerInput
+    | UpdatePlanningEventDetailsManagerInput
+    | DeletePlanningEventManagerInput
+    | PlanningCancellationManagerInput;
+  tx: TransactionContext;
+}
+
+/** The Cycle and Event a single-block write runs under. */
+export interface WritableEvent {
+  cycle: Cycle;
+  event: Event;
+}
+
+export interface WritableEventTimeBlock extends WritableEvent {
+  eventTimeBlock: EventTimeBlock;
+}
+
+export interface AssertBlockGraphInput extends WritableEvent {
+  churchId: ChurchId;
+  timeZone: string;
+  /** The created or updated block, as it would be saved. */
+  block: EventGraphTimeBlock;
+  tx: TransactionContext;
+}
+
+export interface LoadWritableEventTimeBlockInput {
+  input:
+    | UpdatePlanningEventTimeBlockManagerInput
+    | DeletePlanningEventTimeBlockManagerInput;
+  church: Church;
+  action: WritableEntityAction;
+  tx: TransactionContext;
+}
+
+export interface EnqueueEventAddedInput {
+  churchId: ChurchId;
+  actingUserId: UserId;
+  church: Church;
+  cycle: Cycle;
+  event: Event;
+  ministries: SeededMinistry[];
+  tx: TransactionContext;
+}
+
+export interface LoadPrecedencePairsInput {
+  churchId: ChurchId;
+  selected: EventTemplate[];
+  tx: TransactionContext;
+}
+
+export interface DbPlanningEventManagerDependencies {
+  cycleRepository: CycleRepository;
+  eventRepository: PlanningEventRepository;
+  templateRepository: EventTemplateRepository;
+  precedenceRepository: TemplatePrecedenceRepository;
+  churchRepository: ChurchRepository;
+  unitOfWork: UnitOfWork;
+  eventTimeBlockRepository: EventTimeBlockRepository;
+  assignmentLifecycle: IAssignmentLifecycle;
+  recipients: IChurchRecipients;
+  notifications: IChurchNotifications;
+}
+
+export interface ListInOrderInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  blockIds: EventTimeBlockId[];
+  tx: TransactionContext;
+}
+
+export interface ChangedPublicFieldsInput {
+  block: EventTimeBlock;
+  isPublic?: boolean;
+  /** Empty clears; absent keeps (with `placeAddressId` absent too). */
+  place?: string;
+  /** Null or absent with `place` given means no address. */
+  placeAddressId?: string | null;
+}
+
+export interface PublicFieldsPatch {
+  isPublic?: boolean;
+  place?: string | null;
+  placeAddressId?: string | null;
 }

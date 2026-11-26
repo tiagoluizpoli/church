@@ -7,6 +7,10 @@ import type {
   ShiftRequirementId,
   VolunteerId,
 } from '../branded-ids';
+import type { Assignment } from '../entities/assignment';
+import type { Shift } from '../entities/shift';
+import type { ShiftRequirement } from '../entities/shift-requirement';
+import { findAssignmentRefusal, isShiftOpen } from './assignment-eligibility';
 
 /**
  * Assignment proposal for one Schedule (#855): deterministic greedy selection
@@ -18,26 +22,11 @@ import type {
  * facts through `findStaleAdditions`, and binds approval to the reviewed pairs
  * through `proposalReviewTokenFor`.
  *
- * Organization: eligibility rules decide whether a Volunteer may fill a need
- * at all; the two ranking lists below decide who goes first and where. Change
+ * Organization: the shared Assignment eligibility module
+ * (`assignment-eligibility.ts`) decides whether a Volunteer may fill a need at
+ * all; the two ranking lists below decide who goes first and where. Change
  * policy by editing those lists, not the loop.
  */
-
-export interface ProposalShift {
-  shiftId: ShiftId;
-  startTime: Instant;
-  endTime: Instant;
-  /** Its Event or EventTimeBlock is cancelled. */
-  cancelled: boolean;
-}
-
-/** One ShiftRequirement of the target Schedule. */
-export interface ProposalNeed {
-  shiftRequirementId: ShiftRequirementId;
-  shiftId: ShiftId;
-  roleId: RoleId;
-  peopleNeeded: number;
-}
 
 /** An active Ministry member who was asked for availability this Cycle. */
 export interface ProposalVolunteer {
@@ -48,22 +37,25 @@ export interface ProposalVolunteer {
   unavailableShiftIds: ShiftId[];
 }
 
-/** An active Assignment of a candidate, in any Ministry. */
+/**
+ * An active Assignment of the target Schedule or of a candidate, in any
+ * Ministry, with its Shift. One that fills a target need counts against it.
+ */
 export interface ProposalAssignment {
-  volunteerId: VolunteerId;
-  shiftId: ShiftId;
-  startTime: Instant;
-  endTime: Instant;
-  /** Set when it fills one of the target Schedule's needs. */
-  shiftRequirementId?: ShiftRequirementId;
+  assignment: Assignment;
+  shift: Shift;
   /** It belongs to the target Cycle (counts as workload). */
   inCycle: boolean;
 }
 
 export interface ProposeAssignmentsInput {
   now: Instant;
-  shifts: ProposalShift[];
-  needs: ProposalNeed[];
+  /** The target Schedule's Shifts. */
+  shifts: Shift[];
+  /** Those whose EventTimeBlock is cancelled; a cancelled Event's are left out. */
+  cancelledShiftIds: ShiftId[];
+  /** The target Schedule's ShiftRequirements. */
+  needs: ShiftRequirement[];
   volunteers: ProposalVolunteer[];
   assignments: ProposalAssignment[];
 }
@@ -116,15 +108,14 @@ export interface AssignmentProposal {
   emptyReason: EmptyProposalReason | null;
 }
 
-interface OpenNeed extends ProposalNeed {
-  shift: ProposalShift;
+interface OpenNeed {
+  requirement: ShiftRequirement;
+  shift: Shift;
   remaining: number;
 }
 
 interface Booking {
-  shiftId: ShiftId;
-  startTime: Instant;
-  endTime: Instant;
+  shift: Shift;
   inCycle: boolean;
 }
 
@@ -164,64 +155,36 @@ interface RankingRule<T, Name extends string = string> {
 interface EligibilityInput {
   candidate: Candidate;
   need: OpenNeed;
-}
-
-interface ShiftOpenInput {
-  shift: ProposalShift;
   now: Instant;
 }
 
 // ── Eligibility (mandatory; independent of ranking) ─────────────────────────
 
-/** Started, cancelled and past Shifts take no new Assignments. */
-function isShiftOpen({ shift, now }: ShiftOpenInput): boolean {
+/** The proposal's rule list of the shared Assignment eligibility module. */
+function isEligible({ candidate, need, now }: EligibilityInput): boolean {
+  const { volunteer, bookings } = candidate;
+  const { requirement, shift } = need;
   return (
-    !shift.cancelled &&
-    compareInstants({ left: shift.startTime, right: now }) > 0
+    findAssignmentRefusal({
+      check: 'proposal',
+      eligibility: {
+        now,
+        shift,
+        requirement,
+        bookings: bookings.map((booking) => booking.shift),
+        facts: {
+          // Open needs only: their Shifts are not cancelled.
+          cancelledBy: null,
+          // Candidates are the Ministry's active, asked members.
+          isMember: true,
+          roleIds: volunteer.roleIds,
+          availability: volunteer.availability,
+          unavailableShiftIds: volunteer.unavailableShiftIds,
+          filled: requirement.peopleNeeded - need.remaining,
+        },
+      },
+    }) === null
   );
-}
-
-function hasRemainingHeadcount({ need }: EligibilityInput): boolean {
-  return need.remaining > 0;
-}
-
-/** Never infer availability from an unanswered check. */
-function hasConfirmedAvailability({ candidate }: EligibilityInput): boolean {
-  return candidate.volunteer.availability === 'confirmed';
-}
-
-function holdsRequiredRole({ candidate, need }: EligibilityInput): boolean {
-  return candidate.volunteer.roleIds.includes(need.roleId);
-}
-
-function isAvailableForShift({ candidate, need }: EligibilityInput): boolean {
-  return !candidate.volunteer.unavailableShiftIds.includes(need.shiftId);
-}
-
-/** One Assignment per Shift, and no overlap in any Ministry (existing or proposed). */
-function isFreeForShift({ candidate, need }: EligibilityInput): boolean {
-  const { shift } = need;
-  return candidate.bookings.every(
-    (booking) =>
-      booking.shiftId !== shift.shiftId &&
-      !(
-        compareInstants({ left: shift.startTime, right: booking.endTime }) <
-          0 &&
-        compareInstants({ left: shift.endTime, right: booking.startTime }) > 0
-      ),
-  );
-}
-
-const ELIGIBILITY_RULES = [
-  hasRemainingHeadcount,
-  hasConfirmedAvailability,
-  holdsRequiredRole,
-  isAvailableForShift,
-  isFreeForShift,
-];
-
-function isEligible(input: EligibilityInput): boolean {
-  return ELIGIBILITY_RULES.every((rule) => rule(input));
 }
 
 // ── Ranking (policy; edit these lists to change priority) ───────────────────
@@ -272,8 +235,8 @@ const NEED_RANKING: RankingRule<NeedStanding>[] = [
     name: 'stable_order',
     compare: ({ left, right }) =>
       compareIds({
-        left: left.need.shiftRequirementId,
-        right: right.need.shiftRequirementId,
+        left: left.need.requirement.id,
+        right: right.need.requirement.id,
       }),
   },
 ];
@@ -316,16 +279,10 @@ function bookingsOf({
   assignments,
 }: BookingsInput): Map<VolunteerId, Booking[]> {
   const byVolunteer = new Map<VolunteerId, Booking[]>();
-  for (const {
-    volunteerId,
-    shiftId,
-    startTime,
-    endTime,
-    inCycle,
-  } of assignments) {
-    const bookings = byVolunteer.get(volunteerId) ?? [];
-    bookings.push({ shiftId, startTime, endTime, inCycle });
-    byVolunteer.set(volunteerId, bookings);
+  for (const { assignment, shift, inCycle } of assignments) {
+    const bookings = byVolunteer.get(assignment.volunteerId) ?? [];
+    bookings.push({ shift, inCycle });
+    byVolunteer.set(assignment.volunteerId, bookings);
   }
   return byVolunteer;
 }
@@ -335,34 +292,39 @@ interface OpenNeedsInput {
 }
 
 function openNeedsOf({ input }: OpenNeedsInput): OpenNeed[] {
-  const { now, shifts, needs, assignments } = input;
-  const shiftById = new Map(shifts.map((shift) => [shift.shiftId, shift]));
+  const { now, shifts, cancelledShiftIds, needs, assignments } = input;
+  const shiftById = new Map(shifts.map((shift) => [shift.id, shift]));
+  const cancelled = new Set(cancelledShiftIds);
   const filled = new Map<ShiftRequirementId, number>();
-  for (const { shiftRequirementId } of assignments) {
-    if (shiftRequirementId)
-      filled.set(shiftRequirementId, (filled.get(shiftRequirementId) ?? 0) + 1);
+  for (const { assignment } of assignments) {
+    const { shiftRequirementId } = assignment;
+    filled.set(shiftRequirementId, (filled.get(shiftRequirementId) ?? 0) + 1);
   }
-  return needs.flatMap((need) => {
-    const shift = shiftById.get(need.shiftId);
-    if (!(shift && isShiftOpen({ shift, now }))) return [];
+  return needs.flatMap((requirement) => {
+    const shift = requirement.shiftId && shiftById.get(requirement.shiftId);
+    if (!shift) return [];
+    const cancelledBy = cancelled.has(shift.id) ? 'event_time_block' : null;
+    if (!isShiftOpen({ shift, cancelledBy, now })) return [];
     const remaining =
-      need.peopleNeeded - (filled.get(need.shiftRequirementId) ?? 0);
-    return [{ ...need, shift, remaining: Math.max(remaining, 0) }];
+      requirement.peopleNeeded - (filled.get(requirement.id) ?? 0);
+    return [{ requirement, shift, remaining: Math.max(remaining, 0) }];
   });
 }
 
 interface PlacementsInput {
   candidates: Candidate[];
   needs: OpenNeed[];
+  now: Instant;
 }
 
 function eligiblePlacements({
   candidates,
   needs,
+  now,
 }: PlacementsInput): Placement[] {
   return candidates.flatMap((candidate) =>
     needs
-      .filter((need) => isEligible({ candidate, need }))
+      .filter((need) => isEligible({ candidate, need, now }))
       .map((need) => ({ candidate, need })),
   );
 }
@@ -383,13 +345,9 @@ function choosePlacement({ placements }: ChooseInput): Choice | null {
   for (const { candidate, need } of placements) {
     const { volunteerId } = candidate.volunteer;
     const shiftIds = shiftsByVolunteer.get(volunteerId) ?? new Set();
-    shiftsByVolunteer.set(volunteerId, shiftIds.add(need.shiftId));
-    const volunteerIds =
-      volunteersByNeed.get(need.shiftRequirementId) ?? new Set();
-    volunteersByNeed.set(
-      need.shiftRequirementId,
-      volunteerIds.add(volunteerId),
-    );
+    shiftsByVolunteer.set(volunteerId, shiftIds.add(need.shift.id));
+    const volunteerIds = volunteersByNeed.get(need.requirement.id) ?? new Set();
+    volunteersByNeed.set(need.requirement.id, volunteerIds.add(volunteerId));
   }
 
   const candidates = new Map(
@@ -416,7 +374,7 @@ function choosePlacement({ placements }: ChooseInput): Choice | null {
     )
     .map(({ need }) => ({
       need,
-      candidateCount: volunteersByNeed.get(need.shiftRequirementId)?.size ?? 0,
+      candidateCount: volunteersByNeed.get(need.requirement.id)?.size ?? 0,
     }));
   const [chosenNeed] = rank({ items: needStandings, rules: NEED_RANKING });
   const candidate = candidates.get(chosen.volunteerId);
@@ -466,17 +424,21 @@ export function proposeAssignments(
   const additions: ProposedAddition[] = [];
 
   for (;;) {
-    const placements = eligiblePlacements({ candidates, needs });
+    const placements = eligiblePlacements({
+      candidates,
+      needs,
+      now: input.now,
+    });
     const choice = choosePlacement({ placements });
     if (!choice) break;
     const { candidate, need } = choice.placement;
     const { reason } = choice;
     need.remaining -= 1;
-    candidate.bookings.push({ ...need.shift, inCycle: true });
+    candidate.bookings.push({ shift: need.shift, inCycle: true });
     additions.push({
       volunteerId: candidate.volunteer.volunteerId,
-      shiftRequirementId: need.shiftRequirementId,
-      shiftId: need.shiftId,
+      shiftRequirementId: need.requirement.id,
+      shiftId: need.shift.id,
       reason,
     });
   }
@@ -485,9 +447,9 @@ export function proposeAssignments(
     additions,
     gaps: needs
       .filter(({ remaining }) => remaining > 0)
-      .map(({ shiftRequirementId, shiftId, remaining }) => ({
-        shiftRequirementId,
-        shiftId,
+      .map(({ requirement, shift, remaining }) => ({
+        shiftRequirementId: requirement.id,
+        shiftId: shift.id,
         remaining,
       })),
     excludedUnconfirmedCount: input.volunteers.filter(
@@ -524,10 +486,7 @@ export function findStaleAdditions({
   additions,
 }: FindStaleAdditionsInput): ReviewedAddition[] {
   const needs = new Map(
-    openNeedsOf({ input: facts }).map((need) => [
-      need.shiftRequirementId,
-      need,
-    ]),
+    openNeedsOf({ input: facts }).map((need) => [need.requirement.id, need]),
   );
   const bookings = bookingsOf({ assignments: facts.assignments });
   const candidates = new Map(
@@ -539,9 +498,10 @@ export function findStaleAdditions({
   return additions.filter(({ volunteerId, shiftRequirementId }) => {
     const need = needs.get(shiftRequirementId);
     const candidate = candidates.get(volunteerId);
-    if (!(need && candidate && isEligible({ candidate, need }))) return true;
+    if (!(need && candidate && isEligible({ candidate, need, now: facts.now })))
+      return true;
     need.remaining -= 1;
-    candidate.bookings.push({ ...need.shift, inCycle: true });
+    candidate.bookings.push({ shift: need.shift, inCycle: true });
     return false;
   });
 }

@@ -3,59 +3,69 @@ import {
   compareCalendarDays,
   compareInstants,
   fromDate,
-  type Instant,
   now,
   toDate,
   today,
 } from '@church/time';
 import type {
-  ChurchId,
   EventId,
   EventTemplateId,
   EventTimeBlockId,
   UserId,
 } from '../domain/branded-ids';
+import type { IAssignmentLifecycle } from '../domain/contracts/application/assignment-lifecycle';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
+  AssertBlockGraphInput,
+  ChangedPublicFieldsInput,
+  ComputeCancellationInput,
+  ComputedCancellation,
+  ComputedEdit,
+  ComputedMove,
+  ComputeEditInput,
+  ComputeMoveInput,
   ConfirmPlanningCancellationManagerInput,
   ConfirmPlanningEditManagerInput,
   ConfirmPlanningMoveManagerInput,
   CreatePlanningEventManagerInput,
   CreatePlanningEventTimeBlockManagerInput,
+  DbPlanningEventManagerDependencies,
   DeletePlanningEventManagerInput,
   DeletePlanningEventTimeBlockManagerInput,
+  EnqueueEventAddedInput,
+  EnqueueEventCancelledInput,
+  EnqueueEventMovedInput,
+  EnsureCycleWritableInput,
+  EnsureWritableEventInput,
   GeneratedPlanningCounts,
   GeneratePlanningTemplatesInput,
+  GetCycleEventInput,
   IPlanningEventManager,
-  PlanningCancellationManagerInput,
+  ListInOrderInput,
+  LoadPrecedencePairsInput,
+  LoadWritableEventTimeBlockInput,
   PlanningEditPreview,
   PlanningEventGraph,
-  PlanningMoveManagerInput,
   PlanningMovePreview,
   PlanningMoveResult,
   PreviewPlanningCancellationManagerInput,
   PreviewPlanningEditManagerInput,
   PreviewPlanningMoveManagerInput,
+  PublicFieldsPatch,
   UpdatePlanningEventDetailsManagerInput,
   UpdatePlanningEventManagerInput,
   UpdatePlanningEventTimeBlockManagerInput,
+  WritableEvent,
+  WritableEventTimeBlock,
 } from '../domain/contracts/application/planning-event-manager';
-import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
-import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
-import type {
-  PlanningEventRepository,
-  SeededMinistry,
-} from '../domain/contracts/infrastructure/planning-event.repository';
-import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
+import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { TemplatePrecedenceRepository } from '../domain/contracts/infrastructure/template-precedence.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { Church } from '../domain/entities/church';
 import type { Cycle } from '../domain/entities/cycle';
 import type { Event } from '../domain/entities/event';
 import type { EventTemplate } from '../domain/entities/event-template';
@@ -73,7 +83,6 @@ import {
 import {
   type CancellationImpact,
   type CancellationScopeAssignment,
-  type ResolvedCancellationScope,
   resolveCancellationScope,
   summarizeCancellationImpact,
 } from '../domain/services/event-cancellation';
@@ -90,8 +99,6 @@ import {
 import {
   type BoundsPair,
   findMoveClashes,
-  type InstantBounds,
-  type MoveScopeAssignment,
   proposeMove,
 } from '../domain/services/event-move';
 import {
@@ -99,169 +106,10 @@ import {
   type PrecedencePair,
 } from '../domain/services/template-precedence-application';
 import type { TemplatePrecedence } from '../domain/template-precedence';
-import { cancelAssignment } from './cancel-assignment';
-import { removeAssignment } from './remove-assignment';
 
 const sameBounds = ({ left, right }: BoundsPair) =>
   compareInstants({ left: left.start, right: right.start }) === 0 &&
   compareInstants({ left: left.end, right: right.end }) === 0;
-
-interface ComputeMoveInput {
-  input: PlanningMoveManagerInput;
-  church: Church;
-  tx: TransactionContext;
-}
-
-/** The move computation with the facts confirm and N10 also need. */
-interface ComputedMove extends PlanningMovePreview {
-  cycle: Cycle;
-  event: Event;
-  scopeAssignments: MoveScopeAssignment[];
-}
-
-interface ComputeEditInput {
-  input: PreviewPlanningEditManagerInput;
-  church: Church;
-  tx: TransactionContext;
-}
-
-interface ComputedEdit extends PlanningEditPreview {
-  cycle: Cycle;
-  event: Event;
-  eventTimeBlocks: EventTimeBlock[];
-  scopeAssignments: MoveScopeAssignment[];
-  /** The one instant preview and apply judge started Shifts by. */
-  now: Instant;
-}
-
-interface ComputeCancellationInput {
-  input: PlanningCancellationManagerInput;
-  church: Church;
-  tx: TransactionContext;
-}
-
-/** The cancellation computation with the facts confirm (and N9/N10) need. */
-interface ComputedCancellation {
-  impact: CancellationImpact;
-  cycle: Cycle;
-  event: Event;
-  resolved: ResolvedCancellationScope;
-  scopeAssignments: CancellationScopeAssignment[];
-}
-
-interface EnqueueEventCancelledInput {
-  actingUserId: UserId;
-  church: Church;
-  computed: ComputedCancellation;
-  tx: TransactionContext;
-}
-
-interface EnqueueEventMovedInput {
-  actingUserId: UserId;
-  church: Church;
-  cycle: Cycle;
-  event: Event;
-  /** The scope's active Assignments before any withdrawal. */
-  scopeAssignments: MoveScopeAssignment[];
-  /** The changed blocks: their Ministries are told. */
-  eventTimeBlockIds: EventTimeBlockId[];
-  previous: InstantBounds;
-  proposed: InstantBounds;
-  tx: TransactionContext;
-}
-
-interface EnsureCycleWritableInput {
-  cycle: Cycle;
-  churchTimeZone: string;
-  /** The write's open transaction, so its rollback undoes the Past flip. */
-  tx: TransactionContext;
-}
-
-/**
- * Actions that can be attempted against an event/event time block while checking
- * whether the owning cycle still allows writes. Local to
- * `DbPlanningEventManager` — the shared `IPlanningEventManager` contract has
- * no concept of this distinction.
- */
-type WritableEntityAction = 'update' | 'delete';
-
-interface EnsureWritableEventInput {
-  input:
-    | CreatePlanningEventTimeBlockManagerInput
-    | UpdatePlanningEventTimeBlockManagerInput
-    | DeletePlanningEventTimeBlockManagerInput;
-  church: Church;
-  action: WritableEntityAction;
-  tx: TransactionContext;
-}
-
-interface GetCycleEventInput {
-  input:
-    | EnsureWritableEventInput['input']
-    | UpdatePlanningEventManagerInput
-    | UpdatePlanningEventDetailsManagerInput
-    | DeletePlanningEventManagerInput
-    | PlanningCancellationManagerInput;
-  tx: TransactionContext;
-}
-
-/** The Cycle and Event a single-block write runs under. */
-interface WritableEvent {
-  cycle: Cycle;
-  event: Event;
-}
-
-interface WritableEventTimeBlock extends WritableEvent {
-  eventTimeBlock: EventTimeBlock;
-}
-
-interface AssertBlockGraphInput extends WritableEvent {
-  churchId: ChurchId;
-  timeZone: string;
-  /** The created or updated block, as it would be saved. */
-  block: EventGraphTimeBlock;
-  tx: TransactionContext;
-}
-
-interface LoadWritableEventTimeBlockInput {
-  input:
-    | UpdatePlanningEventTimeBlockManagerInput
-    | DeletePlanningEventTimeBlockManagerInput;
-  church: Church;
-  action: WritableEntityAction;
-  tx: TransactionContext;
-}
-
-interface EnqueueEventAddedInput {
-  churchId: ChurchId;
-  actingUserId: UserId;
-  church: Church;
-  cycle: Cycle;
-  event: Event;
-  ministries: SeededMinistry[];
-  tx: TransactionContext;
-}
-
-interface LoadPrecedencePairsInput {
-  churchId: ChurchId;
-  selected: EventTemplate[];
-  tx: TransactionContext;
-}
-
-interface DbPlanningEventManagerDependencies {
-  cycleRepository: CycleRepository;
-  eventRepository: PlanningEventRepository;
-  templateRepository: EventTemplateRepository;
-  precedenceRepository: TemplatePrecedenceRepository;
-  churchRepository: ChurchRepository;
-  unitOfWork: UnitOfWork;
-  eventTimeBlockRepository: EventTimeBlockRepository;
-  assignmentRepository: AssignmentRepository;
-  auditRepository: AssignmentAuditRepository;
-  swapRequestRepository: SwapRequestRepository;
-  recipients: IChurchRecipients;
-  notifications: IChurchNotifications;
-}
 
 /**
  * Every write takes the Church's Cycle lock (shared with Cycle create and
@@ -278,9 +126,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly churchRepository: ChurchRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
-  private readonly assignmentRepository: AssignmentRepository;
-  private readonly auditRepository: AssignmentAuditRepository;
-  private readonly swapRequestRepository: SwapRequestRepository;
+  private readonly assignmentLifecycle: IAssignmentLifecycle;
   private readonly recipients: IChurchRecipients;
   private readonly notifications: IChurchNotifications;
 
@@ -292,9 +138,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     churchRepository,
     unitOfWork,
     eventTimeBlockRepository,
-    assignmentRepository,
-    auditRepository,
-    swapRequestRepository,
+    assignmentLifecycle,
     recipients,
     notifications,
   }: DbPlanningEventManagerDependencies) {
@@ -305,9 +149,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
-    this.assignmentRepository = assignmentRepository;
-    this.auditRepository = auditRepository;
-    this.swapRequestRepository = swapRequestRepository;
+    this.assignmentLifecycle = assignmentLifecycle;
     this.recipients = recipients;
     this.notifications = notifications;
   }
@@ -1155,14 +997,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // Kept Assignments stay on their Shifts, so their identity,
       // UnavailableShifts and open SwapRequests move with them.
       for (const { assignmentId } of clashes) {
-        await removeAssignment({
+        await this.assignmentLifecycle.remove({
           churchId,
           assignmentId,
           actorId: actingUserId,
           tx,
-          assignmentRepository: this.assignmentRepository,
-          auditRepository: this.auditRepository,
-          swapRequestRepository: this.swapRequestRepository,
         });
       }
       const { start, end } = proposal.proposedEvent;
@@ -1415,14 +1254,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // Kept Assignments stay on their Shifts, so their identity,
       // UnavailableShifts and open SwapRequests stay with them.
       for (const { assignmentId } of clashes) {
-        await removeAssignment({
+        await this.assignmentLifecycle.remove({
           churchId,
           assignmentId,
           actorId: actingUserId,
           tx,
-          assignmentRepository: this.assignmentRepository,
-          auditRepository: this.auditRepository,
-          swapRequestRepository: this.swapRequestRepository,
         });
       }
       const { previousEvent, proposedEvent } = proposal;
@@ -1673,14 +1509,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // A request raised while confirm waited is closed too: count closures.
       let openSwapRequestCount = 0;
       for (const { assignmentId } of scopeAssignments) {
-        const closed = await cancelAssignment({
+        const closed = await this.assignmentLifecycle.cancel({
           churchId,
           assignmentId,
           actorId: actingUserId,
           tx,
-          assignmentRepository: this.assignmentRepository,
-          auditRepository: this.auditRepository,
-          swapRequestRepository: this.swapRequestRepository,
         });
         if (closed) openSwapRequestCount += 1;
       }
@@ -1896,28 +1729,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
     return cycle;
   }
-}
-
-interface ListInOrderInput {
-  churchId: ChurchId;
-  eventId: EventId;
-  blockIds: EventTimeBlockId[];
-  tx: TransactionContext;
-}
-
-interface ChangedPublicFieldsInput {
-  block: EventTimeBlock;
-  isPublic?: boolean;
-  /** Empty clears; absent keeps (with `placeAddressId` absent too). */
-  place?: string;
-  /** Null or absent with `place` given means no address. */
-  placeAddressId?: string | null;
-}
-
-interface PublicFieldsPatch {
-  isPublic?: boolean;
-  place?: string | null;
-  placeAddressId?: string | null;
 }
 
 /** The Público/place values that differ from the block; refused once it started. */

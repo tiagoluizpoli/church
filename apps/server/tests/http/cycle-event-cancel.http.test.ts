@@ -41,15 +41,12 @@ import {
 } from '@/domain/branded-ids';
 import type { EnqueueNotificationInput } from '@/domain/contracts/application/church-notifications';
 import type { NotificationRequestKind } from '@/domain/notification-kinds';
-import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
-import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -66,6 +63,7 @@ import {
   resetSchedulingPhase3Db,
   schedulingTestDb,
 } from '@/tests/scheduling-reshape/setup';
+import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import {
   at,
   CHURCH_OCTOBER_1_NOON,
@@ -124,9 +122,8 @@ beforeAll(async () => {
       churchRepository,
       unitOfWork: new DrizzleUnitOfWork({ db }),
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
-      assignmentRepository: new DrizzleAssignmentRepository({ db }),
-      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
-      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      assignmentLifecycle: buildDrizzleAssignmentLifecycle({ db })
+        .assignmentLifecycle,
       recipients: new ChurchRecipients({
         churchRepository,
         volunteerRepository: new DrizzleVolunteerRepository({ db }),

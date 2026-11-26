@@ -1,3 +1,11 @@
+# Every worktree branches from develop (master is production). Before a switch,
+# fast-forward the local develop to origin so a new worktree starts from the
+# latest pushed work. The primary checkout may have develop checked out: then it
+# fast-forwards there (refused if it would clobber local edits); otherwise the
+# ref is updated directly. Never blocks the switch: offline or diverged, it warns.
+# Needs `wt config state default-branch set develop` once per clone.
+pre-switch = "p={{ primary_worktree_path }}; if [ \"$(git -C \"$p\" branch --show-current)\" = develop ]; then git -C \"$p\" pull -q --ff-only origin develop; else git -C \"$p\" fetch -q origin develop:develop; fi || echo '⚠ pre-switch: develop was not fast-forwarded; the new worktree may start behind origin.'"
+
 # Blocks until the new worktree is ready: dependencies, the shared PostgreSQL,
 # `.env.local`, and migrated databases (tooling/worktree/bootstrap-worktree.ts).
 # Runs through mise so every worktree uses the bun/node pinned in mise.toml; a

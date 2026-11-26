@@ -4,17 +4,161 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>base-fullstack-template</title>
-    <!-- Here, not an @import in the CSS, so the fonts start with the page instead of after the stylesheet. -->
+    <!-- Runs before the first paint, which is why it is here and not in the bundle:
+         the theme next-themes would pick (same storage key, same default), and on a
+         sign-in route the boot shell below plus a preload of the still it shows. -->
+    <script>
+      (() => {
+        const root = document.documentElement;
+        let theme = "light";
+        try {
+          theme = localStorage.getItem("vite-ui-theme") || theme;
+        } catch {}
+        if (theme === "system") {
+          theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        root.classList.add(theme);
+        root.style.colorScheme = theme;
+
+        // Height in px of each AuthShell route's form column when stacked: below
+        // 640px wide, then from 640px. The panel takes the rest, so these keep
+        // the shell's panel where React's lands. Re-measure when the forms change.
+        const forms = {
+          "/login": [445.5, 460],
+          "/forgot-password": [365.5, 403],
+          "/reset-password": [256, 293],
+        };
+        const form = forms[location.pathname.replace(/(.)\/$/, "$1")];
+        if (!form) return;
+        const width = innerWidth;
+        const height = innerHeight;
+        const formHeight = form[width >= 640 ? 1 : 0];
+        root.dataset.bootShell = "";
+        root.style.setProperty("--boot-form-h", `${formHeight}px`);
+        // The still the panel's container queries below will pick (the panel's 1px border excluded).
+        const split = width >= 1024 && width > height;
+        const aspect = split
+          ? (width - (width >= 1280 ? 512 : 448) - 1) / height
+          : width / (Math.max(192, height - formHeight) - 1);
+        const still = aspect > 2.4 ? "5" : aspect > 1.5 ? "2-4" : aspect > 1.1 ? "1-5" : "1-1";
+        const preload = document.createElement("link");
+        preload.rel = "preload";
+        preload.as = "image";
+        preload.fetchPriority = "high";
+        preload.href = `/auth-scenes/sanctuary-light-${still}.webp`;
+        document.head.append(preload);
+      })();
+    </script>
+    <style>
+      /* Paints before any stylesheet or script: the page background (as index.css
+         has it) and, on a sign-in route, the boot shell, an outline of AuthShell
+         that AuthShell removes as it mounts. Keep both in step with them. */
+      :root {
+        --boot-bg: oklch(0.978 0.004 236);
+        --boot-accent: oklch(0.948 0.018 247);
+      }
+      :root.dark {
+        --boot-bg: oklch(0.205 0.018 252);
+        --boot-accent: oklch(0.332 0.028 246);
+      }
+      body,
+      #boot-shell {
+        margin: 0;
+        background: linear-gradient(
+            180deg,
+            var(--boot-bg) 0%,
+            color-mix(in oklch, var(--boot-bg) 92%, var(--boot-accent)) 100%
+          )
+          fixed no-repeat var(--boot-bg);
+      }
+      #boot-shell {
+        display: none;
+      }
+      [data-boot-shell] #boot-shell {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        display: grid;
+        grid-template-rows: minmax(12rem, 1fr) var(--boot-form-h);
+      }
+      #boot-shell > div {
+        position: relative;
+        border-bottom: 1px solid oklch(0.318 0.018 248);
+        background: oklch(0.17 0.03 258);
+      }
+      @media (width >= 64rem) and (orientation: landscape) {
+        [data-boot-shell] #boot-shell {
+          grid-template-rows: 1fr;
+          grid-template-columns: minmax(0, 1fr) 28rem;
+        }
+        #boot-shell > div {
+          border-bottom: 0;
+          border-right: 1px solid oklch(0.318 0.018 248);
+        }
+      }
+      @media (width >= 80rem) and (orientation: landscape) {
+        [data-boot-shell] #boot-shell {
+          grid-template-columns: minmax(0, 1fr) 32rem;
+        }
+      }
+
+      /* Sanctuary light scene stills, shared by the boot shell and the React backdrop.
+         Stills of the scene's real first frame, one per panel shape: the scene frames
+         by height and centres, so each is height-fitted and centred like the canvas.
+         Each still is captured at the widest aspect it serves, so it only ever crops.
+         `height > 0`: before the first layout the container reads as infinitely
+         wide, which would fetch the band still as well. The boot script above
+         preloads the same pick. Recapture them whenever the scene's first frame changes. */
+      .sanctuary-light-backdrop {
+        position: absolute;
+        inset: 0;
+        container-type: size;
+      }
+      .sanctuary-light-still {
+        position: absolute;
+        inset: 0;
+        background: rgb(7 5 4) url("/auth-scenes/sanctuary-light-1-1.webp") center / auto 100%
+          no-repeat;
+      }
+      @container (aspect-ratio > 11 / 10) and (height > 0) {
+        .sanctuary-light-still {
+          background-image: url("/auth-scenes/sanctuary-light-1-5.webp");
+        }
+      }
+      @container (aspect-ratio > 3 / 2) and (height > 0) {
+        .sanctuary-light-still {
+          background-image: url("/auth-scenes/sanctuary-light-2-4.webp");
+        }
+      }
+      /* Wider than the scene's BAND_ASPECT (2.4), it frames only the windows. */
+      @container (aspect-ratio > 12 / 5) and (height > 0) {
+        .sanctuary-light-still {
+          background-image: url("/auth-scenes/sanctuary-light-5.webp");
+        }
+      }
+    </style>
+    <!-- Not render-blocking: text paints in the fallback font and swaps when these arrive. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      rel="stylesheet"
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      onload="this.onload = null; this.rel = 'stylesheet'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      />
+    </noscript>
   </head>
 
   <body>
     <div id="app"></div>
+    <div id="boot-shell" aria-hidden="true">
+      <div><div class="sanctuary-light-backdrop"><div class="sanctuary-light-still"></div></div></div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

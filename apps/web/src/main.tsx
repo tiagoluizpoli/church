@@ -44,7 +44,27 @@ if (!rootElement) {
   throw new Error('Root element not found');
 }
 
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(<RouterProvider router={router} />);
+// AuthShell removes index.html's boot shell as it mounts; wherever else the
+// router lands (a signed-in redirect, an error), it goes once that has painted.
+router.subscribe('onResolved', () => {
+  requestAnimationFrame(() => {
+    if (!document.querySelector('.auth-panel')) {
+      document.getElementById('boot-shell')?.remove();
+    }
+  });
+});
+
+const render = () =>
+  ReactDOM.createRoot(rootElement).render(<RouterProvider router={router} />);
+
+// The build loads the app stylesheet without blocking the boot shell's paint
+// (vite.config.ts); the app itself never renders unstyled.
+const pendingStylesheet = document.querySelector<HTMLLinkElement>(
+  'link[rel="stylesheet"][media="print"]',
+);
+if (pendingStylesheet) {
+  pendingStylesheet.addEventListener('load', render, { once: true });
+  pendingStylesheet.addEventListener('error', render, { once: true });
+} else {
+  render();
 }

@@ -1,6 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { CalendarClock } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useLayoutEffect } from 'react';
 import { SanctuaryLightBackdrop } from '@/components/auth-scenes/sanctuary-light-backdrop';
 import { FormControlSizeProvider } from '@/components/ui/form-control-size';
 
@@ -28,6 +28,11 @@ export interface AuthShellProps {
 }
 
 export function AuthShell({ children }: AuthShellProps) {
+  // Same commit that paints this frame, so the hand-over from index.html's boot shell never shows a gap.
+  useLayoutEffect(() => {
+    document.getElementById('boot-shell')?.remove();
+  }, []);
+
   return (
     <div className="grid min-h-dvh auth-split:grid-cols-[minmax(0,1fr)_28rem] auth-split:grid-rows-1 grid-rows-[minmax(12rem,1fr)_auto] auth-split:xl:grid-cols-[minmax(0,1fr)_32rem]">
       {/* Stacked, the scene takes whatever height the form leaves, so there is no dead space. */}

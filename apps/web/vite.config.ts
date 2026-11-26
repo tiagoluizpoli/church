@@ -16,6 +16,21 @@ export default defineConfig({
       autoCodeSplitting: true,
     }),
     react(),
+    {
+      // The entry stylesheet must not hold index.html's boot shell off the
+      // screen: it loads as print (applied on load; main.tsx waits for it),
+      // and a preload keeps it at the top of the network queue.
+      name: 'non-blocking-entry-css',
+      apply: 'build',
+      transformIndexHtml: {
+        order: 'post',
+        handler: (html) =>
+          html.replace(
+            /<link rel="stylesheet" crossorigin href="([^"]+\.css)">/g,
+            `<link rel="preload" as="style" crossorigin href="$1"><link rel="stylesheet" crossorigin href="$1" media="print" onload="this.media='all'">`,
+          ),
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
@@ -29,6 +44,8 @@ export default defineConfig({
         start_url: '/app',
         scope: '/',
       },
+      // Deferred: a plain script in the head holds the parser, and so the first paint.
+      injectRegister: 'script-defer',
       pwaAssets: { disabled: false, config: true },
       devOptions: { enabled: true },
       workbox: {

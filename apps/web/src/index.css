@@ -374,42 +374,7 @@
   }
 }
 
-/* Sanctuary light scene */
-/* Stills of the scene's real first frame, one per panel shape: the scene frames
-   by height and centres, so each is height-fitted and centred like the canvas.
-   Each still is captured at the widest aspect it serves, so it only ever crops.
-   `height > 0`: before the first layout the container reads as infinitely
-   wide, which would fetch the band still as well.
-   Recapture them whenever the scene's first frame changes. */
-.sanctuary-light-backdrop {
-  container-type: size;
-}
-
-.sanctuary-light-still {
-  background:
-    rgb(7 5 4) url("./assets/auth-scenes/sanctuary-light-1-1.webp") center /
-    auto 100% no-repeat;
-}
-
-@container (aspect-ratio > 11 / 10) and (height > 0) {
-  .sanctuary-light-still {
-    background-image: url("./assets/auth-scenes/sanctuary-light-1-5.webp");
-  }
-}
-
-@container (aspect-ratio > 3 / 2) and (height > 0) {
-  .sanctuary-light-still {
-    background-image: url("./assets/auth-scenes/sanctuary-light-2-4.webp");
-  }
-}
-
-/* Wider than the scene's BAND_ASPECT (2.4), it frames only the windows. */
-@container (aspect-ratio > 12 / 5) and (height > 0) {
-  .sanctuary-light-still {
-    background-image: url("./assets/auth-scenes/sanctuary-light-5.webp");
-  }
-}
-
+/* Sanctuary light scene: the stills' rules are in index.html, shared with the boot shell. */
 .sanctuary-light-canvas {
   opacity: 0;
   transition: opacity 700ms ease-out;

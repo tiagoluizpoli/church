@@ -91,8 +91,10 @@
 }
 
 /* Fixed to the viewport: as the canvas background it would otherwise tile
-   below a body shorter than the window. */
-body {
+   below a body shorter than the window. index.html's boot shell, which covers
+   the page until AuthShell replaces it, wears the same. */
+body,
+#boot-shell {
   background: linear-gradient(
       180deg,
       var(--background) 0%,
@@ -164,33 +166,33 @@ body {
    by height and centres, so each is height-fitted and centred like the canvas.
    Each still is captured at the widest aspect it serves, so it only ever crops.
    `height > 0`: before the first layout the container reads as infinitely
-   wide, which would fetch the band still as well. index.html preloads the
-   still these rules pick. Recapture them whenever the scene's first frame changes. */
+   wide, which would fetch the band still as well. index.html reads the still
+   these rules pick from --sanctuary-still, to preload it. Recapture them
+   whenever the scene's first frame changes. */
 .sanctuary-light-backdrop {
   position: absolute;
   inset: 0;
   container-type: size;
 }
 .sanctuary-light-still {
+  --sanctuary-still: url("/auth-scenes/sanctuary-light-1-1.webp");
   position: absolute;
   inset: 0;
-  background:
-    rgb(7 5 4) url("/auth-scenes/sanctuary-light-1-1.webp") center / auto 100%
-    no-repeat;
+  background: rgb(7 5 4) var(--sanctuary-still) center / auto 100% no-repeat;
 }
 @container (aspect-ratio > 11 / 10) and (height > 0) {
   .sanctuary-light-still {
-    background-image: url("/auth-scenes/sanctuary-light-1-5.webp");
+    --sanctuary-still: url("/auth-scenes/sanctuary-light-1-5.webp");
   }
 }
 @container (aspect-ratio > 3 / 2) and (height > 0) {
   .sanctuary-light-still {
-    background-image: url("/auth-scenes/sanctuary-light-2-4.webp");
+    --sanctuary-still: url("/auth-scenes/sanctuary-light-2-4.webp");
   }
 }
 /* Wider than the scene's BAND_ASPECT (2.4), it frames only the windows. */
 @container (aspect-ratio > 12 / 5) and (height > 0) {
   .sanctuary-light-still {
-    background-image: url("/auth-scenes/sanctuary-light-5.webp");
+    --sanctuary-still: url("/auth-scenes/sanctuary-light-5.webp");
   }
 }

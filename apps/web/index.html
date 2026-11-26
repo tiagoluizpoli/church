@@ -7,64 +7,6 @@
     <!-- The first-paint stylesheet (src/first-paint.css), inlined by tooling/vite/first-paint.ts:
          theme colours, page background, AuthShell's frame and the scene stills. -->
     <!-- first-paint.css -->
-    <!-- Runs before the first paint, which is why it is here and not in the bundle:
-         the theme next-themes would pick (same storage key, same default), the
-         locale the app will resolve, and on a sign-in route the boot shell below. -->
-    <script>
-      (() => {
-        const root = document.documentElement;
-        let theme = "light";
-        try {
-          theme = localStorage.getItem("vite-ui-theme") || theme;
-        } catch {}
-        if (theme === "system") {
-          theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-        }
-        root.classList.add(theme);
-        root.style.colorScheme = theme;
-
-        // As initLocale and the Paraglide strategy resolve it: a valid ?lang=,
-        // else the locale cookie (any case), else the app's default.
-        const config = {} /* first-paint:config */;
-        const search = new URLSearchParams(location.search);
-        const query = search.get(config.queryParam);
-        const cookie = document.cookie.match(
-          new RegExp(`(?:^|;\\s*)${config.cookieName}=([^;]*)`),
-        )?.[1];
-        const locale = config.locales.includes(query)
-          ? query
-          : config.locales.find((code) => code.toLowerCase() === cookie?.toLowerCase()) ||
-            config.defaultLocale;
-        root.lang = locale;
-
-        // Each AuthShell route in the state a fresh load shows; any other state
-        // (the password-changed notice, an expired reset link) skips the shell.
-        const path = location.pathname.replace(/(.)\/$/, "$1");
-        const route =
-          path === "/login"
-            ? search.get("notice") !== "password-changed" && "login"
-            : path === "/forgot-password"
-              ? "forgot-password"
-              : path === "/reset-password" && search.get("token") && !search.get("error")
-                ? "reset-password"
-                : "";
-        if (!route) return;
-        root.dataset.bootShell = route;
-        window.bootShellCopy = config.messages[locale];
-        // A start that fails (the entry or a module it imports fails to load or
-        // throws) must not leave the shell over the page.
-        addEventListener(
-          "error",
-          (event) => {
-            const script = event.target instanceof HTMLScriptElement && event.target.type === "module";
-            if (script || (event instanceof ErrorEvent && event.error != null)) {
-              document.getElementById("boot-shell")?.remove();
-            }
-          },
-          true,
-        );
-      })();
-    </script>
     <style>
       /* The boot shell: AuthShell's frame (first-paint.css) over the page until
          AuthShell mounts and removes it, with the form outlined in bars set in
@@ -82,7 +24,6 @@
         inset: 0;
         z-index: 1;
         display: grid;
-        background: inherit;
       }
       .boot-form {
         display: none;
@@ -100,9 +41,9 @@
         /* Not box-decoration-break: clone, which changes how text-wrap: pretty breaks. */
         background: var(--boot-bar);
       }
-      .boot-form [data-m],
-      .boot-input,
-      .boot-button {
+      /* On the whole outline, one composited layer: per bar, the inline text bars
+         would repaint on the main thread every frame while the app loads. */
+      [data-boot-shell] .boot-form {
         animation: boot-pulse 1.6s ease-in-out infinite;
       }
       .boot-form h1 {
@@ -183,13 +124,132 @@
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        .boot-form [data-m],
-        .boot-input,
-        .boot-button {
+        [data-boot-shell] .boot-form {
           animation: none;
         }
       }
     </style>
+    <!-- The boot shell, put up by the script below on a sign-in route. -->
+    <template id="boot-shell-template">
+      <div id="boot-shell" class="auth-shell" aria-hidden="true">
+        <div class="auth-shell-panel dark"><div class="sanctuary-light-backdrop"><div class="sanctuary-light-still" style="background-image: none"></div></div></div>
+        <div class="auth-shell-form">
+          <!-- Each mirrors its form's markup (components/sign-in-form.tsx and the password forms). -->
+          <div class="auth-shell-form-body boot-form" data-form="login">
+            <h1><span data-m="auth_sign_in_title"></span></h1>
+            <p><span data-m="auth_sign_in_invitation_only"></span></p>
+            <div class="boot-fields">
+              <div class="boot-errors"><div class="boot-label"><span data-m="password_recovery_email_label"></span></div><i class="boot-input"></i></div>
+              <div><div class="boot-label"><span data-m="auth_password_label"></span></div><i class="boot-input"></i></div>
+              <div class="boot-link"><span data-m="password_recovery_forgot_link"></span></div>
+              <div class="boot-submit"><i class="boot-button"></i></div>
+            </div>
+          </div>
+          <div class="auth-shell-form-body boot-form" data-form="forgot-password">
+            <h1><span data-m="password_recovery_request_title"></span></h1>
+            <p><span data-m="password_recovery_request_description"></span></p>
+            <div class="boot-fields">
+              <div><div class="boot-label"><span data-m="password_recovery_email_label"></span></div><i class="boot-input"></i></div>
+              <i class="boot-button"></i>
+            </div>
+            <div class="boot-back"><span><span data-m="password_recovery_back_to_login"></span></span></div>
+          </div>
+          <div class="auth-shell-form-body boot-form" data-form="reset-password">
+            <h1 class="boot-heading-only"><span data-m="password_recovery_reset_title"></span></h1>
+            <div class="boot-fields">
+              <div><div class="boot-label"><span data-m="password_recovery_new_password_label"></span></div><i class="boot-input"></i></div>
+              <i class="boot-button"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+    <!-- Runs before the first paint, which is why it is here and not in the bundle:
+         the theme next-themes would pick (same storage key, same default), the
+         locale the app will resolve, and on a sign-in route the boot shell below. -->
+    <script>
+      (() => {
+        const root = document.documentElement;
+        let theme = "light";
+        try {
+          theme = localStorage.getItem("vite-ui-theme") || theme;
+        } catch {}
+        if (theme === "system") {
+          theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        root.classList.add(theme);
+        root.style.colorScheme = theme;
+
+        // As initLocale and the Paraglide strategy resolve it: a valid ?lang=,
+        // else the locale cookie (any case), else the app's default.
+        const config = {} /* first-paint:config */;
+        const search = new URLSearchParams(location.search);
+        const query = search.get(config.queryParam);
+        const cookie = document.cookie.match(
+          new RegExp(`(?:^|;\\s*)${config.cookieName}=([^;]*)`),
+        )?.[1];
+        const locale = config.locales.includes(query)
+          ? query
+          : config.locales.find((code) => code.toLowerCase() === cookie?.toLowerCase()) ||
+            config.defaultLocale;
+        root.lang = locale;
+
+        // Each AuthShell route in the state a fresh load shows; any other state
+        // (the password-changed notice, an expired reset link) skips the shell.
+        const path = location.pathname.replace(/(.)\/$/, "$1");
+        const route =
+          path === "/login"
+            ? search.get("notice") !== "password-changed" && "login"
+            : path === "/forgot-password"
+              ? "forgot-password"
+              : path === "/reset-password" && search.get("token") && !search.get("error")
+                ? "reset-password"
+                : "";
+        if (!route) return;
+        root.dataset.bootShell = route;
+
+        // The shell goes up from here, in the head, so that its still is
+        // requested before the scripts the preload scanner finds: same-priority
+        // requests share the connection in order. It sits beside <body>, which
+        // the parser has not made yet.
+        const shell = document.importNode(document.getElementById("boot-shell-template").content, true)
+          .firstElementChild;
+        for (const form of shell.querySelectorAll(".boot-form")) {
+          if (form.dataset.form !== route) form.remove();
+        }
+        const copy = config.messages[locale];
+        for (const element of shell.querySelectorAll("[data-m]")) {
+          element.textContent = copy[element.dataset.m];
+        }
+        root.append(shell);
+        // The still first-paint.css's container queries pick for this panel,
+        // preloaded at the priority a background image would not get. Its
+        // background stays off until then, or this layout would request it first.
+        const still = shell.querySelector(".sanctuary-light-still");
+        const url = /url\("?(.+?)"?\)/.exec(getComputedStyle(still).getPropertyValue("--sanctuary-still"))?.[1];
+        if (url) {
+          const preload = document.createElement("link");
+          preload.rel = "preload";
+          preload.as = "image";
+          preload.fetchPriority = "high";
+          preload.href = url;
+          document.head.append(preload);
+        }
+        still.style.backgroundImage = "";
+        // A start that fails (the entry or a module it imports fails to load or
+        // throws) must not leave the shell over the page.
+        addEventListener(
+          "error",
+          (event) => {
+            const script = event.target instanceof HTMLScriptElement && event.target.type === "module";
+            if (script || (event instanceof ErrorEvent && event.error != null)) {
+              document.getElementById("boot-shell")?.remove();
+            }
+          },
+          true,
+        );
+      })();
+    </script>
     <!-- Not render-blocking: text paints in the fallback font and swaps when these arrive. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -206,64 +266,8 @@
       />
     </noscript>
   </head>
-
   <body>
     <div id="app"></div>
-    <div id="boot-shell" class="auth-shell" aria-hidden="true">
-      <div class="auth-shell-panel dark"><div class="sanctuary-light-backdrop"><div class="sanctuary-light-still"></div></div></div>
-      <div class="auth-shell-form">
-        <!-- Each mirrors its form's markup (components/sign-in-form.tsx and the password forms). -->
-        <div class="auth-shell-form-body boot-form" data-form="login">
-          <h1><span data-m="auth_sign_in_title"></span></h1>
-          <p><span data-m="auth_sign_in_invitation_only"></span></p>
-          <div class="boot-fields">
-            <div class="boot-errors"><div class="boot-label"><span data-m="password_recovery_email_label"></span></div><i class="boot-input"></i></div>
-            <div><div class="boot-label"><span data-m="auth_password_label"></span></div><i class="boot-input"></i></div>
-            <div class="boot-link"><span data-m="password_recovery_forgot_link"></span></div>
-            <div class="boot-submit"><i class="boot-button"></i></div>
-          </div>
-        </div>
-        <div class="auth-shell-form-body boot-form" data-form="forgot-password">
-          <h1><span data-m="password_recovery_request_title"></span></h1>
-          <p><span data-m="password_recovery_request_description"></span></p>
-          <div class="boot-fields">
-            <div><div class="boot-label"><span data-m="password_recovery_email_label"></span></div><i class="boot-input"></i></div>
-            <i class="boot-button"></i>
-          </div>
-          <div class="boot-back"><span><span data-m="password_recovery_back_to_login"></span></span></div>
-        </div>
-        <div class="auth-shell-form-body boot-form" data-form="reset-password">
-          <h1 class="boot-heading-only"><span data-m="password_recovery_reset_title"></span></h1>
-          <div class="boot-fields">
-            <div><div class="boot-label"><span data-m="password_recovery_new_password_label"></span></div><i class="boot-input"></i></div>
-            <i class="boot-button"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <script>
-      (() => {
-        const copy = window.bootShellCopy;
-        delete window.bootShellCopy;
-        if (!copy) return;
-        const shell = document.getElementById("boot-shell");
-        for (const element of shell.querySelectorAll("[data-m]")) {
-          element.textContent = copy[element.dataset.m];
-        }
-        // The still first-paint.css's container queries pick for this panel, at
-        // the priority a background image would not get on its own.
-        const still = /url\("?(.+?)"?\)/.exec(
-          getComputedStyle(shell.querySelector(".sanctuary-light-still")).backgroundImage,
-        )?.[1];
-        if (!still) return;
-        const preload = document.createElement("link");
-        preload.rel = "preload";
-        preload.as = "image";
-        preload.fetchPriority = "high";
-        preload.href = still;
-        document.head.append(preload);
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

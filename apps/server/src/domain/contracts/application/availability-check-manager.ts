@@ -1,7 +1,22 @@
+import type { AppConfig } from '@church/app-config';
 import type { CalendarDay, Instant } from '@church/time';
 import type { ChurchId, CycleId, MinistryId, RoleId } from '../../branded-ids';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
+import type { Cycle } from '../../entities/cycle';
 import type { FlaggedBlock } from '../../errors/ask-blocked-flagged-shifts';
+import type { IChurchNotifications } from './church-notifications';
+import type {
+  ActiveMinistryMembership,
+  AvailabilityCheckRepository,
+  ScheduleScopeInput,
+  ServedShiftRow,
+} from '@/domain/contracts/infrastructure/availability-check.repository';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { CycleRepository } from '@/domain/contracts/infrastructure/cycle.repository';
+import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
+import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 export interface AskScheduleInput {
   churchId: ChurchId;
@@ -111,4 +126,63 @@ export interface IAvailabilityCheckManager {
   listCycleCheckStatuses(
     input: ListCycleCheckStatusesInput,
   ): Promise<CycleCheckStatuses>;
+}
+
+export interface DbAvailabilityCheckManagerDependencies {
+  participationRepository: MinistryParticipationRepository;
+  availabilityCheckRepository: AvailabilityCheckRepository;
+  cycleRepository: CycleRepository;
+  ministryRepository: MinistryRepository;
+  churchRepository: ChurchRepository;
+  notifications: IChurchNotifications;
+  unitOfWork: UnitOfWork;
+  config: AppConfig;
+}
+
+export interface RemindAvailableAtInput {
+  lastRemindedAt: Instant | null;
+}
+
+export interface EnsureCycleAskableInput {
+  cycle: Cycle;
+  timeZone: string;
+  transition: string;
+}
+
+export interface LockUnpublishedScheduleInput extends ScheduleScopeInput {
+  tx: TransactionContext;
+  timeZone: string;
+  transition: string;
+}
+
+export interface OpenChecksInput extends ScheduleScopeInput {
+  tx: TransactionContext;
+  eligible: ActiveMinistryMembership[];
+}
+
+export interface OpenChecksResult {
+  createdCheckCount: number;
+  notifiedVolunteerCount: number;
+}
+
+export interface FlaggedBlocksOfInput {
+  servedShifts: ServedShiftRow[];
+}
+
+export interface CompareRowsInput {
+  left: CheckStatusRow;
+  right: CheckStatusRow;
+}
+
+export interface PagedStatuses {
+  statuses: CheckStatusRow[];
+  nextCursor: string | null;
+}
+
+export interface PageStatusesInput {
+  statuses: CheckStatusRow[];
+  status?: AnswerStatus;
+  q?: string;
+  cursor?: string;
+  limit?: number;
 }

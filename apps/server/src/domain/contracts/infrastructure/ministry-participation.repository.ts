@@ -8,6 +8,7 @@ import type {
   MinistryParticipationId,
   VolunteerId,
 } from '../../branded-ids';
+import type { AssignmentStatus } from '../../entities/assignment';
 import type { Cycle, CycleState } from '../../entities/cycle';
 import type { Ministry } from '../../entities/ministry';
 import type {
@@ -332,7 +333,7 @@ export interface MinistryParticipationRepository {
   countCurrentSchedulesByStage(
     input: CountSchedulesByStageInput,
   ): Promise<ScheduleStageCountRow[]>;
-  /** Leaves out opted-out MinistryParticipations and cancelled Events. */
+  /** Leaves out opted-out MinistryParticipations and cancelled Events; a cancelled block's inclusion still counts (Ask moves the whole Schedule). */
   listScheduleServingStates(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleServingStateRow[]>;
@@ -356,4 +357,30 @@ export interface MinistryParticipationRepository {
   listMinistryStaffing(
     input: ListMinistryStaffingInput,
   ): Promise<MinistryStaffingRow[]>;
+}
+
+export interface ScheduleStagesInput {
+  churchId: ChurchId;
+  ministryIds?: MinistryId[];
+  ministryId?: MinistryId;
+  cycleId?: CycleId;
+  cycleStates: CycleState[];
+  search?: string;
+  tx?: TransactionContext;
+}
+
+export interface OpenSwapRequestCountsInput {
+  churchId: ChurchId;
+  ministryIds?: MinistryId[];
+  cycleIds?: CycleId[];
+  tx?: TransactionContext;
+}
+
+export interface AssignmentCountInput {
+  statuses: readonly AssignmentStatus[];
+}
+
+export interface RequirementStaffingScopeInput {
+  churchId: ChurchId;
+  ministryIds?: MinistryId[];
 }

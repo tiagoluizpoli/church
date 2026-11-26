@@ -15,17 +15,15 @@ import type {
   PublicEvent,
   PublicEventPage,
 } from '../../domain/entities/public-event';
+import { isEventTimeBlockCancelled } from '../../domain/event-time-block-cancellation';
 import {
   type EventTimeBlockMove,
   eventTimeBlockMovePath,
 } from '../../domain/services/event-time-block-move-path';
+import type { DrizzlePublicEventRepositoryInput } from './drizzle-public-event.repository.types';
 import { withChurchIsolation } from './helpers';
 import { resolvedPlace } from './time-block-place';
 import type { AnyDrizzleDb } from './types';
-
-interface DrizzlePublicEventRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzlePublicEventRepository implements PublicEventRepository {
   private readonly db: AnyDrizzleDb;
@@ -45,9 +43,11 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
       eventTimeBlock.startTime,
     );
     const allBlocksCancelled = sql`bool_and(${eventTimeBlock.status} = 'cancelled')`;
-    const cancelled = sql`(${event.status} = 'cancelled' or ${allBlocksCancelled})`;
+    // A Public Event's own rule (CONTEXT.md, EventTimeBlock): it shows as
+    // cancelled when it, or every public block in it, is cancelled.
+    const publicEventCancelled = sql`(${event.status} = 'cancelled' or ${allBlocksCancelled})`;
     // A cancelled item stays until its last start passes, others until the last end.
-    const stillShown = sql`case when ${cancelled}
+    const stillShown = sql`case when ${publicEventCancelled}
       then max(${eventTimeBlock.startTime}) > ${nowDate}
       else max(${eventTimeBlock.endTime}) > ${nowDate} end`;
     const afterCursor = after
@@ -134,6 +134,7 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
     }
 
     const items: PublicEvent[] = page.map((head) => {
+      // The Public Event rule again, as publicEventCancelled reads it in SQL.
       const eventCancelled =
         head.eventStatus === 'cancelled' || head.allCancelled === true;
       return {
@@ -151,9 +152,10 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
               start,
               end,
               place: block.place,
-              cancelled:
-                head.eventStatus === 'cancelled' ||
-                block.status === 'cancelled',
+              cancelled: isEventTimeBlockCancelled({
+                event: { status: head.eventStatus },
+                eventTimeBlock: block,
+              }),
               movePath: eventTimeBlockMovePath({
                 currentStart: start,
                 currentEnd: end,

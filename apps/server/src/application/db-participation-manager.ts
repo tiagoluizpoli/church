@@ -184,8 +184,11 @@ function compareScheduleAssignments({
   // A cancelled block's Shifts are named by its requirements.
   const cancelledShiftIds = new Set(
     events
-      .flatMap(({ eventTimeBlocks }) => eventTimeBlocks)
-      .filter(({ status }) => status === 'cancelled')
+      .flatMap(({ event, eventTimeBlocks }) =>
+        eventTimeBlocks.filter((eventTimeBlock) =>
+          isEventTimeBlockCancelled({ event, eventTimeBlock }),
+        ),
+      )
       .flatMap(({ requirements }) => requirements)
       .map(({ shiftId }) => shiftId),
   );
@@ -1624,9 +1627,11 @@ export class DbParticipationManager implements IParticipationManager {
       ),
     );
     const cancelledBlockIds = new Set<string>(
-      eventGroups.flatMap(({ eventTimeBlocks }) =>
+      eventGroups.flatMap(({ event, eventTimeBlocks }) =>
         eventTimeBlocks
-          .filter(({ status }) => status === 'cancelled')
+          .filter((eventTimeBlock) =>
+            isEventTimeBlockCancelled({ event, eventTimeBlock }),
+          )
           .map(({ id }) => id as string),
       ),
     );
@@ -2853,6 +2858,10 @@ function buildBuilderEventView({
       return {
         eventTimeBlock,
         included: includedEventTimeBlockIds.has(eventTimeBlock.id as string),
+        cancelled: isEventTimeBlockCancelled({
+          event: eventGroup.event,
+          eventTimeBlock,
+        }),
         shifts: shiftViews,
       };
     });

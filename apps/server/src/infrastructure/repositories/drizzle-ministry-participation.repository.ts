@@ -37,9 +37,9 @@ import {
   type SQLWrapper,
   sql,
 } from 'drizzle-orm';
-import type { ChurchId, CycleId, MinistryId } from '../../domain/branded-ids';
 import type {
   AddInclusionInput,
+  AssignmentCountInput,
   CountSchedulesByStageInput,
   CreateParticipationInput,
   CycleStaffingRow,
@@ -61,7 +61,9 @@ import type {
   LockScheduleParticipationsInput,
   MinistryParticipationRepository,
   MinistryStaffingRow,
+  OpenSwapRequestCountsInput,
   RemoveInclusionInput,
+  RequirementStaffingScopeInput,
   SaveScheduleLastToldInput,
   ScheduleCheckCountRow,
   ScheduleCountRow,
@@ -69,16 +71,12 @@ import type {
   ScheduleRowsPage,
   ScheduleServingStateRow,
   ScheduleStageCountRow,
+  ScheduleStagesInput,
   ScheduleSummaryRow,
   TouchParticipationInput,
   UpdateParticipationStateInput,
 } from '../../domain/contracts/infrastructure/ministry-participation.repository';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
-import {
-  ACTIVE_ASSIGNMENT_STATUSES,
-  type AssignmentStatus,
-} from '../../domain/entities/assignment';
-import type { CycleState } from '../../domain/entities/cycle';
+import { ACTIVE_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
 import type { MinistryParticipation } from '../../domain/entities/ministry-participation';
 import {
   aggregateCyclePrepareStatus,
@@ -94,30 +92,19 @@ import {
   mapMinistryParticipation,
   mapParticipationEventTimeBlockInclusion,
 } from '../mappers/ministry-participation.mapper';
+import type {
+  AfterPositionInput,
+  DrizzleMinistryParticipationRepositoryInput,
+  StepCaseInput,
+} from './drizzle-ministry-participation.repository.types';
 import {
   containsPattern,
   getClient,
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
+import { liveEventTimeBlock } from './live-event-time-block';
 import type { AnyDrizzleDb } from './types';
-
-interface ScheduleStagesInput {
-  churchId: ChurchId;
-  ministryIds?: MinistryId[];
-  ministryId?: MinistryId;
-  cycleId?: CycleId;
-  cycleStates: CycleState[];
-  search?: string;
-  tx?: TransactionContext;
-}
-
-interface OpenSwapRequestCountsInput {
-  churchId: ChurchId;
-  ministryIds?: MinistryId[];
-  cycleIds?: CycleId[];
-  tx?: TransactionContext;
-}
 
 const NOT_SERVING: ScheduleStage = 'not_serving';
 
@@ -129,11 +116,6 @@ const SERVING_STEP = sql`case ${ministryParticipation.state} ${sql.join(
   sql` `,
 )} end`;
 
-interface StepCaseInput {
-  step: SQLWrapper;
-  literalOf: (stage: ScheduleStage) => string;
-}
-
 /** Maps a Schedule's lowest step to a value of its stage; no step means not serving. */
 function caseOfStep({ step, literalOf }: StepCaseInput): SQL {
   return sql`case ${step} ${sql.join(
@@ -142,10 +124,6 @@ function caseOfStep({ step, literalOf }: StepCaseInput): SQL {
     ),
     sql` `,
   )} else ${sql.raw(literalOf(NOT_SERVING))} end`;
-}
-
-interface AssignmentCountInput {
-  statuses: readonly AssignmentStatus[];
 }
 
 /** Assignments of one requirement row in the given statuses; correlated, so a grouped query sums it. */
@@ -165,22 +143,6 @@ function staffingTotals() {
   };
 }
 
-interface RequirementStaffingScopeInput {
-  churchId: ChurchId;
-  ministryIds?: MinistryId[];
-}
-
-interface ListKey {
-  column: SQLWrapper;
-  value: unknown;
-  descending?: boolean;
-}
-
-interface AfterPositionInput {
-  /** The list order's keys, most significant first. */
-  keys: ListKey[];
-}
-
 /** Keyset predicate: rows strictly after the position in the order the keys describe. */
 function afterPosition({ keys }: AfterPositionInput): SQL {
   return keys.reduceRight<SQL>(
@@ -188,10 +150,6 @@ function afterPosition({ keys }: AfterPositionInput): SQL {
       sql`(${column} ${sql.raw(descending ? '<' : '>')} ${value} or (${column} = ${value} and ${rest}))`,
     sql`false`,
   );
-}
-
-interface DrizzleMinistryParticipationRepositoryInput {
-  db: AnyDrizzleDb;
 }
 
 export class DrizzleMinistryParticipationRepository
@@ -907,7 +865,7 @@ export class DrizzleMinistryParticipationRepository
 
   /**
    * Every active Ministry × Cycle pair in scope with its stage, list bucket and open Swap requests.
-   * The stage is the furthest-behind state serving a block, read from the domain's own table.
+   * The stage is the furthest-behind state serving a live block, read from the domain's own table.
    */
   private scheduleStages({
     churchId,
@@ -931,7 +889,6 @@ export class DrizzleMinistryParticipationRepository
         and(
           withChurchIsolation({ table: ministryParticipation, churchId }),
           withChurchIsolation({ table: event, churchId }),
-          ne(event.status, 'cancelled'),
           ministryIds
             ? inArray(ministryParticipation.ministryId, ministryIds)
             : undefined,
@@ -939,6 +896,13 @@ export class DrizzleMinistryParticipationRepository
             client
               .select({ one: sql`1` })
               .from(participationEventTimeBlockInclusion)
+              .innerJoin(
+                eventTimeBlock,
+                eq(
+                  eventTimeBlock.id,
+                  participationEventTimeBlockInclusion.eventTimeBlockId,
+                ),
+              )
               .where(
                 and(
                   withChurchIsolation({
@@ -949,6 +913,8 @@ export class DrizzleMinistryParticipationRepository
                     participationEventTimeBlockInclusion.participationId,
                     ministryParticipation.id,
                   ),
+                  // A cancelled Event or block asks for nobody: it serves nothing.
+                  liveEventTimeBlock(),
                 ),
               ),
           ),
@@ -1174,8 +1140,7 @@ export class DrizzleMinistryParticipationRepository
       .where(
         and(
           withChurchIsolation({ table: shiftRequirement, churchId }),
-          eq(eventTimeBlock.status, 'active'),
-          ne(event.status, 'cancelled'),
+          liveEventTimeBlock(),
           gt(shift.startTime, nowAsDate()),
           isNull(sector.archivedAt),
           isNull(role.archivedAt),
@@ -1367,8 +1332,7 @@ export class DrizzleMinistryParticipationRepository
   }: RequirementStaffingScopeInput): SQL | undefined {
     return and(
       withChurchIsolation({ table: shiftRequirement, churchId }),
-      eq(eventTimeBlock.status, 'active'),
-      ne(event.status, 'cancelled'),
+      liveEventTimeBlock(),
       isNull(ministry.deletedAt),
       isNull(sector.archivedAt),
       isNull(role.archivedAt),

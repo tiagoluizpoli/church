@@ -13989,6 +13989,8 @@ paths:
                                 additionalProperties: false
                               included:
                                 type: boolean
+                              cancelled:
+                                type: boolean
                               shifts:
                                 type: array
                                 items:
@@ -14169,6 +14171,7 @@ paths:
                             required:
                               - eventTimeBlock
                               - included
+                              - cancelled
                               - shifts
                             additionalProperties: false
                       required:

@@ -1,4 +1,3 @@
-import type { Instant } from '@church/time';
 import type {
   AssignmentId,
   ChurchId,
@@ -10,12 +9,11 @@ import type {
 import type { Assignment } from '../../entities/assignment';
 import type { MinistryParticipation } from '../../entities/ministry-participation';
 import type { Shift } from '../../entities/shift';
-import type { ShiftRequirement } from '../../entities/shift-requirement';
 import type {
-  AssignmentEligibilityFacts,
+  AssignmentEligibility,
   AssignmentRefusal,
   EligibilityCheck,
-} from '../../services/assignment-eligibility';
+} from '../../services/assignment-eligibility.types';
 import type { CreateParticipationAssignmentResult } from './assignment-manager';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
@@ -54,10 +52,8 @@ export interface LoadAssignFactsInput {
 }
 
 export interface AssignFacts {
-  facts: AssignmentEligibilityFacts;
-  shift: Shift;
-  /** Null when the requirement is not one of the Shift's. */
-  requirement: ShiftRequirement | null;
+  /** The Shift, its requirement (null when not one of the Shift's) and the facts. */
+  eligibility: AssignmentEligibility;
   /** The not-found error a missing requirement answers with. */
   requirementError: Error | null;
 }
@@ -69,14 +65,9 @@ export interface LoadMoveFactsInput {
   tx: TransactionContext;
 }
 
-export interface MoveFacts {
-  facts: AssignmentEligibilityFacts;
-  target: ShiftRequirement | null;
-}
-
 export interface AdmitInput {
   check: EligibilityCheck;
-  facts: AssignmentEligibilityFacts;
+  eligibility: AssignmentEligibility;
   notOnShift: () => Error;
 }
 
@@ -130,7 +121,7 @@ export interface LifecycleExitInput {
 }
 
 export interface ShiftStartGuardInput {
-  startTime: Instant;
+  shift: Shift;
 }
 
 /** Loads, once and under the caller's locks, the facts eligibility reads. */
@@ -138,7 +129,7 @@ export interface IAssignmentFactsReader {
   /** Facts for placing a Volunteer on a need: manual assign and reassign. */
   forAssign(input: LoadAssignFactsInput): Promise<AssignFacts>;
   /** Facts for moving an Assignment to another need of its Shift and Role. */
-  forMove(input: LoadMoveFactsInput): Promise<MoveFacts>;
+  forMove(input: LoadMoveFactsInput): Promise<AssignmentEligibility>;
 }
 
 export interface IAssignmentLifecycle {
@@ -176,20 +167,18 @@ export interface AssignmentFactsReaderDependencies {
 }
 
 export interface BookingsInput {
+  churchId: ChurchId;
   shift: Shift;
   shiftAssignments: Assignment[];
   volunteerId: VolunteerId;
   overlapping: Assignment[];
+  tx: TransactionContext;
 }
 
 export interface FilledInput {
   assignments: Assignment[];
   requirementId: ShiftRequirementId;
   excludeId?: AssignmentId;
-}
-
-export interface ShiftBookingInput {
-  shift: Shift;
 }
 
 export interface AssignmentLifecycleDependencies {

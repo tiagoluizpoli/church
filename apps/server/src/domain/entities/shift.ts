@@ -38,6 +38,14 @@ export interface ShiftUpdateBoundsInput {
   eventTimeBlockBounds: ShiftEventTimeBlockBounds;
 }
 
+export interface ShiftOverlapInput {
+  other: Shift;
+}
+
+export interface ShiftStartedInput {
+  now: Instant;
+}
+
 export class Shift extends Entity<ShiftProps, ShiftId> {
   constructor({
     props,
@@ -82,6 +90,19 @@ export class Shift extends Entity<ShiftProps, ShiftId> {
 
   get label(): string | undefined {
     return this._props.label;
+  }
+
+  /** True when the two share time; back-to-back Shifts do not overlap. */
+  overlaps({ other }: ShiftOverlapInput): boolean {
+    return (
+      compareInstants({ left: this.startTime, right: other.endTime }) < 0 &&
+      compareInstants({ left: this.endTime, right: other.startTime }) > 0
+    );
+  }
+
+  /** From its start on, a Shift's Assignments are fixed. */
+  hasStarted({ now }: ShiftStartedInput): boolean {
+    return compareInstants({ left: this.startTime, right: now }) <= 0;
   }
 
   updateBounds({

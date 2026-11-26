@@ -907,7 +907,7 @@ export class DrizzleMinistryParticipationRepository
 
   /**
    * Every active Ministry × Cycle pair in scope with its stage, list bucket and open Swap requests.
-   * The stage is the furthest-behind state serving a block, read from the domain's own table.
+   * The stage is the furthest-behind state serving a live block, read from the domain's own table.
    */
   private scheduleStages({
     churchId,
@@ -939,6 +939,13 @@ export class DrizzleMinistryParticipationRepository
             client
               .select({ one: sql`1` })
               .from(participationEventTimeBlockInclusion)
+              .innerJoin(
+                eventTimeBlock,
+                eq(
+                  eventTimeBlock.id,
+                  participationEventTimeBlockInclusion.eventTimeBlockId,
+                ),
+              )
               .where(
                 and(
                   withChurchIsolation({
@@ -949,6 +956,8 @@ export class DrizzleMinistryParticipationRepository
                     participationEventTimeBlockInclusion.participationId,
                     ministryParticipation.id,
                   ),
+                  // A cancelled block asks for nobody, so it serves nothing.
+                  eq(eventTimeBlock.status, 'active'),
                 ),
               ),
           ),

@@ -391,7 +391,7 @@ const NO_STAGE_COUNTS = {
 };
 
 describe('Schedules list: stages, counts, gaps and needs attention', () => {
-  it('counts Kids, opted only into the cancelled block, as asking', async () => {
+  it('counts Kids, opted only into the cancelled block, as not serving', async () => {
     const { churchId } = seeded;
 
     const counts = await participationRepo.countCurrentSchedulesByStage({
@@ -399,7 +399,7 @@ describe('Schedules list: stages, counts, gaps and needs attention', () => {
     });
 
     expect(counts).toEqual([
-      { stage: 'asking', count: 1 },
+      { stage: 'not_serving', count: 1 },
       { stage: 'published', count: 1 },
     ]);
   });
@@ -429,17 +429,16 @@ describe('Schedules list: stages, counts, gaps and needs attention', () => {
       gapCount,
     });
     expect(page.schedules.map(brief)).toEqual([
-      { ministry: 'kids', stage: 'asking', gapCount: 0 },
       { ministry: 'ministryA', stage: 'published', gapCount: 1 },
+      { ministry: 'kids', stage: 'not_serving', gapCount: 0 },
     ]);
     expect(page.counts).toEqual({
       ...NO_STAGE_COUNTS,
-      asking: 1,
       published: 1,
+      // biome-ignore lint/style/useNamingConvention: stage names are the wire keys
+      not_serving: 1,
     });
-    expect(needingAttention.schedules.map(brief)).toEqual([
-      { ministry: 'kids', stage: 'asking', gapCount: 0 },
-    ]);
+    expect(needingAttention.schedules.map(brief)).toEqual([]);
   });
 
   it('counts the gaps of live blocks only', async () => {

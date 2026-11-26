@@ -40,16 +40,17 @@ jobs:
       name: ${{ inputs.environment }}
       url: ${{ vars.PUBLIC_ORIGIN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           # The compatibility check reads every deployed revision's migrations.
           fetch-depth: 0
-      - uses: jdx/mise-action@v5
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
       # The homelab (Dokploy and the development site) is reachable only
       # through the tailnet route to its LAN address.
       - name: Join the tailnet
         if: inputs.environment == 'development'
-        uses: tailscale/github-action@v3
+        uses: tailscale/github-action@6cae46e2d796f265265cfcf628b72a32b4d7cade # v3.3.0
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}

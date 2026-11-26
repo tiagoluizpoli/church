@@ -31,6 +31,10 @@ import type {
   SendCycleManagerInput,
   UpdateCycleManagerInput,
 } from '../domain/contracts/application/cycle-manager';
+import type {
+  IUsualSetupStaffingSeeder,
+  StaffingSeedEventTimeBlock,
+} from '../domain/contracts/application/usual-setup-staffing-seeder';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
@@ -56,10 +60,6 @@ import {
   OverlappingCycleError,
 } from '../domain/errors';
 import { assertEventGraph } from '../domain/services/event-graph';
-import type {
-  StaffingSeedEventTimeBlock,
-  UsualSetupStaffingSeeder,
-} from './usual-setup-staffing-seeder';
 
 interface SuggestNextCycleInput {
   latestEnd: CalendarDay | null;
@@ -129,7 +129,7 @@ interface DbCycleManagerDependencies {
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
   participationRepository: MinistryParticipationRepository;
-  staffingSeeder: UsualSetupStaffingSeeder;
+  staffingSeeder: IUsualSetupStaffingSeeder;
   volunteerRepository: VolunteerRepository;
   notifications: IChurchNotifications;
 }
@@ -155,7 +155,7 @@ export class DbCycleManager implements ICycleManager {
   private readonly churchRepository: ChurchRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly participationRepository: MinistryParticipationRepository;
-  private readonly staffingSeeder: UsualSetupStaffingSeeder;
+  private readonly staffingSeeder: IUsualSetupStaffingSeeder;
   private readonly volunteerRepository: VolunteerRepository;
   private readonly notifications: IChurchNotifications;
 

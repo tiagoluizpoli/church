@@ -30,3 +30,4 @@ export * from './swap-request-list-manager';
 export * from './swap-request-manager';
 export * from './volunteer-manager';
 export * from './volunteer-transfer-manager';
+export * from './usual-setup-staffing-seeder';

@@ -23,8 +23,10 @@ jobs:
     outputs:
       deploy: ${{ steps.checks.outputs.deploy }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
       - id: checks
         name: Wait for the revision's required checks
         env:
@@ -43,8 +45,10 @@ jobs:
       server: ${{ steps.refs.outputs.server }}
       web: ${{ steps.refs.outputs.web }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -56,7 +60,7 @@ jobs:
           echo "server=ghcr.io/$owner/church-server" >> "$GITHUB_OUTPUT"
           echo "web=ghcr.io/$owner/church-web" >> "$GITHUB_OUTPUT"
       - id: server
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: deployment/server.Dockerfile
@@ -64,7 +68,7 @@ jobs:
           tags: ${{ steps.names.outputs.server }}:${{ github.sha }}
           push: true
       - id: web
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: deployment/web.Dockerfile
@@ -106,12 +110,14 @@ jobs:
       name: development
       url: ${{ vars.PUBLIC_ORIGIN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
       # The homelab (Dokploy and the development site) is reachable only
       # through the tailnet route to its LAN address.
       - name: Join the tailnet
-        uses: tailscale/github-action@v3
+        uses: tailscale/github-action@6cae46e2d796f265265cfcf628b72a32b4d7cade # v3.3.0
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}

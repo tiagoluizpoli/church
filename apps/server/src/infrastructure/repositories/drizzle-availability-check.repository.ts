@@ -73,6 +73,7 @@ import { PUBLISHED_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment'
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
 import { mapAvailabilityCheck } from '../mappers/availability-check.mapper';
 import { getClient, withChurchIsolation } from './helpers';
+import { liveEventTimeBlock } from './live-event-time-block';
 import type { AnyDrizzleDb } from './types';
 
 interface DrizzleAvailabilityCheckRepositoryInput {
@@ -137,8 +138,7 @@ export class DrizzleAvailabilityCheckRepository
           withChurchIsolation({ table: shiftRequirement, churchId }),
           eq(ministryParticipation.ministryId, ministryId),
           eq(event.cycleId, cycleId),
-          ne(event.status, 'cancelled'),
-          ne(eventTimeBlock.status, 'cancelled'),
+          liveEventTimeBlock(),
         ),
       )
       .as('served_requirement');
@@ -342,8 +342,7 @@ export class DrizzleAvailabilityCheckRepository
           withChurchIsolation({ table: shift, churchId }),
           eq(ministryParticipation.ministryId, ministryId),
           eq(event.cycleId, cycleId),
-          ne(event.status, 'cancelled'),
-          ne(eventTimeBlock.status, 'cancelled'),
+          liveEventTimeBlock(),
         ),
       )
       .groupBy(shift.id, event.id, eventTimeBlock.id)
@@ -685,8 +684,7 @@ export class DrizzleAvailabilityCheckRepository
         and(
           eq(availabilityCheck.id, input.checkId),
           // Cancelled work leaves the check: no Shift of a cancelled Event or block.
-          ne(event.status, 'cancelled'),
-          ne(eventTimeBlock.status, 'cancelled'),
+          liveEventTimeBlock(),
           input.heldRolesOnly
             ? exists(
                 db

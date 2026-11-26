@@ -100,6 +100,7 @@ import {
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
+import { liveEventTimeBlock } from './live-event-time-block';
 import type { AnyDrizzleDb } from './types';
 
 interface ScheduleStagesInput {
@@ -931,7 +932,6 @@ export class DrizzleMinistryParticipationRepository
         and(
           withChurchIsolation({ table: ministryParticipation, churchId }),
           withChurchIsolation({ table: event, churchId }),
-          ne(event.status, 'cancelled'),
           ministryIds
             ? inArray(ministryParticipation.ministryId, ministryIds)
             : undefined,
@@ -956,8 +956,8 @@ export class DrizzleMinistryParticipationRepository
                     participationEventTimeBlockInclusion.participationId,
                     ministryParticipation.id,
                   ),
-                  // A cancelled block asks for nobody, so it serves nothing.
-                  eq(eventTimeBlock.status, 'active'),
+                  // A cancelled Event or block asks for nobody: it serves nothing.
+                  liveEventTimeBlock(),
                 ),
               ),
           ),
@@ -1183,8 +1183,7 @@ export class DrizzleMinistryParticipationRepository
       .where(
         and(
           withChurchIsolation({ table: shiftRequirement, churchId }),
-          eq(eventTimeBlock.status, 'active'),
-          ne(event.status, 'cancelled'),
+          liveEventTimeBlock(),
           gt(shift.startTime, nowAsDate()),
           isNull(sector.archivedAt),
           isNull(role.archivedAt),
@@ -1376,8 +1375,7 @@ export class DrizzleMinistryParticipationRepository
   }: RequirementStaffingScopeInput): SQL | undefined {
     return and(
       withChurchIsolation({ table: shiftRequirement, churchId }),
-      eq(eventTimeBlock.status, 'active'),
-      ne(event.status, 'cancelled'),
+      liveEventTimeBlock(),
       isNull(ministry.deletedAt),
       isNull(sector.archivedAt),
       isNull(role.archivedAt),

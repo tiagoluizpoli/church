@@ -423,7 +423,8 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
     ensureCycleAskable({ cycle, timeZone, transition });
 
     await this.participationRepository.lockSchedule(scope);
-    // Read after the lock, on the Schedules read's basis: unserved and cancelled rows do not count.
+    // Read after the lock. A cancelled Event's rows do not count; a cancelled
+    // block's do, since Ask moves every participation of the Schedule together.
     const servingRows =
       await this.participationRepository.listScheduleServingStates({
         churchId,

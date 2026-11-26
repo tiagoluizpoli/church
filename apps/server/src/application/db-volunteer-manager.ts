@@ -74,6 +74,7 @@ import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
 import { IllegalStateTransitionError } from '../domain/errors/illegal-state-transition';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 import { ShiftPublishedError } from '../domain/errors/shift-published';
+import { isEventTimeBlockCancelled } from '../domain/event-time-block-cancellation';
 import {
   groupCheckDays,
   isShiftAnswerable,
@@ -108,10 +109,11 @@ function inCancelledScope({
 }: InCancelledScopeInput): boolean {
   if (!group) return false;
   const { event, eventTimeBlocks } = group;
-  const blockCancelled = eventTimeBlocks.some(
-    ({ id, status }) => id === eventTimeBlockId && status === 'cancelled',
+  const eventTimeBlock = eventTimeBlocks.find(
+    ({ id }) => id === eventTimeBlockId,
   );
-  return event.status === 'cancelled' || blockCancelled;
+  if (!eventTimeBlock) return event.status === 'cancelled';
+  return isEventTimeBlockCancelled({ event, eventTimeBlock });
 }
 
 interface CompareTextInput {

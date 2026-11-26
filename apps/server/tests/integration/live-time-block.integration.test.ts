@@ -688,6 +688,42 @@ describe('Schedule builder', () => {
   });
 });
 
+describe('Schedule builder flag', () => {
+  it('flags a block cancelled by its Event or on its own, as Prepare does', async () => {
+    const { churchId, cycleId, ministryId } = seeded;
+    const { participationManager } = createSchedulingManagers();
+
+    const builder = await participationManager.getCycleBuilderData({
+      churchId,
+      cycleId,
+      ministryId,
+      userId: UserId.from(seeded.base.adminUserId),
+    });
+    const prepare = await participationManager.getCycleParticipation({
+      churchId,
+      cycleId,
+      ministryId,
+    });
+
+    const flags = (
+      events: (typeof builder.events | typeof prepare.events)[number][],
+    ) =>
+      events.flatMap(({ eventTimeBlocks }) =>
+        eventTimeBlocks.map(({ eventTimeBlock, cancelled }) => [
+          nameOf(eventTimeBlock.id),
+          cancelled,
+        ]),
+      );
+    expect(flags(builder.events)).toEqual([
+      ['retreatBlock', true],
+      ['liveBlock', false],
+      ['cancelledBlock', true],
+      ['vigilBlock', true],
+    ]);
+    expect(flags(prepare.events)).toEqual(flags(builder.events));
+  });
+});
+
 describe('availability checks', () => {
   it('asks only for the Shifts of live blocks', async () => {
     const { churchId, ministryId, cycleId, anaCheckId } = seeded;

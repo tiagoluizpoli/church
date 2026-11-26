@@ -332,7 +332,7 @@ export interface MinistryParticipationRepository {
   countCurrentSchedulesByStage(
     input: CountSchedulesByStageInput,
   ): Promise<ScheduleStageCountRow[]>;
-  /** Leaves out opted-out MinistryParticipations and cancelled Events. */
+  /** Leaves out opted-out MinistryParticipations and cancelled Events; a cancelled block's inclusion still counts (Ask moves the whole Schedule). */
   listScheduleServingStates(
     input: ListSchedulesFactsInput,
   ): Promise<ScheduleServingStateRow[]>;

@@ -1,5 +1,6 @@
 export * from './active-church-resolver';
 export * from './active-church-selection-manager';
+export * from './assignment-lifecycle';
 export * from './assignment-manager';
 export * from './authority-manager';
 export * from './availability-check-manager';

@@ -30,6 +30,10 @@ import {
   DbVolunteerTransferManager,
   InvitationVerificationCodeManager,
 } from '../../application';
+import {
+  AssignmentFactsReader,
+  AssignmentLifecycle,
+} from '../../application/assignment-lifecycle';
 import { ChurchNotifications } from '../../application/church-notifications';
 import { buildChurchNotifier } from '../../application/church-notifier';
 import { ChurchRecipients } from '../../application/church-recipients';
@@ -132,6 +136,21 @@ export function buildManagers({
   },
   auth: { churchMembershipRepository, authorityManager, activeChurchResolver },
 }: BuildManagersInput): Managers {
+  // One instance each, shared by every manager; each call runs in the caller's transaction.
+  const assignmentLifecycle = new AssignmentLifecycle({
+    assignmentRepository,
+    auditRepository: assignmentAuditRepository,
+    swapRequestRepository,
+    participationRepository: ministryParticipationRepository,
+  });
+  const assignmentFactsReader = new AssignmentFactsReader({
+    assignmentRepository,
+    shiftRepository,
+    eventRepository,
+    eventTimeBlockRepository,
+    volunteerRepository,
+    unavailableShiftRepository,
+  });
   const assignmentManager =
     overrides.assignmentManager ??
     new DbAssignmentManager({
@@ -139,12 +158,9 @@ export function buildManagers({
       auditRepo: assignmentAuditRepository,
       shiftRepository,
       participationRepository: ministryParticipationRepository,
-      volunteerRepository,
-      unavailableShiftRepository,
       cycleRepository,
-      eventRepository,
-      eventTimeBlockRepository,
-      swapRequestRepo: swapRequestRepository,
+      assignmentLifecycle,
+      assignmentFactsReader,
       unitOfWork,
     });
   const eventManager =
@@ -312,9 +328,7 @@ export function buildManagers({
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository,
-      assignmentRepository,
-      auditRepository: assignmentAuditRepository,
-      swapRequestRepository,
+      assignmentLifecycle,
       recipients: new ChurchRecipients({
         churchRepository,
         volunteerRepository,
@@ -373,7 +387,7 @@ export function buildManagers({
       shiftRepository,
       eventRepository: planningEventRepository,
       assignmentRepository,
-      auditRepository: assignmentAuditRepository,
+      assignmentLifecycle,
       proposalApplicationRepository: assignmentProposalApplicationRepository,
       unavailableShiftRepository,
       eventTimeBlockRepository,

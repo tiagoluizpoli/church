@@ -108,10 +108,13 @@
     "cz-conventional-changelog": "^3.3.0",
     "fflate": "^0.8.2",
     "lefthook": "^2.1.4",
-    "orval": "^8.19.0",
-    "turbo": "^2.8.12",
+    "orval": "~8.30.0",
+    "turbo": "^2.11.13",
     "typescript": "^5",
     "varlock": "^1.21.0"
   },
-  "packageManager": "bun@1.4.3"
+  "packageManager": "bun@1.4.3",
+  "overrides": {
+    "sharp": "^0.35.5"
+  }
 }

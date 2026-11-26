@@ -14,9 +14,14 @@ const ROUTES = ['/login', '/forgot-password', '/reset-password?token=x'];
 async function recordBootPanel(page: Page) {
   await page.addInitScript(() => {
     document.addEventListener('DOMContentLoaded', () => {
-      const panel = document.querySelector('#boot-shell > div');
+      const panel = document.querySelector('#boot-shell > .boot-panel');
       (window as { bootPanel?: DOMRect }).bootPanel =
         panel?.getBoundingClientRect();
+      (window as { bootForm?: DOMRect[] }).bootForm = [
+        ...document.querySelectorAll(
+          '.boot-field-1, .boot-field-2, .boot-button',
+        ),
+      ].map((element) => element.getBoundingClientRect());
     });
   });
 }
@@ -51,6 +56,31 @@ test.describe('sign-in boot shell', () => {
         ).toBeLessThan(2);
       });
     }
+
+    test(`/login at ${viewport.width}x${viewport.height}: the form placeholder lands on the real fields and button`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await recordBootPanel(page);
+      await page.goto('/login');
+      await expect(page.locator('main button[type=submit]')).toBeVisible();
+
+      const [placeholder, real] = await page.evaluate(() => [
+        (window as { bootForm?: DOMRect[] }).bootForm,
+        [
+          ...document.querySelectorAll(
+            'main input[type=email], main input[type=password], main button[type=submit]',
+          ),
+        ].map((element) => element.getBoundingClientRect().toJSON()),
+      ]);
+      expect(placeholder).toHaveLength(3);
+      expect(real).toHaveLength(3);
+      for (const [index, box] of (placeholder ?? []).entries()) {
+        for (const side of ['x', 'y', 'width', 'height'] as const) {
+          expect(Math.abs(box[side] - real[index][side])).toBeLessThan(2);
+        }
+      }
+    });
   }
 
   test.describe('signed in', () => {

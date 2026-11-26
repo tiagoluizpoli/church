@@ -34,6 +34,8 @@
         const height = innerHeight;
         const formHeight = form[width >= 640 ? 1 : 0];
         root.dataset.bootShell = "";
+        // Only the login form has a placeholder outline below; the other routes show the panel alone.
+        if (form === forms["/login"]) root.dataset.bootForm = "";
         root.style.setProperty("--boot-form-h", `${formHeight}px`);
         // The still the panel's container queries below will pick (the panel's 1px border excluded).
         const split = width >= 1024 && width > height;
@@ -81,7 +83,7 @@
         display: grid;
         grid-template-rows: minmax(12rem, 1fr) var(--boot-form-h);
       }
-      #boot-shell > div {
+      #boot-shell > .boot-panel {
         position: relative;
         border-bottom: 1px solid oklch(0.318 0.018 248);
         background: oklch(0.17 0.03 258);
@@ -91,7 +93,7 @@
           grid-template-rows: 1fr;
           grid-template-columns: minmax(0, 1fr) 28rem;
         }
-        #boot-shell > div {
+        #boot-shell > .boot-panel {
           border-bottom: 0;
           border-right: 1px solid oklch(0.318 0.018 248);
         }
@@ -100,6 +102,94 @@
         [data-boot-shell] #boot-shell {
           grid-template-columns: minmax(0, 1fr) 32rem;
         }
+      }
+
+      /* Login form placeholder: bars where SignInForm's title, description, labels,
+         fields, link and button land, so the form fills in rather than appears.
+         Offsets are SignInForm's measured boxes, stacked (below 40rem) and from
+         40rem; the boot-shell e2e spec fails when they drift. */
+      :root {
+        --boot-sk: oklch(0.25 0.02 250 / 0.09);
+        --boot-sk-line: oklch(0.25 0.02 250 / 0.16);
+        --boot-sk-button: oklch(0.378 0.09 255 / 0.28);
+      }
+      :root.dark {
+        --boot-sk: oklch(1 0 0 / 0.08);
+        --boot-sk-line: oklch(1 0 0 / 0.14);
+        --boot-sk-button: oklch(0.62 0.09 255 / 0.3);
+      }
+      #boot-shell > .boot-form {
+        display: none;
+      }
+      [data-boot-form] #boot-shell > .boot-form {
+        display: block;
+        padding: 2rem 1rem 0;
+      }
+      .boot-form > div {
+        position: relative;
+        height: 381px;
+      }
+      .boot-form i {
+        position: absolute;
+        left: 0;
+        border-radius: 6px;
+        background: var(--boot-sk);
+        animation: boot-sk 1.6s ease-in-out infinite;
+      }
+      .boot-form .boot-title { top: 4px; height: 24px; width: 62%; }
+      .boot-form .boot-text-1 { top: 43px; height: 14px; width: 92%; }
+      .boot-form .boot-text-2 { top: 66px; height: 14px; width: 50%; }
+      .boot-form .boot-label-1 { top: 117px; height: 12px; width: 48px; }
+      .boot-form .boot-label-2 { top: 209px; height: 12px; width: 44px; }
+      .boot-form .boot-field,
+      .boot-form .boot-button {
+        width: 100%;
+        height: 44px;
+        border-radius: 8px;
+      }
+      .boot-form .boot-field {
+        background: none;
+        box-shadow: inset 0 0 0 1px var(--boot-sk-line);
+      }
+      .boot-form .boot-field-1 { top: 137px; }
+      .boot-form .boot-field-2 { top: 229px; }
+      .boot-form .boot-link { top: 295px; left: auto; right: 0; height: 14px; width: 122px; }
+      .boot-form .boot-button { top: 337px; background: var(--boot-sk-button); }
+      @media (width >= 40rem) {
+        [data-boot-form] #boot-shell > .boot-form {
+          padding: 3rem 2rem 0;
+        }
+        .boot-form > div {
+          max-width: 28rem;
+          margin: 0 auto;
+          height: 364px;
+        }
+        .boot-form .boot-title { top: 6px; height: 26px; width: 55%; }
+        .boot-form .boot-text-1 { top: 47px; width: 72%; }
+        .boot-form .boot-text-2 { display: none; }
+        .boot-form .boot-label-1 { top: 100px; }
+        .boot-form .boot-field-1 { top: 120px; }
+        .boot-form .boot-label-2 { top: 192px; }
+        .boot-form .boot-field-2 { top: 212px; }
+        .boot-form .boot-link { top: 278px; }
+        .boot-form .boot-button { top: 320px; }
+      }
+      @media (width >= 64rem) and (orientation: landscape) {
+        [data-boot-form] #boot-shell > .boot-form {
+          display: flex;
+          align-items: center;
+          padding: 0 2rem;
+        }
+        .boot-form > div {
+          width: 100%;
+          margin: 0;
+        }
+      }
+      @keyframes boot-sk {
+        50% { opacity: 0.5; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-form i { animation: none; }
       }
 
       /* Sanctuary light scene stills, shared by the boot shell and the React backdrop.
@@ -157,7 +247,15 @@
   <body>
     <div id="app"></div>
     <div id="boot-shell" aria-hidden="true">
-      <div><div class="sanctuary-light-backdrop"><div class="sanctuary-light-still"></div></div></div>
+      <div class="boot-panel"><div class="sanctuary-light-backdrop"><div class="sanctuary-light-still"></div></div></div>
+      <div class="boot-form">
+        <div>
+          <i class="boot-title"></i><i class="boot-text-1"></i><i class="boot-text-2"></i>
+          <i class="boot-label-1"></i><i class="boot-field boot-field-1"></i>
+          <i class="boot-label-2"></i><i class="boot-field boot-field-2"></i>
+          <i class="boot-link"></i><i class="boot-button"></i>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

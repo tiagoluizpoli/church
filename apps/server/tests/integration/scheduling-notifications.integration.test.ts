@@ -631,7 +631,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
 
     const managers = createSchedulingManagers({ notifications });
     await expect(
-      managers.participationManager.publishCycle({
+      managers.participationModules.schedulePublisher.publishCycle({
         churchId: ChurchId.from(ids.churchId),
         cycleId: CycleId.from(cycleId),
         ministryId: MinistryId.from(ids.ministryId),
@@ -773,8 +773,12 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       confirmBelowFull: true,
     };
     const concurrent = await Promise.allSettled([
-      managers.participationManager.publishCycle(publishInput),
-      managers.participationManager.publishCycle(publishInput),
+      managers.participationModules.schedulePublisher.publishCycle(
+        publishInput,
+      ),
+      managers.participationModules.schedulePublisher.publishCycle(
+        publishInput,
+      ),
     ]);
     expect(
       concurrent.filter((result) => result.status === 'fulfilled'),
@@ -784,7 +788,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     ).toMatchObject([{ reason: { code: 'SCHEDULE_ALREADY_PUBLISHED' } }]);
 
     await expect(
-      managers.participationManager.publishCycle({
+      managers.participationModules.schedulePublisher.publishCycle({
         churchId: ChurchId.from(ids.churchId),
         cycleId: CycleId.from(cycleId),
         ministryId: MinistryId.from(ids.ministryId),
@@ -863,16 +867,22 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect(snapshot).not.toHaveProperty('swapRequestCovered', true);
     }
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(0);
     await schedulingTestDb
       .update(shiftRequirement)
       .set({ peopleNeeded: 2 })
       .where(eq(shiftRequirement.id, otherRequirement.id));
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(0);
     const destination = await seedShift({
       churchId: ids.churchId,
@@ -918,16 +928,22 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .set({ shiftRequirementId: sideRequirement.id })
       .where(eq(assignment.id, original.id));
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(1);
     await schedulingTestDb
       .update(assignment)
       .set({ shiftRequirementId: original.shiftRequirementId })
       .where(eq(assignment.id, original.id));
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(0);
     await schedulingTestDb
       .update(assignment)
@@ -938,8 +954,11 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       })
       .where(eq(assignment.id, original.id));
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(1);
     await schedulingTestDb
       .update(assignment)
@@ -950,8 +969,11 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       })
       .where(eq(assignment.id, original.id));
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(0);
     const lateAssignment = await buildAssignment({
       db: schedulingTestDb,
@@ -964,32 +986,44 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       status: 'pending',
     });
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(1);
     await schedulingTestDb
       .update(assignment)
       .set({ status: 'cancelled' })
       .where(eq(assignment.id, lateAssignment.id));
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(0);
     await schedulingTestDb
       .update(shift)
       .set({ endTime: new Date('2026-12-26T11:30:00.000Z') })
       .where(eq(shift.id, otherShift.id));
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(2);
     await schedulingTestDb
       .update(shift)
       .set({ endTime: new Date('2026-12-26T11:00:00.000Z') })
       .where(eq(shift.id, otherShift.id));
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(0);
     // Later Assignment changes must not alter what publish communicates.
     await schedulingTestDb
@@ -998,12 +1032,15 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .where(eq(assignment.volunteerId, assigned.volunteer.id));
 
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(1);
     expect(
       (
-        await managers.participationManager.listSchedules({
+        await managers.participationModules.scheduleReadModel.listSchedules({
           churchId: publishInput.churchId,
           filters: { period: 'current' },
           limit: 50,
@@ -1017,8 +1054,11 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
 
     setTestClock({ instant: '2026-12-27T12:00:00.000Z' as Instant });
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(0);
     setTestClock({ instant: '2026-11-02T12:00:00.000Z' as Instant });
     await schedulingTestDb
@@ -1026,8 +1066,11 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .set({ status: 'pending' })
       .where(eq(assignment.volunteerId, assigned.volunteer.id));
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(0);
     await schedulingTestDb
       .update(assignment)
@@ -1047,7 +1090,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .spyOn(notifications, 'enqueue')
       .mockRejectedValueOnce(new Error('send enqueue failed'));
     await expect(
-      managers.participationManager.sendScheduleUpdates(publishInput),
+      managers.participationModules.schedulePublisher.sendScheduleUpdates(
+        publishInput,
+      ),
     ).rejects.toThrow('send enqueue failed');
     failingEnqueue.mockRestore();
     expect(await schedulingTestDb.select().from(scheduleLastTold)).toEqual(
@@ -1055,8 +1100,12 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     );
     expect(await outboxRows()).toEqual(rowsBefore);
     const updates = await Promise.allSettled([
-      managers.participationManager.sendScheduleUpdates(publishInput),
-      managers.participationManager.sendScheduleUpdates(publishInput),
+      managers.participationModules.schedulePublisher.sendScheduleUpdates(
+        publishInput,
+      ),
+      managers.participationModules.schedulePublisher.sendScheduleUpdates(
+        publishInput,
+      ),
     ]);
     expect(
       updates.filter((result) => result.status === 'fulfilled'),
@@ -1104,8 +1153,11 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     );
     setTestClock({ instant: '2026-11-02T12:00:00.000Z' as Instant });
     expect(
-      (await managers.participationManager.getCycleBuilderData(publishInput))
-        .affectedVolunteerCount,
+      (
+        await managers.participationModules.scheduleBuilderReader.getCycleBuilderData(
+          publishInput,
+        )
+      ).affectedVolunteerCount,
     ).toBe(0);
 
     setTestClock({ instant: '2026-12-26T09:00:00.000Z' as Instant });
@@ -1155,7 +1207,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: destinationRequirement.id,
       })
       .where(eq(assignment.id, lateAssignment.id));
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
     expect((await outboxRows()).map((row) => row.payload)).toContainEqual(
       expect.objectContaining({
         kind: 'schedule_updated',
@@ -1191,7 +1245,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .update(assignment)
       .set({ shiftRequirementId: destinationSide.id })
       .where(eq(assignment.id, lateAssignment.id));
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
     expect((await outboxRows()).map((row) => row.payload)).toContainEqual(
       expect.objectContaining({
         kind: 'schedule_updated',
@@ -1219,7 +1275,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .update(assignment)
       .set({ status: 'cancelled' })
       .where(eq(assignment.id, lateAssignment.id));
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
     expect((await outboxRows()).map((row) => row.payload)).toContainEqual(
       expect.objectContaining({
         kind: 'schedule_updated',
@@ -1245,12 +1303,16 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .update(assignment)
       .set({ status: 'pending' })
       .where(eq(assignment.id, lateAssignment.id));
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
     await schedulingTestDb
       .update(assignment)
       .set({ shiftRequirementId: destinationRequirement.id })
       .where(eq(assignment.id, lateAssignment.id));
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
     const later = (await outboxRows()).filter((row) => !sentBefore.has(row.id));
     expect(later.length).toBeGreaterThan(0);
     expect(JSON.stringify(later.map((row) => row.payload))).not.toContain(
@@ -1375,7 +1437,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       userId: UserId.from(ids.adminUserId),
       confirmBelowFull: true,
     };
-    await managers.participationManager.publishCycle(publishInput);
+    await managers.participationModules.schedulePublisher.publishCycle(
+      publishInput,
+    );
     const snapshotsBefore = await schedulingTestDb
       .select()
       .from(scheduleLastTold);
@@ -1422,7 +1486,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       }),
     ]);
 
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
     const updates = (await outboxRows())
       .map((row) => row.payload)
       .filter(
@@ -1606,7 +1672,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       userId: UserId.from(ids.adminUserId),
       confirmBelowFull: true,
     };
-    await managers.participationManager.publishCycle(publishInput);
+    await managers.participationModules.schedulePublisher.publishCycle(
+      publishInput,
+    );
     const rowsBefore = await outboxRows();
     setTestClock({ instant: '2026-12-25T03:00:00.000Z' as Instant });
 
@@ -1643,7 +1711,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       }),
     ]);
 
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
     const updates = (await outboxRows())
       .map((row) => row.payload)
       .filter(
@@ -1740,7 +1810,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       userId: UserId.from(ids.adminUserId),
       confirmBelowFull: true,
     };
-    await managers.participationManager.publishCycle(publishInput);
+    await managers.participationModules.schedulePublisher.publishCycle(
+      publishInput,
+    );
 
     const added = await buildPlanningManager().createEvent({
       churchId: ChurchId.from(ids.churchId),
@@ -1768,7 +1840,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       ministryId: ids.ministryId,
       name: 'Hall',
     });
-    await managers.participationManager.savePreparation({
+    await managers.participationModules.prepareManager.savePreparation({
       churchId: ChurchId.from(ids.churchId),
       participationId: MinistryParticipationId.from(scaffold?.id ?? ''),
       eventTimeBlockId: EventTimeBlockId.from(addedBlock?.id ?? ''),
@@ -1806,7 +1878,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       }),
     });
 
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
 
     const updates = (await outboxRows())
       .map((row) => row.payload)
@@ -1949,7 +2023,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       userId: UserId.from(ids.adminUserId),
       confirmBelowFull: true,
     };
-    await managers.participationManager.publishCycle(publishInput);
+    await managers.participationModules.schedulePublisher.publishCycle(
+      publishInput,
+    );
     await schedulingTestDb.insert(swapRequest).values({
       churchId: ids.churchId,
       assignmentId: vigil.id,
@@ -1973,7 +2049,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       actingUserId: UserId.from(ids.adminUserId),
     });
     const before = new Set((await outboxRows()).map(({ id }) => id));
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
 
     const sent = (await outboxRows())
       .filter(({ id }) => !before.has(id))
@@ -2062,7 +2140,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       userId: UserId.from(ids.adminUserId),
       confirmBelowFull: true,
     };
-    await managers.participationManager.publishCycle(publishInput);
+    await managers.participationModules.schedulePublisher.publishCycle(
+      publishInput,
+    );
     await schedulingTestDb.insert(swapRequest).values({
       churchId: ids.churchId,
       assignmentId: cancelled.id,
@@ -2083,7 +2163,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       actingUserId: UserId.from(ids.adminUserId),
     });
     const before = new Set((await outboxRows()).map(({ id }) => id));
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
 
     const sent = (await outboxRows())
       .filter(({ id }) => !before.has(id))
@@ -2164,7 +2246,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       userId: UserId.from(ids.adminUserId),
       confirmBelowFull: true,
     };
-    await managers.participationManager.publishCycle(publishInput);
+    await managers.participationModules.schedulePublisher.publishCycle(
+      publishInput,
+    );
     // The leader removes Ana's told Assignment; her last-told row keeps it.
     await managers.assignmentManager.deleteAssignment({
       churchId: ChurchId.from(ids.churchId),
@@ -2184,7 +2268,9 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       actingUserId: UserId.from(ids.adminUserId),
     });
     const before = new Set((await outboxRows()).map(({ id }) => id));
-    await managers.participationManager.sendScheduleUpdates(publishInput);
+    await managers.participationModules.schedulePublisher.sendScheduleUpdates(
+      publishInput,
+    );
 
     const sent = (await outboxRows())
       .filter(({ id }) => !before.has(id))
@@ -2240,7 +2326,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       .mockRejectedValueOnce(new Error('enqueue failed'));
     const managers = createSchedulingManagers({ notifications });
     await expect(
-      managers.participationManager.publishCycle({
+      managers.participationModules.schedulePublisher.publishCycle({
         churchId: ChurchId.from(ids.churchId),
         cycleId: CycleId.from(cycleId),
         ministryId: MinistryId.from(ids.ministryId),

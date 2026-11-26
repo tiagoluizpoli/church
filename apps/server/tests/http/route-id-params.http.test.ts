@@ -68,7 +68,10 @@ beforeAll(async () => {
     authorityGuard: authorityGuard as never,
   });
   const assign = new AssignController({
-    participationManager: {} as never,
+    scheduleBuilderReader: {} as never,
+    assignmentProposalManager: {} as never,
+    schedulePublisher: {} as never,
+    scheduleReadModel: {} as never,
     assignmentManager: {} as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: authorityGuard as never,

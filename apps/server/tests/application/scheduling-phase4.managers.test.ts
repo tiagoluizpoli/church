@@ -1,6 +1,5 @@
 import { parseCalendarDay, parseInstant, parseTimeOfDay } from '@church/time';
 import { expect, it, vi } from 'vitest';
-import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   AssignmentId,
   ChurchId,
@@ -41,6 +40,7 @@ import {
   InvalidShiftSplitError,
 } from '@/domain/errors';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
+import { buildParticipationModules } from '@/tests/test-support/participation-modules';
 import {
   createAssignmentRepositoryFake,
   createCycleRepositoryFake,
@@ -125,7 +125,7 @@ function createParticipationHarness({
   );
   const unitOfWork = createUnitOfWorkFake({ tx });
   const notifications = createChurchNotificationsSpy();
-  const manager = new DbParticipationManager({
+  const manager = buildParticipationModules({
     availabilityCheckRepository: {
       listActiveMemberships: async () => [],
       listByCycle: async () => [],
@@ -159,7 +159,7 @@ it('reports full completion when no staffing places are required', async () => {
     repositories.assignmentRepository.listByParticipation,
   ).mockResolvedValue([]);
   await expect(
-    manager.getCompletion({ churchId, participationId }),
+    manager.scheduleReadModel.getCompletion({ churchId, participationId }),
   ).resolves.toEqual({
     participationId,
     peopleNeeded: 0,
@@ -186,7 +186,7 @@ it('returns schedule summaries including cycles without participation', async ()
     repositories.ministryParticipationRepository.listScheduleSummaries,
   ).mockResolvedValue([row]);
   await expect(
-    manager.listScheduleSummaries({ churchId, ministryId }),
+    manager.scheduleReadModel.listScheduleSummaries({ churchId, ministryId }),
   ).resolves.toEqual([row]);
   expect(
     repositories.ministryParticipationRepository.listScheduleSummaries,
@@ -223,7 +223,10 @@ it('lists and saves a valid usual setup and rejects invalid splits', async () =>
   vi.mocked(repositories.usualSetupRepository.listByMinistry).mockResolvedValue(
     [],
   );
-  const entries = await manager.listUsualSetupBlocks({ churchId, ministryId });
+  const entries = await manager.usualSetupManager.listUsualSetupBlocks({
+    churchId,
+    ministryId,
+  });
   expect(entries[0]?.entry).toBeUndefined();
   const sectorId = SectorId.from('sector');
   const roleId = RoleId.from('role');
@@ -245,7 +248,7 @@ it('lists and saves a valid usual setup and rejects invalid splits', async () =>
       props: { churchId, ministryId, ...entry },
     }),
   );
-  const result = await manager.saveUsualSetupBlock({
+  const result = await manager.usualSetupManager.saveUsualSetupBlock({
     churchId,
     ministryId,
     entry,
@@ -258,14 +261,14 @@ it('lists and saves a valid usual setup and rejects invalid splits', async () =>
     tx,
   });
   await expect(
-    manager.saveUsualSetupBlock({
+    manager.usualSetupManager.saveUsualSetupBlock({
       churchId,
       ministryId,
       entry: { ...entry, shiftSplit: { kind: 'equal', count: 0 } },
     }),
   ).rejects.toThrow(InvalidShiftSplitError);
   await expect(
-    manager.saveUsualSetupBlock({
+    manager.usualSetupManager.saveUsualSetupBlock({
       churchId,
       ministryId,
       entry: {
@@ -369,7 +372,10 @@ it('flags an eligible volunteer with an overlapping active assignment', async ()
   repositories.shiftRepository.listConflictFacts.mockResolvedValue([
     { shift: otherShift, ministryName: 'Worship', eventTitle: 'Service' },
   ]);
-  const result = await manager.listEligibleVolunteers({ churchId, shiftId });
+  const result = await manager.scheduleBuilderReader.listEligibleVolunteers({
+    churchId,
+    shiftId,
+  });
   expect(result).toEqual([
     expect.objectContaining({
       volunteerId,
@@ -424,7 +430,7 @@ it('creates a missing participation and returns its unincluded event block', asy
   vi.mocked(
     repositories.ministryParticipationRepository.findAvailabilityRequestedAt,
   ).mockResolvedValue(null);
-  const view = await manager.getCycleParticipation({
+  const view = await manager.prepareManager.getCycleParticipation({
     churchId,
     ministryId,
     cycleId,
@@ -448,7 +454,7 @@ it('creates a missing participation and returns its unincluded event block', asy
   vi.mocked(
     repositories.ministryParticipationRepository.findByMinistryEvent,
   ).mockResolvedValue(participation);
-  const again = await manager.getCycleParticipation({
+  const again = await manager.prepareManager.getCycleParticipation({
     churchId,
     ministryId,
     cycleId,
@@ -496,7 +502,7 @@ it('counts only active assignments towards each required place', async () => {
     repositories.assignmentRepository.listByParticipation,
   ).mockResolvedValue([assignment('pending'), assignment('cancelled')]);
   await expect(
-    manager.getCompletion({ churchId, participationId }),
+    manager.scheduleReadModel.getCompletion({ churchId, participationId }),
   ).resolves.toEqual({
     participationId,
     peopleNeeded: 2,
@@ -548,7 +554,7 @@ it.each([
   );
   repositories.assignmentRepository.listByParticipation.mockResolvedValue([]);
   await expect(
-    manager.publishCycle({
+    manager.schedulePublisher.publishCycle({
       churchId,
       ministryId,
       cycleId,

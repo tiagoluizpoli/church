@@ -194,7 +194,7 @@ beforeAll(async () => {
   );
   const usualSetup = new UsualSetupController({
     ministryManager,
-    participationManager: createSchedulingManagers().participationManager,
+    ...createSchedulingManagers().participationModules,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard,
   });

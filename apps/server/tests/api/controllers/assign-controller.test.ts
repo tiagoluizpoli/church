@@ -70,7 +70,10 @@ async function buildApp(config: typeof appConfig) {
     errorReporter: testErrorReporter,
   });
   const controller = new AssignController({
-    participationManager: participationManager as never,
+    scheduleBuilderReader: participationManager as never,
+    assignmentProposalManager: participationManager as never,
+    schedulePublisher: participationManager as never,
+    scheduleReadModel: participationManager as never,
     assignmentManager: assignmentManager as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: authorityGuard as never,

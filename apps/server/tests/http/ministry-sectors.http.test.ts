@@ -107,7 +107,7 @@ beforeAll(async () => {
   // The competing UsualSetup write path, for the archive race proof.
   const usualSetupController = new UsualSetupController({
     ministryManager,
-    participationManager: createSchedulingManagers().participationManager,
+    ...createSchedulingManagers().participationModules,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard,
   });

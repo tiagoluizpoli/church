@@ -103,7 +103,7 @@ const mockSetActiveOrganization = vi.mocked(mockAuth.api.setActiveOrganization);
 const db = schedulingTestDb;
 
 let app: FastifyTypedInstance;
-const { assignmentManager, participationManager, volunteerManager } =
+const { assignmentManager, participationModules, volunteerManager } =
   createSchedulingManagers();
 
 beforeAll(async () => {
@@ -116,7 +116,7 @@ beforeAll(async () => {
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
     config: appConfig,
-    participationManager,
+    ...participationModules,
     availabilityCheckManager: {} as never,
     activeChurchResolver: new DbActiveChurchResolver({
       actorRepository,
@@ -1324,7 +1324,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
 
   describe('racing writers', () => {
     function publish(base: Base) {
-      return participationManager.publishCycle({
+      return participationModules.schedulePublisher.publishCycle({
         churchId: ChurchId.from(base.churchId),
         cycleId: CycleId.from(base.cycle.id),
         ministryId: MinistryId.from(base.ministryId),
@@ -1647,7 +1647,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       });
       const { paused, release } = pauseWrite('updateState');
 
-      const publishing = participationManager.publishCycle({
+      const publishing = participationModules.schedulePublisher.publishCycle({
         churchId: ChurchId.from(base.churchId),
         cycleId: CycleId.from(base.cycle.id),
         ministryId: MinistryId.from(base.ministryId),
@@ -1678,7 +1678,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
 
       const assigning = assign(base, target);
       await paused;
-      const publishing = participationManager.publishCycle({
+      const publishing = participationModules.schedulePublisher.publishCycle({
         churchId: ChurchId.from(base.churchId),
         cycleId: CycleId.from(base.cycle.id),
         ministryId: MinistryId.from(base.ministryId),

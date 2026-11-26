@@ -89,7 +89,7 @@ beforeAll(async () => {
       usualSetupRepo: {} as never,
       templateRepo: {} as never,
     }),
-    participationManager: createSchedulingManagers().participationManager,
+    ...createSchedulingManagers().participationModules,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard,
   });

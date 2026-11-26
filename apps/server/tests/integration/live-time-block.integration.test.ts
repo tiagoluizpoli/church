@@ -406,18 +406,19 @@ describe('Schedules list: stages, counts, gaps and needs attention', () => {
 
   it('lists each Schedule with its stage and its gaps on live blocks only', async () => {
     const { churchId } = seeded;
-    const { participationManager } = createSchedulingManagers();
+    const { participationModules } = createSchedulingManagers();
 
-    const page = await participationManager.listSchedules({
+    const page = await participationModules.scheduleReadModel.listSchedules({
       churchId,
       filters: { period: 'current' },
       limit: 20,
     });
-    const needingAttention = await participationManager.listSchedules({
-      churchId,
-      filters: { period: 'current', attention: true },
-      limit: 20,
-    });
+    const needingAttention =
+      await participationModules.scheduleReadModel.listSchedules({
+        churchId,
+        filters: { period: 'current', attention: true },
+        limit: 20,
+      });
 
     const brief = ({
       ministry,
@@ -512,15 +513,16 @@ describe('Schedules list: stages, counts, gaps and needs attention', () => {
 describe('coverage and staffing', () => {
   it('measures staffing on live blocks only', async () => {
     const { churchId, cycleId } = seeded;
-    const { participationManager } = createSchedulingManagers();
+    const { participationModules } = createSchedulingManagers();
 
     const staffing = await participationRepo.listMinistryStaffing({
       churchId,
       cycleId,
     });
-    const insights = await participationManager.getScheduleInsights({
-      churchId,
-    });
+    const insights =
+      await participationModules.scheduleReadModel.getScheduleInsights({
+        churchId,
+      });
 
     expect(
       staffing.map((row) => ({ ...row, ministryId: nameOf(row.ministryId) })),
@@ -549,13 +551,14 @@ describe('coverage and staffing', () => {
 describe('Prepare', () => {
   it('flags both cancellations, asks for nobody on them and leaves them out of needs attention', async () => {
     const { churchId, cycleId, ministryId } = seeded;
-    const { participationManager } = createSchedulingManagers();
+    const { participationModules } = createSchedulingManagers();
 
-    const view = await participationManager.getCycleParticipation({
-      churchId,
-      cycleId,
-      ministryId,
-    });
+    const view =
+      await participationModules.prepareManager.getCycleParticipation({
+        churchId,
+        cycleId,
+        ministryId,
+      });
 
     expect(
       view.events.flatMap(({ event, eventTimeBlocks }) =>
@@ -609,14 +612,15 @@ describe('Prepare', () => {
 describe('Schedule builder', () => {
   it('returns every block with its own status, under its Event status', async () => {
     const { churchId, cycleId, ministryId } = seeded;
-    const { participationManager } = createSchedulingManagers();
+    const { participationModules } = createSchedulingManagers();
 
-    const view = await participationManager.getCycleBuilderData({
-      churchId,
-      cycleId,
-      ministryId,
-      userId: UserId.from(seeded.base.adminUserId),
-    });
+    const view =
+      await participationModules.scheduleBuilderReader.getCycleBuilderData({
+        churchId,
+        cycleId,
+        ministryId,
+        userId: UserId.from(seeded.base.adminUserId),
+      });
 
     expect(
       view.events.map(({ event, participation, eventTimeBlocks }) => ({
@@ -691,19 +695,21 @@ describe('Schedule builder', () => {
 describe('Schedule builder flag', () => {
   it('flags a block cancelled by its Event or on its own, as Prepare does', async () => {
     const { churchId, cycleId, ministryId } = seeded;
-    const { participationManager } = createSchedulingManagers();
+    const { participationModules } = createSchedulingManagers();
 
-    const builder = await participationManager.getCycleBuilderData({
-      churchId,
-      cycleId,
-      ministryId,
-      userId: UserId.from(seeded.base.adminUserId),
-    });
-    const prepare = await participationManager.getCycleParticipation({
-      churchId,
-      cycleId,
-      ministryId,
-    });
+    const builder =
+      await participationModules.scheduleBuilderReader.getCycleBuilderData({
+        churchId,
+        cycleId,
+        ministryId,
+        userId: UserId.from(seeded.base.adminUserId),
+      });
+    const prepare =
+      await participationModules.prepareManager.getCycleParticipation({
+        churchId,
+        cycleId,
+        ministryId,
+      });
 
     const flags = (
       events: (typeof builder.events | typeof prepare.events)[number][],

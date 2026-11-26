@@ -71,7 +71,8 @@ beforeAll(async () => {
   });
   const controller = new PrepareController({
     config: appConfig,
-    participationManager: participationManager as never,
+    prepareManager: participationManager as never,
+    scheduleReadModel: participationManager as never,
     availabilityCheckManager: availabilityCheckManager as never,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: authorityGuard as never,

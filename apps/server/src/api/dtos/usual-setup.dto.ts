@@ -5,7 +5,7 @@ import {
   SectorId,
   type TemplateTimeBlockId,
 } from '../../domain/branded-ids';
-import type { UsualSetupBlockView } from '../../domain/contracts/application/participation-manager';
+import type { UsualSetupBlockView } from '../../domain/contracts/application/usual-setup-manager';
 import type {
   UsualSetup,
   UsualSetupEntryInput,

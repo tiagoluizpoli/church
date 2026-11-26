@@ -80,7 +80,7 @@ beforeAll(async () => {
     activeChurchResolver,
   });
   const assignController = new AssignController({
-    participationManager: managers.participationManager,
+    ...managers.participationModules,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver,
     authorityGuard: {

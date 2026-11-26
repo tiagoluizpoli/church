@@ -4,10 +4,10 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { nonBlockingEntryStylesheet } from '../../tooling/vite/non-blocking-entry-stylesheet.ts';
 import { devAllowedHosts } from '../../tooling/worktree/dev-hostname.ts';
 
 const I18N_DIR = path.resolve(import.meta.dirname, '../../packages/i18n');
-
 // Values come from Varlock (`dev` runs through it), never from a value file
 // Vite finds itself: envDir stays this package, which holds none (ADR-0005).
 export default defineConfig(({ command }) => ({
@@ -18,21 +18,7 @@ export default defineConfig(({ command }) => ({
       autoCodeSplitting: true,
     }),
     react(),
-    {
-      // The entry stylesheet must not hold index.html's boot shell off the
-      // screen: it loads as print (applied on load; main.tsx waits for it),
-      // and a preload keeps it at the top of the network queue.
-      name: 'non-blocking-entry-css',
-      apply: 'build',
-      transformIndexHtml: {
-        order: 'post',
-        handler: (html) =>
-          html.replace(
-            /<link rel="stylesheet" crossorigin href="([^"]+\.css)">/g,
-            `<link rel="preload" as="style" crossorigin href="$1"><link rel="stylesheet" crossorigin href="$1" media="print" onload="this.media='all'">`,
-          ),
-      },
-    },
+    nonBlockingEntryStylesheet(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {

@@ -70,5 +70,14 @@ export default defineConfig({
     // hostnames (ADR-0005), e.g. church-<worktree>.<CHURCH_DEV_DOMAIN>. This
     // machine's domain reaches Vite through Varlock from the root .env.local.
     allowedHosts: devAllowedHosts({ domain: process.env.CHURCH_DEV_DOMAIN }),
+    // Transformed at start, so the first sign-in load after a restart is not
+    // also the one that transforms its whole module graph.
+    warmup: {
+      clientFiles: [
+        './src/main.tsx',
+        './src/routes/__root.tsx',
+        './src/routes/login.tsx',
+      ],
+    },
   },
 });
